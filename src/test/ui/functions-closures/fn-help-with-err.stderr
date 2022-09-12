@@ -1,22 +1,38 @@
 error[E0425]: cannot find value `oops` in this scope
-  --> $DIR/fn-help-with-err.rs:3:35
+  --> $DIR/fn-help-with-err.rs:14:35
    |
 LL |     let arc = std::sync::Arc::new(oops);
    |                                   ^^^^ not found in this scope
 
-error[E0599]: no method named `blablabla` found for struct `Arc<_>` in the current scope
-  --> $DIR/fn-help-with-err.rs:7:9
+error[E0599]: no method named `bar` found for struct `Arc<_>` in the current scope
+  --> $DIR/fn-help-with-err.rs:17:9
    |
-LL |     arc.blablabla();
-   |         ^^^^^^^^^ method not found in `Arc<_>`
+LL |     arc.bar();
+   |         ^^^ method not found in `Arc<_>`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Bar` defines an item `bar`, perhaps you need to implement it
+  --> $DIR/fn-help-with-err.rs:5:1
+   |
+LL | trait Bar {
+   | ^^^^^^^^^
 
-error[E0599]: no method named `blablabla` found for struct `Arc<[closure@$DIR/fn-help-with-err.rs:10:36: 10:38]>` in the current scope
-  --> $DIR/fn-help-with-err.rs:12:10
+error[E0599]: no method named `bar` found for struct `Arc<[closure@$DIR/fn-help-with-err.rs:22:36: 22:38]>` in the current scope
+  --> $DIR/fn-help-with-err.rs:23:10
    |
-LL |     arc2.blablabla();
-   |     ---- ^^^^^^^^^ method not found in `Arc<[closure@$DIR/fn-help-with-err.rs:10:36: 10:38]>`
-   |     |
-   |     this is a function, perhaps you wish to call it
+LL |     arc2.bar();
+   |          ^^^ method not found in `Arc<[closure@$DIR/fn-help-with-err.rs:22:36: 22:38]>`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Bar` defines an item `bar`, perhaps you need to implement it
+  --> $DIR/fn-help-with-err.rs:5:1
+   |
+LL | trait Bar {
+   | ^^^^^^^^^
+help: use parentheses to call this closure
+   |
+LL |     arc2().bar();
+   |         ++
 
 error: aborting due to 3 previous errors
 

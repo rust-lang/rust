@@ -1,0 +1,16 @@
+### What it does
+This lint warns when you use `writeln!(buf, "")` to
+print a newline.
+
+### Why is this bad?
+You should use `writeln!(buf)`, which is simpler.
+
+### Example
+```
+writeln!(buf, "");
+```
+
+Use instead:
+```
+writeln!(buf);
+```

@@ -258,7 +258,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let ty = place.ty(self.body, self.infcx.tcx).ty;
 
             // If we're in pattern, we do nothing in favor of the previous suggestion (#80913).
-            if is_loop_move & !in_pattern {
+            // Same for if we're in a loop, see #101119.
+            if is_loop_move & !in_pattern && !matches!(use_spans, UseSpans::ClosureUse { .. }) {
                 if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
                     // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
                     err.span_suggestion_verbose(
@@ -451,7 +452,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_borrow_fn_like(
         &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         ty: Ty<'tcx>,
         move_sites: &[MoveSite],
         value_name: &str,
@@ -526,12 +527,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         true
     }
 
-    fn suggest_adding_copy_bounds(
-        &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-        ty: Ty<'tcx>,
-        span: Span,
-    ) {
+    fn suggest_adding_copy_bounds(&self, err: &mut Diagnostic, ty: Ty<'tcx>, span: Span) {
         let tcx = self.infcx.tcx;
         let generics = tcx.generics_of(self.mir_def_id());
 
@@ -1124,6 +1120,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// short a lifetime. (But sometimes it is more useful to report
     /// it as a more direct conflict between the execution of a
     /// `Drop::drop` with an aliasing borrow.)
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn report_borrowed_value_does_not_live_long_enough(
         &mut self,
         location: Location,
@@ -1131,13 +1128,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         place_span: (Place<'tcx>, Span),
         kind: Option<WriteKind>,
     ) {
-        debug!(
-            "report_borrowed_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}\
-             )",
-            location, borrow, place_span, kind
-        );
-
         let drop_span = place_span.1;
         let root_place =
             self.prefixes(borrow.borrowed_place.as_ref(), PrefixSet::All).last().unwrap();
@@ -1194,10 +1184,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let kind_place = kind.filter(|_| place_desc.is_some()).map(|k| (k, place_span.0));
         let explanation = self.explain_why_borrow_contains_point(location, &borrow, kind_place);
 
-        debug!(
-            "report_borrowed_value_does_not_live_long_enough(place_desc: {:?}, explanation: {:?})",
-            place_desc, explanation
-        );
+        debug!(?place_desc, ?explanation);
+
         let err = match (place_desc, explanation) {
             // If the outlives constraint comes from inside the closure,
             // for example:
@@ -1469,6 +1457,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn report_temporary_value_does_not_live_long_enough(
         &mut self,
         location: Location,
@@ -1478,13 +1467,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        debug!(
-            "report_temporary_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}\
-             )",
-            location, borrow, drop_span, proper_span
-        );
-
         if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
             explanation
         {

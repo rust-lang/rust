@@ -126,7 +126,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::ReFree(_)
             | ty::ReVar(_)
             | ty::RePlaceholder(..)
-            | ty::ReEmpty(_)
             | ty::ReErased => {
                 // replace all free regions with 'erased
                 self.tcx().lifetimes.re_erased

@@ -1,5 +1,5 @@
-builtin-macros-requires-cfg-pattern =
+builtin_macros_requires_cfg_pattern =
     macro requires a cfg-pattern as an argument
     .label = cfg-pattern required
 
-builtin-macros-expected-one-cfg-pattern = expected 1 cfg-pattern
+builtin_macros_expected_one_cfg_pattern = expected 1 cfg-pattern

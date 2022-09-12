@@ -1,7 +1,6 @@
 use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{match_trait_method, paths};
-use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -75,45 +74,49 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
                     .qpath_res(qpath, path.hir_id)
                     .opt_def_id()
                     .and_then(|def_id| match cx.tcx.get_diagnostic_name(def_id) {
-                        Some(sym::cmp_min) => fetch_const(cx, args, MinMax::Min),
-                        Some(sym::cmp_max) => fetch_const(cx, args, MinMax::Max),
+                        Some(sym::cmp_min) => fetch_const(cx, None, args, MinMax::Min),
+                        Some(sym::cmp_max) => fetch_const(cx, None, args, MinMax::Max),
                         _ => None,
                     })
             } else {
                 None
             }
         },
-        ExprKind::MethodCall(path, args, _) => {
-            if_chain! {
-                if let [obj, _] = args;
-                if cx.typeck_results().expr_ty(obj).is_floating_point() || match_trait_method(cx, expr, &paths::ORD);
-                then {
-                    if path.ident.name == sym!(max) {
-                        fetch_const(cx, args, MinMax::Max)
-                    } else if path.ident.name == sym!(min) {
-                        fetch_const(cx, args, MinMax::Min)
-                    } else {
-                        None
-                    }
+        ExprKind::MethodCall(path, receiver, args @ [_], _) => {
+            if cx.typeck_results().expr_ty(receiver).is_floating_point() || match_trait_method(cx, expr, &paths::ORD) {
+                if path.ident.name == sym!(max) {
+                    fetch_const(cx, Some(receiver), args, MinMax::Max)
+                } else if path.ident.name == sym!(min) {
+                    fetch_const(cx, Some(receiver), args, MinMax::Min)
                 } else {
                     None
                 }
+            } else {
+                None
             }
         },
         _ => None,
     }
 }
 
-fn fetch_const<'a>(cx: &LateContext<'_>, args: &'a [Expr<'a>], m: MinMax) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
-    if args.len() != 2 {
+fn fetch_const<'a>(
+    cx: &LateContext<'_>,
+    receiver: Option<&'a Expr<'a>>,
+    args: &'a [Expr<'a>],
+    m: MinMax,
+) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
+    let mut args = receiver.into_iter().chain(args);
+    let first_arg = args.next()?;
+    let second_arg = args.next()?;
+    if args.next().is_some() {
         return None;
     }
-    constant_simple(cx, cx.typeck_results(), &args[0]).map_or_else(
-        || constant_simple(cx, cx.typeck_results(), &args[1]).map(|c| (m, c, &args[0])),
+    constant_simple(cx, cx.typeck_results(), first_arg).map_or_else(
+        || constant_simple(cx, cx.typeck_results(), second_arg).map(|c| (m, c, first_arg)),
         |c| {
-            if constant_simple(cx, cx.typeck_results(), &args[1]).is_none() {
+            if constant_simple(cx, cx.typeck_results(), second_arg).is_none() {
                 // otherwise ignore
-                Some((m, c, &args[1]))
+                Some((m, c, second_arg))
             } else {
                 None
             }

@@ -50,13 +50,13 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
-        debug!("param_bound(param_ty={:?})", param_ty);
-
         // Start with anything like `T: 'a` we can scrape from the
         // environment. If the environment contains something like
         // `for<'a> T: 'a`, then we know that `T` outlives everything.
         let declared_bounds_from_env = self.declared_generic_bounds_from_env(param_ty);
+        debug!(?declared_bounds_from_env);
         let mut param_bounds = vec![];
         for declared_bound in declared_bounds_from_env {
             let bound_region = declared_bound.map_bound(|outlives| outlives.1);
@@ -65,6 +65,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 param_bounds.push(VerifyBound::OutlivedBy(region));
             } else {
                 // This is `for<'a> T: 'a`. This means that `T` outlives everything! All done here.
+                debug!("found that {param_ty:?} outlives any lifetime, returning empty vector");
                 return VerifyBound::AllBounds(vec![]);
             }
         }
@@ -72,6 +73,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // Add in the default bound of fn body that applies to all in
         // scope type parameters:
         if let Some(r) = self.implicit_region_bound {
+            debug!("adding implicit region bound of {r:?}");
             param_bounds.push(VerifyBound::OutlivedBy(r));
         }
 

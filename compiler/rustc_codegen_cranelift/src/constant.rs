@@ -59,7 +59,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
                         ErrorHandled::TooGeneric => {
                             span_bug!(
                                 constant.span,
-                                "codgen encountered polymorphic constant: {:?}",
+                                "codegen encountered polymorphic constant: {:?}",
                                 err
                             );
                         }
@@ -430,7 +430,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
         data_ctx.define(bytes.into_boxed_slice());
 
-        for &(offset, alloc_id) in alloc.relocations().iter() {
+        for &(offset, alloc_id) in alloc.provenance().iter() {
             let addend = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
@@ -505,7 +505,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                 return None;
             }
             let mut computed_const_val = None;
-            for bb_data in fx.mir.basic_blocks() {
+            for bb_data in fx.mir.basic_blocks.iter() {
                 for stmt in &bb_data.statements {
                     match &stmt.kind {
                         StatementKind::Assign(local_and_rvalue) if &local_and_rvalue.0 == place => {
@@ -536,9 +536,11 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         {
                             return None;
                         }
-                        StatementKind::CopyNonOverlapping(_) => {
-                            return None;
-                        } // conservative handling
+                        StatementKind::Intrinsic(ref intrinsic) => match **intrinsic {
+                            NonDivergingIntrinsic::CopyNonOverlapping(..) => return None,
+                            NonDivergingIntrinsic::Assume(..) => {}
+                        },
+                        // conservative handling
                         StatementKind::Assign(_)
                         | StatementKind::FakeRead(_)
                         | StatementKind::SetDiscriminant { .. }

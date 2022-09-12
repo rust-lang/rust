@@ -6,19 +6,19 @@
       let _1: (!, !);                      // in scope 0 at $DIR/inline-diverging.rs:+1:5: +1:22
 +     let mut _2: fn() -> ! {sleep};       // in scope 0 at $DIR/inline-diverging.rs:+1:5: +1:22
 +     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) { // at $DIR/inline-diverging.rs:22:5: 22:22
-+         debug f => _2;                   // in scope 1 at $DIR/inline-diverging.rs:+5:36: +5:37
-+         let _3: !;                       // in scope 1 at $DIR/inline-diverging.rs:+6:9: +6:10
-+         let mut _4: &fn() -> ! {sleep};  // in scope 1 at $DIR/inline-diverging.rs:+6:13: +6:14
-+         let mut _5: ();                  // in scope 1 at $DIR/inline-diverging.rs:+6:13: +6:16
-+         let mut _7: &fn() -> ! {sleep};  // in scope 1 at $DIR/inline-diverging.rs:+7:13: +7:14
-+         let mut _8: ();                  // in scope 1 at $DIR/inline-diverging.rs:+7:13: +7:16
-+         let mut _9: !;                   // in scope 1 at $DIR/inline-diverging.rs:+8:6: +8:7
-+         let mut _10: !;                  // in scope 1 at $DIR/inline-diverging.rs:+8:9: +8:10
++         debug f => _2;                   // in scope 1 at $DIR/inline-diverging.rs:26:36: 26:37
++         let _3: !;                       // in scope 1 at $DIR/inline-diverging.rs:27:9: 27:10
++         let mut _4: &fn() -> ! {sleep};  // in scope 1 at $DIR/inline-diverging.rs:27:13: 27:14
++         let mut _5: ();                  // in scope 1 at $DIR/inline-diverging.rs:27:13: 27:16
++         let mut _7: &fn() -> ! {sleep};  // in scope 1 at $DIR/inline-diverging.rs:28:13: 28:14
++         let mut _8: ();                  // in scope 1 at $DIR/inline-diverging.rs:28:13: 28:16
++         let mut _9: !;                   // in scope 1 at $DIR/inline-diverging.rs:29:6: 29:7
++         let mut _10: !;                  // in scope 1 at $DIR/inline-diverging.rs:29:9: 29:10
 +         scope 2 {
-+             debug a => _3;               // in scope 2 at $DIR/inline-diverging.rs:+6:9: +6:10
-+             let _6: !;                   // in scope 2 at $DIR/inline-diverging.rs:+7:9: +7:10
++             debug a => _3;               // in scope 2 at $DIR/inline-diverging.rs:27:9: 27:10
++             let _6: !;                   // in scope 2 at $DIR/inline-diverging.rs:28:9: 28:10
 +             scope 3 {
-+                 debug b => _6;           // in scope 3 at $DIR/inline-diverging.rs:+7:9: +7:10
++                 debug b => _6;           // in scope 3 at $DIR/inline-diverging.rs:28:9: 28:10
 +             }
 +             scope 6 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) { // at $DIR/inline-diverging.rs:28:13: 28:16
 +                 scope 7 (inlined sleep) { // at $SRC_DIR/core/src/ops/function.rs:LL:COL
@@ -42,15 +42,15 @@
 -                                          // mir::Constant
                                            // + span: $DIR/inline-diverging.rs:22:16: 22:21
                                            // + literal: Const { ty: fn() -> ! {sleep}, val: Value(<ZST>) }
-+         StorageLive(_3);                 // scope 1 at $DIR/inline-diverging.rs:+6:9: +6:10
-+         StorageLive(_4);                 // scope 1 at $DIR/inline-diverging.rs:+6:13: +6:14
-+         _4 = &_2;                        // scope 1 at $DIR/inline-diverging.rs:+6:13: +6:14
-+         StorageLive(_5);                 // scope 1 at $DIR/inline-diverging.rs:+6:13: +6:16
-+         goto -> bb1;                     // scope 5 at $DIR/inline-diverging.rs:+18:5: +18:12
++         StorageLive(_3);                 // scope 1 at $DIR/inline-diverging.rs:27:9: 27:10
++         StorageLive(_4);                 // scope 1 at $DIR/inline-diverging.rs:27:13: 27:14
++         _4 = &_2;                        // scope 1 at $DIR/inline-diverging.rs:27:13: 27:14
++         StorageLive(_5);                 // scope 1 at $DIR/inline-diverging.rs:27:13: 27:16
++         goto -> bb1;                     // scope 5 at $DIR/inline-diverging.rs:39:5: 39:12
 +     }
 + 
 +     bb1: {
-+         goto -> bb1;                     // scope 5 at $DIR/inline-diverging.rs:+18:5: +18:12
++         goto -> bb1;                     // scope 5 at $DIR/inline-diverging.rs:39:5: 39:12
       }
   }
   

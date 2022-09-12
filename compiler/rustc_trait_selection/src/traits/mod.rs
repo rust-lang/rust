@@ -13,6 +13,7 @@ mod fulfill;
 pub mod misc;
 mod object_safety;
 mod on_unimplemented;
+pub mod outlives_bounds;
 mod project;
 pub mod query;
 pub(crate) mod relationships;
@@ -22,6 +23,7 @@ mod structural_match;
 mod util;
 pub mod wf;
 
+use crate::errors::DumpVTableEntries;
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::InferCtxtExt as _;
@@ -34,7 +36,10 @@ use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
+use rustc_middle::ty::{
+    self, DefIdTree, GenericParamDefKind, Subst, ToPredicate, Ty, TyCtxt, TypeSuperVisitable,
+    VtblEntry,
+};
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
 
@@ -114,11 +119,21 @@ pub enum TraitQueryMode {
 
 /// Creates predicate obligations from the generic bounds.
 pub fn predicates_for_generics<'tcx>(
-    cause: ObligationCause<'tcx>,
+    cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    util::predicates_for_generics(cause, 0, param_env, generic_bounds)
+    let generic_bounds = generic_bounds;
+    debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
+
+    std::iter::zip(generic_bounds.predicates, generic_bounds.spans).enumerate().map(
+        move |(idx, (predicate, span))| Obligation {
+            cause: cause(idx, span),
+            recursion_depth: 0,
+            param_env: param_env,
+            predicate,
+        },
+    )
 }
 
 /// Determines whether the type `ty` is known to meet `bound` and
@@ -460,9 +475,6 @@ pub fn impossible_predicates<'tcx>(
     debug!("impossible_predicates(predicates={:?})", predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
-        // HACK: Set tainted by errors to gracefully exit in case of overflow.
-        infcx.set_tainted_by_errors();
-
         let param_env = ty::ParamEnv::reveal_all();
         let ocx = ObligationCtxt::new(&infcx);
         let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);
@@ -501,6 +513,84 @@ fn subst_and_check_impossible_predicates<'tcx>(
 
     debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
     result
+}
+
+/// Checks whether a trait's method is impossible to call on a given impl.
+///
+/// This only considers predicates that reference the impl's generics, and not
+/// those that reference the method's generics.
+fn is_impossible_method<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (impl_def_id, trait_item_def_id): (DefId, DefId),
+) -> bool {
+    struct ReferencesOnlyParentGenerics<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        generics: &'tcx ty::Generics,
+        trait_item_def_id: DefId,
+    }
+    impl<'tcx> ty::TypeVisitor<'tcx> for ReferencesOnlyParentGenerics<'tcx> {
+        type BreakTy = ();
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            // If this is a parameter from the trait item's own generics, then bail
+            if let ty::Param(param) = t.kind()
+                && let param_def_id = self.generics.type_param(param, self.tcx).def_id
+                && self.tcx.parent(param_def_id) == self.trait_item_def_id
+            {
+                return ControlFlow::BREAK;
+            }
+            t.super_visit_with(self)
+        }
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::ReEarlyBound(param) = r.kind()
+                && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
+                && self.tcx.parent(param_def_id) == self.trait_item_def_id
+            {
+                return ControlFlow::BREAK;
+            }
+            r.super_visit_with(self)
+        }
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::ConstKind::Param(param) = ct.kind()
+                && let param_def_id = self.generics.const_param(&param, self.tcx).def_id
+                && self.tcx.parent(param_def_id) == self.trait_item_def_id
+            {
+                return ControlFlow::BREAK;
+            }
+            ct.super_visit_with(self)
+        }
+    }
+
+    let generics = tcx.generics_of(trait_item_def_id);
+    let predicates = tcx.predicates_of(trait_item_def_id);
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_def_id).expect("expected impl to correspond to trait");
+    let param_env = tcx.param_env(impl_def_id);
+
+    let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
+    let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
+        if pred.visit_with(&mut visitor).is_continue() {
+            Some(Obligation::new(
+                ObligationCause::dummy_with_span(*span),
+                param_env,
+                ty::EarlyBinder(*pred).subst(tcx, impl_trait_ref.substs),
+            ))
+        } else {
+            None
+        }
+    });
+
+    tcx.infer_ctxt().ignoring_regions().enter(|ref infcx| {
+        for obligation in predicates_for_trait {
+            // Ignore overflow error, to be conservative.
+            if let Ok(result) = infcx.evaluate_obligation(&obligation)
+                && !result.may_apply()
+            {
+                return true;
+            }
+        }
+
+        false
+    })
 }
 
 #[derive(Clone, Debug)]
@@ -674,8 +764,11 @@ fn dump_vtable_entries<'tcx>(
     trait_ref: ty::PolyTraitRef<'tcx>,
     entries: &[VtblEntry<'tcx>],
 ) {
-    let msg = format!("vtable entries for `{}`: {:#?}", trait_ref, entries);
-    tcx.sess.struct_span_err(sp, &msg).emit();
+    tcx.sess.emit_err(DumpVTableEntries {
+        span: sp,
+        trait_ref,
+        entries: format!("{:#?}", entries),
+    });
 }
 
 fn own_existential_vtable_entries<'tcx>(
@@ -878,11 +971,12 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
-        codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
+        codegen_select_candidate: codegen::codegen_select_candidate,
         own_existential_vtable_entries,
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,
         subst_and_check_impossible_predicates,
+        is_impossible_method,
         try_unify_abstract_consts: |tcx, param_env_and| {
             let (param_env, (a, b)) = param_env_and.into_parts();
             const_evaluatable::try_unify_abstract_consts(tcx, (a, b), param_env)

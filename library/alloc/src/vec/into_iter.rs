@@ -4,7 +4,6 @@ use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::array;
 use core::fmt;
-use core::intrinsics::arith_offset;
 use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccessNoCoerce,
 };
@@ -148,19 +147,19 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        if self.ptr as *const _ == self.end {
+        if self.ptr == self.end {
             None
         } else if mem::size_of::<T>() == 0 {
             // purposefully don't use 'ptr.offset' because for
             // vectors with 0-size elements this would return the
             // same pointer.
-            self.ptr = unsafe { arith_offset(self.ptr as *const i8, 1) as *mut T };
+            self.ptr = self.ptr.wrapping_byte_add(1);
 
             // Make up a value of this ZST.
             Some(unsafe { mem::zeroed() })
         } else {
             let old = self.ptr;
-            self.ptr = unsafe { self.ptr.offset(1) };
+            self.ptr = unsafe { self.ptr.add(1) };
 
             Some(unsafe { ptr::read(old) })
         }
@@ -184,7 +183,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
             // SAFETY: due to unchecked casts of unsigned amounts to signed offsets the wraparound
             // effectively results in unsigned pointers representing positions 0..usize::MAX,
             // which is valid for ZSTs.
-            self.ptr = unsafe { arith_offset(self.ptr as *const i8, step_size as isize) as *mut T }
+            self.ptr = self.ptr.wrapping_byte_add(step_size);
         } else {
             // SAFETY: the min() above ensures that step_size is in bounds
             self.ptr = unsafe { self.ptr.add(step_size) };
@@ -217,7 +216,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
                 return Err(unsafe { array::IntoIter::new_unchecked(raw_ary, 0..len) });
             }
 
-            self.ptr = unsafe { arith_offset(self.ptr as *const i8, N as isize) as *mut T };
+            self.ptr = self.ptr.wrapping_byte_add(N);
             // Safety: ditto
             return Ok(unsafe { MaybeUninit::array_assume_init(raw_ary) });
         }
@@ -267,12 +266,12 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
             None
         } else if mem::size_of::<T>() == 0 {
             // See above for why 'ptr.offset' isn't used
-            self.end = unsafe { arith_offset(self.end as *const i8, -1) as *mut T };
+            self.end = self.end.wrapping_byte_sub(1);
 
             // Make up a value of this ZST.
             Some(unsafe { mem::zeroed() })
         } else {
-            self.end = unsafe { self.end.offset(-1) };
+            self.end = unsafe { self.end.sub(1) };
 
             Some(unsafe { ptr::read(self.end) })
         }
@@ -283,12 +282,10 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
         let step_size = self.len().min(n);
         if mem::size_of::<T>() == 0 {
             // SAFETY: same as for advance_by()
-            self.end = unsafe {
-                arith_offset(self.end as *const i8, step_size.wrapping_neg() as isize) as *mut T
-            }
+            self.end = self.end.wrapping_byte_sub(step_size);
         } else {
             // SAFETY: same as for advance_by()
-            self.end = unsafe { self.end.offset(step_size.wrapping_neg() as isize) };
+            self.end = unsafe { self.end.sub(step_size) };
         }
         let to_drop = ptr::slice_from_raw_parts_mut(self.end as *mut T, step_size);
         // SAFETY: same as for advance_by()

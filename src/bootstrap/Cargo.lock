@@ -53,7 +53,6 @@ dependencies = [
  "hex",
  "ignore",
  "libc",
- "num_cpus",
  "once_cell",
  "opener",
  "pretty_assertions",

@@ -14,12 +14,12 @@ error[E0275]: overflow evaluating the requirement `T: FromA<U>`
 LL |     x.foo(y.to()).to()
    |             ^^
    |
-note: required because of the requirements on the impl of `FromA<U>` for `T`
+note: required for `T` to implement `FromA<U>`
   --> $DIR/issue-39448.rs:24:29
    |
 LL | impl<T: A, U: A + FromA<T>> FromA<T> for U {
    |                             ^^^^^^^^     ^
-note: required because of the requirements on the impl of `ToA<T>` for `U`
+note: required for `U` to implement `ToA<T>`
   --> $DIR/issue-39448.rs:34:12
    |
 LL | impl<T, U> ToA<U> for T

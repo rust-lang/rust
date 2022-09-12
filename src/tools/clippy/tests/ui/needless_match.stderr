@@ -109,5 +109,26 @@ LL | |             Complex::D(E::VariantB(ea, eb), b) => Complex::D(E::VariantB(
 LL | |         };
    | |_________^ help: replace it with: `ce`
 
-error: aborting due to 11 previous errors
+error: this match expression is unnecessary
+  --> $DIR/needless_match.rs:253:17
+   |
+LL |           let _ = match e {
+   |  _________________^
+LL | |             _ if some_bool => e,
+LL | |             _ => e,
+LL | |         };
+   | |_________^ help: replace it with: `e`
+
+error: this match expression is unnecessary
+  --> $DIR/needless_match.rs:259:17
+   |
+LL |           let _ = match e {
+   |  _________________^
+LL | |             Some(i) => Some(i),
+LL | |             _ if some_bool => e,
+LL | |             _ => e,
+LL | |         };
+   | |_________^ help: replace it with: `e`
+
+error: aborting due to 13 previous errors
 

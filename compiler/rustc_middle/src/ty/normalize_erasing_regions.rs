@@ -188,13 +188,11 @@ struct NormalizeAfterErasingRegionsFolder<'tcx> {
 }
 
 impl<'tcx> NormalizeAfterErasingRegionsFolder<'tcx> {
-    #[instrument(skip(self), level = "debug")]
     fn normalize_generic_arg_after_erasing_regions(
         &self,
         arg: ty::GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx> {
         let arg = self.param_env.and(arg);
-        debug!(?arg);
 
         self.tcx.try_normalize_generic_arg_after_erasing_regions(arg).unwrap_or_else(|_| bug!(
                 "Failed to normalize {:?}, maybe try to call `try_normalize_erasing_regions` instead",

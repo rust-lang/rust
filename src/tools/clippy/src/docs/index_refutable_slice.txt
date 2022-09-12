@@ -1,0 +1,29 @@
+### What it does
+The lint checks for slice bindings in patterns that are only used to
+access individual slice values.
+
+### Why is this bad?
+Accessing slice values using indices can lead to panics. Using refutable
+patterns can avoid these. Binding to individual values also improves the
+readability as they can be named.
+
+### Limitations
+This lint currently only checks for immutable access inside `if let`
+patterns.
+
+### Example
+```
+let slice: Option<&[u32]> = Some(&[1, 2, 3]);
+
+if let Some(slice) = slice {
+    println!("{}", slice[0]);
+}
+```
+Use instead:
+```
+let slice: Option<&[u32]> = Some(&[1, 2, 3]);
+
+if let Some(&[first, ..]) = slice {
+    println!("{}", first);
+}
+```

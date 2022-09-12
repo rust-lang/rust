@@ -750,7 +750,7 @@ fn main() {
 enum Foo { A }
 fn main() {
     // FIXME: this should not bail out but current behavior is such as the old algorithm.
-    // ExprValidator::validate_match(..) checks types of top level patterns incorrecly.
+    // ExprValidator::validate_match(..) checks types of top level patterns incorrectly.
     match Foo::A {
         ref _x => {}
         Foo::A => {}
@@ -945,6 +945,50 @@ fn f() {
     }
 }",
         );
+    }
+
+    mod rust_unstable {
+        use super::*;
+
+        #[test]
+        fn rfc_1872_exhaustive_patterns() {
+            check_diagnostics_no_bails(
+                r"
+//- minicore: option, result
+#![feature(exhaustive_patterns)]
+enum Void {}
+fn test() {
+    match None::<!> { None => () }
+    match Result::<u8, !>::Ok(2) { Ok(_) => () }
+    match Result::<u8, Void>::Ok(2) { Ok(_) => () }
+    match (2, loop {}) {}
+    match Result::<!, !>::Ok(loop {}) {}
+    match (&loop {}) {} // https://github.com/rust-lang/rust/issues/50642#issuecomment-388234919
+    //    ^^^^^^^^^^ error: missing match arm: type `&!` is non-empty
+}",
+            );
+        }
+
+        #[test]
+        fn rfc_1872_private_uninhabitedness() {
+            check_diagnostics_no_bails(
+                r"
+//- minicore: option
+//- /lib.rs crate:lib
+#![feature(exhaustive_patterns)]
+pub struct PrivatelyUninhabited { private_field: Void }
+enum Void {}
+fn test_local(x: Option<PrivatelyUninhabited>) {
+    match x {}
+} //      ^ error: missing match arm: `None` not covered
+//- /main.rs crate:main deps:lib
+#![feature(exhaustive_patterns)]
+fn test(x: Option<lib::PrivatelyUninhabited>) {
+    match x {}
+    //    ^ error: missing match arm: `None` and `Some(_)` not covered
+}",
+            );
+        }
     }
 
     mod false_negatives {

@@ -2,17 +2,13 @@ error[E0599]: no method named `x` found for fn item `fn() -> Ret {Obj::func}` in
   --> $DIR/issue-29124.rs:15:15
    |
 LL |     Obj::func.x();
-   |     --------- ^ method not found in `fn() -> Ret {Obj::func}`
-   |     |
-   |     this is a function, perhaps you wish to call it
+   |               ^ method not found in `fn() -> Ret {Obj::func}`
 
 error[E0599]: no method named `x` found for fn item `fn() -> Ret {func}` in the current scope
   --> $DIR/issue-29124.rs:17:10
    |
 LL |     func.x();
-   |     ---- ^ method not found in `fn() -> Ret {func}`
-   |     |
-   |     this is a function, perhaps you wish to call it
+   |          ^ method not found in `fn() -> Ret {func}`
 
 error: aborting due to 2 previous errors
 

@@ -143,7 +143,7 @@ struct OutOfScopePrecomputer<'a, 'tcx> {
 impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
     fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         OutOfScopePrecomputer {
-            visited: BitSet::new_empty(body.basic_blocks().len()),
+            visited: BitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
             body,
             regioncx,
@@ -391,7 +391,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::Coverage(..)
-            | mir::StatementKind::CopyNonOverlapping(..)
+            | mir::StatementKind::Intrinsic(..)
             | mir::StatementKind::Nop => {}
         }
     }

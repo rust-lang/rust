@@ -122,7 +122,7 @@ impl<'tcx> CValue<'tcx> {
                 let clif_ty = match layout.abi {
                     Abi::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
                     Abi::Vector { element, count } => scalar_to_clif_type(fx.tcx, element)
-                        .by(u16::try_from(count).unwrap())
+                        .by(u32::try_from(count).unwrap())
                         .unwrap(),
                     _ => unreachable!("{:?}", layout.ty),
                 };
@@ -330,7 +330,7 @@ impl<'tcx> CPlace<'tcx> {
                 .fatal(&format!("values of type {} are too big to store on the stack", layout.ty));
         }
 
-        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+        let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
             // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
             // specify stack slot alignment.
@@ -472,7 +472,7 @@ impl<'tcx> CPlace<'tcx> {
                 }
                 _ if src_ty.is_vector() || dst_ty.is_vector() => {
                     // FIXME do something more efficient for transmutes between vectors and integers.
-                    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                    let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
                         kind: StackSlotKind::ExplicitSlot,
                         // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
                         // specify stack slot alignment.
@@ -519,7 +519,7 @@ impl<'tcx> CPlace<'tcx> {
                 if let ty::Array(element, len) = dst_layout.ty.kind() {
                     // Can only happen for vector types
                     let len =
-                        u16::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
+                        u32::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
                     let vector_ty = fx.clif_type(*element).unwrap().by(len).unwrap();
 
                     let data = match from.0 {
@@ -614,7 +614,7 @@ impl<'tcx> CPlace<'tcx> {
                     dst_align,
                     src_align,
                     true,
-                    MemFlags::trusted(),
+                    flags,
                 );
             }
             CValueInner::ByRef(_, Some(_)) => todo!(),

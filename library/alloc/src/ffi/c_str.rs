@@ -436,9 +436,9 @@ impl CString {
     ///
     /// unsafe {
     ///     assert_eq!(b'f', *ptr as u8);
-    ///     assert_eq!(b'o', *ptr.offset(1) as u8);
-    ///     assert_eq!(b'o', *ptr.offset(2) as u8);
-    ///     assert_eq!(b'\0', *ptr.offset(3) as u8);
+    ///     assert_eq!(b'o', *ptr.add(1) as u8);
+    ///     assert_eq!(b'o', *ptr.add(2) as u8);
+    ///     assert_eq!(b'\0', *ptr.add(3) as u8);
     ///
     ///     // retake pointer to free memory
     ///     let _ = CString::from_raw(ptr);
@@ -1119,5 +1119,31 @@ impl CStr {
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
     pub fn into_c_string(self: Box<Self>) -> CString {
         CString::from(self)
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl core::error::Error for NulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "nul byte found in data"
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
+impl core::error::Error for FromVecWithNulError {}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "cstring_into", since = "1.7.0")]
+impl core::error::Error for IntoStringError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "C string contained non-utf8 bytes"
+    }
+
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        Some(self.__source())
     }
 }

@@ -1,3 +1,5 @@
+use core::num::{Saturating, Wrapping};
+
 use crate::boxed::Box;
 
 #[rustc_specialization_trait]
@@ -144,3 +146,17 @@ impl_is_zero_option_of_nonzero!(
     NonZeroUsize,
     NonZeroIsize,
 );
+
+unsafe impl<T: IsZero> IsZero for Wrapping<T> {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
+}
+
+unsafe impl<T: IsZero> IsZero for Saturating<T> {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
+}

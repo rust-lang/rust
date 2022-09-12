@@ -29,6 +29,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self.tcx().sess.emit_err(MissingTypeParams {
             span,
             def_span: self.tcx().def_span(def_id),
+            span_snippet: self.tcx().sess.source_map().span_to_snippet(span).ok(),
             missing_type_params,
             empty_generic_args,
         });

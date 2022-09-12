@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{LinkerFlavor, RelocModel, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::freebsd_base::opts();
@@ -15,7 +15,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             endian: Endian::Big,
             features: "+secure-plt".into(),
-            relocation_model: RelocModel::Pic,
             mcount: "_mcount".into(),
             ..base
         },

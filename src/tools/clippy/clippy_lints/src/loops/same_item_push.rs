@@ -7,7 +7,7 @@ use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use std::iter::Iterator;
@@ -65,7 +65,7 @@ pub(super) fn check<'tcx>(
                             if_chain! {
                                 if let Node::Pat(pat) = node;
                                 if let PatKind::Binding(bind_ann, ..) = pat.kind;
-                                if !matches!(bind_ann, BindingAnnotation::RefMut | BindingAnnotation::Mutable);
+                                if !matches!(bind_ann, BindingAnnotation(_, Mutability::Mut));
                                 let parent_node = cx.tcx.hir().get_parent_node(hir_id);
                                 if let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node);
                                 if let Some(init) = parent_let_expr.init;
@@ -180,10 +180,9 @@ fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&
     if_chain! {
             // Extract method being called
             if let StmtKind::Semi(semi_stmt) = &stmt.kind;
-            if let ExprKind::MethodCall(path, args, _) = &semi_stmt.kind;
+            if let ExprKind::MethodCall(path, self_expr, args, _) = &semi_stmt.kind;
             // Figure out the parameters for the method call
-            if let Some(self_expr) = args.get(0);
-            if let Some(pushed_item) = args.get(1);
+            if let Some(pushed_item) = args.get(0);
             // Check that the method being called is push() on a Vec
             if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::Vec);
             if path.ident.name.as_str() == "push";

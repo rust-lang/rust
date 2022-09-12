@@ -1,0 +1,33 @@
+error[E0277]: the trait bound `fn(Argument) -> Return {function}: Trait` is not satisfied
+  --> $DIR/issue-99875.rs:12:11
+   |
+LL |     takes(function);
+   |     ----- ^^^^^^^^ the trait `Trait` is not implemented for fn item `fn(Argument) -> Return {function}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Trait` is implemented for fn pointer `fn(Argument) -> Return`
+note: required by a bound in `takes`
+  --> $DIR/issue-99875.rs:9:18
+   |
+LL | fn takes(_: impl Trait) {}
+   |                  ^^^^^ required by this bound in `takes`
+
+error[E0277]: the trait bound `[closure@$DIR/issue-99875.rs:14:11: 14:34]: Trait` is not satisfied
+  --> $DIR/issue-99875.rs:14:11
+   |
+LL |     takes(|_: Argument| -> Return { todo!() });
+   |     ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for closure `[closure@$DIR/issue-99875.rs:14:11: 14:34]`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Trait` is implemented for fn pointer `fn(Argument) -> Return`
+note: required by a bound in `takes`
+  --> $DIR/issue-99875.rs:9:18
+   |
+LL | fn takes(_: impl Trait) {}
+   |                  ^^^^^ required by this bound in `takes`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

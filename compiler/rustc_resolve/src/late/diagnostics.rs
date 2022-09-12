@@ -33,8 +33,6 @@ use rustc_span::{BytePos, Span};
 use std::iter;
 use std::ops::Deref;
 
-use tracing::debug;
-
 type Res = def::Res<ast::NodeId>;
 
 /// A field or associated item from self type suggested in case of resolution failure.
@@ -161,6 +159,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             msg: String,
             fallback_label: String,
             span: Span,
+            span_label: Option<(Span, &'a str)>,
             could_be_expr: bool,
             suggestion: Option<(Span, &'a str, String)>,
         }
@@ -172,6 +171,12 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 msg: format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
                 fallback_label: format!("not a {expected}"),
                 span,
+                span_label: match res {
+                    Res::Def(kind, def_id) if kind == DefKind::TyParam => {
+                        self.def_span(def_id).map(|span| (span, "found this type pararmeter"))
+                    }
+                    _ => None,
+                },
                 could_be_expr: match res {
                     Res::Def(DefKind::Fn, _) => {
                         // Verify whether this is a fn call or an Fn used as a type.
@@ -243,14 +248,32 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 .map_or_else(String::new, |res| format!("{} ", res.descr()));
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), None)
             };
+
+            let (fallback_label, suggestion) = if path_str == "async"
+                && expected.starts_with("struct")
+            {
+                ("`async` blocks are only allowed in Rust 2018 or later".to_string(), suggestion)
+            } else {
+                // check if we are in situation of typo like `True` instead of `true`.
+                let override_suggestion =
+                    if ["true", "false"].contains(&item_str.to_string().to_lowercase().as_str()) {
+                        let item_typo = item_str.to_string().to_lowercase();
+                        Some((
+                            item_span,
+                            "you may want to use a bool value instead",
+                            format!("{}", item_typo),
+                        ))
+                    } else {
+                        suggestion
+                    };
+                (format!("not found in {mod_str}"), override_suggestion)
+            };
+
             BaseError {
                 msg: format!("cannot find {expected} `{item_str}` in {mod_prefix}{mod_str}"),
-                fallback_label: if path_str == "async" && expected.starts_with("struct") {
-                    "`async` blocks are only allowed in Rust 2018 or later".to_string()
-                } else {
-                    format!("not found in {mod_str}")
-                },
+                fallback_label,
                 span: item_span,
+                span_label: None,
                 could_be_expr: false,
                 suggestion,
             }
@@ -261,6 +284,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             self.r.session.struct_span_err_with_code(base_error.span, &base_error.msg, code);
 
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
+
+        if let Some((span, label)) = base_error.span_label {
+            err.span_label(span, label);
+        }
 
         if let Some(sugg) = base_error.suggestion {
             err.span_suggestion_verbose(sugg.0, sugg.1, sugg.2, Applicability::MaybeIncorrect);
@@ -985,27 +1012,45 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
-        let path_sep = |err: &mut Diagnostic, expr: &Expr| match expr.kind {
-            ExprKind::Field(_, ident) => {
+        let path_sep = |err: &mut Diagnostic, expr: &Expr, kind: DefKind| {
+            const MESSAGE: &str = "use the path separator to refer to an item";
+
+            let (lhs_span, rhs_span) = match &expr.kind {
+                ExprKind::Field(base, ident) => (base.span, ident.span),
+                ExprKind::MethodCall(_, receiver, _, span) => (receiver.span, *span),
+                _ => return false,
+            };
+
+            if lhs_span.eq_ctxt(rhs_span) {
                 err.span_suggestion(
-                    expr.span,
-                    "use the path separator to refer to an item",
-                    format!("{}::{}", path_str, ident),
+                    lhs_span.between(rhs_span),
+                    MESSAGE,
+                    "::",
                     Applicability::MaybeIncorrect,
                 );
                 true
-            }
-            ExprKind::MethodCall(ref segment, ..) => {
-                let span = expr.span.with_hi(segment.ident.span.hi());
-                err.span_suggestion(
-                    span,
-                    "use the path separator to refer to an item",
-                    format!("{}::{}", path_str, segment.ident),
+            } else if kind == DefKind::Struct
+            && let Some(lhs_source_span) = lhs_span.find_ancestor_inside(expr.span)
+            && let Ok(snippet) = self.r.session.source_map().span_to_snippet(lhs_source_span)
+            {
+                // The LHS is a type that originates from a macro call.
+                // We have to add angle brackets around it.
+
+                err.span_suggestion_verbose(
+                    lhs_source_span.until(rhs_span),
+                    MESSAGE,
+                    format!("<{snippet}>::"),
                     Applicability::MaybeIncorrect,
                 );
                 true
+            } else {
+                // Either we were unable to obtain the source span / the snippet or
+                // the LHS originates from a macro call and it is not a type and thus
+                // there is no way to replace `.` with `::` and still somehow suggest
+                // valid Rust code.
+
+                false
             }
-            _ => false,
         };
 
         let find_span = |source: &PathSource<'_>, err: &mut Diagnostic| {
@@ -1027,7 +1072,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             match source {
                 PathSource::Expr(Some(
                     parent @ Expr { kind: ExprKind::Field(..) | ExprKind::MethodCall(..), .. },
-                )) if path_sep(err, &parent) => {}
+                )) if path_sep(err, &parent, DefKind::Struct) => {}
                 PathSource::Expr(
                     None
                     | Some(Expr {
@@ -1143,8 +1188,11 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     }
                 }
             }
-            (Res::Def(DefKind::Mod, _), PathSource::Expr(Some(parent))) => {
-                if !path_sep(err, &parent) {
+            (
+                Res::Def(kind @ (DefKind::Mod | DefKind::Trait), _),
+                PathSource::Expr(Some(parent)),
+            ) => {
+                if !path_sep(err, &parent, kind) {
                     return false;
                 }
             }
@@ -1742,7 +1790,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 }
             };
 
-            let mut suggestable_variants = variants
+            let suggestable_variants = variants
                 .iter()
                 .filter(|(_, def_id, kind)| !needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
@@ -1752,8 +1800,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     CtorKind::Fictive => format!("({} {{}})", variant),
                 })
                 .collect::<Vec<_>>();
+            let no_suggestable_variant = suggestable_variants.is_empty();
 
-            if !suggestable_variants.is_empty() {
+            if !no_suggestable_variant {
                 let msg = if suggestable_variants.len() == 1 {
                     "you might have meant to use the following enum variant"
                 } else {
@@ -1763,7 +1812,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants.drain(..),
+                    suggestable_variants.into_iter(),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1780,15 +1829,15 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 .collect::<Vec<_>>();
 
             if !suggestable_variants_with_placeholders.is_empty() {
-                let msg = match (
-                    suggestable_variants.is_empty(),
-                    suggestable_variants_with_placeholders.len(),
-                ) {
-                    (true, 1) => "the following enum variant is available",
-                    (true, _) => "the following enum variants are available",
-                    (false, 1) => "alternatively, the following enum variant is available",
-                    (false, _) => "alternatively, the following enum variants are also available",
-                };
+                let msg =
+                    match (no_suggestable_variant, suggestable_variants_with_placeholders.len()) {
+                        (true, 1) => "the following enum variant is available",
+                        (true, _) => "the following enum variants are available",
+                        (false, 1) => "alternatively, the following enum variant is available",
+                        (false, _) => {
+                            "alternatively, the following enum variants are also available"
+                        }
+                    };
 
                 err.span_suggestions(
                     span,
@@ -2021,9 +2070,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn suggest_introducing_lifetime(
         &self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         name: Option<&str>,
-        suggest: impl Fn(&mut DiagnosticBuilder<'_, ErrorGuaranteed>, bool, Span, &str, String) -> bool,
+        suggest: impl Fn(&mut Diagnostic, bool, Span, &str, String) -> bool,
     ) {
         let mut suggest_note = true;
         for rib in self.lifetime_ribs.iter().rev() {
@@ -2147,9 +2196,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         err.emit()
     }
 
-    pub(crate) fn add_missing_lifetime_specifiers_label(
+    fn add_missing_lifetime_specifiers_label(
         &mut self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         lifetime_refs: Vec<MissingLifetime>,
         function_param_lifetimes: Option<(Vec<MissingLifetime>, Vec<ElisionFnParameter>)>,
     ) {
@@ -2300,7 +2349,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         err.multipart_suggestion_verbose(
                             message,
                             std::iter::once((span, intro_sugg))
-                                .chain(spans_suggs.clone())
+                                .chain(spans_suggs.iter().cloned())
                                 .collect(),
                             Applicability::MaybeIncorrect,
                         );

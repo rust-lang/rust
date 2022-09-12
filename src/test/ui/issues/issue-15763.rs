@@ -1,6 +1,5 @@
 // run-pass
 #![allow(unreachable_code)]
-#![feature(box_syntax)]
 
 #[derive(PartialEq, Debug)]
 struct Bar {
@@ -78,12 +77,12 @@ fn main() {
     assert_eq!(cc().unwrap(), 3);
     assert_eq!(dd().unwrap(), 3);
 
-    let i = box 32isize as Box<dyn A>;
+    let i = Box::new(32isize) as Box<dyn A>;
     assert_eq!(i.aaa(), 3);
-    let i = box 32isize as Box<dyn A>;
+    let i = Box::new(32isize) as Box<dyn A>;
     assert_eq!(i.bbb(), 3);
-    let i = box 32isize as Box<dyn A>;
+    let i = Box::new(32isize) as Box<dyn A>;
     assert_eq!(i.ccc().unwrap(), 3);
-    let i = box 32isize as Box<dyn A>;
+    let i = Box::new(32isize) as Box<dyn A>;
     assert_eq!(i.ddd().unwrap(), 3);
 }

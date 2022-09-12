@@ -168,8 +168,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_param_bound(&mut self, bounds: &'ast GenericBound, _ctxt: BoundKind) {
         walk_param_bound(self, bounds)
     }
-    fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
-        walk_poly_trait_ref(self, t, m)
+    fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef) {
+        walk_poly_trait_ref(self, t)
     }
     fn visit_variant_data(&mut self, s: &'ast VariantData) {
         walk_struct_def(self, s)
@@ -177,14 +177,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_field_def(&mut self, s: &'ast FieldDef) {
         walk_field_def(self, s)
     }
-    fn visit_enum_def(
-        &mut self,
-        enum_definition: &'ast EnumDef,
-        generics: &'ast Generics,
-        item_id: NodeId,
-        _: Span,
-    ) {
-        walk_enum_def(self, enum_definition, generics, item_id)
+    fn visit_enum_def(&mut self, enum_definition: &'ast EnumDef) {
+        walk_enum_def(self, enum_definition)
     }
     fn visit_variant(&mut self, v: &'ast Variant) {
         walk_variant(self, v)
@@ -287,11 +281,8 @@ pub fn walk_lifetime<'a, V: Visitor<'a>>(visitor: &mut V, lifetime: &'a Lifetime
     visitor.visit_ident(lifetime.ident);
 }
 
-pub fn walk_poly_trait_ref<'a, V>(
-    visitor: &mut V,
-    trait_ref: &'a PolyTraitRef,
-    _: &TraitBoundModifier,
-) where
+pub fn walk_poly_trait_ref<'a, V>(visitor: &mut V, trait_ref: &'a PolyTraitRef)
+where
     V: Visitor<'a>,
 {
     walk_list!(visitor, visit_generic_param, &trait_ref.bound_generic_params);
@@ -334,7 +325,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         }
         ItemKind::Enum(ref enum_definition, ref generics) => {
             visitor.visit_generics(generics);
-            visitor.visit_enum_def(enum_definition, generics, item.id, item.span)
+            visitor.visit_enum_def(enum_definition)
         }
         ItemKind::Impl(box Impl {
             defaultness: _,
@@ -377,12 +368,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     walk_list!(visitor, visit_attribute, &item.attrs);
 }
 
-pub fn walk_enum_def<'a, V: Visitor<'a>>(
-    visitor: &mut V,
-    enum_definition: &'a EnumDef,
-    _: &'a Generics,
-    _: NodeId,
-) {
+pub fn walk_enum_def<'a, V: Visitor<'a>>(visitor: &mut V, enum_definition: &'a EnumDef) {
     walk_list!(visitor, visit_variant, &enum_definition.variants);
 }
 
@@ -598,7 +584,7 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignI
 
 pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a GenericBound) {
     match *bound {
-        GenericBound::Trait(ref typ, ref modifier) => visitor.visit_poly_trait_ref(typ, modifier),
+        GenericBound::Trait(ref typ, ref _modifier) => visitor.visit_poly_trait_ref(typ),
         GenericBound::Outlives(ref lifetime) => {
             visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound)
         }
@@ -813,8 +799,9 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(callee_expression);
             walk_list!(visitor, visit_expr, arguments);
         }
-        ExprKind::MethodCall(ref segment, ref arguments, _span) => {
+        ExprKind::MethodCall(ref segment, ref receiver, ref arguments, _span) => {
             visitor.visit_path_segment(expression.span, segment);
+            visitor.visit_expr(receiver);
             walk_list!(visitor, visit_expr, arguments);
         }
         ExprKind::Binary(_, ref left_expression, ref right_expression) => {
@@ -935,14 +922,14 @@ pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
 }
 
 pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
-    if let VisibilityKind::Restricted { ref path, id } = vis.kind {
+    if let VisibilityKind::Restricted { ref path, id, shorthand: _ } = vis.kind {
         visitor.visit_path(path, id);
     }
 }
 
 pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) {
     match attr.kind {
-        AttrKind::Normal(ref item, ref _tokens) => walk_mac_args(visitor, &item.args),
+        AttrKind::Normal(ref normal) => walk_mac_args(visitor, &normal.item.args),
         AttrKind::DocComment(..) => {}
     }
 }

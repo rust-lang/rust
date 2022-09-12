@@ -1,5 +1,7 @@
 use super::attr::DEFAULT_INNER_ATTR_FORBIDDEN;
-use super::diagnostics::{AttemptLocalParseRecovery, Error};
+use super::diagnostics::{
+    AttemptLocalParseRecovery, Error, InvalidVariableDeclaration, InvalidVariableDeclarationSub,
+};
 use super::expr::LhsExpr;
 use super::pat::RecoverComma;
 use super::path::PathStyle;
@@ -34,7 +36,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// If `force_capture` is true, forces collection of tokens regardless of whether
+    /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of whether
     /// or not we have attributes
     pub(crate) fn parse_stmt_without_recovery(
         &mut self,
@@ -55,18 +57,25 @@ impl<'a> Parser<'a> {
             return Ok(Some(stmt.into_inner()));
         }
 
+        if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
+            self.bump();
+            let mut_let_span = lo.to(self.token.span);
+            self.sess.emit_err(InvalidVariableDeclaration {
+                span: mut_let_span,
+                sub: InvalidVariableDeclarationSub::SwitchMutLetOrder(mut_let_span),
+            });
+        }
+
         Ok(Some(if self.token.is_keyword(kw::Let) {
             self.parse_local_mk(lo, attrs, capture_semi, force_collect)?
         } else if self.is_kw_followed_by_ident(kw::Mut) {
-            self.recover_stmt_local(lo, attrs, "missing keyword", "let mut")?
+            self.recover_stmt_local(lo, attrs, InvalidVariableDeclarationSub::MissingLet)?
         } else if self.is_kw_followed_by_ident(kw::Auto) {
             self.bump(); // `auto`
-            let msg = "write `let` instead of `auto` to introduce a new variable";
-            self.recover_stmt_local(lo, attrs, msg, "let")?
+            self.recover_stmt_local(lo, attrs, InvalidVariableDeclarationSub::UseLetNotAuto)?
         } else if self.is_kw_followed_by_ident(sym::var) {
             self.bump(); // `var`
-            let msg = "write `let` instead of `var` to introduce a new variable";
-            self.recover_stmt_local(lo, attrs, msg, "let")?
+            self.recover_stmt_local(lo, attrs, InvalidVariableDeclarationSub::UseLetNotVar)?
         } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
             // We have avoided contextual keywords like `union`, items with `crate` visibility,
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
@@ -121,7 +130,7 @@ impl<'a> Parser<'a> {
             let path = this.parse_path(PathStyle::Expr)?;
 
             if this.eat(&token::Not) {
-                let stmt_mac = this.parse_stmt_mac(lo, attrs.into(), path)?;
+                let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;
                 if this.token == token::Semi {
                     return Ok((stmt_mac, TrailingToken::Semi));
                 } else {
@@ -130,10 +139,10 @@ impl<'a> Parser<'a> {
             }
 
             let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
-                this.parse_struct_expr(None, path, AttrVec::new(), true)?
+                this.parse_struct_expr(None, path, true)?
             } else {
                 let hi = this.prev_token.span;
-                this.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())
+                this.mk_expr(lo.to(hi), ExprKind::Path(None, path))
             };
 
             let expr = this.with_res(Restrictions::STMT_EXPR, |this| {
@@ -168,7 +177,7 @@ impl<'a> Parser<'a> {
             None => unreachable!(),
         };
 
-        let mac = MacCall { path, args, prior_type_ascription: self.last_type_ascription };
+        let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });
 
         let kind = if (style == MacStmtStyle::Braces
             && self.token != token::Dot
@@ -179,9 +188,9 @@ impl<'a> Parser<'a> {
             StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
         } else {
             // Since none of the above applied, this is an expression statement macro.
-            let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac), AttrVec::new());
+            let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
-            let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
+            let e = self.parse_dot_or_call_expr_with(e, lo, attrs)?;
             let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
             StmtKind::Expr(e)
         };
@@ -204,13 +213,10 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         attrs: AttrWrapper,
-        msg: &str,
-        sugg: &str,
+        subdiagnostic: fn(Span) -> InvalidVariableDeclarationSub,
     ) -> PResult<'a, Stmt> {
         let stmt = self.recover_local_after_let(lo, attrs)?;
-        self.struct_span_err(lo, "invalid variable declaration")
-            .span_suggestion(lo, msg, sugg, Applicability::MachineApplicable)
-            .emit();
+        self.sess.emit_err(InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
     }
 
@@ -223,7 +229,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Stmt> {
         self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
             this.expect_keyword(kw::Let)?;
-            let local = this.parse_local(attrs.into())?;
+            let local = this.parse_local(attrs)?;
             let trailing = if capture_semi && this.token.kind == token::Semi {
                 TrailingToken::Semi
             } else {
@@ -235,7 +241,7 @@ impl<'a> Parser<'a> {
 
     fn recover_local_after_let(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, Stmt> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
-            let local = this.parse_local(attrs.into())?;
+            let local = this.parse_local(attrs)?;
             // FIXME - maybe capture semicolon in recovery?
             Ok((
                 this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Local(local)),
@@ -247,6 +253,22 @@ impl<'a> Parser<'a> {
     /// Parses a local variable declaration.
     fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
         let lo = self.prev_token.span;
+
+        if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
+            self.struct_span_err(
+                lo.to(self.token.span),
+                "`const` and `let` are mutually exclusive",
+            )
+            .span_suggestion(
+                lo.to(self.token.span),
+                "remove `let`",
+                "const",
+                Applicability::MaybeIncorrect,
+            )
+            .emit();
+            self.bump();
+        }
+
         let (pat, colon) = self.parse_pat_before_ty(None, RecoverComma::Yes, "`let` bindings")?;
 
         let (err, ty) = if colon {
@@ -487,9 +509,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block. Inner attributes are allowed.
-    pub(super) fn parse_inner_attrs_and_block(
-        &mut self,
-    ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
+    pub(super) fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (AttrVec, P<Block>)> {
         self.parse_block_common(self.token.span, BlockCheckMode::Default)
     }
 
@@ -498,8 +518,8 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         blk_mode: BlockCheckMode,
-    ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
-        maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
+    ) -> PResult<'a, (AttrVec, P<Block>)> {
+        maybe_whole!(self, NtBlock, |x| (AttrVec::new(), x));
 
         self.maybe_recover_unexpected_block_label();
         if !self.eat(&token::OpenDelim(Delimiter::Brace)) {

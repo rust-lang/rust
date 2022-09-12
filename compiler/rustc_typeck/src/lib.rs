@@ -64,8 +64,8 @@ This API is completely unstable and subject to change.
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
 #![feature(iter_intersperse)]
-#![feature(label_break_value)]
-#![cfg_attr(bootstrap, feature(let_chains))]
+#![cfg_attr(bootstrap, feature(label_break_value))]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]
@@ -73,6 +73,7 @@ This API is completely unstable and subject to change.
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(is_some_with)]
+#![feature(type_alias_impl_trait)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -443,7 +444,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
 
 fn check_for_entry_fn(tcx: TyCtxt<'_>) {
     match tcx.entry_fn(()) {
-        Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
+        Some((def_id, EntryFnType::Main { .. })) => check_main_fn_ty(tcx, def_id),
         Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
         _ => {}
     }

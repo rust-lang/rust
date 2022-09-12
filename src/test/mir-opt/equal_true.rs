@@ -1,3 +1,5 @@
+// unit-test InstCombine
+
 // EMIT_MIR equal_true.opt.InstCombine.diff
 
 fn opt(x: bool) -> i32 {

@@ -15,7 +15,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
-use tracing::debug;
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`

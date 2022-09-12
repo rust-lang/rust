@@ -1,5 +1,3 @@
-#![feature(box_syntax)]
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -23,6 +21,6 @@ struct A {
 }
 
 fn main() {
-    let a = A {v: box B{v: None} as Box<dyn Foo + Send>};
+    let a = A {v: Box::new(B{v: None}) as Box<dyn Foo + Send>};
     //~^ ERROR `Rc<RefCell<A>>` cannot be sent between threads safely
 }

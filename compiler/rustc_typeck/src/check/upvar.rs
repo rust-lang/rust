@@ -1217,7 +1217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Combine all the reasons of why the root variable should be captured as a result of
                 // auto trait implementation issues
-                auto_trait_migration_reasons.extend(capture_trait_reasons.clone());
+                auto_trait_migration_reasons.extend(capture_trait_reasons.iter().copied());
 
                 diagnostics_info.push(MigrationLintNote {
                     captures_info,
@@ -2024,6 +2024,10 @@ fn should_do_rust_2021_incompatible_closure_captures_analysis(
     tcx: TyCtxt<'_>,
     closure_id: hir::HirId,
 ) -> bool {
+    if tcx.sess.rust_2021() {
+        return false;
+    }
+
     let (level, _) =
         tcx.lint_level_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id);
 

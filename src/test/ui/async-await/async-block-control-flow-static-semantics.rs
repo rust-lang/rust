@@ -15,7 +15,7 @@ fn return_targets_async_block_not_fn() -> u8 {
         return 0u8;
     };
     let _: &dyn Future<Output = ()> = &block;
-    //~^ ERROR type mismatch
+    //~^ ERROR expected `impl Future<Output = u8>` to be a future that resolves to `()`, but it resolves to `u8`
 }
 
 async fn return_targets_async_block_not_async_fn() -> u8 {
@@ -24,7 +24,7 @@ async fn return_targets_async_block_not_async_fn() -> u8 {
         return 0u8;
     };
     let _: &dyn Future<Output = ()> = &block;
-    //~^ ERROR type mismatch resolving `<impl Future<Output = u8> as Future>::Output == ()`
+    //~^ ERROR expected `impl Future<Output = u8>` to be a future that resolves to `()`, but it resolves to `u8`
 }
 
 fn no_break_in_async_block() {
@@ -42,7 +42,9 @@ fn no_break_in_async_block_even_with_outer_loop() {
 }
 
 struct MyErr;
-fn err() -> Result<u8, MyErr> { Err(MyErr) }
+fn err() -> Result<u8, MyErr> {
+    Err(MyErr)
+}
 
 fn rethrow_targets_async_block_not_fn() -> Result<u8, MyErr> {
     //~^ ERROR mismatched types

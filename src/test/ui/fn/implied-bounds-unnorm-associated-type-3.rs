@@ -1,6 +1,4 @@
-// check-fail
-// See issue #91899. If we treat unnormalized args as WF, `Self` can also be a
-// source of unsoundness.
+// check-pass
 
 pub trait Yokeable<'a>: 'static {
     type Output: 'a;
@@ -17,7 +15,6 @@ pub trait ZeroCopyFrom<C: ?Sized>: for<'a> Yokeable<'a> {
 
 impl<T> ZeroCopyFrom<[T]> for &'static [T] {
     fn zero_copy_from<'b>(cart: &'b [T]) -> &'b [T] {
-        //~^ the parameter
         cart
     }
 }

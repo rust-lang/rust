@@ -7,14 +7,14 @@ size: (1080, 600)
 assert: (".stab.deprecated")
 assert: (".stab.portability")
 
-// make sure that deprecated and portability are different colours
+// make sure that deprecated and portability have the right colors
 assert-css: (
     ".item-table .item-left .stab.deprecated",
-    { "background-color": "rgb(255, 196, 196)" },
+    { "background-color": "rgb(255, 245, 214)" },
 )
 assert-css: (
     ".item-table .item-left .stab.portability",
-    { "background-color": "rgb(243, 223, 255)" },
+    { "background-color": "rgb(255, 245, 214)" },
 )
 
 // table like view
@@ -51,7 +51,7 @@ assert-css: (".item-right.docblock-short", { "padding-left": "32px" })
 compare-elements-position-near: (
     "//*[@class='item-left module-item']//a[text()='replaced_function']",
     ".item-left .stab.deprecated",
-    {"y": 1},
+    {"y": 2},
 )
 compare-elements-position: (
     ".item-left .stab.deprecated",

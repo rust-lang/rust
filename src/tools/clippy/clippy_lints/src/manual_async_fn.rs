@@ -103,7 +103,7 @@ fn future_trait_ref<'tcx>(
     ty: &'tcx Ty<'tcx>,
 ) -> Option<(&'tcx TraitRef<'tcx>, Vec<LifetimeName>)> {
     if_chain! {
-        if let TyKind::OpaqueDef(item_id, bounds) = ty.kind;
+        if let TyKind::OpaqueDef(item_id, bounds, false) = ty.kind;
         let item = cx.tcx.hir().item(item_id);
         if let ItemKind::OpaqueTy(opaque) = &item.kind;
         if let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
@@ -192,7 +192,7 @@ fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str,
     match output.kind {
         TyKind::Tup(tys) if tys.is_empty() => {
             let sugg = "remove the return type";
-            Some((sugg, "".into()))
+            Some((sugg, String::new()))
         },
         _ => {
             let sugg = "return the output of the future directly";

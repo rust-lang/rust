@@ -116,7 +116,7 @@ impl Runnable {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Run**
+// | VS Code | **rust-analyzer: Run**
 // |===
 // image::https://user-images.githubusercontent.com/48062697/113065583-055aae80-91b1-11eb-958f-d67efcaf6a2f.gif[]
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
@@ -202,7 +202,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Peek related tests**
+// | VS Code | **rust-analyzer: Peek related tests**
 // |===
 pub(crate) fn related_tests(
     db: &RootDatabase,
@@ -373,11 +373,13 @@ pub(crate) fn runnable_impl(
     let adt_name = ty.as_adt()?.name(sema.db);
     let mut ty_args = ty.type_arguments().peekable();
     let params = if ty_args.peek().is_some() {
-        format!("<{}>", ty_args.format_with(", ", |ty, cb| cb(&ty.display(sema.db))))
+        format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty.display(sema.db))))
     } else {
         String::new()
     };
-    let test_id = TestId::Path(format!("{}{}", adt_name, params));
+    let mut test_id = format!("{}{}", adt_name, params);
+    test_id.retain(|c| c != ' ');
+    let test_id = TestId::Path(test_id);
 
     Some(Runnable { use_name_in_title: false, nav, kind: RunnableKind::DocTest { test_id }, cfg })
 }
@@ -441,10 +443,11 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
                         format_to!(
                             path,
                             "<{}>",
-                            ty_args.format_with(", ", |ty, cb| cb(&ty.display(db)))
+                            ty_args.format_with(",", |ty, cb| cb(&ty.display(db)))
                         );
                     }
                     format_to!(path, "::{}", def_name);
+                    path.retain(|c| c != ' ');
                     return Some(path);
                 }
             }
@@ -2067,13 +2070,23 @@ mod tests {
 $0
 struct Foo<T, U>;
 
+/// ```
+/// ```
 impl<T, U> Foo<T, U> {
     /// ```rust
     /// ````
     fn t() {}
 }
+
+/// ```
+/// ```
+impl Foo<Foo<(), ()>, ()> {
+    /// ```
+    /// ```
+    fn t() {}
+}
 "#,
-            &[DocTest],
+            &[DocTest, DocTest, DocTest, DocTest],
             expect![[r#"
                 [
                     Runnable {
@@ -2082,12 +2095,64 @@ impl<T, U> Foo<T, U> {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 47..85,
+                            full_range: 20..103,
+                            focus_range: 47..56,
+                            name: "impl",
+                            kind: Impl,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Foo<T,U>",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 63..101,
                             name: "t",
                         },
                         kind: DocTest {
                             test_id: Path(
-                                "Foo<T, U>::t",
+                                "Foo<T,U>::t",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 105..188,
+                            focus_range: 126..146,
+                            name: "impl",
+                            kind: Impl,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Foo<Foo<(),()>,()>",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 153..186,
+                            name: "t",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Foo<Foo<(),()>,()>::t",
                             ),
                         },
                         cfg: None,
@@ -2159,5 +2224,191 @@ macro_rules! foo {
                 ]
             "#]],
         );
+    }
+
+    #[test]
+    fn test_paths_with_raw_ident() {
+        check(
+            r#"
+//- /lib.rs
+$0
+mod r#mod {
+    #[test]
+    fn r#fn() {}
+
+    /// ```
+    /// ```
+    fn r#for() {}
+
+    /// ```
+    /// ```
+    struct r#struct<r#type>(r#type);
+
+    /// ```
+    /// ```
+    impl<r#type> r#struct<r#type> {
+        /// ```
+        /// ```
+        fn r#fn() {}
+    }
+
+    enum r#enum {}
+    impl r#struct<r#enum> {
+        /// ```
+        /// ```
+        fn r#fn() {}
+    }
+
+    trait r#trait {}
+
+    /// ```
+    /// ```
+    impl<T> r#trait for r#struct<T> {}
+}
+"#,
+            &[TestMod, Test, DocTest, DocTest, DocTest, DocTest, DocTest, DocTest],
+            expect![[r#"
+                [
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 1..461,
+                            focus_range: 5..10,
+                            name: "r#mod",
+                            kind: Module,
+                            description: "mod r#mod",
+                        },
+                        kind: TestMod {
+                            path: "r#mod",
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 17..41,
+                            focus_range: 32..36,
+                            name: "r#fn",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "r#mod::r#fn",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 47..84,
+                            name: "r#for",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#mod::r#for",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 90..146,
+                            name: "r#struct",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#mod::r#struct",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 152..266,
+                            focus_range: 189..205,
+                            name: "impl",
+                            kind: Impl,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#struct<r#type>",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 216..260,
+                            name: "r#fn",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#mod::r#struct<r#type>::r#fn",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 323..367,
+                            name: "r#fn",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#mod::r#struct<r#enum>::r#fn",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 401..459,
+                            focus_range: 445..456,
+                            name: "impl",
+                            kind: Impl,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#struct<T>",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                ]
+            "#]],
+        )
     }
 }

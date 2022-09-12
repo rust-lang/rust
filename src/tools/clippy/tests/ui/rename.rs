@@ -4,6 +4,7 @@
 
 // run-rustfix
 
+#![allow(clippy::disallowed_names)]
 #![allow(clippy::blocks_in_if_conditions)]
 #![allow(clippy::box_collection)]
 #![allow(clippy::redundant_static_lifetimes)]
@@ -14,6 +15,7 @@
 #![allow(clippy::for_loops_over_fallibles)]
 #![allow(clippy::useless_conversion)]
 #![allow(clippy::match_result_ok)]
+#![allow(clippy::overly_complex_bool_expr)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::bind_instead_of_map)]
 #![allow(clippy::expect_used)]
@@ -33,6 +35,7 @@
 #![allow(temporary_cstring_as_ptr)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
+#![warn(clippy::blacklisted_name)]
 #![warn(clippy::block_in_if_condition_expr)]
 #![warn(clippy::block_in_if_condition_stmt)]
 #![warn(clippy::box_vec)]
@@ -45,6 +48,7 @@
 #![warn(clippy::for_loop_over_result)]
 #![warn(clippy::identity_conversion)]
 #![warn(clippy::if_let_some_result)]
+#![warn(clippy::logic_bug)]
 #![warn(clippy::new_without_default_derive)]
 #![warn(clippy::option_and_then_some)]
 #![warn(clippy::option_expect_used)]

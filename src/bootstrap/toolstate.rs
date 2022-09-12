@@ -69,7 +69,6 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
     ("reference", "src/doc/reference"),
     ("rust-by-example", "src/doc/rust-by-example"),
     ("edition-guide", "src/doc/edition-guide"),
-    ("rls", "src/tools/rls"),
 ];
 
 // These tools are permitted to not build on the beta/stable channels.

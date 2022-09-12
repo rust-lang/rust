@@ -4,12 +4,12 @@
 //! get a super-set of matches. Then, we we confirm each match using precise
 //! name resolution.
 
-use std::{convert::TryInto, mem, sync::Arc};
+use std::{mem, sync::Arc};
 
 use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{DefWithBody, HasAttrs, HasSource, InFile, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
-use rustc_hash::FxHashMap;
+use stdx::hash::NoHashHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 
 use crate::{
@@ -20,7 +20,7 @@ use crate::{
 
 #[derive(Debug, Default, Clone)]
 pub struct UsageSearchResult {
-    pub references: FxHashMap<FileId, Vec<FileReference>>,
+    pub references: NoHashHashMap<FileId, Vec<FileReference>>,
 }
 
 impl UsageSearchResult {
@@ -45,7 +45,7 @@ impl UsageSearchResult {
 
 impl IntoIterator for UsageSearchResult {
     type Item = (FileId, Vec<FileReference>);
-    type IntoIter = <FxHashMap<FileId, Vec<FileReference>> as IntoIterator>::IntoIter;
+    type IntoIter = <NoHashHashMap<FileId, Vec<FileReference>> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.references.into_iter()
@@ -78,17 +78,17 @@ pub enum ReferenceCategory {
 /// e.g. for things like local variables.
 #[derive(Clone, Debug)]
 pub struct SearchScope {
-    entries: FxHashMap<FileId, Option<TextRange>>,
+    entries: NoHashHashMap<FileId, Option<TextRange>>,
 }
 
 impl SearchScope {
-    fn new(entries: FxHashMap<FileId, Option<TextRange>>) -> SearchScope {
+    fn new(entries: NoHashHashMap<FileId, Option<TextRange>>) -> SearchScope {
         SearchScope { entries }
     }
 
     /// Build a search scope spanning the entire crate graph of files.
     fn crate_graph(db: &RootDatabase) -> SearchScope {
-        let mut entries = FxHashMap::default();
+        let mut entries = NoHashHashMap::default();
 
         let graph = db.crate_graph();
         for krate in graph.iter() {
@@ -102,7 +102,7 @@ impl SearchScope {
 
     /// Build a search scope spanning all the reverse dependencies of the given crate.
     fn reverse_dependencies(db: &RootDatabase, of: hir::Crate) -> SearchScope {
-        let mut entries = FxHashMap::default();
+        let mut entries = NoHashHashMap::default();
         for rev_dep in of.transitive_reverse_dependencies(db) {
             let root_file = rev_dep.root_file(db);
             let source_root_id = db.file_source_root(root_file);
@@ -117,14 +117,12 @@ impl SearchScope {
         let root_file = of.root_file(db);
         let source_root_id = db.file_source_root(root_file);
         let source_root = db.source_root(source_root_id);
-        SearchScope {
-            entries: source_root.iter().map(|id| (id, None)).collect::<FxHashMap<_, _>>(),
-        }
+        SearchScope { entries: source_root.iter().map(|id| (id, None)).collect() }
     }
 
     /// Build a search scope spanning the given module and all its submodules.
     fn module_and_children(db: &RootDatabase, module: hir::Module) -> SearchScope {
-        let mut entries = FxHashMap::default();
+        let mut entries = NoHashHashMap::default();
 
         let (file_id, range) = {
             let InFile { file_id, value } = module.definition_source(db);
@@ -157,7 +155,7 @@ impl SearchScope {
 
     /// Build an empty search scope.
     pub fn empty() -> SearchScope {
-        SearchScope::new(FxHashMap::default())
+        SearchScope::new(NoHashHashMap::default())
     }
 
     /// Build a empty search scope spanning the given file.
@@ -402,7 +400,9 @@ impl<'a> FindUsages<'a> {
                             .or_else(|| ty.as_builtin().map(|builtin| builtin.name()))
                     })
                 };
-                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.to_smol_str())
+                // We need to unescape the name in case it is written without "r#" in earlier
+                // editions of Rust where it isn't a keyword.
+                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.unescaped().to_smol_str())
             }
         };
         let name = match &name {

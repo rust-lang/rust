@@ -5,9 +5,9 @@ fn main() -> () {
     let _1: ();                          // in scope 0 at $DIR/inline-options.rs:+1:5: +1:18
     let _2: ();                          // in scope 0 at $DIR/inline-options.rs:+2:5: +2:21
     scope 1 (inlined inlined::<u32>) {   // at $DIR/inline-options.rs:10:5: 10:21
-        let _3: ();                      // in scope 1 at $DIR/inline-options.rs:+8:23: +8:26
-        let _4: ();                      // in scope 1 at $DIR/inline-options.rs:+8:28: +8:31
-        let _5: ();                      // in scope 1 at $DIR/inline-options.rs:+8:33: +8:36
+        let _3: ();                      // in scope 1 at $DIR/inline-options.rs:16:23: 16:26
+        let _4: ();                      // in scope 1 at $DIR/inline-options.rs:16:28: 16:31
+        let _5: ();                      // in scope 1 at $DIR/inline-options.rs:16:33: 16:36
     }
 
     bb0: {
@@ -21,33 +21,33 @@ fn main() -> () {
     bb1: {
         StorageDead(_1);                 // scope 0 at $DIR/inline-options.rs:+1:18: +1:19
         StorageLive(_2);                 // scope 0 at $DIR/inline-options.rs:+2:5: +2:21
-        StorageLive(_3);                 // scope 1 at $DIR/inline-options.rs:+8:23: +8:26
-        _3 = g() -> bb2;                 // scope 1 at $DIR/inline-options.rs:+8:23: +8:26
+        StorageLive(_3);                 // scope 1 at $DIR/inline-options.rs:16:23: 16:26
+        _3 = g() -> bb2;                 // scope 1 at $DIR/inline-options.rs:16:23: 16:26
                                          // mir::Constant
                                          // + span: $DIR/inline-options.rs:16:23: 16:24
                                          // + literal: Const { ty: fn() {g}, val: Value(<ZST>) }
     }
 
     bb2: {
-        StorageDead(_3);                 // scope 1 at $DIR/inline-options.rs:+8:26: +8:27
-        StorageLive(_4);                 // scope 1 at $DIR/inline-options.rs:+8:28: +8:31
-        _4 = g() -> bb3;                 // scope 1 at $DIR/inline-options.rs:+8:28: +8:31
+        StorageDead(_3);                 // scope 1 at $DIR/inline-options.rs:16:26: 16:27
+        StorageLive(_4);                 // scope 1 at $DIR/inline-options.rs:16:28: 16:31
+        _4 = g() -> bb3;                 // scope 1 at $DIR/inline-options.rs:16:28: 16:31
                                          // mir::Constant
                                          // + span: $DIR/inline-options.rs:16:28: 16:29
                                          // + literal: Const { ty: fn() {g}, val: Value(<ZST>) }
     }
 
     bb3: {
-        StorageDead(_4);                 // scope 1 at $DIR/inline-options.rs:+8:31: +8:32
-        StorageLive(_5);                 // scope 1 at $DIR/inline-options.rs:+8:33: +8:36
-        _5 = g() -> bb4;                 // scope 1 at $DIR/inline-options.rs:+8:33: +8:36
+        StorageDead(_4);                 // scope 1 at $DIR/inline-options.rs:16:31: 16:32
+        StorageLive(_5);                 // scope 1 at $DIR/inline-options.rs:16:33: 16:36
+        _5 = g() -> bb4;                 // scope 1 at $DIR/inline-options.rs:16:33: 16:36
                                          // mir::Constant
                                          // + span: $DIR/inline-options.rs:16:33: 16:34
                                          // + literal: Const { ty: fn() {g}, val: Value(<ZST>) }
     }
 
     bb4: {
-        StorageDead(_5);                 // scope 1 at $DIR/inline-options.rs:+8:36: +8:37
+        StorageDead(_5);                 // scope 1 at $DIR/inline-options.rs:16:36: 16:37
         StorageDead(_2);                 // scope 0 at $DIR/inline-options.rs:+2:21: +2:22
         _0 = const ();                   // scope 0 at $DIR/inline-options.rs:+0:11: +3:2
         return;                          // scope 0 at $DIR/inline-options.rs:+3:2: +3:2

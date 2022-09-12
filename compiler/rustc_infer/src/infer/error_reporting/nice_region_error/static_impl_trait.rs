@@ -232,7 +232,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 ObligationCauseCode::MatchImpl(parent, ..) => parent.code(),
                 _ => cause.code(),
             }
-            && let (&ObligationCauseCode::ItemObligation(item_def_id), None) = (code, override_error_code)
+            && let (&ObligationCauseCode::ItemObligation(item_def_id) | &ObligationCauseCode::ExprItemObligation(item_def_id, ..), None) = (code, override_error_code)
         {
             // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
             // lifetime as above, but called using a fully-qualified path to the method:
@@ -300,7 +300,7 @@ pub fn suggest_new_region_bound(
             continue;
         }
         match fn_return.kind {
-            TyKind::OpaqueDef(item_id, _) => {
+            TyKind::OpaqueDef(item_id, _, _) => {
                 let item = tcx.hir().item(item_id);
                 let ItemKind::OpaqueTy(opaque) = &item.kind else {
                     return;

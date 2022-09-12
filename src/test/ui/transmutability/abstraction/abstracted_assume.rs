@@ -3,6 +3,7 @@
 //! provided indirectly through an abstraction.
 
 #![crate_type = "lib"]
+#![feature(adt_const_params)]
 #![feature(transmutability)]
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
@@ -13,19 +14,13 @@ mod assert {
         Src,
         Dst,
         Context,
-        const ASSUME_ALIGNMENT: bool,
-        const ASSUME_LIFETIMES: bool,
-        const ASSUME_VALIDITY: bool,
-        const ASSUME_VISIBILITY: bool,
+        const ASSUME: std::mem::Assume,
     >()
     where
         Dst: BikeshedIntrinsicFrom<
             Src,
             Context,
-            ASSUME_ALIGNMENT,
-            ASSUME_LIFETIMES,
-            ASSUME_VALIDITY,
-            ASSUME_VISIBILITY,
+            ASSUME,
         >,
     {}
 }
@@ -35,7 +30,7 @@ fn direct() {
     #[repr(C)] struct Src;
     #[repr(C)] struct Dst;
 
-    assert::is_transmutable::<Src, Dst, Context, false, false, false, false>();
+    assert::is_transmutable::<Src, Dst, Context, { std::mem::Assume::NOTHING }>();
 }
 
 fn via_const() {
@@ -45,7 +40,7 @@ fn via_const() {
 
     const FALSE: bool = false;
 
-    assert::is_transmutable::<Src, Dst, Context, FALSE, FALSE, FALSE, FALSE>();
+    assert::is_transmutable::<Src, Dst, Context, { std::mem::Assume::NOTHING }>();
 }
 
 fn via_associated_const() {
@@ -65,9 +60,13 @@ fn via_associated_const() {
         Src,
         Dst,
         Context,
-        {Ty::FALSE},
-        {Ty::FALSE},
-        {Ty::FALSE},
-        {Ty::FALSE}
+        {
+            std::mem::Assume {
+                alignment: {Ty::FALSE},
+                lifetimes: {Ty::FALSE},
+                safety: {Ty::FALSE},
+                validity: {Ty::FALSE},
+            }
+        }
     >();
 }

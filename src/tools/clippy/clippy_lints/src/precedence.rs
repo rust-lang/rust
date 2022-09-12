@@ -109,12 +109,12 @@ impl EarlyLintPass for Precedence {
             let mut arg = operand;
 
             let mut all_odd = true;
-            while let ExprKind::MethodCall(path_segment, args, _) = &arg.kind {
+            while let ExprKind::MethodCall(path_segment, receiver, _, _) = &arg.kind {
                 let path_segment_str = path_segment.ident.name.as_str();
                 all_odd &= ALLOWED_ODD_FUNCTIONS
                     .iter()
                     .any(|odd_function| **odd_function == *path_segment_str);
-                arg = args.first().expect("A method always has a receiver.");
+                arg = receiver;
             }
 
             if_chain! {

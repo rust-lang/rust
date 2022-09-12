@@ -200,6 +200,9 @@ impl<'a> Iterator for CommandArgs<'a> {
     fn next(&mut self) -> Option<&'a OsStr> {
         None
     }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(0))
+    }
 }
 
 impl<'a> ExactSizeIterator for CommandArgs<'a> {}

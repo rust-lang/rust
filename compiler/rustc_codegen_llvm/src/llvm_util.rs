@@ -15,7 +15,6 @@ use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use smallvec::{smallvec, SmallVec};
 use std::ffi::{CStr, CString};
-use tracing::debug;
 
 use std::mem;
 use std::path::Path;
@@ -90,16 +89,6 @@ unsafe fn configure_llvm(sess: &Session) {
             && !sess.opts.unstable_opts.no_generate_arange_section
         {
             add("-generate-arange-section", false);
-        }
-
-        // Disable the machine outliner by default in LLVM versions 11 and LLVM
-        // version 12, where it leads to miscompilation.
-        //
-        // Ref:
-        // - https://github.com/rust-lang/rust/issues/85351
-        // - https://reviews.llvm.org/D103167
-        if llvm_util::get_version() < (13, 0, 0) {
-            add("-enable-machine-outliner=never", false);
         }
 
         match sess.opts.unstable_opts.merge_functions.unwrap_or(sess.target.merge_functions) {
@@ -440,6 +429,8 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
             .features
             .split(',')
             .filter(|v| !v.is_empty() && backend_feature_name(v).is_some())
+            // Drop +atomics-32 feature introduced in LLVM 15.
+            .filter(|v| *v != "+atomics-32" || get_version() >= (15, 0, 0))
             .map(String::from),
     );
 

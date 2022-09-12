@@ -1,8 +1,8 @@
-error[E0004]: non-exhaustive patterns: `Bar { bar: C, .. }`, `Bar { bar: D, .. }`, `Bar { bar: E, .. }` and 1 more not covered
+error[E0004]: non-exhaustive patterns: `Foo::Bar { bar: Bar::C, .. }`, `Foo::Bar { bar: Bar::D, .. }`, `Foo::Bar { bar: Bar::E, .. }` and 1 more not covered
   --> $DIR/issue-39362.rs:10:11
    |
 LL |     match f {
-   |           ^ patterns `Bar { bar: C, .. }`, `Bar { bar: D, .. }`, `Bar { bar: E, .. }` and 1 more not covered
+   |           ^ patterns `Foo::Bar { bar: Bar::C, .. }`, `Foo::Bar { bar: Bar::D, .. }`, `Foo::Bar { bar: Bar::E, .. }` and 1 more not covered
    |
 note: `Foo` defined here
   --> $DIR/issue-39362.rs:2:5

@@ -9,6 +9,8 @@ use crate::borrow::Borrow;
 use crate::cell::Cell;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
+#[cfg(not(bootstrap))]
+use crate::error::Error;
 use crate::fmt::{self, Debug};
 #[allow(deprecated)]
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
@@ -2155,6 +2157,15 @@ impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
             self.entry.key(),
             self.entry.get(),
         )
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<'a, K: fmt::Debug, V: fmt::Debug> Error for OccupiedError<'a, K, V> {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "key already exists"
     }
 }
 

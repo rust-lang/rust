@@ -66,6 +66,7 @@ pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
 pub type LPWSABUF = *mut WSABUF;
 pub type LPWSAOVERLAPPED = *mut c_void;
 pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE = *mut c_void;
+pub type BCRYPT_ALG_HANDLE = LPVOID;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
@@ -278,6 +279,7 @@ pub const STATUS_INVALID_PARAMETER: NTSTATUS = 0xc000000d_u32 as _;
 pub const STATUS_PENDING: NTSTATUS = 0x103 as _;
 pub const STATUS_END_OF_FILE: NTSTATUS = 0xC0000011_u32 as _;
 pub const STATUS_NOT_IMPLEMENTED: NTSTATUS = 0xC0000002_u32 as _;
+pub const STATUS_NOT_SUPPORTED: NTSTATUS = 0xC00000BB_u32 as _;
 
 // Equivalent to the `NT_SUCCESS` C preprocessor macro.
 // See: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/using-ntstatus-values
@@ -285,7 +287,8 @@ pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
 }
 
-pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
+// "RNG\0"
+pub const BCRYPT_RNG_ALGORITHM: &[u16] = &[b'R' as u16, b'N' as u16, b'G' as u16, 0];
 
 #[repr(C)]
 pub struct UNICODE_STRING {
@@ -455,6 +458,12 @@ pub enum FILE_INFO_BY_HANDLE_CLASS {
 }
 
 #[repr(C)]
+pub struct FILE_ATTRIBUTE_TAG_INFO {
+    pub FileAttributes: DWORD,
+    pub ReparseTag: DWORD,
+}
+
+#[repr(C)]
 pub struct FILE_DISPOSITION_INFO {
     pub DeleteFile: BOOLEAN,
 }
@@ -501,6 +510,8 @@ pub struct FILE_END_OF_FILE_INFO {
     pub EndOfFile: LARGE_INTEGER,
 }
 
+/// NB: Use carefully! In general using this as a reference is likely to get the
+/// provenance wrong for the `rest` field!
 #[repr(C)]
 pub struct REPARSE_DATA_BUFFER {
     pub ReparseTag: c_uint,
@@ -509,6 +520,8 @@ pub struct REPARSE_DATA_BUFFER {
     pub rest: (),
 }
 
+/// NB: Use carefully! In general using this as a reference is likely to get the
+/// provenance wrong for the `PathBuffer` field!
 #[repr(C)]
 pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
     pub SubstituteNameOffset: c_ushort,
@@ -519,6 +532,8 @@ pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
     pub PathBuffer: WCHAR,
 }
 
+/// NB: Use carefully! In general using this as a reference is likely to get the
+/// provenance wrong for the `PathBuffer` field!
 #[repr(C)]
 pub struct MOUNT_POINT_REPARSE_BUFFER {
     pub SubstituteNameOffset: c_ushort,
@@ -1217,11 +1232,18 @@ extern "system" {
     // >= Vista / Server 2008
     // https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
     pub fn BCryptGenRandom(
-        hAlgorithm: LPVOID,
+        hAlgorithm: BCRYPT_ALG_HANDLE,
         pBuffer: *mut u8,
         cbBuffer: ULONG,
         dwFlags: ULONG,
     ) -> NTSTATUS;
+    pub fn BCryptOpenAlgorithmProvider(
+        phalgorithm: *mut BCRYPT_ALG_HANDLE,
+        pszAlgId: LPCWSTR,
+        pszimplementation: LPCWSTR,
+        dwflags: ULONG,
+    ) -> NTSTATUS;
+    pub fn BCryptCloseAlgorithmProvider(hAlgorithm: BCRYPT_ALG_HANDLE, dwFlags: ULONG) -> NTSTATUS;
 }
 
 // Functions that aren't available on every version of Windows that we support,
@@ -1251,17 +1273,14 @@ compat_fn_with_fallback! {
 }
 
 compat_fn_optional! {
-    pub static SYNCH_API: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
-
-    // >= Windows 8 / Server 2012
-    // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitonaddress
+    crate::sys::compat::load_synch_functions();
     pub fn WaitOnAddress(
         Address: LPVOID,
         CompareAddress: LPVOID,
         AddressSize: SIZE_T,
         dwMilliseconds: DWORD
-    ) -> BOOL;
-    pub fn WakeByAddressSingle(Address: LPVOID) -> ();
+    );
+    pub fn WakeByAddressSingle(Address: LPVOID);
 }
 
 compat_fn_with_fallback! {

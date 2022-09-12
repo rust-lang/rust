@@ -28,6 +28,8 @@
 #![feature(vec_into_raw_parts)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -73,7 +75,6 @@ pub mod profiling;
 pub mod sharded;
 pub mod stack;
 pub mod sync;
-pub mod thin_vec;
 pub mod tiny_list;
 pub mod transitive_relation;
 pub mod vec_linked_list;

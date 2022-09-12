@@ -1,0 +1,18 @@
+### What it does
+Checks for usages of `_.unwrap_or_else(Default::default)` on `Option` and
+`Result` values.
+
+### Why is this bad?
+Readability, these can be written as `_.unwrap_or_default`, which is
+simpler and more concise.
+
+### Examples
+```
+x.unwrap_or_else(Default::default);
+x.unwrap_or_else(u32::default);
+```
+
+Use instead:
+```
+x.unwrap_or_default();
+```

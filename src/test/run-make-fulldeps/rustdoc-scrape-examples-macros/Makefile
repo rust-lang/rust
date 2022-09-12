@@ -1,4 +1,4 @@
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 OUTPUT_DIR := "$(TMPDIR)/rustdoc"
 DYLIB_NAME := $(shell echo | $(RUSTC) --crate-name foobar_macro --crate-type dylib --print file-names -)

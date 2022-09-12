@@ -1,5 +1,4 @@
 // run-pass
-// min-llvm-version: 13.0
 // compile-flags: -O
 
 // Regression test for issue #80309

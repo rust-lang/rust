@@ -26,7 +26,6 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use std::slice;
-use tracing::debug;
 
 macro_rules! run_early_pass { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
@@ -45,7 +44,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
                 lint_id.lint,
                 Some(span),
                 |lint| {
-                    lint.build(&msg).emit();
+                    lint.build(msg).emit();
                 },
                 diagnostic,
             );
@@ -99,6 +98,12 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         self.check_id(p.id);
         ast_visit::walk_pat(self, p);
         run_early_pass!(self, check_pat_post, p);
+    }
+
+    fn visit_pat_field(&mut self, field: &'a ast::PatField) {
+        self.with_lint_attrs(field.id, &field.attrs, |cx| {
+            ast_visit::walk_pat_field(cx, field);
+        });
     }
 
     fn visit_anon_const(&mut self, c: &'a ast::AnonConst) {
@@ -219,9 +224,10 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
-        run_early_pass!(self, check_generic_param, param);
-        self.check_id(param.id);
-        ast_visit::walk_generic_param(self, param);
+        self.with_lint_attrs(param.id, &param.attrs, |cx| {
+            run_early_pass!(cx, check_generic_param, param);
+            ast_visit::walk_generic_param(cx, param);
+        });
     }
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {
@@ -233,9 +239,9 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_where_predicate(self, p);
     }
 
-    fn visit_poly_trait_ref(&mut self, t: &'a ast::PolyTraitRef, m: &'a ast::TraitBoundModifier) {
-        run_early_pass!(self, check_poly_trait_ref, t, m);
-        ast_visit::walk_poly_trait_ref(self, t, m);
+    fn visit_poly_trait_ref(&mut self, t: &'a ast::PolyTraitRef) {
+        run_early_pass!(self, check_poly_trait_ref, t);
+        ast_visit::walk_poly_trait_ref(self, t);
     }
 
     fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: ast_visit::AssocCtxt) {

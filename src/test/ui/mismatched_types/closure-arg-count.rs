@@ -1,6 +1,6 @@
 #![feature(unboxed_closures)]
 
-fn f<F: Fn<usize>>(_: F) {}
+fn f<F: Fn<(usize,)>>(_: F) {}
 fn main() {
     [1, 2, 3].sort_by(|| panic!());
     //~^ ERROR closure is expected to take

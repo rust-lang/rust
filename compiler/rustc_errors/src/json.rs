@@ -13,6 +13,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
+use crate::translation::Translate;
 use crate::DiagnosticId;
 use crate::{
     CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, SubDiagnostic,
@@ -122,6 +123,16 @@ impl JsonEmitter {
     }
 }
 
+impl Translate for JsonEmitter {
+    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+        self.fluent_bundle.as_ref()
+    }
+
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
+        &**self.fallback_bundle
+    }
+}
+
 impl Emitter for JsonEmitter {
     fn emit_diagnostic(&mut self, diag: &crate::Diagnostic) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
@@ -187,14 +198,6 @@ impl Emitter for JsonEmitter {
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         Some(&self.sm)
-    }
-
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        self.fluent_bundle.as_ref()
-    }
-
-    fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &**self.fallback_bundle
     }
 
     fn should_show_explain(&self) -> bool {

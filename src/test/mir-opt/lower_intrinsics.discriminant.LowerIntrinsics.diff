@@ -31,7 +31,7 @@
           _3 = &(*_4);                     // scope 0 at $DIR/lower_intrinsics.rs:+1:42: +1:44
 -         _2 = discriminant_value::<T>(move _3) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:45
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:74:5: 74:41
+-                                          // + span: $DIR/lower_intrinsics.rs:49:5: 49:41
 -                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r T) -> <T as DiscriminantKind>::Discriminant {discriminant_value::<T>}, val: Value(<ZST>) }
 +         _2 = discriminant((*_3));        // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:45
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:45
@@ -46,13 +46,13 @@
           StorageLive(_7);                 // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
           _19 = const discriminant::<T>::promoted[2]; // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
                                            // mir::Constant
-                                           // + span: $DIR/lower_intrinsics.rs:75:42: 75:44
+                                           // + span: $DIR/lower_intrinsics.rs:50:42: 50:44
                                            // + literal: Const { ty: &i32, val: Unevaluated(discriminant, [T], Some(promoted[2])) }
           _7 = &(*_19);                    // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
           _6 = &(*_7);                     // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
 -         _5 = discriminant_value::<i32>(move _6) -> bb2; // scope 0 at $DIR/lower_intrinsics.rs:+2:5: +2:45
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:75:5: 75:41
+-                                          // + span: $DIR/lower_intrinsics.rs:50:5: 50:41
 -                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r i32) -> <i32 as DiscriminantKind>::Discriminant {discriminant_value::<i32>}, val: Value(<ZST>) }
 +         _5 = discriminant((*_6));        // scope 0 at $DIR/lower_intrinsics.rs:+2:5: +2:45
 +         goto -> bb2;                     // scope 0 at $DIR/lower_intrinsics.rs:+2:5: +2:45
@@ -67,13 +67,13 @@
           StorageLive(_11);                // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
           _18 = const discriminant::<T>::promoted[1]; // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
                                            // mir::Constant
-                                           // + span: $DIR/lower_intrinsics.rs:76:42: 76:45
+                                           // + span: $DIR/lower_intrinsics.rs:51:42: 51:45
                                            // + literal: Const { ty: &(), val: Unevaluated(discriminant, [T], Some(promoted[1])) }
           _11 = &(*_18);                   // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
           _10 = &(*_11);                   // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
 -         _9 = discriminant_value::<()>(move _10) -> bb3; // scope 0 at $DIR/lower_intrinsics.rs:+3:5: +3:46
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:76:5: 76:41
+-                                          // + span: $DIR/lower_intrinsics.rs:51:5: 51:41
 -                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r ()) -> <() as DiscriminantKind>::Discriminant {discriminant_value::<()>}, val: Value(<ZST>) }
 +         _9 = discriminant((*_10));       // scope 0 at $DIR/lower_intrinsics.rs:+3:5: +3:46
 +         goto -> bb3;                     // scope 0 at $DIR/lower_intrinsics.rs:+3:5: +3:46
@@ -88,13 +88,13 @@
           StorageLive(_15);                // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
           _17 = const discriminant::<T>::promoted[0]; // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
                                            // mir::Constant
-                                           // + span: $DIR/lower_intrinsics.rs:77:42: 77:47
+                                           // + span: $DIR/lower_intrinsics.rs:52:42: 52:47
                                            // + literal: Const { ty: &E, val: Unevaluated(discriminant, [T], Some(promoted[0])) }
           _15 = &(*_17);                   // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
           _14 = &(*_15);                   // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
 -         _13 = discriminant_value::<E>(move _14) -> bb4; // scope 0 at $DIR/lower_intrinsics.rs:+4:5: +4:48
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:77:5: 77:41
+-                                          // + span: $DIR/lower_intrinsics.rs:52:5: 52:41
 -                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r E) -> <E as DiscriminantKind>::Discriminant {discriminant_value::<E>}, val: Value(<ZST>) }
 +         _13 = discriminant((*_14));      // scope 0 at $DIR/lower_intrinsics.rs:+4:5: +4:48
 +         goto -> bb4;                     // scope 0 at $DIR/lower_intrinsics.rs:+4:5: +4:48
@@ -105,11 +105,15 @@
           StorageDead(_15);                // scope 0 at $DIR/lower_intrinsics.rs:+4:48: +4:49
           StorageDead(_13);                // scope 0 at $DIR/lower_intrinsics.rs:+4:48: +4:49
           _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:+0:30: +5:2
-          drop(_1) -> bb5;                 // scope 0 at $DIR/lower_intrinsics.rs:+5:1: +5:2
+          drop(_1) -> [return: bb5, unwind: bb6]; // scope 0 at $DIR/lower_intrinsics.rs:+5:1: +5:2
       }
   
       bb5: {
           return;                          // scope 0 at $DIR/lower_intrinsics.rs:+5:2: +5:2
+      }
+  
+      bb6 (cleanup): {
+          resume;                          // scope 0 at $DIR/lower_intrinsics.rs:+0:1: +5:2
       }
   }
   

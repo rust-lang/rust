@@ -11,7 +11,7 @@ error[E0596]: cannot borrow `not_mut` as mutable, as it is not declared as mutab
   --> $DIR/nested-binding-modes-mut.rs:9:5
    |
 LL |     let not_mut @ mut is_mut = 42;
-   |         -------------------- help: consider changing this to be mutable: `mut not_mut`
+   |         ------- help: consider changing this to be mutable: `mut not_mut`
 LL |     &mut is_mut;
 LL |     &mut not_mut;
    |     ^^^^^^^^^^^^ cannot borrow as mutable

@@ -398,6 +398,30 @@ impl Token {
         }
     }
 
+    /// Returns `true` if the token can appear at the start of an pattern.
+    ///
+    /// Shamelessly borrowed from `can_begin_expr`, only used for diagnostics right now.
+    pub fn can_begin_pattern(&self) -> bool {
+        match self.uninterpolate().kind {
+            Ident(name, is_raw)              =>
+                ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
+            | OpenDelim(Delimiter::Bracket | Delimiter::Parenthesis)  // tuple or array
+            | Literal(..)                        // literal
+            | BinOp(Minus)                       // unary minus
+            | BinOp(And)                         // reference
+            | AndAnd                             // double reference
+            // DotDotDot is no longer supported
+            | DotDot | DotDotDot | DotDotEq      // ranges
+            | Lt | BinOp(Shl)                    // associated path
+            | ModSep                    => true, // global path
+            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) |
+                NtPat(..)     |
+                NtBlock(..)   |
+                NtPath(..)),
+            _ => false,
+        }
+    }
+
     /// Returns `true` if the token can appear at the start of a type.
     pub fn can_begin_type(&self) -> bool {
         match self.uninterpolate().kind {
@@ -434,6 +458,30 @@ impl Token {
             || self.is_keyword(kw::For)
             || self == &Question
             || self == &OpenDelim(Delimiter::Parenthesis)
+    }
+
+    /// Returns `true` if the token can appear at the start of an item.
+    pub fn can_begin_item(&self) -> bool {
+        match self.kind {
+            Ident(name, _) => [
+                kw::Fn,
+                kw::Use,
+                kw::Struct,
+                kw::Enum,
+                kw::Pub,
+                kw::Trait,
+                kw::Extern,
+                kw::Impl,
+                kw::Unsafe,
+                kw::Static,
+                kw::Union,
+                kw::Macro,
+                kw::Mod,
+                kw::Type,
+            ]
+            .contains(&name),
+            _ => false,
+        }
     }
 
     /// Returns `true` if the token is any literal.

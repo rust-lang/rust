@@ -2,7 +2,7 @@ use crate::os::unix::prelude::*;
 
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
-use crate::io::{self, Error, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
 use crate::path::{Path, PathBuf};
@@ -544,11 +544,11 @@ impl Default for FileTimes {
     fn default() -> Self {
         // Redox doesn't appear to support `UTIME_OMIT`, so we stub it out here, and always return
         // an error in `set_times`.
-        // ESP-IDF does not support `futimens` at all and the behavior for that OS is therefore
+        // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
         // the same as for Redox.
-        #[cfg(any(target_os = "redox", target_os = "espidf"))]
+        #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))]
         let omit = libc::timespec { tv_sec: 0, tv_nsec: 0 };
-        #[cfg(not(any(target_os = "redox", target_os = "espidf")))]
+        #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
         let omit = libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ };
         Self([omit; 2])
     }
@@ -687,7 +687,11 @@ impl Iterator for ReadDir {
 impl Drop for Dir {
     fn drop(&mut self) {
         let r = unsafe { libc::closedir(self.0) };
-        debug_assert_eq!(r, 0);
+        assert!(
+            r == 0 || crate::io::Error::last_os_error().kind() == crate::io::ErrorKind::Interrupted,
+            "unexpected error during closedir: {:?}",
+            crate::io::Error::last_os_error()
+        );
     }
 }
 
@@ -825,6 +829,7 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox"
     )))]
+    #[cfg_attr(miri, allow(unused))]
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
     }
@@ -836,6 +841,7 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox"
     ))]
+    #[cfg_attr(miri, allow(unused))]
     fn name_cstr(&self) -> &CStr {
         &self.name
     }
@@ -1031,8 +1037,8 @@ impl File {
         self.0.read_at(buf, offset)
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        self.0.read_buf(buf)
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.0.read_buf(cursor)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -1079,9 +1085,9 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         cfg_if::cfg_if! {
-            if #[cfg(any(target_os = "redox", target_os = "espidf"))] {
+            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))] {
                 // Redox doesn't appear to support `UTIME_OMIT`.
-                // ESP-IDF does not support `futimens` at all and the behavior for that OS is therefore
+                // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
                 drop(times);
                 Err(io::const_io_error!(

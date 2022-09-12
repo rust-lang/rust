@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Test that previously triggered a linker failure with root cause
 # similar to one found in the issue #69368.

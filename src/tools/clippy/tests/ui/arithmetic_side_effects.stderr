@@ -1,0 +1,22 @@
+error: arithmetic detected
+  --> $DIR/arithmetic_side_effects.rs:50:21
+   |
+LL |     let mut _a = 1; _a += 1;
+   |                     ^^^^^^^
+   |
+   = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
+
+error: arithmetic detected
+  --> $DIR/arithmetic_side_effects.rs:52:26
+   |
+LL |     let mut _b = 1; _b = _b + 1;
+   |                          ^^^^^^
+
+error: arithmetic detected
+  --> $DIR/arithmetic_side_effects.rs:54:26
+   |
+LL |     let mut _c = 1; _c = 1 + _c;
+   |                          ^^^^^^
+
+error: aborting due to 3 previous errors
+

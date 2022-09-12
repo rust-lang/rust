@@ -6,16 +6,18 @@
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{CombinedSnapshot, InferOk};
+use crate::traits::outlives_bounds::InferCtxtExt as _;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::util::impl_subject_and_oblig;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
-    self, Normalized, Obligation, ObligationCause, PredicateObligation, PredicateObligations,
-    SelectionContext,
+    self, Normalized, Obligation, ObligationCause, ObligationCtxt, PredicateObligation,
+    PredicateObligations, SelectionContext,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
@@ -307,7 +309,13 @@ fn negative_impl<'cx, 'tcx>(
             tcx.impl_subject(impl1_def_id),
         ) {
             Ok(s) => s,
-            Err(err) => bug!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
+            Err(err) => {
+                tcx.sess.delay_span_bug(
+                    tcx.def_span(impl1_def_id),
+                    format!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
+                );
+                return false;
+            }
         };
 
         // Attempt to prove that impl2 applies, given all of the above.
@@ -316,7 +324,7 @@ fn negative_impl<'cx, 'tcx>(
         let (subject2, obligations) =
             impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
 
-        !equate(&infcx, impl_env, subject1, subject2, obligations)
+        !equate(&infcx, impl_env, subject1, subject2, obligations, impl1_def_id)
     })
 }
 
@@ -326,6 +334,7 @@ fn equate<'cx, 'tcx>(
     subject1: ImplSubject<'tcx>,
     subject2: ImplSubject<'tcx>,
     obligations: impl Iterator<Item = PredicateObligation<'tcx>>,
+    body_def_id: DefId,
 ) -> bool {
     // do the impls unify? If not, not disjoint.
     let Ok(InferOk { obligations: more_obligations, .. }) =
@@ -339,7 +348,7 @@ fn equate<'cx, 'tcx>(
     let opt_failing_obligation = obligations
         .into_iter()
         .chain(more_obligations)
-        .find(|o| negative_impl_exists(selcx, impl_env, o));
+        .find(|o| negative_impl_exists(selcx, o, body_def_id));
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -353,18 +362,16 @@ fn equate<'cx, 'tcx>(
 #[instrument(level = "debug", skip(selcx))]
 fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     o: &PredicateObligation<'tcx>,
+    body_def_id: DefId,
 ) -> bool {
-    let infcx = &selcx.infcx().fork();
-
-    if resolve_negative_obligation(infcx, param_env, o) {
+    if resolve_negative_obligation(selcx.infcx().fork(), o, body_def_id) {
         return true;
     }
 
     // Try to prove a negative obligation exists for super predicates
-    for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
-        if resolve_negative_obligation(infcx, param_env, &o) {
+    for o in util::elaborate_predicates(selcx.tcx(), iter::once(o.predicate)) {
+        if resolve_negative_obligation(selcx.infcx().fork(), &o, body_def_id) {
             return true;
         }
     }
@@ -374,9 +381,9 @@ fn negative_impl_exists<'cx, 'tcx>(
 
 #[instrument(level = "debug", skip(infcx))]
 fn resolve_negative_obligation<'cx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    infcx: InferCtxt<'cx, 'tcx>,
     o: &PredicateObligation<'tcx>,
+    body_def_id: DefId,
 ) -> bool {
     let tcx = infcx.tcx;
 
@@ -384,12 +391,25 @@ fn resolve_negative_obligation<'cx, 'tcx>(
         return false;
     };
 
-    let errors = super::fully_solve_obligation(infcx, o);
-    if !errors.is_empty() {
+    let param_env = o.param_env;
+    if !super::fully_solve_obligation(&infcx, o).is_empty() {
         return false;
     }
 
-    let outlives_env = OutlivesEnvironment::new(param_env);
+    let (body_id, body_def_id) = if let Some(body_def_id) = body_def_id.as_local() {
+        (tcx.hir().local_def_id_to_hir_id(body_def_id), body_def_id)
+    } else {
+        (CRATE_HIR_ID, CRATE_DEF_ID)
+    };
+
+    let ocx = ObligationCtxt::new(&infcx);
+    let wf_tys = ocx.assumed_wf_types(param_env, DUMMY_SP, body_def_id);
+    let outlives_env = OutlivesEnvironment::with_bounds(
+        param_env,
+        Some(&infcx),
+        infcx.implied_bounds_tys(param_env, body_id, wf_tys),
+    );
+
     infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
 
     infcx.resolve_regions(&outlives_env).is_empty()
@@ -398,12 +418,12 @@ fn resolve_negative_obligation<'cx, 'tcx>(
 pub fn trait_ref_is_knowable<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
-) -> Option<Conflict> {
+) -> Result<(), Conflict> {
     debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
     if orphan_check_trait_ref(tcx, trait_ref, InCrate::Remote).is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.
-        return Some(Conflict::Downstream);
+        return Err(Conflict::Downstream);
     }
 
     if trait_ref_is_local_or_fundamental(tcx, trait_ref) {
@@ -412,7 +432,7 @@ pub fn trait_ref_is_knowable<'tcx>(
         // allowed to implement a substitution of this trait ref, which
         // means impls could only come from dependencies of this crate,
         // which we already know about.
-        return None;
+        return Ok(());
     }
 
     // This is a remote non-fundamental trait, so if another crate
@@ -425,10 +445,10 @@ pub fn trait_ref_is_knowable<'tcx>(
     // we are an owner.
     if orphan_check_trait_ref(tcx, trait_ref, InCrate::Local).is_ok() {
         debug!("trait_ref_is_knowable: orphan check passed");
-        None
+        Ok(())
     } else {
         debug!("trait_ref_is_knowable: nonlocal, nonfundamental, unowned");
-        Some(Conflict::Upstream)
+        Err(Conflict::Upstream)
     }
 }
 
@@ -734,7 +754,21 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
         result
     }
 
-    // FIXME: Constants should participate in orphan checking.
+    /// All possible values for a constant parameter already exist
+    /// in the crate defining the trait, so they are always non-local[^1].
+    ///
+    /// Because there's no way to have an impl where the first local
+    /// generic argument is a constant, we also don't have to fail
+    /// the orphan check when encountering a parameter or a generic constant.
+    ///
+    /// This means that we can completely ignore constants during the orphan check.
+    ///
+    /// See `src/test/ui/coherence/const-generics-orphan-check-ok.rs` for examples.
+    ///
+    /// [^1]: This might not hold for function pointers or trait objects in the future.
+    /// As these should be quite rare as const arguments and especially rare as impl
+    /// parameters, allowing uncovered const parameters in impls seems more useful
+    /// than allowing `impl<T> Trait<local_fn_ptr, T> for i32` to compile.
     fn visit_const(&mut self, _c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         ControlFlow::CONTINUE
     }

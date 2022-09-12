@@ -1,13 +1,11 @@
 //! This file implements "place projections"; basically a symmetric API for 3 types: MPlaceTy, OpTy, PlaceTy.
 //!
-//! OpTy and PlaceTy genrally work by "let's see if we are actually an MPlaceTy, and do something custom if not".
+//! OpTy and PlaceTy generally work by "let's see if we are actually an MPlaceTy, and do something custom if not".
 //! For PlaceTy, the custom thing is basically always to call `force_allocation` and then use the MPlaceTy logic anyway.
 //! For OpTy, the custom thing on field pojections has to be pretty clever (since `Operand::Immediate` can have fields),
 //! but for array/slice operations it only has to worry about `Operand::Uninit`. That makes the value part trivial,
 //! but we still need to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
 //! implement the logic on OpTy, and MPlaceTy calls that.
-
-use std::hash::Hash;
 
 use rustc_middle::mir;
 use rustc_middle::ty;
@@ -22,7 +20,7 @@ use super::{
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
 impl<'mir, 'tcx: 'mir, Prov, M> InterpCx<'mir, 'tcx, M>
 where
-    Prov: Provenance + Eq + Hash + 'static,
+    Prov: Provenance + 'static,
     M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
     //# Field access
@@ -100,6 +98,8 @@ where
         // This makes several assumptions about what layouts we will encounter; we match what
         // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
         let field_val: Immediate<_> = match (*base, base.layout.abi) {
+            // if the entire value is uninit, then so is the field (can happen in ConstProp)
+            (Immediate::Uninit, _) => Immediate::Uninit,
             // the field contains no information, can be left uninit
             _ if field_layout.is_zst() => Immediate::Uninit,
             // the field covers the entire type
@@ -124,6 +124,7 @@ where
                     b_val
                 })
             }
+            // everything else is a bug
             _ => span_bug!(
                 self.cur_span(),
                 "invalid field access on immediate {}, layout {:#?}",

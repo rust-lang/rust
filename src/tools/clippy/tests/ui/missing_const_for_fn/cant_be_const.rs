@@ -3,12 +3,16 @@
 //! The .stderr output of this test should be empty. Otherwise it's a bug somewhere.
 
 // aux-build:helper.rs
+// aux-build:../../auxiliary/proc_macro_with_span.rs
 
 #![warn(clippy::missing_const_for_fn)]
 #![feature(start)]
 #![feature(custom_inner_attributes)]
 
 extern crate helper;
+extern crate proc_macro_with_span;
+
+use proc_macro_with_span::with_span;
 
 struct Game;
 
@@ -118,4 +122,9 @@ mod const_fn_stabilized_after_msrv {
     fn const_fn_stabilized_after_msrv(byte: u8) {
         byte.is_ascii_digit();
     }
+}
+
+with_span! {
+    span
+    fn dont_check_in_proc_macro() {}
 }

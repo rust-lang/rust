@@ -8,7 +8,7 @@ note: function defined here
   --> $DIR/add-tuple-within-arguments.rs:1:4
    |
 LL | fn foo(s: &str, a: (i32, i32), s2: &str) {}
-   |    ^^^ -------  -------------  --------
+   |    ^^^          -------------
 help: wrap these arguments in parentheses to construct a tuple
    |
 LL |     foo("hi", (1, 2), "hi");
@@ -28,7 +28,7 @@ note: function defined here
   --> $DIR/add-tuple-within-arguments.rs:3:4
    |
 LL | fn bar(s: &str, a: (&str,), s2: &str) {}
-   |    ^^^ -------  ----------  --------
+   |    ^^^          ----------
 help: use a trailing comma to create a tuple with one element
    |
 LL |     bar("hi", ("hi",), "hi");

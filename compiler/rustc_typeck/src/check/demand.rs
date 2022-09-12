@@ -42,10 +42,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
         self.suggest_missing_parentheses(err, expr);
         self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected);
+        self.suggest_copied_or_cloned(err, expr, expr_ty, expected);
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
-        self.report_closure_inferred_return_type(err, expected);
     }
 
     // Requires that the two types unify, and prints an error message if
@@ -131,7 +131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// N.B., this code relies on `self.diverges` to be accurate. In particular, assignments to `!`
     /// will be permitted if the diverges flag is currently "always".
-    #[tracing::instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
+    #[instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
     pub fn demand_coerce_diag(
         &self,
         expr: &hir::Expr<'tcx>,
@@ -375,7 +375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let field_is_local = sole_field.did.is_local();
                     let field_is_accessible =
-                        sole_field.vis.is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx)
+                        sole_field.vis.is_accessible_from(expr.hir_id.owner, self.tcx)
                         // Skip suggestions for unstable public fields (for example `Pin::pointer`)
                         && matches!(self.tcx.eval_stability(sole_field.did, None, expr.span, None), EvalResult::Allow | EvalResult::Unmarked);
 
@@ -590,7 +590,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let closure_params_len = closure_fn_decl.inputs.len();
         let (
             Some(Node::Expr(hir::Expr {
-                kind: hir::ExprKind::MethodCall(method_path, method_expr, _),
+                kind: hir::ExprKind::MethodCall(method_path, receiver, ..),
                 ..
             })),
             1,
@@ -598,14 +598,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let self_ty = self.typeck_results.borrow().expr_ty(&method_expr[0]);
-        let self_ty = format!("{:?}", self_ty);
+        let self_ty = self.typeck_results.borrow().expr_ty(receiver);
         let name = method_path.ident.name;
-        let is_as_ref_able = (self_ty.starts_with("&std::option::Option")
-            || self_ty.starts_with("&std::result::Result")
-            || self_ty.starts_with("std::option::Option")
-            || self_ty.starts_with("std::result::Result"))
-            && (name == sym::map || name == sym::and_then);
+        let is_as_ref_able = match self_ty.peel_refs().kind() {
+            ty::Adt(def, _) => {
+                (self.tcx.is_diagnostic_item(sym::Option, def.did())
+                    || self.tcx.is_diagnostic_item(sym::Result, def.did()))
+                    && (name == sym::map || name == sym::and_then)
+            }
+            _ => false,
+        };
         match (is_as_ref_able, self.sess().source_map().span_to_snippet(method_path.ident.span)) {
             (true, Ok(src)) => {
                 let suggestion = format!("as_ref().{}", src);
@@ -637,11 +639,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }?;
 
         match hir.find(hir.get_parent_node(expr.hir_id))? {
-            Node::Expr(hir::Expr { kind: hir::ExprKind::Struct(_, fields, ..), .. }) => {
-                for field in *fields {
-                    if field.ident.name == local.name && field.is_shorthand {
-                        return Some(local.name);
-                    }
+            Node::ExprField(field) => {
+                if field.ident.name == local.name && field.is_shorthand {
+                    return Some(local.name);
                 }
             }
             _ => {}
@@ -767,22 +767,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 if self.can_coerce(ref_ty, expected) {
                     let mut sugg_sp = sp;
-                    if let hir::ExprKind::MethodCall(ref segment, ref args, _) = expr.kind {
+                    if let hir::ExprKind::MethodCall(ref segment, receiver, args, _) = expr.kind {
                         let clone_trait =
                             self.tcx.require_lang_item(LangItem::Clone, Some(segment.ident.span));
-                        if let ([arg], Some(true), sym::clone) = (
-                            &args[..],
-                            self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
+                        if args.is_empty()
+                            && self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
                                 |did| {
                                     let ai = self.tcx.associated_item(did);
                                     ai.trait_container(self.tcx) == Some(clone_trait)
                                 },
-                            ),
-                            segment.ident.name,
-                        ) {
+                            ) == Some(true)
+                            && segment.ident.name == sym::clone
+                        {
                             // If this expression had a clone call when suggesting borrowing
                             // we want to suggest removing it because it'd now be unnecessary.
-                            sugg_sp = arg.span;
+                            sugg_sp = receiver.span;
                         }
                     }
                     if let Ok(src) = sm.span_to_snippet(sugg_sp) {
@@ -793,7 +792,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ if is_range_literal(expr) => true,
                             _ => false,
                         };
-                        let sugg_expr = if needs_parens { format!("({src})") } else { src };
 
                         if let Some(sugg) = self.can_use_as_ref(expr) {
                             return Some((
@@ -821,6 +819,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
 
+                        let sugg_expr = if needs_parens { format!("({src})") } else { src };
                         return Some(match mutability {
                             hir::Mutability::Mut => (
                                 sp,
@@ -1072,21 +1071,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut sugg = vec![];
 
-        if let Some(hir::Node::Expr(hir::Expr {
-            kind: hir::ExprKind::Struct(_, fields, _), ..
-        })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
+        if let Some(hir::Node::ExprField(field)) =
+            self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
         {
             // `expr` is a literal field for a struct, only suggest if appropriate
-            match (*fields)
-                .iter()
-                .find(|field| field.expr.hir_id == expr.hir_id && field.is_shorthand)
-            {
+            if field.is_shorthand {
                 // This is a field literal
-                Some(field) => {
-                    sugg.push((field.ident.span.shrink_to_lo(), format!("{}: ", field.ident)));
-                }
+                sugg.push((field.ident.span.shrink_to_lo(), format!("{}: ", field.ident)));
+            } else {
                 // Likely a field was meant, but this field wasn't found. Do not suggest anything.
-                None => return false,
+                return false;
             }
         };
 
@@ -1416,27 +1410,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             _ => false,
-        }
-    }
-
-    // Report the type inferred by the return statement.
-    fn report_closure_inferred_return_type(&self, err: &mut Diagnostic, expected: Ty<'tcx>) {
-        if let Some(sp) = self.ret_coercion_span.get()
-            // If the closure has an explicit return type annotation, or if
-            // the closure's return type has been inferred from outside
-            // requirements (such as an Fn* trait bound), then a type error
-            // may occur at the first return expression we see in the closure
-            // (if it conflicts with the declared return type). Skip adding a
-            // note in this case, since it would be incorrect.
-            && !self.return_type_pre_known
-        {
-            err.span_note(
-                sp,
-                &format!(
-                    "return type inferred to be `{}` here",
-                    self.resolve_vars_if_possible(expected)
-                ),
-            );
         }
     }
 }

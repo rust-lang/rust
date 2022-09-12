@@ -2,27 +2,13 @@ error[E0599]: no method named `nonexistent_method` found for fn item `fn(_) -> O
   --> $DIR/issue-96738.rs:2:10
    |
 LL |     Some.nonexistent_method();
-   |     ---- ^^^^^^^^^^^^^^^^^^ method not found in `fn(_) -> Option<_> {Option::<_>::Some}`
-   |     |
-   |     this is the constructor of an enum variant
-   |
-help: call the constructor
-   |
-LL |     (Some)(_).nonexistent_method();
-   |     +    ++++
+   |          ^^^^^^^^^^^^^^^^^^ method not found in `fn(_) -> Option<_> {Option::<_>::Some}`
 
 error[E0609]: no field `nonexistent_field` on type `fn(_) -> Option<_> {Option::<_>::Some}`
   --> $DIR/issue-96738.rs:3:10
    |
 LL |     Some.nonexistent_field;
-   |     ---- ^^^^^^^^^^^^^^^^^
-   |     |
-   |     this is the constructor of an enum variant
-   |
-help: call the constructor
-   |
-LL |     (Some)(_).nonexistent_field;
-   |     +    ++++
+   |          ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

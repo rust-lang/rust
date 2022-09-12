@@ -80,13 +80,21 @@ fn assert_ts_eq(lhs: &TokenStream, rhs: &TokenStream) {
 pub fn expand_expr_is(input: TokenStream) -> TokenStream {
     let mut iter = input.into_iter();
     let mut expected_tts = Vec::new();
-    loop {
+    let comma = loop {
         match iter.next() {
-            Some(TokenTree::Punct(ref p)) if p.as_char() == ',' => break,
+            Some(TokenTree::Punct(p)) if p.as_char() == ',' => break p,
             Some(tt) => expected_tts.push(tt),
             None => panic!("expected comma"),
         }
-    }
+    };
+
+    // Make sure that `Ident` and `Literal` objects from this proc-macro's
+    // environment are not invalidated when `expand_expr` recursively invokes
+    // another macro by taking a local copy, and checking it after the fact.
+    let pre_expand_span = comma.span();
+    let pre_expand_ident = Ident::new("ident", comma.span());
+    let pre_expand_literal = Literal::string("literal");
+    let pre_expand_call_site = Span::call_site();
 
     let expected = expected_tts.into_iter().collect::<TokenStream>();
     let expanded = iter.collect::<TokenStream>().expand_expr().expect("expand_expr failed");
@@ -99,6 +107,15 @@ pub fn expand_expr_is(input: TokenStream) -> TokenStream {
 
     // Also compare the raw tts to make sure they line up.
     assert_ts_eq(&expected, &expanded);
+
+    assert!(comma.span().eq(&pre_expand_span), "pre-expansion span is still equal");
+    assert_eq!(pre_expand_ident.to_string(), "ident", "pre-expansion identifier is still valid");
+    assert_eq!(
+        pre_expand_literal.to_string(),
+        "\"literal\"",
+        "pre-expansion literal is still valid"
+    );
+    assert!(Span::call_site().eq(&pre_expand_call_site), "pre-expansion call-site is still equal");
 
     TokenStream::new()
 }

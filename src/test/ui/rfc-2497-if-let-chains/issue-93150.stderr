@@ -8,6 +8,15 @@ LL |         _ if let true = true && true => {}
    = help: add `#![feature(if_let_guard)]` to the crate attributes to enable
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
-error: aborting due to previous error
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/issue-93150.rs:3:14
+   |
+LL |         _ if let true = true && true => {}
+   |              ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

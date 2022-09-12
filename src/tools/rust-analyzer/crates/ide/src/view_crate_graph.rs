@@ -3,8 +3,9 @@ use std::sync::Arc;
 use dot::{Id, LabelText};
 use ide_db::{
     base_db::{CrateGraph, CrateId, Dependency, SourceDatabase, SourceDatabaseExt},
-    FxHashSet, RootDatabase,
+    RootDatabase,
 };
+use stdx::hash::NoHashHashSet;
 
 // Feature: View Crate Graph
 //
@@ -16,7 +17,7 @@ use ide_db::{
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: View Crate Graph**
+// | VS Code | **rust-analyzer: View Crate Graph**
 // |===
 pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> Result<String, String> {
     let crate_graph = db.crate_graph();
@@ -41,7 +42,7 @@ pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> Result<String, 
 
 struct DotCrateGraph {
     graph: Arc<CrateGraph>,
-    crates_to_render: FxHashSet<CrateId>,
+    crates_to_render: NoHashHashSet<CrateId>,
 }
 
 type Edge<'a> = (CrateId, &'a Dependency);

@@ -1,4 +1,4 @@
-error: lifetime parameters must be declared prior to const parameters
+error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/const-param-before-other-params.rs:1:21
    |
 LL | fn bar<const X: u8, 'a>(_: &'a ()) {

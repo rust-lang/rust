@@ -1,0 +1,32 @@
+### What it does
+Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
+
+### Why is this bad?
+`TryFrom` should be used if there's a possibility of failure.
+
+### Example
+```
+struct Foo(i32);
+
+impl From<String> for Foo {
+    fn from(s: String) -> Self {
+        Foo(s.parse().unwrap())
+    }
+}
+```
+
+Use instead:
+```
+struct Foo(i32);
+
+impl TryFrom<String> for Foo {
+    type Error = ();
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        if let Ok(parsed) = s.parse() {
+            Ok(Foo(parsed))
+        } else {
+            Err(())
+        }
+    }
+}
+```

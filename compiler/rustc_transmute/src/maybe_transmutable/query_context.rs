@@ -82,7 +82,7 @@ mod rustc {
                 false
             };
 
-            tracing::trace!(?ret, "ret");
+            trace!(?ret, "ret");
             ret
         }
 

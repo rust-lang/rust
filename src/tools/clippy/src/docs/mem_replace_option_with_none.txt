@@ -1,0 +1,21 @@
+### What it does
+Checks for `mem::replace()` on an `Option` with
+`None`.
+
+### Why is this bad?
+`Option` already has the method `take()` for
+taking its current value (Some(..) or None) and replacing it with
+`None`.
+
+### Example
+```
+use std::mem;
+
+let mut an_option = Some(0);
+let replaced = mem::replace(&mut an_option, None);
+```
+Is better expressed with:
+```
+let mut an_option = Some(0);
+let taken = an_option.take();
+```

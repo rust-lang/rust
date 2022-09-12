@@ -46,7 +46,7 @@ LL | |     });
    | |______`cell_a` escapes the function body here
    |        argument requires that `'a` must outlive `'static`
    |
-   = note: requirement occurs because of the type `Cell<&'_#11r u32>`, which makes the generic argument `&'_#11r u32` invariant
+   = note: requirement occurs because of the type `Cell<&'_#10r u32>`, which makes the generic argument `&'_#10r u32` invariant
    = note: the struct `Cell<T>` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 

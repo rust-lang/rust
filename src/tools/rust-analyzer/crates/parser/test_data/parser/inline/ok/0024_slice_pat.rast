@@ -37,6 +37,29 @@ SOURCE_FILE
             L_BRACK "["
             R_BRACK "]"
           SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            PIPE "|"
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          ARRAY_EXPR
+            L_BRACK "["
+            R_BRACK "]"
+          SEMICOLON ";"
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"

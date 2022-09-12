@@ -18,6 +18,8 @@ LL | const BAD_ENUM_PTR: Enum = unsafe { mem::transmute(&1) };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/ub-enum.rs:30:1
@@ -27,6 +29,8 @@ LL | const BAD_ENUM_WRAPPED: Wrap<Enum> = unsafe { mem::transmute(&1) };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-enum.rs:43:1
@@ -47,6 +51,8 @@ LL | const BAD_ENUM2_PTR: Enum2 = unsafe { mem::transmute(&0) };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/ub-enum.rs:49:1
@@ -56,29 +62,28 @@ LL | const BAD_ENUM2_WRAPPED: Wrap<Enum2> = unsafe { mem::transmute(&0) };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:59:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-enum.rs:59:42
    |
 LL | const BAD_ENUM2_UNDEF : Enum2 = unsafe { MaybeUninit { uninit: () }.init };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered uninitialized bytes, but expected initialized bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               __ __ __ __                                     │ ░░░░
-           }
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error: any use of this value will cause an error
-  --> $DIR/ub-enum.rs:63:1
+  --> $DIR/ub-enum.rs:64:1
    |
 LL | const BAD_ENUM2_OPTION_PTR: Option<Enum2> = unsafe { mem::transmute(&0) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:81:1
+  --> $DIR/ub-enum.rs:82:1
    |
 LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute(1u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(B)>.0: encountered a value of the never type `!`
@@ -89,7 +94,7 @@ LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:83:1
+  --> $DIR/ub-enum.rs:84:1
    |
 LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(D)>.0: encountered a value of uninhabited type Never
@@ -100,7 +105,7 @@ LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:91:1
+  --> $DIR/ub-enum.rs:92:1
    |
 LL | const BAD_OPTION_CHAR: Option<(char, char)> = Some(('x', unsafe { mem::transmute(!0u32) }));
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Some)>.0.1: encountered 0xffffffff, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
@@ -111,13 +116,13 @@ LL | const BAD_OPTION_CHAR: Option<(char, char)> = Some(('x', unsafe { mem::tran
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-enum.rs:96:77
+  --> $DIR/ub-enum.rs:97:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe { mem::transmute(0u64) };
    |                                                                             ^^^^^^^^^^^^^^^^^^^^ transmuting to uninhabited type
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-enum.rs:98:77
+  --> $DIR/ub-enum.rs:99:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem::transmute(0u64) };
    |                                                                             ^^^^^^^^^^^^^^^^^^^^ transmuting to uninhabited type
@@ -135,6 +140,8 @@ LL | const BAD_ENUM_PTR: Enum = unsafe { mem::transmute(&1) };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -146,6 +153,8 @@ LL | const BAD_ENUM_WRAPPED: Wrap<Enum> = unsafe { mem::transmute(&1) };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -157,6 +166,8 @@ LL | const BAD_ENUM2_PTR: Enum2 = unsafe { mem::transmute(&0) };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -168,10 +179,12 @@ LL | const BAD_ENUM2_WRAPPED: Wrap<Enum2> = unsafe { mem::transmute(&0) };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/ub-enum.rs:63:1
+  --> $DIR/ub-enum.rs:64:1
    |
 LL | const BAD_ENUM2_OPTION_PTR: Option<Enum2> = unsafe { mem::transmute(&0) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -179,4 +192,6 @@ LL | const BAD_ENUM2_OPTION_PTR: Option<Enum2> = unsafe { mem::transmute(&0) };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 

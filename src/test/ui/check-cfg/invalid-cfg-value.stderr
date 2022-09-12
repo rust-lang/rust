@@ -15,5 +15,9 @@ LL | #[cfg(feature = "rand")]
    |
    = note: expected values for `feature` are: full, serde
 
-warning: 2 warnings emitted
+warning: unexpected condition value `rand` for condition name `feature`
+   |
+   = help: was set with `--cfg` but isn't in the `--check-cfg` expected values
+
+warning: 3 warnings emitted
 

@@ -1,9 +1,6 @@
 use super::ResolverAstLoweringExt;
 use rustc_ast::visit::{self, BoundKind, LifetimeCtxt, Visitor};
-use rustc_ast::{
-    FnRetTy, GenericBounds, Lifetime, NodeId, PathSegment, PolyTraitRef, TraitBoundModifier, Ty,
-    TyKind,
-};
+use rustc_ast::{FnRetTy, GenericBounds, Lifetime, NodeId, PathSegment, PolyTraitRef, Ty, TyKind};
 use rustc_hir::def::LifetimeRes;
 use rustc_middle::span_bug;
 use rustc_middle::ty::ResolverAstLowering;
@@ -71,10 +68,10 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
         visit::walk_path_segment(self, path_span, path_segment);
     }
 
-    fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef) {
         self.current_binders.push(t.trait_ref.ref_id);
 
-        visit::walk_poly_trait_ref(self, t, m);
+        visit::walk_poly_trait_ref(self, t);
 
         self.current_binders.pop();
     }

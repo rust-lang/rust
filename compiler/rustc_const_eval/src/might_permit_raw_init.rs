@@ -13,7 +13,11 @@ pub fn might_permit_raw_init<'tcx>(
     let strict = tcx.sess.opts.unstable_opts.strict_init_checks;
 
     if strict {
-        let machine = CompileTimeInterpreter::new(Limit::new(0), false);
+        let machine = CompileTimeInterpreter::new(
+            Limit::new(0),
+            /*can_access_statics:*/ false,
+            /*check_alignment:*/ true,
+        );
 
         let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);
 

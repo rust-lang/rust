@@ -353,7 +353,7 @@ error: layout_of(std::result::Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                    valid_range: 0..=1,
                },
                tag_encoding: Niche {
-                   dataful_variant: 1,
+                   untagged_variant: 1,
                    niche_variants: 0..=0,
                    niche_start: 1,
                },

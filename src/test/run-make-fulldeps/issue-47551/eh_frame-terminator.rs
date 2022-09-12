@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(backtrace)]
 #[derive(Clone, Copy)]
 struct Foo {
     array: [u64; 10240],

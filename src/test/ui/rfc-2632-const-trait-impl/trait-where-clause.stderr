@@ -20,16 +20,16 @@ LL | const fn test1<T: ~const Foo + Bar + ~const Bar>() {
    |                                    ++++++++++++
 
 error[E0277]: the trait bound `T: ~const Bar` is not satisfied
-  --> $DIR/trait-where-clause.rs:15:5
+  --> $DIR/trait-where-clause.rs:15:12
    |
 LL |     T::c::<T>();
-   |     ^^^^^^^^^ the trait `~const Bar` is not implemented for `T`
+   |            ^ the trait `~const Bar` is not implemented for `T`
    |
 note: the trait `Bar` is implemented for `T`, but that implementation is not `const`
-  --> $DIR/trait-where-clause.rs:15:5
+  --> $DIR/trait-where-clause.rs:15:12
    |
 LL |     T::c::<T>();
-   |     ^^^^^^^^^
+   |            ^
 note: required by a bound in `Foo::c`
   --> $DIR/trait-where-clause.rs:8:13
    |
@@ -57,10 +57,10 @@ LL | fn test3<T: Foo + Bar>() {
    |                 +++++
 
 error[E0277]: the trait bound `T: Bar` is not satisfied
-  --> $DIR/trait-where-clause.rs:29:5
+  --> $DIR/trait-where-clause.rs:29:12
    |
 LL |     T::c::<T>();
-   |     ^^^^^^^^^ the trait `Bar` is not implemented for `T`
+   |            ^ the trait `Bar` is not implemented for `T`
    |
 note: required by a bound in `Foo::c`
   --> $DIR/trait-where-clause.rs:8:13

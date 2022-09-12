@@ -617,7 +617,6 @@ pub(super) fn complete_name_ref(
 
                     dot::complete_undotted_self(acc, ctx, path_ctx, expr_ctx);
                     item_list::complete_item_list_in_expr(acc, ctx, path_ctx, expr_ctx);
-                    record::complete_record_expr_func_update(acc, ctx, path_ctx, expr_ctx);
                     snippet::complete_expr_snippet(acc, ctx, path_ctx, expr_ctx);
                 }
                 PathKind::Type { location } => {

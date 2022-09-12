@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Res::Def(_, pat_did) = pat_path.res;
         if match_def_path(cx, pat_did, &paths::OPTION_SOME);
         // check for call to `Iterator::next`
-        if let ExprKind::MethodCall(method_name, [iter_expr], _) = let_expr.kind;
+        if let ExprKind::MethodCall(method_name, iter_expr, [], _) = let_expr.kind;
         if method_name.ident.name == sym::next;
         if is_trait_method(cx, let_expr, sym::Iterator);
         if let Some(iter_expr_struct) = try_parse_iter_expr(cx, iter_expr);
@@ -356,7 +356,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
             after_loop: false,
             used_iter: false,
         };
-        v.visit_expr(&cx.tcx.hir().body(cx.enclosing_body.unwrap()).value);
+        v.visit_expr(cx.tcx.hir().body(cx.enclosing_body.unwrap()).value);
         v.used_iter
     }
 }

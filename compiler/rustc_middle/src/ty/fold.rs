@@ -353,7 +353,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
         t
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             ty::ReLateBound(debruijn, _) if debruijn < self.current_index => {

@@ -295,13 +295,13 @@ fn test_concat_expand() {
 #[rustc_builtin_macro]
 macro_rules! concat {}
 
-fn main() { concat!("foo", "r", 0, r#"bar"#, "\n", false); }
+fn main() { concat!("foo", "r", 0, r#"bar"#, "\n", false, '"', '\0'); }
 "##,
         expect![[r##"
 #[rustc_builtin_macro]
 macro_rules! concat {}
 
-fn main() { "foor0bar\nfalse"; }
+fn main() { "foor0bar\nfalse\"\u{0}"; }
 "##]],
     );
 }

@@ -1,14 +1,14 @@
-error: lifetime may not live long enough
-  --> $DIR/implied-bounds-unnorm-associated-type.rs:14:5
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/implied-bounds-unnorm-associated-type.rs:20:10
    |
-LL | fn f<'a, 'b>(s: &'b str, _: <&'a &'b () as Trait>::Type) -> &'a str {
-   |      --  -- lifetime `'b` defined here
-   |      |
-   |      lifetime `'a` defined here
-LL |     s
-   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
-   |
-   = help: consider adding the following bound: `'b: 'a`
+LL |     let y = f(&x, ());
+   |               -- borrow of `x` occurs here
+LL |     drop(x);
+   |          ^ move out of `x` occurs here
+LL |
+LL |     println!("{}", y);
+   |                    - borrow later used here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0505`.

@@ -107,8 +107,12 @@ impl<T: HasDataLayout> PointerArithmetic for T {}
 /// pointer), but `derive` adds some unnecessary bounds.
 pub trait Provenance: Copy + fmt::Debug {
     /// Says whether the `offset` field of `Pointer`s with this provenance is the actual physical address.
-    /// If `true, ptr-to-int casts work by simply discarding the provenance.
-    /// If `false`, ptr-to-int casts are not supported. The offset *must* be relative in that case.
+    /// - If `false`, the offset *must* be relative. This means the bytes representing a pointer are
+    ///   different from what the Abstract Machine prescribes, so the interpreter must prevent any
+    ///   operation that would inspect the underlying bytes of a pointer, such as ptr-to-int
+    ///   transmutation. A `ReadPointerAsBytes` error will be raised in such situations.
+    /// - If `true`, the interpreter will permit operations to inspect the underlying bytes of a
+    ///   pointer, and implement ptr-to-int transmutation by stripping provenance.
     const OFFSET_IS_ADDR: bool;
 
     /// We also use this trait to control whether to abort execution when a pointer is being partially overwritten
@@ -125,6 +129,9 @@ pub trait Provenance: Copy + fmt::Debug {
     /// Otherwise this function is best-effort (but must agree with `Machine::ptr_get_alloc`).
     /// (Identifying the offset in that allocation, however, is harder -- use `Memory::ptr_get_alloc` for that.)
     fn get_alloc_id(self) -> Option<AllocId>;
+
+    /// Defines the 'join' of provenance: what happens when doing a pointer load and different bytes have different provenance.
+    fn join(left: Option<Self>, right: Option<Self>) -> Option<Self>;
 }
 
 impl Provenance for AllocId {
@@ -151,6 +158,10 @@ impl Provenance for AllocId {
 
     fn get_alloc_id(self) -> Option<AllocId> {
         Some(self)
+    }
+
+    fn join(_left: Option<Self>, _right: Option<Self>) -> Option<Self> {
+        panic!("merging provenance is not supported when `OFFSET_IS_ADDR` is false")
     }
 }
 

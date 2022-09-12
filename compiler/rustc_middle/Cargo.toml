@@ -7,34 +7,35 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-rustc_arena = { path = "../rustc_arena" }
 bitflags = "1.2.1"
+chalk-ir = "0.80.0"
 either = "1.5.0"
 gsgdt = "0.1.2"
-tracing = "0.1"
-rustc-rayon = { version = "0.4.0", optional = true }
-rustc-rayon-core = { version = "0.4.0", optional = true }
 polonius-engine = "0.13.0"
-rustc_apfloat = { path = "../rustc_apfloat" }
-rustc_attr = { path = "../rustc_attr" }
-rustc_feature = { path = "../rustc_feature" }
-rustc_hir = { path = "../rustc_hir" }
-rustc_target = { path = "../rustc_target" }
-rustc_macros = { path = "../rustc_macros" }
-rustc_data_structures = { path = "../rustc_data_structures" }
-rustc_query_system = { path = "../rustc_query_system" }
-rustc_errors = { path = "../rustc_errors" }
-rustc_graphviz = { path = "../rustc_graphviz" }
-rustc_index = { path = "../rustc_index" }
-rustc_serialize = { path = "../rustc_serialize" }
-rustc_ast = { path = "../rustc_ast" }
-rustc_span = { path = "../rustc_span" }
-chalk-ir = "0.80.0"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-rustc_session = { path = "../rustc_session" }
-rustc_type_ir = { path = "../rustc_type_ir" }
 rand = "0.8.4"
 rand_xoshiro = "0.6.0"
+rustc_apfloat = { path = "../rustc_apfloat" }
+rustc_arena = { path = "../rustc_arena" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_attr = { path = "../rustc_attr" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_graphviz = { path = "../rustc_graphviz" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_query_system = { path = "../rustc_query_system" }
+rustc-rayon-core = { version = "0.4.0", optional = true }
+rustc-rayon = { version = "0.4.0", optional = true }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+rustc_type_ir = { path = "../rustc_type_ir" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.8"
+tracing = "0.1"
 
 [features]
 rustc_use_parallel_compiler = ["rustc-rayon", "rustc-rayon-core"]

@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Verifies that the -L arguments given to the linker is in the same order
 # as the -L arguments on the rustc command line.

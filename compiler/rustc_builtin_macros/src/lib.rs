@@ -8,13 +8,16 @@
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
-#![cfg_attr(bootstrap, feature(let_chains))]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![recursion_limit = "256"]
 
 extern crate proc_macro;
+
+#[macro_use]
+extern crate tracing;
 
 use crate::deriving::*;
 

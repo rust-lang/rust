@@ -119,6 +119,10 @@ pub trait Write {
     ///
     /// This function will return an instance of [`Error`] on error.
     ///
+    /// The purpose of std::fmt::Error is to abort the formatting operation when the underlying
+    /// destination encounters some error preventing it from accepting more text; it should
+    /// generally be propagated rather than handled, at least when implementing formatting traits.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1815,7 +1819,7 @@ impl<'a> Formatter<'a> {
     ///             write!(formatter,
     ///                    "Foo({}{})",
     ///                    if self.0 < 0 { '-' } else { '+' },
-    ///                    self.0)
+    ///                    self.0.abs())
     ///         } else {
     ///             write!(formatter, "Foo({})", self.0)
     ///         }
@@ -1823,6 +1827,7 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// assert_eq!(&format!("{:+}", Foo(23)), "Foo(+23)");
+    /// assert_eq!(&format!("{:+}", Foo(-23)), "Foo(-23)");
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[must_use]
@@ -2562,7 +2567,7 @@ macro_rules! tuple {
 
 macro_rules! maybe_tuple_doc {
     ($a:ident @ #[$meta:meta] $item:item) => {
-        #[cfg_attr(not(bootstrap), doc(fake_variadic))]
+        #[doc(fake_variadic)]
         #[doc = "This trait is implemented for tuples up to twelve items long."]
         #[$meta]
         $item

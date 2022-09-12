@@ -9,7 +9,7 @@ CHECK-SAME:   section "[[INSTR_PROF_COVFUN]]"[[COMDAT_IF_SUPPORTED]], align 8
 CHECK:        @__llvm_coverage_mapping = private constant
 CHECK-SAME:   section "[[INSTR_PROF_COVMAP]]", align 8
 
-WINDOWS:      @__llvm_profile_runtime = external global i32
+WINDOWS:      @__llvm_profile_runtime = external{{.*}}global i32
 
 CHECK:        @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called = {{private|internal}} global
 CHECK-SAME:   section "[[INSTR_PROF_CNTS]]"{{.*}}, align 8

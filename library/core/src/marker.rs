@@ -343,7 +343,7 @@ pub trait StructuralEq {
 /// If you try to implement `Copy` on a struct or enum containing non-`Copy` data, you will get
 /// the error [E0204].
 ///
-/// [E0204]: ../../error-index.html#E0204
+/// [E0204]: ../../error_codes/E0204.html
 ///
 /// ## When *should* my type be `Copy`?
 ///

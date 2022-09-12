@@ -371,7 +371,7 @@ That is, rust-analyzer requires unwinding.
 
 ### Testing
 
-Rust Analyzer has three interesting [system boundaries](https://www.tedinski.com/2018/04/10/making-tests-a-positive-influence-on-design.html) to concentrate tests on.
+rust-analyzer has three interesting [system boundaries](https://www.tedinski.com/2018/04/10/making-tests-a-positive-influence-on-design.html) to concentrate tests on.
 
 The outermost boundary is the `rust-analyzer` crate, which defines an LSP interface in terms of stdio.
 We do integration testing of this component, by feeding it with a stream of LSP requests and checking responses.
@@ -485,7 +485,7 @@ Mind the code--architecture gap: at the moment, we are using fewer feature flags
 ### Serialization
 
 In Rust, it is easy (often too easy) to add serialization to any type by adding `#[derive(Serialize)]`.
-This easiness is misleading -- serializable types impose significant backwards compatability constraints.
+This easiness is misleading -- serializable types impose significant backwards compatibility constraints.
 If a type is serializable, then it is a part of some IPC boundary.
 You often don't control the other side of this boundary, so changing serializable types is hard.
 

@@ -1,27 +1,52 @@
 error[E0308]: mismatched types
-  --> $DIR/wrong-type-assume.rs:36:51
+  --> $DIR/wrong-type-assume.rs:53:51
    |
 LL |     assert::is_transmutable::<Src, Dst, Context, {0u8}, false, false, false>();
    |                                                   ^^^ expected `bool`, found `u8`
 
+error[E0080]: evaluation of `assert::is_transmutable::<test::Src, test::Dst, test::Context, {0u8}, false, false, false>::{constant#0}` failed
+  --> $DIR/wrong-type-assume.rs:26:15
+   |
+LL |             { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+
 error[E0308]: mismatched types
-  --> $DIR/wrong-type-assume.rs:37:58
+  --> $DIR/wrong-type-assume.rs:54:58
    |
 LL |     assert::is_transmutable::<Src, Dst, Context, false, {0u8}, false, false>();
    |                                                          ^^^ expected `bool`, found `u8`
 
+error[E0080]: evaluation of `assert::is_transmutable::<test::Src, test::Dst, test::Context, false, {0u8}, false, false>::{constant#0}` failed
+  --> $DIR/wrong-type-assume.rs:26:15
+   |
+LL |             { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+
 error[E0308]: mismatched types
-  --> $DIR/wrong-type-assume.rs:38:65
+  --> $DIR/wrong-type-assume.rs:55:65
    |
 LL |     assert::is_transmutable::<Src, Dst, Context, false, false, {0u8}, false>();
    |                                                                 ^^^ expected `bool`, found `u8`
 
+error[E0080]: evaluation of `assert::is_transmutable::<test::Src, test::Dst, test::Context, false, false, {0u8}, false>::{constant#0}` failed
+  --> $DIR/wrong-type-assume.rs:26:15
+   |
+LL |             { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+
 error[E0308]: mismatched types
-  --> $DIR/wrong-type-assume.rs:39:72
+  --> $DIR/wrong-type-assume.rs:56:72
    |
 LL |     assert::is_transmutable::<Src, Dst, Context, false, false, false, {0u8}>();
    |                                                                        ^^^ expected `bool`, found `u8`
 
-error: aborting due to 4 previous errors
+error[E0080]: evaluation of `assert::is_transmutable::<test::Src, test::Dst, test::Context, false, false, false, {0u8}>::{constant#0}` failed
+  --> $DIR/wrong-type-assume.rs:26:15
+   |
+LL |             { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
-For more information about this error, try `rustc --explain E0308`.
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0080, E0308.
+For more information about an error, try `rustc --explain E0080`.

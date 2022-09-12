@@ -18,7 +18,7 @@ LL | fn foo(s: &i32) -> &i32 {
 LL |     assert_eq!(foo, y);
    |     ^^^^^^^^^^^^^^^^^^ `for<'r> fn(&'r i32) -> &'r i32 {foo}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `Debug` is not implemented for `for<'r> fn(&'r i32) -> &'r i32 {foo}`
+   = help: the trait `Debug` is not implemented for fn item `for<'r> fn(&'r i32) -> &'r i32 {foo}`
    = help: use parentheses to call the function: `foo(s)`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 

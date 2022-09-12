@@ -12,5 +12,15 @@ LL | struct Bug<A = [(); (let a = (), 1).1]> {
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
-error: aborting due to 2 previous errors
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/issue-92893.rs:1:22
+   |
+LL | struct Bug<A = [(); (let a = (), 1).1]> {
+   |                      ^^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

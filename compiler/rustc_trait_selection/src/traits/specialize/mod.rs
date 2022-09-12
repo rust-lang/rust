@@ -12,6 +12,7 @@
 pub mod specialization_graph;
 use specialization_graph::GraphExt;
 
+use crate::errors::NegativePositiveConflict;
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause};
@@ -327,35 +328,13 @@ fn report_negative_positive_conflict(
     positive_impl_def_id: DefId,
     sg: &mut specialization_graph::Graph,
 ) {
-    let impl_span = tcx.def_span(local_impl_def_id);
-
-    let mut err = struct_span_err!(
-        tcx.sess,
-        impl_span,
-        E0751,
-        "found both positive and negative implementation of trait `{}`{}:",
-        overlap.trait_desc,
-        overlap.self_desc.clone().map_or_else(String::new, |ty| format!(" for type `{}`", ty))
-    );
-
-    match tcx.span_of_impl(negative_impl_def_id) {
-        Ok(span) => {
-            err.span_label(span, "negative implementation here");
-        }
-        Err(cname) => {
-            err.note(&format!("negative implementation in crate `{}`", cname));
-        }
-    }
-
-    match tcx.span_of_impl(positive_impl_def_id) {
-        Ok(span) => {
-            err.span_label(span, "positive implementation here");
-        }
-        Err(cname) => {
-            err.note(&format!("positive implementation in crate `{}`", cname));
-        }
-    }
-
+    let mut err = tcx.sess.create_err(NegativePositiveConflict {
+        impl_span: tcx.def_span(local_impl_def_id),
+        trait_desc: &overlap.trait_desc,
+        self_desc: &overlap.self_desc,
+        negative_impl_span: tcx.span_of_impl(negative_impl_def_id),
+        positive_impl_span: tcx.span_of_impl(positive_impl_def_id),
+    });
     sg.has_errored = Some(err.emit());
 }
 

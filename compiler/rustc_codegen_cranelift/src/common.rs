@@ -1,14 +1,18 @@
 use cranelift_codegen::isa::TargetFrontendConfig;
+use gimli::write::FileId;
+
+use rustc_data_structures::sync::Lrc;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
-use rustc_middle::ty::SymbolName;
+use rustc_span::SourceFile;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::constant::ConstantCx;
+use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
 
 pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
@@ -74,7 +78,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
                 _ => unreachable!(),
             };
 
-            match scalar_to_clif_type(tcx, element).by(u16::try_from(count).unwrap()) {
+            match scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()) {
                 // Cranelift currently only implements icmp for 128bit vectors.
                 Some(vector_ty) if vector_ty.bits() == 128 => vector_ty,
                 _ => return None,
@@ -232,15 +236,16 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
 }
 
 pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
-    pub(crate) cx: &'clif mut crate::CodegenCx<'tcx>,
+    pub(crate) cx: &'clif mut crate::CodegenCx,
     pub(crate) module: &'m mut dyn Module,
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) target_config: TargetFrontendConfig, // Cached from module
     pub(crate) pointer_type: Type,                  // Cached from module
     pub(crate) constants_cx: ConstantCx,
+    pub(crate) func_debug_cx: Option<FunctionDebugContext>,
 
     pub(crate) instance: Instance<'tcx>,
-    pub(crate) symbol_name: SymbolName<'tcx>,
+    pub(crate) symbol_name: String,
     pub(crate) mir: &'tcx Body<'tcx>,
     pub(crate) fn_abi: Option<&'tcx FnAbi<'tcx, Ty<'tcx>>>,
 
@@ -252,7 +257,11 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) caller_location: Option<CValue<'tcx>>,
 
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
-    pub(crate) source_info_set: indexmap::IndexSet<SourceInfo>,
+
+    /// Last accessed source file and it's debuginfo file id.
+    ///
+    /// For optimization purposes only
+    pub(crate) last_source_file: Option<(Lrc<SourceFile>, FileId)>,
 
     /// This should only be accessed by `CPlace::new_var`.
     pub(crate) next_ssa_var: u32,
@@ -336,8 +345,31 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {
-        let (index, _) = self.source_info_set.insert_full(source_info);
-        self.bcx.set_srcloc(SourceLoc::new(index as u32));
+        if let Some(debug_context) = &mut self.cx.debug_context {
+            let (file, line, column) =
+                DebugContext::get_span_loc(self.tcx, self.mir.span, source_info.span);
+
+            // add_source_file is very slow.
+            // Optimize for the common case of the current file not being changed.
+            let mut cached_file_id = None;
+            if let Some((ref last_source_file, last_file_id)) = self.last_source_file {
+                // If the allocations are not equal, the files may still be equal, but that
+                // doesn't matter, as this is just an optimization.
+                if rustc_data_structures::sync::Lrc::ptr_eq(last_source_file, &file) {
+                    cached_file_id = Some(last_file_id);
+                }
+            }
+
+            let file_id = if let Some(file_id) = cached_file_id {
+                file_id
+            } else {
+                debug_context.add_source_file(&file)
+            };
+
+            let source_loc =
+                self.func_debug_cx.as_mut().unwrap().add_dbg_loc(file_id, line, column);
+            self.bcx.set_srcloc(source_loc);
+        }
     }
 
     // Note: must be kept in sync with get_caller_location from cg_ssa

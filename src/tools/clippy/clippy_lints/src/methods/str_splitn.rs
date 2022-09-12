@@ -130,7 +130,7 @@ fn check_manual_split_once_indirect(
     let ctxt = expr.span.ctxt();
     let mut parents = cx.tcx.hir().parent_iter(expr.hir_id);
     if let (_, Node::Local(local)) = parents.next()?
-        && let PatKind::Binding(BindingAnnotation::Mutable, iter_binding_id, iter_ident, None) = local.pat.kind
+        && let PatKind::Binding(BindingAnnotation::MUT, iter_binding_id, iter_ident, None) = local.pat.kind
         && let (iter_stmt_id, Node::Stmt(_)) = parents.next()?
         && let (_, Node::Block(enclosing_block)) = parents.next()?
 
@@ -212,11 +212,10 @@ fn indirect_usage<'tcx>(
     ctxt: SyntaxContext,
 ) -> Option<IndirectUsage<'tcx>> {
     if let StmtKind::Local(Local {
-        pat:
-            Pat {
-                kind: PatKind::Binding(BindingAnnotation::Unannotated, _, ident, None),
-                ..
-            },
+        pat: Pat {
+            kind: PatKind::Binding(BindingAnnotation::NONE, _, ident, None),
+            ..
+        },
         init: Some(init_expr),
         hir_id: local_hir_id,
         ..
@@ -292,7 +291,7 @@ fn parse_iter_usage<'tcx>(
 ) -> Option<IterUsage> {
     let (kind, span) = match iter.next() {
         Some((_, Node::Expr(e))) if e.span.ctxt() == ctxt => {
-            let (name, args) = if let ExprKind::MethodCall(name, [_, args @ ..], _) = e.kind {
+            let (name, args) = if let ExprKind::MethodCall(name, _, [args @ ..], _) = e.kind {
                 (name, args)
             } else {
                 return None;
@@ -327,7 +326,7 @@ fn parse_iter_usage<'tcx>(
                         } else {
                             if_chain! {
                                 if let Some((_, Node::Expr(next_expr))) = iter.next();
-                                if let ExprKind::MethodCall(next_name, [_], _) = next_expr.kind;
+                                if let ExprKind::MethodCall(next_name, _, [], _) = next_expr.kind;
                                 if next_name.ident.name == sym::next;
                                 if next_expr.span.ctxt() == ctxt;
                                 if let Some(next_id) = cx.typeck_results().type_dependent_def_id(next_expr.hir_id);
@@ -367,7 +366,7 @@ fn parse_iter_usage<'tcx>(
                 }
             },
             _ if e.span.ctxt() != ctxt => (None, span),
-            ExprKind::MethodCall(name, [_], _)
+            ExprKind::MethodCall(name, _, [], _)
                 if name.ident.name == sym::unwrap
                     && cx
                         .typeck_results()

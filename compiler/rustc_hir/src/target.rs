@@ -36,6 +36,7 @@ pub enum Target {
     GlobalAsm,
     TyAlias,
     OpaqueTy,
+    ImplTraitPlaceholder,
     Enum,
     Variant,
     Struct,
@@ -56,6 +57,8 @@ pub enum Target {
     GenericParam(GenericParamKind),
     MacroDef,
     Param,
+    PatField,
+    ExprField,
 }
 
 impl Display for Target {
@@ -77,7 +80,13 @@ impl Target {
             ItemKind::ForeignMod { .. } => Target::ForeignMod,
             ItemKind::GlobalAsm(..) => Target::GlobalAsm,
             ItemKind::TyAlias(..) => Target::TyAlias,
-            ItemKind::OpaqueTy(..) => Target::OpaqueTy,
+            ItemKind::OpaqueTy(ref opaque) => {
+                if opaque.in_trait {
+                    Target::ImplTraitPlaceholder
+                } else {
+                    Target::OpaqueTy
+                }
+            }
             ItemKind::Enum(..) => Target::Enum,
             ItemKind::Struct(..) => Target::Struct,
             ItemKind::Union(..) => Target::Union,
@@ -101,6 +110,7 @@ impl Target {
             DefKind::GlobalAsm => Target::GlobalAsm,
             DefKind::TyAlias => Target::TyAlias,
             DefKind::OpaqueTy => Target::OpaqueTy,
+            DefKind::ImplTraitPlaceholder => Target::ImplTraitPlaceholder,
             DefKind::Enum => Target::Enum,
             DefKind::Struct => Target::Struct,
             DefKind::Union => Target::Union,
@@ -155,6 +165,7 @@ impl Target {
             Target::GlobalAsm => "global asm",
             Target::TyAlias => "type alias",
             Target::OpaqueTy => "opaque type",
+            Target::ImplTraitPlaceholder => "opaque type in trait",
             Target::Enum => "enum",
             Target::Variant => "enum variant",
             Target::Struct => "struct",
@@ -183,6 +194,8 @@ impl Target {
             },
             Target::MacroDef => "macro def",
             Target::Param => "function param",
+            Target::PatField => "pattern field",
+            Target::ExprField => "struct field",
         }
     }
 }

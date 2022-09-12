@@ -1,3 +1,4 @@
+// unit-test: Derefer
 // EMIT_MIR derefer_complex_case.main.Derefer.diff
 // ignore-wasm32
 

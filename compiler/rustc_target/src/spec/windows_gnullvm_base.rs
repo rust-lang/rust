@@ -3,7 +3,7 @@ use crate::spec::{cvs, LinkerFlavor, TargetOptions};
 pub fn opts() -> TargetOptions {
     // We cannot use `-nodefaultlibs` because compiler-rt has to be passed
     // as a path since it's not added to linker search path by the default.
-    // There were attemts to make it behave like libgcc (so one can just use -l<name>)
+    // There were attempts to make it behave like libgcc (so one can just use -l<name>)
     // but LLVM maintainers rejected it: https://reviews.llvm.org/D51440
     let pre_link_args =
         TargetOptions::link_args(LinkerFlavor::Gcc, &["-nolibc", "--unwindlib=none"]);

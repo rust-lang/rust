@@ -1988,7 +1988,7 @@ impl<'a> Parser<'a> {
                     err.span_suggestion(
                         span,
                         "declare the type after the parameter binding",
-                        String::from("<identifier>: <type>"),
+                        "<identifier>: <type>",
                         Applicability::HasPlaceholders,
                     );
                 } else if require_name && is_trait_item {

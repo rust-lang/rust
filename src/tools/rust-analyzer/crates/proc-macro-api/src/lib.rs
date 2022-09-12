@@ -60,7 +60,7 @@ impl MacroDylib {
 
         let info = version::read_dylib_info(&path)?;
         if info.version.0 < 1 || info.version.1 < 47 {
-            let msg = format!("proc-macro {} built by {:#?} is not supported by Rust Analyzer, please update your rust version.", path.display(), info);
+            let msg = format!("proc-macro {} built by {:#?} is not supported by rust-analyzer, please update your Rust version.", path.display(), info);
             return Err(io::Error::new(io::ErrorKind::InvalidData, msg));
         }
 

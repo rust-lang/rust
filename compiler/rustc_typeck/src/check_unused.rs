@@ -1,5 +1,5 @@
+use crate::errors::{ExternCrateNotIdiomatic, UnusedExternCrate};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -108,25 +108,16 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         // We do this in any edition.
         if extern_crate.warn_if_unused {
             if let Some(&span) = unused_extern_crates.get(&def_id) {
+                // Removal suggestion span needs to include attributes (Issue #54400)
                 let id = tcx.hir().local_def_id_to_hir_id(def_id);
-                tcx.struct_span_lint_hir(lint, id, span, |lint| {
-                    // Removal suggestion span needs to include attributes (Issue #54400)
-                    let span_with_attrs = tcx
-                        .hir()
-                        .attrs(id)
-                        .iter()
-                        .map(|attr| attr.span)
-                        .fold(span, |acc, attr_span| acc.to(attr_span));
+                let span_with_attrs = tcx
+                    .hir()
+                    .attrs(id)
+                    .iter()
+                    .map(|attr| attr.span)
+                    .fold(span, |acc, attr_span| acc.to(attr_span));
 
-                    lint.build("unused extern crate")
-                        .span_suggestion_short(
-                            span_with_attrs,
-                            "remove it",
-                            "",
-                            Applicability::MachineApplicable,
-                        )
-                        .emit();
-                });
+                tcx.emit_spanned_lint(lint, id, span, UnusedExternCrate { span: span_with_attrs });
                 continue;
             }
         }
@@ -158,23 +149,23 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         if !tcx.hir().attrs(id).is_empty() {
             continue;
         }
-        tcx.struct_span_lint_hir(lint, id, extern_crate.span, |lint| {
-            // Otherwise, we can convert it into a `use` of some kind.
-            let base_replacement = match extern_crate.orig_name {
-                Some(orig_name) => format!("use {} as {};", orig_name, item.ident.name),
-                None => format!("use {};", item.ident.name),
-            };
-            let vis = tcx.sess.source_map().span_to_snippet(item.vis_span).unwrap_or_default();
-            let add_vis = |to| if vis.is_empty() { to } else { format!("{} {}", vis, to) };
-            lint.build("`extern crate` is not idiomatic in the new edition")
-                .span_suggestion_short(
-                    extern_crate.span,
-                    &format!("convert it to a `{}`", add_vis("use".to_string())),
-                    add_vis(base_replacement),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
-        })
+
+        let base_replacement = match extern_crate.orig_name {
+            Some(orig_name) => format!("use {} as {};", orig_name, item.ident.name),
+            None => format!("use {};", item.ident.name),
+        };
+        let vis = tcx.sess.source_map().span_to_snippet(item.vis_span).unwrap_or_default();
+        let add_vis = |to| if vis.is_empty() { to } else { format!("{} {}", vis, to) };
+        tcx.emit_spanned_lint(
+            lint,
+            id,
+            extern_crate.span,
+            ExternCrateNotIdiomatic {
+                span: extern_crate.span,
+                msg_code: add_vis("use".to_string()),
+                suggestion_code: add_vis(base_replacement),
+            },
+        );
     }
 }
 

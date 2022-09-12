@@ -45,7 +45,7 @@ pub enum Constant {
     /// A reference
     Ref(Box<Constant>),
     /// A literal with syntax error.
-    Err(Symbol),
+    Err,
 }
 
 impl PartialEq for Constant {
@@ -118,9 +118,7 @@ impl Hash for Constant {
             Self::Ref(ref r) => {
                 r.hash(state);
             },
-            Self::Err(ref s) => {
-                s.hash(state);
-            },
+            Self::Err => {},
         }
     }
 }
@@ -194,7 +192,7 @@ pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
             _ => bug!(),
         },
         LitKind::Bool(b) => Constant::Bool(b),
-        LitKind::Err(s) => Constant::Err(s),
+        LitKind::Err => Constant::Err,
     }
 }
 

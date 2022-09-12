@@ -77,7 +77,7 @@ fn update_bar_value() {
     }
 }
 
-// CHECK: define void @test(){{.+}}addrspace(1)
+// CHECK: define dso_local void @test(){{.+}}addrspace(1)
 #[no_mangle]
 pub extern "C" fn test() {
     let mut buf = 7;

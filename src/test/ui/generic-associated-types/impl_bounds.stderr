@@ -42,7 +42,7 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     type C = String where Self: Copy;
    |                                 ^^^^ the trait `Copy` is not implemented for `T`
    |
-note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
+note: required for `Fooy<T>` to implement `Copy`
   --> $DIR/impl_bounds.rs:11:10
    |
 LL | #[derive(Copy, Clone)]
@@ -67,7 +67,7 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     fn d() where Self: Copy {}
    |                        ^^^^ the trait `Copy` is not implemented for `T`
    |
-note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
+note: required for `Fooy<T>` to implement `Copy`
   --> $DIR/impl_bounds.rs:11:10
    |
 LL | #[derive(Copy, Clone)]

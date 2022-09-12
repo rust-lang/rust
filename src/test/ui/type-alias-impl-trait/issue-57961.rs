@@ -8,7 +8,7 @@ trait Foo {
 
 impl Foo for () {
     type Bar = std::vec::IntoIter<u32>;
-    //~^ ERROR type mismatch resolving `<std::vec::IntoIter<u32> as Iterator>::Item == X
+    //~^ ERROR expected `std::vec::IntoIter<u32>` to be an iterator that yields `X`, but it yields `u32`
 }
 
 fn incoherent() {

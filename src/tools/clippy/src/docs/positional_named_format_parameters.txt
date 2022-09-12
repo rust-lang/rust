@@ -1,0 +1,15 @@
+### What it does
+This lint warns when a named parameter in a format string is used as a positional one.
+
+### Why is this bad?
+It may be confused for an assignment and obfuscates which parameter is being used.
+
+### Example
+```
+println!("{}", x = 10);
+```
+
+Use instead:
+```
+println!("{x}", x = 10);
+```

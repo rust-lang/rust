@@ -10,7 +10,7 @@ use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::ptr;
 use crate::sys::net::netc as c;
 use crate::sys::net::{cvt, cvt_gai, cvt_r, init, wrlen_t, Socket};
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
 use libc::{c_int, c_void};
@@ -342,6 +342,12 @@ impl TcpStream {
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.inner.set_nonblocking(nonblocking)
+    }
+}
+
+impl AsInner<Socket> for TcpStream {
+    fn as_inner(&self) -> &Socket {
+        &self.inner
     }
 }
 

@@ -2,6 +2,7 @@
 
 #[rustfmt::skip]
 pub static RENAMED_LINTS: &[(&str, &str)] = &[
+    ("clippy::blacklisted_name", "clippy::disallowed_names"),
     ("clippy::block_in_if_condition_expr", "clippy::blocks_in_if_conditions"),
     ("clippy::block_in_if_condition_stmt", "clippy::blocks_in_if_conditions"),
     ("clippy::box_vec", "clippy::box_collection"),
@@ -14,6 +15,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::for_loop_over_result", "clippy::for_loops_over_fallibles"),
     ("clippy::identity_conversion", "clippy::useless_conversion"),
     ("clippy::if_let_some_result", "clippy::match_result_ok"),
+    ("clippy::logic_bug", "clippy::overly_complex_bool_expr"),
     ("clippy::new_without_default_derive", "clippy::new_without_default"),
     ("clippy::option_and_then_some", "clippy::bind_instead_of_map"),
     ("clippy::option_expect_used", "clippy::expect_used"),

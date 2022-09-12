@@ -129,6 +129,14 @@ pub struct ExpandedMacro {
     pub expansion: String,
 }
 
+pub enum CancelFlycheck {}
+
+impl Request for CancelFlycheck {
+    type Params = ();
+    type Result = ();
+    const METHOD: &'static str = "rust-analyzer/cancelFlycheck";
+}
+
 pub enum MatchingBrace {}
 
 impl Request for MatchingBrace {

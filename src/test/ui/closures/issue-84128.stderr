@@ -6,11 +6,6 @@ LL |         Foo(())
    |         |
    |         arguments to this struct are incorrect
    |
-note: return type inferred to be `{integer}` here
-  --> $DIR/issue-84128.rs:10:20
-   |
-LL |             return Foo(0);
-   |                    ^^^^^^
 note: tuple struct defined here
   --> $DIR/issue-84128.rs:5:8
    |

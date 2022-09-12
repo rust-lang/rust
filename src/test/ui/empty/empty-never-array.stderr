@@ -1,8 +1,8 @@
-error[E0005]: refutable pattern in local binding: `T(_, _)` not covered
+error[E0005]: refutable pattern in local binding: `Helper::T(_, _)` not covered
   --> $DIR/empty-never-array.rs:10:9
    |
 LL |     let Helper::U(u) = Helper::T(t, []);
-   |         ^^^^^^^^^^^^ pattern `T(_, _)` not covered
+   |         ^^^^^^^^^^^^ pattern `Helper::T(_, _)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html

@@ -20,6 +20,9 @@ pub struct HirId {
 }
 
 impl HirId {
+    /// Signal local id which should never be used.
+    pub const INVALID: HirId = HirId { owner: CRATE_DEF_ID, local_id: ItemLocalId::INVALID };
+
     #[inline]
     pub fn expect_owner(self) -> LocalDefId {
         assert_eq!(self.local_id.index(), 0);

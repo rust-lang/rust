@@ -34,6 +34,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(not(bootstrap))]
+use crate::error::Error;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 
@@ -556,6 +558,7 @@ where
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for T {
     /// Returns the argument unchanged.
+    #[inline(always)]
     fn from(t: T) -> T {
         t
     }
@@ -711,6 +714,14 @@ impl fmt::Debug for Infallible {
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 impl fmt::Display for Infallible {
     fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {}
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "str_parse_error2", since = "1.8.0")]
+impl Error for Infallible {
+    fn description(&self) -> &str {
         match *self {}
     }
 }

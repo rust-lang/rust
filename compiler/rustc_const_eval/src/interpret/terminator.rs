@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use rustc_ast::ast::InlineAsmOptions;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::Instance;
 use rustc_middle::{
@@ -129,8 +130,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let cond_val =
-                    self.read_immediate(&self.eval_operand(cond, None)?)?.to_scalar()?.to_bool()?;
+                let cond_val = self.read_scalar(&self.eval_operand(cond, None)?)?.to_bool()?;
                 if expected == cond_val {
                     self.go_to_block(target);
                 } else {
@@ -167,8 +167,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 terminator.kind
             ),
 
-            // Inline assembly can't be interpreted.
-            InlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
+            InlineAsm { template, ref operands, options, destination, .. } => {
+                M::eval_inline_asm(self, template, operands, options)?;
+                if options.contains(InlineAsmOptions::NORETURN) {
+                    throw_ub_format!("returned from noreturn inline assembly");
+                }
+                self.go_to_block(
+                    destination
+                        .expect("InlineAsm terminators without noreturn must have a destination"),
+                )
+            }
         }
 
         Ok(())
@@ -215,12 +223,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 _ => false,
             }
         };
-        // Padding must be fully equal.
-        let pad_compat = || caller_abi.pad == callee_abi.pad;
         // When comparing the PassMode, we have to be smart about comparing the attributes.
-        let arg_attr_compat = |a1: ArgAttributes, a2: ArgAttributes| {
+        let arg_attr_compat = |a1: &ArgAttributes, a2: &ArgAttributes| {
             // There's only one regular attribute that matters for the call ABI: InReg.
-            // Everything else is things like noalias, dereferencable, nonnull, ...
+            // Everything else is things like noalias, dereferenceable, nonnull, ...
             // (This also applies to pointee_size, pointee_align.)
             if a1.regular.contains(ArgAttribute::InReg) != a2.regular.contains(ArgAttribute::InReg)
             {
@@ -233,13 +239,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             return true;
         };
-        let mode_compat = || match (caller_abi.mode, callee_abi.mode) {
+        let mode_compat = || match (&caller_abi.mode, &callee_abi.mode) {
             (PassMode::Ignore, PassMode::Ignore) => true,
             (PassMode::Direct(a1), PassMode::Direct(a2)) => arg_attr_compat(a1, a2),
             (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => {
                 arg_attr_compat(a1, a2) && arg_attr_compat(b1, b2)
             }
-            (PassMode::Cast(c1), PassMode::Cast(c2)) => c1 == c2,
+            (PassMode::Cast(c1, pad1), PassMode::Cast(c2, pad2)) => c1 == c2 && pad1 == pad2,
             (
                 PassMode::Indirect { attrs: a1, extra_attrs: None, on_stack: s1 },
                 PassMode::Indirect { attrs: a2, extra_attrs: None, on_stack: s2 },
@@ -251,7 +257,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => false,
         };
 
-        if layout_compat() && pad_compat() && mode_compat() {
+        if layout_compat() && mode_compat() {
             return true;
         }
         trace!(
@@ -534,7 +540,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let mut non_zst_field = None;
                             for i in 0..receiver.layout.fields.count() {
                                 let field = self.operand_field(&receiver, i)?;
-                                if !field.layout.is_zst() {
+                                let zst =
+                                    field.layout.is_zst() && field.layout.align.abi.bytes() == 1;
+                                if !zst {
                                     assert!(
                                         non_zst_field.is_none(),
                                         "multiple non-ZST fields in dyn receiver type {}",
@@ -557,7 +565,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .tcx
                     .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
                 let ty::Dynamic(data, ..) = receiver_tail.kind() else {
-                    span_bug!(self.cur_span(), "dyanmic call on non-`dyn` type {}", receiver_tail)
+                    span_bug!(self.cur_span(), "dynamic call on non-`dyn` type {}", receiver_tail)
                 };
 
                 // Get the required information from the vtable.

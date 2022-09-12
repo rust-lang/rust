@@ -8,7 +8,7 @@ use syntax::{
 };
 
 use crate::{
-    assist_context::{AssistBuilder, AssistContext, Assists},
+    assist_context::{AssistContext, Assists, SourceChangeBuilder},
     utils::generate_trait_impl_text,
     AssistId, AssistKind,
 };
@@ -120,7 +120,7 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
 }
 
 fn generate_edit(
-    edit: &mut AssistBuilder,
+    edit: &mut SourceChangeBuilder,
     strukt: ast::Struct,
     field_type_syntax: &SyntaxNode,
     field_name: impl Display,

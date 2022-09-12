@@ -1,8 +1,8 @@
 error[E0277]: `*const u8` cannot be sent between threads safely
-  --> $DIR/E0277-2.rs:16:5
+  --> $DIR/E0277-2.rs:16:15
    |
 LL |     is_send::<Foo>();
-   |     ^^^^^^^^^^^^^^ `*const u8` cannot be sent between threads safely
+   |               ^^^ `*const u8` cannot be sent between threads safely
    |
    = help: within `Foo`, the trait `Send` is not implemented for `*const u8`
 note: required because it appears within the type `Baz`

@@ -1,14 +1,5 @@
-warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/link-ordinal-invalid-format.rs:1:12
-   |
-LL | #![feature(raw_dylib)]
-   |            ^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
-
 error: illegal ordinal format in `link_ordinal`
-  --> $DIR/link-ordinal-invalid-format.rs:6:5
+  --> $DIR/link-ordinal-invalid-format.rs:5:5
    |
 LL |     #[link_ordinal("JustMonika")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,12 +7,12 @@ LL |     #[link_ordinal("JustMonika")]
    = note: an unsuffixed integer value, e.g., `1`, is expected
 
 error: illegal ordinal format in `link_ordinal`
-  --> $DIR/link-ordinal-invalid-format.rs:9:5
+  --> $DIR/link-ordinal-invalid-format.rs:8:5
    |
 LL |     #[link_ordinal("JustMonika")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: an unsuffixed integer value, e.g., `1`, is expected
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 

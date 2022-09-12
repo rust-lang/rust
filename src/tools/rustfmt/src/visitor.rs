@@ -811,8 +811,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 );
             } else {
                 match &attr.kind {
-                    ast::AttrKind::Normal(ref attribute_item, _)
-                        if self.is_unknown_rustfmt_attr(&attribute_item.path.segments) =>
+                    ast::AttrKind::Normal(ref normal)
+                        if self.is_unknown_rustfmt_attr(&normal.item.path.segments) =>
                     {
                         let file_name = self.parse_sess.span_to_filename(attr.span);
                         self.report.append(

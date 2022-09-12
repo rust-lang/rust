@@ -52,7 +52,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
                 | StatementKind::StorageLive(_)
                 | StatementKind::StorageDead(_)
                 | StatementKind::Coverage(_)
-                | StatementKind::CopyNonOverlapping(_)
+                | StatementKind::Intrinsic(_)
                 | StatementKind::Nop => (),
 
                 StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {

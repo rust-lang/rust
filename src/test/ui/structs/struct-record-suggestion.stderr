@@ -1,8 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/struct-record-suggestion.rs:10:20
    |
-LL |     let q = A { c: 5 .. Default::default() };
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found struct `std::ops::Range`
+LL |     let q = A { c: 5..Default::default() };
+   |                    ^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found struct `std::ops::Range`
    |
    = note: expected type `u64`
             found struct `std::ops::Range<{integer}>`
@@ -10,15 +10,28 @@ LL |     let q = A { c: 5 .. Default::default() };
 error[E0063]: missing fields `b` and `d` in initializer of `A`
   --> $DIR/struct-record-suggestion.rs:10:13
    |
-LL |     let q = A { c: 5 .. Default::default() };
+LL |     let q = A { c: 5..Default::default() };
    |             ^ missing `b` and `d`
    |
 help: to set the remaining fields from `Default::default()`, separate the last named field with a comma
    |
-LL |     let q = A { c: 5, .. Default::default() };
+LL |     let q = A { c: 5,..Default::default() };
    |                     +
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/struct-record-suggestion.rs:24:20
+   |
+LL |     let q = B { b: 1..Default::default() };
+   |                    ^^^^^^^^^^^^^^^^^^^^^ expected `u32`, found struct `std::ops::Range`
+   |
+   = note: expected type `u32`
+            found struct `std::ops::Range<{integer}>`
+help: to set the remaining fields from `Default::default()`, separate the last named field with a comma
+   |
+LL |     let q = B { b: 1,..Default::default() };
+   |                     +
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0063, E0308.
 For more information about an error, try `rustc --explain E0063`.

@@ -2,8 +2,6 @@
 #![allow(dead_code)]
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
 pub trait EventLoop {
     fn dummy(&self) { }
 }
@@ -37,5 +35,5 @@ impl Scheduler {
 }
 
 pub fn main() {
-    let _sched = Scheduler::new(box UvEventLoop::new() as Box<dyn EventLoop>);
+    let _sched = Scheduler::new(Box::new(UvEventLoop::new()) as Box<dyn EventLoop>);
 }

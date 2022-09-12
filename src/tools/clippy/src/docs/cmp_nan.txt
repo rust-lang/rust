@@ -1,0 +1,16 @@
+### What it does
+Checks for comparisons to NaN.
+
+### Why is this bad?
+NaN does not compare meaningfully to anything – not
+even itself – so those comparisons are simply wrong.
+
+### Example
+```
+if x == f32::NAN { }
+```
+
+Use instead:
+```
+if x.is_nan() { }
+```

@@ -266,7 +266,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
         result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
         mir: &mir::Body<'tcx>,
     ) {
-        for (bb, data) in mir.basic_blocks().iter_enumerated() {
+        for (bb, data) in mir.basic_blocks.iter_enumerated() {
             match data.terminator().kind {
                 TerminatorKind::Goto { .. }
                 | TerminatorKind::Resume
@@ -296,7 +296,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
     }
 
     fn propagate<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>, mir: &mir::Body<'tcx>) {
-        let mut funclet_succs = IndexVec::from_elem(None, mir.basic_blocks());
+        let mut funclet_succs = IndexVec::from_elem(None, &mir.basic_blocks);
 
         let mut set_successor = |funclet: mir::BasicBlock, succ| match funclet_succs[funclet] {
             ref mut s @ None => {
@@ -359,7 +359,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
         }
     }
 
-    let mut result = IndexVec::from_elem(CleanupKind::NotCleanup, mir.basic_blocks());
+    let mut result = IndexVec::from_elem(CleanupKind::NotCleanup, &mir.basic_blocks);
 
     discover_masters(&mut result, mir);
     propagate(&mut result, mir);

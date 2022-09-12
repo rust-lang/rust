@@ -131,13 +131,13 @@ fn coerce_index_op() {
     let mut i = I(10);
     i[i[3]] = 4;
     //~^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
-    // Shoud be accepted with g2p
+    // Should be accepted with g2p
 
     i[3] = i[4];
 
     i[i[3]] = i[4];
     //~^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
-    // Shoud be accepted with g2p
+    // Should be accepted with g2p
 }
 
 fn main() {

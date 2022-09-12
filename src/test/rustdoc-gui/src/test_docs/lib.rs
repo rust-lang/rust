@@ -28,6 +28,12 @@ use std::fmt;
 /// Let's say I'm just some text will ya?
 /// ```
 ///
+/// A failing to run one:
+///
+/// ```should_panic
+/// panic!("tadam");
+/// ```
+///
 /// An inlined `code`!
 pub fn foo() {}
 
@@ -292,4 +298,30 @@ pub mod details {
     /// <div>I'm the content of the details!</div>
     /// </details>
     pub struct Details;
+}
+
+pub mod doc_block_table {
+
+    pub trait DocBlockTableTrait {
+        fn func();
+    }
+
+    /// Struct doc.
+    ///
+    /// | header1                  | header2                  |
+    /// |--------------------------|--------------------------|
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    pub struct DocBlockTable {}
+
+    impl DocBlockTableTrait for DocBlockTable {
+        /// Trait impl func doc for struct.
+        ///
+        /// | header1                  | header2                  |
+        /// |--------------------------|--------------------------|
+        /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+        fn func() {
+            println!();
+        }
+    }
+
 }

@@ -1,5 +1,6 @@
-use crate::spec::crt_objects::{self, CrtObjectsFallback};
-use crate::spec::{cvs, LinkerFlavor, TargetOptions};
+use crate::spec::crt_objects::{self, LinkSelfContainedDefault};
+use crate::spec::{cvs, DebuginfoKind, LinkerFlavor, SplitDebuginfo, TargetOptions};
+use std::borrow::Cow;
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = TargetOptions::link_args(
@@ -76,9 +77,9 @@ pub fn opts() -> TargetOptions {
         pre_link_args,
         pre_link_objects: crt_objects::pre_mingw(),
         post_link_objects: crt_objects::post_mingw(),
-        pre_link_objects_fallback: crt_objects::pre_mingw_fallback(),
-        post_link_objects_fallback: crt_objects::post_mingw_fallback(),
-        crt_objects_fallback: Some(CrtObjectsFallback::Mingw),
+        pre_link_objects_self_contained: crt_objects::pre_mingw_self_contained(),
+        post_link_objects_self_contained: crt_objects::post_mingw_self_contained(),
+        link_self_contained: LinkSelfContainedDefault::Mingw,
         late_link_args,
         late_link_args_dynamic,
         late_link_args_static,
@@ -86,6 +87,10 @@ pub fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,
         eh_frame_header: false,
+        // FIXME(davidtwco): Support Split DWARF on Windows GNU - may require LLVM changes to
+        // output DWO, despite using DWARF, doesn't use ELF..
+        debuginfo_kind: DebuginfoKind::Pdb,
+        supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
         ..Default::default()
     }
 }

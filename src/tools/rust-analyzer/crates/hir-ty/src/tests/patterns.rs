@@ -316,6 +316,51 @@ fn infer_pattern_match_string_literal() {
 }
 
 #[test]
+fn infer_pattern_match_byte_string_literal() {
+    check_infer_with_mismatches(
+        r#"
+        //- minicore: index
+        struct S;
+        impl<T, const N: usize> core::ops::Index<S> for [T; N] {
+            type Output = [u8];
+            fn index(&self, index: core::ops::RangeFull) -> &Self::Output {
+                loop {}
+            }
+        }
+        fn test(v: [u8; 3]) {
+            if let b"foo" = &v[S] {}
+            if let b"foo" = &v {}
+        }
+        "#,
+        expect![[r#"
+            105..109 'self': &[T; N]
+            111..116 'index': {unknown}
+            157..180 '{     ...     }': &[u8]
+            167..174 'loop {}': !
+            172..174 '{}': ()
+            191..192 'v': [u8; 3]
+            203..261 '{     ...v {} }': ()
+            209..233 'if let...[S] {}': ()
+            212..230 'let b"... &v[S]': bool
+            216..222 'b"foo"': &[u8]
+            216..222 'b"foo"': &[u8]
+            225..230 '&v[S]': &[u8]
+            226..227 'v': [u8; 3]
+            226..230 'v[S]': [u8]
+            228..229 'S': S
+            231..233 '{}': ()
+            238..259 'if let... &v {}': ()
+            241..256 'let b"foo" = &v': bool
+            245..251 'b"foo"': &[u8; 3]
+            245..251 'b"foo"': &[u8; 3]
+            254..256 '&v': &[u8; 3]
+            255..256 'v': [u8; 3]
+            257..259 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
 fn infer_pattern_match_or() {
     check_infer_with_mismatches(
         r#"
@@ -439,6 +484,42 @@ fn infer_adt_pattern() {
             263..274 'E::A { .. }': E
             277..278 'e': E
             284..285 'd': &E
+        "#]],
+    );
+}
+
+#[test]
+fn tuple_struct_destructured_with_self() {
+    check_infer(
+        r#"
+struct Foo(usize,);
+impl Foo {
+    fn f() {
+        let Self(s,) = &Foo(0,);
+        let Self(s,) = &mut Foo(0,);
+        let Self(s,) = Foo(0,);
+    }
+}
+        "#,
+        expect![[r#"
+            42..151 '{     ...     }': ()
+            56..64 'Self(s,)': Foo
+            61..62 's': &usize
+            67..75 '&Foo(0,)': &Foo
+            68..71 'Foo': Foo(usize) -> Foo
+            68..75 'Foo(0,)': Foo
+            72..73 '0': usize
+            89..97 'Self(s,)': Foo
+            94..95 's': &mut usize
+            100..112 '&mut Foo(0,)': &mut Foo
+            105..108 'Foo': Foo(usize) -> Foo
+            105..112 'Foo(0,)': Foo
+            109..110 '0': usize
+            126..134 'Self(s,)': Foo
+            131..132 's': usize
+            137..140 'Foo': Foo(usize) -> Foo
+            137..144 'Foo(0,)': Foo
+            141..142 '0': usize
         "#]],
     );
 }

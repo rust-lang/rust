@@ -150,5 +150,17 @@ error: casting float literal to `f32` is unnecessary
 LL |         let _ = -1.0 as f32;
    |                 ^^^^^^^^^^^ help: try: `-1.0_f32`
 
-error: aborting due to 25 previous errors
+error: casting integer literal to `i32` is unnecessary
+  --> $DIR/unnecessary_cast.rs:93:22
+   |
+LL |         let _: i32 = -(1) as i32;
+   |                      ^^^^^^^^^^^ help: try: `-1_i32`
+
+error: casting integer literal to `i64` is unnecessary
+  --> $DIR/unnecessary_cast.rs:95:22
+   |
+LL |         let _: i64 = -(1) as i64;
+   |                      ^^^^^^^^^^^ help: try: `-1_i64`
+
+error: aborting due to 27 previous errors
 

@@ -6,13 +6,12 @@
 use std::{
     fmt,
     hash::{Hash, Hasher},
-    iter::FromIterator,
     marker::PhantomData,
     ops::{Index, IndexMut, Range, RangeInclusive},
 };
 
 mod map;
-pub use map::ArenaMap;
+pub use map::{ArenaMap, Entry, OccupiedEntry, VacantEntry};
 
 /// The raw index of a value in an arena.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -208,6 +207,16 @@ impl<T> Arena<T> {
         Arena { data: Vec::new() }
     }
 
+    /// Create a new empty arena with specific capacity.
+    ///
+    /// ```
+    /// let arena: la_arena::Arena<i32> = la_arena::Arena::with_capacity(42);
+    /// assert!(arena.is_empty());
+    /// ```
+    pub fn with_capacity(capacity: usize) -> Arena<T> {
+        Arena { data: Vec::with_capacity(capacity) }
+    }
+
     /// Empties the arena, removing all contained values.
     ///
     /// ```
@@ -311,6 +320,43 @@ impl<T> Arena<T> {
             .iter_mut()
             .enumerate()
             .map(|(idx, value)| (Idx::from_raw(RawIdx(idx as u32)), value))
+    }
+
+    /// Returns an iterator over the arena’s values.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// let idx1 = arena.alloc(20);
+    /// let idx2 = arena.alloc(40);
+    /// let idx3 = arena.alloc(60);
+    ///
+    /// let mut iterator = arena.values();
+    /// assert_eq!(iterator.next(), Some(&20));
+    /// assert_eq!(iterator.next(), Some(&40));
+    /// assert_eq!(iterator.next(), Some(&60));
+    /// ```
+    pub fn values(&mut self) -> impl Iterator<Item = &T> + ExactSizeIterator + DoubleEndedIterator {
+        self.data.iter()
+    }
+
+    /// Returns an iterator over the arena’s mutable values.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// let idx1 = arena.alloc(20);
+    ///
+    /// assert_eq!(arena[idx1], 20);
+    ///
+    /// let mut iterator = arena.values_mut();
+    /// *iterator.next().unwrap() = 10;
+    /// drop(iterator);
+    ///
+    /// assert_eq!(arena[idx1], 10);
+    /// ```
+    pub fn values_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut T> + ExactSizeIterator + DoubleEndedIterator {
+        self.data.iter_mut()
     }
 
     /// Reallocates the arena to make it take up as little space as possible.

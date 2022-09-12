@@ -164,7 +164,7 @@ impl<K: Ord, V> SortedMap<K, V> {
     /// It is up to the caller to make sure that the elements are sorted by key
     /// and that there are no duplicates.
     #[inline]
-    pub fn insert_presorted(&mut self, mut elements: Vec<(K, V)>) {
+    pub fn insert_presorted(&mut self, elements: Vec<(K, V)>) {
         if elements.is_empty() {
             return;
         }
@@ -173,28 +173,28 @@ impl<K: Ord, V> SortedMap<K, V> {
 
         let start_index = self.lookup_index_for(&elements[0].0);
 
-        let drain = match start_index {
+        let elements = match start_index {
             Ok(index) => {
-                let mut drain = elements.drain(..);
-                self.data[index] = drain.next().unwrap();
-                drain
+                let mut elements = elements.into_iter();
+                self.data[index] = elements.next().unwrap();
+                elements
             }
             Err(index) => {
                 if index == self.data.len() || elements.last().unwrap().0 < self.data[index].0 {
                     // We can copy the whole range without having to mix with
                     // existing elements.
-                    self.data.splice(index..index, elements.drain(..));
+                    self.data.splice(index..index, elements.into_iter());
                     return;
                 }
 
-                let mut drain = elements.drain(..);
-                self.data.insert(index, drain.next().unwrap());
-                drain
+                let mut elements = elements.into_iter();
+                self.data.insert(index, elements.next().unwrap());
+                elements
             }
         };
 
         // Insert the rest
-        for (k, v) in drain {
+        for (k, v) in elements {
             self.insert(k, v);
         }
     }

@@ -74,7 +74,7 @@ pub struct CfgSimplifier<'a, 'tcx> {
 
 impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     pub fn new(body: &'a mut Body<'tcx>) -> Self {
-        let mut pred_count = IndexVec::from_elem(0u32, body.basic_blocks());
+        let mut pred_count = IndexVec::from_elem(0u32, &body.basic_blocks);
 
         // we can't use mir.predecessors() here because that counts
         // dead blocks, which we don't want to.
@@ -263,7 +263,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
 pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let reachable = traversal::reachable_as_bitset(body);
-    let num_blocks = body.basic_blocks().len();
+    let num_blocks = body.basic_blocks.len();
     if num_blocks == reachable.count() {
         return;
     }
@@ -412,7 +412,7 @@ pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     if map.iter().any(Option::is_none) {
         // Update references to all vars and tmps now
         let mut updater = LocalUpdater { map, tcx };
-        updater.visit_body(body);
+        updater.visit_body_preserves_cfg(body);
 
         body.local_decls.shrink_to_fit();
     }
@@ -499,7 +499,7 @@ impl UsedLocals {
 impl<'tcx> Visitor<'tcx> for UsedLocals {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
-            StatementKind::CopyNonOverlapping(..)
+            StatementKind::Intrinsic(..)
             | StatementKind::Retag(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
@@ -548,7 +548,7 @@ fn remove_unused_definitions(used_locals: &mut UsedLocals, body: &mut Body<'_>) 
     while modified {
         modified = false;
 
-        for data in body.basic_blocks_mut() {
+        for data in body.basic_blocks.as_mut_preserves_cfg() {
             // Remove unnecessary StorageLive and StorageDead annotations.
             data.statements.retain(|statement| {
                 let keep = match &statement.kind {

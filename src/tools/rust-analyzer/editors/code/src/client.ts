@@ -5,7 +5,6 @@ import * as Is from "vscode-languageclient/lib/common/utils/is";
 import { assert } from "./util";
 import { WorkspaceEdit } from "vscode";
 import { Workspace } from "./ctx";
-import { updateConfig } from "./config";
 import { substituteVariablesInEnv } from "./config";
 import { outputChannel, traceOutputChannel } from "./main";
 import { randomUUID } from "crypto";
@@ -85,11 +84,6 @@ export async function createClient(
     };
 
     let initializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
-
-    // Update outdated user configs
-    await updateConfig(initializationOptions).catch((err) => {
-        void vscode.window.showErrorMessage(`Failed updating old config keys: ${err.message}`);
-    });
 
     if (workspace.kind === "Detached Files") {
         initializationOptions = {

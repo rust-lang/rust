@@ -1,0 +1,32 @@
+### What it does
+Checks for `for` loops over `Option` or `Result` values.
+
+### Why is this bad?
+Readability. This is more clearly expressed as an `if
+let`.
+
+### Example
+```
+for x in opt {
+    // ..
+}
+
+for x in &res {
+    // ..
+}
+
+for x in res.iter() {
+    // ..
+}
+```
+
+Use instead:
+```
+if let Some(x) = opt {
+    // ..
+}
+
+if let Ok(x) = res {
+    // ..
+}
+```

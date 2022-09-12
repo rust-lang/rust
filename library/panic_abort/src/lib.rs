@@ -113,27 +113,11 @@ pub unsafe fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> u32 {
 // binaries, but it should never be called as we don't link in an unwinding
 // runtime at all.
 pub mod personalities {
-    #[rustc_std_internal_symbol]
-    #[cfg(not(any(
-        all(target_family = "wasm", not(target_os = "emscripten")),
-        all(target_os = "windows", target_env = "gnu", target_arch = "x86_64",),
-    )))]
-    pub extern "C" fn rust_eh_personality() {}
+    // In the past this module used to contain stubs for the personality
+    // functions of various platforms, but these where removed when personality
+    // functions were moved to std.
 
-    // On x86_64-pc-windows-gnu we use our own personality function that needs
-    // to return `ExceptionContinueSearch` as we're passing on all our frames.
-    #[rustc_std_internal_symbol]
-    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86_64"))]
-    pub extern "C" fn rust_eh_personality(
-        _record: usize,
-        _frame: usize,
-        _context: usize,
-        _dispatcher: usize,
-    ) -> u32 {
-        1 // `ExceptionContinueSearch`
-    }
-
-    // Similar to above, this corresponds to the `eh_catch_typeinfo` lang item
+    // This corresponds to the `eh_catch_typeinfo` lang item
     // that's only used on Emscripten currently.
     //
     // Since panics don't generate exceptions and foreign exceptions are
@@ -143,13 +127,4 @@ pub mod personalities {
     #[allow(non_upper_case_globals)]
     #[cfg(target_os = "emscripten")]
     static rust_eh_catch_typeinfo: [usize; 2] = [0; 2];
-
-    // These two are called by our startup objects on i686-pc-windows-gnu, but
-    // they don't need to do anything so the bodies are nops.
-    #[rustc_std_internal_symbol]
-    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
-    pub extern "C" fn rust_eh_register_frames() {}
-    #[rustc_std_internal_symbol]
-    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
-    pub extern "C" fn rust_eh_unregister_frames() {}
 }

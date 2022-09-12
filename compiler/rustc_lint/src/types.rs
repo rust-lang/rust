@@ -19,7 +19,6 @@ use rustc_target::spec::abi::Abi as SpecAbi;
 use std::cmp;
 use std::iter;
 use std::ops::ControlFlow;
-use tracing::debug;
 
 declare_lint! {
     /// The `unused_comparisons` lint detects comparisons made useless by
@@ -125,45 +124,51 @@ fn lint_overflowing_range_endpoint<'tcx>(
     lit_val: u128,
     max: u128,
     expr: &'tcx hir::Expr<'tcx>,
-    parent_expr: &'tcx hir::Expr<'tcx>,
     ty: &str,
 ) -> bool {
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
+    let par_id = cx.tcx.hir().get_parent_node(expr.hir_id);
+    let Node::ExprField(field) = cx.tcx.hir().get(par_id) else { return false };
+    let field_par_id = cx.tcx.hir().get_parent_node(field.hir_id);
+    let Node::Expr(struct_expr) = cx.tcx.hir().get(field_par_id) else { return false };
+    if !is_range_literal(struct_expr) {
+        return false;
+    };
+    let ExprKind::Struct(_, eps, _) = &struct_expr.kind else { return false };
+    if eps.len() != 2 {
+        return false;
+    }
+
     let mut overwritten = false;
-    if let ExprKind::Struct(_, eps, _) = &parent_expr.kind {
-        if eps.len() != 2 {
-            return false;
-        }
-        // We can suggest using an inclusive range
-        // (`..=`) instead only if it is the `end` that is
-        // overflowing and only by 1.
-        if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
-            cx.struct_span_lint(OVERFLOWING_LITERALS, parent_expr.span, |lint| {
-                let mut err = lint.build(fluent::lint::range_endpoint_out_of_range);
-                err.set_arg("ty", ty);
-                if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
-                    use ast::{LitIntType, LitKind};
-                    // We need to preserve the literal's suffix,
-                    // as it may determine typing information.
-                    let suffix = match lit.node {
-                        LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
-                        LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
-                        LitKind::Int(_, LitIntType::Unsuffixed) => "",
-                        _ => bug!(),
-                    };
-                    let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
-                    err.span_suggestion(
-                        parent_expr.span,
-                        fluent::lint::suggestion,
-                        suggestion,
-                        Applicability::MachineApplicable,
-                    );
-                    err.emit();
-                    overwritten = true;
-                }
-            });
-        }
+    // We can suggest using an inclusive range
+    // (`..=`) instead only if it is the `end` that is
+    // overflowing and only by 1.
+    if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
+        cx.struct_span_lint(OVERFLOWING_LITERALS, struct_expr.span, |lint| {
+            let mut err = lint.build(fluent::lint::range_endpoint_out_of_range);
+            err.set_arg("ty", ty);
+            if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
+                use ast::{LitIntType, LitKind};
+                // We need to preserve the literal's suffix,
+                // as it may determine typing information.
+                let suffix = match lit.node {
+                    LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
+                    LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
+                    LitKind::Int(_, LitIntType::Unsuffixed) => "",
+                    _ => bug!(),
+                };
+                let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
+                err.span_suggestion(
+                    struct_expr.span,
+                    fluent::lint::suggestion,
+                    suggestion,
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+                overwritten = true;
+            }
+        });
     }
     overwritten
 }
@@ -339,16 +344,9 @@ fn lint_int_literal<'tcx>(
             return;
         }
 
-        let par_id = cx.tcx.hir().get_parent_node(e.hir_id);
-        if let Node::Expr(par_e) = cx.tcx.hir().get(par_id) {
-            if let hir::ExprKind::Struct(..) = par_e.kind {
-                if is_range_literal(par_e)
-                    && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t.name_str())
-                {
-                    // The overflowing literal lint was overridden.
-                    return;
-                }
-            }
+        if lint_overflowing_range_endpoint(cx, lit, v, max, e, t.name_str()) {
+            // The overflowing literal lint was overridden.
+            return;
         }
 
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
@@ -408,15 +406,12 @@ fn lint_uint_literal<'tcx>(
                         return;
                     }
                 }
-                hir::ExprKind::Struct(..) if is_range_literal(par_e) => {
-                    let t = t.name_str();
-                    if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, par_e, t) {
-                        // The overflowing literal lint was overridden.
-                        return;
-                    }
-                }
                 _ => {}
             }
+        }
+        if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, t.name_str()) {
+            // The overflowing literal lint was overridden.
+            return;
         }
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
             report_bin_hex_error(
@@ -1463,7 +1458,7 @@ impl InvalidAtomicOrdering {
             sym::AtomicI64,
             sym::AtomicI128,
         ];
-        if let ExprKind::MethodCall(ref method_path, args, _) = &expr.kind
+        if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind
             && recognized_names.contains(&method_path.ident.name)
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
             && let Some(impl_did) = cx.tcx.impl_of_method(m_def_id)
@@ -1499,8 +1494,8 @@ impl InvalidAtomicOrdering {
     fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::load, sym::store])
             && let Some((ordering_arg, invalid_ordering)) = match method {
-                sym::load => Some((&args[1], sym::Release)),
-                sym::store => Some((&args[2], sym::Acquire)),
+                sym::load => Some((&args[0], sym::Release)),
+                sym::store => Some((&args[1], sym::Acquire)),
                 _ => None,
             }
             && let Some(ordering) = Self::match_ordering(cx, ordering_arg)
@@ -1541,8 +1536,8 @@ impl InvalidAtomicOrdering {
             else {return };
 
         let fail_order_arg = match method {
-            sym::fetch_update => &args[2],
-            sym::compare_exchange | sym::compare_exchange_weak => &args[4],
+            sym::fetch_update => &args[1],
+            sym::compare_exchange | sym::compare_exchange_weak => &args[3],
             _ => return,
         };
 
@@ -1550,7 +1545,7 @@ impl InvalidAtomicOrdering {
 
         if matches!(fail_ordering, sym::Release | sym::AcqRel) {
             #[derive(LintDiagnostic)]
-            #[lint(lint::atomic_ordering_invalid)]
+            #[diag(lint::atomic_ordering_invalid)]
             #[help]
             struct InvalidAtomicOrderingDiag {
                 method: Symbol,

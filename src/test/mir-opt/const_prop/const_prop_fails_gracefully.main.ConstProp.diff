@@ -18,7 +18,7 @@
           StorageLive(_3);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
           _3 = const FOO;                  // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
                                            // mir::Constant
-                                           // + span: $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
+                                           // + span: $DIR/const_prop_fails_gracefully.rs:8:13: 8:16
                                            // + literal: Const { ty: &i32, val: Unevaluated(FOO, [], None) }
           _2 = &raw const (*_3);           // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
           _1 = move _2 as usize (PointerExposeAddress); // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:39
@@ -29,14 +29,14 @@
           _5 = _1;                         // scope 1 at $DIR/const_prop_fails_gracefully.rs:+3:10: +3:11
           _4 = read(move _5) -> bb1;       // scope 1 at $DIR/const_prop_fails_gracefully.rs:+3:5: +3:12
                                            // mir::Constant
-                                           // + span: $DIR/const_prop_fails_gracefully.rs:8:5: 8:9
+                                           // + span: $DIR/const_prop_fails_gracefully.rs:9:5: 9:9
                                            // + literal: Const { ty: fn(usize) {read}, val: Value(<ZST>) }
       }
   
       bb1: {
           StorageDead(_5);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:+3:11: +3:12
           StorageDead(_4);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:+3:12: +3:13
-          nop;                             // scope 0 at $DIR/const_prop_fails_gracefully.rs:+0:11: +4:2
+          _0 = const ();                   // scope 0 at $DIR/const_prop_fails_gracefully.rs:+0:11: +4:2
           StorageDead(_1);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:+4:1: +4:2
           return;                          // scope 0 at $DIR/const_prop_fails_gracefully.rs:+4:2: +4:2
       }

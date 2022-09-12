@@ -157,7 +157,7 @@ impl From<TokenTree> for TokenStream {
 }
 
 /// Collects a number of token trees into a single stream.
-impl iter::FromIterator<TokenTree> for TokenStream {
+impl FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
         trees.into_iter().map(TokenStream::from).collect()
     }
@@ -165,7 +165,7 @@ impl iter::FromIterator<TokenTree> for TokenStream {
 
 /// A "flattening" operation on token streams, collects token trees
 /// from multiple token streams into a single stream.
-impl iter::FromIterator<TokenStream> for TokenStream {
+impl FromIterator<TokenStream> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
         let mut builder = bridge::client::TokenStreamBuilder::new();
         streams.into_iter().for_each(|stream| builder.push(stream.0));

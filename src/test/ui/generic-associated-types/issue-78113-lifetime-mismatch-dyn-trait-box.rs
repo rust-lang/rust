@@ -1,4 +1,4 @@
-// Test for diagnostics when we have mismatched lifetime due to implict 'static lifetime in GATs
+// Test for diagnostics when we have mismatched lifetime due to implicit 'static lifetime in GATs
 
 // check-fail
 

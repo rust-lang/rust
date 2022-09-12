@@ -57,7 +57,7 @@ error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as im
 LL |     let [ref first, ref second, ..] = *s;
    |                     ---------- immutable borrow occurs here
 LL |     let [_, ref mut tail @ ..] = *s;
-   |             ^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+   |             ^^^^^^^^^^^^ mutable borrow occurs here
 LL |     nop(&[first, second]);
    |                  ------ immutable borrow later used here
 
@@ -67,7 +67,7 @@ error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as im
 LL |     let [.., ref second, ref first] = *s;
    |              ---------- immutable borrow occurs here
 LL |     let [ref mut tail @ .., _] = *s;
-   |          ^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+   |          ^^^^^^^^^^^^ mutable borrow occurs here
 LL |     nop(&[first, second]);
    |                  ------ immutable borrow later used here
 
@@ -75,9 +75,9 @@ error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as im
   --> $DIR/borrowck-slice-pattern-element-loan-array.rs:46:10
    |
 LL |     let [_,  ref s1 @ ..] = *s;
-   |              ----------- immutable borrow occurs here
+   |              ------ immutable borrow occurs here
 LL |     let [ref mut s2 @ .., _, _] = *s;
-   |          ^^^^^^^^^^^^^^^ mutable borrow occurs here
+   |          ^^^^^^^^^^ mutable borrow occurs here
 LL |     nop_subslice(s1);
    |                  -- immutable borrow later used here
 

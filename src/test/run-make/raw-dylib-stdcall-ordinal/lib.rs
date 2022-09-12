@@ -1,4 +1,4 @@
-#![feature(raw_dylib)]
+#![cfg_attr(target_arch = "x86", feature(raw_dylib))]
 
 #[link(name = "exporter", kind = "raw-dylib")]
 extern "stdcall" {

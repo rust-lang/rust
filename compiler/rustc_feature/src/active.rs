@@ -394,6 +394,8 @@ declare_features! (
     (active, ffi_returns_twice, "1.34.0", Some(58314), None),
     /// Allows using `#[repr(align(...))]` on function items
     (active, fn_align, "1.53.0", Some(82232), None),
+    /// Allows generators to be cloned.
+    (active, generator_clone, "CURRENT_RUSTC_VERSION", Some(95360), None),
     /// Allows defining generators.
     (active, generators, "1.21.0", Some(43122), None),
     /// Infer generic args for both consts and types.
@@ -420,10 +422,10 @@ declare_features! (
     (active, intra_doc_pointers, "1.51.0", Some(80896), None),
     /// Allows `#[instruction_set(_)]` attribute
     (active, isa_attribute, "1.48.0", Some(74727), None),
-    /// Allows `'a: { break 'a; }`.
-    (active, label_break_value, "1.28.0", Some(48594), None),
     // Allows setting the threshold for the `large_assignments` lint.
     (active, large_assignments, "1.52.0", Some(83518), None),
+    /// Allows `if/while p && let q = r && ...` chains.
+    (active, let_chains, "1.37.0", Some(53667), None),
     /// Allows `let...else` statements.
     (active, let_else, "1.56.0", Some(87335), None),
     /// Allows `#[link(..., cfg(..))]`.
@@ -478,17 +480,17 @@ declare_features! (
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (active, proc_macro_hygiene, "1.30.0", Some(54727), None),
     /// Allows the use of raw-dylibs (RFC 2627).
-    (incomplete, raw_dylib, "1.40.0", Some(58713), None),
+    (active, raw_dylib, "CURRENT_RUSTC_VERSION", Some(58713), None),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (active, raw_ref_op, "1.41.0", Some(64490), None),
-    /// Allows using the `#[register_attr]` attribute.
-    (active, register_attr, "1.41.0", Some(66080), None),
     /// Allows using the `#[register_tool]` attribute.
     (active, register_tool, "1.41.0", Some(66079), None),
     /// Allows the `#[repr(i128)]` attribute for enums.
     (incomplete, repr128, "1.16.0", Some(56071), None),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (active, repr_simd, "1.4.0", Some(27731), None),
+    /// Allows return-position `impl Trait` in traits.
+    (incomplete, return_position_impl_trait_in_trait, "CURRENT_RUSTC_VERSION", Some(91611), None),
     /// Allows `extern "rust-cold"`.
     (active, rust_cold_cc, "1.63.0", Some(97544), None),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
@@ -521,6 +523,8 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (active, type_changing_struct_update, "1.58.0", Some(86555), None),
+    /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
+    (active, unix_sigpipe, "CURRENT_RUSTC_VERSION", Some(97889), None),
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
     /// Allows unsized rvalues at arguments and parameters.

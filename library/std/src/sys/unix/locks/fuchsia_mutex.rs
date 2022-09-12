@@ -86,9 +86,6 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {}
-
-    #[inline]
     pub unsafe fn try_lock(&self) -> bool {
         let thread_self = zx_thread_self();
         self.futex.compare_exchange(UNLOCKED, to_state(thread_self), Acquire, Relaxed).is_ok()
@@ -138,7 +135,7 @@ impl Mutex {
                 }
             }
 
-            // The state has changed or a wakeup occured, try to lock the mutex.
+            // The state has changed or a wakeup occurred, try to lock the mutex.
             match self.futex.compare_exchange(UNLOCKED, owned_state, Acquire, Relaxed) {
                 Ok(_) => return,
                 Err(updated) => state = updated,

@@ -198,6 +198,6 @@ static XXX: &Foo = {
         _0 = &(*_1);                     // scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:28: +18:2
         StorageDead(_5);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+18:1: +18:2
         StorageDead(_1);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+18:1: +18:2
-        return;                          // scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:1: +0:25
+        return;                          // scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:1: +18:2
     }
 }

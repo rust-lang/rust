@@ -55,7 +55,7 @@
    53|      1|            1 // This line appears covered, but the 1-character expression span covering the `1`
                           ^0
    54|      1|              // is not executed. (`llvm-cov show` displays a `^0` below the `1` ). This is because
-   55|      1|              // `fn j()` executes the open brace for the funciton body, followed by the function's
+   55|      1|              // `fn j()` executes the open brace for the function body, followed by the function's
    56|      1|              // first executable statement, `match x`. Inner function declarations are not
    57|      1|              // "visible" to the MIR for `j()`, so the code region counts all lines between the
    58|      1|              // open brace and the first statement as executed, which is, in a sense, true.

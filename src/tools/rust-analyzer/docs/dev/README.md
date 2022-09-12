@@ -82,7 +82,7 @@ There's **"Run Extension (Debug Build)"** launch configuration for this in VS Co
 In general, I use one of the following workflows for fixing bugs and implementing features:
 
 If the problem concerns only internal parts of rust-analyzer (i.e. I don't need to touch the `rust-analyzer` crate or TypeScript code), there is a unit-test for it.
-So, I use **Rust Analyzer: Run** action in VS Code to run this single test, and then just do printf-driven development/debugging.
+So, I use **rust-analyzer: Run** action in VS Code to run this single test, and then just do printf-driven development/debugging.
 As a sanity check after I'm done, I use `cargo xtask install --server` and **Reload Window** action in VS Code to verify that the thing works as I expect.
 
 If the problem concerns only the VS Code extension, I use **Run Installed Extension** launch configuration from `launch.json`.
@@ -152,11 +152,11 @@ To log all communication between the server and the client, there are two choice
 
 There are also several VS Code commands which might be of interest:
 
-* `Rust Analyzer: Status` shows some memory-usage statistics.
+* `rust-analyzer: Status` shows some memory-usage statistics.
 
-* `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.
+* `rust-analyzer: Syntax Tree` shows syntax tree of the current file/selection.
 
-* `Rust Analyzer: View Hir` shows the HIR expressions within the function containing the cursor.
+* `rust-analyzer: View Hir` shows the HIR expressions within the function containing the cursor.
 
   You can hover over syntax nodes in the opened text file to see the appropriate
   rust code that it refers to and the rust editor will also highlight the proper

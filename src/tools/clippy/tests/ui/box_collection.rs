@@ -2,7 +2,7 @@
 #![allow(
     clippy::boxed_local,
     clippy::needless_pass_by_value,
-    clippy::blacklisted_name,
+    clippy::disallowed_names,
     unused
 )]
 

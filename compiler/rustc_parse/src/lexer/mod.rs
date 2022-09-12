@@ -14,8 +14,6 @@ use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{edition::Edition, BytePos, Pos, Span};
 
-use tracing::debug;
-
 mod tokentrees;
 mod unescape_error_reporting;
 mod unicode_chars;

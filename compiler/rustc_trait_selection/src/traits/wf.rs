@@ -31,9 +31,9 @@ pub fn obligations<'a, 'tcx>(
                     if resolved_ty == ty {
                         // No progress, bail out to prevent "livelock".
                         return None;
+                    } else {
+                        resolved_ty
                     }
-
-                    resolved_ty
                 }
                 _ => ty,
             }
@@ -41,16 +41,14 @@ pub fn obligations<'a, 'tcx>(
         }
         GenericArgKind::Const(ct) => {
             match ct.kind() {
-                ty::ConstKind::Infer(infer) => {
-                    let resolved = infcx.shallow_resolve(infer);
-                    if resolved == infer {
+                ty::ConstKind::Infer(_) => {
+                    let resolved = infcx.shallow_resolve(ct);
+                    if resolved == ct {
                         // No progress.
                         return None;
+                    } else {
+                        resolved
                     }
-
-                    infcx
-                        .tcx
-                        .mk_const(ty::ConstS { kind: ty::ConstKind::Infer(resolved), ty: ct.ty() })
                 }
                 _ => ct,
             }
@@ -103,6 +101,7 @@ pub fn trait_obligations<'a, 'tcx>(
     wf.normalize(infcx)
 }
 
+#[instrument(skip(infcx), ret)]
 pub fn predicate_obligations<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -131,9 +130,9 @@ pub fn predicate_obligations<'a, 'tcx>(
         }
         ty::PredicateKind::Projection(t) => {
             wf.compute_projection(t.projection_ty);
-            wf.compute(match t.term {
-                ty::Term::Ty(ty) => ty.into(),
-                ty::Term::Const(c) => c.into(),
+            wf.compute(match t.term.unpack() {
+                ty::TermKind::Ty(ty) => ty.into(),
+                ty::TermKind::Const(c) => c.into(),
             })
         }
         ty::PredicateKind::WellFormed(arg) => {
@@ -436,11 +435,13 @@ impl<'tcx> WfPredicates<'tcx> {
     }
 
     /// Pushes all the predicates needed to validate that `ty` is WF into `out`.
+    #[instrument(level = "debug", skip(self))]
     fn compute(&mut self, arg: GenericArg<'tcx>) {
         let mut walker = arg.walk();
         let param_env = self.param_env;
         let depth = self.recursion_depth;
         while let Some(arg) = walker.next() {
+            debug!(?arg, ?self.out);
             let ty = match arg.unpack() {
                 GenericArgKind::Type(ty) => ty,
 
@@ -489,6 +490,8 @@ impl<'tcx> WfPredicates<'tcx> {
                     continue;
                 }
             };
+
+            debug!("wf bounds for ty={:?} ty.kind={:#?}", ty, ty.kind());
 
             match *ty.kind() {
                 ty::Bool
@@ -688,6 +691,8 @@ impl<'tcx> WfPredicates<'tcx> {
                     ));
                 }
             }
+
+            debug!(?self.out);
         }
     }
 
@@ -713,7 +718,7 @@ impl<'tcx> WfPredicates<'tcx> {
         iter::zip(iter::zip(predicates.predicates, predicates.spans), origins.into_iter().rev())
             .map(|((mut pred, span), origin_def_id)| {
                 let code = if span.is_dummy() {
-                    traits::MiscObligation
+                    traits::ItemObligation(origin_def_id)
                 } else {
                     traits::BindingObligation(origin_def_id, span)
                 };
@@ -843,7 +848,7 @@ pub fn object_region_bounds<'tcx>(
 ///
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
-#[instrument(skip(tcx, predicates), level = "debug")]
+#[instrument(skip(tcx, predicates), level = "debug", ret)]
 pub(crate) fn required_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     erased_self_ty: Ty<'tcx>,

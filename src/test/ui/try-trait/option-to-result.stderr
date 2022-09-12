@@ -1,13 +1,11 @@
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
   --> $DIR/option-to-result.rs:5:6
    |
-LL | / fn test_result() -> Result<(),()> {
-LL | |     let a:Option<()> = Some(());
-LL | |     a?;
-   | |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<(), ()>`
-LL | |     Ok(())
-LL | | }
-   | |_- this function returns a `Result`
+LL | fn test_result() -> Result<(),()> {
+   | --------------------------------- this function returns a `Result`
+LL |     let a:Option<()> = Some(());
+LL |     a?;
+   |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<(), ()>`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<(), ()>`
    = help: the following other types implement trait `FromResidual<R>`:
@@ -17,13 +15,11 @@ LL | | }
 error[E0277]: the `?` operator can only be used on `Option`s, not `Result`s, in a function that returns `Option`
   --> $DIR/option-to-result.rs:11:6
    |
-LL | / fn test_option() -> Option<i32>{
-LL | |     let a:Result<i32, i32> = Ok(5);
-LL | |     a?;
-   | |      ^ use `.ok()?` if you want to discard the `Result<Infallible, i32>` error information
-LL | |     Some(5)
-LL | | }
-   | |_- this function returns an `Option`
+LL | fn test_option() -> Option<i32>{
+   | ------------------------------- this function returns an `Option`
+LL |     let a:Result<i32, i32> = Ok(5);
+LL |     a?;
+   |      ^ use `.ok()?` if you want to discard the `Result<Infallible, i32>` error information
    |
    = help: the trait `FromResidual<Result<Infallible, i32>>` is not implemented for `Option<i32>`
    = help: the following other types implement trait `FromResidual<R>`:

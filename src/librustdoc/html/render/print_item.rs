@@ -16,10 +16,10 @@ use std::fmt;
 use std::rc::Rc;
 
 use super::{
-    collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_section,
-    notable_traits_decl, render_assoc_item, render_assoc_items, render_attributes_in_code,
-    render_attributes_in_pre, render_impl, render_stability_since_raw, write_srclink,
-    AssocItemLink, Context, ImplRenderingParameters,
+    collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
+    item_ty_to_section, notable_traits_decl, render_all_impls, render_assoc_item,
+    render_assoc_items, render_attributes_in_code, render_attributes_in_pre, render_impl,
+    render_rightside, render_stability_since_raw, AssocItemLink, Context, ImplRenderingParameters,
 };
 use crate::clean;
 use crate::config::ModuleSorting;
@@ -371,16 +371,21 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     }
                     clean::ImportKind::Glob => String::new(),
                 };
+                let stab_tags = stab_tags.unwrap_or_default();
+                let (stab_tags_before, stab_tags_after) = if stab_tags.is_empty() {
+                    ("", "")
+                } else {
+                    ("<div class=\"item-right docblock-short\">", "</div>")
+                };
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}import-item\"{id}>\
                          <code>{vis}{imp}</code>\
                      </div>\
-                     <div class=\"item-right docblock-short\">{stab_tags}</div>",
+                     {stab_tags_before}{stab_tags}{stab_tags_after}",
                     stab = stab.unwrap_or_default(),
                     vis = myitem.visibility.print_with_space(myitem.item_id, cx),
                     imp = import.print(cx),
-                    stab_tags = stab_tags.unwrap_or_default(),
                 );
                 w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
@@ -412,6 +417,12 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
                 let doc_value = myitem.doc_value().unwrap_or_default();
                 w.write_str(ITEM_TABLE_ROW_OPEN);
+                let docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string();
+                let (docs_before, docs_after) = if docs.is_empty() {
+                    ("", "")
+                } else {
+                    ("<div class=\"item-right docblock-short\">", "</div>")
+                };
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}module-item\">\
@@ -420,11 +431,10 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         {unsafety_flag}\
                         {stab_tags}\
                      </div>\
-                     <div class=\"item-right docblock-short\">{docs}</div>",
+                     {docs_before}{docs}{docs_after}",
                     name = myitem.name.unwrap(),
                     visibility_emoji = visibility_emoji,
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
-                    docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
                     class = myitem.type_(),
                     add = add,
                     stab = stab.unwrap_or_default(),
@@ -477,7 +487,7 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
         (cfg, _) => cfg.as_deref().cloned(),
     };
 
-    debug!("Portability {:?} - {:?} = {:?}", item.cfg, parent.cfg, cfg);
+    debug!("Portability name={:?} {:?} - {:?} = {:?}", item.name, item.cfg, parent.cfg, cfg);
     if let Some(ref cfg) = cfg {
         tags += &tag_html("portability", &cfg.render_long_plain(), &cfg.render_short_html());
     }
@@ -520,7 +530,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
                 name = name,
                 generics = f.generics.print(cx),
                 where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
-                decl = f.decl.full_print(header_len, 0, header.asyncness, cx),
+                decl = f.decl.full_print(header_len, 0, cx),
                 notable_traits = notable_traits_decl(&f.decl, cx),
             );
         });
@@ -709,14 +719,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
         }
         write!(w, "<div id=\"{}\" class=\"method has-srclink\">", id);
-        write!(w, "<div class=\"rightside\">");
-
-        let has_stability = render_stability_since(w, m, t, cx.tcx());
-        if has_stability {
-            w.write_str(" · ");
-        }
-        write_srclink(cx, m, w);
-        write!(w, "</div>");
+        render_rightside(w, cx, m, t, RenderMode::Normal);
         write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(
             w,
@@ -994,7 +997,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // So C's HTML will have something like this:
     //
     // ```html
-    // <script type="text/javascript" src="/implementors/A/trait.Foo.js"
+    // <script src="/implementors/A/trait.Foo.js"
     //     data-ignore-extern-crates="A,B" async></script>
     // ```
     //
@@ -1020,9 +1023,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         .map(|cnum| cx.shared.tcx.crate_name(cnum).to_string())
         .collect::<Vec<_>>()
         .join(",");
+    let (extern_before, extern_after) =
+        if extern_crates.is_empty() { ("", "") } else { (" data-ignore-extern-crates=\"", "\"") };
     write!(
         w,
-        "<script type=\"text/javascript\" src=\"{src}\" data-ignore-extern-crates=\"{extern_crates}\" async></script>",
+        "<script src=\"{src}\"{extern_before}{extern_crates}{extern_after} async></script>",
         src = js_src_path.finish(),
     );
 }
@@ -1198,7 +1203,8 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                     let name = v.name.unwrap();
                     match *v.kind {
                         clean::VariantItem(ref var) => match var {
-                            clean::Variant::CLike => write!(w, "{}", name),
+                            // FIXME(#101337): Show discriminant
+                            clean::Variant::CLike(..) => write!(w, "{}", name),
                             clean::Variant::Tuple(ref s) => {
                                 write!(w, "{}(", name);
                                 print_tuple_struct_fields(w, cx, s);
@@ -1260,7 +1266,13 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 w.write_str(")");
             }
             w.write_str("</code>");
-            render_stability_since(w, variant, it, cx.tcx());
+            render_stability_since_raw(
+                w,
+                variant.stable_since(cx.tcx()),
+                variant.const_stability(cx.tcx()),
+                it.stable_since(cx.tcx()),
+                it.const_stable_since(cx.tcx()),
+            );
             w.write_str("</h3>");
 
             use crate::clean::Variant;
@@ -1322,17 +1334,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
 
 fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Macro) {
     wrap_into_docblock(w, |w| {
-        highlight::render_with_highlighting(
-            &t.source,
-            w,
-            Some("macro"),
-            None,
-            None,
-            it.span(cx.tcx()).inner().edition(),
-            None,
-            None,
-            None,
-        );
+        highlight::render_macro_with_highlighting(&t.source, w);
     });
     document(w, cx, it, None, HeadingOffset::H2)
 }
@@ -1370,8 +1372,18 @@ fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &c
 }
 
 fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
+    let def_id = it.item_id.expect_def_id();
     document(w, cx, it, None, HeadingOffset::H2);
-    render_assoc_items(w, cx, it, it.item_id.expect_def_id(), AssocItemRender::All)
+    if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
+        render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
+    } else {
+        // We handle the "reference" primitive type on its own because we only want to list
+        // implementations on generic types.
+        let shared = Rc::clone(&cx.shared);
+        let (concrete, synthetic, blanket_impl) = get_filtered_impls_for_reference(&shared, it);
+
+        render_all_impls(w, cx, it, &concrete, &synthetic, &blanket_impl);
+    }
 }
 
 fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {
@@ -1599,21 +1611,6 @@ where
     w.write_fmt(format_args!("<pre class=\"rust {}\"><code>", item_name));
     f(w);
     w.write_str("</code></pre>");
-}
-
-fn render_stability_since(
-    w: &mut Buffer,
-    item: &clean::Item,
-    containing_item: &clean::Item,
-    tcx: TyCtxt<'_>,
-) -> bool {
-    render_stability_since_raw(
-        w,
-        item.stable_since(tcx),
-        item.const_stability(tcx),
-        containing_item.stable_since(tcx),
-        containing_item.const_stable_since(tcx),
-    )
 }
 
 fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cx: &Context<'_>) -> Ordering {

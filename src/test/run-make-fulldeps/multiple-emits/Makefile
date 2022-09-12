@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) foo.rs --emit=asm,llvm-ir -o $(TMPDIR)/out 2>&1

@@ -6,8 +6,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
 #[derive(Clone)]
 struct B1;
 
@@ -15,6 +13,6 @@ trait A { fn foo(&self) {} }
 impl A for B1 {}
 
 fn main() {
-    let v: Box<_> = box B1;
+    let v: Box<_> = Box::new(B1);
     let _c: Box<dyn A> = v.clone();
 }

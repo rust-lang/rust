@@ -1,0 +1,20 @@
+error[E0053]: method `bar` has an incompatible type for trait
+  --> $DIR/deep-match.rs:11:17
+   |
+LL |     fn bar() -> i32 { 0 }
+   |                 ^^^
+   |                 |
+   |                 expected struct `Wrapper`, found `i32`
+   |                 help: change the output type to match the trait: `Wrapper<_>`
+   |
+note: type in trait
+  --> $DIR/deep-match.rs:7:17
+   |
+LL |     fn bar() -> Wrapper<impl Sized>;
+   |                 ^^^^^^^^^^^^^^^^^^^
+   = note: expected fn pointer `fn() -> Wrapper<_>`
+              found fn pointer `fn() -> i32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0053`.

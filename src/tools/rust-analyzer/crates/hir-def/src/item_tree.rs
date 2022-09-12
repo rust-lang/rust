@@ -14,7 +14,7 @@
 //! unaffected, so we don't have to recompute name resolution results or item data (see `data.rs`).
 //!
 //! The `ItemTree` for the currently open file can be displayed by using the VS Code command
-//! "Rust Analyzer: Debug ItemTree".
+//! "rust-analyzer: Debug ItemTree".
 //!
 //! Compared to rustc's architecture, `ItemTree` has properties from both rustc's AST and HIR: many
 //! syntax-level Rust features are already desugared to simpler forms in the `ItemTree`, but name

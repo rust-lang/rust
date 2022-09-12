@@ -1,82 +1,12 @@
-//! A dynamically-sized view into a contiguous sequence, `[T]`.
+//! Utilities for the slice primitive type.
 //!
 //! *[See also the slice primitive type](slice).*
 //!
-//! Slices are a view into a block of memory represented as a pointer and a
-//! length.
+//! Most of the structs in this module are iterator types which can only be created
+//! using a certain function. For example, `slice.iter()` yields an [`Iter`].
 //!
-//! ```
-//! // slicing a Vec
-//! let vec = vec![1, 2, 3];
-//! let int_slice = &vec[..];
-//! // coercing an array to a slice
-//! let str_slice: &[&str] = &["one", "two", "three"];
-//! ```
-//!
-//! Slices are either mutable or shared. The shared slice type is `&[T]`,
-//! while the mutable slice type is `&mut [T]`, where `T` represents the element
-//! type. For example, you can mutate the block of memory that a mutable slice
-//! points to:
-//!
-//! ```
-//! let x = &mut [1, 2, 3];
-//! x[1] = 7;
-//! assert_eq!(x, &[1, 7, 3]);
-//! ```
-//!
-//! Here are some of the things this module contains:
-//!
-//! ## Structs
-//!
-//! There are several structs that are useful for slices, such as [`Iter`], which
-//! represents iteration over a slice.
-//!
-//! ## Trait Implementations
-//!
-//! There are several implementations of common traits for slices. Some examples
-//! include:
-//!
-//! * [`Clone`]
-//! * [`Eq`], [`Ord`] - for slices whose element type are [`Eq`] or [`Ord`].
-//! * [`Hash`] - for slices whose element type is [`Hash`].
-//!
-//! ## Iteration
-//!
-//! The slices implement `IntoIterator`. The iterator yields references to the
-//! slice elements.
-//!
-//! ```
-//! let numbers = &[0, 1, 2];
-//! for n in numbers {
-//!     println!("{n} is a number!");
-//! }
-//! ```
-//!
-//! The mutable slice yields mutable references to the elements:
-//!
-//! ```
-//! let mut scores = [7, 8, 9];
-//! for score in &mut scores[..] {
-//!     *score += 1;
-//! }
-//! ```
-//!
-//! This iterator yields mutable references to the slice's elements, so while
-//! the element type of the slice is `i32`, the element type of the iterator is
-//! `&mut i32`.
-//!
-//! * [`.iter`] and [`.iter_mut`] are the explicit methods to return the default
-//!   iterators.
-//! * Further methods that return iterators are [`.split`], [`.splitn`],
-//!   [`.chunks`], [`.windows`] and more.
-//!
-//! [`Hash`]: core::hash::Hash
-//! [`.iter`]: slice::iter
-//! [`.iter_mut`]: slice::iter_mut
-//! [`.split`]: slice::split
-//! [`.splitn`]: slice::splitn
-//! [`.chunks`]: slice::chunks
-//! [`.windows`]: slice::windows
+//! A few functions are provided to create a slice from a value reference
+//! or from a raw pointer.
 #![stable(feature = "rust1", since = "1.0.0")]
 // Many of the usings in this module are only used in the test configuration.
 // It's cleaner to just turn off the unused_imports warning than to fix them.
@@ -1024,7 +954,7 @@ where
             // Consume the greater side.
             // If equal, prefer the right run to maintain stability.
             unsafe {
-                let to_copy = if is_less(&*right.offset(-1), &*left.offset(-1)) {
+                let to_copy = if is_less(&*right.sub(1), &*left.sub(1)) {
                     decrement_and_get(left)
                 } else {
                     decrement_and_get(right)
@@ -1038,12 +968,12 @@ where
 
     unsafe fn get_and_increment<T>(ptr: &mut *mut T) -> *mut T {
         let old = *ptr;
-        *ptr = unsafe { ptr.offset(1) };
+        *ptr = unsafe { ptr.add(1) };
         old
     }
 
     unsafe fn decrement_and_get<T>(ptr: &mut *mut T) -> *mut T {
-        *ptr = unsafe { ptr.offset(-1) };
+        *ptr = unsafe { ptr.sub(1) };
         *ptr
     }
 

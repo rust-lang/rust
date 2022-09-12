@@ -1,7 +1,7 @@
 use crate::alloc::{Allocator, Global};
 use core::fmt;
 use core::iter::{FusedIterator, TrustedLen};
-use core::mem;
+use core::mem::{self, ManuallyDrop};
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 
@@ -64,6 +64,77 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     #[inline]
     pub fn allocator(&self) -> &A {
         unsafe { self.vec.as_ref().allocator() }
+    }
+
+    /// Keep unyielded elements in the source `Vec`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(drain_keep_rest)]
+    ///
+    /// let mut vec = vec!['a', 'b', 'c'];
+    /// let mut drain = vec.drain(..);
+    ///
+    /// assert_eq!(drain.next().unwrap(), 'a');
+    ///
+    /// // This call keeps 'b' and 'c' in the vec.
+    /// drain.keep_rest();
+    ///
+    /// // If we wouldn't call `keep_rest()`,
+    /// // `vec` would be empty.
+    /// assert_eq!(vec, ['b', 'c']);
+    /// ```
+    #[unstable(feature = "drain_keep_rest", issue = "101122")]
+    pub fn keep_rest(self) {
+        // At this moment layout looks like this:
+        //
+        // [head] [yielded by next] [unyielded] [yielded by next_back] [tail]
+        //        ^-- start         \_________/-- unyielded_len        \____/-- self.tail_len
+        //                          ^-- unyielded_ptr                  ^-- tail
+        //
+        // Normally `Drop` impl would drop [unyielded] and then move [tail] to the `start`.
+        // Here we want to
+        // 1. Move [unyielded] to `start`
+        // 2. Move [tail] to a new start at `start + len(unyielded)`
+        // 3. Update length of the original vec to `len(head) + len(unyielded) + len(tail)`
+        //    a. In case of ZST, this is the only thing we want to do
+        // 4. Do *not* drop self, as everything is put in a consistent state already, there is nothing to do
+        let mut this = ManuallyDrop::new(self);
+
+        unsafe {
+            let source_vec = this.vec.as_mut();
+
+            let start = source_vec.len();
+            let tail = this.tail_start;
+
+            let unyielded_len = this.iter.len();
+            let unyielded_ptr = this.iter.as_slice().as_ptr();
+
+            // ZSTs have no identity, so we don't need to move them around.
+            let needs_move = mem::size_of::<T>() != 0;
+
+            if needs_move {
+                let start_ptr = source_vec.as_mut_ptr().add(start);
+
+                // memmove back unyielded elements
+                if unyielded_ptr != start_ptr {
+                    let src = unyielded_ptr;
+                    let dst = start_ptr;
+
+                    ptr::copy(src, dst, unyielded_len);
+                }
+
+                // memmove back untouched tail
+                if tail != (start + unyielded_len) {
+                    let src = source_vec.as_ptr().add(tail);
+                    let dst = start_ptr.add(unyielded_len);
+                    ptr::copy(src, dst, this.tail_len);
+                }
+            }
+
+            source_vec.set_len(start + unyielded_len + this.tail_len);
+        }
     }
 }
 

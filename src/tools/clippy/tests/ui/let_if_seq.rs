@@ -2,7 +2,7 @@
     unused_variables,
     unused_assignments,
     clippy::similar_names,
-    clippy::blacklisted_name,
+    clippy::disallowed_names,
     clippy::branches_sharing_code,
     clippy::needless_late_init
 )]

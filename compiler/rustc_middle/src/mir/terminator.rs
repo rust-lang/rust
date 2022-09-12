@@ -14,7 +14,7 @@ use std::slice;
 
 pub use super::query::*;
 
-#[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 pub struct SwitchTargets {
     /// Possible values. The locations to branch to in each case
     /// are found in the corresponding indices from the `targets` vector.

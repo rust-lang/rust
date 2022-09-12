@@ -64,8 +64,11 @@ pub(crate) struct PathCompletionCtx {
     pub(super) qualified: Qualified,
     /// The parent of the path we are completing.
     pub(super) parent: Option<ast::Path>,
+    #[allow(dead_code)]
     /// The path of which we are completing the segment
     pub(super) path: ast::Path,
+    /// The path of which we are completing the segment in the original file
+    pub(crate) original_path: Option<ast::Path>,
     pub(super) kind: PathKind,
     /// Whether the path segment has type args or not.
     pub(super) has_type_args: bool,
@@ -134,6 +137,7 @@ pub(crate) struct ExprCtx {
     pub(crate) in_condition: bool,
     pub(crate) incomplete_let: bool,
     pub(crate) ref_expr_parent: Option<ast::RefExpr>,
+    /// The surrounding RecordExpression we are completing a functional update
     pub(crate) is_func_update: Option<ast::RecordExpr>,
     pub(crate) self_param: Option<hir::SelfParam>,
     pub(crate) innermost_ret_ty: Option<hir::Type>,

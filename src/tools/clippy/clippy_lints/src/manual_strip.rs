@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 
         if_chain! {
             if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr);
-            if let ExprKind::MethodCall(_, [target_arg, pattern], _) = cond.kind;
+            if let ExprKind::MethodCall(_, target_arg, [pattern], _) = cond.kind;
             if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id);
             if let ExprKind::Path(target_path) = &target_arg.kind;
             then {
@@ -132,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 // Returns `Some(arg)` if `expr` matches `arg.len()` and `None` otherwise.
 fn len_arg<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if_chain! {
-        if let ExprKind::MethodCall(_, [arg], _) = expr.kind;
+        if let ExprKind::MethodCall(_, arg, [], _) = expr.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if match_def_path(cx, method_def_id, &paths::STR_LEN);
         then {

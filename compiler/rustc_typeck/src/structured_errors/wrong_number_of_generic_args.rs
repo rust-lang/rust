@@ -4,7 +4,6 @@ use rustc_errors::{
     MultiSpan,
 };
 use rustc_hir as hir;
-use rustc_middle::hir::map::fn_sig;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::DefId;
@@ -292,62 +291,60 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     // Creates lifetime name suggestions from the lifetime parameter names
     fn get_lifetime_args_suggestions_from_param_names(
         &self,
-        path_hir_id: Option<hir::HirId>,
+        path_hir_id: hir::HirId,
         num_params_to_take: usize,
     ) -> String {
         debug!(?path_hir_id);
 
-        if let Some(path_hir_id) = path_hir_id {
-            let mut ret = Vec::new();
-            for (id, node) in self.tcx.hir().parent_iter(path_hir_id) {
-                debug!(?id);
-                let params = if let Some(generics) = node.generics() {
-                    generics.params
-                } else if let hir::Node::Ty(ty) = node
-                    && let hir::TyKind::BareFn(bare_fn) = ty.kind
-                {
-                    bare_fn.generic_params
-                } else {
-                    &[]
-                };
-                ret.extend(params.iter().filter_map(|p| {
-                    let hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }
-                        = p.kind
-                    else { return None };
-                    let hir::ParamName::Plain(name) = p.name else { return None };
-                    Some(name.to_string())
-                }));
-                // Suggest `'static` when in const/static item-like.
-                if let hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Static { .. } | hir::ItemKind::Const { .. },
-                    ..
-                })
-                | hir::Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Const { .. },
-                    ..
-                })
-                | hir::Node::ImplItem(hir::ImplItem {
-                    kind: hir::ImplItemKind::Const { .. },
-                    ..
-                })
-                | hir::Node::ForeignItem(hir::ForeignItem {
-                    kind: hir::ForeignItemKind::Static { .. },
-                    ..
-                })
-                | hir::Node::AnonConst(..) = node
-                {
-                    ret.extend(
-                        std::iter::repeat("'static".to_owned())
-                            .take(num_params_to_take.saturating_sub(ret.len())),
-                    );
-                }
-                if ret.len() >= num_params_to_take {
-                    return ret[..num_params_to_take].join(", ");
-                }
-                // We cannot refer to lifetimes defined in an outer function.
-                if let hir::Node::Item(_) = node {
-                    break;
-                }
+        let mut ret = Vec::new();
+        for (id, node) in self.tcx.hir().parent_iter(path_hir_id) {
+            debug!(?id);
+            let params = if let Some(generics) = node.generics() {
+                generics.params
+            } else if let hir::Node::Ty(ty) = node
+                && let hir::TyKind::BareFn(bare_fn) = ty.kind
+            {
+                bare_fn.generic_params
+            } else {
+                &[]
+            };
+            ret.extend(params.iter().filter_map(|p| {
+                let hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }
+                    = p.kind
+                else { return None };
+                let hir::ParamName::Plain(name) = p.name else { return None };
+                Some(name.to_string())
+            }));
+            // Suggest `'static` when in const/static item-like.
+            if let hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Static { .. } | hir::ItemKind::Const { .. },
+                ..
+            })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Const { .. },
+                ..
+            })
+            | hir::Node::ImplItem(hir::ImplItem {
+                kind: hir::ImplItemKind::Const { .. },
+                ..
+            })
+            | hir::Node::ForeignItem(hir::ForeignItem {
+                kind: hir::ForeignItemKind::Static { .. },
+                ..
+            })
+            | hir::Node::AnonConst(..) = node
+            {
+                ret.extend(
+                    std::iter::repeat("'static".to_owned())
+                        .take(num_params_to_take.saturating_sub(ret.len())),
+                );
+            }
+            if ret.len() >= num_params_to_take {
+                return ret[..num_params_to_take].join(", ");
+            }
+            // We cannot refer to lifetimes defined in an outer function.
+            if let hir::Node::Item(_) = node {
+                break;
             }
         }
 
@@ -368,7 +365,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         &self,
         num_params_to_take: usize,
     ) -> String {
-        let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(fn_sig);
+        let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(hir::Node::fn_sig);
         let is_used_in_input = |def_id| {
             fn_sig.map_or(false, |fn_sig| {
                 fn_sig.decl.inputs.iter().any(|ty| match ty.kind {
@@ -524,6 +521,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 if self.not_enough_args_provided() {
                     self.suggest_adding_args(err);
                 } else if self.too_many_args_provided() {
+                    self.suggest_moving_args_from_assoc_fn_to_trait(err);
                     self.suggest_removing_args_or_generics(err);
                 } else {
                     unreachable!();
@@ -654,6 +652,144 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
+    /// Suggests moving redundant argument(s) of an associate function to the
+    /// trait it belongs to.
+    ///
+    /// ```compile_fail
+    /// Into::into::<Option<_>>(42) // suggests considering `Into::<Option<_>>::into(42)`
+    /// ```
+    fn suggest_moving_args_from_assoc_fn_to_trait(&self, err: &mut Diagnostic) {
+        let trait_ = match self.tcx.trait_of_item(self.def_id) {
+            Some(def_id) => def_id,
+            None => return,
+        };
+
+        // Skip suggestion when the associated function is itself generic, it is unclear
+        // how to split the provided parameters between those to suggest to the trait and
+        // those to remain on the associated type.
+        let num_assoc_fn_expected_args =
+            self.num_expected_type_or_const_args() + self.num_expected_lifetime_args();
+        if num_assoc_fn_expected_args > 0 {
+            return;
+        }
+
+        let num_assoc_fn_excess_args =
+            self.num_excess_type_or_const_args() + self.num_excess_lifetime_args();
+
+        let trait_generics = self.tcx.generics_of(trait_);
+        let num_trait_generics_except_self =
+            trait_generics.count() - if trait_generics.has_self { 1 } else { 0 };
+
+        let msg = format!(
+            "consider moving {these} generic argument{s} to the `{name}` trait, which takes up to {num} argument{s}",
+            these = pluralize!("this", num_assoc_fn_excess_args),
+            s = pluralize!(num_assoc_fn_excess_args),
+            name = self.tcx.item_name(trait_),
+            num = num_trait_generics_except_self,
+        );
+
+        if let Some(parent_node) = self.tcx.hir().find_parent_node(self.path_segment.hir_id)
+        && let Some(parent_node) = self.tcx.hir().find(parent_node)
+        && let hir::Node::Expr(expr) = parent_node {
+            match expr.kind {
+                hir::ExprKind::Path(ref qpath) => {
+                    self.suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
+                        err,
+                        qpath,
+                        msg,
+                        num_assoc_fn_excess_args,
+                        num_trait_generics_except_self
+                    )
+                },
+                hir::ExprKind::MethodCall(..) => {
+                    self.suggest_moving_args_from_assoc_fn_to_trait_for_method_call(
+                        err,
+                        trait_,
+                        expr,
+                        msg,
+                        num_assoc_fn_excess_args,
+                        num_trait_generics_except_self
+                    )
+                },
+                _ => return,
+            }
+        }
+    }
+
+    fn suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
+        &self,
+        err: &mut Diagnostic,
+        qpath: &'tcx hir::QPath<'tcx>,
+        msg: String,
+        num_assoc_fn_excess_args: usize,
+        num_trait_generics_except_self: usize,
+    ) {
+        if let hir::QPath::Resolved(_, path) = qpath
+        && let Some(trait_path_segment) = path.segments.get(0) {
+            let num_generic_args_supplied_to_trait = trait_path_segment.args().num_generic_params();
+
+            if num_assoc_fn_excess_args == num_trait_generics_except_self - num_generic_args_supplied_to_trait {
+                if let Some(span) = self.gen_args.span_ext()
+                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    let sugg = vec![
+                        (self.path_segment.ident.span, format!("{}::{}", snippet, self.path_segment.ident)),
+                        (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned())
+                    ];
+
+                    err.multipart_suggestion(
+                        msg,
+                        sugg,
+                        Applicability::MaybeIncorrect
+                    );
+                }
+            }
+        }
+    }
+
+    fn suggest_moving_args_from_assoc_fn_to_trait_for_method_call(
+        &self,
+        err: &mut Diagnostic,
+        trait_def_id: DefId,
+        expr: &'tcx hir::Expr<'tcx>,
+        msg: String,
+        num_assoc_fn_excess_args: usize,
+        num_trait_generics_except_self: usize,
+    ) {
+        let sm = self.tcx.sess.source_map();
+        let hir::ExprKind::MethodCall(_, rcvr, args, _) = expr.kind else { return; };
+        if num_assoc_fn_excess_args != num_trait_generics_except_self {
+            return;
+        }
+        let Some(gen_args) = self.gen_args.span_ext() else { return; };
+        let Ok(generics) = sm.span_to_snippet(gen_args) else { return; };
+        let Ok(rcvr) = sm.span_to_snippet(
+            rcvr.span.find_ancestor_inside(expr.span).unwrap_or(rcvr.span)
+        ) else { return; };
+        let Ok(rest) =
+            (match args {
+                [] => Ok(String::new()),
+                [arg] => sm.span_to_snippet(
+                    arg.span.find_ancestor_inside(expr.span).unwrap_or(arg.span),
+                ),
+                [first, .., last] => {
+                    let first_span =
+                        first.span.find_ancestor_inside(expr.span).unwrap_or(first.span);
+                    let last_span =
+                        last.span.find_ancestor_inside(expr.span).unwrap_or(last.span);
+                    sm.span_to_snippet(first_span.to(last_span))
+                }
+            }) else { return; };
+        let comma = if args.len() > 0 { ", " } else { "" };
+        let trait_path = self.tcx.def_path_str(trait_def_id);
+        let method_name = self.tcx.item_name(self.def_id);
+        err.span_suggestion(
+            expr.span,
+            msg,
+            format!("{trait_path}::{generics}::{method_name}({rcvr}{comma}{rest})"),
+            Applicability::MaybeIncorrect,
+        );
+    }
+
     /// Suggests to remove redundant argument(s):
     ///
     /// ```text
@@ -763,16 +899,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         // If there is a single unbound associated type and a single excess generic param
         // suggest replacing the generic param with the associated type bound
         if provided_args_matches_unbound_traits && !unbound_types.is_empty() {
-            let mut suggestions = vec![];
             let unused_generics = &self.gen_args.args[self.num_expected_type_or_const_args()..];
-            for (potential, name) in iter::zip(unused_generics, &unbound_types) {
-                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(potential.span()) {
-                    suggestions.push((potential.span(), format!("{} = {}", name, snippet)));
-                }
-            }
+            let suggestions = iter::zip(unused_generics, &unbound_types)
+                .map(|(potential, name)| (potential.span().shrink_to_lo(), format!("{name} = ")))
+                .collect::<Vec<_>>();
 
             if !suggestions.is_empty() {
-                err.multipart_suggestion(
+                err.multipart_suggestion_verbose(
                     &format!(
                         "replace the generic bound{s} with the associated type{s}",
                         s = pluralize!(unbound_types.len())

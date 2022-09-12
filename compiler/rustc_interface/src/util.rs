@@ -1,3 +1,4 @@
+use info;
 use libloading::Library;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -31,7 +32,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::thread;
-use tracing::info;
 
 /// Function pointer type that constructs a new CodegenBackend.
 pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
@@ -559,7 +559,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     // command line, then reuse the empty `base` Vec to hold the types that
     // will be found in crate attributes.
     // JUSTIFICATION: before wrapper fn is available
-    #[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+    #[allow(rustc::bad_opt_access)]
     let mut base = session.opts.crate_types.clone();
     if base.is_empty() {
         base.extend(attr_types);

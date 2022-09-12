@@ -1,0 +1,24 @@
+### What it does
+Checks for redundant slicing expressions which use the full range, and
+do not change the type.
+
+### Why is this bad?
+It unnecessarily adds complexity to the expression.
+
+### Known problems
+If the type being sliced has an implementation of `Index<RangeFull>`
+that actually changes anything then it can't be removed. However, this would be surprising
+to people reading the code and should have a note with it.
+
+### Example
+```
+fn get_slice(x: &[u32]) -> &[u32] {
+    &x[..]
+}
+```
+Use instead:
+```
+fn get_slice(x: &[u32]) -> &[u32] {
+    x
+}
+```

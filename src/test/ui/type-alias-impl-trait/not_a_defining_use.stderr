@@ -4,7 +4,7 @@ error[E0277]: `T` doesn't implement `Debug`
 LL |     (t, 5i8)
    |     ^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required because of the requirements on the impl of `Debug` for `(T, i8)`
+   = note: required for `(T, i8)` to implement `Debug`
 help: consider restricting type parameter `T`
    |
 LL | type Two<T: std::fmt::Debug, U> = impl Debug;
@@ -27,7 +27,7 @@ error[E0277]: `T` doesn't implement `Debug`
 LL |     (t, <U as Bar>::FOO)
    |     ^^^^^^^^^^^^^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required because of the requirements on the impl of `Debug` for `(T, _)`
+   = note: required for `(T, _)` to implement `Debug`
 help: consider restricting type parameter `T`
    |
 LL | type Two<T: std::fmt::Debug, U> = impl Debug;

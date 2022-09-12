@@ -4,6 +4,8 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
 #![allow(rustc::default_hash_types)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 #![recursion_limit = "128"]
 
 use synstructure::decl_derive;
@@ -65,10 +67,10 @@ pub fn newtype_index(input: TokenStream) -> TokenStream {
 /// ..where `typeck.ftl` has the following contents..
 ///
 /// ```fluent
-/// typeck-field-multiply-specified-in-initializer =
+/// typeck_field_multiply_specified_in_initializer =
 ///     field `{$ident}` specified more than once
 ///     .label = used more than once
-///     .label-previous-use = first use of `{$ident}`
+///     .label_previous_use = first use of `{$ident}`
 /// ```
 /// ...then the macro parse the Fluent resource, emitting a diagnostic if it fails to do so, and
 /// will generate the following code:
@@ -81,11 +83,11 @@ pub fn newtype_index(input: TokenStream) -> TokenStream {
 /// mod fluent_generated {
 ///     mod typeck {
 ///         pub const field_multiply_specified_in_initializer: DiagnosticMessage =
-///             DiagnosticMessage::fluent("typeck-field-multiply-specified-in-initializer");
+///             DiagnosticMessage::fluent("typeck_field_multiply_specified_in_initializer");
 ///         pub const field_multiply_specified_in_initializer_label_previous_use: DiagnosticMessage =
 ///             DiagnosticMessage::fluent_attr(
-///                 "typeck-field-multiply-specified-in-initializer",
-///                 "previous-use-label"
+///                 "typeck_field_multiply_specified_in_initializer",
+///                 "previous_use_label"
 ///             );
 ///     }
 /// }
@@ -127,12 +129,10 @@ decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
     [SessionDiagnostic, attributes(
         // struct attributes
-        warning,
-        error,
-        lint,
+        diag,
         help,
         note,
-        warn_,
+        warning,
         // field attributes
         skip_arg,
         primary_span,
@@ -146,12 +146,10 @@ decl_derive!(
 decl_derive!(
     [LintDiagnostic, attributes(
         // struct attributes
-        warning,
-        error,
-        lint,
+        diag,
         help,
         note,
-        warn_,
+        warning,
         // field attributes
         skip_arg,
         primary_span,
@@ -168,13 +166,18 @@ decl_derive!(
         label,
         help,
         note,
-        warn_,
+        warning,
         suggestion,
         suggestion_short,
         suggestion_hidden,
         suggestion_verbose,
+        multipart_suggestion,
+        multipart_suggestion_short,
+        multipart_suggestion_hidden,
+        multipart_suggestion_verbose,
         // field attributes
         skip_arg,
         primary_span,
+        suggestion_part,
         applicability)] => diagnostics::session_subdiagnostic_derive
 );

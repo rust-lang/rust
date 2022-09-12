@@ -19,7 +19,7 @@
           StorageLive(_2);                 // scope 1 at $DIR/cast.rs:+3:9: +3:10
 -         _2 = const 42_u32 as u8 (Misc);  // scope 1 at $DIR/cast.rs:+3:13: +3:24
 +         _2 = const 42_u8;                // scope 1 at $DIR/cast.rs:+3:13: +3:24
-          nop;                             // scope 0 at $DIR/cast.rs:+0:11: +4:2
+          _0 = const ();                   // scope 0 at $DIR/cast.rs:+0:11: +4:2
           StorageDead(_2);                 // scope 1 at $DIR/cast.rs:+4:1: +4:2
           StorageDead(_1);                 // scope 0 at $DIR/cast.rs:+4:1: +4:2
           return;                          // scope 0 at $DIR/cast.rs:+4:2: +4:2

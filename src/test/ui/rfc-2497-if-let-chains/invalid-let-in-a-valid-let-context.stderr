@@ -1,35 +1,35 @@
 error: expected expression, found `let` statement
-  --> $DIR/invalid-let-in-a-valid-let-context.rs:6:19
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:8:19
    |
 LL |         let _ = &&let Some(x) = Some(42);
    |                   ^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/invalid-let-in-a-valid-let-context.rs:11:47
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:13:47
    |
 LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = &&let Some(x) = Some(42)] = 1 {
    |                                               ^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/invalid-let-in-a-valid-let-context.rs:11:57
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:13:57
    |
 LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = &&let Some(x) = Some(42)] = 1 {
    |                                                         ^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/invalid-let-in-a-valid-let-context.rs:21:23
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:23:23
    |
 LL |             [1, 2, 3][let _ = ()];
    |                       ^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/invalid-let-in-a-valid-let-context.rs:30:47
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:32:47
    |
 LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = ()] = 1 {
    |                                               ^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/invalid-let-in-a-valid-let-context.rs:38:21
+  --> $DIR/invalid-let-in-a-valid-let-context.rs:40:21
    |
 LL |             let x = let y = 1;
    |                     ^^^

@@ -6,10 +6,10 @@
       let _1: ();                          // in scope 0 at $DIR/cycle.rs:+1:5: +1:12
 +     let mut _2: fn() {main};             // in scope 0 at $DIR/cycle.rs:+1:5: +1:12
 +     scope 1 (inlined f::<fn() {main}>) { // at $DIR/cycle.rs:12:5: 12:12
-+         debug g => _2;                   // in scope 1 at $DIR/cycle.rs:+0:6: +0:7
-+         let _3: ();                      // in scope 1 at $DIR/cycle.rs:+0:5: +0:8
-+         let mut _4: &fn() {main};        // in scope 1 at $DIR/cycle.rs:+0:5: +0:6
-+         let mut _5: ();                  // in scope 1 at $DIR/cycle.rs:+0:5: +0:8
++         debug g => _2;                   // in scope 1 at $DIR/cycle.rs:5:6: 5:7
++         let _3: ();                      // in scope 1 at $DIR/cycle.rs:6:5: 6:8
++         let mut _4: &fn() {main};        // in scope 1 at $DIR/cycle.rs:6:5: 6:6
++         let mut _5: ();                  // in scope 1 at $DIR/cycle.rs:6:5: 6:8
 +         scope 2 (inlined <fn() {main} as Fn<()>>::call - shim(fn() {main})) { // at $DIR/cycle.rs:6:5: 6:8
 +         }
 +     }
@@ -25,10 +25,10 @@
 -                                          // mir::Constant
                                            // + span: $DIR/cycle.rs:12:7: 12:11
                                            // + literal: Const { ty: fn() {main}, val: Value(<ZST>) }
-+         StorageLive(_3);                 // scope 1 at $DIR/cycle.rs:+0:5: +0:8
-+         StorageLive(_4);                 // scope 1 at $DIR/cycle.rs:+0:5: +0:6
-+         _4 = &_2;                        // scope 1 at $DIR/cycle.rs:+0:5: +0:6
-+         StorageLive(_5);                 // scope 1 at $DIR/cycle.rs:+0:5: +0:8
++         StorageLive(_3);                 // scope 1 at $DIR/cycle.rs:6:5: 6:8
++         StorageLive(_4);                 // scope 1 at $DIR/cycle.rs:6:5: 6:6
++         _4 = &_2;                        // scope 1 at $DIR/cycle.rs:6:5: 6:6
++         StorageLive(_5);                 // scope 1 at $DIR/cycle.rs:6:5: 6:8
 +         _3 = move (*_4)() -> [return: bb4, unwind: bb2]; // scope 2 at $SRC_DIR/core/src/ops/function.rs:LL:COL
       }
   
@@ -40,18 +40,18 @@
 +     }
 + 
 +     bb2 (cleanup): {
-+         drop(_2) -> bb3;                 // scope 1 at $DIR/cycle.rs:+0:1: +0:2
++         drop(_2) -> bb3;                 // scope 1 at $DIR/cycle.rs:7:1: 7:2
 +     }
 + 
 +     bb3 (cleanup): {
-+         resume;                          // scope 1 at $DIR/cycle.rs:+0:1: +0:2
++         resume;                          // scope 1 at $DIR/cycle.rs:5:1: 7:2
 +     }
 + 
 +     bb4: {
-+         StorageDead(_5);                 // scope 1 at $DIR/cycle.rs:+0:7: +0:8
-+         StorageDead(_4);                 // scope 1 at $DIR/cycle.rs:+0:7: +0:8
-+         StorageDead(_3);                 // scope 1 at $DIR/cycle.rs:+0:8: +0:9
-+         drop(_2) -> bb1;                 // scope 1 at $DIR/cycle.rs:+0:1: +0:2
++         StorageDead(_5);                 // scope 1 at $DIR/cycle.rs:6:7: 6:8
++         StorageDead(_4);                 // scope 1 at $DIR/cycle.rs:6:7: 6:8
++         StorageDead(_3);                 // scope 1 at $DIR/cycle.rs:6:8: 6:9
++         drop(_2) -> bb1;                 // scope 1 at $DIR/cycle.rs:7:1: 7:2
       }
   }
   

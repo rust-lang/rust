@@ -1,14 +1,5 @@
-warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/link-ordinal-too-large.rs:1:12
-   |
-LL | #![feature(raw_dylib)]
-   |            ^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
-
 error: ordinal value in `link_ordinal` is too large: `72436`
-  --> $DIR/link-ordinal-too-large.rs:6:5
+  --> $DIR/link-ordinal-too-large.rs:5:5
    |
 LL |     #[link_ordinal(72436)]
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -16,12 +7,12 @@ LL |     #[link_ordinal(72436)]
    = note: the value may not exceed `u16::MAX`
 
 error: ordinal value in `link_ordinal` is too large: `72436`
-  --> $DIR/link-ordinal-too-large.rs:9:5
+  --> $DIR/link-ordinal-too-large.rs:8:5
    |
 LL |     #[link_ordinal(72436)]
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the value may not exceed `u16::MAX`
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 

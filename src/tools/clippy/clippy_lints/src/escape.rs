@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_hir;
-use clippy_utils::ty::contains_ty;
 use rustc_hir::intravisit;
 use rustc_hir::{self, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -30,18 +29,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// # fn foo(bar: usize) {}
-    /// let x = Box::new(1);
-    /// foo(*x);
-    /// println!("{}", *x);
+    /// fn foo(x: Box<u32>) {}
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// # fn foo(bar: usize) {}
-    /// let x = 1;
-    /// foo(x);
-    /// println!("{}", x);
+    /// fn foo(x: u32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub BOXED_LOCAL,
@@ -172,7 +165,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                 // skip if there is a `self` parameter binding to a type
                 // that contains `Self` (i.e.: `self: Box<Self>`), see #4804
                 if let Some(trait_self_ty) = self.trait_self_ty {
-                    if map.name(cmt.hir_id) == kw::SelfLower && contains_ty(cmt.place.ty(), trait_self_ty) {
+                    if map.name(cmt.hir_id) == kw::SelfLower && cmt.place.ty().contains(trait_self_ty) {
                         return;
                     }
                 }

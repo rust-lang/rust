@@ -8,7 +8,7 @@
 # that code would never make it into the final executable and we'd thus be missing some
 # of the output.
 
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 all: $(TMPDIR)/$(call BIN,directly_linked) \
      $(TMPDIR)/$(call BIN,directly_linked_test_plus_whole_archive) \

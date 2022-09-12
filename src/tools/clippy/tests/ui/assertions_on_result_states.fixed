@@ -27,6 +27,14 @@ fn main() {
     let r: Result<Foo, Foo> = Ok(Foo);
     assert!(r.is_ok());
 
+    // test ok with some messages
+    let r: Result<Foo, DebugFoo> = Ok(Foo);
+    assert!(r.is_ok(), "oops");
+
+    // test ok with unit error
+    let r: Result<Foo, ()> = Ok(Foo);
+    assert!(r.is_ok());
+
     // test temporary ok
     fn get_ok() -> Result<Foo, DebugFoo> {
         Ok(Foo)

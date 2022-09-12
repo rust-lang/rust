@@ -1,0 +1,24 @@
+### What it does
+Check for manual implementations of Iterator::find
+
+### Why is this bad?
+It doesn't affect performance, but using `find` is shorter and easier to read.
+
+### Example
+
+```
+fn example(arr: Vec<i32>) -> Option<i32> {
+    for el in arr {
+        if el == 1 {
+            return Some(el);
+        }
+    }
+    None
+}
+```
+Use instead:
+```
+fn example(arr: Vec<i32>) -> Option<i32> {
+    arr.into_iter().find(|&el| el == 1)
+}
+```

@@ -1,0 +1,26 @@
+### What it does
+Checks for the usage of `&expr as *const T` or
+`&mut expr as *mut T`, and suggest using `ptr::addr_of` or
+`ptr::addr_of_mut` instead.
+
+### Why is this bad?
+This would improve readability and avoid creating a reference
+that points to an uninitialized value or unaligned place.
+Read the `ptr::addr_of` docs for more information.
+
+### Example
+```
+let val = 1;
+let p = &val as *const i32;
+
+let mut val_mut = 1;
+let p_mut = &mut val_mut as *mut i32;
+```
+Use instead:
+```
+let val = 1;
+let p = std::ptr::addr_of!(val);
+
+let mut val_mut = 1;
+let p_mut = std::ptr::addr_of_mut!(val_mut);
+```

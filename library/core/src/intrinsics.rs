@@ -54,7 +54,9 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::{Destruct, DiscriminantKind};
+#[cfg(bootstrap)]
+use crate::marker::Destruct;
+use crate::marker::DiscriminantKind;
 use crate::mem;
 
 // These imports are used for simplifying intra-doc links
@@ -63,7 +65,7 @@ use crate::mem;
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[deprecated(note = "no longer an intrinsic - use `ptr::drop_in_place` directly", since = "1.52.0")]
 #[inline]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
@@ -71,214 +73,6 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     unsafe { crate::ptr::drop_in_place(to_drop) }
 }
 
-// These have been renamed.
-#[cfg(bootstrap)]
-extern "rust-intrinsic" {
-    pub fn atomic_cxchg<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_load<T: Copy>(src: *const T) -> T;
-    pub fn atomic_load_acq<T: Copy>(src: *const T) -> T;
-    pub fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
-    pub fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
-    pub fn atomic_store<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_store_rel<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_xchg<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_fence();
-    pub fn atomic_fence_acq();
-    pub fn atomic_fence_rel();
-    pub fn atomic_fence_acqrel();
-    pub fn atomic_singlethreadfence();
-    pub fn atomic_singlethreadfence_acq();
-    pub fn atomic_singlethreadfence_rel();
-    pub fn atomic_singlethreadfence_acqrel();
-}
-
-// These have been renamed.
-#[cfg(bootstrap)]
-mod atomics {
-    pub use super::atomic_cxchg as atomic_cxchg_seqcst_seqcst;
-    pub use super::atomic_cxchg_acq as atomic_cxchg_acquire_acquire;
-    pub use super::atomic_cxchg_acq_failrelaxed as atomic_cxchg_acquire_relaxed;
-    pub use super::atomic_cxchg_acqrel as atomic_cxchg_acqrel_acquire;
-    pub use super::atomic_cxchg_acqrel_failrelaxed as atomic_cxchg_acqrel_relaxed;
-    pub use super::atomic_cxchg_failacq as atomic_cxchg_seqcst_acquire;
-    pub use super::atomic_cxchg_failrelaxed as atomic_cxchg_seqcst_relaxed;
-    pub use super::atomic_cxchg_rel as atomic_cxchg_release_relaxed;
-    pub use super::atomic_cxchg_relaxed as atomic_cxchg_relaxed_relaxed;
-
-    pub use super::atomic_cxchgweak as atomic_cxchgweak_seqcst_seqcst;
-    pub use super::atomic_cxchgweak_acq as atomic_cxchgweak_acquire_acquire;
-    pub use super::atomic_cxchgweak_acq_failrelaxed as atomic_cxchgweak_acquire_relaxed;
-    pub use super::atomic_cxchgweak_acqrel as atomic_cxchgweak_acqrel_acquire;
-    pub use super::atomic_cxchgweak_acqrel_failrelaxed as atomic_cxchgweak_acqrel_relaxed;
-    pub use super::atomic_cxchgweak_failacq as atomic_cxchgweak_seqcst_acquire;
-    pub use super::atomic_cxchgweak_failrelaxed as atomic_cxchgweak_seqcst_relaxed;
-    pub use super::atomic_cxchgweak_rel as atomic_cxchgweak_release_relaxed;
-    pub use super::atomic_cxchgweak_relaxed as atomic_cxchgweak_relaxed_relaxed;
-
-    pub use super::atomic_load as atomic_load_seqcst;
-    pub use super::atomic_load_acq as atomic_load_acquire;
-    pub use super::atomic_load_relaxed;
-    pub use super::atomic_load_unordered;
-
-    pub use super::atomic_store as atomic_store_seqcst;
-    pub use super::atomic_store_rel as atomic_store_release;
-    pub use super::atomic_store_relaxed;
-    pub use super::atomic_store_unordered;
-
-    pub use super::atomic_xchg as atomic_xchg_seqcst;
-    pub use super::atomic_xchg_acq as atomic_xchg_acquire;
-    pub use super::atomic_xchg_acqrel;
-    pub use super::atomic_xchg_rel as atomic_xchg_release;
-    pub use super::atomic_xchg_relaxed;
-
-    pub use super::atomic_xadd as atomic_xadd_seqcst;
-    pub use super::atomic_xadd_acq as atomic_xadd_acquire;
-    pub use super::atomic_xadd_acqrel;
-    pub use super::atomic_xadd_rel as atomic_xadd_release;
-    pub use super::atomic_xadd_relaxed;
-
-    pub use super::atomic_xsub as atomic_xsub_seqcst;
-    pub use super::atomic_xsub_acq as atomic_xsub_acquire;
-    pub use super::atomic_xsub_acqrel;
-    pub use super::atomic_xsub_rel as atomic_xsub_release;
-    pub use super::atomic_xsub_relaxed;
-
-    pub use super::atomic_and as atomic_and_seqcst;
-    pub use super::atomic_and_acq as atomic_and_acquire;
-    pub use super::atomic_and_acqrel;
-    pub use super::atomic_and_rel as atomic_and_release;
-    pub use super::atomic_and_relaxed;
-
-    pub use super::atomic_nand as atomic_nand_seqcst;
-    pub use super::atomic_nand_acq as atomic_nand_acquire;
-    pub use super::atomic_nand_acqrel;
-    pub use super::atomic_nand_rel as atomic_nand_release;
-    pub use super::atomic_nand_relaxed;
-
-    pub use super::atomic_or as atomic_or_seqcst;
-    pub use super::atomic_or_acq as atomic_or_acquire;
-    pub use super::atomic_or_acqrel;
-    pub use super::atomic_or_rel as atomic_or_release;
-    pub use super::atomic_or_relaxed;
-
-    pub use super::atomic_xor as atomic_xor_seqcst;
-    pub use super::atomic_xor_acq as atomic_xor_acquire;
-    pub use super::atomic_xor_acqrel;
-    pub use super::atomic_xor_rel as atomic_xor_release;
-    pub use super::atomic_xor_relaxed;
-
-    pub use super::atomic_max as atomic_max_seqcst;
-    pub use super::atomic_max_acq as atomic_max_acquire;
-    pub use super::atomic_max_acqrel;
-    pub use super::atomic_max_rel as atomic_max_release;
-    pub use super::atomic_max_relaxed;
-
-    pub use super::atomic_min as atomic_min_seqcst;
-    pub use super::atomic_min_acq as atomic_min_acquire;
-    pub use super::atomic_min_acqrel;
-    pub use super::atomic_min_rel as atomic_min_release;
-    pub use super::atomic_min_relaxed;
-
-    pub use super::atomic_umin as atomic_umin_seqcst;
-    pub use super::atomic_umin_acq as atomic_umin_acquire;
-    pub use super::atomic_umin_acqrel;
-    pub use super::atomic_umin_rel as atomic_umin_release;
-    pub use super::atomic_umin_relaxed;
-
-    pub use super::atomic_umax as atomic_umax_seqcst;
-    pub use super::atomic_umax_acq as atomic_umax_acquire;
-    pub use super::atomic_umax_acqrel;
-    pub use super::atomic_umax_rel as atomic_umax_release;
-    pub use super::atomic_umax_relaxed;
-
-    pub use super::atomic_fence as atomic_fence_seqcst;
-    pub use super::atomic_fence_acq as atomic_fence_acquire;
-    pub use super::atomic_fence_acqrel;
-    pub use super::atomic_fence_rel as atomic_fence_release;
-
-    pub use super::atomic_singlethreadfence as atomic_singlethreadfence_seqcst;
-    pub use super::atomic_singlethreadfence_acq as atomic_singlethreadfence_acquire;
-    pub use super::atomic_singlethreadfence_acqrel;
-    pub use super::atomic_singlethreadfence_rel as atomic_singlethreadfence_release;
-}
-
-#[cfg(bootstrap)]
-pub use atomics::*;
-
-#[cfg(not(bootstrap))]
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
@@ -945,30 +739,7 @@ extern "rust-intrinsic" {
     /// [`atomic::compiler_fence`] by passing [`Ordering::AcqRel`]
     /// as the `order`.
     pub fn atomic_singlethreadfence_acqrel();
-}
 
-// These have been renamed.
-//
-// These are the aliases for the old names.
-// To be removed when stdarch and panic_unwind have been updated.
-#[cfg(not(bootstrap))]
-mod atomics {
-    pub use super::atomic_cxchg_acqrel_acquire as atomic_cxchg_acqrel;
-    pub use super::atomic_cxchg_acqrel_relaxed as atomic_cxchg_acqrel_failrelaxed;
-    pub use super::atomic_cxchg_acquire_acquire as atomic_cxchg_acq;
-    pub use super::atomic_cxchg_acquire_relaxed as atomic_cxchg_acq_failrelaxed;
-    pub use super::atomic_cxchg_relaxed_relaxed as atomic_cxchg_relaxed;
-    pub use super::atomic_cxchg_release_relaxed as atomic_cxchg_rel;
-    pub use super::atomic_cxchg_seqcst_acquire as atomic_cxchg_failacq;
-    pub use super::atomic_cxchg_seqcst_relaxed as atomic_cxchg_failrelaxed;
-    pub use super::atomic_cxchg_seqcst_seqcst as atomic_cxchg;
-    pub use super::atomic_store_seqcst as atomic_store;
-}
-
-#[cfg(not(bootstrap))]
-pub use atomics::*;
-
-extern "rust-intrinsic" {
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
     /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
@@ -1313,7 +1084,7 @@ extern "rust-intrinsic" {
     /// Note that using `transmute` to turn a pointer to a `usize` is (as noted above) [undefined
     /// behavior][ub] in `const` contexts. Also outside of consts, this operation might not behave
     /// as expected -- this is touching on many unspecified aspects of the Rust memory model.
-    /// Depending on what the code is doing, the following alternatives are preferrable to
+    /// Depending on what the code is doing, the following alternatives are preferable to
     /// pointer-to-integer transmutation:
     /// - If the code just wants to store data of arbitrary type in some buffer and needs to pick a
     ///   type for that buffer, it can use [`MaybeUninit`][mem::MaybeUninit].
@@ -1463,7 +1234,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+    #[rustc_allowed_through_unstable_modules]
     #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
     #[rustc_diagnostic_item = "transmute"]
     pub fn transmute<T, U>(e: T) -> U;
@@ -1517,6 +1288,17 @@ extern "rust-intrinsic" {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
+
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
+    /// Consider using [`pointer::mask`] instead.
+    #[cfg(not(bootstrap))]
+    pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
@@ -2223,29 +2005,32 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// See documentation of `<*const T>::sub_ptr` for details.
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
     pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
 
     /// See documentation of `<*const T>::guaranteed_eq` for details.
+    /// Returns `2` if the result is unknown.
+    /// Returns `1` if the pointers are guaranteed equal
+    /// Returns `0` if the pointers are guaranteed inequal
     ///
     /// Note that, unlike most intrinsics, this is safe to call;
     /// it does not require an `unsafe` block.
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[cfg(not(bootstrap))]
+    pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
+
+    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[cfg(bootstrap)]
     pub fn ptr_guaranteed_eq<T>(ptr: *const T, other: *const T) -> bool;
 
-    /// See documentation of `<*const T>::guaranteed_ne` for details.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[cfg(bootstrap)]
     pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
 
     /// Allocates a block of memory at compile time.
@@ -2282,7 +2067,8 @@ extern "rust-intrinsic" {
     ///
     /// # Safety
     ///
-    /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized.
+    /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized or carry a
+    /// pointer value.
     /// Note that this is a stricter criterion than just the *values* being
     /// fully-initialized: if `T` has padding, it's UB to call this intrinsic.
     ///
@@ -2299,13 +2085,70 @@ extern "rust-intrinsic" {
 
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the size stored in that vtable.
-    #[cfg(not(bootstrap))]
     pub fn vtable_size(ptr: *const ()) -> usize;
 
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the alignment stored in that vtable.
-    #[cfg(not(bootstrap))]
     pub fn vtable_align(ptr: *const ()) -> usize;
+
+    /// Selects which function to call depending on the context.
+    ///
+    /// If this function is evaluated at compile-time, then a call to this
+    /// intrinsic will be replaced with a call to `called_in_const`. It gets
+    /// replaced with a call to `called_at_rt` otherwise.
+    ///
+    /// # Type Requirements
+    ///
+    /// The two functions must be both function items. They cannot be function
+    /// pointers or closures. The first function must be a `const fn`.
+    ///
+    /// `arg` will be the tupled arguments that will be passed to either one of
+    /// the two functions, therefore, both functions must accept the same type of
+    /// arguments. Both functions must return RET.
+    ///
+    /// # Safety
+    ///
+    /// The two functions must behave observably equivalent. Safe code in other
+    /// crates may assume that calling a `const fn` at compile-time and at run-time
+    /// produces the same result. A function that produces a different result when
+    /// evaluated at run-time, or has any other observable side-effects, is
+    /// *unsound*.
+    ///
+    /// Here is an example of how this could cause a problem:
+    /// ```no_run
+    /// #![feature(const_eval_select)]
+    /// #![feature(core_intrinsics)]
+    /// use std::hint::unreachable_unchecked;
+    /// use std::intrinsics::const_eval_select;
+    ///
+    /// // Crate A
+    /// pub const fn inconsistent() -> i32 {
+    ///     fn runtime() -> i32 { 1 }
+    ///     const fn compiletime() -> i32 { 2 }
+    ///
+    ///     unsafe {
+    //          // ⚠ This code violates the required equivalence of `compiletime`
+    ///         // and `runtime`.
+    ///         const_eval_select((), compiletime, runtime)
+    ///     }
+    /// }
+    ///
+    /// // Crate B
+    /// const X: i32 = inconsistent();
+    /// let x = inconsistent();
+    /// if x != X { unsafe { unreachable_unchecked(); }}
+    /// ```
+    ///
+    /// This code causes Undefined Behavior when being run, since the
+    /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
+    /// which violates the principle that a `const fn` must behave the same at
+    /// compile-time and at run-time. The unsafe code in crate B is fine.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
+    pub fn const_eval_select<ARG, F, G, RET>(arg: ARG, called_in_const: F, called_at_rt: G) -> RET
+    where
+        G: FnOnce<ARG, Output = RET>,
+        F: FnOnce<ARG, Output = RET>;
 }
 
 // Some functions are defined here because they accidentally got made
@@ -2315,6 +2158,11 @@ extern "rust-intrinsic" {
 
 /// Check that the preconditions of an unsafe function are followed, if debug_assertions are on,
 /// and only at runtime.
+///
+/// This macro should be called as `assert_unsafe_precondition!([Generics](name: Type) => Expression)`
+/// where the names specified will be moved into the macro as captured variables, and defines an item
+/// to call `const_eval_select` on. The tokens inside the square brackets are used to denote generics
+/// for the function declaractions and can be omitted if there is no generics.
 ///
 /// # Safety
 ///
@@ -2330,18 +2178,21 @@ extern "rust-intrinsic" {
 /// the occasional mistake, and this check should help them figure things out.
 #[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($e:expr) => {
+    ($([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
         if cfg!(debug_assertions) {
-            // Use a closure so that we can capture arbitrary expressions from the invocation
-            let runtime = || {
+            // allow non_snake_case to allow capturing const generics
+            #[allow(non_snake_case)]
+            #[inline(always)]
+            fn runtime$(<$($tt)*>)?($($i:$ty),*) {
                 if !$e {
                     // abort instead of panicking to reduce impact on code size
                     ::core::intrinsics::abort();
                 }
-            };
-            const fn comptime() {}
+            }
+            #[allow(non_snake_case)]
+            const fn comptime$(<$($tt)*>)?($(_:$ty),*) {}
 
-            ::core::intrinsics::const_eval_select((), comptime, runtime);
+            ::core::intrinsics::const_eval_select(($($i,)*), comptime, runtime);
         }
     };
 }
@@ -2350,7 +2201,7 @@ pub(crate) use assert_unsafe_precondition;
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
-    !ptr.is_null() && ptr.addr() % mem::align_of::<T>() == 0
+    !ptr.is_null() && ptr.is_aligned()
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
@@ -2363,6 +2214,16 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
     // If the absolute distance between the ptrs is at least as big as the size of the buffer,
     // they do not overlap.
     diff >= size
+}
+
+#[cfg(bootstrap)]
+pub const fn ptr_guaranteed_cmp(a: *const (), b: *const ()) -> u8 {
+    match (ptr_guaranteed_eq(a, b), ptr_guaranteed_ne(a, b)) {
+        (false, false) => 2,
+        (true, false) => 1,
+        (false, true) => 0,
+        (true, true) => unreachable!(),
+    }
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -2420,9 +2281,9 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 ///     dst.reserve(src_len);
 ///
 ///     unsafe {
-///         // The call to offset is always safe because `Vec` will never
+///         // The call to add is always safe because `Vec` will never
 ///         // allocate more than `isize::MAX` bytes.
-///         let dst_ptr = dst.as_mut_ptr().offset(dst_len as isize);
+///         let dst_ptr = dst.as_mut_ptr().add(dst_len);
 ///         let src_ptr = src.as_ptr();
 ///
 ///         // Truncate `src` without dropping its contents. We do this first,
@@ -2451,7 +2312,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -2464,7 +2325,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     // SAFETY: the safety contract for `copy_nonoverlapping` must be
     // upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!(
+        assert_unsafe_precondition!([T](src: *const T, dst: *mut T, count: usize) =>
             is_aligned_and_not_null(src)
                 && is_aligned_and_not_null(dst)
                 && is_nonoverlapping(src, dst, count)
@@ -2538,7 +2399,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -2550,7 +2411,8 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(src) && is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!([T](src: *const T, dst: *mut T) =>
+            is_aligned_and_not_null(src) && is_aligned_and_not_null(dst));
         copy(src, dst, count)
     }
 }
@@ -2606,7 +2468,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -2618,63 +2480,12 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
         write_bytes(dst, val, count)
     }
 }
 
-/// Selects which function to call depending on the context.
-///
-/// If this function is evaluated at compile-time, then a call to this
-/// intrinsic will be replaced with a call to `called_in_const`. It gets
-/// replaced with a call to `called_at_rt` otherwise.
-///
-/// # Type Requirements
-///
-/// The two functions must be both function items. They cannot be function
-/// pointers or closures.
-///
-/// `arg` will be the arguments that will be passed to either one of the
-/// two functions, therefore, both functions must accept the same type of
-/// arguments. Both functions must return RET.
-///
-/// # Safety
-///
-/// The two functions must behave observably equivalent. Safe code in other
-/// crates may assume that calling a `const fn` at compile-time and at run-time
-/// produces the same result. A function that produces a different result when
-/// evaluated at run-time, or has any other observable side-effects, is
-/// *unsound*.
-///
-/// Here is an example of how this could cause a problem:
-/// ```no_run
-/// #![feature(const_eval_select)]
-/// #![feature(core_intrinsics)]
-/// use std::hint::unreachable_unchecked;
-/// use std::intrinsics::const_eval_select;
-///
-/// // Crate A
-/// pub const fn inconsistent() -> i32 {
-///     fn runtime() -> i32 { 1 }
-///     const fn compiletime() -> i32 { 2 }
-///
-///     unsafe {
-//          // ⚠ This code violates the required equivalence of `compiletime`
-///         // and `runtime`.
-///         const_eval_select((), compiletime, runtime)
-///     }
-/// }
-///
-/// // Crate B
-/// const X: i32 = inconsistent();
-/// let x = inconsistent();
-/// if x != X { unsafe { unreachable_unchecked(); }}
-/// ```
-///
-/// This code causes Undefined Behavior when being run, since the
-/// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
-/// which violates the principle that a `const fn` must behave the same at
-/// compile-time and at run-time. The unsafe code in crate B is fine.
+#[cfg(bootstrap)]
 #[unstable(
     feature = "const_eval_select",
     issue = "none",
@@ -2696,6 +2507,7 @@ where
     called_at_rt.call_once(arg)
 }
 
+#[cfg(bootstrap)]
 #[unstable(
     feature = "const_eval_select",
     issue = "none",

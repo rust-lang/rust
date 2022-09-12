@@ -5,14 +5,22 @@ use std::str::FromStr;
 #[cfg(test)]
 mod tests;
 
+pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Version {
-    parts: [u32; 3],
+pub enum Version {
+    Explicit { parts: [u32; 3] },
+    CurrentPlaceholder,
 }
 
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad(&format!("{}.{}.{}", self.parts[0], self.parts[1], self.parts[2]))
+        match self {
+            Version::Explicit { parts } => {
+                f.pad(&format!("{}.{}.{}", parts[0], parts[1], parts[2]))
+            }
+            Version::CurrentPlaceholder => f.pad(&format!("CURRENT")),
+        }
     }
 }
 
@@ -32,6 +40,9 @@ impl FromStr for Version {
     type Err = ParseVersionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == VERSION_PLACEHOLDER {
+            return Ok(Version::CurrentPlaceholder);
+        }
         let mut iter = s.split('.').map(|part| Ok(part.parse()?));
 
         let mut part = || iter.next().unwrap_or(Err(ParseVersionError::WrongNumberOfParts));
@@ -43,6 +54,6 @@ impl FromStr for Version {
             return Err(ParseVersionError::WrongNumberOfParts);
         }
 
-        Ok(Self { parts })
+        Ok(Version::Explicit { parts })
     }
 }

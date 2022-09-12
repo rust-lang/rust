@@ -6,6 +6,7 @@ use std::borrow::{Borrow, Cow};
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
@@ -123,17 +124,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
-    /// Whether, when checking alignment, we should `force_int` and thus support
+    /// Whether, when checking alignment, we should look at the actual address and thus support
     /// custom alignment logic based on whatever the integer address happens to be.
     ///
-    /// Requires Provenance::OFFSET_IS_ADDR to be true.
-    fn force_int_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    /// If this returns true, Provenance::OFFSET_IS_ADDR must be true.
+    fn use_addr_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
-
-    /// Whether to enforce integers and floats being initialized.
-    fn enforce_number_init(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether function calls should be [ABI](CallAbi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
@@ -218,23 +216,12 @@ pub trait Machine<'mir, 'tcx>: Sized {
         right: &ImmTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx, (Scalar<Self::Provenance>, bool, Ty<'tcx>)>;
 
-    /// Called to read the specified `local` from the `frame`.
-    /// Since reading a ZST is not actually accessing memory or locals, this is never invoked
-    /// for ZST reads.
-    #[inline]
-    fn access_local<'a>(
-        frame: &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
-        local: mir::Local,
-    ) -> InterpResult<'tcx, &'a Operand<Self::Provenance>>
-    where
-        'tcx: 'mir,
-    {
-        frame.locals[local].access()
-    }
-
     /// Called to write the specified `local` from the `frame`.
     /// Since writing a ZST is not actually accessing memory or locals, this is never invoked
     /// for ZST reads.
+    ///
+    /// Due to borrow checker trouble, we indicate the `frame` as an index rather than an `&mut
+    /// Frame`.
     #[inline]
     fn access_local_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
@@ -329,7 +316,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
     ///
-    /// This must only fail if `alloc` contains relocations.
+    /// This must only fail if `alloc` contains provenance.
     fn adjust_allocation<'b>(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         id: AllocId,
@@ -337,13 +324,22 @@ pub trait Machine<'mir, 'tcx>: Sized {
         kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>>;
 
+    fn eval_inline_asm(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _template: &'tcx [InlineAsmTemplatePiece],
+        _operands: &[mir::InlineAsmOperand<'tcx>],
+        _options: InlineAsmOptions,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("inline assembly is not supported")
+    }
+
     /// Hook for performing extra checks on a memory read access.
     ///
     /// Takes read-only access to the allocation so we can keep all the memory read
     /// operations take `&self`. Use a `RefCell` in `AllocExtra` if you
     /// need to mutate.
     #[inline(always)]
-    fn memory_read(
+    fn before_memory_read(
         _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_extra: &Self::AllocExtra,
@@ -355,7 +351,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Hook for performing extra checks on a memory write access.
     #[inline(always)]
-    fn memory_written(
+    fn before_memory_write(
         _tcx: TyCtxt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
@@ -367,7 +363,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Hook for performing extra operations on a memory deallocation.
     #[inline(always)]
-    fn memory_deallocated(
+    fn before_memory_deallocation(
         _tcx: TyCtxt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
@@ -437,26 +433,9 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type FrameExtra = ();
 
     #[inline(always)]
-    fn enforce_alignment(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        // We do not check for alignment to avoid having to carry an `Align`
-        // in `ConstValue::ByRef`.
+    fn use_addr_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+        // We do not support `use_addr`.
         false
-    }
-
-    #[inline(always)]
-    fn force_int_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        // We do not support `force_int`.
-        false
-    }
-
-    #[inline(always)]
-    fn enforce_validity(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        false // for now, we don't enforce validity
-    }
-
-    #[inline(always)]
-    fn enforce_number_init(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        true
     }
 
     #[inline(always)]
@@ -510,6 +489,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     ) -> InterpResult<$tcx, Pointer<Option<AllocId>>> {
         // Allow these casts, but make the pointer not dereferenceable.
         // (I.e., they behave like transmutation.)
+        // This is correct because no pointers can ever be exposed in compile-time evaluation.
         Ok(Pointer::from_addr(addr))
     }
 

@@ -126,9 +126,9 @@ fn report_bad_target(sess: &Session, item: &Annotatable, span: Span) -> bool {
 }
 
 fn report_unexpected_literal(sess: &Session, lit: &ast::Lit) {
-    let help_msg = match lit.token.kind {
-        token::Str if rustc_lexer::is_ident(lit.token.symbol.as_str()) => {
-            format!("try using `#[derive({})]`", lit.token.symbol)
+    let help_msg = match lit.token_lit.kind {
+        token::Str if rustc_lexer::is_ident(lit.token_lit.symbol.as_str()) => {
+            format!("try using `#[derive({})]`", lit.token_lit.symbol)
         }
         _ => "for example, write `#[derive(Debug)]` for `Debug`".to_string(),
     };

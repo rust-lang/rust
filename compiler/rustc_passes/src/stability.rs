@@ -1,8 +1,9 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use attr::StabilityLevel;
-use rustc_attr::{self as attr, ConstStability, Stability, Unstable, UnstableReason};
+use rustc_attr::{
+    self as attr, ConstStability, Stability, StabilityLevel, Unstable, UnstableReason,
+};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -10,7 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{FieldDef, Generics, HirId, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
+use rustc_hir::{FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability::{AllowUnstable, DeprecationEntry, Index};
@@ -161,7 +162,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             return;
         }
 
-        let (stab, const_stab) = attr::find_stability(&self.tcx.sess, attrs, item_sp);
+        let (stab, const_stab, body_stab) = attr::find_stability(&self.tcx.sess, attrs, item_sp);
         let mut const_span = None;
 
         let const_stab = const_stab.map(|(const_stab, const_span_node)| {
@@ -207,6 +208,13 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 )
                 .emit();
             }
+        }
+
+        if let Some((body_stab, _span)) = body_stab {
+            // FIXME: check that this item can have body stability
+
+            self.index.default_body_stab_map.insert(def_id, body_stab);
+            debug!(?self.index.default_body_stab_map);
         }
 
         let stab = stab.map(|(stab, span)| {
@@ -434,7 +442,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         );
     }
 
-    fn visit_variant(&mut self, var: &'tcx Variant<'tcx>, g: &'tcx Generics<'tcx>, item_id: HirId) {
+    fn visit_variant(&mut self, var: &'tcx Variant<'tcx>) {
         self.annotate(
             self.tcx.hir().local_def_id(var.id),
             var.span,
@@ -452,12 +460,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                         AnnotationKind::Required,
                         InheritDeprecation::Yes,
                         InheritConstStability::No,
-                        InheritStability::No,
+                        InheritStability::Yes,
                         |_| {},
                     );
                 }
 
-                intravisit::walk_variant(v, var, g, item_id)
+                intravisit::walk_variant(v, var)
             },
         )
     }
@@ -590,9 +598,12 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         intravisit::walk_impl_item(self, ii);
     }
 
-    fn visit_variant(&mut self, var: &'tcx Variant<'tcx>, g: &'tcx Generics<'tcx>, item_id: HirId) {
+    fn visit_variant(&mut self, var: &'tcx Variant<'tcx>) {
         self.check_missing_stability(self.tcx.hir().local_def_id(var.id), var.span);
-        intravisit::walk_variant(self, var, g, item_id);
+        if let Some(ctor_hir_id) = var.data.ctor_hir_id() {
+            self.check_missing_stability(self.tcx.hir().local_def_id(ctor_hir_id), var.span);
+        }
+        intravisit::walk_variant(self, var);
     }
 
     fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
@@ -613,6 +624,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
     let mut index = Index {
         stab_map: Default::default(),
         const_stab_map: Default::default(),
+        default_body_stab_map: Default::default(),
         depr_map: Default::default(),
         implications: Default::default(),
     };
@@ -673,6 +685,9 @@ pub(crate) fn provide(providers: &mut Providers) {
         stability_implications: |tcx, _| tcx.stability().implications.clone(),
         lookup_stability: |tcx, id| tcx.stability().local_stability(id.expect_local()),
         lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id.expect_local()),
+        lookup_default_body_stability: |tcx, id| {
+            tcx.stability().local_default_body_stability(id.expect_local())
+        },
         lookup_deprecation_entry: |tcx, id| {
             tcx.stability().local_deprecation_entry(id.expect_local())
         },
@@ -723,7 +738,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let features = self.tcx.features();
                 if features.staged_api {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
-                    let (stab, const_stab) = attr::find_stability(&self.tcx.sess, attrs, item.span);
+                    let (stab, const_stab, _) =
+                        attr::find_stability(&self.tcx.sess, attrs, item.span);
 
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because
@@ -816,7 +832,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 // added, such as `core::intrinsics::transmute`
                 let parents = path.segments.iter().rev().skip(1);
                 for path_segment in parents {
-                    if let Some(def_id) = path_segment.res.as_ref().and_then(Res::opt_def_id) {
+                    if let Some(def_id) = path_segment.res.opt_def_id() {
                         // use `None` for id to prevent deprecation check
                         self.tcx.check_stability_allow_unstable(
                             def_id,
@@ -949,56 +965,111 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     remaining_lib_features.remove(&sym::libc);
     remaining_lib_features.remove(&sym::test);
 
-    // We always collect the lib features declared in the current crate, even if there are
-    // no unknown features, because the collection also does feature attribute validation.
-    let local_defined_features = tcx.lib_features(());
-    let mut all_lib_features: FxHashMap<_, _> =
-        local_defined_features.to_vec().iter().map(|el| *el).collect();
-    let mut implications = tcx.stability_implications(rustc_hir::def_id::LOCAL_CRATE).clone();
-    for &cnum in tcx.crates(()) {
-        implications.extend(tcx.stability_implications(cnum));
-        all_lib_features.extend(tcx.defined_lib_features(cnum).iter().map(|el| *el));
-    }
-
-    // Check that every feature referenced by an `implied_by` exists (for features defined in the
-    // local crate).
-    for (implied_by, feature) in tcx.stability_implications(rustc_hir::def_id::LOCAL_CRATE) {
-        // Only `implied_by` needs to be checked, `feature` is guaranteed to exist.
-        if !all_lib_features.contains_key(implied_by) {
-            let span = local_defined_features
-                .stable
-                .get(feature)
-                .map(|(_, span)| span)
-                .or_else(|| local_defined_features.unstable.get(feature))
-                .expect("feature that implied another does not exist");
-            tcx.sess
-                .struct_span_err(
-                    *span,
-                    format!("feature `{implied_by}` implying `{feature}` does not exist"),
-                )
-                .emit();
-        }
-    }
-
-    if !remaining_lib_features.is_empty() {
-        for (feature, since) in all_lib_features.iter() {
+    /// For each feature in `defined_features`..
+    ///
+    /// - If it is in `remaining_lib_features` (those features with `#![feature(..)]` attributes in
+    ///   the current crate), check if it is stable (or partially stable) and thus an unnecessary
+    ///   attribute.
+    /// - If it is in `remaining_implications` (a feature that is referenced by an `implied_by`
+    ///   from the current crate), then remove it from the remaining implications.
+    ///
+    /// Once this function has been invoked for every feature (local crate and all extern crates),
+    /// then..
+    ///
+    /// - If features remain in `remaining_lib_features`, then the user has enabled a feature that
+    ///   does not exist.
+    /// - If features remain in `remaining_implications`, the `implied_by` refers to a feature that
+    ///   does not exist.
+    ///
+    /// By structuring the code in this way: checking the features defined from each crate one at a
+    /// time, less loading from metadata is performed and thus compiler performance is improved.
+    fn check_features<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        remaining_lib_features: &mut FxIndexMap<&Symbol, Span>,
+        remaining_implications: &mut FxHashMap<Symbol, Symbol>,
+        defined_features: &[(Symbol, Option<Symbol>)],
+        all_implications: &FxHashMap<Symbol, Symbol>,
+    ) {
+        for (feature, since) in defined_features {
             if let Some(since) = since && let Some(span) = remaining_lib_features.get(&feature) {
                 // Warn if the user has enabled an already-stable lib feature.
-                if let Some(implies) = implications.get(&feature) {
+                if let Some(implies) = all_implications.get(&feature) {
                     unnecessary_partially_stable_feature_lint(tcx, *span, *feature, *implies, *since);
                 } else {
                     unnecessary_stable_feature_lint(tcx, *span, *feature, *since);
                 }
+
             }
-            remaining_lib_features.remove(&feature);
-            if remaining_lib_features.is_empty() {
+            remaining_lib_features.remove(feature);
+
+            // `feature` is the feature doing the implying, but `implied_by` is the feature with
+            // the attribute that establishes this relationship. `implied_by` is guaranteed to be a
+            // feature defined in the local crate because `remaining_implications` is only the
+            // implications from this crate.
+            remaining_implications.remove(feature);
+
+            if remaining_lib_features.is_empty() && remaining_implications.is_empty() {
                 break;
             }
         }
     }
 
+    // All local crate implications need to have the feature that implies it confirmed to exist.
+    let mut remaining_implications =
+        tcx.stability_implications(rustc_hir::def_id::LOCAL_CRATE).clone();
+
+    // We always collect the lib features declared in the current crate, even if there are
+    // no unknown features, because the collection also does feature attribute validation.
+    let local_defined_features = tcx.lib_features(()).to_vec();
+    if !remaining_lib_features.is_empty() || !remaining_implications.is_empty() {
+        // Loading the implications of all crates is unavoidable to be able to emit the partial
+        // stabilization diagnostic, but it can be avoided when there are no
+        // `remaining_lib_features`.
+        let mut all_implications = remaining_implications.clone();
+        for &cnum in tcx.crates(()) {
+            all_implications.extend(tcx.stability_implications(cnum));
+        }
+
+        check_features(
+            tcx,
+            &mut remaining_lib_features,
+            &mut remaining_implications,
+            local_defined_features.as_slice(),
+            &all_implications,
+        );
+
+        for &cnum in tcx.crates(()) {
+            if remaining_lib_features.is_empty() && remaining_implications.is_empty() {
+                break;
+            }
+            check_features(
+                tcx,
+                &mut remaining_lib_features,
+                &mut remaining_implications,
+                tcx.defined_lib_features(cnum).to_vec().as_slice(),
+                &all_implications,
+            );
+        }
+    }
+
     for (feature, span) in remaining_lib_features {
         struct_span_err!(tcx.sess, span, E0635, "unknown feature `{}`", feature).emit();
+    }
+
+    for (implied_by, feature) in remaining_implications {
+        let local_defined_features = tcx.lib_features(());
+        let span = local_defined_features
+            .stable
+            .get(&feature)
+            .map(|(_, span)| span)
+            .or_else(|| local_defined_features.unstable.get(&feature))
+            .expect("feature that implied another does not exist");
+        tcx.sess
+            .struct_span_err(
+                *span,
+                format!("feature `{implied_by}` implying `{feature}` does not exist"),
+            )
+            .emit();
     }
 
     // FIXME(#44232): the `used_features` table no longer exists, so we

@@ -15,7 +15,7 @@ fn allocate_zeroed() {
         let end = i.add(layout.size());
         while i < end {
             assert_eq!(*i, 0);
-            i = i.offset(1);
+            i = i.add(1);
         }
         Global.deallocate(ptr.as_non_null_ptr(), layout);
     }

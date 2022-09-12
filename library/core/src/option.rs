@@ -1189,6 +1189,12 @@ impl<T> Option<T> {
 
     /// Returns [`None`] if the option is [`None`], otherwise returns `optb`.
     ///
+    /// Arguments passed to `and` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`and_then`], which is
+    /// lazily evaluated.
+    ///
+    /// [`and_then`]: Option::and_then
+    ///
     /// # Examples
     ///
     /// ```

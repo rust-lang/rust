@@ -85,7 +85,7 @@ def _download(path, url, probably_big, verbose, exception):
             option = "-#"
         else:
             option = "-s"
-        # If curl is not present on Win32, we shoud not sys.exit
+        # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
         require(["curl", "--version"], exception=platform_is_win32)
         run(["curl", option,
@@ -793,6 +793,8 @@ class RustBuild(object):
 
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
+        # keep this consistent with the equivalent check in rustbuild:
+        # https://github.com/rust-lang/rust/blob/a8a33cf27166d3eabaffc58ed3799e054af3b0c6/src/bootstrap/lib.rs#L399-L405
         if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
             if os.getuid() == 0:
                 self.use_vendored_sources = True
