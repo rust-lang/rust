@@ -34,11 +34,9 @@ use super::display_buffer::DisplayBuffer;
 #[derive(Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
     /// An IPv4 address.
-    #[cfg_attr(not(test), rustc_diagnostic_item = "ip_addr_variant_v4")]
     #[stable(feature = "ip_addr", since = "1.7.0")]
     V4(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv4Addr),
     /// An IPv6 address.
-    #[cfg_attr(not(test), rustc_diagnostic_item = "ip_addr_variant_v6")]
     #[stable(feature = "ip_addr", since = "1.7.0")]
     V6(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv6Addr),
 }
