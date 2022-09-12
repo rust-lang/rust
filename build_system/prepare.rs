@@ -1,12 +1,11 @@
 use std::env;
 use std::ffi::OsStr;
-use std::ffi::OsString;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
-use super::utils::{copy_dir_recursively, spawn_and_wait};
+use super::utils::{cargo_command, copy_dir_recursively, spawn_and_wait};
 
 pub(crate) fn prepare() {
     prepare_sysroot();
@@ -53,8 +52,7 @@ pub(crate) fn prepare() {
     );
 
     eprintln!("[LLVM BUILD] simple-raytracer");
-    let mut build_cmd = Command::new("cargo");
-    build_cmd.arg("build").env_remove("CARGO_TARGET_DIR").current_dir("simple-raytracer");
+    let build_cmd = cargo_command("cargo", "build", None, Path::new("simple-raytracer"));
     spawn_and_wait(build_cmd);
     fs::copy(
         Path::new("simple-raytracer/target/debug").join(get_file_name("main", "bin")),
@@ -156,14 +154,20 @@ fn init_git_repo(repo_dir: &Path) {
     spawn_and_wait(git_commit_cmd);
 }
 
-fn get_patches(crate_name: &str) -> Vec<OsString> {
-    let mut patches: Vec<_> = fs::read_dir("patches")
+fn get_patches(source_dir: &Path, crate_name: &str) -> Vec<PathBuf> {
+    let mut patches: Vec<_> = fs::read_dir(source_dir.join("patches"))
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension() == Some(OsStr::new("patch")))
-        .map(|path| path.file_name().unwrap().to_owned())
-        .filter(|file_name| {
-            file_name.to_str().unwrap().split_once("-").unwrap().1.starts_with(crate_name)
+        .filter(|path| {
+            path.file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .split_once("-")
+                .unwrap()
+                .1
+                .starts_with(crate_name)
         })
         .collect();
     patches.sort();
@@ -171,11 +175,14 @@ fn get_patches(crate_name: &str) -> Vec<OsString> {
 }
 
 fn apply_patches(crate_name: &str, target_dir: &Path) {
-    for patch in get_patches(crate_name) {
-        eprintln!("[PATCH] {:?} <- {:?}", target_dir.file_name().unwrap(), patch);
-        let patch_arg = env::current_dir().unwrap().join("patches").join(patch);
+    for patch in get_patches(&std::env::current_dir().unwrap(), crate_name) {
+        eprintln!(
+            "[PATCH] {:?} <- {:?}",
+            target_dir.file_name().unwrap(),
+            patch.file_name().unwrap()
+        );
         let mut apply_patch_cmd = Command::new("git");
-        apply_patch_cmd.arg("am").arg(patch_arg).arg("-q").current_dir(target_dir);
+        apply_patch_cmd.arg("am").arg(patch).arg("-q").current_dir(target_dir);
         spawn_and_wait(apply_patch_cmd);
     }
 }
