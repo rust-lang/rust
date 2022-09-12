@@ -16,9 +16,14 @@ use crate::{
 
 /// Find a path that can be used to refer to a certain item. This can depend on
 /// *from where* you're referring to the item, hence the `from` parameter.
-pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
+pub fn find_path(
+    db: &dyn DefDatabase,
+    item: ItemInNs,
+    from: ModuleId,
+    prefer_core: bool,
+) -> Option<ModPath> {
     let _p = profile::span("find_path");
-    find_path_inner(db, item, from, None)
+    find_path_inner(db, item, from, None, prefer_core)
 }
 
 pub fn find_path_prefixed(
@@ -26,9 +31,10 @@ pub fn find_path_prefixed(
     item: ItemInNs,
     from: ModuleId,
     prefix_kind: PrefixKind,
+    prefer_core: bool,
 ) -> Option<ModPath> {
     let _p = profile::span("find_path_prefixed");
-    find_path_inner(db, item, from, Some(prefix_kind))
+    find_path_inner(db, item, from, Some(prefix_kind), prefer_core)
 }
 
 const MAX_PATH_LEN: usize = 15;
@@ -100,12 +106,22 @@ fn find_path_inner(
     item: ItemInNs,
     from: ModuleId,
     prefixed: Option<PrefixKind>,
+    prefer_core: bool,
 ) -> Option<ModPath> {
     // FIXME: Do fast path for std/core libs?
 
     let mut visited_modules = FxHashSet::default();
     let def_map = from.def_map(db);
-    find_path_inner_(db, &def_map, from, item, MAX_PATH_LEN, prefixed, &mut visited_modules)
+    find_path_inner_(
+        db,
+        &def_map,
+        from,
+        item,
+        MAX_PATH_LEN,
+        prefixed,
+        &mut visited_modules,
+        prefer_core,
+    )
 }
 
 fn find_path_inner_(
@@ -116,6 +132,7 @@ fn find_path_inner_(
     max_len: usize,
     mut prefixed: Option<PrefixKind>,
     visited_modules: &mut FxHashSet<ModuleId>,
+    prefer_core: bool,
 ) -> Option<ModPath> {
     if max_len == 0 {
         return None;
@@ -191,7 +208,9 @@ fn find_path_inner_(
     // Recursive case:
     // - if the item is an enum variant, refer to it via the enum
     if let Some(ModuleDefId::EnumVariantId(variant)) = item.as_module_def_id() {
-        if let Some(mut path) = find_path(db, ItemInNs::Types(variant.parent.into()), from) {
+        if let Some(mut path) =
+            find_path(db, ItemInNs::Types(variant.parent.into()), from, prefer_core)
+        {
             let data = db.enum_data(variant.parent);
             path.push_segment(data.variants[variant.local_id].name.clone());
             return Some(path);
@@ -202,7 +221,7 @@ fn find_path_inner_(
     }
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
-    let prefer_no_std = db.crate_supports_no_std(crate_root.krate);
+    let prefer_no_std = prefer_core || db.crate_supports_no_std(crate_root.krate);
     let mut best_path = None;
     let mut best_path_len = max_len;
 
@@ -223,6 +242,7 @@ fn find_path_inner_(
                 best_path_len - 1,
                 prefixed,
                 visited_modules,
+                prefer_core,
             ) {
                 path.push_segment(name);
 
@@ -253,6 +273,7 @@ fn find_path_inner_(
                     best_path_len - 1,
                     prefixed,
                     visited_modules,
+                    prefer_core,
                 )?;
                 cov_mark::hit!(partially_imported);
                 path.push_segment(info.path.segments.last()?.clone());
@@ -428,7 +449,8 @@ mod tests {
             .take_types()
             .unwrap();
 
-        let found_path = find_path_inner(&db, ItemInNs::Types(resolved), module, prefix_kind);
+        let found_path =
+            find_path_inner(&db, ItemInNs::Types(resolved), module, prefix_kind, false);
         assert_eq!(found_path, Some(mod_path), "{:?}", prefix_kind);
     }
 
