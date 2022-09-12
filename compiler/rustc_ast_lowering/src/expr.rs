@@ -146,13 +146,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
                     ),
                 ExprKind::Await(ref expr) => {
-                    let span = if expr.span.hi() < e.span.hi() {
-                        expr.span.shrink_to_hi().with_hi(e.span.hi())
+                    let dot_await_span = if expr.span.hi() < e.span.hi() {
+                        let span_with_whitespace = self
+                            .tcx
+                            .sess
+                            .source_map()
+                            .span_extend_while(expr.span, char::is_whitespace)
+                            .unwrap_or(expr.span);
+                        span_with_whitespace.shrink_to_hi().with_hi(e.span.hi())
                     } else {
                         // this is a recovered `await expr`
                         e.span
                     };
-                    self.lower_expr_await(span, expr)
+                    self.lower_expr_await(dot_await_span, expr)
                 }
                 ExprKind::Closure(
                     ref binder,
