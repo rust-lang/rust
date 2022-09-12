@@ -144,6 +144,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                     // the sequence of visits agree with the order in the default
                     // `hir::intravisit` visitor.
                     mem::swap(&mut prev_cx, &mut visitor.cx);
+                    visitor.terminating_scopes.insert(els.hir_id.local_id);
                     visitor.visit_block(els);
                     // From now on, we continue normally.
                     visitor.cx = prev_cx;
