@@ -1,4 +1,5 @@
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
+use hir::def::DefKind;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
@@ -1530,6 +1531,49 @@ fn check_fn_or_method<'tcx>(
     );
 
     check_where_clauses(wfcx, span, def_id);
+
+    check_return_position_impl_trait_in_trait_bounds(
+        tcx,
+        wfcx,
+        def_id,
+        sig.output(),
+        hir_decl.output.span(),
+    );
+}
+
+/// Basically `check_associated_type_bounds`, but separated for now and should be
+/// deduplicated when RPITITs get lowered into real associated items.
+fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    wfcx: &WfCheckingCtxt<'_, 'tcx>,
+    fn_def_id: LocalDefId,
+    fn_output: Ty<'tcx>,
+    span: Span,
+) {
+    if let Some(assoc_item) = tcx.opt_associated_item(fn_def_id.to_def_id())
+        && assoc_item.container == ty::AssocItemContainer::TraitContainer
+    {
+        for arg in fn_output.walk() {
+            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                && let ty::Projection(proj) = ty.kind()
+                && tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
+                && tcx.impl_trait_in_trait_parent(proj.item_def_id) == fn_def_id.to_def_id()
+            {
+                let bounds = wfcx.tcx().explicit_item_bounds(proj.item_def_id);
+                let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
+                    let normalized_bound = wfcx.normalize(span, None, bound);
+                    traits::wf::predicate_obligations(
+                        wfcx.infcx,
+                        wfcx.param_env,
+                        wfcx.body_id,
+                        normalized_bound,
+                        bound_span,
+                    )
+                });
+                wfcx.register_obligations(wf_obligations);
+            }
+        }
+    }
 }
 
 const HELP_FOR_SELF_TYPE: &str = "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, \
