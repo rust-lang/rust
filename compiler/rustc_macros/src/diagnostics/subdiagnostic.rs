@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, NestedMeta, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
+use super::error::invalid_attr;
 use super::utils::{SpannedOption, SubdiagnosticKind};
 
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
@@ -271,18 +272,18 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
             "skip_arg" => Ok(quote! {}),
             "primary_span" => {
                 if kind_stats.has_multipart_suggestion {
-                    throw_invalid_attr!(attr, &Meta::Path(path), |diag| {
-                        diag.help(
+                    invalid_attr(attr, &Meta::Path(path))
+                        .help(
                             "multipart suggestions use one or more `#[suggestion_part]`s rather \
                             than one `#[primary_span]`",
                         )
-                    })
+                        .emit();
+                } else {
+                    report_error_if_not_applied_to_span(attr, &info)?;
+
+                    let binding = info.binding.binding.clone();
+                    self.span_field.set_once(binding, span);
                 }
-
-                report_error_if_not_applied_to_span(attr, &info)?;
-
-                let binding = info.binding.binding.clone();
-                self.span_field.set_once(binding, span);
 
                 Ok(quote! {})
             }
@@ -292,14 +293,16 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                 if kind_stats.has_multipart_suggestion {
                     span_err(span, "`#[suggestion_part(...)]` attribute without `code = \"...\"`")
                         .emit();
-                    Ok(quote! {})
                 } else {
-                    throw_invalid_attr!(attr, &Meta::Path(path), |diag| {
-                        diag.help(
-                                "`#[suggestion_part(...)]` is only valid in multipart suggestions, use `#[primary_span]` instead",
-                            )
-                    });
+                    invalid_attr(attr, &Meta::Path(path))
+                        .help(
+                            "`#[suggestion_part(...)]` is only valid in multipart suggestions, \
+                             use `#[primary_span]` instead",
+                        )
+                        .emit();
                 }
+
+                Ok(quote! {})
             }
             "applicability" => {
                 if kind_stats.has_multipart_suggestion || kind_stats.has_normal_suggestion {
@@ -322,7 +325,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
 
                 Ok(quote! {})
             }
-            _ => throw_invalid_attr!(attr, &Meta::Path(path), |diag| {
+            _ => {
                 let mut span_attrs = vec![];
                 if kind_stats.has_multipart_suggestion {
                     span_attrs.push("suggestion_part");
@@ -330,11 +333,16 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                 if !kind_stats.all_multipart_suggestions {
                     span_attrs.push("primary_span")
                 }
-                diag.help(format!(
-                    "only `{}`, `applicability` and `skip_arg` are valid field attributes",
-                    span_attrs.join(", ")
-                ))
-            }),
+
+                invalid_attr(attr, &Meta::Path(path))
+                    .help(format!(
+                        "only `{}`, `applicability` and `skip_arg` are valid field attributes",
+                        span_attrs.join(", ")
+                    ))
+                    .emit();
+
+                Ok(quote! {})
+            }
         }
     }
 
