@@ -307,6 +307,8 @@ config_data! {
         /// Join lines unwraps trivial blocks.
         joinLines_unwrapTrivialBlock: bool = "true",
 
+        /// Where to render annotations.
+        lens_annotationLocation: AnnotationLocation = "\"above_name\"",
         /// Whether to show `Debug` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_debug_enable: bool            = "true",
@@ -494,6 +496,25 @@ pub struct LensConfig {
     pub refs_adt: bool,   // for Struct, Enum, Union and Trait
     pub refs_trait: bool, // for Struct, Enum, Union and Trait
     pub enum_variant_refs: bool,
+
+    // annotations
+    pub annotation_location: AnnotationLocation,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AnnotationLocation {
+    AboveName,
+    AboveWholeItem,
+}
+
+impl From<AnnotationLocation> for ide::AnnotationLocation {
+    fn from(location: AnnotationLocation) -> Self {
+        match location {
+            AnnotationLocation::AboveName => ide::AnnotationLocation::AboveName,
+            AnnotationLocation::AboveWholeItem => ide::AnnotationLocation::AboveWholeItem,
+        }
+    }
 }
 
 impl LensConfig {
@@ -1185,6 +1206,7 @@ impl Config {
             refs_trait: self.data.lens_enable && self.data.lens_references_trait_enable,
             enum_variant_refs: self.data.lens_enable
                 && self.data.lens_references_enumVariant_enable,
+            annotation_location: self.data.lens_annotationLocation,
         }
     }
 
@@ -1919,6 +1941,14 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "Use the client (editor) to watch files for changes",
                 "Use server-side file watching",
+            ],
+        },
+        "AnnotationLocation" => set! {
+            "type": "string",
+            "enum": ["above_name", "above_whole_item"],
+            "enumDescriptions": [
+                "Render annotations above the name of the item.",
+                "Render annotations above the whole item, including documentation comments and attributes."
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),
