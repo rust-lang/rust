@@ -69,5 +69,93 @@ help: try marking as source code
 LL | /// This <span>`Vec::<i32>`</span> thing!
    |                +          +
 
-error: aborting due to 6 previous errors
+error: unclosed HTML tag `u32`
+  --> $DIR/html-as-generics.rs:34:28
+   |
+LL | /// Nested generics Vec<Vec<u32>>
+   |                            ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// Nested generics `Vec<Vec<u32>>`
+   |                     +             +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:39:27
+   |
+LL | /// Generics with path Vec<i32>::Iter
+   |                           ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// Generics with path `Vec<i32>::Iter`
+   |                        +              +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:44:28
+   |
+LL | /// Generics with path <Vec<i32>>::Iter
+   |                            ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// Generics with path `<Vec<i32>>::Iter`
+   |                        +                +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:49:31
+   |
+LL | /// Generics with path Vec<Vec<i32>>::Iter
+   |                               ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// Generics with path `Vec<Vec<i32>>::Iter`
+   |                        +                   +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:54:28
+   |
+LL | /// Generics with bump <Vec<i32>>s
+   |                            ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// Generics with bump `<Vec<i32>>`s
+   |                        +          +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:59:31
+   |
+LL | /// Generics with bump Vec<Vec<i32>>s
+   |                               ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// Generics with bump `Vec<Vec<i32>>`s
+   |                        +             +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:64:29
+   |
+LL | /// Generics with punct <Vec<i32>>!
+   |                             ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// Generics with punct `<Vec<i32>>`!
+   |                         +          +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:69:32
+   |
+LL | /// Generics with punct Vec<Vec<i32>>!
+   |                                ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// Generics with punct `Vec<Vec<i32>>`!
+   |                         +             +
+
+error: aborting due to 14 previous errors
 
