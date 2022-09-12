@@ -188,14 +188,14 @@ impl CfgEval<'_, '_> {
         let orig_tokens = annotatable.to_tokens().flattened();
 
         // Re-parse the tokens, setting the `capture_cfg` flag to save extra information
-        // to the captured `AttrAnnotatedTokenStream` (specifically, we capture
-        // `AttrAnnotatedTokenTree::AttributesData` for all occurrences of `#[cfg]` and `#[cfg_attr]`)
+        // to the captured `AttrTokenStream` (specifically, we capture
+        // `AttrTokenTree::AttributesData` for all occurrences of `#[cfg]` and `#[cfg_attr]`)
         let mut parser =
             rustc_parse::stream_to_parser(&self.cfg.sess.parse_sess, orig_tokens, None);
         parser.capture_cfg = true;
         annotatable = parse_annotatable_with(&mut parser);
 
-        // Now that we have our re-parsed `AttrAnnotatedTokenStream`, recursively configuring
+        // Now that we have our re-parsed `AttrTokenStream`, recursively configuring
         // our attribute target will correctly the tokens as well.
         flat_map_annotatable(self, annotatable)
     }
