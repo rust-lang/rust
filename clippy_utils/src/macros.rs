@@ -7,7 +7,7 @@ use crate::visitors::expr_visitor_no_bodies;
 use arrayvec::ArrayVec;
 use itertools::{izip, Either, Itertools};
 use rustc_ast::ast::LitKind;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{self as hir, Expr, ExprField, ExprKind, HirId, Node, QPath};
 use rustc_lexer::unescape::unescape_literal;
 use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
@@ -515,7 +515,7 @@ impl<'tcx> Visitor<'tcx> for ParamPosition {
             sym::width => {
                 self.width = parse_count(field.expr);
             },
-            _ => {},
+            _ => walk_expr(self, field.expr),
         }
     }
 }
