@@ -2633,15 +2633,7 @@ fn pretty_print_const<'tcx>(
 }
 
 fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Result {
-    fmt.write_str("b\"")?;
-    for &c in byte_str {
-        for e in std::ascii::escape_default(c) {
-            fmt.write_char(e as char)?;
-        }
-    }
-    fmt.write_str("\"")?;
-
-    Ok(())
+    write!(fmt, "b\"{}\"", byte_str.escape_ascii())
 }
 
 fn comma_sep<'tcx>(fmt: &mut Formatter<'_>, elems: Vec<ConstantKind<'tcx>>) -> fmt::Result {

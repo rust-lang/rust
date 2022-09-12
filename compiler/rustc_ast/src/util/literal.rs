@@ -163,12 +163,7 @@ impl LitKind {
             }
             LitKind::Str(symbol, ast::StrStyle::Raw(n)) => (token::StrRaw(n), symbol, None),
             LitKind::ByteStr(ref bytes) => {
-                let string = bytes
-                    .iter()
-                    .cloned()
-                    .flat_map(ascii::escape_default)
-                    .map(Into::<char>::into)
-                    .collect::<String>();
+                let string = bytes.escape_ascii().to_string();
                 (token::ByteStr, Symbol::intern(&string), None)
             }
             LitKind::Byte(byte) => {

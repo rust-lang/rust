@@ -1405,14 +1405,7 @@ pub trait PrettyPrinter<'tcx>:
     }
 
     fn pretty_print_byte_str(mut self, byte_str: &'tcx [u8]) -> Result<Self::Const, Self::Error> {
-        define_scoped_cx!(self);
-        p!("b\"");
-        for &c in byte_str {
-            for e in std::ascii::escape_default(c) {
-                self.write_char(e as char)?;
-            }
-        }
-        p!("\"");
+        write!(self, "b\"{}\"", byte_str.escape_ascii())?;
         Ok(self)
     }
 
