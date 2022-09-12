@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
-    def::Res, def_id::DefId, Item, ItemKind, PolyTraitRef, PrimTy, TraitBoundModifier, Ty, TyKind, UseKind,
+    def::Res, def_id::DefId, Item, ItemKind, PolyTraitRef, PrimTy, Ty, TyKind, UseKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -120,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
         }
     }
 
-    fn check_poly_trait_ref(&mut self, cx: &LateContext<'tcx>, poly: &'tcx PolyTraitRef<'tcx>, _: TraitBoundModifier) {
+    fn check_poly_trait_ref(&mut self, cx: &LateContext<'tcx>, poly: &'tcx PolyTraitRef<'tcx>) {
         self.check_res_emit(cx, &poly.trait_ref.path.res, poly.trait_ref.path.span);
     }
 }
