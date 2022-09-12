@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/in-defining-scope.rs:7:9
+   |
+LL |         transmute::<_, u8>(foo());
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `impl Sized` (this type does not have a fixed size)
+   = note: target type: `u8` (8 bits)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0512`.
