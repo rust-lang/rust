@@ -964,6 +964,12 @@ impl HasVisibility for Enum {
     }
 }
 
+impl From<&Variant> for DefWithBodyId {
+    fn from(&v: &Variant) -> Self {
+        DefWithBodyId::VariantId(v.into())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Variant {
     pub(crate) parent: Enum,
@@ -1179,6 +1185,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.id.into(),
             DefWithBody::Static(it) => it.id.into(),
             DefWithBody::Const(it) => it.id.into(),
+            DefWithBody::Variant(it) => it.into(),
         }
     }
 
