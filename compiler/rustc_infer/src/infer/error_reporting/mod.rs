@@ -3199,4 +3199,13 @@ impl<'tcx> InferCtxt<'_, 'tcx> {
             _ => false,
         }
     }
+
+    pub fn concrete_ctfe_failure_error(&self, span: Span) -> ErrorGuaranteed {
+        self.tcx
+            .sess
+            .struct_span_err(span, "unable to use constant with a hidden value in the type system")
+            .note("this most often happens when trying to look into an opaque type")
+            .note("the type system cannot access the hidden type of opaque types")
+            .emit()
+    }
 }

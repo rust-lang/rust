@@ -24,6 +24,9 @@ error: unable to use constant with a hidden value in the type system
    |
 LL |     [0; <<Vec<u32> as Foo>::Assoc as Trait>::ASSOC]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this most often happens when trying to look into an opaque type
+   = note: the type system cannot access the hidden type of opaque types
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

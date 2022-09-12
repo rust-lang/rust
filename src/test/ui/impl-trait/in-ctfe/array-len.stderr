@@ -3,6 +3,9 @@ error: unable to use constant with a hidden value in the type system
    |
 LL |     let x = [0u8; output(yeet())];
    |                   ^^^^^^^^^^^^^^
+   |
+   = note: this most often happens when trying to look into an opaque type
+   = note: the type system cannot access the hidden type of opaque types
 
 error: unable to use constant with a hidden value in the type system
   --> $DIR/array-len.rs:23:22
@@ -10,6 +13,8 @@ error: unable to use constant with a hidden value in the type system
 LL |     println!("{:?}", x);
    |                      ^
    |
+   = note: this most often happens when trying to look into an opaque type
+   = note: the type system cannot access the hidden type of opaque types
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

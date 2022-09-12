@@ -3,6 +3,9 @@ error: unable to use constant with a hidden value in the type system
    |
 LL |     z(" ");
    |     ^
+   |
+   = note: this most often happens when trying to look into an opaque type
+   = note: the type system cannot access the hidden type of opaque types
 
 error[E0277]: the trait bound `&str: X` is not satisfied
   --> $DIR/issue-86530.rs:16:7

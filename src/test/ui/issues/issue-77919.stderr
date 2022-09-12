@@ -31,6 +31,9 @@ error: unable to use constant with a hidden value in the type system
    |
 LL |     [1; <Multiply<Five, Five>>::VAL];
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this most often happens when trying to look into an opaque type
+   = note: the type system cannot access the hidden type of opaque types
 
 error: aborting due to 4 previous errors
 
