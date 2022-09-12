@@ -9,9 +9,8 @@ LL | fn foo(_x: Foo + Send) {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - fn foo(_x: Foo + Send) {
-LL + fn foo(_x: dyn Foo + Send) {
-   |
+LL | fn foo(_x: dyn Foo + Send) {
+   |            +++
 
 error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
   --> $DIR/not-on-bare-trait.rs:7:8

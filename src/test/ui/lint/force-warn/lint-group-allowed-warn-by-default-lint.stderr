@@ -9,9 +9,8 @@ LL | pub fn function(_x: Box<SomeTrait>) {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - pub fn function(_x: Box<SomeTrait>) {}
-LL + pub fn function(_x: Box<dyn SomeTrait>) {}
-   |
+LL | pub fn function(_x: Box<dyn SomeTrait>) {}
+   |                         +++
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/lint-group-allowed-warn-by-default-lint.rs:10:25
@@ -23,9 +22,8 @@ LL | pub fn function(_x: Box<SomeTrait>) {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - pub fn function(_x: Box<SomeTrait>) {}
-LL + pub fn function(_x: Box<dyn SomeTrait>) {}
-   |
+LL | pub fn function(_x: Box<dyn SomeTrait>) {}
+   |                         +++
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/lint-group-allowed-warn-by-default-lint.rs:10:25
@@ -37,9 +35,8 @@ LL | pub fn function(_x: Box<SomeTrait>) {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - pub fn function(_x: Box<SomeTrait>) {}
-LL + pub fn function(_x: Box<dyn SomeTrait>) {}
-   |
+LL | pub fn function(_x: Box<dyn SomeTrait>) {}
+   |                         +++
 
 warning: 3 warnings emitted
 
