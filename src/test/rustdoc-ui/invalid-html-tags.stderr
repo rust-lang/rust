@@ -94,5 +94,11 @@ error: unclosed HTML tag `dashed-tags`
 LL | /// Web Components style <dashed-tags>
    |                          ^^^^^^^^^^^^^
 
-error: aborting due to 15 previous errors
+error: unclosed HTML tag `a`
+  --> $DIR/invalid-html-tags.rs:121:19
+   |
+LL | /// backslashed \<<a href="">
+   |                   ^^
+
+error: aborting due to 16 previous errors
 

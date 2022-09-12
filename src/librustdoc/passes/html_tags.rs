@@ -278,7 +278,7 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
             for (event, range) in p {
                 match event {
                     Event::Start(Tag::CodeBlock(_)) => in_code_block = true,
-                    Event::Html(text) | Event::Text(text) if !in_code_block => {
+                    Event::Html(text) if !in_code_block => {
                         extract_tags(&mut tags, &text, range, &mut is_in_comment, &report_diag)
                     }
                     Event::End(Tag::CodeBlock(_)) => in_code_block = false,
