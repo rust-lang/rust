@@ -86,7 +86,7 @@ macro_rules! define_dep_nodes {
             $( $( #[$attr] )* $variant),*
         }
 
-        fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
+        pub(super) fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {
                 $(stringify!($variant) => Ok(DepKind::$variant),)*
                 _ => Err(()),
@@ -141,11 +141,6 @@ static_assert_size!(DepNode, 18);
 static_assert_size!(DepNode, 24);
 
 pub trait DepNodeExt: Sized {
-    /// Construct a DepNode from the given DepKind and DefPathHash. This
-    /// method will assert that the given DepKind actually requires a
-    /// single DefId/DefPathHash parameter.
-    fn from_def_path_hash(tcx: TyCtxt<'_>, def_path_hash: DefPathHash, kind: DepKind) -> Self;
-
     /// Extracts the DefId corresponding to this DepNode. This will work
     /// if two conditions are met:
     ///
@@ -170,14 +165,6 @@ pub trait DepNodeExt: Sized {
 }
 
 impl DepNodeExt for DepNode {
-    /// Construct a DepNode from the given DepKind and DefPathHash. This
-    /// method will assert that the given DepKind actually requires a
-    /// single DefId/DefPathHash parameter.
-    fn from_def_path_hash(tcx: TyCtxt<'_>, def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
-        debug_assert!(tcx.fingerprint_style(kind) == FingerprintStyle::DefPathHash);
-        DepNode { kind, hash: def_path_hash.0.into() }
-    }
-
     /// Extracts the DefId corresponding to this DepNode. This will work
     /// if two conditions are met:
     ///

@@ -47,6 +47,7 @@ use crate::ich::StableHashingContext;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::definitions::DefPathHash;
 use std::fmt;
 use std::hash::Hash;
 
@@ -87,6 +88,17 @@ impl<K: DepKind> DepNode<K> {
         }
 
         dep_node
+    }
+
+    /// Construct a DepNode from the given DepKind and DefPathHash. This
+    /// method will assert that the given DepKind actually requires a
+    /// single DefId/DefPathHash parameter.
+    pub fn from_def_path_hash<Ctxt>(tcx: Ctxt, def_path_hash: DefPathHash, kind: K) -> Self
+    where
+        Ctxt: super::DepContext<DepKind = K>,
+    {
+        debug_assert!(tcx.fingerprint_style(kind) == FingerprintStyle::DefPathHash);
+        DepNode { kind, hash: def_path_hash.0.into() }
     }
 }
 
