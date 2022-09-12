@@ -298,7 +298,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_id(&mut self, _hir_id: HirId) {
         // Nothing to do.
     }
-    fn visit_name(&mut self, _span: Span, _name: Symbol) {
+    fn visit_name(&mut self, _name: Symbol) {
         // Nothing to do.
     }
     fn visit_ident(&mut self, ident: Ident) {
@@ -473,7 +473,7 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local<'v>) {
 }
 
 pub fn walk_ident<'v, V: Visitor<'v>>(visitor: &mut V, ident: Ident) {
-    visitor.visit_name(ident.span, ident.name);
+    visitor.visit_name(ident.name);
 }
 
 pub fn walk_label<'v, V: Visitor<'v>>(visitor: &mut V, label: &'v Label) {
@@ -520,7 +520,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         ItemKind::ExternCrate(orig_name) => {
             visitor.visit_id(item.hir_id());
             if let Some(orig_name) = orig_name {
-                visitor.visit_name(item.span, orig_name);
+                visitor.visit_name(orig_name);
             }
         }
         ItemKind::Use(ref path, _) => {

@@ -1121,7 +1121,7 @@ pub struct ContainsName {
 }
 
 impl<'tcx> Visitor<'tcx> for ContainsName {
-    fn visit_name(&mut self, _: Span, name: Symbol) {
+    fn visit_name(&mut self, name: Symbol) {
         if self.name == name {
             self.result = true;
         }
