@@ -1,0 +1,33 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/wf-bounds.rs:9:22
+   |
+LL |     fn nya() -> impl Wf<Vec<[u8]>>;
+   |                      ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by a bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
+   |                ^ required by this bound in `Vec`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/wf-bounds.rs:12:23
+   |
+LL |     fn nya2() -> impl Wf<[u8]>;
+   |                       ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by a bound in `Wf`
+  --> $DIR/wf-bounds.rs:6:10
+   |
+LL | trait Wf<T> {}
+   |          ^ required by this bound in `Wf`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | trait Wf<T: ?Sized> {}
+   |           ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
