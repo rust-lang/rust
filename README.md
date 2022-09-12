@@ -32,7 +32,7 @@ The `x.py` command can be run directly on most systems in the following format:
 
 This is how the documentation and examples assume you are running `x.py`.
 
-Systems such as Ubuntu 20.04 LTS do not create the necessary `python` command by default when Python is installed that allows `x.py` to be run directly. In that case, you can either create a symlink for `python` (Ubuntu provides the `python-is-python3` package for this) or run `x.py` using Python itself:
+Systems such as Ubuntu 20.04 LTS do not create the necessary `python` command by default when Python is installed that allows `x.py` to be run directly. In that case, you can either create a symlink for `python` (Ubuntu provides the `python-is-python3` package for this), or run `x.py` using Python itself:
 
 ```sh
 # Python 3
