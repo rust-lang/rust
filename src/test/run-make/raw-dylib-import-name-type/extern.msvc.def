@@ -1,12 +1,19 @@
 LIBRARY extern
 EXPORTS
     cdecl_fn_undecorated
+    cdecl_fn_undecorated2
     cdecl_fn_noprefix
     cdecl_fn_decorated
     stdcall_fn_undecorated
+    stdcall_fn_undecorated2
     _stdcall_fn_decorated@4
     fastcall_fn_undecorated
+    fastcall_fn_undecorated2
     @fastcall_fn_decorated@4
+    vectorcall_fn_undecorated
+    vectorcall_fn_undecorated2
+    vectorcall_fn_decorated@@4
+    vectorcall_fn_noprefix@@4
 
     ;MSVC doesn't seem to recognize the "no prefix" syntax.
     stdcall_fn_noprefix@4=_stdcall_fn_noprefix@4
