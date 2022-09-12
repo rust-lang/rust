@@ -41,7 +41,7 @@ use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxKind::COMMA, TextRange};
 
 pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let fmt_string = ctx.find_token_at_offset::<ast::String>()?;
-    let tt = fmt_string.syntax().parent_ancestors().find_map(ast::TokenTree::cast)?;
+    let tt = fmt_string.syntax().parent().and_then(ast::TokenTree::cast)?;
 
     let expanded_t = ast::String::cast(
         ctx.sema.descend_into_macros_with_kind_preference(fmt_string.syntax().clone()),
