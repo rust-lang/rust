@@ -8,7 +8,7 @@ fn test_sleep() {
     assert!((after - before).as_secs() >= 3600);
 }
 
-/// Ensure that time passes even if we don't sleep (but just wor).
+/// Ensure that time passes even if we don't sleep (but just work).
 fn test_time_passes() {
     // Check `Instant`.
     let now1 = Instant::now();

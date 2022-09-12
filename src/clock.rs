@@ -1,13 +1,9 @@
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant as StdInstant};
 
-use rustc_data_structures::sync::Ordering;
-
-use crate::*;
-
-/// When using a virtual clock, this defines how many nanoseconds do we pretend
-/// are passing for each basic block.
-const NANOSECOND_PER_BASIC_BLOCK: u64 = 10;
+/// When using a virtual clock, this defines how many nanoseconds we pretend are passing for each
+/// basic block.
+const NANOSECONDS_PER_BASIC_BLOCK: u64 = 10;
 
 #[derive(Debug)]
 pub struct Instant {
@@ -83,7 +79,7 @@ impl Clock {
                 // Time will pass without us doing anything.
             }
             ClockKind::Virtual { nanoseconds } => {
-                nanoseconds.fetch_add(NANOSECOND_PER_BASIC_BLOCK, Ordering::SeqCst);
+                nanoseconds.fetch_add(NANOSECONDS_PER_BASIC_BLOCK, Ordering::SeqCst);
             }
         }
     }
