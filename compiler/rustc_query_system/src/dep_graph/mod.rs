@@ -4,7 +4,7 @@ mod graph;
 mod query;
 mod serialized;
 
-pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
+pub use dep_node::{DepKindStruct, DepNode, DepNodeParams, WorkProductId};
 pub use graph::{
     hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, TaskDepsRef, WorkProduct,
 };

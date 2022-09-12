@@ -11,15 +11,17 @@ pub use rustc_query_system::dep_graph::{
     SerializedDepNodeIndex, WorkProduct, WorkProductId,
 };
 
-pub use dep_node::{label_strs, DepKind, DepKindStruct, DepNode, DepNodeExt};
+pub use dep_node::{label_strs, DepKind, DepNode, DepNodeExt};
 pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
+
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
 pub type TaskDepsRef<'a> = rustc_query_system::dep_graph::TaskDepsRef<'a, DepKind>;
 pub type DepGraphQuery = rustc_query_system::dep_graph::DepGraphQuery<DepKind>;
 pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
 pub type EdgeFilter = rustc_query_system::dep_graph::debug::EdgeFilter<DepKind>;
+pub type DepKindStruct<'tcx> = rustc_query_system::dep_graph::DepKindStruct<TyCtxt<'tcx>>;
 
 impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
