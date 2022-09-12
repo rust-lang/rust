@@ -337,7 +337,7 @@ impl fmt::Debug for DefId {
     }
 }
 
-rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefId);
+rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefIdMapEntry, DefId);
 
 /// A `LocalDefId` is equivalent to a `DefId` with `krate == LOCAL_CRATE`. Since
 /// we encode this information in the type, we can ensure at compile time that
@@ -399,7 +399,12 @@ impl<D: Decoder> Decodable<D> for LocalDefId {
     }
 }
 
-rustc_data_structures::define_id_collections!(LocalDefIdMap, LocalDefIdSet, LocalDefId);
+rustc_data_structures::define_id_collections!(
+    LocalDefIdMap,
+    LocalDefIdSet,
+    LocalDefIdMapEntry,
+    LocalDefId
+);
 
 impl<CTX: HashStableContext> HashStable<CTX> for DefId {
     #[inline]

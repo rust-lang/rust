@@ -67,8 +67,13 @@ impl PartialOrd for HirId {
     }
 }
 
-rustc_data_structures::define_id_collections!(HirIdMap, HirIdSet, HirId);
-rustc_data_structures::define_id_collections!(ItemLocalMap, ItemLocalSet, ItemLocalId);
+rustc_data_structures::define_stable_id_collections!(HirIdMap, HirIdSet, HirIdMapEntry, HirId);
+rustc_data_structures::define_id_collections!(
+    ItemLocalMap,
+    ItemLocalSet,
+    ItemLocalMapEntry,
+    ItemLocalId
+);
 
 rustc_index::newtype_index! {
     /// An `ItemLocalId` uniquely identifies something within a given "item-like";
