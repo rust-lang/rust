@@ -1527,7 +1527,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             matches!(fk.header(), Some(FnHeader { constness: Const::Yes(_), .. }))
                 || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
 
-        self.with_tilde_const(tilde_const_allowed, |this| visit::walk_fn(this, fk, span));
+        self.with_tilde_const(tilde_const_allowed, |this| visit::walk_fn(this, fk));
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {

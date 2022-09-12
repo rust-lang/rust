@@ -154,7 +154,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
             }
         }
 
-        visit::walk_fn(self, fn_kind, span);
+        visit::walk_fn(self, fn_kind);
     }
 
     fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {

@@ -147,7 +147,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     fn visit_fn(&mut self, fk: ast_visit::FnKind<'a>, span: Span, id: ast::NodeId) {
         run_early_pass!(self, check_fn, fk, span, id);
         self.check_id(id);
-        ast_visit::walk_fn(self, fk, span);
+        ast_visit::walk_fn(self, fk);
 
         // Explicitly check for lints associated with 'closure_id', since
         // it does not have a corresponding AST node

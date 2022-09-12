@@ -279,12 +279,12 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         fk: intravisit::FnKind<'hir>,
         fd: &'hir FnDecl<'hir>,
         b: BodyId,
-        s: Span,
+        _: Span,
         id: HirId,
     ) {
         assert_eq!(self.owner, id.owner);
         assert_eq!(self.parent_node, id.local_id);
-        intravisit::walk_fn(self, fk, fd, b, s, id);
+        intravisit::walk_fn(self, fk, fd, b, id);
     }
 
     fn visit_block(&mut self, block: &'hir Block<'hir>) {

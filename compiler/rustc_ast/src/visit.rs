@@ -156,8 +156,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
         walk_where_predicate(self, p)
     }
-    fn visit_fn(&mut self, fk: FnKind<'ast>, s: Span, _: NodeId) {
-        walk_fn(self, fk, s)
+    fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) {
+        walk_fn(self, fk)
     }
     fn visit_assoc_item(&mut self, i: &'ast AssocItem, ctxt: AssocCtxt) {
         walk_assoc_item(self, i, ctxt)
@@ -655,7 +655,7 @@ pub fn walk_fn_decl<'a, V: Visitor<'a>>(visitor: &mut V, function_declaration: &
     visitor.visit_fn_ret_ty(&function_declaration.output);
 }
 
-pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>, _span: Span) {
+pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) {
     match kind {
         FnKind::Fn(_, _, sig, _, generics, body) => {
             visitor.visit_generics(generics);

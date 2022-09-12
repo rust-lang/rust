@@ -326,6 +326,6 @@ impl<'tcx> LateLintPass<'tcx> for Unwrap {
             unwrappables: Vec::new(),
         };
 
-        walk_fn(&mut v, kind, decl, body.id(), span, fn_id);
+        walk_fn(&mut v, kind, decl, body.id(), fn_id);
     }
 }

@@ -362,11 +362,11 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         fk: hir_visit::FnKind<'v>,
         fd: &'v hir::FnDecl<'v>,
         b: hir::BodyId,
-        s: Span,
+        _: Span,
         id: hir::HirId,
     ) {
         self.record("FnDecl", Id::None, fd);
-        hir_visit::walk_fn(self, fk, fd, b, s, id)
+        hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
     fn visit_use(&mut self, p: &'v hir::Path<'v>, hir_id: hir::HirId) {
@@ -612,9 +612,9 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_where_predicate(self, p)
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, s: Span, _: NodeId) {
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, _: Span, _: NodeId) {
         self.record("FnDecl", Id::None, fk.decl());
-        ast_visit::walk_fn(self, fk, s)
+        ast_visit::walk_fn(self, fk)
     }
 
     fn visit_assoc_item(&mut self, i: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {

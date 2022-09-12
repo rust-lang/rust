@@ -187,7 +187,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         let old_cached_typeck_results = self.context.cached_typeck_results.take();
         let body = self.context.tcx.hir().body(body_id);
         lint_callback!(self, check_fn, fk, decl, body, span, id);
-        hir_visit::walk_fn(self, fk, decl, body_id, span, id);
+        hir_visit::walk_fn(self, fk, decl, body_id, id);
         self.context.enclosing_body = old_enclosing_body;
         self.context.cached_typeck_results.set(old_cached_typeck_results);
     }

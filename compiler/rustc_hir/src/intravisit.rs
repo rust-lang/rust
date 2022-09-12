@@ -361,8 +361,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_fn_decl(&mut self, fd: &'v FnDecl<'v>) {
         walk_fn_decl(self, fd)
     }
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl<'v>, b: BodyId, s: Span, id: HirId) {
-        walk_fn(self, fk, fd, b, s, id)
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl<'v>, b: BodyId, _: Span, id: HirId) {
+        walk_fn(self, fk, fd, b, id)
     }
     fn visit_use(&mut self, path: &'v Path<'v>, hir_id: HirId) {
         walk_use(self, path, hir_id)
@@ -898,7 +898,6 @@ pub fn walk_fn<'v, V: Visitor<'v>>(
     function_kind: FnKind<'v>,
     function_declaration: &'v FnDecl<'v>,
     body_id: BodyId,
-    _span: Span,
     id: HirId,
 ) {
     visitor.visit_id(id);
