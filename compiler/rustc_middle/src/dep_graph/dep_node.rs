@@ -69,18 +69,6 @@ use std::hash::Hash;
 
 pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 
-impl DepKind {
-    #[inline(always)]
-    pub fn fingerprint_style(self, tcx: TyCtxt<'_>) -> FingerprintStyle {
-        // Only fetch the DepKindStruct once.
-        let data = tcx.query_kind(self);
-        if data.is_anon {
-            return FingerprintStyle::Opaque;
-        }
-        data.fingerprint_style
-    }
-}
-
 macro_rules! define_dep_nodes {
     (
      $($(#[$attr:meta])*
@@ -186,7 +174,7 @@ impl DepNodeExt for DepNode {
     /// method will assert that the given DepKind actually requires a
     /// single DefId/DefPathHash parameter.
     fn from_def_path_hash(tcx: TyCtxt<'_>, def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
-        debug_assert!(kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash);
+        debug_assert!(tcx.fingerprint_style(kind) == FingerprintStyle::DefPathHash);
         DepNode { kind, hash: def_path_hash.0.into() }
     }
 
@@ -201,7 +189,7 @@ impl DepNodeExt for DepNode {
     /// refers to something from the previous compilation session that
     /// has been removed.
     fn extract_def_id<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
-        if self.kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash {
+        if tcx.fingerprint_style(self.kind) == FingerprintStyle::DefPathHash {
             Some(tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into()), &mut || {
                 panic!("Failed to extract DefId: {:?} {}", self.kind, self.hash)
             }))
@@ -218,7 +206,7 @@ impl DepNodeExt for DepNode {
     ) -> Result<DepNode, ()> {
         let kind = dep_kind_from_label_string(label)?;
 
-        match kind.fingerprint_style(tcx) {
+        match tcx.fingerprint_style(kind) {
             FingerprintStyle::Opaque => Err(()),
             FingerprintStyle::Unit => Ok(DepNode::new_no_params(tcx, kind)),
             FingerprintStyle::DefPathHash => {
