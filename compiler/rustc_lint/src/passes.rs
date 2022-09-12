@@ -162,7 +162,7 @@ macro_rules! early_lint_methods {
             fn check_impl_item(a: &ast::AssocItem);
             fn check_variant(a: &ast::Variant);
             fn check_attribute(a: &ast::Attribute);
-            fn check_mac_def(a: &ast::MacroDef, b: ast::NodeId);
+            fn check_mac_def(a: &ast::MacroDef);
             fn check_mac(a: &ast::MacCall);
 
             /// Called when entering a syntax node that can have lint attributes such

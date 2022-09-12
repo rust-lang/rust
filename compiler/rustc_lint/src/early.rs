@@ -276,7 +276,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_mac_def(&mut self, mac: &'a ast::MacroDef, id: ast::NodeId) {
-        run_early_pass!(self, check_mac_def, mac, id);
+        run_early_pass!(self, check_mac_def, mac);
         self.check_id(id);
     }
 
