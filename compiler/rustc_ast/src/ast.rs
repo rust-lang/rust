@@ -3040,19 +3040,19 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(AssocItem, 104);
-    static_assert_size!(AssocItemKind, 32);
+    static_assert_size!(AssocItem, 96);
+    static_assert_size!(AssocItemKind, 24);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(ExprKind, 72);
-    static_assert_size!(Fn, 184);
+    static_assert_size!(Fn, 168);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
-    static_assert_size!(Impl, 200);
+    static_assert_size!(Impl, 184);
     static_assert_size!(Item, 184);
     static_assert_size!(ItemKind, 112);
     static_assert_size!(Lit, 48);
@@ -3065,7 +3065,7 @@ mod size_asserts {
     static_assert_size!(PatKind, 96);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(Ty, 96);
-    static_assert_size!(TyKind, 72);
+    static_assert_size!(Ty, 88);
+    static_assert_size!(TyKind, 64);
     // tidy-alphabetical-end
 }
