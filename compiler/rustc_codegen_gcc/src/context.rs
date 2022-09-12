@@ -13,7 +13,7 @@ use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, TyAndLayout, LayoutOfHelpers};
 use rustc_session::Session;
-use rustc_span::Span;
+use rustc_span::{Span, source_map::respan};
 use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 
@@ -478,6 +478,23 @@ impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) = err {
+            let _ = respan(span, err);
+            //             error: lifetime may not live long enough
+            //    --> src/context.rs:483:13
+            //     |
+            // 475 | impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
+            //     |      ----  ---- lifetime `'tcx` defined here
+            //     |      |
+            //     |      lifetime `'gcc` defined here
+            // ...
+            // 483 |             self.sess().emit_fatal(respan(span, err))
+            //     |             ^^^^^^^^^^^ argument requires that `'gcc` must outlive `'tcx`
+            //     |
+            //     = help: consider adding the following bound: `'gcc: 'tcx`
+            //     = note: requirement occurs because of the type `CodegenCx<'_, '_>`, which makes the generic argument `'_` invariant
+            //     = note: the struct `CodegenCx<'gcc, 'tcx>` is invariant over the parameter `'gcc`
+            //     = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+            // self.sess().emit_fatal(respan(span, err))
             self.sess().emit_fatal(LayoutSizeOverflow { span, error: err.to_string() })
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)

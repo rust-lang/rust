@@ -33,7 +33,7 @@ use rustc_errors::{
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap, Span};
+use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap, Span, Spanned};
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
@@ -221,6 +221,27 @@ pub struct PerfStats {
     pub normalize_generic_arg_after_erasing_regions: AtomicUsize,
     /// Number of times this query is invoked.
     pub normalize_projection_ty: AtomicUsize,
+}
+
+/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
+#[rustc_diagnostic_item = "SessionDiagnostic"]
+pub trait SessionDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
+    /// Write out as a diagnostic out of `Handler`.
+    #[must_use]
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, T>;
+}
+
+impl<'a, T, E> SessionDiagnostic<'a, E> for Spanned<T>
+where
+    T: SessionDiagnostic<'a, E>,
+    E: EmissionGuarantee,
+{
+    fn into_diagnostic(self, handler: &'a Handler) -> rustc_errors::DiagnosticBuilder<'a, E> {
+        let mut diag = self.node.into_diagnostic(handler);
+        diag.set_span(self.span);
+        diag
+    }
 }
 
 impl Session {

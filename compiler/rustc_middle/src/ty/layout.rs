@@ -7,12 +7,15 @@ use crate::ty::{
 };
 use rustc_ast as ast;
 use rustc_attr as attr;
+use rustc_errors::Handler;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_session::{config::OptLevel, DataTypeKind, FieldInfo, SizeKind, VariantInfo};
+use rustc_session::{
+    config::OptLevel, DataTypeKind, FieldInfo, SessionDiagnostic, SizeKind, VariantInfo,
+};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::{
@@ -204,6 +207,12 @@ pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     SizeOverflow(Ty<'tcx>),
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
+}
+
+impl<'a> SessionDiagnostic<'a, !> for LayoutError<'a> {
+    fn into_diagnostic(self, handler: &'a Handler) -> rustc_errors::DiagnosticBuilder<'a, !> {
+        handler.struct_fatal(self.to_string())
+    }
 }
 
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
