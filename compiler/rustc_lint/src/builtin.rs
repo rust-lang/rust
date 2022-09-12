@@ -1467,7 +1467,7 @@ impl TypeAliasBounds {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(span, fluent::lint::builtin_type_alias_bounds_help);
                 }
-                intravisit::walk_qpath(self, qpath, id, span)
+                intravisit::walk_qpath(self, qpath, id)
             }
         }
 

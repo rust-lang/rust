@@ -1030,7 +1030,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         if let Some(ref gen_args) = constraint.gen_args {
             // Forbid anonymous lifetimes in GAT parameters until proper semantics are decided.
             self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
-                this.visit_generic_args(gen_args.span(), gen_args)
+                this.visit_generic_args(gen_args)
             });
         }
         match constraint.kind {
@@ -1044,10 +1044,10 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'ast PathSegment) {
+    fn visit_path_segment(&mut self, path_segment: &'ast PathSegment) {
         if let Some(ref args) = path_segment.args {
             match &**args {
-                GenericArgs::AngleBracketed(..) => visit::walk_generic_args(self, path_span, args),
+                GenericArgs::AngleBracketed(..) => visit::walk_generic_args(self, args),
                 GenericArgs::Parenthesized(p_args) => {
                     // Probe the lifetime ribs to know how to behave.
                     for rib in self.lifetime_ribs.iter().rev() {
@@ -1078,7 +1078,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             // We have nowhere to introduce generics.  Code is malformed,
                             // so use regular lifetime resolution to avoid spurious errors.
                             LifetimeRibKind::Item | LifetimeRibKind::Generics { .. } => {
-                                visit::walk_generic_args(self, path_span, args);
+                                visit::walk_generic_args(self, args);
                                 break;
                             }
                             LifetimeRibKind::AnonymousCreateParameter { .. }
@@ -3798,7 +3798,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 for argument in arguments {
                     self.resolve_expr(argument, None);
                 }
-                self.visit_path_segment(expr.span, segment);
+                self.visit_path_segment(segment);
             }
 
             ExprKind::Call(ref callee, ref arguments) => {

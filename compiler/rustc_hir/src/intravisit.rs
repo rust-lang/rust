@@ -420,17 +420,18 @@ pub trait Visitor<'v>: Sized {
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         walk_lifetime(self, lifetime)
     }
-    fn visit_qpath(&mut self, qpath: &'v QPath<'v>, id: HirId, span: Span) {
-        walk_qpath(self, qpath, id, span)
+    // The span is that of the surrounding type/pattern/expr/whatever.
+    fn visit_qpath(&mut self, qpath: &'v QPath<'v>, id: HirId, _span: Span) {
+        walk_qpath(self, qpath, id)
     }
     fn visit_path(&mut self, path: &'v Path<'v>, _id: HirId) {
         walk_path(self, path)
     }
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v PathSegment<'v>) {
-        walk_path_segment(self, path_span, path_segment)
+    fn visit_path_segment(&mut self, path_segment: &'v PathSegment<'v>) {
+        walk_path_segment(self, path_segment)
     }
-    fn visit_generic_args(&mut self, path_span: Span, generic_args: &'v GenericArgs<'v>) {
-        walk_generic_args(self, path_span, generic_args)
+    fn visit_generic_args(&mut self, generic_args: &'v GenericArgs<'v>) {
+        walk_generic_args(self, generic_args)
     }
     fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding<'v>) {
         walk_assoc_type_binding(self, type_binding)
@@ -693,12 +694,7 @@ pub fn walk_inf<'v, V: Visitor<'v>>(visitor: &mut V, inf: &'v InferArg) {
     visitor.visit_id(inf.hir_id);
 }
 
-pub fn walk_qpath<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    qpath: &'v QPath<'v>,
-    id: HirId,
-    span: Span,
-) {
+pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath<'v>, id: HirId) {
     match *qpath {
         QPath::Resolved(ref maybe_qself, ref path) => {
             walk_list!(visitor, visit_ty, maybe_qself);
@@ -706,7 +702,7 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(
         }
         QPath::TypeRelative(ref qself, ref segment) => {
             visitor.visit_ty(qself);
-            visitor.visit_path_segment(span, segment);
+            visitor.visit_path_segment(segment);
         }
         QPath::LangItem(..) => {}
     }
@@ -714,27 +710,19 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(
 
 pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path<'v>) {
     for segment in path.segments {
-        visitor.visit_path_segment(path.span, segment);
+        visitor.visit_path_segment(segment);
     }
 }
 
-pub fn walk_path_segment<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    path_span: Span,
-    segment: &'v PathSegment<'v>,
-) {
+pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V, segment: &'v PathSegment<'v>) {
     visitor.visit_ident(segment.ident);
     visitor.visit_id(segment.hir_id);
     if let Some(ref args) = segment.args {
-        visitor.visit_generic_args(path_span, args);
+        visitor.visit_generic_args(args);
     }
 }
 
-pub fn walk_generic_args<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    _path_span: Span,
-    generic_args: &'v GenericArgs<'v>,
-) {
+pub fn walk_generic_args<'v, V: Visitor<'v>>(visitor: &mut V, generic_args: &'v GenericArgs<'v>) {
     walk_list!(visitor, visit_generic_arg, generic_args.args);
     walk_list!(visitor, visit_assoc_type_binding, generic_args.bindings);
 }
@@ -745,7 +733,7 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(
 ) {
     visitor.visit_id(type_binding.hir_id);
     visitor.visit_ident(type_binding.ident);
-    visitor.visit_generic_args(type_binding.span, type_binding.gen_args);
+    visitor.visit_generic_args(type_binding.gen_args);
     match type_binding.kind {
         TypeBindingKind::Equality { ref term } => match term {
             Term::Ty(ref ty) => visitor.visit_ty(ty),
@@ -822,9 +810,9 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericB
         GenericBound::Trait(ref typ, modifier) => {
             visitor.visit_poly_trait_ref(typ, modifier);
         }
-        GenericBound::LangItemTrait(_, span, hir_id, args) => {
+        GenericBound::LangItemTrait(_, _span, hir_id, args) => {
             visitor.visit_id(hir_id);
-            visitor.visit_generic_args(span, args);
+            visitor.visit_generic_args(args);
         }
         GenericBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
     }
@@ -1095,7 +1083,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, arguments);
         }
         ExprKind::MethodCall(ref segment, receiver, arguments, _) => {
-            visitor.visit_path_segment(expression.span, segment);
+            visitor.visit_path_segment(segment);
             visitor.visit_expr(receiver);
             walk_list!(visitor, visit_expr, arguments);
         }

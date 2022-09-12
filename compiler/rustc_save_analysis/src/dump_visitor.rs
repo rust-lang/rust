@@ -1306,7 +1306,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 if let hir::QPath::Resolved(_, path) = path {
                     self.write_sub_paths_truncated(path);
                 }
-                intravisit::walk_qpath(self, path, t.hir_id, t.span);
+                intravisit::walk_qpath(self, path, t.hir_id);
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 self.visit_ty(ty);

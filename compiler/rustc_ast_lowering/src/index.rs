@@ -245,9 +245,9 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'hir PathSegment<'hir>) {
-        self.insert(path_span, path_segment.hir_id, Node::PathSegment(path_segment));
-        intravisit::walk_path_segment(self, path_span, path_segment);
+    fn visit_path_segment(&mut self, path_segment: &'hir PathSegment<'hir>) {
+        self.insert(path_segment.ident.span, path_segment.hir_id, Node::PathSegment(path_segment));
+        intravisit::walk_path_segment(self, path_segment);
     }
 
     fn visit_ty(&mut self, ty: &'hir Ty<'hir>) {

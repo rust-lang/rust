@@ -63,9 +63,9 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
         self.record_lifetime_use(*lifetime);
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'ast PathSegment) {
-        self.record_elided_anchor(path_segment.id, path_span);
-        visit::walk_path_segment(self, path_span, path_segment);
+    fn visit_path_segment(&mut self, path_segment: &'ast PathSegment) {
+        self.record_elided_anchor(path_segment.id, path_segment.ident.span);
+        visit::walk_path_segment(self, path_segment);
     }
 
     fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef) {

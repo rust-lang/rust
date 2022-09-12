@@ -1827,7 +1827,7 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
                     // is, those would be potentially inputs to
                     // projections
                     if let Some(last_segment) = path.segments.last() {
-                        self.visit_path_segment(path.span, last_segment);
+                        self.visit_path_segment(last_segment);
                     }
                 }
 
