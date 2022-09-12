@@ -76,8 +76,8 @@ impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
         self.context.param_env = old_param_env;
     }
 
-    fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, s: Span, n: hir::HirId) {
-        lint_callback!(self, check_mod, m, s, n);
+    fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, n: hir::HirId) {
+        lint_callback!(self, check_mod, m, n);
         hir_visit::walk_mod(self, m, n);
     }
 }
@@ -220,9 +220,9 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_inf(self, inf);
     }
 
-    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, s: Span, n: hir::HirId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _: Span, n: hir::HirId) {
         if !self.context.only_module {
-            self.process_mod(m, s, n);
+            self.process_mod(m, n);
         }
     }
 
@@ -358,8 +358,8 @@ fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
 
     let mut cx = LateContextAndPass { context, pass };
 
-    let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
-    cx.process_mod(module, span, hir_id);
+    let (module, _span, hir_id) = tcx.hir().get_module(module_def_id);
+    cx.process_mod(module, hir_id);
 
     // Visit the crate attributes
     if hir_id == hir::CRATE_HIR_ID {

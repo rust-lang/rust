@@ -327,13 +327,7 @@ impl NonSnakeCase {
 }
 
 impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
-    fn check_mod(
-        &mut self,
-        cx: &LateContext<'_>,
-        _: &'tcx hir::Mod<'tcx>,
-        _: Span,
-        id: hir::HirId,
-    ) {
+    fn check_mod(&mut self, cx: &LateContext<'_>, _: &'tcx hir::Mod<'tcx>, id: hir::HirId) {
         if id != hir::CRATE_HIR_ID {
             return;
         }
