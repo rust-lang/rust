@@ -2,10 +2,7 @@
 use std::fmt::Display;
 
 use either::Either;
-use hir::{
-    db::HirDatabase, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Semantics,
-    StructKind, TypeInfo,
-};
+use hir::{AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
 use ide_db::{
     base_db::SourceDatabase,
     defs::Definition,
