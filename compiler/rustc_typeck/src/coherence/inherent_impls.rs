@@ -7,9 +7,10 @@
 //! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
+//use hir::def_id::LOCAL_CRATE;
+//use hir::ItemId;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::ty::fast_reject::{simplify_type, SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
@@ -19,6 +20,9 @@ use rustc_span::Span;
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub fn crate_inherent_impls(tcx: TyCtxt<'_>, (): ()) -> CrateInherentImpls {
     let mut collect = InherentCollect { tcx, impls_map: Default::default() };
+    //for (id, _) in tcx.impls_in_crate(LOCAL_CRATE).values().flatten() {
+    //    collect.check_item(ItemId { def_id: id.to_owned().expect_local() });
+    //}
     for id in tcx.hir().items() {
         collect.check_item(id);
     }
@@ -177,10 +181,6 @@ impl<'tcx> InherentCollect<'tcx> {
     }
 
     fn check_item(&mut self, id: hir::ItemId) {
-        if !matches!(self.tcx.def_kind(id.def_id), DefKind::Impl) {
-            return;
-        }
-
         let item = self.tcx.hir().item(id);
         let hir::ItemKind::Impl(hir::Impl { of_trait: None, self_ty: ty, ref items, .. }) = item.kind else {
             return;

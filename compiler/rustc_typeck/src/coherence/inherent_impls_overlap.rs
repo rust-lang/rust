@@ -1,3 +1,5 @@
+use hir::def_id::LOCAL_CRATE;
+use hir::ItemId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -13,6 +15,9 @@ use std::collections::hash_map::Entry;
 
 pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) {
     let mut inherent_overlap_checker = InherentOverlapChecker { tcx };
+    //for (id, _) in tcx.impls_in_crate(LOCAL_CRATE).values().flatten() {
+    //    inherent_overlap_checker.check_item(ItemId { def_id: id.to_owned().expect_local() });
+    //}
     for id in tcx.hir().items() {
         inherent_overlap_checker.check_item(id);
     }
