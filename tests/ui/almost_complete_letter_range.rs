@@ -14,6 +14,12 @@ macro_rules! a {
     };
 }
 
+macro_rules! b {
+    () => {
+        let _ = 'a'..'z';
+    };
+}
+
 fn main() {
     #[rustfmt::skip]
     {
@@ -31,6 +37,7 @@ fn main() {
     let _ = b'B'..b'Z';
 
     let _ = a!()..'z';
+    b!();
 
     let _ = match 0u8 {
         b'a'..b'z' if true => 1,
