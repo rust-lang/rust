@@ -1026,6 +1026,7 @@ where
 )]
 #[doc(hidden)]
 #[cfg(not(test))]
+#[inline]
 pub fn _print(args: fmt::Arguments<'_>) {
     print_to(args, stdout, "stdout");
 }
@@ -1037,6 +1038,7 @@ pub fn _print(args: fmt::Arguments<'_>) {
 )]
 #[doc(hidden)]
 #[cfg(not(test))]
+#[inline]
 pub fn _eprint(args: fmt::Arguments<'_>) {
     print_to(args, stderr, "stderr");
 }

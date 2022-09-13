@@ -261,19 +261,20 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_internals", issue = "none")]
     #[doc(hidden)]
     #[inline]
-    pub fn set_options(
-        &mut self,
+    pub fn with_options(
+        mut self,
         flags: u32,
         fill: char,
         align: rt::v1::Alignment,
         width: Option<usize>,
         precision: Option<usize>,
-    ) {
+    ) -> Self {
         self.flags = flags;
         self.fill = fill;
         self.align = align;
         self.width = width;
         self.precision = precision;
+        self
     }
 }
 
@@ -460,7 +461,7 @@ impl<'a> Arguments<'a> {
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
     #[cfg(not(bootstrap))]
-    pub const fn new(f: &'a dyn Fn(&mut Formatter<'_>) -> Result) -> Arguments<'a> {
+    pub const fn new(f: &'a dyn Fn(&mut dyn Write) -> Result) -> Arguments<'a> {
         Arguments { inner: Inner::Fn(f) }
     }
 
@@ -545,7 +546,7 @@ pub struct Arguments<'a> {
 #[cfg(not(bootstrap))]
 #[derive(Copy, Clone)]
 enum Inner<'a> {
-    Fn(&'a dyn Fn(&mut Formatter<'_>) -> Result),
+    Fn(&'a dyn Fn(&mut dyn Write) -> Result),
     StaticStr(&'static str),
 }
 
@@ -1286,7 +1287,7 @@ pub trait UpperExp {
 #[inline]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     match args.inner {
-        Inner::Fn(f) => f(&mut Formatter::new(output)),
+        Inner::Fn(f) => f(output),
         Inner::StaticStr(s) => output.write_str(s),
     }
 }

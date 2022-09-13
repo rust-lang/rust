@@ -22,26 +22,24 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
     }
 
     let args = Ident::new(sym::_args, macsp);
-    let f = Ident::new(sym::f, macsp);
+    let w = Ident::new(sym::w, macsp);
 
     let arguments = fmt.arguments.into_vec();
 
     let mut statements = Vec::new();
 
-    let mut default_options = true;
-
     for piece in fmt.template {
         match piece {
             FormatArgsPiece::Literal(s) => {
                 // Generate:
-                //     f.write_str("…")?;
+                //     w.write_str("…")?;
                 statements.push(ecx.stmt_expr(ecx.expr(
                     macsp,
                     ast::ExprKind::Try(ecx.expr(
                         macsp,
                         ast::ExprKind::MethodCall(
                             ast::PathSegment::from_ident(Ident::new(sym::write_str, macsp)),
-                            ecx.expr_ident(macsp, f),
+                            ecx.expr_ident(macsp, w),
                             vec![ecx.expr_str(macsp, s)],
                             macsp,
                         ),
@@ -51,16 +49,23 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
             FormatArgsPiece::Placeholder(p) => {
                 // Don't set options if they're still set to defaults
                 // and this placeholder also uses default options.
-                let d = p.format_options == FormatOptions::default();
-                if !default_options || !d {
-                    default_options = d;
-                    // Generate:
-                    //     f.set_options(…);
-                    statements.push(ecx.stmt_expr(ecx.expr(
+
+                // Generate:
+                //     ::core::fmt::Formatter::new(w)
+                let mut formatter = ecx.expr_call_global(
+                    macsp,
+                    ecx.std_path(&[sym::fmt, sym::Formatter, sym::new]),
+                    vec![ecx.expr_ident(macsp, w)],
+                );
+
+                if p.format_options != FormatOptions::default() {
+                    // Add:
+                    //     .with_options(…)
+                    formatter = ecx.expr(
                         macsp,
                         ast::ExprKind::MethodCall(
-                            ast::PathSegment::from_ident(Ident::new(sym::set_options, macsp)),
-                            ecx.expr_ident(macsp, f),
+                            ast::PathSegment::from_ident(Ident::new(sym::with_options, macsp)),
+                            formatter,
                             vec![
                                 ecx.expr_u32(macsp, p.format_options.flags),
                                 ecx.expr_char(macsp, p.format_options.fill.unwrap_or(' ')),
@@ -90,10 +95,12 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
                             ],
                             macsp,
                         ),
-                    )));
+                    );
                 }
+
                 // Generate:
-                //     ::core::fmt::Display::fmt(arg.0, f)?;
+                //     ::core::fmt::Display::fmt(arg.0, &mut formatter)?;
+
                 let arg = if let Ok(i) = p.argument.index {
                     ecx.expr_field(
                         arguments[i].expr.span.with_ctxt(macsp.ctxt()),
@@ -119,7 +126,17 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
                     ast::ExprKind::Try(ecx.expr_call_global(
                         arg.span,
                         ecx.std_path(&[sym::fmt, fmt_trait, sym::fmt]),
-                        vec![arg, ecx.expr_ident(macsp, f)],
+                        vec![
+                            arg,
+                            ecx.expr(
+                                macsp,
+                                ast::ExprKind::AddrOf(
+                                    ast::BorrowKind::Ref,
+                                    ast::Mutability::Mut,
+                                    formatter,
+                                ),
+                            ),
+                        ],
                     )),
                 )));
             }
@@ -131,7 +148,7 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
     statements.push(ecx.stmt_expr(ecx.expr_ok(macsp, ecx.expr_tuple(macsp, Vec::new()))));
 
     // Generate:
-    //     |f: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
+    //     |w: &mut dyn ::core::fmt::Write| -> ::core::fmt::Result {
     //         … // statements
     //     }
     let closure = ecx.expr(
@@ -144,18 +161,26 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
             ecx.fn_decl(
                 vec![ecx.param(
                     macsp,
-                    f,
+                    w,
                     ecx.ty_rptr(
                         macsp,
-                        ecx.ty_path(ecx.path_all(
+                        ecx.ty(
                             macsp,
-                            true,
-                            ecx.std_path(&[sym::fmt, sym::Formatter]),
-                            vec![ast::GenericArg::Lifetime(ast::Lifetime {
-                                id: ast::DUMMY_NODE_ID,
-                                ident: Ident::new(kw::UnderscoreLifetime, macsp),
-                            })],
-                        )),
+                            ast::TyKind::TraitObject(
+                                vec![ast::GenericBound::Trait(
+                                    ast::PolyTraitRef::new(
+                                        vec![],
+                                        ecx.path_global(
+                                            macsp,
+                                            ecx.std_path(&[sym::fmt, sym::Write]),
+                                        ),
+                                        macsp,
+                                    ),
+                                    ast::TraitBoundModifier::None,
+                                )],
+                                ast::TraitObjectSyntax::Dyn,
+                            ),
+                        ),
                         None,
                         ast::Mutability::Mut,
                     ),
