@@ -1016,7 +1016,7 @@ pub(crate) mod builtin {
     /// Concatenates literals into a byte slice.
     ///
     /// This macro takes any number of comma-separated literals, and concatenates them all into
-    /// one, yielding an expression of type `&[u8, _]`, which represents all of the literals
+    /// one, yielding an expression of type `&[u8; _]`, which represents all of the literals
     /// concatenated left-to-right. The literals passed can be any combination of:
     ///
     /// - byte literals (`b'r'`)
