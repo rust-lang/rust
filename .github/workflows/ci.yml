@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Set the tag GC interval to 1 on linux
-        if: runner.os == 'macOS'
+        if: runner.os == 'Linux'
         run: echo "MIRIFLAGS=-Zmiri-tag-gc=1" >> $GITHUB_ENV
 
       # We install gnu-tar because BSD tar is buggy on macOS builders of GHA.
