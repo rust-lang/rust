@@ -112,10 +112,167 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 StmtKind::Let {
                     remainder_scope,
                     init_scope,
+                    pattern,
+                    initializer: Some(initializer),
+                    lint_level,
+                    else_block: Some(else_block),
+                } => {
+                    // When lowering the statement `let <pat> = <expr> else { <else> };`,
+                    // the `<else>` block is nested in the parent scope enclosing this statment.
+                    // That scope is usually either the enclosing block scope,
+                    // or the remainder scope of the last statement.
+                    // This is to make sure that temporaries instantiated in `<expr>` are dropped
+                    // as well.
+                    // In addition, even though bindings in `<pat>` only come into scope if
+                    // the pattern matching passes, in the MIR building the storages for them
+                    // are declared as live any way.
+                    // This is similar to `let x;` statements without an initializer expression,
+                    // where the value of `x` in this example may or may be assigned,
+                    // because the storage for their values may not be live after all due to
+                    // failure in pattern matching.
+                    // For this reason, we declare those storages as live but we do not schedule
+                    // any drop yet- they are scheduled later after the pattern matching.
+                    // The generated MIR will have `StorageDead` whenever the control flow breaks out
+                    // of the parent scope, regardless of the result of the pattern matching.
+                    // However, the drops are inserted in MIR only when the control flow breaks out of
+                    // the scope of the remainder scope associated with this `let .. else` statement.
+                    // Pictorial explanation of the scope structure:
+                    // ┌─────────────────────────────────┐
+                    // │  Scope of the enclosing block,  │
+                    // │  or the last remainder scope    │
+                    // │  ┌───────────────────────────┐  │
+                    // │  │  Scope for <else> block   │  │
+                    // │  └───────────────────────────┘  │
+                    // │  ┌───────────────────────────┐  │
+                    // │  │  Remainder scope of       │  │
+                    // │  │  this let-else statement  │  │
+                    // │  │  ┌─────────────────────┐  │  │
+                    // │  │  │ <expr> scope        │  │  │
+                    // │  │  └─────────────────────┘  │  │
+                    // │  │  extended temporaries in  │  │
+                    // │  │  <expr> lives in this     │  │
+                    // │  │  scope                    │  │
+                    // │  │  ┌─────────────────────┐  │  │
+                    // │  │  │ Scopes for the rest │  │  │
+                    // │  │  └─────────────────────┘  │  │
+                    // │  └───────────────────────────┘  │
+                    // └─────────────────────────────────┘
+                    // Generated control flow:
+                    //          │ let Some(x) = y() else { return; }
+                    //          │
+                    // ┌────────▼───────┐
+                    // │ evaluate y()   │
+                    // └────────┬───────┘
+                    //          │              ┌────────────────┐
+                    // ┌────────▼───────┐      │Drop temporaries│
+                    // │Test the pattern├──────►in y()          │
+                    // └────────┬───────┘      │because breaking│
+                    //          │              │out of <expr>   │
+                    // ┌────────▼───────┐      │scope           │
+                    // │Move value into │      └───────┬────────┘
+                    // │binding x       │              │
+                    // └────────┬───────┘      ┌───────▼────────┐
+                    //          │              │Drop extended   │
+                    // ┌────────▼───────┐      │temporaries in  │
+                    // │Drop temporaries│      │<expr> because  │
+                    // │in y()          │      │breaking out of │
+                    // │because breaking│      │remainder scope │
+                    // │out of <expr>   │      └───────┬────────┘
+                    // │scope           │              │
+                    // └────────┬───────┘      ┌───────▼────────┐
+                    //          │              │Enter <else>    ├────────►
+                    // ┌────────▼───────┐      │block           │ return;
+                    // │Continue...     │      └────────────────┘
+                    // └────────────────┘
+
+                    let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
+                    this.block_context.push(BlockFrame::Statement { ignores_expr_result });
+
+                    // Lower the `else` block first because its parent scope is actually
+                    // enclosing the rest of the `let .. else ..` parts.
+                    let else_block_span = this.thir[*else_block].span;
+                    // This place is not really used because this destination place
+                    // should never be used to take values at the end of the failure
+                    // block.
+                    let dummy_place = this.temp(this.tcx.types.never, else_block_span);
+                    let failure_entry = this.cfg.start_new_block();
+                    let failure_block;
+                    unpack!(
+                        failure_block = this.ast_block(
+                            dummy_place,
+                            failure_entry,
+                            *else_block,
+                            this.source_info(else_block_span),
+                        )
+                    );
+                    this.cfg.terminate(
+                        failure_block,
+                        this.source_info(else_block_span),
+                        TerminatorKind::Unreachable,
+                    );
+
+                    // Declare the bindings, which may create a source scope.
+                    let remainder_span = remainder_scope.span(this.tcx, this.region_scope_tree);
+                    this.push_scope((*remainder_scope, source_info));
+                    let_scope_stack.push(remainder_scope);
+
+                    let visibility_scope =
+                        Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
+
+                    let init = &this.thir[*initializer];
+                    let initializer_span = init.span;
+                    this.declare_bindings(
+                        visibility_scope,
+                        remainder_span,
+                        pattern,
+                        ArmHasGuard(false),
+                        Some((None, initializer_span)),
+                    );
+                    this.visit_primary_bindings(
+                        pattern,
+                        UserTypeProjections::none(),
+                        &mut |this, _, _, _, node, span, _, _| {
+                            this.storage_live_binding(block, node, span, OutsideGuard, false);
+                        },
+                    );
+                    let failure = unpack!(
+                        block = this.in_opt_scope(
+                            opt_destruction_scope.map(|de| (de, source_info)),
+                            |this| {
+                                let scope = (*init_scope, source_info);
+                                this.in_scope(scope, *lint_level, |this| {
+                                    this.ast_let_else(
+                                        block,
+                                        init,
+                                        initializer_span,
+                                        *else_block,
+                                        &last_remainder_scope,
+                                        pattern,
+                                    )
+                                })
+                            }
+                        )
+                    );
+                    this.cfg.goto(failure, source_info, failure_entry);
+
+                    if let Some(source_scope) = visibility_scope {
+                        this.source_scope = source_scope;
+                    }
+                    last_remainder_scope = *remainder_scope;
+                }
+                StmtKind::Let { init_scope, initializer: None, else_block: Some(_), .. } => {
+                    span_bug!(
+                        init_scope.span(this.tcx, this.region_scope_tree),
+                        "initializer is missing, but else block is present in this let binding",
+                    )
+                }
+                StmtKind::Let {
+                    remainder_scope,
+                    init_scope,
                     ref pattern,
                     initializer,
                     lint_level,
-                    else_block,
+                    else_block: None,
                 } => {
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
@@ -141,27 +298,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 |this| {
                                     let scope = (*init_scope, source_info);
                                     this.in_scope(scope, *lint_level, |this| {
-                                        if let Some(else_block) = else_block {
-                                            this.ast_let_else(
-                                                block,
-                                                init,
-                                                initializer_span,
-                                                *else_block,
-                                                visibility_scope,
-                                                last_remainder_scope,
-                                                remainder_span,
-                                                pattern,
-                                            )
-                                        } else {
-                                            this.declare_bindings(
-                                                visibility_scope,
-                                                remainder_span,
-                                                pattern,
-                                                ArmHasGuard(false),
-                                                Some((None, initializer_span)),
-                                            );
-                                            this.expr_into_pattern(block, pattern, init) // irrefutable pattern
-                                        }
+                                        this.declare_bindings(
+                                            visibility_scope,
+                                            remainder_span,
+                                            pattern,
+                                            ArmHasGuard(false),
+                                            Some((None, initializer_span)),
+                                        );
+                                        this.expr_into_pattern(block, &pattern, init) // irrefutable pattern
                                     })
                                 },
                             )

@@ -699,7 +699,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(local_id) });
         // Although there is almost always scope for given variable in corner cases
         // like #92893 we might get variable with no scope.
-        if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id) && schedule_drop{
+        if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id) && schedule_drop {
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
         }
         Place::from(local_id)
@@ -2274,23 +2274,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         init: &Expr<'tcx>,
         initializer_span: Span,
         else_block: BlockId,
-        visibility_scope: Option<SourceScope>,
-        remainder_scope: region::Scope,
-        remainder_span: Span,
+        let_else_scope: &region::Scope,
         pattern: &Pat<'tcx>,
-    ) -> BlockAnd<()> {
+    ) -> BlockAnd<BasicBlock> {
         let else_block_span = self.thir[else_block].span;
-        let (matching, failure) = self.in_if_then_scope(remainder_scope, |this| {
+        let (matching, failure) = self.in_if_then_scope(*let_else_scope, |this| {
             let scrutinee = unpack!(block = this.lower_scrutinee(block, init, initializer_span));
             let pat = Pat { ty: init.ty, span: else_block_span, kind: PatKind::Wild };
             let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false);
-            this.declare_bindings(
-                visibility_scope,
-                remainder_span,
-                pattern,
-                ArmHasGuard(false),
-                Some((None, initializer_span)),
-            );
             let mut candidate = Candidate::new(scrutinee.clone(), pattern, false);
             let fake_borrow_temps = this.lower_match_tree(
                 block,
@@ -2321,28 +2312,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 None,
                 None,
             );
-            this.break_for_else(failure, remainder_scope, this.source_info(initializer_span));
+            this.break_for_else(failure, *let_else_scope, this.source_info(initializer_span));
             matching.unit()
         });
-
-        // This place is not really used because this destination place
-        // should never be used to take values at the end of the failure
-        // block.
-        let dummy_place = self.temp(self.tcx.types.never, else_block_span);
-        let failure_block;
-        unpack!(
-            failure_block = self.ast_block(
-                dummy_place,
-                failure,
-                else_block,
-                self.source_info(else_block_span),
-            )
-        );
-        self.cfg.terminate(
-            failure_block,
-            self.source_info(else_block_span),
-            TerminatorKind::Unreachable,
-        );
-        matching.unit()
+        matching.and(failure)
     }
 }
