@@ -19,9 +19,10 @@ error: unexpected expression: `{
                let res =
                    ::alloc::fmt::format(::core::fmt::Arguments::new(&match (&"u8",) {
                                    _args =>
-                                       |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                       |w: &mut dyn ::core::fmt::Write| -> ::core::fmt::Result
                                            {
-                                               ::core::fmt::Display::fmt(_args.0, f)?;
+                                               ::core::fmt::Display::fmt(_args.0,
+                                                       &mut ::core::fmt::Formatter::new(w))?;
                                                ::core::result::Result::Ok(())
                                            },
                                }));
