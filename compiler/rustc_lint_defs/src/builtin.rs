@@ -3988,8 +3988,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(generic_associated_types)]
-    ///
     /// trait Trait {
     ///   type Assoc<'a> where Self: 'a;
     /// }

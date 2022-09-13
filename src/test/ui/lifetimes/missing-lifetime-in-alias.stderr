@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/missing-lifetime-in-alias.rs:22:24
+  --> $DIR/missing-lifetime-in-alias.rs:20:24
    |
 LL | type B<'a> = <A<'a> as Trait>::Foo;
    |                        ^^^^^ expected named lifetime parameter
@@ -10,13 +10,13 @@ LL | type B<'a> = <A<'a> as Trait<'a>>::Foo;
    |                             ++++
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/missing-lifetime-in-alias.rs:26:28
+  --> $DIR/missing-lifetime-in-alias.rs:24:28
    |
 LL | type C<'a, 'b> = <A<'a> as Trait>::Bar;
    |                            ^^^^^ expected named lifetime parameter
    |
 note: these named lifetimes are available to use
-  --> $DIR/missing-lifetime-in-alias.rs:26:8
+  --> $DIR/missing-lifetime-in-alias.rs:24:8
    |
 LL | type C<'a, 'b> = <A<'a> as Trait>::Bar;
    |        ^^  ^^
@@ -26,13 +26,13 @@ LL | type C<'a, 'b> = <A<'a> as Trait<'lifetime>>::Bar;
    |                                 +++++++++++
 
 error[E0107]: missing generics for associated type `Trait::Bar`
-  --> $DIR/missing-lifetime-in-alias.rs:26:36
+  --> $DIR/missing-lifetime-in-alias.rs:24:36
    |
 LL | type C<'a, 'b> = <A<'a> as Trait>::Bar;
    |                                    ^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'b`
-  --> $DIR/missing-lifetime-in-alias.rs:6:10
+  --> $DIR/missing-lifetime-in-alias.rs:4:10
    |
 LL |     type Bar<'b>
    |          ^^^ --

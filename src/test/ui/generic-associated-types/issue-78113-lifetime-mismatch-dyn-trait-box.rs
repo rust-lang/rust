@@ -2,8 +2,6 @@
 
 // check-fail
 
-#![feature(generic_associated_types)]
-
 pub trait A {}
 impl A for &dyn A {}
 impl A for Box<dyn A> {}

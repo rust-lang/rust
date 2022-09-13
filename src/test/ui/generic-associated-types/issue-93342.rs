@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
 use std::marker::PhantomData;
 
 pub trait Scalar: 'static {

@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `B: Bar` is not satisfied
-  --> $DIR/issue-90400-2.rs:26:9
+  --> $DIR/issue-90400-2.rs:25:9
    |
 LL |         MyBaz(bar)
    |         ^^^^^^^^^^ the trait `Bar` is not implemented for `B`
    |
 note: required for `MyBaz<B>` to implement `Baz`
-  --> $DIR/issue-90400-2.rs:31:14
+  --> $DIR/issue-90400-2.rs:30:14
    |
 LL | impl<B: Bar> Baz for MyBaz<B> {
    |              ^^^     ^^^^^^^^

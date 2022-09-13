@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
 trait CallWithShim: Sized {
     type Shim<'s>
     where

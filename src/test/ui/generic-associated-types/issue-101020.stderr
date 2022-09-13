@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `for<'a> &'a mut (): Foo<&'a mut ()>` is not satisfied
-  --> $DIR/issue-101020.rs:33:5
+  --> $DIR/issue-101020.rs:31:5
    |
 LL |     (&mut EmptyIter).consume(());
    |     ^^^^^^^^^^^^^^^^ ------- required by a bound introduced by this call
@@ -7,12 +7,12 @@ LL |     (&mut EmptyIter).consume(());
    |     the trait `for<'a> Foo<&'a mut ()>` is not implemented for `&'a mut ()`
    |
 note: required for `&'a mut ()` to implement `for<'a> FuncInput<'a, &'a mut ()>`
-  --> $DIR/issue-101020.rs:29:20
+  --> $DIR/issue-101020.rs:27:20
    |
 LL | impl<'a, T, F: 'a> FuncInput<'a, F> for T where F: Foo<T> {}
    |                    ^^^^^^^^^^^^^^^^     ^
 note: required by a bound in `LendingIterator::consume`
-  --> $DIR/issue-101020.rs:11:33
+  --> $DIR/issue-101020.rs:9:33
    |
 LL |     fn consume<F>(self, _f: F)
    |        ------- required by a bound in this

@@ -1,7 +1,6 @@
 // check-pass
 //
 // regression test for #98702
-#![feature(generic_associated_types)]
 
 trait Foo {
     type Assoc<T>;

@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
 pub trait Scalar: 'static {
     type RefType<'a>: ScalarRef<'a>;
 }

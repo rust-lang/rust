@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `<Bar as Foo>::Ass == _`
-  --> $DIR/issue-87755.rs:18:16
+  --> $DIR/issue-87755.rs:16:16
    |
 LL |     type Ass = Bar;
    |                ^^^

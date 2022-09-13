@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `A` cannot be known at compilation time
-  --> $DIR/issue-88287.rs:35:9
+  --> $DIR/issue-88287.rs:34:9
    |
 LL | type SearchFutureTy<'f, A, B: 'f>
    |                         - this type parameter needs to be `std::marker::Sized`
@@ -8,7 +8,7 @@ LL |         async move { todo!() }
    |         ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
 note: required by a bound in `<T as SearchableResourceExt<Criteria>>`
-  --> $DIR/issue-88287.rs:25:6
+  --> $DIR/issue-88287.rs:24:6
    |
 LL | impl<T, Criteria> SearchableResourceExt<Criteria> for T
    |      ^ required by this bound in `<T as SearchableResourceExt<Criteria>>`

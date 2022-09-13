@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `SomeTrait::Wrapped`
-  --> $DIR/issue-79636-2.rs:11:18
+  --> $DIR/issue-79636-2.rs:9:18
    |
 LL |     W: SomeTrait<Wrapped = W>,
    |                  ^^^^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `A`
-  --> $DIR/issue-79636-2.rs:4:10
+  --> $DIR/issue-79636-2.rs:2:10
    |
 LL |     type Wrapped<A>: SomeTrait;
    |          ^^^^^^^ -

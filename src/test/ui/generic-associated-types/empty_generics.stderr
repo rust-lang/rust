@@ -1,5 +1,5 @@
 error: expected one of `#`, `>`, `const`, identifier, or lifetime, found `,`
-  --> $DIR/empty_generics.rs:4:14
+  --> $DIR/empty_generics.rs:2:14
    |
 LL | trait Foo {
    |           - while parsing this item list starting here

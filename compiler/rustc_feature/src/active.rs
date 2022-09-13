@@ -404,8 +404,6 @@ declare_features! (
     (active, generators, "1.21.0", Some(43122), None),
     /// Infer generic args for both consts and types.
     (active, generic_arg_infer, "1.55.0", Some(85077), None),
-    /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
-    (active, generic_associated_types, "1.23.0", Some(44265), None),
     /// An extension to the `generic_associated_types` feature, allowing incomplete features.
     (incomplete, generic_associated_types_extended, "1.61.0", Some(95451), None),
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers

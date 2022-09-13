@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 // check-pass
 
 use std::ops::Deref;

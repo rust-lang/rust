@@ -3,8 +3,6 @@
 
 // pretty-compare-only
 
-#![feature(generic_associated_types)]
-
 trait X {
     type Y<T>: Trait where Self: Sized;
 }

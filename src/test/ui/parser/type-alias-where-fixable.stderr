@@ -1,5 +1,5 @@
 warning: where clause not allowed here
-  --> $DIR/type-alias-where-fixable.rs:15:16
+  --> $DIR/type-alias-where-fixable.rs:13:16
    |
 LL |     type Assoc where u32: Copy = ();
    |                ^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     type Assoc  = () where u32: Copy;
    |
 
 warning: where clause not allowed here
-  --> $DIR/type-alias-where-fixable.rs:18:17
+  --> $DIR/type-alias-where-fixable.rs:16:17
    |
 LL |     type Assoc2 where u32: Copy = () where i32: Copy;
    |                 ^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL +     type Assoc2  = () where i32: Copy, u32: Copy;
    |
 
 warning: where clause not allowed here
-  --> $DIR/type-alias-where-fixable.rs:26:17
+  --> $DIR/type-alias-where-fixable.rs:24:17
    |
 LL |     type Assoc2 where u32: Copy, i32: Copy = ();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^

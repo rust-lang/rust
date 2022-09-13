@@ -161,6 +161,8 @@ declare_features! (
     (accepted, fn_must_use, "1.27.0", Some(43302), None),
     /// Allows capturing variables in scope using format_args!
     (accepted, format_args_capture, "1.58.0", Some(67984), None),
+    /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
+    (accepted, generic_associated_types, "CURRENT_RUSTC_VERSION", Some(44265), None),
     /// Allows attributes on lifetime/type formal parameters in generics (RFC 1327).
     (accepted, generic_param_attrs, "1.27.0", Some(48848), None),
     /// Allows the `#[global_allocator]` attribute.

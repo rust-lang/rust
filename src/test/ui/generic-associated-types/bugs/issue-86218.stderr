@@ -1,17 +1,17 @@
 error[E0477]: the type `<() as Yay<&'a ()>>::InnerStream<'s>` does not fulfill the required lifetime
-  --> $DIR/issue-86218.rs:23:28
+  --> $DIR/issue-86218.rs:22:28
    |
 LL |     type InnerStream<'s> = impl Stream<Item = i32> + 's;
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: type must outlive the lifetime `'s` as defined here as required by this binding
-  --> $DIR/issue-86218.rs:23:22
+  --> $DIR/issue-86218.rs:22:22
    |
 LL |     type InnerStream<'s> = impl Stream<Item = i32> + 's;
    |                      ^^
 
 error: unconstrained opaque type
-  --> $DIR/issue-86218.rs:23:28
+  --> $DIR/issue-86218.rs:22:28
    |
 LL |     type InnerStream<'s> = impl Stream<Item = i32> + 's;
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -3,7 +3,6 @@
 
 // This should pass, but seems to run into a TAIT issue.
 
-#![feature(generic_associated_types)]
 #![feature(type_alias_impl_trait)]
 
 pub trait Stream {

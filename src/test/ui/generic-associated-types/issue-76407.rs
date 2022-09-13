@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
 trait Marker {}
 
 impl Marker for u32 {}

@@ -1,7 +1,5 @@
 // Regression test from https://github.com/rust-lang/rust/pull/98109
 
-#![feature(generic_associated_types)]
-
 pub trait Get {
     type Value<'a>
     where

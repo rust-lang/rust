@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 trait Document {
     type Cursor<'a>: DocCursor<'a>;
     //~^ ERROR: missing required bound on `Cursor`

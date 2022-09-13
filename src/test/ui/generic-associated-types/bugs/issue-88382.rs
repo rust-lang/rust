@@ -3,8 +3,6 @@
 
 // This should pass, but has a missed normalization due to HRTB.
 
-#![feature(generic_associated_types)]
-
 trait Iterable {
     type Iterator<'a> where Self: 'a;
     fn iter(&self) -> Self::Iterator<'_>;

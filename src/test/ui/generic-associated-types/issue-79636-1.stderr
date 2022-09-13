@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `Monad::Wrapped`
-  --> $DIR/issue-79636-1.rs:15:34
+  --> $DIR/issue-79636-1.rs:13:34
    |
 LL |     MInner: Monad<Unwrapped = A, Wrapped = MOuter::Wrapped<A>>,
    |                                  ^^^^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `B`
-  --> $DIR/issue-79636-1.rs:5:10
+  --> $DIR/issue-79636-1.rs:3:10
    |
 LL |     type Wrapped<B>;
    |          ^^^^^^^ -

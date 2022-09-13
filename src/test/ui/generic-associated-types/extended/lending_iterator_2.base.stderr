@@ -1,5 +1,5 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/lending_iterator_2.rs:14:45
+  --> $DIR/lending_iterator_2.rs:13:45
    |
 LL |     fn from_iter<T: for<'x> LendingIterator<Item<'x> = A>>(iter: T) -> Self;
    |     ------------------------------------------------------------------------ definition of `from_iter` from trait
