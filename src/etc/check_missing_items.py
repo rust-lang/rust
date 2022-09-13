@@ -49,6 +49,8 @@ def check_generic_param(param):
         ty = param["kind"]["type"]
         if ty["default"]:
             check_type(ty["default"])
+        for bound in ty["bounds"]:
+            check_generic_bound(bound)
     elif "const" in param["kind"]:
         check_type(param["kind"]["const"])
 
@@ -88,8 +90,11 @@ def check_path(path):
                 check_type(input_ty)
             if args["parenthesized"]["output"]:
                 check_type(args["parenthesized"]["output"])
-    if not valid_id(path["id"]):
-        print("Type contained an invalid ID:", path["id"])
+
+    if path["id"] in crate["index"]:
+        work_list.add(path["id"])
+    elif path["id"] not in crate["paths"]:
+        print("Id not in index or paths:", path["id"])
         sys.exit(1)
 
 def check_type(ty):
