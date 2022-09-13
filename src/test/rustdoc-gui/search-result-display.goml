@@ -13,6 +13,9 @@ size: (600, 100)
 // when computed it's larger.
 assert-css: (".search-results div.desc", {"width": "566px"})
 
+// The result set is all on one line.
+assert-css: (".search-results .result-name > span", {"display": "inline"})
+
 // Check that the crate filter `<select>` is correctly handled when it goes to next line.
 // To do so we need to update the length of one of its `<option>`.
 size: (900, 900)

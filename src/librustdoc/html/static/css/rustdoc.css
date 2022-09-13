@@ -986,12 +986,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	padding-right: 1em;
 }
 
-.search-results .result-name > span {
-	display: inline-block;
-	margin: 0;
-	font-weight: normal;
-}
-
 .popover {
 	font-size: 1rem;
 	position: absolute;

@@ -1,6 +1,10 @@
 use either::Either;
 use ide_db::imports::merge_imports::{try_merge_imports, try_merge_trees, MergeBehavior};
-use syntax::{algo::neighbor, ast, match_ast, ted, AstNode, SyntaxElement, SyntaxNode};
+use syntax::{
+    algo::neighbor,
+    ast::{self, edit_in_place::Removable},
+    match_ast, ted, AstNode, SyntaxElement, SyntaxNode,
+};
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -76,7 +80,7 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
                 .collect();
             for edit in edits_mut {
                 match edit {
-                    Remove(it) => it.as_ref().either(ast::Use::remove, ast::UseTree::remove),
+                    Remove(it) => it.as_ref().either(Removable::remove, Removable::remove),
                     Replace(old, new) => ted::replace(old, new),
                 }
             }
