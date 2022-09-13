@@ -617,9 +617,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         .filter(|&sp| sp != base_error.span)
                         .collect();
 
-                    let start_span = bounds.iter().map(|bound| bound.span()).next().unwrap();
+                    let start_span = bounds[0].span();
                     // `end_span` is the end of the poly trait ref (Foo + 'baz + Bar><)
-                    let end_span = bounds.iter().map(|bound| bound.span()).last().unwrap();
+                    let end_span = bounds.last().unwrap().span();
                     // `last_bound_span` is the last bound of the poly trait ref (Foo + >'baz< + Bar)
                     let last_bound_span = spans.last().cloned().unwrap();
                     let mut multi_span: MultiSpan = spans.clone().into();

@@ -587,7 +587,7 @@ fn generate_macro_def_id_path(
             }
         })
         .collect();
-    let relative = fqp.iter().map(|elem| elem.to_string());
+    let mut relative = fqp.iter().map(|elem| elem.to_string());
     let cstore = CStore::from_tcx(tcx);
     // We need this to prevent a `panic` when this function is used from intra doc links...
     if !cstore.has_crate_data(def_id.krate) {
@@ -607,7 +607,7 @@ fn generate_macro_def_id_path(
     let mut path = if is_macro_2 {
         once(crate_name.clone()).chain(relative).collect()
     } else {
-        vec![crate_name.clone(), relative.last().unwrap()]
+        vec![crate_name.clone(), relative.next_back().unwrap()]
     };
     if path.len() < 2 {
         // The minimum we can have is the crate name followed by the macro name. If shorter, then
