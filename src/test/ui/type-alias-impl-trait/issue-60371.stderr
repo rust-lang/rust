@@ -11,7 +11,7 @@ error[E0277]: the trait bound `(): Bug` is not satisfied
   --> $DIR/issue-60371.rs:10:40
    |
 LL |     const FUN: fn() -> Self::Item = || ();
-   |                                        ^ the trait `Bug` is not implemented for `()`
+   |                                        ^^ the trait `Bug` is not implemented for `()`
    |
    = help: the trait `Bug` is implemented for `&()`
 
