@@ -1,12 +1,12 @@
 error: future cannot be sent between threads safely
-  --> $DIR/issue-70935-complex-spans.rs:12:45
+  --> $DIR/issue-70935-complex-spans.rs:13:45
    |
 LL | fn foo(tx: std::sync::mpsc::Sender<i32>) -> impl Future + Send {
    |                                             ^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `Sender<i32>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-70935-complex-spans.rs:18:11
+  --> $DIR/issue-70935-complex-spans.rs:19:11
    |
 LL |           baz(|| async{
    |  _____________-
@@ -14,9 +14,9 @@ LL | |             foo(tx.clone());
 LL | |         }).await;
    | |         - ^^^^^^ await occurs here, with the value maybe used later
    | |_________|
-   |           has type `[closure@$DIR/issue-70935-complex-spans.rs:16:13: 16:15]` which is not `Send`
+   |           has type `[closure@$DIR/issue-70935-complex-spans.rs:17:13: 17:15]` which is not `Send`
 note: the value is later dropped here
-  --> $DIR/issue-70935-complex-spans.rs:18:17
+  --> $DIR/issue-70935-complex-spans.rs:19:17
    |
 LL |         }).await;
    |                 ^
