@@ -47,7 +47,7 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     let receiver_path = current_module.find_use_path(
         ctx.sema.db,
         item_for_path_search(ctx.sema.db, item_in_ns)?,
-        ctx.config.prefer_core,
+        ctx.config.prefer_no_std,
     )?;
 
     let qualify_candidate = QualifyCandidate::ImplMethod(ctx.sema.db, call, resolved_call);

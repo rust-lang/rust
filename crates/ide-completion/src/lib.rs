@@ -238,7 +238,7 @@ pub fn resolve_completion_edits(
                     db,
                     candidate,
                     config.insert_use.prefix_kind,
-                    config.prefer_core,
+                    config.prefer_no_std,
                 )
             })
             .find(|mod_path| mod_path.to_string() == full_import_path);

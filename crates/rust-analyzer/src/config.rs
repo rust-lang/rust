@@ -262,8 +262,8 @@ config_data! {
         imports_group_enable: bool                           = "true",
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
         imports_merge_glob: bool           = "true",
-        /// Prefer to use imports of the core crate over the std crate.
-        imports_prefer_core: bool                     = "false",
+        /// Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
+        imports_prefer_no_std: bool                     = "false",
         /// The path structure for newly inserted paths to use.
         imports_prefix: ImportPrefixDef               = "\"plain\"",
 
@@ -922,7 +922,7 @@ impl Config {
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
             },
             insert_use: self.insert_use_config(),
-            prefer_core: self.data.imports_prefer_core,
+            prefer_no_std: self.data.imports_prefer_no_std,
         }
     }
 
@@ -1138,7 +1138,7 @@ impl Config {
                 CallableCompletionDef::None => None,
             },
             insert_use: self.insert_use_config(),
-            prefer_core: self.data.imports_prefer_core,
+            prefer_no_std: self.data.imports_prefer_no_std,
             snippet_cap: SnippetCap::new(try_or_def!(
                 self.caps
                     .text_document
@@ -1166,7 +1166,7 @@ impl Config {
             snippet_cap: SnippetCap::new(self.experimental("snippetTextEdit")),
             allowed: None,
             insert_use: self.insert_use_config(),
-            prefer_core: self.data.imports_prefer_core,
+            prefer_no_std: self.data.imports_prefer_no_std,
         }
     }
 

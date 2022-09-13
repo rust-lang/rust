@@ -137,7 +137,7 @@ pub(crate) fn json_in_items(
                                         sema.db,
                                         it,
                                         config.insert_use.prefix_kind,
-                                        config.prefer_core,
+                                        config.prefer_no_std,
                                     ) {
                                         insert_use(
                                             &scope,
@@ -153,7 +153,7 @@ pub(crate) fn json_in_items(
                                         sema.db,
                                         it,
                                         config.insert_use.prefix_kind,
-                                        config.prefer_core,
+                                        config.prefer_no_std,
                                     ) {
                                         insert_use(
                                             &scope,

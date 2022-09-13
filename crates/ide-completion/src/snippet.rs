@@ -178,7 +178,7 @@ fn import_edits(ctx: &CompletionContext<'_>, requires: &[GreenNode]) -> Option<V
             ctx.db,
             item,
             ctx.config.insert_use.prefix_kind,
-            ctx.config.prefer_core,
+            ctx.config.prefer_no_std,
         )?;
         Some((path.len() > 1).then(|| LocatedImport::new(path.clone(), item, item, None)))
     };
