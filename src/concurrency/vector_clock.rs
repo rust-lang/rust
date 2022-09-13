@@ -53,7 +53,7 @@ pub type VTimestamp = u32;
 /// circuit the calculation and return the correct result faster,
 /// also this means that there is only one unique valid length
 /// for each set of vector clock values and hence the PartialEq
-//  and Eq derivations are correct.
+/// and Eq derivations are correct.
 #[derive(PartialEq, Eq, Default, Debug)]
 pub struct VClock(SmallVec<[VTimestamp; SMALL_VECTOR]>);
 
