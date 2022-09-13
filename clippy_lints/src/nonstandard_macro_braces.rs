@@ -184,6 +184,10 @@ fn macro_braces(conf: FxHashSet<MacroMatcher>) -> FxHashMap<String, (String, Str
             name: "vec",
             braces: ("[", "]"),
         ),
+        macro_matcher!(
+            name: "matches",
+            braces: ("(", ")"),
+        ),
     ]
     .into_iter()
     .collect::<FxHashMap<_, _>>();
