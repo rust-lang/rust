@@ -34,7 +34,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
     fn parse_item_mod(&mut self, attrs: &mut AttrVec) -> PResult<'a, ItemInfo> {
-        let unsafety = self.parse_unsafety();
+        let unsafety = self.parse_unsafety(false);
         self.expect_keyword(kw::Mod)?;
         let id = self.parse_ident()?;
         let mod_kind = if self.eat(&token::Semi) {
@@ -215,14 +215,14 @@ impl<'a> Parser<'a> {
         kw_case_insensitive: bool,
     ) -> PResult<'a, Option<ItemInfo>> {
         let def_final = def == &Defaultness::Final;
-        let mut def = || mem::replace(def, Defaultness::Final);
+        let mut def_ = || mem::replace(def, Defaultness::Final);
 
         let info = if self.eat_keyword_case(kw::Use, kw_case_insensitive) {
             self.parse_use_item()?
-        } else if self.check_fn_front_matter(def_final) {
+        } else if self.check_fn_front_matter(def_final, kw_case_insensitive) {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, fn_parse_mode, lo, vis)?;
-            (ident, ItemKind::Fn(Box::new(Fn { defaultness: def(), sig, generics, body })))
+            (ident, ItemKind::Fn(Box::new(Fn { defaultness: def_(), sig, generics, body })))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
                 // EXTERN CRATE
@@ -233,7 +233,7 @@ impl<'a> Parser<'a> {
             }
         } else if self.is_unsafe_foreign_mod() {
             // EXTERN BLOCK
-            let unsafety = self.parse_unsafety();
+            let unsafety = self.parse_unsafety(false);
             self.expect_keyword(kw::Extern)?;
             self.parse_item_foreign_mod(attrs, unsafety)?
         } else if self.is_static_global() {
@@ -242,15 +242,15 @@ impl<'a> Parser<'a> {
             let m = self.parse_mutability();
             let (ident, ty, expr) = self.parse_item_global(Some(m))?;
             (ident, ItemKind::Static(ty, m, expr))
-        } else if let Const::Yes(const_span) = self.parse_constness() {
+        } else if let Const::Yes(const_span) = self.parse_constness(false) {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
                 // recover from `const impl`, suggest `impl const`
-                self.recover_const_impl(const_span, attrs, def())?
+                self.recover_const_impl(const_span, attrs, def_())?
             } else {
                 self.recover_const_mut(const_span);
                 let (ident, ty, expr) = self.parse_item_global(None)?;
-                (ident, ItemKind::Const(def(), ty, expr))
+                (ident, ItemKind::Const(def_(), ty, expr))
             }
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
@@ -259,7 +259,7 @@ impl<'a> Parser<'a> {
             || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Impl])
         {
             // IMPL ITEM
-            self.parse_item_impl(attrs, def())?
+            self.parse_item_impl(attrs, def_())?
         } else if self.check_keyword(kw::Mod)
             || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Mod])
         {
@@ -267,7 +267,7 @@ impl<'a> Parser<'a> {
             self.parse_item_mod(attrs)?
         } else if self.eat_keyword(kw::Type) {
             // TYPE ITEM
-            self.parse_type_alias(def())?
+            self.parse_type_alias(def_())?
         } else if self.eat_keyword(kw::Enum) {
             // ENUM ITEM
             self.parse_item_enum()?
@@ -295,16 +295,10 @@ impl<'a> Parser<'a> {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
         } else if self.isnt_macro_invocation() && !kw_case_insensitive {
+            _ = def_;
+
             // Recover wrong cased keywords
-            return self.parse_item_kind(
-                attrs,
-                macros_allowed,
-                lo,
-                vis,
-                &mut def(),
-                fn_parse_mode,
-                true,
-            );
+            return self.parse_item_kind(attrs, macros_allowed, lo, vis, def, fn_parse_mode, true);
         } else if macros_allowed && self.check_path() {
             // MACRO INVOCATION ITEM
             (Ident::empty(), ItemKind::MacCall(P(self.parse_item_macro(vis)?)))
@@ -557,7 +551,7 @@ impl<'a> Parser<'a> {
         attrs: &mut AttrVec,
         defaultness: Defaultness,
     ) -> PResult<'a, ItemInfo> {
-        let unsafety = self.parse_unsafety();
+        let unsafety = self.parse_unsafety(false);
         self.expect_keyword(kw::Impl)?;
 
         // First, parse generic parameters if necessary.
@@ -571,7 +565,7 @@ impl<'a> Parser<'a> {
             generics
         };
 
-        let constness = self.parse_constness();
+        let constness = self.parse_constness(false);
         if let Const::Yes(span) = constness {
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
         }
@@ -815,7 +809,7 @@ impl<'a> Parser<'a> {
 
     /// Parses `unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
     fn parse_item_trait(&mut self, attrs: &mut AttrVec, lo: Span) -> PResult<'a, ItemInfo> {
-        let unsafety = self.parse_unsafety();
+        let unsafety = self.parse_unsafety(false);
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(kw::Auto) { IsAuto::Yes } else { IsAuto::No };
 
@@ -1764,7 +1758,7 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err()?;
         if !is_raw && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
-            let err = if self.check_fn_front_matter(false) {
+            let err = if self.check_fn_front_matter(false, false) {
                 let inherited_vis = Visibility {
                     span: rustc_span::DUMMY_SP,
                     kind: VisibilityKind::Inherited,
@@ -2153,7 +2147,11 @@ impl<'a> Parser<'a> {
     ///
     /// `check_pub` adds additional `pub` to the checks in case users place it
     /// wrongly, can be used to ensure `pub` never comes after `default`.
-    pub(super) fn check_fn_front_matter(&mut self, check_pub: bool) -> bool {
+    pub(super) fn check_fn_front_matter(
+        &mut self,
+        check_pub: bool,
+        kw_case_insensitive: bool,
+    ) -> bool {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
@@ -2163,23 +2161,30 @@ impl<'a> Parser<'a> {
         } else {
             &[kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         };
-        self.check_keyword(kw::Fn) // Definitely an `fn`.
+        self.check_keyword_case(kw::Fn, kw_case_insensitive) // Definitely an `fn`.
             // `$qual fn` or `$qual $qual`:
-            || quals.iter().any(|&kw| self.check_keyword(kw))
+            || quals.iter().any(|&kw| self.check_keyword_case(kw, kw_case_insensitive))
                 && self.look_ahead(1, |t| {
                     // `$qual fn`, e.g. `const fn` or `async fn`.
-                    t.is_keyword(kw::Fn)
+                    t.is_keyword_case(kw::Fn, kw_case_insensitive)
                     // Two qualifiers `$qual $qual` is enough, e.g. `async unsafe`.
-                    || t.is_non_raw_ident_where(|i| quals.contains(&i.name)
-                        // Rule out 2015 `const async: T = val`.
-                        && i.is_reserved()
+                    || (
+                        (
+                            t.is_non_raw_ident_where(|i|
+                                quals.contains(&i.name)
+                                    // Rule out 2015 `const async: T = val`.
+                                    && i.is_reserved()
+                            )
+                            || kw_case_insensitive
+                                && t.is_non_raw_ident_where(|i| quals.iter().any(|qual| qual.as_str() == i.name.as_str().to_lowercase()))
+                        )
                         // Rule out unsafe extern block.
                         && !self.is_unsafe_foreign_mod())
                 })
             // `extern ABI fn`
-            || self.check_keyword(kw::Extern)
+            || self.check_keyword_case(kw::Extern, kw_case_insensitive)
                 && self.look_ahead(1, |t| t.can_begin_literal_maybe_minus())
-                && self.look_ahead(2, |t| t.is_keyword(kw::Fn))
+                && self.look_ahead(2, |t| t.is_keyword_case(kw::Fn, kw_case_insensitive))
     }
 
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
@@ -2195,22 +2200,22 @@ impl<'a> Parser<'a> {
     /// `Visibility::Inherited` when no visibility is known.
     pub(super) fn parse_fn_front_matter(&mut self, orig_vis: &Visibility) -> PResult<'a, FnHeader> {
         let sp_start = self.token.span;
-        let constness = self.parse_constness();
+        let constness = self.parse_constness(true);
 
         let async_start_sp = self.token.span;
-        let asyncness = self.parse_asyncness();
+        let asyncness = self.parse_asyncness(true);
 
         let unsafe_start_sp = self.token.span;
-        let unsafety = self.parse_unsafety();
+        let unsafety = self.parse_unsafety(true);
 
         let ext_start_sp = self.token.span;
-        let ext = self.parse_extern();
+        let ext = self.parse_extern(true);
 
         if let Async::Yes { span, .. } = asyncness {
             self.ban_async_in_2015(span);
         }
 
-        if !self.eat_keyword(kw::Fn) {
+        if !self.eat_keyword_case(kw::Fn, true) {
             // It is possible for `expect_one_of` to recover given the contents of
             // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
             // account for this.

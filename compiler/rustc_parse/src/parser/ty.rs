@@ -267,7 +267,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Underscore) {
             // A type to be inferred `_`
             TyKind::Infer
-        } else if self.check_fn_front_matter(false) {
+        } else if self.check_fn_front_matter(false, false) {
             // Function pointer type
             self.parse_ty_bare_fn(lo, Vec::new(), recover_return_sign)?
         } else if self.check_keyword(kw::For) {
@@ -275,7 +275,7 @@ impl<'a> Parser<'a> {
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
             let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-            if self.check_fn_front_matter(false) {
+            if self.check_fn_front_matter(false, false) {
                 self.parse_ty_bare_fn(lo, lifetime_defs, recover_return_sign)?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;

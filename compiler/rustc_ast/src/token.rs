@@ -618,6 +618,15 @@ impl Token {
         self.is_non_raw_ident_where(|id| id.name == kw)
     }
 
+    /// Returns `true` if the token is a given keyword, `kw` or if `case_insensitive` is true and this token is an identifier equal to `kw` ignoring the case.
+    pub fn is_keyword_case(&self, kw: Symbol, case_insensitive: bool) -> bool {
+        self.is_keyword(kw)
+            || (case_insensitive
+                && self.is_non_raw_ident_where(|id| {
+                    id.name.as_str().to_lowercase() == kw.as_str().to_lowercase()
+                }))
+    }
+
     pub fn is_path_segment_keyword(&self) -> bool {
         self.is_non_raw_ident_where(Ident::is_path_segment_keyword)
     }

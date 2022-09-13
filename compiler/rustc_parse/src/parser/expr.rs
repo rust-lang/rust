@@ -2024,7 +2024,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
         let asyncness = if self.token.uninterpolated_span().rust_2018() {
-            self.parse_asyncness()
+            self.parse_asyncness(false)
         } else {
             Async::No
         };

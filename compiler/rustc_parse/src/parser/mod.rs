@@ -604,6 +604,20 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw)
     }
 
+    fn check_keyword_case(&mut self, kw: Symbol, case_insensitive: bool) -> bool {
+        if self.check_keyword(kw) {
+            return true;
+        }
+
+        if case_insensitive
+        && let Some((ident, /* is_raw */ false)) = self.token.ident()
+        && ident.as_str().to_lowercase() == kw.as_str().to_lowercase() {
+            true
+        } else {
+            false
+        }
+    }
+
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
     // Public for rustfmt usage.
@@ -1122,8 +1136,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses asyncness: `async` or nothing.
-    fn parse_asyncness(&mut self) -> Async {
-        if self.eat_keyword(kw::Async) {
+    fn parse_asyncness(&mut self, case_insensitive: bool) -> Async {
+        if self.eat_keyword_case(kw::Async, case_insensitive) {
             let span = self.prev_token.uninterpolated_span();
             Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
         } else {
@@ -1132,8 +1146,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses unsafety: `unsafe` or nothing.
-    fn parse_unsafety(&mut self) -> Unsafe {
-        if self.eat_keyword(kw::Unsafe) {
+    fn parse_unsafety(&mut self, case_insensitive: bool) -> Unsafe {
+        if self.eat_keyword_case(kw::Unsafe, case_insensitive) {
             Unsafe::Yes(self.prev_token.uninterpolated_span())
         } else {
             Unsafe::No
@@ -1141,10 +1155,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses constness: `const` or nothing.
-    fn parse_constness(&mut self) -> Const {
+    fn parse_constness(&mut self, case_insensitive: bool) -> Const {
         // Avoid const blocks to be parsed as const items
         if self.look_ahead(1, |t| t != &token::OpenDelim(Delimiter::Brace))
-            && self.eat_keyword(kw::Const)
+            && self.eat_keyword_case(kw::Const, case_insensitive)
         {
             Const::Yes(self.prev_token.uninterpolated_span())
         } else {
@@ -1399,8 +1413,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `extern string_literal?`.
-    fn parse_extern(&mut self) -> Extern {
-        if self.eat_keyword(kw::Extern) {
+    fn parse_extern(&mut self, case_insensitive: bool) -> Extern {
+        if self.eat_keyword_case(kw::Extern, case_insensitive) {
             let mut extern_span = self.prev_token.span;
             let abi = self.parse_abi();
             if let Some(abi) = abi {
