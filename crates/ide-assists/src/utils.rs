@@ -12,7 +12,7 @@ use syntax::{
     ast::{
         self,
         edit::{self, AstNodeEdit},
-        edit_in_place::AttrsOwnerEdit,
+        edit_in_place::{AttrsOwnerEdit, Removable},
         make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
     },
     ted, AstNode, AstToken, Direction, SmolStr, SourceFile,
