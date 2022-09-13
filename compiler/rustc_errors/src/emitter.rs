@@ -268,10 +268,7 @@ pub trait Emitter: Translate {
                     SuggestionStyle::ShowAlways,
                ].contains(&sugg.style)
             {
-                // Don't trim the substitution if it's only whitespace changes
-                let substitution = &sugg.substitutions[0].parts[0].snippet;
-                let substitution =
-                    if substitution.trim().is_empty() { substitution } else { substitution.trim() };
+                let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
                 let msg = if substitution.is_empty() || sugg.style.hide_inline() {
                     // This substitution is only removal OR we explicitly don't want to show the
                     // code inline (`hide_inline`). Therefore, we don't show the substitution.
