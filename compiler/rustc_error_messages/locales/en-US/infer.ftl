@@ -211,3 +211,13 @@ infer_trait_placeholder_mismatch = implementation of `{$trait_def_id}` is not ge
     .label_satisfy = doesn't satisfy where-clause
     .label_where = due to a where-clause on `{$def_id}`...
     .label_dup = implementation of `{$trait_def_id}` is not general enough
+
+infer_trait_impl_diff = `impl` item signature doesn't match `trait` item signature
+    .found = found `{$found}`
+    .expected = expected `{$expected}`
+    .expected_found = expected `{$expected}`
+               {"   "}found `{$found}`
+
+infer_tid_rel_help = verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
+infer_tid_consider_borriwing = consider borrowing this type parameter in the trait
+infer_tid_param_help = the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`

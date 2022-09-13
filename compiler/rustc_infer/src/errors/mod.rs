@@ -581,3 +581,41 @@ pub struct TraitPlaceholderMismatch {
     #[subdiagnostic]
     pub actual_impl_expl_notes: Vec<ActualImplExplNotes>,
 }
+
+pub struct ConsiderBorrowingParamHelp {
+    pub spans: Vec<Span>,
+}
+
+impl AddSubdiagnostic for ConsiderBorrowingParamHelp {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        let mut type_param_span: MultiSpan = self.spans.clone().into();
+        for &span in &self.spans {
+            type_param_span.push_span_label(span, fluent::infer::tid_consider_borriwing);
+        }
+        diag.span_help(type_param_span, fluent::infer::tid_param_help);
+    }
+}
+
+#[derive(SessionSubdiagnostic)]
+#[help(infer::tid_rel_help)]
+pub struct RelationshipHelp;
+
+#[derive(SessionDiagnostic)]
+#[diag(infer::trait_impl_diff)]
+pub struct TraitImplDiff {
+    #[primary_span]
+    #[label(infer::found)]
+    pub sp: Span,
+    #[label(infer::expected)]
+    pub trait_sp: Span,
+    #[note(infer::expected_found)]
+    pub note: (),
+    #[subdiagnostic]
+    pub param_help: ConsiderBorrowingParamHelp,
+    #[subdiagnostic]
+    // Seems like subdiagnostics are always pushed to the end, so this one
+    // also has to be a subdiagnostic to maintain order.
+    pub rel_help: Option<RelationshipHelp>,
+    pub expected: String,
+    pub found: String,
+}
