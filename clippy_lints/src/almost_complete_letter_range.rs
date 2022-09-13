@@ -4,6 +4,7 @@ use clippy_utils::{meets_msrv, msrvs};
 use rustc_ast::ast::{Expr, ExprKind, LitKind, Pat, PatKind, RangeEnd, RangeLimits};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -79,6 +80,7 @@ fn check_range(cx: &EarlyContext<'_>, span: Span, start: &Expr, end: &Expr, sugg
             (LitKind::Byte(b'a') | LitKind::Char('a'), LitKind::Byte(b'z') | LitKind::Char('z'))
             | (LitKind::Byte(b'A') | LitKind::Char('A'), LitKind::Byte(b'Z') | LitKind::Char('Z'))
         )
+        && !in_external_macro(cx.sess(), span)
     {
         span_lint_and_then(
             cx,
