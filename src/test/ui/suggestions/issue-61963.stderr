@@ -13,9 +13,8 @@ LL | #![deny(bare_trait_objects)]
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL -     bar: Box<Bar>,
-LL +     bar: Box<dyn Bar>,
-   |
+LL |     bar: Box<dyn Bar>,
+   |              +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:18:1
@@ -27,9 +26,8 @@ LL | pub struct Foo {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - pub struct Foo {
-LL + dyn pub struct Foo {
-   |
+LL | dyn pub struct Foo {
+   | +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:28:14
@@ -41,9 +39,8 @@ LL |     bar: Box<Bar>,
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL -     bar: Box<Bar>,
-LL +     bar: Box<dyn Bar>,
-   |
+LL |     bar: Box<dyn Bar>,
+   |              +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:28:14
@@ -55,9 +52,8 @@ LL |     bar: Box<Bar>,
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL -     bar: Box<Bar>,
-LL +     bar: Box<dyn Bar>,
-   |
+LL |     bar: Box<dyn Bar>,
+   |              +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:18:1
@@ -69,9 +65,8 @@ LL | pub struct Foo {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - pub struct Foo {
-LL + dyn pub struct Foo {
-   |
+LL | dyn pub struct Foo {
+   | +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:18:1
@@ -83,9 +78,8 @@ LL | pub struct Foo {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - pub struct Foo {
-LL + dyn pub struct Foo {
-   |
+LL | dyn pub struct Foo {
+   | +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:18:1
@@ -97,9 +91,8 @@ LL | pub struct Foo {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - pub struct Foo {
-LL + dyn pub struct Foo {
-   |
+LL | dyn pub struct Foo {
+   | +++
 
 error: aborting due to 7 previous errors
 
