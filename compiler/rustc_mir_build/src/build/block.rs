@@ -117,6 +117,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     lint_level,
                     else_block: Some(else_block),
                 } => {
+                    // When lowering the statement `let <pat> = <expr> else { <else> };`,
+                    // the `<else>` block is nested in the parent scope enclosing this statment.
+                    // That scope is usually either the enclosing block scope,
+                    // or the remainder scope of the last statement.
+                    // This is to make sure that temporaries instantiated in `<expr>` are dropped
+                    // as well.
+                    // In addition, even though bindings in `<pat>` only come into scope if
+                    // the pattern matching passes, in the MIR building the storages for them
+                    // are declared as live any way.
+                    // This is similar to `let x;` statements without an initializer expression,
+                    // where the value of `x` in this example may or may be assigned,
+                    // because the storage for their values may not be live after all due to
+                    // failure in pattern matching.
+                    // For this reason, we declare those storages as live but we do not schedule
+                    // any drop yet- they are scheduled later after the pattern matching.
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
