@@ -3901,6 +3901,34 @@ fn g(t: &(dyn Sync + T<Proj = ()> + Send)) {
 }
 
 #[test]
+fn dyn_multiple_projection_bounds() {
+    check_no_mismatches(
+        r#"
+trait Trait {
+    type T;
+    type U;
+}
+
+fn f(t: &dyn Trait<T = (), U = ()>) {}
+fn g(t: &dyn Trait<U = (), T = ()>) {
+    f(t);
+}
+        "#,
+    );
+
+    check_types(
+        r#"
+trait Trait {
+    type T;
+}
+
+fn f(t: &dyn Trait<T = (), T = ()>) {}
+   //^&{unknown}
+        "#,
+    );
+}
+
+#[test]
 fn dyn_duplicate_auto_trait() {
     check_no_mismatches(
         r#"
