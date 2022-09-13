@@ -642,17 +642,17 @@ pub fn noop_flat_map_param<T: MutVisitor>(mut param: Param, vis: &mut T) -> Smal
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-pub fn visit_attr_annotated_tt<T: MutVisitor>(tt: &mut AttrAnnotatedTokenTree, vis: &mut T) {
+pub fn visit_attr_tt<T: MutVisitor>(tt: &mut AttrTokenTree, vis: &mut T) {
     match tt {
-        AttrAnnotatedTokenTree::Token(token) => {
+        AttrTokenTree::Token(token, _) => {
             visit_token(token, vis);
         }
-        AttrAnnotatedTokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
+        AttrTokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
             vis.visit_span(open);
             vis.visit_span(close);
-            visit_attr_annotated_tts(tts, vis);
+            visit_attr_tts(tts, vis);
         }
-        AttrAnnotatedTokenTree::Attributes(data) => {
+        AttrTokenTree::Attributes(data) => {
             for attr in &mut *data.attrs {
                 match &mut attr.kind {
                     AttrKind::Normal(normal) => {
@@ -690,27 +690,27 @@ pub fn visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T)
     }
 }
 
-pub fn visit_attr_annotated_tts<T: MutVisitor>(
-    AttrAnnotatedTokenStream(tts): &mut AttrAnnotatedTokenStream,
-    vis: &mut T,
-) {
+pub fn visit_attr_tts<T: MutVisitor>(AttrTokenStream(tts): &mut AttrTokenStream, vis: &mut T) {
     if T::VISIT_TOKENS && !tts.is_empty() {
         let tts = Lrc::make_mut(tts);
-        visit_vec(tts, |(tree, _is_joint)| visit_attr_annotated_tt(tree, vis));
+        visit_vec(tts, |tree| visit_attr_tt(tree, vis));
     }
 }
 
-pub fn visit_lazy_tts_opt_mut<T: MutVisitor>(lazy_tts: Option<&mut LazyTokenStream>, vis: &mut T) {
+pub fn visit_lazy_tts_opt_mut<T: MutVisitor>(
+    lazy_tts: Option<&mut LazyAttrTokenStream>,
+    vis: &mut T,
+) {
     if T::VISIT_TOKENS {
         if let Some(lazy_tts) = lazy_tts {
-            let mut tts = lazy_tts.create_token_stream();
-            visit_attr_annotated_tts(&mut tts, vis);
-            *lazy_tts = LazyTokenStream::new(tts);
+            let mut tts = lazy_tts.to_attr_token_stream();
+            visit_attr_tts(&mut tts, vis);
+            *lazy_tts = LazyAttrTokenStream::new(tts);
         }
     }
 }
 
-pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyTokenStream>, vis: &mut T) {
+pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyAttrTokenStream>, vis: &mut T) {
     visit_lazy_tts_opt_mut(lazy_tts.as_mut(), vis);
 }
 
