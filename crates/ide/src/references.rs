@@ -54,7 +54,6 @@ pub(crate) fn find_all_refs(
     sema: &Semantics<'_, RootDatabase>,
     position: FilePosition,
     search_scope: Option<SearchScope>,
-    exclude_imports: bool,
 ) -> Option<Vec<ReferenceSearchResult>> {
     let _p = profile::span("find_all_refs");
     let syntax = sema.parse(position.file_id).syntax().clone();
@@ -78,10 +77,6 @@ pub(crate) fn find_all_refs(
 
             if literal_search {
                 retain_adt_literal_usages(&mut usages, def, sema);
-            }
-
-            if exclude_imports {
-                filter_import_references(&mut usages);
             }
 
             let references = usages
@@ -114,17 +109,6 @@ pub(crate) fn find_all_refs(
             let search = make_searcher(false);
             Some(find_defs(sema, &syntax, position.offset)?.map(search).collect())
         }
-    }
-}
-
-fn filter_import_references(usages: &mut UsageSearchResult) {
-    for (_file_id, refs) in &mut usages.references {
-        refs.retain(|it| match it.name.as_name_ref() {
-            Some(name_ref) => {
-                !name_ref.syntax().ancestors().any(|it_ref| matches!(it_ref.kind(), USE))
-            }
-            None => true,
-        });
     }
 }
 
@@ -758,7 +742,7 @@ pub struct Foo {
             expect![[r#"
                 foo Module FileId(0) 0..8 4..7
 
-                FileId(0) 14..17
+                FileId(0) 14..17 Import
             "#]],
         );
     }
@@ -776,7 +760,7 @@ use self$0;
             expect![[r#"
                 foo Module FileId(0) 0..8 4..7
 
-                FileId(1) 4..8
+                FileId(1) 4..8 Import
             "#]],
         );
     }
@@ -791,7 +775,7 @@ use self$0;
             expect![[r#"
                 Module FileId(0) 0..10
 
-                FileId(0) 4..8
+                FileId(0) 4..8 Import
             "#]],
         );
     }
@@ -819,7 +803,7 @@ pub(super) struct Foo$0 {
             expect![[r#"
                 Foo Struct FileId(2) 0..41 18..21
 
-                FileId(1) 20..23
+                FileId(1) 20..23 Import
                 FileId(1) 47..50
             "#]],
         );
@@ -982,7 +966,7 @@ fn g() { f(); }
             expect![[r#"
                 f Function FileId(0) 22..31 25..26
 
-                FileId(1) 11..12
+                FileId(1) 11..12 Import
                 FileId(1) 24..25
             "#]],
         );
@@ -1110,7 +1094,7 @@ impl Foo {
 
     fn check_with_scope(ra_fixture: &str, search_scope: Option<SearchScope>, expect: Expect) {
         let (analysis, pos) = fixture::position(ra_fixture);
-        let refs = analysis.find_all_refs(pos, search_scope, false).unwrap().unwrap();
+        let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
 
         let mut actual = String::new();
         for refs in refs {
@@ -1440,9 +1424,9 @@ pub use level1::Foo;
             expect![[r#"
                 Foo Struct FileId(0) 0..15 11..14
 
-                FileId(1) 16..19
-                FileId(2) 16..19
-                FileId(3) 16..19
+                FileId(1) 16..19 Import
+                FileId(2) 16..19 Import
+                FileId(3) 16..19 Import
             "#]],
         );
     }
@@ -1470,7 +1454,7 @@ lib::foo!();
             expect![[r#"
                 foo Macro FileId(1) 0..61 29..32
 
-                FileId(0) 46..49
+                FileId(0) 46..49 Import
                 FileId(2) 0..3
                 FileId(3) 5..8
             "#]],
@@ -1633,7 +1617,7 @@ struct Foo;
             expect![[r#"
                 derive_identity Derive FileId(2) 1..107 45..60
 
-                FileId(0) 17..31
+                FileId(0) 17..31 Import
                 FileId(0) 56..70
             "#]],
         );

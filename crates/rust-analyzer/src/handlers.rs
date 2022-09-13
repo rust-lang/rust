@@ -10,8 +10,8 @@ use std::{
 use anyhow::Context;
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, FileId, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SingleResolve,
-    SourceChange, TextEdit,
+    HoverAction, HoverGotoTypeData, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
+    SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use lsp_server::ErrorCode;
@@ -1014,7 +1014,7 @@ pub(crate) fn handle_references(
 
     let exclude_imports = snap.config.find_all_refs_exclude_imports();
 
-    let refs = match snap.analysis.find_all_refs(position, None, exclude_imports)? {
+    let refs = match snap.analysis.find_all_refs(position, None)? {
         None => return Ok(None),
         Some(refs) => refs,
     };
@@ -1034,7 +1034,11 @@ pub(crate) fn handle_references(
             refs.references
                 .into_iter()
                 .flat_map(|(file_id, refs)| {
-                    refs.into_iter().map(move |(range, _)| FileRange { file_id, range })
+                    refs.into_iter()
+                        .filter(|&(_, category)| {
+                            !exclude_imports || category != Some(ReferenceCategory::Import)
+                        })
+                        .map(move |(range, _)| FileRange { file_id, range })
                 })
                 .chain(decl)
         })
@@ -1285,7 +1289,7 @@ pub(crate) fn handle_document_highlight(
         .into_iter()
         .map(|ide::HighlightedRange { range, category }| lsp_types::DocumentHighlight {
             range: to_proto::range(&line_index, range),
-            kind: category.map(to_proto::document_highlight_kind),
+            kind: category.and_then(to_proto::document_highlight_kind),
         })
         .collect();
     Ok(Some(res))
@@ -1654,9 +1658,7 @@ fn show_ref_command_link(
     position: &FilePosition,
 ) -> Option<lsp_ext::CommandLinkGroup> {
     if snap.config.hover_actions().references && snap.config.client_commands().show_reference {
-        if let Some(ref_search_res) =
-            snap.analysis.find_all_refs(*position, None, false).unwrap_or(None)
-        {
+        if let Some(ref_search_res) = snap.analysis.find_all_refs(*position, None).unwrap_or(None) {
             let uri = to_proto::url(snap, position.file_id);
             let line_index = snap.file_line_index(position.file_id).ok()?;
             let position = to_proto::position(&line_index, position.offset);

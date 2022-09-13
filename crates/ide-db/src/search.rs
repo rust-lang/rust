@@ -9,6 +9,7 @@ use std::{mem, sync::Arc};
 use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{DefWithBody, HasAttrs, HasSource, InFile, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
+use parser::SyntaxKind;
 use stdx::hash::NoHashHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 
@@ -67,6 +68,7 @@ pub enum ReferenceCategory {
     // Create
     Write,
     Read,
+    Import,
     // FIXME: Some day should be able to search in doc comments. Would probably
     // need to switch from enum to bitflags then?
     // DocComment
@@ -577,7 +579,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: ast::NameLike::NameRef(name_ref.clone()),
-                    category: None,
+                    category: is_name_ref_in_import(name_ref).then(|| ReferenceCategory::Import),
                 };
                 sink(file_id, reference)
             }
@@ -756,7 +758,7 @@ impl ReferenceCategory {
     fn new(def: &Definition, r: &ast::NameRef) -> Option<ReferenceCategory> {
         // Only Locals and Fields have accesses for now.
         if !matches!(def, Definition::Local(_) | Definition::Field(_)) {
-            return None;
+            return is_name_ref_in_import(r).then(|| ReferenceCategory::Import);
         }
 
         let mode = r.syntax().ancestors().find_map(|node| {
@@ -782,4 +784,13 @@ impl ReferenceCategory {
         // Default Locals and Fields to read
         mode.or(Some(ReferenceCategory::Read))
     }
+}
+
+fn is_name_ref_in_import(name_ref: &ast::NameRef) -> bool {
+    name_ref
+        .syntax()
+        .parent()
+        .and_then(ast::PathSegment::cast)
+        .and_then(|it| it.parent_path().top_path().syntax().parent())
+        .map_or(false, |it| it.kind() == SyntaxKind::USE_TREE)
 }
