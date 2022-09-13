@@ -1611,6 +1611,16 @@ rustc_queries! {
         desc { "looking up late bound vars" }
     }
 
+    /// Computes the visibility of the provided `def_id`.
+    ///
+    /// If the item from the `def_id` doesn't have a visibility, it will panic. For example
+    /// a generic type parameter will panic if you call this method on it:
+    ///
+    /// ```
+    /// pub trait Foo<T: Debug> {}
+    /// ```
+    ///
+    /// In here, if you call `visibility` on `T`, it'll panic.
     query visibility(def_id: DefId) -> ty::Visibility<DefId> {
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
