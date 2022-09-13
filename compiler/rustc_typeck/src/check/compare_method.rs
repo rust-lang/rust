@@ -15,7 +15,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
-    self, DefIdTree, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    self, AssocItem, DefIdTree, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
 };
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
@@ -68,7 +68,10 @@ pub(crate) fn compare_impl_method<'tcx>(
         return;
     }
 
-    tcx.ensure().compare_predicates_and_trait_impl_trait_tys(impl_m.def_id);
+    if let Err(_) = compare_predicate_entailment(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
+    {
+        return;
+    }
 }
 
 /// This function is best explained by example. Consider a trait:
@@ -137,15 +140,13 @@ pub(crate) fn compare_impl_method<'tcx>(
 ///
 /// Finally we register each of these predicates as an obligation and check that
 /// they hold.
-pub(super) fn compare_predicates_and_trait_impl_trait_tys<'tcx>(
+fn compare_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
-    let impl_m = tcx.opt_associated_item(def_id).unwrap();
-    let impl_m_span = tcx.def_span(def_id);
-    let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
-    let impl_trait_ref = tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap();
-
+    impl_m: &AssocItem,
+    impl_m_span: Span,
+    trait_m: &AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
     let trait_to_impl_substs = impl_trait_ref.substs;
 
     // This node-id should be used for the `body_id` field on each
@@ -164,7 +165,6 @@ pub(super) fn compare_predicates_and_trait_impl_trait_tys<'tcx>(
             kind: impl_m.kind,
         },
     );
-    let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
 
     // Create mapping from impl to placeholder.
     let impl_to_placeholder_substs = InternalSubsts::identity_for_item(tcx, impl_m.def_id);
@@ -270,12 +270,6 @@ pub(super) fn compare_predicates_and_trait_impl_trait_tys<'tcx>(
 
         let trait_sig = tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
         let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
-        let mut collector =
-            ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_hir_id);
-        // FIXME(RPITIT): This should only be needed on the output type, but
-        // RPITIT placeholders shouldn't show up anywhere except for there,
-        // so I think this is fine.
-        let trait_sig = trait_sig.fold_with(&mut collector);
 
         // Next, add all inputs and output as well-formed tys. Importantly,
         // we have to do this before normalization, since the normalized ty may
@@ -418,6 +412,121 @@ pub(super) fn compare_predicates_and_trait_impl_trait_tys<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
+        let errors = ocx.select_all_or_error();
+        if !errors.is_empty() {
+            let reported = infcx.report_fulfillment_errors(&errors, None, false);
+            return Err(reported);
+        }
+
+        // Finally, resolve all regions. This catches wily misuses of
+        // lifetime parameters.
+        let outlives_environment = OutlivesEnvironment::with_bounds(
+            param_env,
+            Some(infcx),
+            infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys),
+        );
+        infcx.check_region_obligations_and_report_errors(
+            impl_m.def_id.expect_local(),
+            &outlives_environment,
+        );
+
+        Ok(())
+    })
+}
+
+pub fn collect_trait_impl_trait_tys<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
+    let impl_m = tcx.opt_associated_item(def_id).unwrap();
+    let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
+    let impl_trait_ref = tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap();
+    let param_env = tcx.param_env(def_id);
+
+    let trait_to_impl_substs = impl_trait_ref.substs;
+
+    let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
+    let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
+    let cause = ObligationCause::new(
+        return_span,
+        impl_m_hir_id,
+        ObligationCauseCode::CompareImplItemObligation {
+            impl_item_def_id: impl_m.def_id.expect_local(),
+            trait_item_def_id: trait_m.def_id,
+            kind: impl_m.kind,
+        },
+    );
+
+    // Create mapping from impl to placeholder.
+    let impl_to_placeholder_substs = InternalSubsts::identity_for_item(tcx, impl_m.def_id);
+
+    // Create mapping from trait to placeholder.
+    let trait_to_placeholder_substs =
+        impl_to_placeholder_substs.rebase_onto(tcx, impl_m.container_id(tcx), trait_to_impl_substs);
+
+    tcx.infer_ctxt().enter(|ref infcx| {
+        let ocx = ObligationCtxt::new(infcx);
+
+        let norm_cause = ObligationCause::misc(return_span, impl_m_hir_id);
+        let impl_return_ty = ocx.normalize(
+            norm_cause.clone(),
+            param_env,
+            infcx
+                .replace_bound_vars_with_fresh_vars(
+                    return_span,
+                    infer::HigherRankedType,
+                    tcx.fn_sig(impl_m.def_id),
+                )
+                .output(),
+        );
+
+        let mut collector =
+            ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_hir_id);
+        let unnormalized_trait_return_ty = tcx
+            .liberate_late_bound_regions(
+                impl_m.def_id,
+                tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
+            )
+            .output()
+            .fold_with(&mut collector);
+        let trait_return_ty =
+            ocx.normalize(norm_cause.clone(), param_env, unnormalized_trait_return_ty);
+
+        let wf_tys = FxHashSet::from_iter([unnormalized_trait_return_ty, trait_return_ty]);
+
+        match infcx.at(&cause, param_env).eq(trait_return_ty, impl_return_ty) {
+            Ok(infer::InferOk { value: (), obligations }) => {
+                ocx.register_obligations(obligations);
+            }
+            Err(terr) => {
+                let mut diag = struct_span_err!(
+                    tcx.sess,
+                    cause.span(),
+                    E0053,
+                    "method `{}` has an incompatible return type for trait",
+                    trait_m.name
+                );
+                let hir = tcx.hir();
+                infcx.note_type_err(
+                    &mut diag,
+                    &cause,
+                    hir.get_if_local(impl_m.def_id)
+                        .and_then(|node| node.fn_decl())
+                        .map(|decl| (decl.output.span(), "return type in trait".to_owned())),
+                    Some(infer::ValuePairs::Terms(ExpectedFound {
+                        expected: trait_return_ty.into(),
+                        found: impl_return_ty.into(),
+                    })),
+                    terr,
+                    false,
+                    false,
+                );
+                return Err(diag.emit());
+            }
+        }
+
+        // Check that all obligations are satisfied by the implementation's
+        // RPITs.
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
             let reported = infcx.report_fulfillment_errors(&errors, None, false);
@@ -1322,7 +1431,7 @@ pub(crate) fn compare_ty_impl<'tcx>(
     })();
 }
 
-/// The equivalent of [compare_predicates_and_trait_impl_trait_tys], but for associated types
+/// The equivalent of [compare_predicate_entailment], but for associated types
 /// instead of associated functions.
 fn compare_type_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,

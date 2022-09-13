@@ -1,19 +1,14 @@
-error[E0053]: method `bar` has an incompatible type for trait
+error[E0053]: method `bar` has an incompatible return type for trait
   --> $DIR/deep-match.rs:11:17
    |
 LL |     fn bar() -> i32 { 0 }
    |                 ^^^
    |                 |
    |                 expected struct `Wrapper`, found `i32`
-   |                 help: change the output type to match the trait: `Wrapper<_>`
+   |                 return type in trait
    |
-note: type in trait
-  --> $DIR/deep-match.rs:7:17
-   |
-LL |     fn bar() -> Wrapper<impl Sized>;
-   |                 ^^^^^^^^^^^^^^^^^^^
-   = note: expected fn pointer `fn() -> Wrapper<_>`
-              found fn pointer `fn() -> i32`
+   = note: expected struct `Wrapper<_>`
+                found type `i32`
 
 error: aborting due to previous error
 
