@@ -719,7 +719,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
     Some(match *ty.kind() {
         ty::Adt(field_def, field_substs) => {
             let inner_field_ty = {
-                let first_non_zst_ty = field_def
+                let mut first_non_zst_ty = field_def
                     .variants()
                     .iter()
                     .filter_map(|v| transparent_newtype_field(cx.tcx, v));
@@ -729,7 +729,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
                     "Wrong number of fields for transparent type"
                 );
                 first_non_zst_ty
-                    .last()
+                    .next_back()
                     .expect("No non-zst fields in transparent type.")
                     .ty(tcx, field_substs)
             };
