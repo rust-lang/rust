@@ -3,7 +3,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
@@ -93,15 +93,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     /// In order to have a good line stepping behavior in debugger, we overwrite debug
-    /// locations of macro expansions with that of the outermost expansion site
-    /// (unless the crate is being compiled with `-Z debug-macros`).
+    /// locations of macro expansions with that of the outermost expansion site (when the macro is
+    /// annotated with `#[collapse_debuginfo]` or when `-Zdebug-macros` is provided).
     fn adjust_span_for_debugging(&self, mut span: Span) -> Span {
         // Bail out if debug info emission is not enabled.
         if self.debug_context.is_none() {
             return span;
         }
 
-        if span.from_expansion() && !self.cx.sess().opts.unstable_opts.debug_macros {
+        if self.cx.tcx().should_collapse_debuginfo(span) {
             // Walk up the macro expansion chain until we reach a non-expanded span.
             // We also stop at the function body level because no line stepping can occur
             // at the level above that.

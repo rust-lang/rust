@@ -649,3 +649,12 @@ pub struct RustcLintOptDenyFieldAccess {
     #[label]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(passes::collapse_debuginfo)]
+pub struct CollapseDebuginfo {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub defn_span: Span,
+}

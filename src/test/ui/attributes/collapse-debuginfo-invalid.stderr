@@ -1,0 +1,222 @@
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:8:1
+   |
+LL | #[collapse_debuginfo]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | extern crate std;
+   | ----------------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:12:1
+   |
+LL | #[collapse_debuginfo]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | use std::collections::HashMap;
+   | ------------------------------ not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:16:1
+   |
+LL | #[collapse_debuginfo]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | static FOO: u32 = 3;
+   | -------------------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:20:1
+   |
+LL | #[collapse_debuginfo]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | const BAR: u32 = 3;
+   | ------------------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:24:1
+   |
+LL |   #[collapse_debuginfo]
+   |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / fn foo() {
+LL | |     let _ = #[collapse_debuginfo] || { };
+LL | |
+LL | |     #[collapse_debuginfo]
+...  |
+LL | |     }
+LL | | }
+   | |_- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:27:13
+   |
+LL |     let _ = #[collapse_debuginfo] || { };
+   |             ^^^^^^^^^^^^^^^^^^^^^ ------ not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:29:5
+   |
+LL |     #[collapse_debuginfo]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let _ = 3;
+   |     ---------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:32:13
+   |
+LL |     let _ = #[collapse_debuginfo] 3;
+   |             ^^^^^^^^^^^^^^^^^^^^^ - not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:35:9
+   |
+LL |         #[collapse_debuginfo]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         _ => (),
+   |         ------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:41:1
+   |
+LL |   #[collapse_debuginfo]
+   |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / mod bar {
+LL | | }
+   | |_- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:46:1
+   |
+LL | #[collapse_debuginfo]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | type Map = HashMap<u32, u32>;
+   | ----------------------------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:50:1
+   |
+LL |   #[collapse_debuginfo]
+   |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / enum Foo {
+LL | |     #[collapse_debuginfo]
+LL | |
+LL | |     Variant,
+LL | | }
+   | |_- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:53:5
+   |
+LL |     #[collapse_debuginfo]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     Variant,
+   |     ------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:58:1
+   |
+LL |   #[collapse_debuginfo]
+   |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / struct Bar {
+LL | |     #[collapse_debuginfo]
+LL | |
+LL | |     field: u32,
+LL | | }
+   | |_- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:61:5
+   |
+LL |     #[collapse_debuginfo]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     field: u32,
+   |     ---------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:66:1
+   |
+LL |   #[collapse_debuginfo]
+   |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / union Qux {
+LL | |     a: u32,
+LL | |     b: u16
+LL | | }
+   | |_- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:73:1
+   |
+LL |   #[collapse_debuginfo]
+   |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / trait Foobar {
+LL | |     #[collapse_debuginfo]
+LL | |
+LL | |     type Bar;
+LL | | }
+   | |_- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:81:1
+   |
+LL | #[collapse_debuginfo]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | type AFoobar = impl Foobar;
+   | --------------------------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:93:1
+   |
+LL |   #[collapse_debuginfo]
+   |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / impl Bar {
+LL | |     #[collapse_debuginfo]
+LL | |
+LL | |     const FOO: u32 = 3;
+...  |
+LL | |     fn bar(&self) {}
+LL | | }
+   | |_- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:76:5
+   |
+LL |     #[collapse_debuginfo]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Bar;
+   |     --------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:96:5
+   |
+LL |     #[collapse_debuginfo]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     const FOO: u32 = 3;
+   |     ------------------- not a macro definition
+
+error: `collapse_debuginfo` attribute should be applied to macro definitions
+  --> $DIR/collapse-debuginfo-invalid.rs:100:5
+   |
+LL |     #[collapse_debuginfo]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn bar(&self) {}
+   |     ---------------- not a macro definition
+
+error: aborting due to 22 previous errors
+

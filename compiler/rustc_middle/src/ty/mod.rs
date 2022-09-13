@@ -2470,6 +2470,23 @@ impl<'tcx> TyCtxt<'tcx> {
         (ident, scope)
     }
 
+    /// Returns `true` if the debuginfo for `span` should be collapsed to the outermost expansion
+    /// site. Only applies when `Span` is the result of macro expansion.
+    ///
+    /// - If the `collapse_debuginfo` feature is enabled then debuginfo is not collapsed by default
+    ///   and only when a macro definition is annotated with `#[collapse_debuginfo]`.
+    /// - If `collapse_debuginfo` is not enabled, then debuginfo is collapsed by default.
+    ///
+    /// When `-Zdebug-macros` is provided then debuginfo will never be collapsed.
+    pub fn should_collapse_debuginfo(self, span: Span) -> bool {
+        !self.sess.opts.unstable_opts.debug_macros
+            && if self.features().collapse_debuginfo {
+                span.in_macro_expansion_with_collapse_debuginfo()
+            } else {
+                span.from_expansion()
+            }
+    }
+
     pub fn is_object_safe(self, key: DefId) -> bool {
         self.object_safety_violations(key).is_empty()
     }

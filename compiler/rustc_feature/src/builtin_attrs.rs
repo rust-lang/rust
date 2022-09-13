@@ -478,6 +478,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         experimental!(deprecated_safe),
     ),
 
+    // `#[collapse_debuginfo]`
+    gated!(
+        collapse_debuginfo, Normal, template!(Word), WarnFollowing,
+        experimental!(collapse_debuginfo)
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

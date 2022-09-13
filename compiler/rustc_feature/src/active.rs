@@ -338,6 +338,8 @@ declare_features! (
     (active, closure_track_caller, "1.57.0", Some(87417), None),
     /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
     (active, cmse_nonsecure_entry, "1.48.0", Some(75835), None),
+    /// Allows use of the `#[collapse_debuginfo]` attribute.
+    (active, collapse_debuginfo, "CURRENT_RUSTC_VERSION", Some(100758), None),
     /// Allows `async {}` expressions in const contexts.
     (active, const_async_blocks, "1.53.0", Some(85368), None),
     // Allows limiting the evaluation steps of const expressions
