@@ -582,7 +582,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         }
         // No callbacks scheduled, pick a regular thread to execute.
         // The active thread blocked or yielded. So we go search for another enabled thread.
-        // Curcially, we start searching at the current active thread ID, rather than at 0, since we
+        // Crucially, we start searching at the current active thread ID, rather than at 0, since we
         // want to avoid always scheduling threads 0 and 1 without ever making progress in thread 2.
         //
         // `skip(N)` means we start iterating at thread N, so we skip 1 more to start just *after*
