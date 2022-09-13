@@ -132,6 +132,8 @@ pub struct MiriConfig {
     /// The location of a shared object file to load when calling external functions
     /// FIXME! consider allowing users to specify paths to multiple SO files, or to a directory
     pub external_so_file: Option<PathBuf>,
+    /// Run a garbage collector for SbTags every N basic blocks.
+    pub gc_interval: u32,
 }
 
 impl Default for MiriConfig {
@@ -164,6 +166,7 @@ impl Default for MiriConfig {
             report_progress: None,
             retag_fields: false,
             external_so_file: None,
+            gc_interval: 10_000,
         }
     }
 }

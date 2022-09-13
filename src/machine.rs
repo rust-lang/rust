@@ -394,6 +394,11 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Handle of the optional shared object file for external functions.
     pub external_so_lib: Option<(libloading::Library, std::path::PathBuf)>,
+
+    /// Run a garbage collector for SbTags every N basic blocks.
+    pub(crate) gc_interval: u32,
+    /// The number of blocks that passed since the last SbTag GC pass.
+    pub(crate) since_gc: u32,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -469,6 +474,8 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
                     lib_file_path.clone(),
                 )
             }),
+            gc_interval: config.gc_interval,
+            since_gc: 0,
         }
     }
 
@@ -1008,6 +1015,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         ecx.machine.basic_block_count += 1u64; // a u64 that is only incremented by 1 will "never" overflow
+        ecx.machine.since_gc += 1;
         // Possibly report our progress.
         if let Some(report_progress) = ecx.machine.report_progress {
             if ecx.machine.basic_block_count % u64::from(report_progress) == 0 {
@@ -1016,6 +1024,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 });
             }
         }
+
+        // Search for SbTags to find all live pointers, then remove all other tags from borrow
+        // stacks.
+        // When debug assertions are enabled, run the GC as often as possible so that any cases
+        // where it mistakenly removes an important tag become visible.
+        if ecx.machine.gc_interval > 0 && ecx.machine.since_gc >= ecx.machine.gc_interval {
+            ecx.machine.since_gc = 0;
+            ecx.garbage_collect_tags()?;
+        }
+
         // These are our preemption points.
         ecx.maybe_preempt_active_thread();
         Ok(())

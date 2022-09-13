@@ -39,6 +39,61 @@ pub struct Stack {
     unique_range: Range<usize>,
 }
 
+impl Stack {
+    pub fn retain(&mut self, tags: &FxHashSet<SbTag>) {
+        let mut first_removed = None;
+
+        let mut read_idx = 1;
+        let mut write_idx = 1;
+        while read_idx < self.borrows.len() {
+            let left = self.borrows[read_idx - 1];
+            let this = self.borrows[read_idx];
+            let should_keep = match this.perm() {
+                // SharedReadWrite is the simplest case, if it's unreachable we can just remove it.
+                Permission::SharedReadWrite => tags.contains(&this.tag()),
+                // Only retain a Disabled tag if it is terminating a SharedReadWrite block.
+                Permission::Disabled => left.perm() == Permission::SharedReadWrite,
+                // Unique and SharedReadOnly can terminate a SharedReadWrite block, so only remove
+                // them if they are both unreachable and not directly after a SharedReadWrite.
+                Permission::Unique | Permission::SharedReadOnly =>
+                    left.perm() == Permission::SharedReadWrite || tags.contains(&this.tag()),
+            };
+
+            if should_keep {
+                if read_idx != write_idx {
+                    self.borrows[write_idx] = self.borrows[read_idx];
+                }
+                write_idx += 1;
+            } else if first_removed.is_none() {
+                first_removed = Some(read_idx);
+            }
+
+            read_idx += 1;
+        }
+        self.borrows.truncate(write_idx);
+
+        #[cfg(not(feature = "stack-cache"))]
+        drop(first_removed); // This is only needed for the stack-cache
+
+        #[cfg(feature = "stack-cache")]
+        if let Some(first_removed) = first_removed {
+            // Either end of unique_range may have shifted, all we really know is that we can't
+            // have introduced a new Unique.
+            if !self.unique_range.is_empty() {
+                self.unique_range = 0..self.len();
+            }
+
+            // Replace any Items which have been collected with the base item, a known-good value.
+            for i in 0..CACHE_LEN {
+                if self.cache.idx[i] >= first_removed {
+                    self.cache.items[i] = self.borrows[0];
+                    self.cache.idx[i] = 0;
+                }
+            }
+        }
+    }
+}
+
 /// A very small cache of searches of a borrow stack, mapping `Item`s to their position in said stack.
 ///
 /// It may seem like maintaining this cache is a waste for small stacks, but
@@ -105,14 +160,11 @@ impl<'tcx> Stack {
 
         // Check that the unique_range is a valid index into the borrow stack.
         // This asserts that the unique_range's start <= end.
-        let uniques = &self.borrows[self.unique_range.clone()];
+        let _uniques = &self.borrows[self.unique_range.clone()];
 
-        // Check that the start of the unique_range is precise.
-        if let Some(first_unique) = uniques.first() {
-            assert_eq!(first_unique.perm(), Permission::Unique);
-        }
-        // We cannot assert that the unique range is exact on the upper end.
-        // When we pop items within the unique range, setting the end of the range precisely
+        // We cannot assert that the unique range is precise.
+        // Both ends may shift around when `Stack::retain` is called. Additionally,
+        // when we pop items within the unique range, setting the end of the range precisely
         // requires doing a linear search of the borrow stack, which is exactly the kind of
         // operation that all this caching exists to avoid.
     }

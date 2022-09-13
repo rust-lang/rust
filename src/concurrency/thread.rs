@@ -289,6 +289,10 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         &mut self.threads[self.active_thread].stack
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = &Thread<'mir, 'tcx>> {
+        self.threads.iter()
+    }
+
     pub fn all_stacks(
         &self,
     ) -> impl Iterator<Item = &[Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>]> {
