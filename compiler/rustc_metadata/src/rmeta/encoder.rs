@@ -765,6 +765,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
+/// Returns whether an attribute needs to be recorded in metadata, that is, if it's usable and
+/// useful in downstream crates. Local-only attributes are an obvious example, but some
+/// rustdoc-specific attributes can equally be of use while documenting the current crate only.
+///
+/// Removing these superfluous attributes speeds up compilation by making the metadata smaller.
+///
+/// Note: the `is_def_id_public` parameter is used to cache whether the given `DefId` has a public
+/// visibility: this is a piece of data that can be computed once per defid, and not once per
+/// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
 fn should_encode_attr(
     tcx: TyCtxt<'_>,
@@ -773,12 +782,17 @@ fn should_encode_attr(
     is_def_id_public: &mut Option<bool>,
 ) -> bool {
     if rustc_feature::is_builtin_only_local(attr.name_or_empty()) {
+        // Attributes marked local-only don't need to be encoded for downstream crates.
         false
     } else if attr.doc_str().is_some() {
+        // We keep all public doc comments because they might be "imported" into downstream crates
+        // if they use `#[doc(inline)]` to copy an item's documentation into their own.
         *is_def_id_public.get_or_insert_with(|| {
             tcx.privacy_access_levels(()).get_effective_vis(def_id).is_some()
         })
     } else if attr.has_name(sym::doc) {
+        // If this is a `doc` attribute, and it's marked `inline` (as in `#[doc(inline)]`), we can
+        // remove it. It won't be inlinable in downstream crates.
         attr.meta_item_list().map(|l| l.iter().any(|l| !l.has_name(sym::inline))).unwrap_or(false)
     } else {
         true

@@ -837,6 +837,8 @@ pub fn is_builtin_attr_name(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()
 }
 
+/// Whether this builtin attribute is only used in the local crate.
+/// If so, it is not encoded in the crate metadata.
 pub fn is_builtin_only_local(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| attr.only_local)
 }
