@@ -457,8 +457,15 @@ impl ItemInNs {
     /// Returns the crate defining this item (or `None` if `self` is built-in).
     pub fn krate(&self, db: &dyn DefDatabase) -> Option<CrateId> {
         match self {
-            ItemInNs::Types(did) | ItemInNs::Values(did) => did.module(db).map(|m| m.krate),
+            ItemInNs::Types(id) | ItemInNs::Values(id) => id.module(db).map(|m| m.krate),
             ItemInNs::Macros(id) => Some(id.module(db).krate),
+        }
+    }
+
+    pub fn module(&self, db: &dyn DefDatabase) -> Option<ModuleId> {
+        match self {
+            ItemInNs::Types(id) | ItemInNs::Values(id) => id.module(db),
+            ItemInNs::Macros(id) => Some(id.module(db)),
         }
     }
 }

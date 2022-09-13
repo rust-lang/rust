@@ -145,7 +145,7 @@ fn integrated_completion_benchmark() {
                 skip_glob_imports: true,
             },
             snippets: Vec::new(),
-            prefer_core: false,
+            prefer_no_std: false,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -183,7 +183,7 @@ fn integrated_completion_benchmark() {
                 skip_glob_imports: true,
             },
             snippets: Vec::new(),
-            prefer_core: false,
+            prefer_no_std: false,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };

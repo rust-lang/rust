@@ -63,7 +63,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 let type_path = current_module.find_use_path(
                     ctx.sema.db,
                     item_for_path_search(ctx.sema.db, item_in_ns)?,
-                    ctx.config.prefer_core,
+                    ctx.config.prefer_no_std,
                 )?;
 
                 let expr = use_trivial_constructor(

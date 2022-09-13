@@ -38,7 +38,7 @@ use crate::{
 pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
     let mut proposed_imports =
-        import_assets.search_for_relative_paths(&ctx.sema, ctx.config.prefer_core);
+        import_assets.search_for_relative_paths(&ctx.sema, ctx.config.prefer_no_std);
     if proposed_imports.is_empty() {
         return None;
     }
