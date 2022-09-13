@@ -30,6 +30,13 @@ impl AsFd for Stdin {
     }
 }
 
+impl<'a> AsFd for StdinLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(0) }
+    }
+}
+
 impl io::Read for Stdin {
     fn read(&mut self, data: &mut [u8]) -> io::Result<usize> {
         self.read_vectored(&mut [IoSliceMut::new(data)])
@@ -59,6 +66,13 @@ impl AsRawFd for Stdout {
 }
 
 impl AsFd for Stdout {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(1) }
+    }
+}
+
+impl<'a> AsFd for StdoutLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         unsafe { BorrowedFd::borrow_raw(1) }
@@ -97,6 +111,13 @@ impl AsRawFd for Stderr {
 }
 
 impl AsFd for Stderr {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(2) }
+    }
+}
+
+impl<'a> AsFd for StderrLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         unsafe { BorrowedFd::borrow_raw(2) }
