@@ -1,4 +1,8 @@
-#![allow(clippy::assign_op_pattern, clippy::unnecessary_owned_empty_strings)]
+#![allow(
+    clippy::assign_op_pattern,
+    unconditional_panic,
+    clippy::unnecessary_owned_empty_strings
+)]
 #![feature(inline_const, saturating_int_impl)]
 #![warn(clippy::arithmetic_side_effects)]
 
@@ -41,8 +45,12 @@ pub fn non_overflowing_ops() {
     let _ = const { 1 + 1 };
 
     let mut _a = 1;
+    _a += 0;
+    _a -= 0;
+    _a /= 99;
+    _a %= 99;
+    _a *= 0;
     _a *= 1;
-    _a /= 1;
 }
 
 #[rustfmt::skip]
@@ -52,6 +60,14 @@ pub fn overflowing_ops() {
     let mut _b = 1; _b = _b + 1;
 
     let mut _c = 1; _c = 1 + _c;
+
+    let mut _a = 1;
+    _a += 1;
+    _a -= 1;
+    _a /= 0;
+    _a %= 0;
+    _a *= 2;
+    _a *= 3;
 }
 
 fn main() {}

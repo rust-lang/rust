@@ -1,5 +1,5 @@
 error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:50:21
+  --> $DIR/arithmetic_side_effects.rs:58:21
    |
 LL |     let mut _a = 1; _a += 1;
    |                     ^^^^^^^
@@ -7,16 +7,52 @@ LL |     let mut _a = 1; _a += 1;
    = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
 
 error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:52:26
+  --> $DIR/arithmetic_side_effects.rs:60:26
    |
 LL |     let mut _b = 1; _b = _b + 1;
    |                          ^^^^^^
 
 error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:54:26
+  --> $DIR/arithmetic_side_effects.rs:62:26
    |
 LL |     let mut _c = 1; _c = 1 + _c;
    |                          ^^^^^^
 
-error: aborting due to 3 previous errors
+error: arithmetic detected
+  --> $DIR/arithmetic_side_effects.rs:65:5
+   |
+LL |     _a += 1;
+   |     ^^^^^^^
+
+error: arithmetic detected
+  --> $DIR/arithmetic_side_effects.rs:66:5
+   |
+LL |     _a -= 1;
+   |     ^^^^^^^
+
+error: arithmetic detected
+  --> $DIR/arithmetic_side_effects.rs:67:5
+   |
+LL |     _a /= 0;
+   |     ^^^^^^^
+
+error: arithmetic detected
+  --> $DIR/arithmetic_side_effects.rs:68:5
+   |
+LL |     _a %= 0;
+   |     ^^^^^^^
+
+error: arithmetic detected
+  --> $DIR/arithmetic_side_effects.rs:69:5
+   |
+LL |     _a *= 2;
+   |     ^^^^^^^
+
+error: arithmetic detected
+  --> $DIR/arithmetic_side_effects.rs:70:5
+   |
+LL |     _a *= 3;
+   |     ^^^^^^^
+
+error: aborting due to 9 previous errors
 

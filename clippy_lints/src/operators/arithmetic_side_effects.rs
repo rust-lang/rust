@@ -48,9 +48,21 @@ impl ArithmeticSideEffects {
         if !Self::is_literal_integer(rhs, rhs_refs) {
             return false;
         }
-        if let hir::BinOpKind::Div | hir::BinOpKind::Mul = op.node
+        if let hir::BinOpKind::Add | hir::BinOpKind::Sub = op.node
             && let hir::ExprKind::Lit(ref lit) = rhs.kind
-            && let ast::LitKind::Int(1, _) = lit.node
+            && let ast::LitKind::Int(0, _) = lit.node
+        {
+            return true;
+        }
+        if let hir::BinOpKind::Div | hir::BinOpKind::Rem = op.node
+            && let hir::ExprKind::Lit(ref lit) = rhs.kind
+            && !matches!(lit.node, ast::LitKind::Int(0, _))
+        {
+            return true;
+        }
+        if let hir::BinOpKind::Mul = op.node
+            && let hir::ExprKind::Lit(ref lit) = rhs.kind
+            && let ast::LitKind::Int(0 | 1, _) = lit.node
         {
             return true;
         }
