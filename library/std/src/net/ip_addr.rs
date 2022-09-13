@@ -8,8 +8,7 @@ use crate::mem::transmute;
 use crate::sys::net::netc as c;
 use crate::sys_common::{FromInner, IntoInner};
 
-mod display_buffer;
-use display_buffer::IpDisplayBuffer;
+use super::display_buffer::DisplayBuffer;
 
 /// An IP address, either IPv4 or IPv6.
 ///
@@ -30,6 +29,7 @@ use display_buffer::IpDisplayBuffer;
 /// assert_eq!(localhost_v4.is_ipv6(), false);
 /// assert_eq!(localhost_v4.is_ipv4(), true);
 /// ```
+#[cfg_attr(not(test), rustc_diagnostic_item = "IpAddr")]
 #[stable(feature = "ip_addr", since = "1.7.0")]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
@@ -73,6 +73,7 @@ pub enum IpAddr {
 /// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Ipv4Addr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
     octets: [u8; 4],
@@ -155,6 +156,7 @@ pub struct Ipv4Addr {
 /// assert_eq!(localhost.is_loopback(), true);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Ipv6Addr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
     octets: [u8; 16],
@@ -997,7 +999,7 @@ impl fmt::Display for Ipv4Addr {
         } else {
             const LONGEST_IPV4_ADDR: &str = "255.255.255.255";
 
-            let mut buf = IpDisplayBuffer::<{ LONGEST_IPV4_ADDR.len() }>::new();
+            let mut buf = DisplayBuffer::<{ LONGEST_IPV4_ADDR.len() }>::new();
             // Buffer is long enough for the longest possible IPv4 address, so this should never fail.
             write!(buf, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).unwrap();
 
@@ -1844,7 +1846,7 @@ impl fmt::Display for Ipv6Addr {
         } else {
             const LONGEST_IPV6_ADDR: &str = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff";
 
-            let mut buf = IpDisplayBuffer::<{ LONGEST_IPV6_ADDR.len() }>::new();
+            let mut buf = DisplayBuffer::<{ LONGEST_IPV6_ADDR.len() }>::new();
             // Buffer is long enough for the longest possible IPv6 address, so this should never fail.
             write!(buf, "{}", self).unwrap();
 

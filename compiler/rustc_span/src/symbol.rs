@@ -214,6 +214,7 @@ symbols! {
         IntoIterator,
         IoRead,
         IoWrite,
+        IpAddr,
         IrTyKind,
         Is,
         ItemContext,
