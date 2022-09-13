@@ -329,10 +329,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let place_builder =
                         unpack!(block = this.as_place_builder(block, &this.thir[*thir_place]));
 
-                    if let Ok(place_builder_resolved) =
-                        place_builder.try_upvars_resolved(this.tcx, &this.upvars)
-                    {
-                        let mir_place = place_builder_resolved.into_place(this.tcx, &this.upvars);
+                    if let Ok(place_builder_resolved) = place_builder.try_upvars_resolved(this) {
+                        let mir_place = place_builder_resolved.into_place(this);
                         this.cfg.push_fake_read(
                             block,
                             this.source_info(this.tcx.hir().span(*hir_id)),
@@ -623,8 +621,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // by the parent itself. The mutability of the current capture
             // is same as that of the capture in the parent closure.
             PlaceBase::Upvar { .. } => {
-                let enclosing_upvars_resolved =
-                    arg_place_builder.clone().into_place(this.tcx, &this.upvars);
+                let enclosing_upvars_resolved = arg_place_builder.clone().into_place(this);
 
                 match enclosing_upvars_resolved.as_ref() {
                     PlaceRef {
@@ -661,7 +658,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
         };
 
-        let arg_place = arg_place_builder.into_place(this.tcx, &this.upvars);
+        let arg_place = arg_place_builder.into_place(this);
 
         this.cfg.push_assign(
             block,
