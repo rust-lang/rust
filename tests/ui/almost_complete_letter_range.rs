@@ -1,5 +1,6 @@
 // run-rustfix
 // edition:2018
+// aux-build:macro_rules.rs
 
 #![feature(custom_inner_attributes)]
 #![feature(exclusive_range_pattern)]
@@ -7,6 +8,9 @@
 #![warn(clippy::almost_complete_letter_range)]
 #![allow(ellipsis_inclusive_range_patterns)]
 #![allow(clippy::needless_parens_on_range_literals)]
+
+#[macro_use]
+extern crate macro_rules;
 
 macro_rules! a {
     () => {
@@ -37,7 +41,6 @@ fn main() {
     let _ = b'B'..b'Z';
 
     let _ = a!()..'z';
-    b!();
 
     let _ = match 0u8 {
         b'a'..b'z' if true => 1,
@@ -54,6 +57,9 @@ fn main() {
         'B'..'Z' => 4,
         _ => 5,
     };
+
+    almost_complete_letter_range!();
+    b!();
 }
 
 fn _under_msrv() {
