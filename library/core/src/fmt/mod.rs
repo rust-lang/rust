@@ -166,6 +166,7 @@ pub trait Write {
     /// assert_eq!(&buf, "ab");
     /// ```
     #[stable(feature = "fmt_write_char", since = "1.1.0")]
+    #[inline]
     fn write_char(&mut self, c: char) -> Result {
         self.write_str(c.encode_utf8(&mut [0; 4]))
     }
@@ -189,6 +190,7 @@ pub trait Write {
     /// assert_eq!(&buf, "world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     fn write_fmt(mut self: &mut Self, args: Arguments<'_>) -> Result {
         write(&mut self, args)
     }
@@ -196,14 +198,17 @@ pub trait Write {
 
 #[stable(feature = "fmt_write_blanket_impl", since = "1.4.0")]
 impl<W: Write + ?Sized> Write for &mut W {
+    #[inline]
     fn write_str(&mut self, s: &str) -> Result {
         (**self).write_str(s)
     }
 
+    #[inline]
     fn write_char(&mut self, c: char) -> Result {
         (**self).write_char(c)
     }
 
+    #[inline]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
         (**self).write_fmt(args)
     }
@@ -240,6 +245,7 @@ impl<'a> Formatter<'a> {
     /// Currently not intended for use outside of the standard library.
     #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
     #[doc(hidden)]
+    #[inline]
     pub fn new(buf: &'a mut (dyn Write + 'a)) -> Formatter<'a> {
         Formatter {
             flags: 0,
@@ -1277,6 +1283,7 @@ pub trait UpperExp {
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(bootstrap))]
+#[inline]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     match args.inner {
         Inner::Fn(f) => f(&mut Formatter::new(output)),
@@ -1549,11 +1556,17 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{Foo:0>4}"), "0Foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn pad(&mut self, s: &str) -> Result {
         // Make sure there's a fast path up front
         if self.width.is_none() && self.precision.is_none() {
-            return self.buf.write_str(s);
+            self.buf.write_str(s)
+        } else {
+            self.pad_slow(s)
         }
+    }
+
+    fn pad_slow(&mut self, s: &str) -> Result {
         // The `precision` field can be interpreted as a `max-width` for the
         // string being formatted.
         let s = if let Some(max) = self.precision {
@@ -1733,6 +1746,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{Foo:0>8}"), "Foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn write_str(&mut self, data: &str) -> Result {
         self.buf.write_str(data)
     }
@@ -1756,6 +1770,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:0>8}", Foo(2)), "Foo 2");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result {
         write(self.buf, fmt)
     }
@@ -1768,6 +1783,7 @@ impl<'a> Formatter<'a> {
         note = "use the `sign_plus`, `sign_minus`, `alternate`, \
                 or `sign_aware_zero_pad` methods instead"
     )]
+    #[inline]
     pub fn flags(&self) -> u32 {
         self.flags
     }
@@ -1801,6 +1817,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
+    #[inline]
     pub fn fill(&self) -> char {
         self.fill
     }
@@ -1838,6 +1855,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
+    #[inline]
     pub fn align(&self) -> Option<Alignment> {
         match self.align {
             rt::v1::Alignment::Left => Some(Alignment::Left),
@@ -1873,6 +1891,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
+    #[inline]
     pub fn width(&self) -> Option<usize> {
         self.width
     }
@@ -1904,6 +1923,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
+    #[inline]
     pub fn precision(&self) -> Option<usize> {
         self.precision
     }
@@ -1936,6 +1956,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
+    #[inline]
     pub fn sign_plus(&self) -> bool {
         self.flags & (1 << FlagV1::SignPlus as u32) != 0
     }
@@ -1965,6 +1986,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
+    #[inline]
     pub fn sign_minus(&self) -> bool {
         self.flags & (1 << FlagV1::SignMinus as u32) != 0
     }
@@ -1993,6 +2015,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
+    #[inline]
     pub fn alternate(&self) -> bool {
         self.flags & (1 << FlagV1::Alternate as u32) != 0
     }
@@ -2019,6 +2042,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
+    #[inline]
     pub fn sign_aware_zero_pad(&self) -> bool {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
     }
@@ -2440,14 +2464,17 @@ impl<'a> Formatter<'a> {
 
 #[stable(since = "1.2.0", feature = "formatter_write")]
 impl Write for Formatter<'_> {
+    #[inline]
     fn write_str(&mut self, s: &str) -> Result {
         self.buf.write_str(s)
     }
 
+    #[inline]
     fn write_char(&mut self, c: char) -> Result {
         self.buf.write_char(c)
     }
 
+    #[inline]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
         write(self.buf, args)
     }
@@ -2535,6 +2562,7 @@ impl Debug for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for str {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.pad(self)
     }
