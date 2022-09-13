@@ -232,7 +232,8 @@ impl AttrItem {
 
 impl Attribute {
     /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
-    /// So `#[doc = "doc"]` will return `false`.
+    /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
+    /// a doc comment) will return `false`.
     pub fn is_doc_comment(&self) -> bool {
         match self.kind {
             AttrKind::Normal(..) => false,
@@ -240,6 +241,11 @@ impl Attribute {
         }
     }
 
+    /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
+    /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
+    /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
+    /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
+    /// * `#[doc(...)]` returns `None`.
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         match self.kind {
             AttrKind::DocComment(kind, data) => Some((data, kind)),
@@ -252,6 +258,10 @@ impl Attribute {
         }
     }
 
+    /// Returns the documentation if this is a doc comment or a sugared doc comment.
+    /// * `///doc` returns `Some("doc")`.
+    /// * `#[doc = "doc"]` returns `Some("doc")`.
+    /// * `#[doc(...)]` returns `None`.
     pub fn doc_str(&self) -> Option<Symbol> {
         match self.kind {
             AttrKind::DocComment(.., data) => Some(data),
