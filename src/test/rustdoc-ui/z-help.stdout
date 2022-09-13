@@ -98,6 +98,7 @@
     -Z                                     oom=val -- panic strategy for out-of-memory handling
     -Z                  osx-rpath-install-name=val -- pass `-install_name @rpath/...` to the macOS linker (default: no)
     -Z                        diagnostic-width=val -- set the current output width for diagnostic truncation
+    -Z                     packed-bundled-libs=val -- change rlib format to store native libraries as archives
     -Z                       panic-abort-tests=val -- support compiling tests with panic=abort (default: no)
     -Z                           panic-in-drop=val -- panic strategy for panics in drops
     -Z                              parse-only=val -- parse only; do not compile, assemble, or link (default: no)

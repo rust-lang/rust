@@ -1,4 +1,3 @@
-use super::archive;
 use super::command::Command;
 use super::symbol_export;
 use rustc_span::symbol::sym;
@@ -11,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::{env, mem, str};
 
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_metadata::find_native_static_library;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
@@ -514,7 +514,7 @@ impl<'a> Linker for GccLinker<'a> {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib = archive::find_library(lib, verbatim, search_path, &self.sess);
+            let lib = find_native_static_library(lib, Some(verbatim), search_path, &self.sess);
             self.linker_arg(&lib);
         }
     }

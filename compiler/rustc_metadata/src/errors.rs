@@ -370,6 +370,12 @@ pub struct FailedWriteError {
 }
 
 #[derive(SessionDiagnostic)]
+#[diag(metadata::missing_native_library)]
+pub struct MissingNativeLibrary<'a> {
+    pub libname: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
 #[diag(metadata::failed_create_tempdir)]
 pub struct FailedCreateTempdir {
     pub err: Error,

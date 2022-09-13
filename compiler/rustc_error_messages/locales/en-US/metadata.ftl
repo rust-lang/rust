@@ -162,6 +162,9 @@ metadata_no_transitive_needs_dep =
 metadata_failed_write_error =
     failed to write {$filename}: {$err}
 
+metadata_missing_native_library =
+    could not find native static library `{$libname}`, perhaps an -L flag is missing?
+
 metadata_failed_create_tempdir =
     couldn't create a temp dir: {$err}
 

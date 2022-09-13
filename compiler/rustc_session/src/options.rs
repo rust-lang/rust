@@ -1441,6 +1441,8 @@ options! {
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     diagnostic_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "set the current output width for diagnostic truncation"),
+    packed_bundled_libs: bool = (false, parse_bool, [TRACKED],
+        "change rlib format to store native libraries as archives"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
         "support compiling tests with panic=abort (default: no)"),
     panic_in_drop: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy, [TRACKED],

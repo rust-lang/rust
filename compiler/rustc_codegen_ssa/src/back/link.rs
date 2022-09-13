@@ -1,11 +1,13 @@
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
+use rustc_metadata::find_native_static_library;
 use rustc_metadata::fs::{emit_metadata, METADATA_FILENAME};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -24,7 +26,7 @@ use rustc_target::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
 
-use super::archive::{find_library, ArchiveBuilder, ArchiveBuilderBuilder};
+use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{create_rmeta_file, MetadataPosition};
@@ -307,6 +309,9 @@ fn link_rlib<'a>(
         }
     }
 
+    // Used if packed_bundled_libs flag enabled.
+    let mut packed_bundled_libs = Vec::new();
+
     // Note that in this loop we are ignoring the value of `lib.cfg`. That is,
     // we may not be configured to actually include a static library if we're
     // adding it here. That's because later when we consume this rlib we'll
@@ -325,6 +330,8 @@ fn link_rlib<'a>(
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
         match lib.kind {
+            NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
+                if flavor == RlibFlavor::Normal && sess.opts.unstable_opts.packed_bundled_libs => {}
             NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
                 if flavor == RlibFlavor::Normal =>
             {
@@ -348,7 +355,16 @@ fn link_rlib<'a>(
         }
         if let Some(name) = lib.name {
             let location =
-                find_library(name.as_str(), lib.verbatim.unwrap_or(false), &lib_search_paths, sess);
+                find_native_static_library(name.as_str(), lib.verbatim, &lib_search_paths, sess);
+            if sess.opts.unstable_opts.packed_bundled_libs && flavor == RlibFlavor::Normal {
+                packed_bundled_libs.push(find_native_static_library(
+                    lib.filename.unwrap().as_str(),
+                    Some(true),
+                    &lib_search_paths,
+                    sess,
+                ));
+                continue;
+            }
             ab.add_archive(&location, Box::new(|_| false)).unwrap_or_else(|e| {
                 sess.fatal(&format!(
                     "failed to add native library {}: {}",
@@ -401,6 +417,12 @@ fn link_rlib<'a>(
         // Basically, all this means is that this code should not move above the
         // code above.
         ab.add_file(&trailing_metadata);
+    }
+
+    // Add all bundled static native library dependencies.
+    // Archives added to the end of .rlib archive, see comment above for the reason.
+    for lib in packed_bundled_libs {
+        ab.add_file(&lib)
     }
 
     return Ok(ab);
@@ -2341,7 +2363,15 @@ fn add_upstream_rust_crates<'a>(
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
         match data[cnum.as_usize() - 1] {
             _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
-                add_static_crate(cmd, sess, archive_builder_builder, codegen_results, tmpdir, cnum);
+                add_static_crate(
+                    cmd,
+                    sess,
+                    archive_builder_builder,
+                    codegen_results,
+                    tmpdir,
+                    cnum,
+                    &Default::default(),
+                );
             }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
@@ -2351,7 +2381,23 @@ fn add_upstream_rust_crates<'a>(
             }
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
-                add_static_crate(cmd, sess, archive_builder_builder, codegen_results, tmpdir, cnum);
+                let bundled_libs = if sess.opts.unstable_opts.packed_bundled_libs {
+                    codegen_results.crate_info.native_libraries[&cnum]
+                        .iter()
+                        .filter_map(|lib| lib.filename)
+                        .collect::<FxHashSet<_>>()
+                } else {
+                    Default::default()
+                };
+                add_static_crate(
+                    cmd,
+                    sess,
+                    archive_builder_builder,
+                    codegen_results,
+                    tmpdir,
+                    cnum,
+                    &bundled_libs,
+                );
 
                 // Link static native libs with "-bundle" modifier only if the crate they originate from
                 // is being linked statically to the current crate.  If it's linked dynamically
@@ -2362,6 +2408,14 @@ fn add_upstream_rust_crates<'a>(
                 // external build system already has the native dependencies defined, and it
                 // will provide them to the linker itself.
                 if sess.opts.unstable_opts.link_native_libraries {
+                    if sess.opts.unstable_opts.packed_bundled_libs {
+                        // If rlib contains native libs as archives, unpack them to tmpdir.
+                        let rlib = &src.rlib.as_ref().unwrap().0;
+                        archive_builder_builder
+                            .extract_bundled_libs(rlib, tmpdir, &bundled_libs)
+                            .unwrap_or_else(|e| sess.fatal(e));
+                    }
+
                     let mut last = (None, NativeLibKind::Unspecified, None);
                     for lib in &codegen_results.crate_info.native_libraries[&cnum] {
                         let Some(name) = lib.name else {
@@ -2411,10 +2465,17 @@ fn add_upstream_rust_crates<'a>(
                             | NativeLibKind::Framework { .. }
                             | NativeLibKind::Unspecified
                             | NativeLibKind::RawDylib => {}
-                            NativeLibKind::Static {
-                                bundle: Some(true) | None,
-                                whole_archive: _,
-                            } => {}
+                            NativeLibKind::Static { bundle: Some(true) | None, whole_archive } => {
+                                if sess.opts.unstable_opts.packed_bundled_libs {
+                                    // If rlib contains native libs as archives, they are unpacked to tmpdir.
+                                    let path = tmpdir.join(lib.filename.unwrap().as_str());
+                                    if whole_archive == Some(true) {
+                                        cmd.link_whole_rlib(&path);
+                                    } else {
+                                        cmd.link_rlib(&path);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -2429,7 +2490,15 @@ fn add_upstream_rust_crates<'a>(
     // was already "included" in a dylib (e.g., `libstd` when `-C prefer-dynamic`
     // is used)
     if let Some(cnum) = compiler_builtins {
-        add_static_crate(cmd, sess, archive_builder_builder, codegen_results, tmpdir, cnum);
+        add_static_crate(
+            cmd,
+            sess,
+            archive_builder_builder,
+            codegen_results,
+            tmpdir,
+            cnum,
+            &Default::default(),
+        );
     }
 
     // Converts a library file-stem into a cc -l argument
@@ -2462,6 +2531,7 @@ fn add_upstream_rust_crates<'a>(
         codegen_results: &CodegenResults,
         tmpdir: &Path,
         cnum: CrateNum,
+        bundled_lib_file_names: &FxHashSet<Symbol>,
     ) {
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
         let cratepath = &src.rlib.as_ref().unwrap().0;
@@ -2490,6 +2560,7 @@ fn add_upstream_rust_crates<'a>(
         let dst = tmpdir.join(cratepath.file_name().unwrap());
         let name = cratepath.file_name().unwrap().to_str().unwrap();
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
+        let bundled_lib_file_names = bundled_lib_file_names.clone();
 
         sess.prof.generic_activity_with_arg("link_altering_rlib", name).run(|| {
             let canonical_name = name.replace('-', "_");
@@ -2522,6 +2593,15 @@ fn add_upstream_rust_crates<'a>(
                     // though, so we let that object file slide.
                     let skip_because_lto =
                         upstream_rust_objects_already_included && is_rust_object && is_builtins;
+
+                    // We skip native libraries because:
+                    // 1. This native libraries won't be used from the generated rlib,
+                    //    so we can throw them away to avoid the copying work.
+                    // 2. We can't allow it to be a single remaining entry in archive
+                    //    as some linkers may complain on that.
+                    if bundled_lib_file_names.contains(&Symbol::intern(f)) {
+                        return true;
+                    }
 
                     if skip_because_cfg_say_so || skip_because_lto {
                         return true;
