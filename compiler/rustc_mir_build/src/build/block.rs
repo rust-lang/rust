@@ -132,6 +132,59 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // failure in pattern matching.
                     // For this reason, we declare those storages as live but we do not schedule
                     // any drop yet- they are scheduled later after the pattern matching.
+                    // The generated MIR will have `StorageDead` whenever the control flow breaks out
+                    // of the parent scope, regardless of the result of the pattern matching.
+                    // However, the drops are inserted in MIR only when the control flow breaks out of
+                    // the scope of the remainder scope associated with this `let .. else` statement.
+                    // Pictorial explanation of the scope structure:
+                    // ┌─────────────────────────────────┐
+                    // │  Scope of the enclosing block,  │
+                    // │  or the last remainder scope    │
+                    // │  ┌───────────────────────────┐  │
+                    // │  │  Scope for <else> block   │  │
+                    // │  └───────────────────────────┘  │
+                    // │  ┌───────────────────────────┐  │
+                    // │  │  Remainder scope of       │  │
+                    // │  │  this let-else statement  │  │
+                    // │  │  ┌─────────────────────┐  │  │
+                    // │  │  │ <expr> scope        │  │  │
+                    // │  │  └─────────────────────┘  │  │
+                    // │  │  extended temporaries in  │  │
+                    // │  │  <expr> lives in this     │  │
+                    // │  │  scope                    │  │
+                    // │  │  ┌─────────────────────┐  │  │
+                    // │  │  │ Scopes for the rest │  │  │
+                    // │  │  └─────────────────────┘  │  │
+                    // │  └───────────────────────────┘  │
+                    // └─────────────────────────────────┘
+                    // Generated control flow:
+                    //          │ let Some(x) = y() else { return; }
+                    //          │
+                    // ┌────────▼───────┐
+                    // │ evaluate y()   │
+                    // └────────┬───────┘
+                    //          │              ┌────────────────┐
+                    // ┌────────▼───────┐      │Drop temporaries│
+                    // │Test the pattern├──────►in y()          │
+                    // └────────┬───────┘      │because breaking│
+                    //          │              │out of <expr>   │
+                    // ┌────────▼───────┐      │scope           │
+                    // │Move value into │      └───────┬────────┘
+                    // │binding x       │              │
+                    // └────────┬───────┘      ┌───────▼────────┐
+                    //          │              │Drop extended   │
+                    // ┌────────▼───────┐      │temporaries in  │
+                    // │Drop temporaries│      │<expr> because  │
+                    // │in y()          │      │breaking out of │
+                    // │because breaking│      │remainder scope │
+                    // │out of <expr>   │      └───────┬────────┘
+                    // │scope           │              │
+                    // └────────┬───────┘      ┌───────▼────────┐
+                    //          │              │Enter <else>    ├────────►
+                    // ┌────────▼───────┐      │block           │ return;
+                    // │Continue...     │      └────────────────┘
+                    // └────────────────┘
+
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
