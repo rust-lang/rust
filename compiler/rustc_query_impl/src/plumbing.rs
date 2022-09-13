@@ -3,7 +3,8 @@
 //! manage the caches, and so forth.
 
 use crate::keys::Key;
-use crate::on_disk_cache::CacheDecoder;
+use crate::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
+use crate::profiling_support::QueryKeyStringCache;
 use crate::{on_disk_cache, Queries};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock};
@@ -173,34 +174,14 @@ impl<'tcx> QueryCtxt<'tcx> {
 
     pub(super) fn encode_query_results(
         self,
-        encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx>,
-        query_result_index: &mut on_disk_cache::EncodedDepNodeIndex,
+        encoder: &mut CacheEncoder<'_, 'tcx>,
+        query_result_index: &mut EncodedDepNodeIndex,
     ) {
-        macro_rules! expand_if_cached {
-            ([] $encode:expr) => {};
-            ([(cache) $($rest:tt)*] $encode:expr) => {
-                $encode
-            };
-            ([$other:tt $($modifiers:tt)*] $encode:expr) => {
-                expand_if_cached!([$($modifiers)*] $encode)
-            };
-        }
-
-        macro_rules! encode_queries {
-            (
-            $($(#[$attr:meta])*
-                [$($modifiers:tt)*] fn $query:ident($($K:tt)*) -> $V:ty,)*) => {
-                $(
-                    expand_if_cached!([$($modifiers)*] on_disk_cache::encode_query_results::<_, super::queries::$query<'_>>(
-                        self,
-                        encoder,
-                        query_result_index
-                    ));
-                )*
+        for query in &self.queries.query_structs {
+            if let Some(encode) = query.encode_query_results {
+                encode(self, encoder, query_result_index);
             }
         }
-
-        rustc_query_append!(encode_queries!);
     }
 
     pub fn try_print_query_stack(
@@ -211,6 +192,14 @@ impl<'tcx> QueryCtxt<'tcx> {
     ) -> usize {
         rustc_query_system::query::print_query_stack(self, query, handler, num_frames)
     }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct QueryStruct<'tcx> {
+    pub try_collect_active_jobs: fn(QueryCtxt<'tcx>, &mut QueryMap) -> Option<()>,
+    pub alloc_self_profile_query_strings: fn(TyCtxt<'tcx>, &mut QueryKeyStringCache),
+    pub encode_query_results:
+        Option<fn(QueryCtxt<'tcx>, &mut CacheEncoder<'_, 'tcx>, &mut EncodedDepNodeIndex)>,
 }
 
 macro_rules! handle_cycle_error {
@@ -420,6 +409,18 @@ where
     }
 }
 
+macro_rules! expand_if_cached {
+    ([], $tokens:expr) => {{
+        None
+    }};
+    ([(cache) $($rest:tt)*], $tokens:expr) => {{
+        Some($tokens)
+    }};
+    ([$other:tt $($modifiers:tt)*], $tokens:expr) => {
+        expand_if_cached!([$($modifiers)*], $tokens)
+    };
+}
+
 // NOTE: `$V` isn't used here, but we still need to match on it so it can be passed to other macros
 // invoked by `rustc_query_append`.
 macro_rules! define_queries {
@@ -553,6 +554,59 @@ macro_rules! define_queries {
             })*
         }
 
+        mod query_structs {
+            use rustc_middle::ty::TyCtxt;
+            use $crate::plumbing::{QueryStruct, QueryCtxt};
+            use $crate::profiling_support::QueryKeyStringCache;
+            use rustc_query_system::query::{QueryDescription, QueryMap};
+
+            pub(super) const fn dummy_query_struct<'tcx>() -> QueryStruct<'tcx> {
+                fn noop_try_collect_active_jobs(_: QueryCtxt<'_>, _: &mut QueryMap) -> Option<()> {
+                    None
+                }
+                fn noop_alloc_self_profile_query_strings(_: TyCtxt<'_>, _: &mut QueryKeyStringCache) {}
+
+                QueryStruct {
+                    try_collect_active_jobs: noop_try_collect_active_jobs,
+                    alloc_self_profile_query_strings: noop_alloc_self_profile_query_strings,
+                    encode_query_results: None,
+                }
+            }
+
+            pub(super) use dummy_query_struct as Null;
+            pub(super) use dummy_query_struct as Red;
+            pub(super) use dummy_query_struct as TraitSelect;
+            pub(super) use dummy_query_struct as CompileCodegenUnit;
+            pub(super) use dummy_query_struct as CompileMonoItem;
+
+            $(
+            pub(super) const fn $name<'tcx>() -> QueryStruct<'tcx> { QueryStruct {
+                try_collect_active_jobs: |tcx, qmap| {
+                    let make_query = |tcx, key| {
+                        let kind = rustc_middle::dep_graph::DepKind::$name;
+                        let name = stringify!($name);
+                        $crate::plumbing::create_query_frame(tcx, super::queries::$name::describe, key, kind, name)
+                    };
+                    tcx.queries.$name.try_collect_active_jobs(
+                        tcx,
+                        make_query,
+                        qmap,
+                    )
+                },
+                alloc_self_profile_query_strings: |tcx, string_cache| {
+                    $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
+                        tcx,
+                        stringify!($name),
+                        &tcx.query_caches.$name,
+                        string_cache,
+                    )
+                },
+                encode_query_results: expand_if_cached!([$($modifiers)*], |tcx, encoder, query_result_index|
+                    $crate::on_disk_cache::encode_query_results::<_, super::queries::$name<'_>>(tcx, encoder, query_result_index)
+                ),
+            }})*
+        }
+
         pub fn query_callbacks<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindStruct<'tcx>] {
             arena.alloc_from_iter(make_dep_kind_array!(query_callbacks))
         }
@@ -567,9 +621,11 @@ impl<'tcx> Queries<'tcx> {
         extern_providers: ExternProviders,
         on_disk_cache: Option<OnDiskCache<'tcx>>,
     ) -> Self {
+        use crate::query_structs;
         Queries {
             local_providers: Box::new(local_providers),
             extern_providers: Box::new(extern_providers),
+            query_structs: make_dep_kind_array!(query_structs).to_vec(),
             on_disk_cache,
             jobs: AtomicU64::new(1),
             ..Queries::default()
@@ -584,6 +640,7 @@ macro_rules! define_queries_struct {
         pub struct Queries<'tcx> {
             local_providers: Box<Providers>,
             extern_providers: Box<ExternProviders>,
+            query_structs: Vec<$crate::plumbing::QueryStruct<'tcx>>,
 
             pub on_disk_cache: Option<OnDiskCache<'tcx>>,
 
@@ -600,18 +657,9 @@ macro_rules! define_queries_struct {
                 let tcx = QueryCtxt { tcx, queries: self };
                 let mut jobs = QueryMap::default();
 
-                $(
-                    let make_query = |tcx, key| {
-                        let kind = dep_graph::DepKind::$name;
-                        let name = stringify!($name);
-                        $crate::plumbing::create_query_frame(tcx, queries::$name::describe, key, kind, name)
-                    };
-                    self.$name.try_collect_active_jobs(
-                        tcx,
-                        make_query,
-                        &mut jobs,
-                    )?;
-                )*
+                for query in &self.query_structs {
+                    (query.try_collect_active_jobs)(tcx, &mut jobs);
+                }
 
                 Some(jobs)
             }
