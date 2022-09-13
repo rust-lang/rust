@@ -24,9 +24,11 @@ fn test_estimated_capacity() {
     assert_eq!(format_args!("").estimated_capacity(), 0);
     assert_eq!(format_args!("{}", "").estimated_capacity(), 0);
     assert_eq!(format_args!("Hello").estimated_capacity(), 5);
-    assert_eq!(format_args!("Hello, {}!", "").estimated_capacity(), 16);
+    #[cfg(not(bootstrap))]
+    assert_eq!(format_args!("Hello, {}!", "").estimated_capacity(), 0);
     assert_eq!(format_args!("{}, hello!", "World").estimated_capacity(), 0);
-    assert_eq!(format_args!("{}. 16-bytes piece", "World").estimated_capacity(), 32);
+    #[cfg(not(bootstrap))]
+    assert_eq!(format_args!("{}. 16-bytes piece", "World").estimated_capacity(), 0);
 }
 
 #[test]
