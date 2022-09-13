@@ -19,8 +19,8 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
             debug t => (*((*_6).1: &T)); // in scope 2 at $DIR/inline-closure-captures.rs:+0:17: +0:18
             let mut _10: i32;            // in scope 2 at $DIR/inline-closure-captures.rs:+1:19: +1:20
             let mut _11: T;              // in scope 2 at $DIR/inline-closure-captures.rs:+1:22: +1:23
-            let mut _12: &i32;           // in scope 2 at $DIR/inline-closure-captures.rs:+1:13: +1:17
-            let mut _13: &T;             // in scope 2 at $DIR/inline-closure-captures.rs:+1:13: +1:17
+            let mut _12: &i32;           // in scope 2 at $DIR/inline-closure-captures.rs:+1:13: +1:24
+            let mut _13: &T;             // in scope 2 at $DIR/inline-closure-captures.rs:+1:13: +1:24
         }
     }
 

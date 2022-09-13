@@ -22,11 +22,8 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
 note: no external requirements
   --> $DIR/return-wrong-bound-region.rs:10:1
    |
-LL | / fn test() {
-LL | |     expect_sig(|a, b| b); // ought to return `a`
-LL | |
-LL | | }
-   | |_^
+LL | fn test() {
+   | ^^^^^^^^^
    |
    = note: defining type: test
 

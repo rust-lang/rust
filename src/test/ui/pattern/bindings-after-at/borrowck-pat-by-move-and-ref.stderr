@@ -314,9 +314,8 @@ error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-by-move-and-ref.rs:11:11
    |
 LL |     fn f1(ref a @ b: U) {}
-   |           ^^^^^----
-   |           |       |
-   |           |       value moved here
+   |           ^^^^^   - value moved here
+   |           |
    |           value borrowed here after move
    |           move occurs because value has type `U`, which does not implement the `Copy` trait
 

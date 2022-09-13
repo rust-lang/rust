@@ -9,10 +9,7 @@ use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{
     hir::place::PlaceBase,
-    mir::{
-        self, BindingForm, ClearCrossCrate, ImplicitSelfKind, Local, LocalDecl, LocalInfo,
-        LocalKind, Location,
-    },
+    mir::{self, BindingForm, ClearCrossCrate, Local, LocalDecl, LocalInfo, LocalKind, Location},
 };
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
@@ -312,7 +309,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     && !matches!(
                         decl.local_info,
                         Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
-                            ImplicitSelfKind::MutRef
+                            hir::ImplicitSelfKind::MutRef
                         ))))
                     )
                 {
@@ -973,6 +970,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let hir = self.infcx.tcx.hir();
         let closure_id = self.mir_hir_id();
+        let closure_span = self.infcx.tcx.def_span(self.mir_def_id());
         let fn_call_id = hir.get_parent_node(closure_id);
         let node = hir.get(fn_call_id);
         let def_id = hir.enclosing_body_owner(fn_call_id);
@@ -1024,7 +1022,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(span) = arg {
                     err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
                     err.span_label(func.span, "expects `Fn` instead of `FnMut`");
-                    err.span_label(self.body.span, "in this closure");
+                    err.span_label(closure_span, "in this closure");
                     look_at_return = false;
                 }
             }
@@ -1050,7 +1048,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         sig.decl.output.span(),
                         "change this to return `FnMut` instead of `Fn`",
                     );
-                    err.span_label(self.body.span, "in this closure");
+                    err.span_label(closure_span, "in this closure");
                 }
                 _ => {}
             }
@@ -1074,7 +1072,7 @@ fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symb
             //
             // Deliberately fall into this case for all implicit self types,
             // so that we don't fall in to the next case with them.
-            *kind == mir::ImplicitSelfKind::MutRef
+            *kind == hir::ImplicitSelfKind::MutRef
         }
         _ if Some(kw::SelfLower) == local_name => {
             // Otherwise, check if the name is the `self` keyword - in which case

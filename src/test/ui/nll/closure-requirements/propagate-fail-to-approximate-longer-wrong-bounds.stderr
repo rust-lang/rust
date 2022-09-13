@@ -26,14 +26,8 @@ LL |         demand_y(x, y, x.get())
 note: no external requirements
   --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:38:1
    |
-LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-LL | |         // Only works if 'x: 'y:
-LL | |         demand_y(x, y, x.get())
-LL | |
-LL | |     });
-LL | | }
-   | |_^
+LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply
 

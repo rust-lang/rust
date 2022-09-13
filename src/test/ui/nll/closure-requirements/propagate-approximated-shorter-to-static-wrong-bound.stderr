@@ -17,14 +17,8 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:34:1
    |
-LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-LL | |
-LL | |
-...  |
-LL | |     });
-LL | | }
-   | |_^
+LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply
 

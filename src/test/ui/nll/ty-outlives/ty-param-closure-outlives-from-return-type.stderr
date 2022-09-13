@@ -18,11 +18,7 @@ note: no external requirements
 LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>
 LL | | where
 LL | |     T: Debug,
-LL | | {
-...  |
-LL | |
-LL | | }
-   | |_^
+   | |_____________^
    |
    = note: defining type: no_region::<'_#1r, T>
 

@@ -16,14 +16,8 @@ LL |         |_outlives1, _outlives2, x, y| {
 note: no external requirements
   --> $DIR/propagate-despite-same-free-region.rs:39:1
    |
-LL | / fn supply<'a>(cell_a: Cell<&'a u32>) {
-LL | |     establish_relationships(
-LL | |         cell_a,
-LL | |         |_outlives1, _outlives2, x, y| {
-...  |
-LL | |     );
-LL | | }
-   | |_^
+LL | fn supply<'a>(cell_a: Cell<&'a u32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply
 
