@@ -13,9 +13,8 @@ LL | #![warn(rust_2021_prefixes_incompatible_syntax)]
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/reserving-syntax.html>
 help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
    |
-LL -     m2!(z"hey");
-LL +     m2!(z "hey");
-   |
+LL |     m2!(z "hey");
+   |          +
 
 warning: prefix `prefix` is unknown
   --> $DIR/reserved-prefixes-migration.rs:19:9
@@ -27,9 +26,8 @@ LL |     m2!(prefix"hey");
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/reserving-syntax.html>
 help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
    |
-LL -     m2!(prefix"hey");
-LL +     m2!(prefix "hey");
-   |
+LL |     m2!(prefix "hey");
+   |               +
 
 warning: prefix `hey` is unknown
   --> $DIR/reserved-prefixes-migration.rs:22:9
@@ -41,9 +39,8 @@ LL |     m3!(hey#123);
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/reserving-syntax.html>
 help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
    |
-LL -     m3!(hey#123);
-LL +     m3!(hey #123);
-   |
+LL |     m3!(hey #123);
+   |            +
 
 warning: prefix `hey` is unknown
   --> $DIR/reserved-prefixes-migration.rs:25:9
@@ -55,9 +52,8 @@ LL |     m3!(hey#hey);
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/reserving-syntax.html>
 help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
    |
-LL -     m3!(hey#hey);
-LL +     m3!(hey #hey);
-   |
+LL |     m3!(hey #hey);
+   |            +
 
 warning: prefix `kind` is unknown
   --> $DIR/reserved-prefixes-migration.rs:35:14
@@ -69,9 +65,8 @@ LL |     #name = #kind#value
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/reserving-syntax.html>
 help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
    |
-LL -     #name = #kind#value
-LL +     #name = #kind #value
-   |
+LL |     #name = #kind #value
+   |                  +
 
 warning: 5 warnings emitted
 

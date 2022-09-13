@@ -86,8 +86,7 @@ impl LocationTable {
         let (block, &first_index) = self
             .statements_before_block
             .iter_enumerated()
-            .filter(|(_, first_index)| **first_index <= point_index)
-            .last()
+            .rfind(|&(_, &first_index)| first_index <= point_index)
             .unwrap();
 
         let statement_index = (point_index - first_index) / 2;

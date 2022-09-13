@@ -121,12 +121,12 @@ where
     }
 }
 
-pub trait CreateTokenStream: sync::Send + sync::Sync {
-    fn create_token_stream(&self) -> AttrAnnotatedTokenStream;
+pub trait ToAttrTokenStream: sync::Send + sync::Sync {
+    fn to_attr_token_stream(&self) -> AttrTokenStream;
 }
 
-impl CreateTokenStream for AttrAnnotatedTokenStream {
-    fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
+impl ToAttrTokenStream for AttrTokenStream {
+    fn to_attr_token_stream(&self) -> AttrTokenStream {
         self.clone()
     }
 }
@@ -135,68 +135,68 @@ impl CreateTokenStream for AttrAnnotatedTokenStream {
 /// of an actual `TokenStream` until it is needed.
 /// `Box` is here only to reduce the structure size.
 #[derive(Clone)]
-pub struct LazyTokenStream(Lrc<Box<dyn CreateTokenStream>>);
+pub struct LazyAttrTokenStream(Lrc<Box<dyn ToAttrTokenStream>>);
 
-impl LazyTokenStream {
-    pub fn new(inner: impl CreateTokenStream + 'static) -> LazyTokenStream {
-        LazyTokenStream(Lrc::new(Box::new(inner)))
+impl LazyAttrTokenStream {
+    pub fn new(inner: impl ToAttrTokenStream + 'static) -> LazyAttrTokenStream {
+        LazyAttrTokenStream(Lrc::new(Box::new(inner)))
     }
 
-    pub fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
-        self.0.create_token_stream()
+    pub fn to_attr_token_stream(&self) -> AttrTokenStream {
+        self.0.to_attr_token_stream()
     }
 }
 
-impl fmt::Debug for LazyTokenStream {
+impl fmt::Debug for LazyAttrTokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "LazyTokenStream({:?})", self.create_token_stream())
+        write!(f, "LazyAttrTokenStream({:?})", self.to_attr_token_stream())
     }
 }
 
-impl<S: Encoder> Encodable<S> for LazyTokenStream {
+impl<S: Encoder> Encodable<S> for LazyAttrTokenStream {
     fn encode(&self, s: &mut S) {
         // Used by AST json printing.
-        Encodable::encode(&self.create_token_stream(), s);
+        Encodable::encode(&self.to_attr_token_stream(), s);
     }
 }
 
-impl<D: Decoder> Decodable<D> for LazyTokenStream {
+impl<D: Decoder> Decodable<D> for LazyAttrTokenStream {
     fn decode(_d: &mut D) -> Self {
-        panic!("Attempted to decode LazyTokenStream");
+        panic!("Attempted to decode LazyAttrTokenStream");
     }
 }
 
-impl<CTX> HashStable<CTX> for LazyTokenStream {
+impl<CTX> HashStable<CTX> for LazyAttrTokenStream {
     fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
-        panic!("Attempted to compute stable hash for LazyTokenStream");
+        panic!("Attempted to compute stable hash for LazyAttrTokenStream");
     }
 }
 
-/// A `AttrAnnotatedTokenStream` is similar to a `TokenStream`, but with extra
+/// An `AttrTokenStream` is similar to a `TokenStream`, but with extra
 /// information about the tokens for attribute targets. This is used
 /// during expansion to perform early cfg-expansion, and to process attributes
 /// during proc-macro invocations.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct AttrAnnotatedTokenStream(pub Lrc<Vec<(AttrAnnotatedTokenTree, Spacing)>>);
+pub struct AttrTokenStream(pub Lrc<Vec<AttrTokenTree>>);
 
-/// Like `TokenTree`, but for `AttrAnnotatedTokenStream`
+/// Like `TokenTree`, but for `AttrTokenStream`.
 #[derive(Clone, Debug, Encodable, Decodable)]
-pub enum AttrAnnotatedTokenTree {
-    Token(Token),
-    Delimited(DelimSpan, Delimiter, AttrAnnotatedTokenStream),
+pub enum AttrTokenTree {
+    Token(Token, Spacing),
+    Delimited(DelimSpan, Delimiter, AttrTokenStream),
     /// Stores the attributes for an attribute target,
     /// along with the tokens for that attribute target.
     /// See `AttributesData` for more information
     Attributes(AttributesData),
 }
 
-impl AttrAnnotatedTokenStream {
-    pub fn new(tokens: Vec<(AttrAnnotatedTokenTree, Spacing)>) -> AttrAnnotatedTokenStream {
-        AttrAnnotatedTokenStream(Lrc::new(tokens))
+impl AttrTokenStream {
+    pub fn new(tokens: Vec<AttrTokenTree>) -> AttrTokenStream {
+        AttrTokenStream(Lrc::new(tokens))
     }
 
-    /// Converts this `AttrAnnotatedTokenStream` to a plain `TokenStream
-    /// During conversion, `AttrAnnotatedTokenTree::Attributes` get 'flattened'
+    /// Converts this `AttrTokenStream` to a plain `TokenStream`.
+    /// During conversion, `AttrTokenTree::Attributes` get 'flattened'
     /// back to a `TokenStream` of the form `outer_attr attr_target`.
     /// If there are inner attributes, they are inserted into the proper
     /// place in the attribute target tokens.
@@ -204,31 +204,27 @@ impl AttrAnnotatedTokenStream {
         let trees: Vec<_> = self
             .0
             .iter()
-            .flat_map(|tree| match &tree.0 {
-                AttrAnnotatedTokenTree::Token(inner) => {
-                    smallvec![TokenTree::Token(inner.clone(), tree.1)].into_iter()
+            .flat_map(|tree| match &tree {
+                AttrTokenTree::Token(inner, spacing) => {
+                    smallvec![TokenTree::Token(inner.clone(), *spacing)].into_iter()
                 }
-                AttrAnnotatedTokenTree::Delimited(span, delim, stream) => {
+                AttrTokenTree::Delimited(span, delim, stream) => {
                     smallvec![TokenTree::Delimited(*span, *delim, stream.to_tokenstream()),]
                         .into_iter()
                 }
-                AttrAnnotatedTokenTree::Attributes(data) => {
+                AttrTokenTree::Attributes(data) => {
                     let mut outer_attrs = Vec::new();
                     let mut inner_attrs = Vec::new();
                     for attr in &data.attrs {
                         match attr.style {
-                            crate::AttrStyle::Outer => {
-                                outer_attrs.push(attr);
-                            }
-                            crate::AttrStyle::Inner => {
-                                inner_attrs.push(attr);
-                            }
+                            crate::AttrStyle::Outer => outer_attrs.push(attr),
+                            crate::AttrStyle::Inner => inner_attrs.push(attr),
                         }
                     }
 
                     let mut target_tokens: Vec<_> = data
                         .tokens
-                        .create_token_stream()
+                        .to_attr_token_stream()
                         .to_tokenstream()
                         .0
                         .iter()
@@ -239,9 +235,9 @@ impl AttrAnnotatedTokenStream {
                         // Check the last two trees (to account for a trailing semi)
                         for tree in target_tokens.iter_mut().rev().take(2) {
                             if let TokenTree::Delimited(span, delim, delim_tokens) = tree {
-                                // Inner attributes are only supported on extern blocks, functions, impls,
-                                // and modules. All of these have their inner attributes placed at
-                                // the beginning of the rightmost outermost braced group:
+                                // Inner attributes are only supported on extern blocks, functions,
+                                // impls, and modules. All of these have their inner attributes
+                                // placed at the beginning of the rightmost outermost braced group:
                                 // e.g. fn foo() { #![my_attr} }
                                 //
                                 // Therefore, we can insert them back into the right location
@@ -255,7 +251,7 @@ impl AttrAnnotatedTokenStream {
 
                                 let mut builder = TokenStreamBuilder::new();
                                 for inner_attr in inner_attrs {
-                                    builder.push(inner_attr.tokens().to_tokenstream());
+                                    builder.push(inner_attr.tokens());
                                 }
                                 builder.push(delim_tokens.clone());
                                 *tree = TokenTree::Delimited(*span, *delim, builder.build());
@@ -273,7 +269,7 @@ impl AttrAnnotatedTokenStream {
                     let mut flat: SmallVec<[_; 1]> = SmallVec::new();
                     for attr in outer_attrs {
                         // FIXME: Make this more efficient
-                        flat.extend(attr.tokens().to_tokenstream().0.clone().iter().cloned());
+                        flat.extend(attr.tokens().0.clone().iter().cloned());
                     }
                     flat.extend(target_tokens);
                     flat.into_iter()
@@ -300,7 +296,7 @@ pub struct AttributesData {
     pub attrs: AttrVec,
     /// The underlying tokens for the attribute target that `attrs`
     /// are applied to
-    pub tokens: LazyTokenStream,
+    pub tokens: LazyAttrTokenStream,
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
@@ -363,12 +359,6 @@ impl TokenStream {
     }
 }
 
-impl From<(AttrAnnotatedTokenTree, Spacing)> for AttrAnnotatedTokenStream {
-    fn from((tree, spacing): (AttrAnnotatedTokenTree, Spacing)) -> AttrAnnotatedTokenStream {
-        AttrAnnotatedTokenStream::new(vec![(tree, spacing)])
-    }
-}
-
 impl iter::FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(iter: I) -> Self {
         TokenStream::new(iter.into_iter().collect::<Vec<TokenTree>>())
@@ -420,22 +410,6 @@ impl TokenStream {
         TokenStream(Lrc::new(self.0.iter().enumerate().map(|(i, tree)| f(i, tree)).collect()))
     }
 
-    fn opt_from_ast(node: &(impl HasAttrs + HasTokens)) -> Option<TokenStream> {
-        let tokens = node.tokens()?;
-        let attrs = node.attrs();
-        let attr_annotated = if attrs.is_empty() {
-            tokens.create_token_stream()
-        } else {
-            let attr_data =
-                AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
-            AttrAnnotatedTokenStream::new(vec![(
-                AttrAnnotatedTokenTree::Attributes(attr_data),
-                Spacing::Alone,
-            )])
-        };
-        Some(attr_annotated.to_tokenstream())
-    }
-
     // Create a token stream containing a single token with alone spacing.
     pub fn token_alone(kind: TokenKind, span: Span) -> TokenStream {
         TokenStream::new(vec![TokenTree::token_alone(kind, span)])
@@ -452,8 +426,18 @@ impl TokenStream {
     }
 
     pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
-        TokenStream::opt_from_ast(node)
-            .unwrap_or_else(|| panic!("missing tokens for node at {:?}: {:?}", node.span(), node))
+        let Some(tokens) = node.tokens() else {
+            panic!("missing tokens for node at {:?}: {:?}", node.span(), node);
+        };
+        let attrs = node.attrs();
+        let attr_stream = if attrs.is_empty() {
+            tokens.to_attr_token_stream()
+        } else {
+            let attr_data =
+                AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
+            AttrTokenStream::new(vec![AttrTokenTree::Attributes(attr_data)])
+        };
+        attr_stream.to_tokenstream()
     }
 
     pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {

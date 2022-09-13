@@ -13,9 +13,8 @@ LL | #[deny(bare_trait_objects)]
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - fn function(x: &SomeTrait, y: Box<SomeTrait>) {
-LL + fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
-   |
+LL | fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
+   |                 +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/dyn-2018-edition-lint.rs:4:35
@@ -27,9 +26,8 @@ LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - fn function(x: &SomeTrait, y: Box<SomeTrait>) {
-LL + fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
-   |
+LL | fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
+   |                                   +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/dyn-2018-edition-lint.rs:17:14
@@ -41,9 +39,8 @@ LL |     let _x: &SomeTrait = todo!();
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL -     let _x: &SomeTrait = todo!();
-LL +     let _x: &dyn SomeTrait = todo!();
-   |
+LL |     let _x: &dyn SomeTrait = todo!();
+   |              +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/dyn-2018-edition-lint.rs:4:17
@@ -55,9 +52,8 @@ LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - fn function(x: &SomeTrait, y: Box<SomeTrait>) {
-LL + fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
-   |
+LL | fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
+   |                 +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/dyn-2018-edition-lint.rs:4:17
@@ -69,9 +65,8 @@ LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - fn function(x: &SomeTrait, y: Box<SomeTrait>) {
-LL + fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
-   |
+LL | fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
+   |                 +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/dyn-2018-edition-lint.rs:4:35
@@ -83,9 +78,8 @@ LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - fn function(x: &SomeTrait, y: Box<SomeTrait>) {
-LL + fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
-   |
+LL | fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
+   |                                   +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/dyn-2018-edition-lint.rs:4:35
@@ -97,9 +91,8 @@ LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - fn function(x: &SomeTrait, y: Box<SomeTrait>) {
-LL + fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
-   |
+LL | fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
+   |                                   +++
 
 error: aborting due to 7 previous errors
 

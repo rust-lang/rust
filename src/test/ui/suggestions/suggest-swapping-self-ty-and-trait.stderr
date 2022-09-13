@@ -42,9 +42,8 @@ LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL - impl<'a, T> Struct<T> for Trait<'a, T> {}
-LL + impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
-   |
+LL | impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
+   |                           +++
 
 error: aborting due to 3 previous errors; 1 warning emitted
 
