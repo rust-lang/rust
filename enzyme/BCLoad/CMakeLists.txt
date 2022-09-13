@@ -10,8 +10,8 @@ set_target_properties(blasheaders PROPERTIES EXCLUDE_FROM_ALL TRUE)
 elseif (${Clang_FOUND})
 include(ExternalProject)
 ExternalProject_Add(gsl
-    GIT_REPOSITORY https://github.com/ampl/gsl
-    GIT_TAG 6e40fb13a501393f3a9deb7c4fcbee85241a0339
+    GIT_REPOSITORY https://github.com/EnzymeAD/gsl
+    GIT_TAG 5805b8323f75834c121fd65464cc55f2828f5b05
     PREFIX gsl
     BUILD_IN_SOURCE 1
     INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/gsl/install
