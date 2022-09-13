@@ -3796,7 +3796,10 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
   std::vector<DIFFE_TYPE> types;
   for (auto &a : fn->args()) {
     uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
-    type_args.Arguments.insert(std::pair<Argument *, TypeTree>(&a, {}));
+    TypeTree TT;
+    if (a.getType()->isFPOrFPVectorTy())
+      TT.insert({-1}, ConcreteType(a.getType()->getScalarType()));
+    type_args.Arguments.insert(std::pair<Argument *, TypeTree>(&a, TT));
     type_args.KnownValues.insert(
         std::pair<Argument *, std::set<int64_t>>(&a, {}));
     DIFFE_TYPE typ;
@@ -3818,10 +3821,25 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
                                mode != DerivativeMode::ForwardMode
                            ? DIFFE_TYPE::OUT_DIFF
                            : DIFFE_TYPE::DUP_ARG;
+
   if (fn->getReturnType()->isVoidTy() || fn->getReturnType()->isEmptyTy() ||
       (fn->getReturnType()->isIntegerTy() &&
        cast<IntegerType>(fn->getReturnType())->getBitWidth() < 16))
     retType = DIFFE_TYPE::CONSTANT;
+
+  if (mode != DerivativeMode::ForwardMode && retType == DIFFE_TYPE::DUP_ARG) {
+    if (auto ST = dyn_cast<StructType>(fn->getReturnType())) {
+      size_t numflt = 0;
+
+      for (unsigned i = 0; i < ST->getNumElements(); ++i) {
+        auto midTy = ST->getElementType(i);
+        if (midTy->isFPOrFPVectorTy())
+          numflt++;
+      }
+      if (numflt == ST->getNumElements())
+        retType = DIFFE_TYPE::OUT_DIFF;
+    }
+  }
 
   switch (mode) {
   case DerivativeMode::ForwardMode: {
