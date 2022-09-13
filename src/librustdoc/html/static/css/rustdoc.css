@@ -609,16 +609,12 @@ h2.location a {
 .docblock-short {
 	overflow-wrap: break-word;
 	overflow-wrap: anywhere;
-}
-.docblock-short p {
-	display: inline;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	margin: 0;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
 .docblock > :not(pre) > code,
-.docblock-short > :not(pre) > code {
+.docblock-short > code {
 	white-space: pre-wrap;
 }
 

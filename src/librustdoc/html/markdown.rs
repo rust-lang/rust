@@ -1119,7 +1119,11 @@ impl MarkdownSummaryLine<'_> {
 
         let mut s = String::new();
 
-        html::push_html(&mut s, LinkReplacer::new(SummaryLine::new(p), links));
+        let without_paragraphs = LinkReplacer::new(SummaryLine::new(p), links).filter(|event| {
+            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(Tag::Paragraph))
+        });
+
+        html::push_html(&mut s, without_paragraphs);
 
         s
     }
