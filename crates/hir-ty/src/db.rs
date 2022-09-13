@@ -156,7 +156,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         &self,
         projection: crate::ProjectionTy,
         env: Arc<crate::TraitEnvironment>,
-    ) -> Option<crate::Ty>;
+    ) -> Ty;
 
     #[salsa::invoke(trait_solve_wait)]
     #[salsa::transparent]

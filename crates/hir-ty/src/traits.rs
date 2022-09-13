@@ -69,10 +69,10 @@ pub(crate) fn normalize_projection_query(
     db: &dyn HirDatabase,
     projection: ProjectionTy,
     env: Arc<TraitEnvironment>,
-) -> Option<Ty> {
-    let mut table = InferenceTable::new(db, env.clone());
+) -> Ty {
+    let mut table = InferenceTable::new(db, env);
     let ty = table.normalize_projection_ty(projection);
-    Some(table.resolve_completely(ty))
+    table.resolve_completely(ty)
 }
 
 /// Solve a trait goal using Chalk.

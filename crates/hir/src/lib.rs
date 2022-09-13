@@ -2892,7 +2892,12 @@ impl Type {
             })
             .build();
 
-        db.normalize_projection(projection, self.env.clone()).map(|ty| self.derived(ty))
+        let ty = db.normalize_projection(projection, self.env.clone());
+        if ty.is_unknown() {
+            None
+        } else {
+            Some(self.derived(ty))
+        }
     }
 
     pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {
