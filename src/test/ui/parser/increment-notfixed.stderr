@@ -8,9 +8,8 @@ help: use `+= 1` instead
    |
 LL |     { let tmp = i; i += 1; tmp };
    |     +++++++++++  ~~~~~~~~~~~~~~~
-LL -     i++;
-LL +     i += 1;
-   |
+LL |     i += 1;
+   |       ~~~~
 
 error: Rust has no postfix increment operator
   --> $DIR/increment-notfixed.rs:17:12
@@ -24,9 +23,8 @@ help: use `+= 1` instead
    |
 LL |     while { let tmp = i; i += 1; tmp } < 5 {
    |           +++++++++++  ~~~~~~~~~~~~~~~
-LL -     while i++ < 5 {
-LL +     while i += 1 < 5 {
-   |
+LL |     while i += 1 < 5 {
+   |             ~~~~
 
 error: Rust has no postfix increment operator
   --> $DIR/increment-notfixed.rs:25:8
@@ -38,9 +36,8 @@ help: use `+= 1` instead
    |
 LL |     { let tmp_ = tmp; tmp += 1; tmp_ };
    |     ++++++++++++    ~~~~~~~~~~~~~~~~~~
-LL -     tmp++;
-LL +     tmp += 1;
-   |
+LL |     tmp += 1;
+   |         ~~~~
 
 error: Rust has no postfix increment operator
   --> $DIR/increment-notfixed.rs:31:14
@@ -54,9 +51,8 @@ help: use `+= 1` instead
    |
 LL |     while { let tmp_ = tmp; tmp += 1; tmp_ } < 5 {
    |           ++++++++++++    ~~~~~~~~~~~~~~~~~~
-LL -     while tmp++ < 5 {
-LL +     while tmp += 1 < 5 {
-   |
+LL |     while tmp += 1 < 5 {
+   |               ~~~~
 
 error: Rust has no postfix increment operator
   --> $DIR/increment-notfixed.rs:39:16
@@ -68,9 +64,8 @@ help: use `+= 1` instead
    |
 LL |     { let tmp = foo.bar.qux; foo.bar.qux += 1; tmp };
    |     +++++++++++            ~~~~~~~~~~~~~~~~~~~~~~~~~
-LL -     foo.bar.qux++;
-LL +     foo.bar.qux += 1;
-   |
+LL |     foo.bar.qux += 1;
+   |                 ~~~~
 
 error: Rust has no postfix increment operator
   --> $DIR/increment-notfixed.rs:49:10
@@ -82,9 +77,8 @@ help: use `+= 1` instead
    |
 LL |     { let tmp = s.tmp; s.tmp += 1; tmp };
    |     +++++++++++      ~~~~~~~~~~~~~~~~~~~
-LL -     s.tmp++;
-LL +     s.tmp += 1;
-   |
+LL |     s.tmp += 1;
+   |           ~~~~
 
 error: Rust has no prefix increment operator
   --> $DIR/increment-notfixed.rs:56:5

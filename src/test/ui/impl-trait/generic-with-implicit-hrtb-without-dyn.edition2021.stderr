@@ -6,9 +6,8 @@ LL | fn ice() -> impl AsRef<Fn(&())> {
    |
 help: add `dyn` keyword before this trait
    |
-LL - fn ice() -> impl AsRef<Fn(&())> {
-LL + fn ice() -> impl AsRef<dyn Fn(&())> {
-   |
+LL | fn ice() -> impl AsRef<dyn Fn(&())> {
+   |                        +++
 
 error[E0277]: the trait bound `(): AsRef<(dyn for<'r> Fn(&'r ()) + 'static)>` is not satisfied
   --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:6:13

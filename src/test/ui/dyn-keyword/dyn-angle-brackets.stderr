@@ -13,9 +13,8 @@ LL | #![deny(bare_trait_objects)]
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL -         <fmt::Debug>::fmt(self, f)
-LL +         <dyn fmt::Debug>::fmt(self, f)
-   |
+LL |         <dyn fmt::Debug>::fmt(self, f)
+   |          +++
 
 error: aborting due to previous error
 
