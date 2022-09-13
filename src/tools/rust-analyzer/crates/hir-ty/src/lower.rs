@@ -981,43 +981,72 @@ impl<'a> TyLoweringContext<'a> {
 
     fn lower_dyn_trait(&self, bounds: &[Interned<TypeBound>]) -> Ty {
         let self_ty = TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
+        // INVARIANT: The principal trait bound must come first. Others may be in any order but
+        // should be in the same order for the same set but possibly different order of bounds in
+        // the input.
+        // This invariant is used by `TyExt::dyn_trait()` and chalk.
         let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-            let bounds =
-                bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false));
+            let mut bounds: Vec<_> = bounds
+                .iter()
+                .flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false))
+                .collect();
 
-            let mut auto_traits = SmallVec::<[_; 8]>::new();
-            let mut regular_traits = SmallVec::<[_; 2]>::new();
-            let mut other_bounds = SmallVec::<[_; 8]>::new();
-            for bound in bounds {
-                if let Some(id) = bound.trait_id() {
-                    if ctx.db.trait_data(from_chalk_trait_id(id)).is_auto {
-                        auto_traits.push(bound);
-                    } else {
-                        regular_traits.push(bound);
+            let mut multiple_regular_traits = false;
+            let mut multiple_same_projection = false;
+            bounds.sort_unstable_by(|lhs, rhs| {
+                use std::cmp::Ordering;
+                match (lhs.skip_binders(), rhs.skip_binders()) {
+                    (WhereClause::Implemented(lhs), WhereClause::Implemented(rhs)) => {
+                        let lhs_id = lhs.trait_id;
+                        let lhs_is_auto = ctx.db.trait_data(from_chalk_trait_id(lhs_id)).is_auto;
+                        let rhs_id = rhs.trait_id;
+                        let rhs_is_auto = ctx.db.trait_data(from_chalk_trait_id(rhs_id)).is_auto;
+
+                        if !lhs_is_auto && !rhs_is_auto {
+                            multiple_regular_traits = true;
+                        }
+                        // Note that the ordering here is important; this ensures the invariant
+                        // mentioned above.
+                        (lhs_is_auto, lhs_id).cmp(&(rhs_is_auto, rhs_id))
                     }
-                } else {
-                    other_bounds.push(bound);
+                    (WhereClause::Implemented(_), _) => Ordering::Less,
+                    (_, WhereClause::Implemented(_)) => Ordering::Greater,
+                    (WhereClause::AliasEq(lhs), WhereClause::AliasEq(rhs)) => {
+                        match (&lhs.alias, &rhs.alias) {
+                            (AliasTy::Projection(lhs_proj), AliasTy::Projection(rhs_proj)) => {
+                                // We only compare the `associated_ty_id`s. We shouldn't have
+                                // multiple bounds for an associated type in the correct Rust code,
+                                // and if we do, we error out.
+                                if lhs_proj.associated_ty_id == rhs_proj.associated_ty_id {
+                                    multiple_same_projection = true;
+                                }
+                                lhs_proj.associated_ty_id.cmp(&rhs_proj.associated_ty_id)
+                            }
+                            // We don't produce `AliasTy::Opaque`s yet.
+                            _ => unreachable!(),
+                        }
+                    }
+                    // We don't produce `WhereClause::{TypeOutlives, LifetimeOutlives}` yet.
+                    _ => unreachable!(),
                 }
-            }
+            });
 
-            if regular_traits.len() > 1 {
+            if multiple_regular_traits || multiple_same_projection {
                 return None;
             }
 
-            auto_traits.sort_unstable_by_key(|b| b.trait_id().unwrap());
-            auto_traits.dedup();
+            // As multiple occurrences of the same auto traits *are* permitted, we dedulicate the
+            // bounds. We shouldn't have repeated elements besides auto traits at this point.
+            bounds.dedup();
 
-            Some(QuantifiedWhereClauses::from_iter(
-                Interner,
-                regular_traits.into_iter().chain(other_bounds).chain(auto_traits),
-            ))
+            Some(QuantifiedWhereClauses::from_iter(Interner, bounds))
         });
 
         if let Some(bounds) = bounds {
             let bounds = crate::make_single_type_binders(bounds);
             TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
         } else {
-            // FIXME: report error (additional non-auto traits)
+            // FIXME: report error (additional non-auto traits or associated type rebound)
             TyKind::Error.intern(Interner)
         }
     }
