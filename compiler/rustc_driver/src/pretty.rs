@@ -396,6 +396,7 @@ pub fn print_after_parsing(
                     annotation.pp_ann(),
                     false,
                     parse.edition,
+                    &sess.parse_sess.attr_id_generator,
                 )
             })
         }
@@ -438,6 +439,7 @@ pub fn print_after_hir_lowering<'tcx>(
                     annotation.pp_ann(),
                     true,
                     parse.edition,
+                    &sess.parse_sess.attr_id_generator,
                 )
             })
         }

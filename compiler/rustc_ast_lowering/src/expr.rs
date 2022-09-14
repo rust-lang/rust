@@ -1552,7 +1552,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let uc_nested = attr::mk_nested_word_item(uc_ident);
                 attr::mk_list_item(allow_ident, vec![uc_nested])
             };
-            attr::mk_attr_outer(allow)
+            attr::mk_attr_outer(&self.tcx.sess.parse_sess.attr_id_generator, allow)
         };
         let attrs: AttrVec = thin_vec![attr];
 

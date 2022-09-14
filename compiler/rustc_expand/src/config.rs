@@ -424,7 +424,13 @@ impl<'a> StripUnconfigured<'a> {
         );
         trees.push(bracket_group);
         let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
-        let attr = attr::mk_attr_from_item(item, tokens, attr.style, item_span);
+        let attr = attr::mk_attr_from_item(
+            &self.sess.parse_sess.attr_id_generator,
+            item,
+            tokens,
+            attr.style,
+            item_span,
+        );
         if attr.has_name(sym::crate_type) {
             self.sess.parse_sess.buffer_lint(
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,

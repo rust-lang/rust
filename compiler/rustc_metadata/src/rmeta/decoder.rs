@@ -450,6 +450,13 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
     }
 }
 
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ast::AttrId {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> ast::AttrId {
+        let sess = d.sess.expect("can't decode AttrId without Session");
+        sess.parse_sess.attr_id_generator.mk_attr_id()
+    }
+}
+
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> SyntaxContext {
         let cdata = decoder.cdata();
