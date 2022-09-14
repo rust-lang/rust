@@ -63,7 +63,7 @@ impl<'a> Validator<'a> {
                 ItemEnum::Struct(x) => self.check_struct(x),
                 ItemEnum::StructField(x) => self.check_struct_field(x),
                 ItemEnum::Enum(x) => self.check_enum(x),
-                ItemEnum::Variant(x) => self.check_variant(x),
+                ItemEnum::Variant(x) => self.check_variant(x, id),
                 ItemEnum::Function(x) => self.check_function(x),
                 ItemEnum::Trait(x) => self.check_trait(x),
                 ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
@@ -135,9 +135,23 @@ impl<'a> Validator<'a> {
         x.impls.iter().for_each(|i| self.add_impl_id(i));
     }
 
-    fn check_variant(&mut self, x: &'a Variant) {
+    fn check_variant(&mut self, x: &'a Variant, id: &'a Id) {
         match x {
-            Variant::Plain(_discriminant) => {} // TODO: Check discriminant value parses
+            Variant::Plain(discr) => {
+                if let Some(discr) = discr {
+                    if let (Err(_), Err(_)) =
+                        (discr.value.parse::<i128>(), discr.value.parse::<u128>())
+                    {
+                        self.fail(
+                            id,
+                            ErrorKind::Custom(format!(
+                                "Failed to parse discriminant value `{}`",
+                                discr.value
+                            )),
+                        );
+                    }
+                }
+            }
             Variant::Tuple(tys) => tys.iter().flatten().for_each(|t| self.add_field_id(t)),
             Variant::Struct { fields, fields_stripped: _ } => {
                 fields.iter().for_each(|f| self.add_field_id(f))
@@ -198,15 +212,15 @@ impl<'a> Validator<'a> {
     }
 
     fn check_macro(&mut self, _: &'a str) {
-        // TODO
+        // nop
     }
 
     fn check_proc_macro(&mut self, _: &'a ProcMacro) {
-        // TODO
+        // nop
     }
 
     fn check_primitive_type(&mut self, _: &'a str) {
-        // TODO
+        // nop
     }
 
     fn check_generics(&mut self, x: &'a Generics) {
