@@ -23,6 +23,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::marker::Destruct;
+use crate::marker::StructuralPartialEq;
 
 use self::Ordering::*;
 
@@ -338,7 +339,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// let result = 2.cmp(&1);
 /// assert_eq!(Ordering::Greater, result);
 /// ```
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, Eq, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(i8)]
 pub enum Ordering {
@@ -882,6 +883,18 @@ pub trait Ord: Eq + PartialOrd<Self> {
 #[allow_internal_unstable(core_intrinsics)]
 pub macro Ord($item:item) {
     /* compiler built-in */
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl StructuralPartialEq for Ordering {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+impl const PartialEq for Ordering {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        (*self as i32).eq(&(*other as i32))
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
