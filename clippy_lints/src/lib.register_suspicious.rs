@@ -35,6 +35,5 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
     LintId::of(suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
     LintId::of(swap_ptr_to_ref::SWAP_PTR_TO_REF),
-    LintId::of(unused_peekable::UNUSED_PEEKABLE),
     LintId::of(write::POSITIONAL_NAMED_FORMAT_PARAMETERS),
 ])

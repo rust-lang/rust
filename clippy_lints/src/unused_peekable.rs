@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.64.0"]
     pub UNUSED_PEEKABLE,
-    suspicious,
+    nursery,
     "creating a peekable iterator without using any of its methods"
 }
 
