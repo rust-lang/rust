@@ -17,6 +17,11 @@ fn main() {
     } else {
         0
     };
+    if a {
+        0
+    } else {
+        1
+    };
     if !a {
         1
     } else {
@@ -45,6 +50,15 @@ fn main() {
         1
     } else {
         0
+    };
+
+    // if else if inverted
+    if a {
+        123
+    } else if b {
+        0
+    } else {
+        1
     };
 
     // Shouldn't lint
