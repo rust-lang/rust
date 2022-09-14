@@ -1,3 +1,4 @@
+use rustc_ast::Path;
 use rustc_errors::{fluent, AddToDiagnostic, Applicability, EmissionGuarantee, IntoDiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -536,7 +537,7 @@ pub(crate) struct ComparisonInterpretedAsGeneric {
     #[primary_span]
     #[label(parser::label_comparison)]
     pub comparison: Span,
-    pub typename: String,
+    pub r#type: Path,
     #[label(parser::label_args)]
     pub args: Span,
     #[subdiagnostic]
@@ -549,7 +550,7 @@ pub(crate) struct ShiftInterpretedAsGeneric {
     #[primary_span]
     #[label(parser::label_comparison)]
     pub shift: Span,
-    pub typename: String,
+    pub r#type: Path,
     #[label(parser::label_args)]
     pub args: Span,
     #[subdiagnostic]
@@ -597,7 +598,7 @@ pub(crate) struct LeadingPlusNotSupported {
 pub(crate) struct ParenthesesWithStructFields {
     #[primary_span]
     pub span: Span,
-    pub name: String,
+    pub r#type: Path,
     #[subdiagnostic]
     pub braces_for_struct: BracesForStructLiteral,
     #[subdiagnostic]

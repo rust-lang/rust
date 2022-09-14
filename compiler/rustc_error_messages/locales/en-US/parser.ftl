@@ -165,13 +165,13 @@ parser_use_empty_block_not_semi = expected { "`{}`" }, found `;`
     .suggestion = try using { "`{}`" } instead
 
 parser_comparison_interpreted_as_generic =
-    `<` is interpreted as a start of generic arguments for `{$typename}`, not a comparison
+    `<` is interpreted as a start of generic arguments for `{$type}`, not a comparison
     .label_args = interpreted as generic arguments
     .label_comparison = not interpreted as comparison
     .suggestion = try comparing the cast value
 
 parser_shift_interpreted_as_generic =
-    `<<` is interpreted as a start of generic arguments for `{$typename}`, not a shift
+    `<<` is interpreted as a start of generic arguments for `{$type}`, not a shift
     .label_args = interpreted as generic arguments
     .label_comparison = not interpreted as shift
     .suggestion = try shifting the cast value
@@ -184,8 +184,8 @@ parser_leading_plus_not_supported = leading `+` is not supported
     .suggestion_remove_plus = try removing the `+`
 
 parser_parentheses_with_struct_fields = invalid `struct` delimiters or `fn` call arguments
-    .suggestion_braces_for_struct = if `{$name}` is a struct, use braces as delimiters
-    .suggestion_no_fields_for_fn = if `{$name}` is a function, use the arguments directly
+    .suggestion_braces_for_struct = if `{$type}` is a struct, use braces as delimiters
+    .suggestion_no_fields_for_fn = if `{$type}` is a function, use the arguments directly
 
 parser_labeled_loop_in_break = parentheses are required around this expression to avoid confusion with a labeled break expression
 

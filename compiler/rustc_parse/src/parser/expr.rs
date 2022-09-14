@@ -756,11 +756,12 @@ impl<'a> Parser<'a> {
 
                 match self.parse_path(PathStyle::Expr) {
                     Ok(path) => {
-                        let typename = pprust::path_to_string(&path);
-
                         let span_after_type = parser_snapshot_after_type.token.span;
-                        let expr =
-                            mk_expr(self, lhs, self.mk_ty(path.span, TyKind::Path(None, path)));
+                        let expr = mk_expr(
+                            self,
+                            lhs,
+                            self.mk_ty(path.span, TyKind::Path(None, path.clone())),
+                        );
 
                         let args_span = self.look_ahead(1, |t| t.span).to(span_after_type);
                         let suggestion = ComparisonOrShiftInterpretedAsGenericSugg {
@@ -771,14 +772,14 @@ impl<'a> Parser<'a> {
                         match self.token.kind {
                             token::Lt => self.sess.emit_err(ComparisonInterpretedAsGeneric {
                                 comparison: self.token.span,
-                                typename,
+                                r#type: path,
                                 args: args_span,
                                 suggestion,
                             }),
                             token::BinOp(token::Shl) => {
                                 self.sess.emit_err(ShiftInterpretedAsGeneric {
                                     shift: self.token.span,
-                                    typename,
+                                    r#type: path,
                                     args: args_span,
                                     suggestion,
                                 })
@@ -1197,9 +1198,8 @@ impl<'a> Parser<'a> {
     ) -> Option<P<Expr>> {
         match (seq.as_mut(), snapshot) {
             (Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
-                let name = pprust::path_to_string(&path);
                 snapshot.bump(); // `(`
-                match snapshot.parse_struct_fields(path, false, Delimiter::Parenthesis) {
+                match snapshot.parse_struct_fields(path.clone(), false, Delimiter::Parenthesis) {
                     Ok((fields, ..))
                         if snapshot.eat(&token::CloseDelim(Delimiter::Parenthesis)) =>
                     {
@@ -1211,7 +1211,7 @@ impl<'a> Parser<'a> {
                         if !fields.is_empty() {
                             let mut replacement_err = ParenthesesWithStructFields {
                                 span,
-                                name,
+                                r#type: path,
                                 braces_for_struct: BracesForStructLiteral {
                                     first: open_paren,
                                     second: close_paren,
