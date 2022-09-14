@@ -203,28 +203,8 @@ fn make_invalid_casting_error<'a, 'tcx>(
     )
 }
 
-pub enum CastCheckResult<'tcx> {
-    Ok,
-    Deferred(CastCheck<'tcx>),
-    Err(ErrorGuaranteed),
-}
-
-pub fn check_cast<'tcx>(
-    fcx: &FnCtxt<'_, 'tcx>,
-    expr: &'tcx hir::Expr<'tcx>,
-    expr_ty: Ty<'tcx>,
-    cast_ty: Ty<'tcx>,
-    cast_span: Span,
-    span: Span,
-) -> CastCheckResult<'tcx> {
-    match CastCheck::new(fcx, expr, expr_ty, cast_ty, cast_span, span) {
-        Ok(check) => CastCheckResult::Deferred(check),
-        Err(e) => CastCheckResult::Err(e),
-    }
-}
-
 impl<'a, 'tcx> CastCheck<'tcx> {
-    fn new(
+    pub fn new(
         fcx: &FnCtxt<'a, 'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,

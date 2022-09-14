@@ -3,7 +3,7 @@
 //! See `mod.rs` for more context on type checking in general.
 
 use crate::astconv::AstConv as _;
-use crate::check::cast::{self, CastCheckResult};
+use crate::check::cast;
 use crate::check::coercion::CoerceMany;
 use crate::check::fatally_break_rust;
 use crate::check::method::SelfSource;
@@ -1270,9 +1270,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-            match cast::check_cast(self, e, t_expr, t_cast, t.span, expr.span) {
-                CastCheckResult::Ok => t_cast,
-                CastCheckResult::Deferred(cast_check) => {
+            match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
+                Ok(cast_check) => {
                     debug!(
                         "check_expr_cast: deferring cast from {:?} to {:?}: {:?}",
                         t_cast, t_expr, cast_check,
@@ -1280,7 +1279,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     deferred_cast_checks.push(cast_check);
                     t_cast
                 }
-                CastCheckResult::Err(ErrorGuaranteed { .. }) => self.tcx.ty_error(),
+                Err(_) => self.tcx.ty_error(),
             }
         }
     }
