@@ -30,7 +30,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --release-sysroot)
-            sysroot_channel=release
+            sysroot_channel="--release"
             shift
             ;;
         --no-default-features)
@@ -157,7 +157,7 @@ function mini_tests() {
 
 function build_sysroot() {
     echo "[BUILD] sysroot"
-    time ./build_sysroot/build_sysroot.sh
+    time ./build_sysroot/build_sysroot.sh $sysroot_channel
 }
 
 function std_tests() {
