@@ -269,7 +269,7 @@ fn check_other_call_arg<'tcx>(
         // We can't add an `&` when the trait is `Deref` because `Target = &T` won't match
         // `Target = T`.
         if n_refs > 0 || is_copy(cx, receiver_ty) || trait_predicate.def_id() != deref_trait_id;
-        let n_refs = max(n_refs, if is_copy(cx, receiver_ty) { 0 } else { 1 });
+        let n_refs = max(n_refs, usize::from(!is_copy(cx, receiver_ty)));
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             span_lint_and_sugg(
