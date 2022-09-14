@@ -250,7 +250,7 @@ pub trait FnOnce<Args> {
 
 mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "none")]
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
     impl<A, F: ?Sized> const Fn<A> for &F
     where
         F: ~const Fn<A>,
@@ -261,7 +261,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "none")]
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
     impl<A, F: ?Sized> const FnMut<A> for &F
     where
         F: ~const Fn<A>,
@@ -272,7 +272,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "none")]
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
     impl<A, F: ?Sized> const FnOnce<A> for &F
     where
         F: ~const Fn<A>,
@@ -285,7 +285,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "none")]
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
     impl<A, F: ?Sized> const FnMut<A> for &mut F
     where
         F: ~const FnMut<A>,
@@ -296,7 +296,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "none")]
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
     impl<A, F: ?Sized> const FnOnce<A> for &mut F
     where
         F: ~const FnMut<A>,
