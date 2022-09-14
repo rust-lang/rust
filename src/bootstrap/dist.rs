@@ -2050,6 +2050,41 @@ impl Step for RustDev {
     }
 }
 
+// Tarball intended for internal consumption to ease rustc/std development.
+//
+// Should not be considered stable by end users.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Bootstrap {
+    pub target: TargetSelection,
+}
+
+impl Step for Bootstrap {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("bootstrap")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Bootstrap { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        let target = self.target;
+
+        let tarball = Tarball::new(builder, "bootstrap", &target.triple);
+
+        let bootstrap_outdir = &builder.bootstrap_out;
+        for file in &["bootstrap", "llvm-config-wrapper", "rustc", "rustdoc", "sccache-plus-cl"] {
+            tarball.add_file(bootstrap_outdir.join(file), "bootstrap/bin", 0o755);
+        }
+
+        Some(tarball.generate())
+    }
+}
+
 /// Tarball containing a prebuilt version of the build-manifest tool, intended to be used by the
 /// release process to avoid cloning the monorepo and building stuff.
 ///
