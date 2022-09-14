@@ -21,10 +21,7 @@ pub(crate) struct OutlivesConstraintSet<'tcx> {
 
 impl<'tcx> OutlivesConstraintSet<'tcx> {
     pub(crate) fn push(&mut self, constraint: OutlivesConstraint<'tcx>) {
-        debug!(
-            "OutlivesConstraintSet::push({:?}: {:?} @ {:?}",
-            constraint.sup, constraint.sub, constraint.locations
-        );
+        debug!("OutlivesConstraintSet::push({:?})", constraint);
         if constraint.sup == constraint.sub {
             // 'a: 'a is pretty uninteresting
             return;
@@ -73,7 +70,7 @@ impl<'tcx> Index<OutlivesConstraintIndex> for OutlivesConstraintSet<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct OutlivesConstraint<'tcx> {
     // NB. The ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the

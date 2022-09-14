@@ -1,5 +1,5 @@
 error[E0277]: `NotSend` cannot be sent between threads safely
-  --> $DIR/partial-drop-partial-reinit.rs:6:16
+  --> $DIR/partial-drop-partial-reinit.rs:9:16
    |
 LL |     gimme_send(foo());
    |     ---------- ^^^^^ `NotSend` cannot be sent between threads safely
@@ -11,9 +11,9 @@ LL | async fn foo() {
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `NotSend`
    = note: required because it appears within the type `(NotSend,)`
-   = note: required because it captures the following types: `ResumeTy`, `(NotSend,)`, `impl Future<Output = ()>`, `()`
+   = note: required because it captures the following types: `ResumeTy`, `(NotSend,)`, `()`, `impl Future<Output = ()>`
 note: required because it's used within this `async fn` body
-  --> $DIR/partial-drop-partial-reinit.rs:28:16
+  --> $DIR/partial-drop-partial-reinit.rs:31:16
    |
 LL |   async fn foo() {
    |  ________________^
@@ -25,7 +25,7 @@ LL | |     bar().await;
 LL | | }
    | |_^
 note: required by a bound in `gimme_send`
-  --> $DIR/partial-drop-partial-reinit.rs:14:18
+  --> $DIR/partial-drop-partial-reinit.rs:17:18
    |
 LL | fn gimme_send<T: Send>(t: T) {
    |                  ^^^^ required by this bound in `gimme_send`

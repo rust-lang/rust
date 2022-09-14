@@ -86,7 +86,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
-    pub(super) fn convert(&mut self, query_constraint: &QueryOutlivesConstraint<'tcx>) {
+    fn convert(&mut self, query_constraint: &QueryOutlivesConstraint<'tcx>) {
         debug!("generate: constraints at: {:#?}", self.locations);
 
         // Extract out various useful fields we'll need below.
@@ -98,15 +98,18 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         // region constraints like `for<'a> 'a: 'b`. At some point
         // when we move to universes, we will, and this assertion
         // will start to fail.
-        let ty::OutlivesPredicate(k1, r2) = query_constraint.no_bound_vars().unwrap_or_else(|| {
-            bug!("query_constraint {:?} contained bound vars", query_constraint,);
-        });
+        let ty::OutlivesPredicate(k1, r2) =
+            query_constraint.0.no_bound_vars().unwrap_or_else(|| {
+                bug!("query_constraint {:?} contained bound vars", query_constraint,);
+            });
+
+        let constraint_category = query_constraint.1;
 
         match k1.unpack() {
             GenericArgKind::Lifetime(r1) => {
                 let r1_vid = self.to_region_vid(r1);
                 let r2_vid = self.to_region_vid(r2);
-                self.add_outlives(r1_vid, r2_vid);
+                self.add_outlives(r1_vid, r2_vid, constraint_category);
             }
 
             GenericArgKind::Type(t1) => {
@@ -121,7 +124,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     Some(implicit_region_bound),
                     param_env,
                 )
-                .type_must_outlive(origin, t1, r2);
+                .type_must_outlive(origin, t1, r2, constraint_category);
             }
 
             GenericArgKind::Const(_) => {
@@ -168,10 +171,19 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
-    fn add_outlives(&mut self, sup: ty::RegionVid, sub: ty::RegionVid) {
+    fn add_outlives(
+        &mut self,
+        sup: ty::RegionVid,
+        sub: ty::RegionVid,
+        category: ConstraintCategory<'tcx>,
+    ) {
+        let category = match self.category {
+            ConstraintCategory::Boring | ConstraintCategory::BoringNoLocation => category,
+            _ => self.category,
+        };
         self.constraints.outlives_constraints.push(OutlivesConstraint {
             locations: self.locations,
-            category: self.category,
+            category,
             span: self.span,
             sub,
             sup,
@@ -191,10 +203,11 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         _origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
+        constraint_category: ConstraintCategory<'tcx>,
     ) {
         let b = self.to_region_vid(b);
         let a = self.to_region_vid(a);
-        self.add_outlives(b, a);
+        self.add_outlives(b, a, constraint_category);
     }
 
     fn push_verify(

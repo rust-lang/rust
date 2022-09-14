@@ -686,15 +686,6 @@ pre, .rustdoc.source .example-wrap {
 	position: relative;
 }
 
-.content table {
-	border-spacing: 0 5px;
-}
-.content td { vertical-align: top; }
-.content td:first-child { padding-right: 20px; }
-.content td p:first-child { margin-top: 0; }
-.content td h1, .content td h2 { margin-left: 0; font-size: 1.125rem; }
-.content tr:first-child td { border-top: 0; }
-
 .docblock table {
 	margin: .5em 0;
 	width: calc(100% - 2px);
@@ -705,6 +696,7 @@ pre, .rustdoc.source .example-wrap {
 .docblock table td {
 	padding: .5em;
 	border: 1px dashed var(--border-color);
+	vertical-align: top;
 }
 
 .docblock table th {
@@ -1267,7 +1259,6 @@ a.test-arrow:hover {
 }
 
 .out-of-band > span.since {
-	position: initial;
 	font-size: 1.25rem;
 }
 

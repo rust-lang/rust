@@ -31,7 +31,7 @@ use crate::session_diagnostics::{
 };
 
 use super::{OutlivesSuggestionBuilder, RegionName};
-use crate::region_infer::BlameConstraint;
+use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::{
     nll::ConstraintDescription,
     region_infer::{values::RegionElement, TypeTest},
@@ -234,7 +234,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                     // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
                     let (_, cause) = self.regioncx.find_outlives_blame_span(
-                        &self.body,
                         longer_fr,
                         NllRegionVariableOrigin::Placeholder(placeholder),
                         error_vid,
@@ -355,10 +354,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let BlameConstraint { category, cause, variance_info, from_closure: _ } =
-            self.regioncx.best_blame_constraint(&self.body, fr, fr_origin, |r| {
+        let (blame_constraint, extra_info) =
+            self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
                 self.regioncx.provides_universal_region(r, fr, outlived_fr)
             });
+        let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
 
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
 
@@ -467,6 +467,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         }
 
+        for extra in extra_info {
+            match extra {
+                ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
+                    diag.span_note(span, format!("due to current limitations in the borrow checker, this implies a `'static` lifetime"));
+                }
+            }
+        }
+
         self.buffer_error(diag);
     }
 
@@ -558,6 +566,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// LL |     ref_obj(x)
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
     /// ```
+    #[instrument(level = "debug", skip(self))]
     fn report_escaping_data_error(
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
