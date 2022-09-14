@@ -30,6 +30,11 @@ pub struct Validator<'a> {
     missing_ids: HashSet<&'a Id>,
 }
 
+enum PathKind {
+    Trait,
+    StructEnumUnion,
+}
+
 impl<'a> Validator<'a> {
     pub fn new(krate: &'a Crate) -> Self {
         Self {
@@ -165,7 +170,7 @@ impl<'a> Validator<'a> {
     fn check_impl(&mut self, x: &'a Impl) {
         self.check_generics(&x.generics);
         if let Some(path) = &x.trait_ {
-            self.check_path(path); // TODO: Check is trait.
+            self.check_path(path, PathKind::Trait);
         }
         self.check_type(&x.for_);
         x.items.iter().for_each(|i| self.add_trait_item_id(i));
@@ -211,7 +216,7 @@ impl<'a> Validator<'a> {
 
     fn check_type(&mut self, x: &'a Type) {
         match x {
-            Type::ResolvedPath(path) => self.check_path(path),
+            Type::ResolvedPath(path) => self.check_path(path, PathKind::StructEnumUnion),
             Type::DynTrait(dyn_trait) => self.check_dyn_trait(dyn_trait),
             Type::Generic(_) => {}
             Type::Primitive(_) => {}
@@ -226,7 +231,7 @@ impl<'a> Validator<'a> {
             Type::QualifiedPath { name: _, args, self_type, trait_ } => {
                 self.check_generic_args(&**args);
                 self.check_type(&**self_type);
-                self.check_path(trait_);
+                self.check_path(trait_, PathKind::Trait);
             }
         }
     }
@@ -241,15 +246,18 @@ impl<'a> Validator<'a> {
     fn check_generic_bound(&mut self, x: &'a GenericBound) {
         match x {
             GenericBound::TraitBound { trait_, generic_params, modifier: _ } => {
-                self.check_path(trait_);
+                self.check_path(trait_, PathKind::Trait);
                 generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
             }
             GenericBound::Outlives(_) => {}
         }
     }
 
-    fn check_path(&mut self, x: &'a Path) {
-        self.add_id(&x.id); // TODO: What kinds are allowed here.
+    fn check_path(&mut self, x: &'a Path, kind: PathKind) {
+        match kind {
+            PathKind::Trait => self.add_trait_id(&x.id),
+            PathKind::StructEnumUnion => self.add_struct_enum_union_id(&x.id),
+        }
         if let Some(args) = &x.args {
             self.check_generic_args(&**args);
         }
@@ -330,7 +338,7 @@ impl<'a> Validator<'a> {
 
     fn check_dyn_trait(&mut self, dyn_trait: &'a DynTrait) {
         for pt in &dyn_trait.traits {
-            self.check_path(&pt.trait_);
+            self.check_path(&pt.trait_, PathKind::Trait);
             pt.generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
         }
     }
@@ -338,13 +346,6 @@ impl<'a> Validator<'a> {
     fn check_function_pointer(&mut self, fp: &'a FunctionPointer) {
         self.check_fn_decl(&fp.decl);
         fp.generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
-    }
-
-    // TODO: Remove
-    fn add_id(&mut self, id: &'a Id) {
-        if !self.seen_ids.contains(id) {
-            self.todo.insert(id);
-        }
     }
 
     fn add_id_checked(&mut self, id: &'a Id, valid: fn(Kind) -> bool, expected: &str) {
@@ -377,6 +378,14 @@ impl<'a> Validator<'a> {
 
     fn add_variant_id(&mut self, id: &'a Id) {
         self.add_id_checked(id, Kind::is_variant, "Variant");
+    }
+
+    fn add_trait_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::is_trait, "Trait");
+    }
+
+    fn add_struct_enum_union_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::is_struct_enum_union, "Struct or Enum or Union");
     }
 
     /// Add an Id that appeared in a trait
