@@ -74,6 +74,7 @@
 #![feature(iterator_try_reduce)]
 #![feature(const_mut_refs)]
 #![feature(const_pin)]
+#![feature(const_waker)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(pointer_byte_offsets)]

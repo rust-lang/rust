@@ -145,6 +145,7 @@
 #![feature(const_default_impls)]
 #![feature(const_unicode_case_lookup)]
 #![feature(const_unsafecell_get_mut)]
+#![feature(const_waker)]
 #![feature(core_panic)]
 #![feature(duration_consts_float)]
 #![feature(maybe_uninit_uninit_array)]

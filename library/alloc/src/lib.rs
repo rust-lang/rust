@@ -109,6 +109,7 @@
 #![feature(core_intrinsics)]
 #![feature(const_eval_select)]
 #![feature(const_pin)]
+#![feature(const_waker)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
 #![cfg_attr(not(bootstrap), feature(error_generic_member_access))]
