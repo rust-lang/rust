@@ -377,10 +377,10 @@ fn match_loop_inner<'t>(
         let op = match item.dot.peek() {
             None => {
                 // We are at or past the end of the matcher of `item`.
-                if item.up.is_some() {
+                if let Some(up) = &item.up {
                     if item.sep_parsed.is_none() {
                         // Get the `up` matcher
-                        let mut new_pos = *item.up.clone().unwrap();
+                        let mut new_pos = (**up).clone();
                         new_pos.bindings = bindings_builder.copy(&new_pos.bindings);
                         // Add matches from this repetition to the `matches` of `up`
                         bindings_builder.push_nested(&mut new_pos.bindings, &item.bindings);
