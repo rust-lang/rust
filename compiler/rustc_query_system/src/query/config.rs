@@ -25,11 +25,11 @@ pub struct QueryVTable<CTX: QueryContext, K, V> {
     pub dep_kind: CTX::DepKind,
     pub eval_always: bool,
     pub depth_limit: bool,
-    pub cache_on_disk: bool,
 
     pub compute: fn(CTX::DepContext, K) -> V,
     pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
     pub handle_cycle_error: HandleCycleError,
+    // NOTE: this is also `None` if `cache_on_disk()` returns false, not just if it's unsupported by the query
     pub try_load_from_disk: Option<fn(CTX, SerializedDepNodeIndex) -> Option<V>>,
 }
 
@@ -44,18 +44,9 @@ impl<CTX: QueryContext, K, V> QueryVTable<CTX, K, V> {
     pub(crate) fn compute(&self, tcx: CTX::DepContext, key: K) -> V {
         (self.compute)(tcx, key)
     }
-
-    pub(crate) fn try_load_from_disk(&self, tcx: CTX, index: SerializedDepNodeIndex) -> Option<V> {
-        self.try_load_from_disk
-            .expect("QueryDescription::load_from_disk() called for an unsupported query.")(
-            tcx, index,
-        )
-    }
 }
 
 pub trait QueryDescription<CTX: QueryContext>: QueryConfig {
-    const TRY_LOAD_FROM_DISK: Option<fn(CTX, SerializedDepNodeIndex) -> Option<Self::Value>>;
-
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
     fn describe(tcx: CTX, key: Self::Key) -> String;

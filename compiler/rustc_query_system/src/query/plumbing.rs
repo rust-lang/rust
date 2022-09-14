@@ -488,14 +488,14 @@ where
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if query.cache_on_disk {
+    if let Some(try_load_from_disk) = query.try_load_from_disk {
         let prof_timer = tcx.dep_context().profiler().incr_cache_loading();
 
         // The call to `with_query_deserialization` enforces that no new `DepNodes`
         // are created during deserialization. See the docs of that method for more
         // details.
-        let result = dep_graph
-            .with_query_deserialization(|| query.try_load_from_disk(tcx, prev_dep_node_index));
+        let result =
+            dep_graph.with_query_deserialization(|| try_load_from_disk(tcx, prev_dep_node_index));
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 

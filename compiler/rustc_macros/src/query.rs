@@ -86,13 +86,10 @@ struct QueryModifiers {
     desc: (Option<Ident>, Punctuated<Expr, Token![,]>),
 
     /// Use this type for the in-memory cache.
-    storage: Option<Type>,
+    arena_cache: Option<Ident>,
 
     /// Cache the query to disk if the `Block` returns true.
     cache: Option<(Option<Pat>, Block)>,
-
-    /// Custom code to load the query from disk.
-    load_cached: Option<(Ident, Ident, Block)>,
 
     /// A cycle error for this query aborting the compilation with a fatal error.
     fatal_cycle: Option<Ident>,
@@ -120,8 +117,7 @@ struct QueryModifiers {
 }
 
 fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
-    let mut load_cached = None;
-    let mut storage = None;
+    let mut arena_cache = None;
     let mut cache = None;
     let mut desc = None;
     let mut fatal_cycle = None;
@@ -173,21 +169,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             };
             let block = input.parse()?;
             try_insert!(cache = (args, block));
-        } else if modifier == "load_cached" {
-            // Parse a load_cached modifier like:
-            // `load_cached(tcx, id) { tcx.on_disk_cache.try_load_query_result(tcx, id) }`
-            let args;
-            parenthesized!(args in input);
-            let tcx = args.parse()?;
-            args.parse::<Token![,]>()?;
-            let id = args.parse()?;
-            let block = input.parse()?;
-            try_insert!(load_cached = (tcx, id, block));
-        } else if modifier == "storage" {
-            let args;
-            parenthesized!(args in input);
-            let ty = args.parse()?;
-            try_insert!(storage = ty);
+        } else if modifier == "arena_cache" {
+            try_insert!(arena_cache = modifier);
         } else if modifier == "fatal_cycle" {
             try_insert!(fatal_cycle = modifier);
         } else if modifier == "cycle_delay_bug" {
@@ -212,8 +195,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         return Err(input.error("no description provided"));
     };
     Ok(QueryModifiers {
-        load_cached,
-        storage,
+        arena_cache,
         cache,
         desc,
         fatal_cycle,
@@ -262,20 +244,6 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
 
     // Find out if we should cache the query on disk
     let cache = if let Some((args, expr)) = modifiers.cache.as_ref() {
-        let try_load_from_disk = if let Some((tcx, id, block)) = modifiers.load_cached.as_ref() {
-            // Use custom code to load the query from disk
-            quote! {
-                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<'tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
-                    = Some(|#tcx, #id| { #block });
-            }
-        } else {
-            // Use the default code to load the query from disk
-            quote! {
-                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<'tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
-                    = Some(|tcx, id| tcx.on_disk_cache().as_ref()?.try_load_query_result(*tcx, id));
-            }
-        };
-
         let tcx = args.as_ref().map(|t| quote! { #t }).unwrap_or_else(|| quote! { _ });
         // expr is a `Block`, meaning that `{ #expr }` gets expanded
         // to `{ { stmts... } }`, which triggers the `unused_braces` lint.
@@ -285,20 +253,13 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
             fn cache_on_disk(#tcx: TyCtxt<'tcx>, #key: &Self::Key) -> bool {
                 #expr
             }
-
-            #try_load_from_disk
         }
     } else {
-        if modifiers.load_cached.is_some() {
-            panic!("load_cached modifier on query `{}` without a cache modifier", name);
-        }
         quote! {
             #[inline]
             fn cache_on_disk(_: TyCtxt<'tcx>, _: &Self::Key) -> bool {
                 false
             }
-
-            const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<'tcx>, SerializedDepNodeIndex) -> Option<Self::Value>> = None;
         }
     };
 
@@ -347,42 +308,28 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
         let mut attributes = Vec::new();
 
-        // Pass on the fatal_cycle modifier
-        if let Some(fatal_cycle) = &modifiers.fatal_cycle {
-            attributes.push(quote! { (#fatal_cycle) });
-        };
-        // Pass on the storage modifier
-        if let Some(ref ty) = modifiers.storage {
-            let span = ty.span();
-            attributes.push(quote_spanned! {span=> (storage #ty) });
-        };
-        // Pass on the cycle_delay_bug modifier
-        if let Some(cycle_delay_bug) = &modifiers.cycle_delay_bug {
-            attributes.push(quote! { (#cycle_delay_bug) });
-        };
-        // Pass on the no_hash modifier
-        if let Some(no_hash) = &modifiers.no_hash {
-            attributes.push(quote! { (#no_hash) });
-        };
-        // Pass on the anon modifier
-        if let Some(anon) = &modifiers.anon {
-            attributes.push(quote! { (#anon) });
-        };
-        // Pass on the eval_always modifier
-        if let Some(eval_always) = &modifiers.eval_always {
-            attributes.push(quote! { (#eval_always) });
-        };
-        // Pass on the depth_limit modifier
-        if let Some(depth_limit) = &modifiers.depth_limit {
-            attributes.push(quote! { (#depth_limit) });
-        };
-        // Pass on the separate_provide_extern modifier
-        if let Some(separate_provide_extern) = &modifiers.separate_provide_extern {
-            attributes.push(quote! { (#separate_provide_extern) });
+        macro_rules! passthrough {
+            ( $( $modifier:ident ),+ $(,)? ) => {
+                $( if let Some($modifier) = &modifiers.$modifier {
+                    attributes.push(quote! { (#$modifier) });
+                }; )+
+            }
         }
-        // Pass on the remap_env_constness modifier
-        if let Some(remap_env_constness) = &modifiers.remap_env_constness {
-            attributes.push(quote! { (#remap_env_constness) });
+
+        passthrough!(
+            fatal_cycle,
+            arena_cache,
+            cycle_delay_bug,
+            no_hash,
+            anon,
+            eval_always,
+            depth_limit,
+            separate_provide_extern,
+            remap_env_constness,
+        );
+
+        if modifiers.cache.is_some() {
+            attributes.push(quote! { (cache) });
         }
 
         // This uses the span of the query definition for the commas,

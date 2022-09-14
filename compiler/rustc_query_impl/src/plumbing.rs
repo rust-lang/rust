@@ -3,6 +3,7 @@
 //! manage the caches, and so forth.
 
 use crate::keys::Key;
+use crate::on_disk_cache::CacheDecoder;
 use crate::{on_disk_cache, Queries};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock};
@@ -19,6 +20,7 @@ use rustc_query_system::query::{
     QuerySideEffects, QueryStackFrame,
 };
 use rustc_query_system::Value;
+use rustc_serialize::Decodable;
 use std::any::Any;
 use std::num::NonZeroU64;
 use thin_vec::ThinVec;
@@ -253,6 +255,18 @@ macro_rules! get_provider {
     };
 }
 
+macro_rules! should_ever_cache_on_disk {
+    ([]) => {{
+        None
+    }};
+    ([(cache) $($rest:tt)*]) => {{
+        Some($crate::plumbing::try_load_from_disk::<Self::Value>)
+    }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        should_ever_cache_on_disk!([$($modifiers)*])
+    };
+}
+
 pub(crate) fn create_query_frame<
     'tcx,
     K: Copy + Key + for<'a> HashStable<StableHashingContext<'a>>,
@@ -311,6 +325,16 @@ where
     if Q::cache_on_disk(tcx, &key) {
         let _ = Q::execute_query(tcx, key);
     }
+}
+
+pub(crate) fn try_load_from_disk<'tcx, V>(
+    tcx: QueryCtxt<'tcx>,
+    id: SerializedDepNodeIndex,
+) -> Option<V>
+where
+    V: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
+{
+    tcx.on_disk_cache().as_ref()?.try_load_query_result(*tcx, id)
 }
 
 fn force_from_dep_node<'tcx, Q>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
@@ -418,8 +442,7 @@ macro_rules! define_queries {
                     hash_result: hash_result!([$($modifiers)*]),
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
                     compute,
-                    cache_on_disk,
-                    try_load_from_disk: Self::TRY_LOAD_FROM_DISK,
+                    try_load_from_disk: if cache_on_disk { should_ever_cache_on_disk!([$($modifiers)*]) } else { None },
                 }
             }
 
