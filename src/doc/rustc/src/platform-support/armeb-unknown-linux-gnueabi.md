@@ -1,4 +1,4 @@
-# armeb-linux-gnueabi
+# armeb-unknown-linux-gnueabi
 **Tier: 3**
 
 Target for cross-compiling Linux user-mode applications targetting the ARM BE8 architecture.
@@ -16,7 +16,7 @@ BE8 architecture is the default big-endian architecture for ARM since [ARMv6](ht
 The target is cross-compiled. This target supports `std` in the normal way (indeed only nominal changes are required from the standard ARM configuration).
 
 ## Target definition
-The target definition can be seen [here](../../../../../compiler/rustc_target/src/spec/armeb_linux_gnueabi.rs). In particular, it should be noted that the `features` specify that this target is built for the ARMv8 core. Though this can likely be modified as required.
+The target definition can be seen [here](https://github.com/rust-lang/rust/tree/master/compiler/rustc_target/src/spec/armeb_unknown_linux_gnueabi.rs). In particular, it should be noted that the `features` specify that this target is built for the ARMv8 core. Though this can likely be modified as required.
 
 ## Building the target
 Because it is Tier 3, rust does not yet ship pre-compiled artifacts for this target.
@@ -33,7 +33,7 @@ targets = "ARM;X86"
 clang = false
 
 [build]
-target = ["x86_64-unknown-linux-gnu", "armeb-linux-gnueabi"]
+target = ["x86_64-unknown-linux-gnu", "armeb-unknown-linux-gnueabi"]
 docs = false
 docs-minification = false
 compiler-docs = false
@@ -49,12 +49,12 @@ incremental = true
 
 [dist]
 
-[target.armeb-linux-gnueabi]
-cc = "/home/user/x-tools/armeb-linux-gnueabi/bin/armeb-linux-gnueabi-gcc"
-cxx = "/home/user/x-tools/armeb-linux-gnueabi/bin/armeb-linux-gnueabi-g++"
-ar = "/home/user/x-tools/armeb-linux-gnueabi/bin/armeb-linux-gnueabi-ar"
-ranlib = "/home/user/x-tools/armeb-linux-gnueabi/bin/armeb-linux-gnueabi-ranlib"
-linker = "/home/user/x-tools/armeb-linux-gnueabi/bin/armeb-linux-gnueabi-gcc"
+[target.armeb-unknown-linux-gnueabi]
+cc = "/home/user/x-tools/armeb-unknown-linux-gnueabi/bin/armeb-unknown-linux-gnueabi-gcc"
+cxx = "/home/user/x-tools/armeb-unknown-linux-gnueabi/bin/armeb-unknown-linux-gnueabi-g++"
+ar = "/home/user/x-tools/armeb-unknown-linux-gnueabi/bin/armeb-unknown-linux-gnueabi-ar"
+ranlib = "/home/user/x-tools/armeb-unknown-linux-gnueabi/bin/armeb-unknown-linux-gnueabi-ranlib"
+linker = "/home/user/x-tools/armeb-unknown-linux-gnueabi/bin/armeb-unknown-linux-gnueabi-gcc"
 llvm-config = "/home/user/x-tools/clang/bin/llvm-config"
 llvm-filecheck = "/home/user/x-tools/clang/bin/FileCheck"
 ```
@@ -65,10 +65,10 @@ The following `.cargo/config` is needed inside any project directory to build fo
 
 ```toml
 [build]
-target = "armeb-linux-gnueabi"
+target = "armeb-unknown-linux-gnueabi"
 
-[target.armeb-linux-gnueabi]
-linker = "armeb-linux-gnueabi-gcc"
+[target.armeb-unknown-linux-gnueabi]
+linker = "armeb-unknown-linux-gnueabi-gcc"
 ```
 
 Note that it is expected that the user has a suitable linker from the GNU toolchain.
