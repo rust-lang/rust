@@ -633,3 +633,11 @@ struct BI {
     #[suggestion_part(code = "")]
     spans: Vec<Span>,
 }
+
+#[derive(Subdiagnostic)]
+#[label(parser::add_paren)]
+struct BJ {
+    #[primary_span]
+    span: Span,
+    r#type: String,
+}

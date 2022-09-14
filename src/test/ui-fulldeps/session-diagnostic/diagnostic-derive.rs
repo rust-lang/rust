@@ -671,3 +671,9 @@ enum ExampleEnum {
     #[diag(typeck::ambiguous_lifetime_bound)]
     Baz,
 }
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct RawIdentDiagnosticArg {
+    pub r#type: String,
+}

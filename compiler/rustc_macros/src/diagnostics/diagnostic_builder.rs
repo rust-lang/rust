@@ -281,6 +281,8 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         if should_generate_set_arg(&field) {
             let diag = &self.parent.diag;
             let ident = field.ident.as_ref().unwrap();
+            // strip `r#` prefix, if present
+            let ident = format_ident!("{}", ident);
             return quote! {
                 #diag.set_arg(
                     stringify!(#ident),

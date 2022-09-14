@@ -189,6 +189,9 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
 
         let diag = &self.diag;
         let ident = ast.ident.as_ref().unwrap();
+        // strip `r#` prefix, if present
+        let ident = format_ident!("{}", ident);
+
         quote! {
             #diag.set_arg(
                 stringify!(#ident),
