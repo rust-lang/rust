@@ -383,7 +383,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         if let Some(remap_env_constness) = &modifiers.remap_env_constness {
             attributes.push(quote! { (#remap_env_constness) });
         }
-        // Pass on the const modifier
+        // Pass on the cache modifier
         if modifiers.cache.is_some() {
             attributes.push(quote! { (cache) });
         }
