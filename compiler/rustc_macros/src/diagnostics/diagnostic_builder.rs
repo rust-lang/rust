@@ -1,24 +1,22 @@
 #![deny(unused_must_use)]
 
+use super::error::throw_invalid_nested_attr;
+use super::utils::{SpannedOption, SubdiagnosticKind};
 use crate::diagnostics::error::{
-    invalid_nested_attr, span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err,
-    DiagnosticDeriveError,
+    invalid_nested_attr, span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
     report_error_if_not_applied_to_span, report_type_error, type_is_unit, type_matches_path,
-    Applicability, FieldInfo, FieldInnerTy, HasFieldMap, SetOnce,
+    FieldInfo, FieldInnerTy, HasFieldMap, SetOnce,
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::HashMap;
-use std::str::FromStr;
 use syn::{
     parse_quote, spanned::Spanned, Attribute, Field, Meta, MetaList, MetaNameValue, NestedMeta,
     Path, Type,
 };
 use synstructure::{BindingInfo, Structure};
-
-use super::utils::SpannedOption;
 
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -45,7 +43,7 @@ pub(crate) struct DiagnosticDeriveBuilder {
     pub slug: SpannedOption<Path>,
     /// Error codes are a optional part of the struct attribute - this is only set to detect
     /// multiple specifications.
-    pub code: SpannedOption<String>,
+    pub code: SpannedOption<()>,
 }
 
 impl HasFieldMap for DiagnosticDeriveBuilder {
@@ -129,6 +127,30 @@ impl DiagnosticDeriveBuilder {
             || is_subdiagnostic
     }
 
+    fn parse_subdiag_attribute(
+        &self,
+        attr: &Attribute,
+    ) -> Result<(SubdiagnosticKind, Path), DiagnosticDeriveError> {
+        let (subdiag, slug) = SubdiagnosticKind::from_attr(attr, self)?;
+
+        if let SubdiagnosticKind::MultipartSuggestion { .. } = subdiag {
+            let meta = attr.parse_meta()?;
+            throw_invalid_attr!(attr, &meta, |diag| diag
+                .help("consider creating a `Subdiagnostic` instead"));
+        }
+
+        let slug = slug.unwrap_or_else(|| match subdiag {
+            SubdiagnosticKind::Label => parse_quote! { _subdiag::label },
+            SubdiagnosticKind::Note => parse_quote! { _subdiag::note },
+            SubdiagnosticKind::Help => parse_quote! { _subdiag::help },
+            SubdiagnosticKind::Warn => parse_quote! { _subdiag::warn },
+            SubdiagnosticKind::Suggestion { .. } => parse_quote! { _subdiag::suggestion },
+            SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
+        });
+
+        Ok((subdiag, slug))
+    }
+
     /// Establishes state in the `DiagnosticDeriveBuilder` resulting from the struct
     /// attributes like `#[diag(..)]`, such as the slug and error code. Generates
     /// diagnostic builder calls for setting error code and creating note/help messages.
@@ -137,98 +159,64 @@ impl DiagnosticDeriveBuilder {
         attr: &Attribute,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let diag = &self.diag;
-        let span = attr.span().unwrap();
 
         let name = attr.path.segments.last().unwrap().ident.to_string();
         let name = name.as_str();
         let meta = attr.parse_meta()?;
 
-        let is_diag = name == "diag";
+        if name == "diag" {
+            let Meta::List(MetaList { ref nested, .. }) = meta else {
+                throw_invalid_attr!(
+                    attr,
+                    &meta
+                );
+            };
 
-        let nested = match meta {
-            // Most attributes are lists, like `#[diag(..)]` for most cases or
-            // `#[help(..)]`/`#[note(..)]` when the user is specifying a alternative slug.
-            Meta::List(MetaList { ref nested, .. }) => nested,
-            // Subdiagnostics without spans can be applied to the type too, and these are just
-            // paths: `#[help]`, `#[note]` and `#[warning]`
-            Meta::Path(_) if !is_diag => {
-                let fn_name = if name == "warning" {
-                    Ident::new("warn", attr.span())
-                } else {
-                    Ident::new(name, attr.span())
-                };
-                return Ok(self.add_subdiagnostic(&fn_name, parse_quote! { _subdiag::#fn_name }));
-            }
-            _ => throw_invalid_attr!(attr, &meta),
-        };
+            let mut nested_iter = nested.into_iter().peekable();
 
-        // Check the kind before doing any further processing so that there aren't misleading
-        // "no kind specified" errors if there are failures later.
-        match name {
-            "error" | "lint" => throw_invalid_attr!(attr, &meta, |diag| {
-                diag.help("`error` and `lint` have been replaced by `diag`")
-            }),
-            "warn_" => throw_invalid_attr!(attr, &meta, |diag| {
-                diag.help("`warn_` have been replaced by `warning`")
-            }),
-            "diag" | "help" | "note" | "warning" => (),
-            _ => throw_invalid_attr!(attr, &meta, |diag| {
-                diag.help("only `diag`, `help`, `note` and `warning` are valid attributes")
-            }),
-        }
+            match nested_iter.peek() {
+                Some(NestedMeta::Meta(Meta::Path(slug))) => {
+                    self.slug.set_once(slug.clone(), slug.span().unwrap());
+                    nested_iter.next();
+                }
+                Some(NestedMeta::Meta(Meta::NameValue { .. })) => {}
+                Some(nested_attr) => throw_invalid_nested_attr!(attr, &nested_attr, |diag| diag
+                    .help("a diagnostic slug is required as the first argument")),
+                None => throw_invalid_attr!(attr, &meta, |diag| diag
+                    .help("a diagnostic slug is required as the first argument")),
+            };
 
-        // First nested element should always be the path, e.g. `#[diag(typeck::invalid)]` or
-        // `#[help(typeck::another_help)]`.
-        let mut nested_iter = nested.into_iter();
-        if let Some(nested_attr) = nested_iter.next() {
-            // Report an error if there are any other list items after the path.
-            if !is_diag && nested_iter.next().is_some() {
-                throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
-                    diag.help(
-                        "`help`, `note` and `warning` struct attributes can only have one argument",
-                    )
-                });
-            }
-
-            match nested_attr {
-                NestedMeta::Meta(Meta::Path(path)) => {
-                    if is_diag {
-                        self.slug.set_once(path.clone(), span);
-                    } else {
-                        let fn_name = proc_macro2::Ident::new(name, attr.span());
-                        return Ok(quote! { #diag.#fn_name(rustc_errors::fluent::#path); });
+            // Remaining attributes are optional, only `code = ".."` at the moment.
+            let mut tokens = TokenStream::new();
+            for nested_attr in nested_iter {
+                let (value, path) = match nested_attr {
+                    NestedMeta::Meta(Meta::NameValue(MetaNameValue {
+                        lit: syn::Lit::Str(value),
+                        path,
+                        ..
+                    })) => (value, path),
+                    NestedMeta::Meta(Meta::Path(_)) => {
+                        invalid_nested_attr(attr, &nested_attr)
+                            .help("diagnostic slug must be the first argument")
+                            .emit();
+                        continue;
                     }
-                }
-                NestedMeta::Meta(meta @ Meta::NameValue(_))
-                    if is_diag && meta.path().segments.last().unwrap().ident == "code" =>
-                {
-                    // don't error for valid follow-up attributes
-                }
-                nested_attr => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
-                    diag.help("first argument of the attribute should be the diagnostic slug")
-                }),
-            };
-        }
+                    _ => {
+                        invalid_nested_attr(attr, &nested_attr).emit();
+                        continue;
+                    }
+                };
 
-        // Remaining attributes are optional, only `code = ".."` at the moment.
-        let mut tokens = Vec::new();
-        for nested_attr in nested_iter {
-            let meta = match nested_attr {
-                syn::NestedMeta::Meta(meta) => meta,
-                _ => throw_invalid_nested_attr!(attr, &nested_attr),
-            };
-
-            let path = meta.path();
-            let nested_name = path.segments.last().unwrap().ident.to_string();
-            // Struct attributes are only allowed to be applied once, and the diagnostic
-            // changes will be set in the initialisation code.
-            if let Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(s), .. }) = &meta {
-                let span = s.span().unwrap();
+                let nested_name = path.segments.last().unwrap().ident.to_string();
+                // Struct attributes are only allowed to be applied once, and the diagnostic
+                // changes will be set in the initialisation code.
+                let span = value.span().unwrap();
                 match nested_name.as_str() {
                     "code" => {
-                        self.code.set_once(s.value(), span);
-                        let code = &self.code.value_ref();
-                        tokens.push(quote! {
+                        self.code.set_once((), span);
+
+                        let code = value.value();
+                        tokens.extend(quote! {
                             #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
                         });
                     }
@@ -236,12 +224,22 @@ impl DiagnosticDeriveBuilder {
                         .help("only `code` is a valid nested attributes following the slug")
                         .emit(),
                 }
-            } else {
-                invalid_nested_attr(attr, &nested_attr).emit()
             }
+            return Ok(tokens);
         }
 
-        Ok(tokens.into_iter().collect())
+        let (subdiag, slug) = self.parse_subdiag_attribute(attr)?;
+        let fn_ident = format_ident!("{}", subdiag);
+        match subdiag {
+            SubdiagnosticKind::Note | SubdiagnosticKind::Help | SubdiagnosticKind::Warn => {
+                Ok(self.add_subdiagnostic(&fn_ident, slug))
+            }
+            SubdiagnosticKind::Label | SubdiagnosticKind::Suggestion { .. } => {
+                throw_invalid_attr!(attr, &meta, |diag| diag
+                    .help("`#[label]` and `#[suggestion]` can only be applied to fields"));
+            }
+            SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
+        }
     }
 
     fn generate_field_attrs_code(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
@@ -305,217 +303,83 @@ impl DiagnosticDeriveBuilder {
         info: FieldInfo<'_>,
         binding: TokenStream,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
-        let meta = attr.parse_meta()?;
-        match meta {
-            Meta::Path(_) => self.generate_inner_field_code_path(attr, info, binding),
-            Meta::List(MetaList { .. }) => self.generate_inner_field_code_list(attr, info, binding),
-            _ => throw_invalid_attr!(attr, &meta),
-        }
-    }
-
-    fn generate_inner_field_code_path(
-        &mut self,
-        attr: &Attribute,
-        info: FieldInfo<'_>,
-        binding: TokenStream,
-    ) -> Result<TokenStream, DiagnosticDeriveError> {
-        assert!(matches!(attr.parse_meta()?, Meta::Path(_)));
         let diag = &self.diag;
-
         let meta = attr.parse_meta()?;
 
-        let ident = &attr.path.segments.last().unwrap().ident;
-        let name = ident.to_string();
-        let name = name.as_str();
-        match name {
-            "skip_arg" => {
-                // Don't need to do anything - by virtue of the attribute existing, the
-                // `set_arg` call will not be generated.
-                Ok(quote! {})
-            }
-            "primary_span" => {
-                match self.kind {
+        if let Meta::Path(_) = meta {
+            let ident = &attr.path.segments.last().unwrap().ident;
+            let name = ident.to_string();
+            let name = name.as_str();
+            match name {
+                "skip_arg" => {
+                    // Don't need to do anything - by virtue of the attribute existing, the
+                    // `set_arg` call will not be generated.
+                    return Ok(quote! {});
+                }
+                "primary_span" => match self.kind {
                     DiagnosticDeriveKind::Diagnostic => {
                         report_error_if_not_applied_to_span(attr, &info)?;
 
-                        Ok(quote! {
+                        return Ok(quote! {
                             #diag.set_span(#binding);
-                        })
+                        });
                     }
                     DiagnosticDeriveKind::LintDiagnostic => {
                         throw_invalid_attr!(attr, &meta, |diag| {
                             diag.help("the `primary_span` field attribute is not valid for lint diagnostics")
                         })
                     }
-                }
+                },
+                "subdiagnostic" => return Ok(quote! { #diag.subdiagnostic(#binding); }),
+                _ => {}
             }
-            "label" => {
+        }
+
+        let (subdiag, slug) = self.parse_subdiag_attribute(attr)?;
+
+        let fn_ident = format_ident!("{}", subdiag);
+        match subdiag {
+            SubdiagnosticKind::Label => {
                 report_error_if_not_applied_to_span(attr, &info)?;
-                Ok(self.add_spanned_subdiagnostic(binding, ident, parse_quote! { _subdiag::label }))
+                Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
             }
-            "note" | "help" | "warning" => {
-                let warn_ident = Ident::new("warn", Span::call_site());
-                let (ident, path) = match name {
-                    "note" => (ident, parse_quote! { _subdiag::note }),
-                    "help" => (ident, parse_quote! { _subdiag::help }),
-                    "warning" => (&warn_ident, parse_quote! { _subdiag::warn }),
-                    _ => unreachable!(),
-                };
+            SubdiagnosticKind::Note | SubdiagnosticKind::Help | SubdiagnosticKind::Warn => {
                 if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
-                    Ok(self.add_spanned_subdiagnostic(binding, ident, path))
+                    Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
                 } else if type_is_unit(&info.ty) {
-                    Ok(self.add_subdiagnostic(ident, path))
+                    Ok(self.add_subdiagnostic(&fn_ident, slug))
                 } else {
                     report_type_error(attr, "`Span` or `()`")?
                 }
             }
-            "subdiagnostic" => Ok(quote! { #diag.subdiagnostic(#binding); }),
-            _ => throw_invalid_attr!(attr, &meta, |diag| {
-                diag.help(
-                    "only `skip_arg`, `primary_span`, `label`, `note`, `help` and `subdiagnostic` \
-                     are valid field attributes",
-                )
-            }),
-        }
-    }
+            SubdiagnosticKind::Suggestion {
+                suggestion_kind,
+                applicability: static_applicability,
+                code,
+            } => {
+                let (span_field, mut applicability) = self.span_and_applicability_of_ty(info)?;
 
-    fn generate_inner_field_code_list(
-        &mut self,
-        attr: &Attribute,
-        info: FieldInfo<'_>,
-        binding: TokenStream,
-    ) -> Result<TokenStream, DiagnosticDeriveError> {
-        let meta = attr.parse_meta()?;
-        let Meta::List(MetaList { ref path, ref nested, .. }) = meta  else { unreachable!() };
-
-        let ident = &attr.path.segments.last().unwrap().ident;
-        let name = path.segments.last().unwrap().ident.to_string();
-        let name = name.as_ref();
-        match name {
-            "suggestion" | "suggestion_short" | "suggestion_hidden" | "suggestion_verbose" => {
-                return self.generate_inner_field_code_suggestion(attr, info);
-            }
-            "label" | "help" | "note" | "warning" => (),
-            _ => throw_invalid_attr!(attr, &meta, |diag| {
-                diag.help(
-                    "only `label`, `help`, `note`, `warn` or `suggestion{,_short,_hidden,_verbose}` are \
-                     valid field attributes",
-                )
-            }),
-        }
-
-        // For `#[label(..)]`, `#[note(..)]` and `#[help(..)]`, the first nested element must be a
-        // path, e.g. `#[label(typeck::label)]`.
-        let mut nested_iter = nested.into_iter();
-        let msg = match nested_iter.next() {
-            Some(NestedMeta::Meta(Meta::Path(path))) => path.clone(),
-            Some(nested_attr) => throw_invalid_nested_attr!(attr, &nested_attr),
-            None => throw_invalid_attr!(attr, &meta),
-        };
-
-        // None of these attributes should have anything following the slug.
-        if nested_iter.next().is_some() {
-            throw_invalid_attr!(attr, &meta);
-        }
-
-        match name {
-            "label" => {
-                report_error_if_not_applied_to_span(attr, &info)?;
-                Ok(self.add_spanned_subdiagnostic(binding, ident, msg))
-            }
-            "note" | "help" if type_matches_path(&info.ty, &["rustc_span", "Span"]) => {
-                Ok(self.add_spanned_subdiagnostic(binding, ident, msg))
-            }
-            "note" | "help" if type_is_unit(&info.ty) => Ok(self.add_subdiagnostic(ident, msg)),
-            // `warning` must be special-cased because the attribute `warn` already has meaning and
-            // so isn't used, despite the diagnostic API being named `warn`.
-            "warning" if type_matches_path(&info.ty, &["rustc_span", "Span"]) => Ok(self
-                .add_spanned_subdiagnostic(binding, &Ident::new("warn", Span::call_site()), msg)),
-            "warning" if type_is_unit(&info.ty) => {
-                Ok(self.add_subdiagnostic(&Ident::new("warn", Span::call_site()), msg))
-            }
-            "note" | "help" | "warning" => report_type_error(attr, "`Span` or `()`")?,
-            _ => unreachable!(),
-        }
-    }
-
-    fn generate_inner_field_code_suggestion(
-        &mut self,
-        attr: &Attribute,
-        info: FieldInfo<'_>,
-    ) -> Result<TokenStream, DiagnosticDeriveError> {
-        let diag = &self.diag;
-
-        let mut meta = attr.parse_meta()?;
-        let Meta::List(MetaList { ref path, ref mut nested, .. }) = meta  else { unreachable!() };
-
-        let (span_field, mut applicability) = self.span_and_applicability_of_ty(info)?;
-
-        let mut code = None;
-
-        let mut nested_iter = nested.into_iter().peekable();
-        let msg = if let Some(NestedMeta::Meta(Meta::Path(path))) = nested_iter.peek() {
-            let path = path.clone();
-            // Move the iterator forward if a path was found (don't otherwise so that
-            // code/applicability can be found or an error emitted).
-            nested_iter.next();
-            Some(path)
-        } else {
-            None
-        };
-
-        for nested_attr in nested_iter {
-            let meta = match nested_attr {
-                syn::NestedMeta::Meta(ref meta) => meta,
-                syn::NestedMeta::Lit(_) => throw_invalid_nested_attr!(attr, &nested_attr),
-            };
-
-            let nested_name = meta.path().segments.last().unwrap().ident.to_string();
-            let nested_name = nested_name.as_str();
-            match meta {
-                Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
-                    let span = meta.span().unwrap();
-                    match nested_name {
-                        "code" => {
-                            let formatted_str = self.build_format(&s.value(), s.span());
-                            code.set_once(formatted_str, span);
-                        }
-                        "applicability" => match Applicability::from_str(&s.value()) {
-                            Ok(v) => applicability.set_once(quote! { #v }, span),
-                            Err(()) => {
-                                span_err(span, "invalid applicability").emit();
-                            }
-                        },
-                        _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
-                            diag.help(
-                                "only `message`, `code` and `applicability` are valid field \
-                                 attributes",
-                            )
-                        }),
-                    }
+                if let Some((static_applicability, span)) = static_applicability {
+                    applicability.set_once(quote! { #static_applicability }, span);
                 }
-                _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
-                    if matches!(meta, Meta::Path(_)) {
-                        diag.help("a diagnostic slug must be the first argument to the attribute")
-                    } else {
-                        diag
-                    }
-                }),
+
+                let applicability = applicability
+                    .value()
+                    .unwrap_or_else(|| quote! { rustc_errors::Applicability::Unspecified });
+                let style = suggestion_kind.to_suggestion_style();
+
+                Ok(quote! {
+                    #diag.span_suggestion_with_style(
+                        #span_field,
+                        rustc_errors::fluent::#slug,
+                        #code,
+                        #applicability,
+                        #style
+                    );
+                })
             }
+            SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
         }
-
-        let applicability = applicability
-            .value()
-            .unwrap_or_else(|| quote!(rustc_errors::Applicability::Unspecified));
-
-        let name = path.segments.last().unwrap().ident.to_string();
-        let method = format_ident!("span_{}", name);
-
-        let msg = msg.unwrap_or_else(|| parse_quote! { _subdiag::suggestion });
-        let msg = quote! { rustc_errors::fluent::#msg };
-        let code = code.value().unwrap_or_else(|| quote! { String::new() });
-
-        Ok(quote! { #diag.#method(#span_field, #msg, #code, #applicability); })
     }
 
     /// Adds a spanned subdiagnostic by generating a `diag.span_$kind` call with the current slug

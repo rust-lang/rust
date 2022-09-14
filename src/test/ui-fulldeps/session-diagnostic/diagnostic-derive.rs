@@ -76,13 +76,15 @@ struct InvalidNestedStructAttr1 {}
 #[derive(Diagnostic)]
 #[diag(nonsense = "...", code = "E0123", slug = "foo")]
 //~^ ERROR `#[diag(nonsense = ...)]` is not a valid attribute
-//~^^ ERROR diagnostic slug not specified
+//~| ERROR `#[diag(slug = ...)]` is not a valid attribute
+//~| ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr2 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = 4, code = "E0123", slug = "foo")]
 //~^ ERROR `#[diag(nonsense = ...)]` is not a valid attribute
-//~^^ ERROR diagnostic slug not specified
+//~| ERROR `#[diag(slug = ...)]` is not a valid attribute
+//~| ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr3 {}
 
 #[derive(Diagnostic)]
@@ -217,6 +219,7 @@ struct Suggest {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithoutCode {
     #[suggestion(typeck::suggestion)]
+    //~^ ERROR suggestion without `code = "..."`
     suggestion: (Span, Applicability),
 }
 
@@ -225,6 +228,7 @@ struct SuggestWithoutCode {
 struct SuggestWithBadKey {
     #[suggestion(nonsense = "bar")]
     //~^ ERROR `#[suggestion(nonsense = ...)]` is not a valid attribute
+    //~| ERROR suggestion without `code = "..."`
     suggestion: (Span, Applicability),
 }
 
@@ -233,6 +237,7 @@ struct SuggestWithBadKey {
 struct SuggestWithShorthandMsg {
     #[suggestion(msg = "bar")]
     //~^ ERROR `#[suggestion(msg = ...)]` is not a valid attribute
+    //~| ERROR suggestion without `code = "..."`
     suggestion: (Span, Applicability),
 }
 
@@ -507,7 +512,7 @@ struct OptUnitField {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelWithTrailingPath {
     #[label(typeck::label, foo)]
-    //~^ ERROR `#[label(...)]` is not a valid attribute
+    //~^ ERROR `#[label(foo)]` is not a valid attribute
     span: Span,
 }
 
@@ -515,7 +520,7 @@ struct LabelWithTrailingPath {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelWithTrailingNameValue {
     #[label(typeck::label, foo = "...")]
-    //~^ ERROR `#[label(...)]` is not a valid attribute
+    //~^ ERROR `#[label(foo = ...)]` is not a valid attribute
     span: Span,
 }
 
@@ -523,7 +528,7 @@ struct LabelWithTrailingNameValue {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelWithTrailingList {
     #[label(typeck::label, foo("..."))]
-    //~^ ERROR `#[label(...)]` is not a valid attribute
+    //~^ ERROR `#[label(foo(...))]` is not a valid attribute
     span: Span,
 }
 
@@ -604,4 +609,45 @@ struct MissingApplicabilityInSuggestionTuple {
     #[suggestion(typeck::suggestion, code = "...")]
     suggestion: (Span,),
     //~^ ERROR wrong types for suggestion
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct MissingCodeInSuggestion {
+    #[suggestion(typeck::suggestion)]
+    //~^ ERROR suggestion without `code = "..."`
+    suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[multipart_suggestion(typeck::suggestion)]
+//~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
+//~| ERROR cannot find attribute `multipart_suggestion` in this scope
+#[multipart_suggestion()]
+//~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
+//~| ERROR cannot find attribute `multipart_suggestion` in this scope
+struct MultipartSuggestion {
+    #[multipart_suggestion(typeck::suggestion)]
+    //~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
+    //~| ERROR cannot find attribute `multipart_suggestion` in this scope
+    suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[suggestion(typeck::suggestion, code = "...")]
+//~^ ERROR `#[suggestion(...)]` is not a valid attribute
+struct SuggestionOnStruct {
+    #[primary_span]
+    suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[label]
+//~^ ERROR `#[label]` is not a valid attribute
+struct LabelOnStruct {
+    #[primary_span]
+    suggestion: Span,
 }
