@@ -150,8 +150,9 @@ This final product (stage1 compiler + libs built using that compiler)
 is what you need to build other Rust programs (unless you use `#![no_std]` or
 `#![no_core]`).
 
-You will probably find that building the stage1 `std` is a bottleneck for you** -- but fear not,
-there is a (hacky) workaround. See [the section on "recommended workflows"](./suggested.md) below.
+You will probably find that building the stage1 `std` is a bottleneck for you,
+but fear not, there is a (hacky) workaround...
+see [the section on "recommended workflows"](./suggested.md) below.
 
 Note that this whole command just gives you a subset of the full `rustc`
 build. The **full** `rustc` build (what you get with `./x.py build
