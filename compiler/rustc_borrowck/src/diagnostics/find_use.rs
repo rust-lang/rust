@@ -1,3 +1,6 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use std::collections::VecDeque;
 use std::rc::Rc;
 
