@@ -521,6 +521,7 @@ docs! {
     "unimplemented",
     "uninit_assumed_init",
     "uninit_vec",
+    "uninlined_format_args",
     "unit_arg",
     "unit_cmp",
     "unit_hash",
