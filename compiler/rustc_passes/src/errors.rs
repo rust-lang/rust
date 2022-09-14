@@ -744,3 +744,10 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
         diag
     }
 }
+
+#[derive(LintDiagnostic)]
+#[diag(passes::deprecated_annotation_has_no_effect)]
+pub struct DeprecatedAnnotationHasNoEffect {
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub span: Span,
+}

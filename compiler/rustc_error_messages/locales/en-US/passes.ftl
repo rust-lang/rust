@@ -384,3 +384,6 @@ passes_local_duplicate_lang_item =
 passes_invalid_attr_at_crate_level =
     `{$name}` attribute cannot be used at crate level
     .suggestion = perhaps you meant to use an outer attribute
+
+passes_deprecated_annotation_has_no_effect = this `#[deprecated]` annotation has no effect
+    .suggestion = remove the unnecessary deprecation attribute
