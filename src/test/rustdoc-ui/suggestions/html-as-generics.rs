@@ -70,3 +70,13 @@ pub struct NestedGenericsWithPunct;
 //~^ ERROR unclosed HTML tag `i32`
 //~|HELP try marking as source
 pub struct NestedGenericsWithPunct2;
+
+/// This [Vec<i32>] thing!
+//~^ERROR unclosed HTML tag `i32`
+//~|HELP try marking as source
+pub struct IntraDocLink;
+
+/// This [Vec::<i32>] thing!
+//~^ERROR unclosed HTML tag `i32`
+//~|HELP try marking as source
+pub struct IntraDocLinkTurbofish;

@@ -157,5 +157,27 @@ help: try marking as source code
 LL | /// Generics with punct `Vec<Vec<i32>>`!
    |                         +             +
 
-error: aborting due to 14 previous errors
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:74:14
+   |
+LL | /// This [Vec<i32>] thing!
+   |              ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// This [`Vec<i32>`] thing!
+   |           +        +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:79:16
+   |
+LL | /// This [Vec::<i32>] thing!
+   |                ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// This [`Vec::<i32>`] thing!
+   |           +          +
+
+error: aborting due to 16 previous errors
 
