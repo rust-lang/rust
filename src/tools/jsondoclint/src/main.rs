@@ -25,8 +25,6 @@ fn main() -> Result<()> {
     let path = env::args().nth(1).ok_or_else(|| anyhow!("no path given"))?;
     let contents = fs::read_to_string(&path)?;
     let krate: Crate = serde_json::from_str(&contents)?;
-    // TODO: Only load if nessessary.
-    let krate_json: Value = serde_json::from_str(&contents)?;
     assert_eq!(krate.format_version, FORMAT_VERSION);
 
     let mut validator = validator::Validator::new(&krate);
@@ -36,6 +34,8 @@ fn main() -> Result<()> {
         for err in validator.errs {
             match err.kind {
                 ErrorKind::NotFound => {
+                    let krate_json: Value = serde_json::from_str(&contents)?;
+
                     let sels =
                         json_find::find_selector(&krate_json, &Value::String(err.id.0.clone()));
                     match &sels[..] {

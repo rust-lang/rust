@@ -1,7 +1,6 @@
 use rustdoc_json_types::{Item, ItemEnum, ItemKind, ItemSummary};
 
-// We want a univeral way to represent an `ItemEnum` or `ItemKind`
-
+/// A univeral way to represent an [`ItemEnum`] or [`ItemKind`]
 #[derive(Debug)]
 pub(crate) enum Kind {
     Module,

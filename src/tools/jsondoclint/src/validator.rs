@@ -10,22 +10,24 @@ use rustdoc_json_types::{
 
 use crate::{item_kind::Kind, Error, ErrorKind};
 
+/// The Validator walks over the JSON tree, and ensures it is well formed.
+/// It is made of several parts.
+///
+/// - `check_*`: These take a type from [`rustdoc_json_types`], and check that
+///              it is well formed. This involves calling `check_*` functions on
+///              fields of that item, and `add_*` functions on [`Id`]s.
+/// - `add_*`: These add an [`Id`] to the worklist, after validating it to check if
+///            the `Id` is a kind expected in this suituation.
 #[derive(Debug)]
 pub struct Validator<'a> {
     pub(crate) errs: Vec<Error>,
     krate: &'a Crate,
-    seen_ids: HashSet<&'a Id>,
-    missing_ids: HashSet<&'a Id>,
+    /// Worklist of Ids to check.
     todo: HashSet<&'a Id>,
-}
-
-fn set_remove<T: Hash + Eq + Clone>(set: &mut HashSet<T>) -> Option<T> {
-    if let Some(id) = set.iter().next() {
-        let id = id.clone();
-        set.take(&id)
-    } else {
-        None
-    }
+    /// Ids that have already been visited, so don't need to be checked again.
+    seen_ids: HashSet<&'a Id>,
+    /// Ids that have already been reported missing.
+    missing_ids: HashSet<&'a Id>,
 }
 
 impl<'a> Validator<'a> {
@@ -82,6 +84,8 @@ impl<'a> Validator<'a> {
                     }
                 }
             }
+        } else {
+            assert!(self.krate.paths.contains_key(id));
         }
     }
 
@@ -336,17 +340,12 @@ impl<'a> Validator<'a> {
         fp.generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
     }
 
-    // Aux functions
-    fn add_id(&mut self, id: &'a Id) {
-        if !self.seen_ids.contains(id) {
-            self.todo.insert(id);
-        }
-    }
-
     fn add_id_checked(&mut self, id: &'a Id, valid: fn(Kind) -> bool, expected: &str) {
         if let Some(kind) = self.kind_of(id) {
             if valid(kind) {
-                self.add_id(id);
+                if !self.seen_ids.contains(id) {
+                    self.todo.insert(id);
+                }
             } else {
                 self.fail_expecting(id, expected);
             }
@@ -400,5 +399,14 @@ impl<'a> Validator<'a> {
         } else {
             None
         }
+    }
+}
+
+fn set_remove<T: Hash + Eq + Clone>(set: &mut HashSet<T>) -> Option<T> {
+    if let Some(id) = set.iter().next() {
+        let id = id.clone();
+        set.take(&id)
+    } else {
+        None
     }
 }
