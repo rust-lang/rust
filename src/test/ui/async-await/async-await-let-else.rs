@@ -1,4 +1,7 @@
 // edition:2021
+// revisions: drop-tracking no-drop-tracking
+// [drop-tracking] compile-flags: -Zdrop-tracking=yes
+// [no-drop-tracking] compile-flags: -Zdrop-tracking=no
 #![feature(let_else)]
 use std::rc::Rc;
 
@@ -43,11 +46,11 @@ async fn foo4(x: Option<bool>) {
 
 fn main() {
     is_send(foo(Some(true)));
-    //~^ ERROR future cannot be sent between threads safely
+    //~^ ERROR cannot be sent between threads safely
     is_send(foo2(Some(true)));
-    //~^ ERROR future cannot be sent between threads safely
+    //~^ ERROR cannot be sent between threads safely
     is_send(foo3(Some(true)));
-    //~^ ERROR future cannot be sent between threads safely
+    //~^ ERROR cannot be sent between threads safely
     is_send(foo4(Some(true)));
-    //~^ ERROR future cannot be sent between threads safely
+    //~^ ERROR cannot be sent between threads safely
 }
