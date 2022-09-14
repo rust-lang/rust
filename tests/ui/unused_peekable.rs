@@ -57,12 +57,22 @@ fn valid() {
     impl PeekableConsumer {
         fn consume(&self, _: Peekable<Empty<u32>>) {}
         fn consume_mut_ref(&self, _: &mut Peekable<Empty<u32>>) {}
+        fn consume_assoc(_: Peekable<Empty<u32>>) {}
+        fn consume_assoc_mut_ref(_: &mut Peekable<Empty<u32>>) {}
     }
-
     let peekable_consumer = PeekableConsumer;
-    let mut passed_along_to_method = std::iter::empty::<u32>().peekable();
-    peekable_consumer.consume_mut_ref(&mut passed_along_to_method);
-    peekable_consumer.consume(passed_along_to_method);
+
+    let peekable = std::iter::empty::<u32>().peekable();
+    peekable_consumer.consume(peekable);
+
+    let mut peekable = std::iter::empty::<u32>().peekable();
+    peekable_consumer.consume_mut_ref(&mut peekable);
+
+    let peekable = std::iter::empty::<u32>().peekable();
+    PeekableConsumer::consume_assoc(peekable);
+
+    let mut peekable = std::iter::empty::<u32>().peekable();
+    PeekableConsumer::consume_assoc_mut_ref(&mut peekable);
 
     // `peek` called in another block
     let mut peekable_in_block = std::iter::empty::<u32>().peekable();
@@ -141,4 +151,19 @@ fn valid() {
     {
         peekable_last_expr.peek();
     }
+
+    let mut peek_in_closure = std::iter::empty::<u32>().peekable();
+    let _ = || {
+        let _ = peek_in_closure.peek();
+    };
+
+    trait PeekTrait {}
+    impl<I> PeekTrait for Peekable<I> where I: Iterator {}
+
+    let mut peekable = std::iter::empty::<u32>().peekable();
+    let _dyn = &mut peekable as &mut dyn PeekTrait;
+
+    fn takes_dyn(_: &mut dyn PeekTrait) {}
+    let mut peekable = std::iter::empty::<u32>().peekable();
+    takes_dyn(&mut peekable);
 }

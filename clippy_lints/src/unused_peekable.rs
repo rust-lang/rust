@@ -6,6 +6,7 @@ use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Block, Expr, ExprKind, HirId, Local, Node, PatKind, PathSegment, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
@@ -109,8 +110,14 @@ impl<'a, 'tcx> PeekableVisitor<'a, 'tcx> {
     }
 }
 
-impl<'tcx> Visitor<'_> for PeekableVisitor<'_, 'tcx> {
-    fn visit_expr(&mut self, ex: &'_ Expr<'_>) {
+impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
+    type NestedFilter = OnlyBodies;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
+    }
+
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if self.found_peek_call {
             return;
         }
@@ -136,12 +143,11 @@ impl<'tcx> Visitor<'_> for PeekableVisitor<'_, 'tcx> {
                                     return;
                                 }
 
-                                if args.iter().any(|arg| {
-                                    matches!(arg.kind, ExprKind::Path(_)) && arg_is_mut_peekable(self.cx, arg)
-                                }) {
+                                if args.iter().any(|arg| arg_is_mut_peekable(self.cx, arg)) {
                                     self.found_peek_call = true;
-                                    return;
                                 }
+
+                                return;
                             },
                             // Catch anything taking a Peekable mutably
                             ExprKind::MethodCall(
@@ -190,21 +196,21 @@ impl<'tcx> Visitor<'_> for PeekableVisitor<'_, 'tcx> {
                     Node::Local(Local { init: Some(init), .. }) => {
                         if arg_is_mut_peekable(self.cx, init) {
                             self.found_peek_call = true;
-                            return;
                         }
 
-                        break;
+                        return;
                     },
-                    Node::Stmt(stmt) => match stmt.kind {
-                        StmtKind::Expr(_) | StmtKind::Semi(_) => {},
-                        _ => {
-                            self.found_peek_call = true;
-                            return;
-                        },
+                    Node::Stmt(stmt) => {
+                        match stmt.kind {
+                            StmtKind::Local(_) | StmtKind::Item(_) => self.found_peek_call = true,
+                            StmtKind::Expr(_) | StmtKind::Semi(_) => {},
+                        }
+
+                        return;
                     },
                     Node::Block(_) | Node::ExprField(_) => {},
                     _ => {
-                        break;
+                        return;
                     },
                 }
             }
