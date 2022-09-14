@@ -393,7 +393,7 @@ fn match_loop_inner<'t>(
 
                     // Check if we need a separator.
                     // We check the separator one by one
-                    let sep_idx = *item.sep_parsed.as_ref().unwrap_or(&0);
+                    let sep_idx = item.sep_parsed.unwrap_or(0);
                     let sep_len = item.sep.as_ref().map_or(0, Separator::tt_count);
                     if item.sep.is_some() && sep_idx != sep_len {
                         let sep = item.sep.as_ref().unwrap();
