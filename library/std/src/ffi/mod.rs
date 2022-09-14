@@ -160,6 +160,9 @@ pub use core::ffi::{
     c_ulong, c_ulonglong, c_ushort,
 };
 
+#[unstable(feature = "cstr_macro", issue = "101607")]
+pub use core::ffi::cstr;
+
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub use core::ffi::c_void;
 

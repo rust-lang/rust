@@ -184,7 +184,7 @@ impl fmt::Debug for CStr {
 /// ```
 /// #![feature(cstr_macro)]
 ///
-/// use core::ffi::CStr;
+/// use core::ffi::{cstr, CStr};
 ///
 /// const HELLO: &CStr = cstr!("Hello, world!");
 /// assert_eq!(HELLO.to_bytes_with_nul(), b"Hello, world!\0");
@@ -196,16 +196,17 @@ impl fmt::Debug for CStr {
 /// ```compile_fail
 /// #![feature(const_cstr_from_bytes)]
 ///
-/// use core::ffi::CStr;
+/// use core::ffi::{cstr, CStr};
 ///
 /// const HELLO: &CStr = cstr!("Hello, world!\0"); // compile fail!
 /// ```
-#[macro_export]
+#[macro_export(local_inner_macros)]
 #[unstable(feature = "cstr_macro", issue = "101607")]
 #[rustc_diagnostic_item = "core_cstr_macro"]
-macro_rules! cstr {
+#[doc(hidden)]
+macro_rules! __cstr_macro_impl {
     () => {
-        cstr!("")
+        __cstr_macro_impl!("")
     };
     ($s:literal) => {{
         const BYTES: &[u8] = $crate::ffi::__cstr_macro_impl_as_bytes($s);
@@ -216,6 +217,9 @@ macro_rules! cstr {
         CSTR
     }};
 }
+#[unstable(feature = "cstr_macro", issue = "101607")]
+#[doc(inline)]
+pub use __cstr_macro_impl as cstr;
 
 #[unstable(feature = "cstr_macro", issue = "101607")]
 #[doc(hidden)]

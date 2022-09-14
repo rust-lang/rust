@@ -616,9 +616,6 @@ pub use core::{
     module_path, option_env, stringify, trace_macros,
 };
 
-#[unstable(feature = "cstr_macro", issue = "101607")]
-pub use core::cstr;
-
 #[unstable(
     feature = "concat_bytes",
     issue = "87555",

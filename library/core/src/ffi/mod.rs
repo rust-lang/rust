@@ -23,7 +23,7 @@ mod c_str;
 #[doc(hidden)]
 pub use self::c_str::{
     __cstr_macro_impl_as_bytes, __cstr_macro_impl_from_bytes_with_nul,
-    __cstr_macro_impl_to_bytes_with_nul,
+    __cstr_macro_impl_to_bytes_with_nul, cstr,
 };
 
 macro_rules! type_alias_no_nz {
