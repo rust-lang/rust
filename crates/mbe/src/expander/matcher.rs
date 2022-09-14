@@ -269,11 +269,7 @@ impl BindingsBuilder {
             LinkNode::Parent { idx, len } => self.collect_nested_ref(idx, len, &mut nested_refs),
         });
         nested_refs.push(last);
-
-        nested_refs.into_iter().for_each(|iter| {
-            let child_bindings = self.build_inner(iter);
-            nested.push(child_bindings)
-        })
+        nested.extend(nested_refs.into_iter().map(|iter| self.build_inner(iter)));
     }
 
     fn collect_nodes_ref<'a>(
