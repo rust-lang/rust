@@ -3438,6 +3438,8 @@ version = "0.0.0"
 dependencies = [
  "annotate-snippets",
  "atty",
+ "rustc_ast",
+ "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_error_messages",
  "rustc_hir",

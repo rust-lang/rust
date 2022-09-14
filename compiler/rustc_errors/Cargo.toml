@@ -8,6 +8,8 @@ doctest = false
 
 [dependencies]
 tracing = "0.1"
+rustc_ast = { path = "../rustc_ast" }
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
