@@ -35,12 +35,13 @@ use crate::type_error_struct;
 use hir::def_id::LOCAL_CRATE;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
+use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitable, VariantDef};
+use rustc_middle::ty::{self, Binder, Ty, TypeAndMut, TypeVisitable, VariantDef};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
@@ -52,9 +53,12 @@ use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 /// a function context.
 #[derive(Debug)]
 pub struct CastCheck<'tcx> {
+    /// The expression whose value is being casted
     expr: &'tcx hir::Expr<'tcx>,
+    /// The source type for the cast expression
     expr_ty: Ty<'tcx>,
     expr_span: Span,
+    /// The target type. That is, the type we are casting to.
     cast_ty: Ty<'tcx>,
     cast_span: Span,
     span: Span,
@@ -101,7 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
-            ty::Dynamic(ref tty, ..) => Some(PointerKind::VTable(tty.principal_def_id())),
+            ty::Dynamic(ref tty, _, ty::Dyn) => Some(PointerKind::VTable(tty.principal_def_id())),
             ty::Adt(def, substs) if def.is_struct() => match def.non_enum_variant().fields.last() {
                 None => Some(PointerKind::Thin),
                 Some(f) => {
@@ -138,6 +142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Generator(..)
             | ty::Adt(..)
             | ty::Never
+            | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
                 let reported = self
                     .tcx
@@ -199,8 +204,76 @@ fn make_invalid_casting_error<'a, 'tcx>(
     )
 }
 
+pub enum CastCheckResult<'tcx> {
+    Ok,
+    Deferred(CastCheck<'tcx>),
+    Err(ErrorGuaranteed),
+}
+
+pub fn check_cast<'tcx>(
+    fcx: &FnCtxt<'_, 'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+    expr_ty: Ty<'tcx>,
+    cast_ty: Ty<'tcx>,
+    cast_span: Span,
+    span: Span,
+) -> CastCheckResult<'tcx> {
+    if cast_ty.is_dyn_star() {
+        check_dyn_star_cast(fcx, expr, expr_ty, cast_ty)
+    } else {
+        match CastCheck::new(fcx, expr, expr_ty, cast_ty, cast_span, span) {
+            Ok(check) => CastCheckResult::Deferred(check),
+            Err(e) => CastCheckResult::Err(e),
+        }
+    }
+}
+
+fn check_dyn_star_cast<'tcx>(
+    fcx: &FnCtxt<'_, 'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+    expr_ty: Ty<'tcx>,
+    cast_ty: Ty<'tcx>,
+) -> CastCheckResult<'tcx> {
+    // Find the bounds in the dyn*. For eaxmple, if we have
+    //
+    //    let x = 22_usize as dyn* (Clone + Debug + 'static)
+    //
+    // this would return `existential_predicates = [?Self: Clone, ?Self: Debug]` and `region = 'static`.
+    let (existential_predicates, region) = match cast_ty.kind() {
+        ty::Dynamic(predicates, region, ty::DynStar) => (predicates, region),
+        _ => panic!("Invalid dyn* cast_ty"),
+    };
+
+    let cause = ObligationCause::new(
+        expr.span,
+        fcx.body_id,
+        // FIXME(dyn-star): Use a better obligation cause code
+        ObligationCauseCode::MiscObligation,
+    );
+
+    // For each existential predicate (e.g., `?Self: Clone`) substitute
+    // the type of the expression (e.g., `usize` in our example above)
+    // and then require that the resulting predicate (e.g., `usize: Clone`)
+    // holds (it does).
+    for existential_predicate in existential_predicates.iter() {
+        let predicate = existential_predicate.with_self_ty(fcx.tcx, expr_ty);
+        fcx.register_predicate(Obligation::new(cause.clone(), fcx.param_env, predicate));
+    }
+
+    // Enforce the region bound `'static` (e.g., `usize: 'static`, in our example).
+    fcx.register_predicate(Obligation::new(
+        cause,
+        fcx.param_env,
+        fcx.tcx.mk_predicate(Binder::dummy(ty::PredicateKind::TypeOutlives(
+            ty::OutlivesPredicate(expr_ty, *region),
+        ))),
+    ));
+
+    CastCheckResult::Ok
+}
+
 impl<'a, 'tcx> CastCheck<'tcx> {
-    pub fn new(
+    fn new(
         fcx: &FnCtxt<'a, 'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,
@@ -215,7 +288,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         // cases now. We do a more thorough check at the end, once
         // inference is more completely known.
         match cast_ty.kind() {
-            ty::Dynamic(..) | ty::Slice(..) => {
+            ty::Dynamic(_, _, ty::Dyn) | ty::Slice(..) => {
                 let reported = check.report_cast_to_unsized_type(fcx);
                 Err(reported)
             }
@@ -854,6 +927,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
 
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
+
+            // FIXME(dyn-star): this needs more conditions...
+            (_, DynStar) => Ok(CastKind::DynStarCast),
+
+            // FIXME(dyn-star): do we want to allow dyn* upcasting or other casts?
+            (DynStar, _) => Err(CastError::IllegalCast),
         }
     }
 

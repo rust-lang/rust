@@ -625,6 +625,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.intern_layout(self.scalar_pair(data_ptr, metadata))
             }
 
+            ty::Dynamic(_, _, ty::DynStar) => {
+                let mut data = scalar_unit(Int(dl.ptr_sized_integer(), false));
+                data.valid_range_mut().start = 0;
+                let mut vtable = scalar_unit(Pointer);
+                vtable.valid_range_mut().start = 1;
+                tcx.intern_layout(self.scalar_pair(data, vtable))
+            }
+
             // Arrays and slices.
             ty::Array(element, mut count) => {
                 if count.has_projections() {
@@ -679,7 +687,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             // Odd unit types.
             ty::FnDef(..) => univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?,
-            ty::Dynamic(..) | ty::Foreign(..) => {
+            ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
                 let mut unit = self.univariant_uninterned(
                     ty,
                     &[],
@@ -2435,7 +2443,9 @@ where
                 | ty::FnDef(..)
                 | ty::GeneratorWitness(..)
                 | ty::Foreign(..)
-                | ty::Dynamic(..) => bug!("TyAndLayout::field({:?}): not applicable", this),
+                | ty::Dynamic(_, _, ty::Dyn) => {
+                    bug!("TyAndLayout::field({:?}): not applicable", this)
+                }
 
                 // Potentially-fat pointers.
                 ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
@@ -2464,7 +2474,7 @@ where
 
                     match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
                         ty::Slice(_) | ty::Str => TyMaybeWithLayout::Ty(tcx.types.usize),
-                        ty::Dynamic(_, _) => {
+                        ty::Dynamic(_, _, ty::Dyn) => {
                             TyMaybeWithLayout::Ty(tcx.mk_imm_ref(
                                 tcx.lifetimes.re_static,
                                 tcx.mk_array(tcx.types.usize, 3),
@@ -2530,6 +2540,22 @@ where
                             assert_eq!(i, 0);
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
+                    }
+                }
+
+                ty::Dynamic(_, _, ty::DynStar) => {
+                    if i == 0 {
+                        TyMaybeWithLayout::Ty(tcx.types.usize)
+                    } else if i == 1 {
+                        // FIXME(dyn-star) same FIXME as above applies here too
+                        TyMaybeWithLayout::Ty(
+                            tcx.mk_imm_ref(
+                                tcx.lifetimes.re_static,
+                                tcx.mk_array(tcx.types.usize, 3),
+                            ),
+                        )
+                    } else {
+                        bug!("no field {i} on dyn*")
                     }
                 }
 
@@ -2728,6 +2754,7 @@ impl<'tcx> ty::Instance<'tcx> {
     // for `Instance` (e.g. typeck would use `Ty::fn_sig` instead),
     // or should go through `FnAbi` instead, to avoid losing any
     // adjustments `fn_abi_of_instance` might be performing.
+    #[tracing::instrument(level = "debug", skip(tcx, param_env))]
     fn fn_sig_for_fn_abi(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -2874,6 +2901,7 @@ impl<'tcx> ty::Instance<'tcx> {
 /// with `-Cpanic=abort` will look like they can't unwind when in fact they
 /// might (from a foreign exception or similar).
 #[inline]
+#[tracing::instrument(level = "debug", skip(tcx))]
 pub fn fn_can_unwind<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {
     if let Some(did) = fn_def_id {
         // Special attribute for functions which can't unwind.
@@ -3090,6 +3118,7 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
     /// NB: that includes virtual calls, which are represented by "direct calls"
     /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     #[inline]
+    #[tracing::instrument(level = "debug", skip(self))]
     fn fn_abi_of_instance(
         &self,
         instance: ty::Instance<'tcx>,
@@ -3236,6 +3265,10 @@ pub fn adjust_for_rust_scalar<'tcx>(
 impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     // FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
     // arguments of this method, into a separate `struct`.
+    #[tracing::instrument(
+        level = "debug",
+        skip(self, caller_location, fn_def_id, force_thin_self_ptr)
+    )]
     fn fn_abi_new_uncached(
         &self,
         sig: ty::PolyFnSig<'tcx>,
@@ -3245,8 +3278,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // FIXME(eddyb) replace this with something typed, like an `enum`.
         force_thin_self_ptr: bool,
     ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
-        debug!("fn_abi_new_uncached({:?}, {:?})", sig, extra_args);
-
         let sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, sig);
 
         let conv = conv_from_spec_abi(self.tcx(), sig.abi);
@@ -3289,6 +3320,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
 
         let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
+            let span = tracing::debug_span!("arg_of");
+            let _entered = span.enter();
             let is_return = arg_idx.is_none();
 
             let layout = self.layout_of(ty)?;
@@ -3345,6 +3378,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         Ok(self.tcx.arena.alloc(fn_abi))
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn fn_abi_adjust_for_abi(
         &self,
         fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
@@ -3419,6 +3453,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     }
 }
 
+#[tracing::instrument(level = "debug", skip(cx))]
 fn make_thin_self_ptr<'tcx>(
     cx: &(impl HasTyCtxt<'tcx> + HasParamEnv<'tcx>),
     layout: TyAndLayout<'tcx>,
@@ -3430,7 +3465,7 @@ fn make_thin_self_ptr<'tcx>(
         tcx.mk_mut_ptr(layout.ty)
     } else {
         match layout.abi {
-            Abi::ScalarPair(..) => (),
+            Abi::ScalarPair(..) | Abi::Scalar(..) => (),
             _ => bug!("receiver type has unsupported layout: {:?}", layout),
         }
 

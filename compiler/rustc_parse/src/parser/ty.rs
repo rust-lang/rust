@@ -567,7 +567,8 @@ impl<'a> Parser<'a> {
         self.check_keyword(kw::Dyn)
             && (!self.token.uninterpolated_span().rust_2015()
                 || self.look_ahead(1, |t| {
-                    t.can_begin_bound() && !can_continue_type_after_non_fn_ident(t)
+                    (t.can_begin_bound() || t.kind == TokenKind::BinOp(token::Star))
+                        && !can_continue_type_after_non_fn_ident(t)
                 }))
     }
 
@@ -576,10 +577,18 @@ impl<'a> Parser<'a> {
     /// Note that this does *not* parse bare trait objects.
     fn parse_dyn_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
         self.bump(); // `dyn`
+
+        // parse dyn* types
+        let syntax = if self.eat(&TokenKind::BinOp(token::Star)) {
+            TraitObjectSyntax::DynStar
+        } else {
+            TraitObjectSyntax::Dyn
+        };
+
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds(None)?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
-        Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn))
+        Ok(TyKind::TraitObject(bounds, syntax))
     }
 
     /// Parses a type starting with a path.

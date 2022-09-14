@@ -182,7 +182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     })
                 }
-                ty::Dynamic(data, _) => {
+                ty::Dynamic(data, _, ty::Dyn) => {
                     data.iter().find_map(|pred| {
                         if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
                         && Some(proj.item_def_id) == self.tcx.lang_items().fn_once_output()

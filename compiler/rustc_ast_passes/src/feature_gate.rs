@@ -554,6 +554,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");
             }
+            ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::DynStar, ..) => {
+                gate_feature_post!(&self, dyn_star, ty.span, "dyn* trait objects are unstable");
+            }
             _ => {}
         }
         visit::walk_ty(self, ty)

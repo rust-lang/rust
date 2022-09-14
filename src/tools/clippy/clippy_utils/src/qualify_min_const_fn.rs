@@ -82,7 +82,7 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()));
             },
-            ty::Dynamic(preds, _) => {
+            ty::Dynamic(preds, _, _) => {
                 for pred in preds.iter() {
                     match pred.skip_binder() {
                         ty::ExistentialPredicate::AutoTrait(_) | ty::ExistentialPredicate::Projection(_) => {
@@ -161,6 +161,10 @@ fn check_rvalue<'tcx>(
         Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
             Err((span, "casting pointers to ints is unstable in const fn".into()))
         },
+        Rvalue::Cast(CastKind::DynStar, _, _) => {
+            // FIXME(dyn-star)
+            unimplemented!()
+        },
         // binops are fine on integers
         Rvalue::BinaryOp(_, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(_, box (lhs, rhs)) => {
             check_operand(tcx, lhs, span, body)?;
@@ -221,7 +225,6 @@ fn check_statement<'tcx>(
             check_operand(tcx, src, span, body)?;
             check_operand(tcx, count, span, body)
         },
-
         // These are all NOPs
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)

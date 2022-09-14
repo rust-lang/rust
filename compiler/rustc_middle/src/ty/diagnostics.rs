@@ -467,7 +467,7 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
                 }
             }
 
-            Dynamic(dty, _) => {
+            Dynamic(dty, _, _) => {
                 for pred in *dty {
                     match pred.skip_binder() {
                         ExistentialPredicate::Trait(_) | ExistentialPredicate::Projection(_) => {

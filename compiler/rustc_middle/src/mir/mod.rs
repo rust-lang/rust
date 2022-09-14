@@ -1818,6 +1818,7 @@ impl<'tcx> Rvalue<'tcx> {
             // While the model is undecided, we should be conservative. See
             // <https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html>
             Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => false,
+            Rvalue::Cast(CastKind::DynStar, _, _) => false,
 
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(_)

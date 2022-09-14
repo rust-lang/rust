@@ -479,8 +479,12 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 })?;
             }
 
-            ty::Dynamic(predicates, r) => {
-                self.push("D");
+            ty::Dynamic(predicates, r, kind) => {
+                self.push(match kind {
+                    ty::Dyn => "D",
+                    // FIXME(dyn-star): need to update v0 mangling docs
+                    ty::DynStar => "D*",
+                });
                 self = self.print_dyn_existential(predicates)?;
                 self = r.print(self)?;
             }

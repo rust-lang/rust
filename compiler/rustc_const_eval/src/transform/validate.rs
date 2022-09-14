@@ -569,6 +569,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
+                    CastKind::DynStar => {
+                        // FIXME(dyn-star): make sure nothing needs to be done here.
+                    }
                     // Nothing to check here
                     CastKind::PointerFromExposedAddress
                     | CastKind::PointerExposeAddress

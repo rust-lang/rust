@@ -18,6 +18,34 @@ use self::TyKind::*;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_serialize::{Decodable, Decoder, Encodable};
 
+/// Specifies how a trait object is represented.
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Debug,
+    Encodable,
+    Decodable,
+    HashStable_Generic
+)]
+pub enum DynKind {
+    /// An unsized `dyn Trait` object
+    Dyn,
+    /// A sized `dyn* Trait` object
+    ///
+    /// These objects are represented as a `(data, vtable)` pair where `data` is a ptr-sized value
+    /// (often a pointer to the real object, but not necessarily) and `vtable` is a pointer to
+    /// the vtable for `dyn* Trait`. The representation is essentially the same as `&dyn Trait`
+    /// or similar, but the drop function included in the vtable is responsible for freeing the
+    /// underlying storage if needed. This allows a `dyn*` object to be treated agnostically with
+    /// respect to whether it points to a `Box<T>`, `Rc<T>`, etc.
+    DynStar,
+}
+
 /// Defines the kinds of types used by the type system.
 ///
 /// Types written by the user start out as `hir::TyKind` and get
@@ -95,7 +123,7 @@ pub enum TyKind<I: Interner> {
     FnPtr(I::PolyFnSig),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
-    Dynamic(I::ListBinderExistentialPredicate, I::Region),
+    Dynamic(I::ListBinderExistentialPredicate, I::Region, DynKind),
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
@@ -218,7 +246,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Ref(_, _, _) => 11,
         FnDef(_, _) => 12,
         FnPtr(_) => 13,
-        Dynamic(_, _) => 14,
+        Dynamic(..) => 14,
         Closure(_, _) => 15,
         Generator(_, _, _) => 16,
         GeneratorWitness(_) => 17,
@@ -252,7 +280,7 @@ impl<I: Interner> Clone for TyKind<I> {
             Ref(r, t, m) => Ref(r.clone(), t.clone(), m.clone()),
             FnDef(d, s) => FnDef(d.clone(), s.clone()),
             FnPtr(s) => FnPtr(s.clone()),
-            Dynamic(p, r) => Dynamic(p.clone(), r.clone()),
+            Dynamic(p, r, repr) => Dynamic(p.clone(), r.clone(), repr.clone()),
             Closure(d, s) => Closure(d.clone(), s.clone()),
             Generator(d, s, m) => Generator(d.clone(), s.clone(), m.clone()),
             GeneratorWitness(g) => GeneratorWitness(g.clone()),
@@ -297,9 +325,10 @@ impl<I: Interner> PartialEq for TyKind<I> {
                     __self_0 == __arg_1_0 && __self_1 == __arg_1_1
                 }
                 (&FnPtr(ref __self_0), &FnPtr(ref __arg_1_0)) => __self_0 == __arg_1_0,
-                (&Dynamic(ref __self_0, ref __self_1), &Dynamic(ref __arg_1_0, ref __arg_1_1)) => {
-                    __self_0 == __arg_1_0 && __self_1 == __arg_1_1
-                }
+                (
+                    &Dynamic(ref __self_0, ref __self_1, ref self_repr),
+                    &Dynamic(ref __arg_1_0, ref __arg_1_1, ref arg_repr),
+                ) => __self_0 == __arg_1_0 && __self_1 == __arg_1_1 && self_repr == arg_repr,
                 (&Closure(ref __self_0, ref __self_1), &Closure(ref __arg_1_0, ref __arg_1_1)) => {
                     __self_0 == __arg_1_0 && __self_1 == __arg_1_1
                 }
@@ -384,12 +413,16 @@ impl<I: Interner> Ord for TyKind<I> {
                     }
                 }
                 (&FnPtr(ref __self_0), &FnPtr(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
-                (&Dynamic(ref __self_0, ref __self_1), &Dynamic(ref __arg_1_0, ref __arg_1_1)) => {
-                    match Ord::cmp(__self_0, __arg_1_0) {
-                        Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                (
+                    &Dynamic(ref __self_0, ref __self_1, ref self_repr),
+                    &Dynamic(ref __arg_1_0, ref __arg_1_1, ref arg_repr),
+                ) => match Ord::cmp(__self_0, __arg_1_0) {
+                    Ordering::Equal => match Ord::cmp(__self_1, __arg_1_1) {
+                        Ordering::Equal => Ord::cmp(self_repr, arg_repr),
                         cmp => cmp,
-                    }
-                }
+                    },
+                    cmp => cmp,
+                },
                 (&Closure(ref __self_0, ref __self_1), &Closure(ref __arg_1_0, ref __arg_1_1)) => {
                     match Ord::cmp(__self_0, __arg_1_0) {
                         Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
@@ -492,10 +525,11 @@ impl<I: Interner> hash::Hash for TyKind<I> {
                 hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
-            (&Dynamic(ref __self_0, ref __self_1),) => {
+            (&Dynamic(ref __self_0, ref __self_1, ref repr),) => {
                 hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
-                hash::Hash::hash(__self_1, state)
+                hash::Hash::hash(__self_1, state);
+                hash::Hash::hash(repr, state)
             }
             (&Closure(ref __self_0, ref __self_1),) => {
                 hash::Hash::hash(&tykind_discriminant(self), state);
@@ -570,7 +604,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Ref(f0, f1, f2) => Formatter::debug_tuple_field3_finish(f, "Ref", f0, f1, f2),
             FnDef(f0, f1) => Formatter::debug_tuple_field2_finish(f, "FnDef", f0, f1),
             FnPtr(f0) => Formatter::debug_tuple_field1_finish(f, "FnPtr", f0),
-            Dynamic(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Dynamic", f0, f1),
+            Dynamic(f0, f1, f2) => Formatter::debug_tuple_field3_finish(f, "Dynamic", f0, f1, f2),
             Closure(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Closure", f0, f1),
             Generator(f0, f1, f2) => {
                 Formatter::debug_tuple_field3_finish(f, "Generator", f0, f1, f2)
@@ -659,9 +693,10 @@ where
             FnPtr(polyfnsig) => e.emit_enum_variant(disc, |e| {
                 polyfnsig.encode(e);
             }),
-            Dynamic(l, r) => e.emit_enum_variant(disc, |e| {
+            Dynamic(l, r, repr) => e.emit_enum_variant(disc, |e| {
                 l.encode(e);
                 r.encode(e);
+                repr.encode(e);
             }),
             Closure(def_id, substs) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
@@ -748,7 +783,7 @@ where
             11 => Ref(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
             12 => FnDef(Decodable::decode(d), Decodable::decode(d)),
             13 => FnPtr(Decodable::decode(d)),
-            14 => Dynamic(Decodable::decode(d), Decodable::decode(d)),
+            14 => Dynamic(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
             15 => Closure(Decodable::decode(d), Decodable::decode(d)),
             16 => Generator(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
             17 => GeneratorWitness(Decodable::decode(d)),
@@ -845,9 +880,10 @@ where
             FnPtr(polyfnsig) => {
                 polyfnsig.hash_stable(__hcx, __hasher);
             }
-            Dynamic(l, r) => {
+            Dynamic(l, r, repr) => {
                 l.hash_stable(__hcx, __hasher);
                 r.hash_stable(__hcx, __hasher);
+                repr.hash_stable(__hcx, __hasher);
             }
             Closure(def_id, substs) => {
                 def_id.hash_stable(__hcx, __hasher);

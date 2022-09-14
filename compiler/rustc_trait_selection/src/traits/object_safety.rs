@@ -600,7 +600,7 @@ fn object_ty_for_trait<'tcx>(
     let existential_predicates = tcx
         .mk_poly_existential_predicates(iter::once(trait_predicate).chain(projection_predicates));
 
-    let object_ty = tcx.mk_dynamic(existential_predicates, lifetime);
+    let object_ty = tcx.mk_dynamic(existential_predicates, lifetime, ty::Dyn);
 
     debug!("object_ty_for_trait: object_ty=`{}`", object_ty);
 

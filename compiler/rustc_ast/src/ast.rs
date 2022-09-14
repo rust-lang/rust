@@ -2072,6 +2072,7 @@ impl TyKind {
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TraitObjectSyntax {
     Dyn,
+    DynStar,
     None,
 }
 

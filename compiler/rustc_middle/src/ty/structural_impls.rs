@@ -1028,9 +1028,11 @@ impl<'tcx> TypeSuperFoldable<'tcx> for Ty<'tcx> {
             ty::Array(typ, sz) => ty::Array(typ.try_fold_with(folder)?, sz.try_fold_with(folder)?),
             ty::Slice(typ) => ty::Slice(typ.try_fold_with(folder)?),
             ty::Adt(tid, substs) => ty::Adt(tid, substs.try_fold_with(folder)?),
-            ty::Dynamic(trait_ty, region) => {
-                ty::Dynamic(trait_ty.try_fold_with(folder)?, region.try_fold_with(folder)?)
-            }
+            ty::Dynamic(trait_ty, region, representation) => ty::Dynamic(
+                trait_ty.try_fold_with(folder)?,
+                region.try_fold_with(folder)?,
+                representation,
+            ),
             ty::Tuple(ts) => ty::Tuple(ts.try_fold_with(folder)?),
             ty::FnDef(def_id, substs) => ty::FnDef(def_id, substs.try_fold_with(folder)?),
             ty::FnPtr(f) => ty::FnPtr(f.try_fold_with(folder)?),
@@ -1074,7 +1076,7 @@ impl<'tcx> TypeSuperVisitable<'tcx> for Ty<'tcx> {
             }
             ty::Slice(typ) => typ.visit_with(visitor),
             ty::Adt(_, substs) => substs.visit_with(visitor),
-            ty::Dynamic(ref trait_ty, ref reg) => {
+            ty::Dynamic(ref trait_ty, ref reg, _) => {
                 trait_ty.visit_with(visitor)?;
                 reg.visit_with(visitor)
             }
