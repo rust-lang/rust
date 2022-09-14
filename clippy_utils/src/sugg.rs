@@ -155,8 +155,8 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Ret(..)
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Tup(..)
-            | hir::ExprKind::DropTemps(_)
             | hir::ExprKind::Err => Sugg::NonParen(get_snippet(expr.span)),
+            hir::ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
             hir::ExprKind::Assign(lhs, rhs, _) => {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
             },
