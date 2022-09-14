@@ -764,8 +764,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         {
             if a_data.principal_def_id() == b_data.principal_def_id() {
                 return self.unify_and(a, b, |_| vec![]);
-            } else {
-                bug!("dyn* trait upcasting is not supported");
+            } else if !self.tcx().features().trait_upcasting {
+                let mut err = feature_err(
+                    &self.tcx.sess.parse_sess,
+                    sym::trait_upcasting,
+                    self.cause.span,
+                    &format!(
+                        "cannot cast `{a}` to `{b}`, trait upcasting coercion is experimental"
+                    ),
+                );
+                err.emit();
             }
         }
 
