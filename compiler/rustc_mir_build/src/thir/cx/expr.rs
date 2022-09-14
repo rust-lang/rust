@@ -159,6 +159,7 @@ impl<'tcx> Cx<'tcx> {
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
                 ExprKind::AddressOf { mutability, arg: self.thir.exprs.push(expr) }
             }
+            Adjust::DynStar => ExprKind::Cast { source: self.thir.exprs.push(expr) },
         };
 
         Expr { temp_lifetime, ty: adjustment.target, span, kind }

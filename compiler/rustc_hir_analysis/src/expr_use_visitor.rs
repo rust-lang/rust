@@ -583,7 +583,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
-                adjustment::Adjust::NeverToAny | adjustment::Adjust::Pointer(_) => {
+                adjustment::Adjust::NeverToAny
+                | adjustment::Adjust::Pointer(_)
+                | adjustment::Adjust::DynStar => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
                     self.delegate_consume(&place_with_id, place_with_id.hir_id);
