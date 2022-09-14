@@ -1467,7 +1467,7 @@ impl TypeAliasBounds {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(span, fluent::lint::builtin_type_alias_bounds_help);
                 }
-                intravisit::walk_qpath(self, qpath, id, span)
+                intravisit::walk_qpath(self, qpath, id)
             }
         }
 
@@ -2000,7 +2000,7 @@ impl KeywordIdents {
 }
 
 impl EarlyLintPass for KeywordIdents {
-    fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef, _id: ast::NodeId) {
+    fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef) {
         self.check_tokens(cx, mac_def.body.inner_tokens());
     }
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {

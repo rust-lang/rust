@@ -680,7 +680,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_post!(&self, c_variadic, span, "C-variadic functions are unstable");
         }
 
-        visit::walk_fn(self, fn_kind, span)
+        visit::walk_fn(self, fn_kind)
     }
 
     fn visit_assoc_constraint(&mut self, constraint: &'a AssocConstraint) {

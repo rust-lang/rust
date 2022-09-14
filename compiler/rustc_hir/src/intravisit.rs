@@ -298,7 +298,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_id(&mut self, _hir_id: HirId) {
         // Nothing to do.
     }
-    fn visit_name(&mut self, _span: Span, _name: Symbol) {
+    fn visit_name(&mut self, _name: Symbol) {
         // Nothing to do.
     }
     fn visit_ident(&mut self, ident: Ident) {
@@ -361,8 +361,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_fn_decl(&mut self, fd: &'v FnDecl<'v>) {
         walk_fn_decl(self, fd)
     }
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl<'v>, b: BodyId, s: Span, id: HirId) {
-        walk_fn(self, fk, fd, b, s, id)
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl<'v>, b: BodyId, _: Span, id: HirId) {
+        walk_fn(self, fk, fd, b, id)
     }
     fn visit_use(&mut self, path: &'v Path<'v>, hir_id: HirId) {
         walk_use(self, path, hir_id)
@@ -388,8 +388,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_param_bound(&mut self, bounds: &'v GenericBound<'v>) {
         walk_param_bound(self, bounds)
     }
-    fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef<'v>, m: TraitBoundModifier) {
-        walk_poly_trait_ref(self, t, m)
+    fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef<'v>) {
+        walk_poly_trait_ref(self, t)
     }
     fn visit_variant_data(&mut self, s: &'v VariantData<'v>) {
         walk_struct_def(self, s)
@@ -420,17 +420,18 @@ pub trait Visitor<'v>: Sized {
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         walk_lifetime(self, lifetime)
     }
-    fn visit_qpath(&mut self, qpath: &'v QPath<'v>, id: HirId, span: Span) {
-        walk_qpath(self, qpath, id, span)
+    // The span is that of the surrounding type/pattern/expr/whatever.
+    fn visit_qpath(&mut self, qpath: &'v QPath<'v>, id: HirId, _span: Span) {
+        walk_qpath(self, qpath, id)
     }
     fn visit_path(&mut self, path: &'v Path<'v>, _id: HirId) {
         walk_path(self, path)
     }
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v PathSegment<'v>) {
-        walk_path_segment(self, path_span, path_segment)
+    fn visit_path_segment(&mut self, path_segment: &'v PathSegment<'v>) {
+        walk_path_segment(self, path_segment)
     }
-    fn visit_generic_args(&mut self, path_span: Span, generic_args: &'v GenericArgs<'v>) {
-        walk_generic_args(self, path_span, generic_args)
+    fn visit_generic_args(&mut self, generic_args: &'v GenericArgs<'v>) {
+        walk_generic_args(self, generic_args)
     }
     fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding<'v>) {
         walk_assoc_type_binding(self, type_binding)
@@ -472,7 +473,7 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local<'v>) {
 }
 
 pub fn walk_ident<'v, V: Visitor<'v>>(visitor: &mut V, ident: Ident) {
-    visitor.visit_name(ident.span, ident.name);
+    visitor.visit_name(ident.name);
 }
 
 pub fn walk_label<'v, V: Visitor<'v>>(visitor: &mut V, label: &'v Label) {
@@ -494,11 +495,7 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
     }
 }
 
-pub fn walk_poly_trait_ref<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    trait_ref: &'v PolyTraitRef<'v>,
-    _modifier: TraitBoundModifier,
-) {
+pub fn walk_poly_trait_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_ref: &'v PolyTraitRef<'v>) {
     walk_list!(visitor, visit_generic_param, trait_ref.bound_generic_params);
     visitor.visit_trait_ref(&trait_ref.trait_ref);
 }
@@ -519,7 +516,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         ItemKind::ExternCrate(orig_name) => {
             visitor.visit_id(item.hir_id());
             if let Some(orig_name) = orig_name {
-                visitor.visit_name(item.span, orig_name);
+                visitor.visit_name(orig_name);
             }
         }
         ItemKind::Use(ref path, _) => {
@@ -680,7 +677,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
         }
         TyKind::TraitObject(bounds, ref lifetime, _syntax) => {
             for bound in bounds {
-                visitor.visit_poly_trait_ref(bound, TraitBoundModifier::None);
+                visitor.visit_poly_trait_ref(bound);
             }
             visitor.visit_lifetime(lifetime);
         }
@@ -693,12 +690,7 @@ pub fn walk_inf<'v, V: Visitor<'v>>(visitor: &mut V, inf: &'v InferArg) {
     visitor.visit_id(inf.hir_id);
 }
 
-pub fn walk_qpath<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    qpath: &'v QPath<'v>,
-    id: HirId,
-    span: Span,
-) {
+pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath<'v>, id: HirId) {
     match *qpath {
         QPath::Resolved(ref maybe_qself, ref path) => {
             walk_list!(visitor, visit_ty, maybe_qself);
@@ -706,7 +698,7 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(
         }
         QPath::TypeRelative(ref qself, ref segment) => {
             visitor.visit_ty(qself);
-            visitor.visit_path_segment(span, segment);
+            visitor.visit_path_segment(segment);
         }
         QPath::LangItem(..) => {}
     }
@@ -714,27 +706,19 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(
 
 pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path<'v>) {
     for segment in path.segments {
-        visitor.visit_path_segment(path.span, segment);
+        visitor.visit_path_segment(segment);
     }
 }
 
-pub fn walk_path_segment<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    path_span: Span,
-    segment: &'v PathSegment<'v>,
-) {
+pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V, segment: &'v PathSegment<'v>) {
     visitor.visit_ident(segment.ident);
     visitor.visit_id(segment.hir_id);
     if let Some(ref args) = segment.args {
-        visitor.visit_generic_args(path_span, args);
+        visitor.visit_generic_args(args);
     }
 }
 
-pub fn walk_generic_args<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    _path_span: Span,
-    generic_args: &'v GenericArgs<'v>,
-) {
+pub fn walk_generic_args<'v, V: Visitor<'v>>(visitor: &mut V, generic_args: &'v GenericArgs<'v>) {
     walk_list!(visitor, visit_generic_arg, generic_args.args);
     walk_list!(visitor, visit_assoc_type_binding, generic_args.bindings);
 }
@@ -745,7 +729,7 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(
 ) {
     visitor.visit_id(type_binding.hir_id);
     visitor.visit_ident(type_binding.ident);
-    visitor.visit_generic_args(type_binding.span, type_binding.gen_args);
+    visitor.visit_generic_args(type_binding.gen_args);
     match type_binding.kind {
         TypeBindingKind::Equality { ref term } => match term {
             Term::Ty(ref ty) => visitor.visit_ty(ty),
@@ -819,12 +803,12 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
 
 pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericBound<'v>) {
     match *bound {
-        GenericBound::Trait(ref typ, modifier) => {
-            visitor.visit_poly_trait_ref(typ, modifier);
+        GenericBound::Trait(ref typ, _modifier) => {
+            visitor.visit_poly_trait_ref(typ);
         }
-        GenericBound::LangItemTrait(_, span, hir_id, args) => {
+        GenericBound::LangItemTrait(_, _span, hir_id, args) => {
             visitor.visit_id(hir_id);
-            visitor.visit_generic_args(span, args);
+            visitor.visit_generic_args(args);
         }
         GenericBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
     }
@@ -910,7 +894,6 @@ pub fn walk_fn<'v, V: Visitor<'v>>(
     function_kind: FnKind<'v>,
     function_declaration: &'v FnDecl<'v>,
     body_id: BodyId,
-    _span: Span,
     id: HirId,
 ) {
     visitor.visit_id(id);
@@ -1095,7 +1078,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, arguments);
         }
         ExprKind::MethodCall(ref segment, receiver, arguments, _) => {
-            visitor.visit_path_segment(expression.span, segment);
+            visitor.visit_path_segment(segment);
             visitor.visit_expr(receiver);
             walk_list!(visitor, visit_expr, arguments);
         }

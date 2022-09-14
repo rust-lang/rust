@@ -362,11 +362,11 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         fk: hir_visit::FnKind<'v>,
         fd: &'v hir::FnDecl<'v>,
         b: hir::BodyId,
-        s: Span,
+        _: Span,
         id: hir::HirId,
     ) {
         self.record("FnDecl", Id::None, fd);
-        hir_visit::walk_fn(self, fk, fd, b, s, id)
+        hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
     fn visit_use(&mut self, p: &'v hir::Path<'v>, hir_id: hir::HirId) {
@@ -447,14 +447,14 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_path(self, path)
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v hir::PathSegment<'v>) {
+    fn visit_path_segment(&mut self, path_segment: &'v hir::PathSegment<'v>) {
         self.record("PathSegment", Id::None, path_segment);
-        hir_visit::walk_path_segment(self, path_span, path_segment)
+        hir_visit::walk_path_segment(self, path_segment)
     }
 
-    fn visit_generic_args(&mut self, sp: Span, ga: &'v hir::GenericArgs<'v>) {
+    fn visit_generic_args(&mut self, ga: &'v hir::GenericArgs<'v>) {
         self.record("GenericArgs", Id::None, ga);
-        hir_visit::walk_generic_args(self, sp, ga)
+        hir_visit::walk_generic_args(self, ga)
     }
 
     fn visit_assoc_type_binding(&mut self, type_binding: &'v hir::TypeBinding<'v>) {
@@ -612,9 +612,9 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_where_predicate(self, p)
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, s: Span, _: NodeId) {
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, _: Span, _: NodeId) {
         self.record("FnDecl", Id::None, fk.decl());
-        ast_visit::walk_fn(self, fk, s)
+        ast_visit::walk_fn(self, fk)
     }
 
     fn visit_assoc_item(&mut self, i: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
@@ -652,21 +652,21 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     // one non-inline use (in `ast::Path::segments`). The latter case is more
     // common than the former case, so we implement this visitor and tolerate
     // the double counting in the former case.
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v ast::PathSegment) {
+    fn visit_path_segment(&mut self, path_segment: &'v ast::PathSegment) {
         self.record("PathSegment", Id::None, path_segment);
-        ast_visit::walk_path_segment(self, path_span, path_segment)
+        ast_visit::walk_path_segment(self, path_segment)
     }
 
     // `GenericArgs` has one inline use (in `ast::AssocConstraint::gen_args`) and one
     // non-inline use (in `ast::PathSegment::args`). The latter case is more
     // common, so we implement `visit_generic_args` and tolerate the double
     // counting in the former case.
-    fn visit_generic_args(&mut self, sp: Span, g: &'v ast::GenericArgs) {
+    fn visit_generic_args(&mut self, g: &'v ast::GenericArgs) {
         record_variants!(
             (self, g, g, Id::None, ast, GenericArgs, GenericArgs),
             [AngleBracketed, Parenthesized]
         );
-        ast_visit::walk_generic_args(self, sp, g)
+        ast_visit::walk_generic_args(self, g)
     }
 
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {

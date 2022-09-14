@@ -147,7 +147,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     fn visit_fn(&mut self, fk: ast_visit::FnKind<'a>, span: Span, id: ast::NodeId) {
         run_early_pass!(self, check_fn, fk, span, id);
         self.check_id(id);
-        ast_visit::walk_fn(self, fk, span);
+        ast_visit::walk_fn(self, fk);
 
         // Explicitly check for lints associated with 'closure_id', since
         // it does not have a corresponding AST node
@@ -266,9 +266,9 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_path(self, p);
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, s: &'a ast::PathSegment) {
+    fn visit_path_segment(&mut self, s: &'a ast::PathSegment) {
         self.check_id(s.id);
-        ast_visit::walk_path_segment(self, path_span, s);
+        ast_visit::walk_path_segment(self, s);
     }
 
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
@@ -276,7 +276,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_mac_def(&mut self, mac: &'a ast::MacroDef, id: ast::NodeId) {
-        run_early_pass!(self, check_mac_def, mac, id);
+        run_early_pass!(self, check_mac_def, mac);
         self.check_id(id);
     }
 

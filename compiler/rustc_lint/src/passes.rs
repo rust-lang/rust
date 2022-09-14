@@ -16,7 +16,7 @@ macro_rules! late_lint_methods {
             fn check_body_post(a: &$hir hir::Body<$hir>);
             fn check_crate();
             fn check_crate_post();
-            fn check_mod(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
+            fn check_mod(a: &$hir hir::Mod<$hir>, b: hir::HirId);
             fn check_foreign_item(a: &$hir hir::ForeignItem<$hir>);
             fn check_item(a: &$hir hir::Item<$hir>);
             fn check_item_post(a: &$hir hir::Item<$hir>);
@@ -31,7 +31,7 @@ macro_rules! late_lint_methods {
             fn check_ty(a: &$hir hir::Ty<$hir>);
             fn check_generic_param(a: &$hir hir::GenericParam<$hir>);
             fn check_generics(a: &$hir hir::Generics<$hir>);
-            fn check_poly_trait_ref(a: &$hir hir::PolyTraitRef<$hir>, b: hir::TraitBoundModifier);
+            fn check_poly_trait_ref(a: &$hir hir::PolyTraitRef<$hir>);
             fn check_fn(
                 a: rustc_hir::intravisit::FnKind<$hir>,
                 b: &$hir hir::FnDecl<$hir>,
@@ -162,7 +162,7 @@ macro_rules! early_lint_methods {
             fn check_impl_item(a: &ast::AssocItem);
             fn check_variant(a: &ast::Variant);
             fn check_attribute(a: &ast::Attribute);
-            fn check_mac_def(a: &ast::MacroDef, b: ast::NodeId);
+            fn check_mac_def(a: &ast::MacroDef);
             fn check_mac(a: &ast::MacCall);
 
             /// Called when entering a syntax node that can have lint attributes such

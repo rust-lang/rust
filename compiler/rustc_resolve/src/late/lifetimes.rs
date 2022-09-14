@@ -682,7 +682,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let scope = Scope::TraitRefBoundary { s: self.scope };
                 self.with(scope, |this| {
                     for bound in bounds {
-                        this.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                        this.visit_poly_trait_ref(bound);
                     }
                 });
                 match lifetime.name {
@@ -1105,11 +1105,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_poly_trait_ref(
-        &mut self,
-        trait_ref: &'tcx hir::PolyTraitRef<'tcx>,
-        _modifier: hir::TraitBoundModifier,
-    ) {
+    fn visit_poly_trait_ref(&mut self, trait_ref: &'tcx hir::PolyTraitRef<'tcx>) {
         debug!("visit_poly_trait_ref(trait_ref={:?})", trait_ref);
 
         let (mut binders, scope_type) = self.poly_trait_ref_binder_info();
@@ -1827,7 +1823,7 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
                     // is, those would be potentially inputs to
                     // projections
                     if let Some(last_segment) = path.segments.last() {
-                        self.visit_path_segment(path.span, last_segment);
+                        self.visit_path_segment(last_segment);
                     }
                 }
 
