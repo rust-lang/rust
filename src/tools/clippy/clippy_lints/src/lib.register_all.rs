@@ -344,7 +344,6 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(unnecessary_owned_empty_strings::UNNECESSARY_OWNED_EMPTY_STRINGS),
     LintId::of(unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME),
     LintId::of(unused_io_amount::UNUSED_IO_AMOUNT),
-    LintId::of(unused_peekable::UNUSED_PEEKABLE),
     LintId::of(unused_unit::UNUSED_UNIT),
     LintId::of(unwrap::PANICKING_UNWRAP),
     LintId::of(unwrap::UNNECESSARY_UNWRAP),
