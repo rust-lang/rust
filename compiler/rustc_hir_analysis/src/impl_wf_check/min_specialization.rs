@@ -69,6 +69,7 @@ use crate::constrained_generic_params as cgp;
 use crate::errors::SubstsOnOverriddenImpl;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -117,9 +118,30 @@ fn check_always_applicable(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node
         };
 
         let span = tcx.def_span(impl1_def_id);
+        check_constness(tcx, impl1_def_id, impl2_node, span);
         check_static_lifetimes(tcx, &parent_substs, span);
         check_duplicate_params(tcx, impl1_substs, &parent_substs, span);
         check_predicates(tcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
+    }
+}
+
+/// Check that the specializing impl `impl1` is at least as const as the base
+/// impl `impl2`
+fn check_constness(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, span: Span) {
+    if impl2_node.is_from_trait() {
+        // This isn't a specialization
+        return;
+    }
+
+    let impl1_constness = tcx.constness(impl1_def_id.to_def_id());
+    let impl2_constness = tcx.constness(impl2_node.def_id());
+
+    if let hir::Constness::Const = impl2_constness {
+        if let hir::Constness::NotConst = impl1_constness {
+            tcx.sess
+                .struct_span_err(span, "cannot specialize on const impl with non-const impl")
+                .emit();
+        }
     }
 }
 
@@ -277,7 +299,7 @@ fn check_static_lifetimes<'tcx>(
 
 /// Check whether predicates on the specializing impl (`impl1`) are allowed.
 ///
-/// Each predicate `P` must be:
+/// Each predicate `P` must be one of:
 ///
 /// * Global (not reference any parameters).
 /// * A `T: Tr` predicate where `Tr` is an always-applicable trait.
@@ -375,16 +397,19 @@ fn check_predicates<'tcx>(
     }
 }
 
-/// Checks whether two predicates are the same for the purposes of specialization.
+/// Checks if some predicate on the specializing impl (`predicate1`) is the same
+/// as some predicate on the base impl (`predicate2`).
 ///
 /// This is slightly more complicated than simple syntactic equivalence, since
 /// we want to equate `T: Tr` with `T: ~const Tr` so this can work:
 ///
+/// ```ignore (illustrative)
 /// #[rustc_specialization_trait]
 /// trait Specialize { }
 ///
-/// impl<T: ~const Bound> const Tr for T { }
-/// impl<T: Bound + Specialize> Tr for T { }
+/// impl<T: Bound> Tr for T { }
+/// impl<T: ~const Bound + Specialize> const Tr for T { }
+/// ```
 fn trait_predicates_eq<'tcx>(
     predicate1: ty::Predicate<'tcx>,
     predicate2: ty::Predicate<'tcx>,
@@ -400,6 +425,8 @@ fn trait_predicates_eq<'tcx>(
         _ => kind,
     };
 
+    // We rely on `check_constness` above to ensure that pred1 is const if pred2
+    // is const.
     let pred1_kind_not_const = predicate1.kind().map_bound(predicate_kind_without_constness);
     let pred2_kind_not_const = predicate2.kind().map_bound(predicate_kind_without_constness);
 

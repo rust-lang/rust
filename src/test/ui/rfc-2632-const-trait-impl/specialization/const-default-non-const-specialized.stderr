@@ -1,37 +1,8 @@
-error: any use of this value will cause an error
-  --> $DIR/const-default-non-const-specialized.rs:12:5
+error: cannot specialize on const impl with non-const impl
+  --> $DIR/const-default-non-const-specialized.rs:19:1
    |
-LL |     T::value()
-   |     ^^^^^^^^^^
-   |     |
-   |     calling non-const function `<FortyTwo as Value>::value`
-   |     inside `get_value::<FortyTwo>` at $DIR/const-default-non-const-specialized.rs:12:5
-   |     inside `FORTY_TWO` at $DIR/const-default-non-const-specialized.rs:35:5
-...
-LL | const FORTY_TWO: u32 =
-   | --------------------
-   |
-   = note: `#[deny(const_err)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+LL | impl Value for FortyTwo {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
-
-Future incompatibility report: Future breakage diagnostic:
-error: any use of this value will cause an error
-  --> $DIR/const-default-non-const-specialized.rs:12:5
-   |
-LL |     T::value()
-   |     ^^^^^^^^^^
-   |     |
-   |     calling non-const function `<FortyTwo as Value>::value`
-   |     inside `get_value::<FortyTwo>` at $DIR/const-default-non-const-specialized.rs:12:5
-   |     inside `FORTY_TWO` at $DIR/const-default-non-const-specialized.rs:35:5
-...
-LL | const FORTY_TWO: u32 =
-   | --------------------
-   |
-   = note: `#[deny(const_err)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 

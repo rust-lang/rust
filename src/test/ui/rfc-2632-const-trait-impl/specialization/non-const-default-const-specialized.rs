@@ -1,6 +1,8 @@
 // Tests that a non-const default impl can be specialized by a const trait impl,
 // but that the default impl cannot be used in a const context.
 
+// run-pass
+
 #![feature(const_trait_impl)]
 #![feature(min_specialization)]
 
@@ -27,8 +29,10 @@ impl const Value for FortyTwo {
     }
 }
 
-const ZERO: u32 = get_value::<()>(); //~ ERROR the trait bound `(): ~const Value` is not satisfied
+fn main() {
+    let zero = get_value::<()>();
+    assert_eq!(zero, 0);
 
-const FORTY_TWO: u32 = get_value::<FortyTwo>();
-
-fn main() {}
+    const FORTY_TWO: u32 = get_value::<FortyTwo>();
+    assert_eq!(FORTY_TWO, 42);
+}
