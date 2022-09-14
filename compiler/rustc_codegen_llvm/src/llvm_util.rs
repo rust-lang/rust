@@ -154,6 +154,10 @@ pub fn time_trace_profiler_finish(file_name: &Path) {
 //
 // To find a list of LLVM's names, check llvm-project/llvm/include/llvm/Support/*TargetParser.def
 // where the * matches the architecture's name
+//
+// For targets not present in the above location, see llvm-project/llvm/lib/Target/{ARCH}/*.td
+// where `{ARCH}` is the architecture name. Look for instances of `SubtargetFeature`.
+//
 // Beware to not use the llvm github project for this, but check the git submodule
 // found in src/llvm-project
 // Though note that Rust can also be build with an external precompiled version of LLVM
