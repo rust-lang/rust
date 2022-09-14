@@ -14,7 +14,7 @@ use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use super::{
-    AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
+    AllocId, AllocRange, Allocation, AllocBytes, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
     MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
 };
 
@@ -103,10 +103,13 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Extra data stored in every allocation.
     type AllocExtra: Debug + Clone + 'static;
 
+    /// Type for the bytes of the allocation.
+    type Bytes: AllocBytes + 'static;
+
     /// Memory's allocation map
     type MemoryMap: AllocMap<
             AllocId,
-            (MemoryKind<Self::MemoryKind>, Allocation<Self::Provenance, Self::AllocExtra>),
+            (MemoryKind<Self::MemoryKind>, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>),
         > + Default
         + Clone;
 
@@ -322,7 +325,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>>;
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
 
     fn eval_inline_asm(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -431,6 +434,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
 
     type AllocExtra = ();
     type FrameExtra = ();
+    type Bytes = Box<[u8]>;
 
     #[inline(always)]
     fn use_addr_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {

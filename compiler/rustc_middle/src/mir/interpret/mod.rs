@@ -127,7 +127,7 @@ pub use self::error::{
 pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar};
 
 pub use self::allocation::{
-    alloc_range, AllocRange, Allocation, ConstAllocation, InitChunk, InitChunkIter, InitMask,
+    alloc_range, AllocBytes, AllocRange, Allocation, ConstAllocation, InitChunk, InitChunkIter, InitMask,
     ProvenanceMap,
 };
 

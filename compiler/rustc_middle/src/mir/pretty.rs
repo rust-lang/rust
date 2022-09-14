@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstAllocation, ConstValue, GlobalAlloc, Pointer,
+    read_target_uint, AllocBytes, AllocId, Allocation, ConstAllocation, ConstValue, GlobalAlloc, Pointer,
     Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
@@ -779,21 +779,21 @@ pub fn write_allocations<'tcx>(
 /// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
 /// characters or characters whose value is larger than 127) with a `.`
 /// This also prints provenance adequately.
-pub fn display_allocation<'a, 'tcx, Prov, Extra>(
+pub fn display_allocation<'a, 'tcx, Prov, Extra, Bytes: AllocBytes>(
     tcx: TyCtxt<'tcx>,
-    alloc: &'a Allocation<Prov, Extra>,
-) -> RenderAllocation<'a, 'tcx, Prov, Extra> {
+    alloc: &'a Allocation<Prov, Extra, Bytes>,
+) -> RenderAllocation<'a, 'tcx, Prov, Extra, Bytes> {
     RenderAllocation { tcx, alloc }
 }
 
 #[doc(hidden)]
-pub struct RenderAllocation<'a, 'tcx, Prov, Extra> {
+pub struct RenderAllocation<'a, 'tcx, Prov, Extra, Bytes: AllocBytes = Box<[u8]>> {
     tcx: TyCtxt<'tcx>,
-    alloc: &'a Allocation<Prov, Extra>,
+    alloc: &'a Allocation<Prov, Extra, Bytes>,
 }
 
-impl<'a, 'tcx, Prov: Provenance, Extra> std::fmt::Display
-    for RenderAllocation<'a, 'tcx, Prov, Extra>
+impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> std::fmt::Display
+    for RenderAllocation<'a, 'tcx, Prov, Extra, Bytes>
 {
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let RenderAllocation { tcx, alloc } = *self;
@@ -837,9 +837,9 @@ fn write_allocation_newline(
 /// The `prefix` argument allows callers to add an arbitrary prefix before each line (even if there
 /// is only one line). Note that your prefix should contain a trailing space as the lines are
 /// printed directly after it.
-fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
+fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
     tcx: TyCtxt<'tcx>,
-    alloc: &Allocation<Prov, Extra>,
+    alloc: &Allocation<Prov, Extra, Bytes>,
     w: &mut dyn std::fmt::Write,
     prefix: &str,
 ) -> std::fmt::Result {

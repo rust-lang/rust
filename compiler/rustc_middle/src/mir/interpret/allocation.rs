@@ -395,7 +395,7 @@ impl<Bytes: AllocBytes> Allocation<AllocId, (), Bytes> {
 }
 
 /// Raw accessors. Provide access to otherwise private bytes.
-impl<Prov, Extra> Allocation<Prov, Extra> {
+impl<Prov, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> {
     pub fn len(&self) -> usize {
         self.bytes.get_len()
     }
@@ -424,7 +424,7 @@ impl<Prov, Extra> Allocation<Prov, Extra> {
 }
 
 /// Byte accessors.
-impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
+impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> {
     /// Get the pointer of the [u8] of bytes.
     pub fn expose_base_addr(&self) -> usize {
         self.bytes.expose_addr().try_into().unwrap()
@@ -442,7 +442,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
     /// on that.
     #[inline]
     pub fn get_bytes_unchecked(&self, range: AllocRange) -> &[u8] {
-        &self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
+        &self.bytes.get_slice_from_range(range.start.bytes_usize()..range.end().bytes_usize())
     }
 
     /// Checks that these bytes are initialized, and then strip provenance (if possible) and return
@@ -502,7 +502,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
 }
 
 /// Reading and writing.
-impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
+impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> {
     /// Reads a *non-ZST* scalar.
     ///
     /// If `read_provenance` is `true`, this will also read provenance; otherwise (if the machine
@@ -616,7 +616,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
 }
 
 /// Provenance.
-impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
+impl<Prov: Copy, Extra, Bytes> Allocation<Prov, Extra, Bytes> {
     /// Returns all provenance overlapping with the given pointer-offset pair.
     fn range_get_provenance(&self, cx: &impl HasDataLayout, range: AllocRange) -> &[(Size, Prov)] {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
@@ -731,7 +731,7 @@ pub struct AllocationProvenance<Prov> {
     dest_provenance: Vec<(Size, Prov)>,
 }
 
-impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
+impl<Prov: Copy, Extra, Bytes> Allocation<Prov, Extra, Bytes> {
     pub fn prepare_provenance_copy(
         &self,
         cx: &impl HasDataLayout,
@@ -1238,7 +1238,7 @@ impl<'a> Iterator for InitChunkIter<'a> {
 }
 
 /// Uninitialized bytes.
-impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
+impl<Prov: Copy, Extra, Bytes> Allocation<Prov, Extra, Bytes> {
     /// Checks whether the given range  is entirely initialized.
     ///
     /// Returns `Ok(())` if it's initialized. Otherwise returns the range of byte
@@ -1286,7 +1286,7 @@ impl InitMaskCompressed {
 }
 
 /// Transferring the initialization mask to other allocations.
-impl<Prov, Extra> Allocation<Prov, Extra> {
+impl<Prov, Extra, Bytes> Allocation<Prov, Extra, Bytes> {
     /// Creates a run-length encoding of the initialization mask; panics if range is empty.
     ///
     /// This is essentially a more space-efficient version of
