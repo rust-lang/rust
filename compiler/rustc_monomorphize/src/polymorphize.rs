@@ -300,10 +300,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 ControlFlow::CONTINUE
             }
             ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-                if matches!(
-                    self.tcx.def_kind(def.did),
-                    DefKind::AnonConst | DefKind::InlineConst
-                ) =>
+                if matches!(self.tcx.def_kind(def.did), DefKind::AnonConst) =>
             {
                 assert_eq!(promoted, ());
 

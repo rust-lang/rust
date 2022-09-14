@@ -38,6 +38,16 @@ where
     })
 }
 
+fn renumber_regions_in_mir_constant<'tcx>(
+    infcx: &InferCtxt<'_, 'tcx>,
+    value: ConstantKind<'tcx>,
+) -> ConstantKind<'tcx> {
+    infcx.tcx.super_fold_regions(value, |_region, _depth| {
+        let origin = NllRegionVariableOrigin::Existential { from_forall: false };
+        infcx.next_nll_region_var(origin)
+    })
+}
+
 struct NllVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
 }
@@ -48,6 +58,13 @@ impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         renumber_regions(self.infcx, value)
+    }
+
+    fn renumber_regions_in_mir_constant(
+        &mut self,
+        value: ConstantKind<'tcx>,
+    ) -> ConstantKind<'tcx> {
+        renumber_regions_in_mir_constant(self.infcx, value)
     }
 }
 
@@ -81,29 +98,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, _location: Location) {
         let literal = constant.literal;
-        debug!("{:#?}", literal);
-
-        match literal {
-            ConstantKind::Ty(ct) => {
-                let ct = self.renumber_regions(ct);
-                debug!("renumbered ct {:#?}", ct);
-
-                constant.literal = ConstantKind::Ty(ct);
-            }
-            ConstantKind::Unevaluated(uv, ty) => {
-                debug!("uv: {:#?}, ty: {:#?}", uv, ty);
-                let uv = self.renumber_regions(uv);
-                debug!("uv: {:#?}", uv);
-                let ty = self.renumber_regions(ty);
-                debug!("{:#?}", ty);
-                constant.literal = ConstantKind::Unevaluated(uv, ty);
-            }
-            ConstantKind::Val(val, ty) => {
-                let ty = self.renumber_regions(ty);
-                constant.literal = ConstantKind::Val(val, ty);
-            }
-        }
-
+        constant.literal = self.renumber_regions_in_mir_constant(literal);
         debug!("constant: {:#?}", constant);
     }
 }

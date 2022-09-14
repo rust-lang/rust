@@ -2090,15 +2090,6 @@ impl<'tcx> Constant<'tcx> {
 }
 
 impl<'tcx> ConstantKind<'tcx> {
-    /// Returns `None` if the constant is not trivially safe for use in the type system.
-    #[inline]
-    pub fn const_for_ty(&self) -> Option<ty::Const<'tcx>> {
-        match self {
-            ConstantKind::Ty(c) => Some(*c),
-            ConstantKind::Val(..) | ConstantKind::Unevaluated(..) => None,
-        }
-    }
-
     #[inline(always)]
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
@@ -2433,14 +2424,14 @@ impl<'tcx> ConstantKind<'tcx> {
                 debug!("error encountered during evaluation");
                 // Error was handled in `const_eval_resolve`. Here we just create a
                 // new unevaluated const and error hard later in codegen
-                Self::Ty(tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                Self::Unevaluated(
+                    ty::Unevaluated {
                         def: def.to_global(),
                         substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
-                        promoted: (),
-                    }),
+                        promoted: None,
+                    },
                     ty,
-                }))
+                )
             }
         }
     }

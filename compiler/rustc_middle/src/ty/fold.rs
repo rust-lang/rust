@@ -302,6 +302,17 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         value.fold_with(&mut RegionFolder::new(self, &mut f))
     }
+
+    pub fn super_fold_regions<T>(
+        self,
+        value: T,
+        mut f: impl FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
+    ) -> T
+    where
+        T: TypeSuperFoldable<'tcx>,
+    {
+        value.super_fold_with(&mut RegionFolder::new(self, &mut f))
+    }
 }
 
 /// Folds over the substructure of a type, visiting its component

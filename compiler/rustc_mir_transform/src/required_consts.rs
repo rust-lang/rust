@@ -17,13 +17,8 @@ impl<'tcx> Visitor<'tcx> for RequiredConstsVisitor<'_, 'tcx> {
         let literal = constant.literal;
         match literal {
             ConstantKind::Ty(c) => match c.kind() {
-                ConstKind::Unevaluated(uv) => {
-                    let literal = ConstantKind::Unevaluated(uv.expand(), c.ty());
-                    let new_constant =
-                        Constant { span: constant.span, user_ty: constant.user_ty, literal };
-                    self.required_consts.push(new_constant);
-                }
-                _ => {}
+                ConstKind::Param(_) => {}
+                _ => bug!("only ConstKind::Param should be encountered here, got {:#?}", c),
             },
             ConstantKind::Unevaluated(..) => self.required_consts.push(*constant),
             ConstantKind::Val(..) => {}
