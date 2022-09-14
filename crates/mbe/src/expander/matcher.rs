@@ -253,7 +253,7 @@ impl BindingsBuilder {
         &'a self,
         id: usize,
         len: usize,
-        nested_refs: &mut Vec<&'a Vec<LinkNode<Rc<BindingKind>>>>,
+        nested_refs: &mut Vec<&'a [LinkNode<Rc<BindingKind>>]>,
     ) {
         self.nested[id].iter().take(len).for_each(|it| match it {
             LinkNode::Node(id) => nested_refs.push(&self.nodes[*id]),
@@ -263,7 +263,7 @@ impl BindingsBuilder {
 
     fn collect_nested(&self, idx: usize, nested_idx: usize, nested: &mut Vec<Bindings>) {
         let last = &self.nodes[idx];
-        let mut nested_refs = Vec::new();
+        let mut nested_refs: Vec<&[_]> = Vec::new();
         self.nested[nested_idx].iter().for_each(|it| match *it {
             LinkNode::Node(idx) => nested_refs.push(&self.nodes[idx]),
             LinkNode::Parent { idx, len } => self.collect_nested_ref(idx, len, &mut nested_refs),
