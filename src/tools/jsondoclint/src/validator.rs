@@ -68,7 +68,7 @@ impl<'a> Validator<'a> {
                 ItemEnum::OpaqueTy(x) => self.check_opaque_ty(x),
                 ItemEnum::Constant(x) => self.check_constant(x),
                 ItemEnum::Static(x) => self.check_static(x),
-                ItemEnum::ForeignType => todo!(),
+                ItemEnum::ForeignType => {} // nop
                 ItemEnum::Macro(x) => self.check_macro(x),
                 ItemEnum::ProcMacro(x) => self.check_proc_macro(x),
                 ItemEnum::PrimitiveType(x) => self.check_primitive_type(x),
@@ -338,6 +338,13 @@ impl<'a> Validator<'a> {
     fn check_function_pointer(&mut self, fp: &'a FunctionPointer) {
         self.check_fn_decl(&fp.decl);
         fp.generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
+    }
+
+    // TODO: Remove
+    fn add_id(&mut self, id: &'a Id) {
+        if !self.seen_ids.contains(id) {
+            self.todo.insert(id);
+        }
     }
 
     fn add_id_checked(&mut self, id: &'a Id, valid: fn(Kind) -> bool, expected: &str) {

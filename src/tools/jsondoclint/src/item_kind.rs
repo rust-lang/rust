@@ -52,9 +52,9 @@ impl Kind {
             Macro => true,
             ProcMacro => true,
             Primitive => true,
+            ForeignType => true,
 
             // FIXME(adotinthevoid): I'm not sure if these are corrent
-            ForeignType => false,
             Keyword => false,
             OpaqueTy => false,
             ProcAttribute => false,
