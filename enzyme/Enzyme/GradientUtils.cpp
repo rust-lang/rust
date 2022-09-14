@@ -2016,9 +2016,23 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
             if (auto li = dyn_cast<LoadInst>(u)) {
               IRBuilder<> lb(li);
               if (replace) {
-                auto replacewith =
+
+                Value *replacewith =
                     (idx < 0) ? tape
                               : lb.CreateExtractValue(tape, {(unsigned)idx});
+                if (!inLoop && omp) {
+                  Value *tid = ompThreadId();
+#if LLVM_VERSION_MAJOR > 7
+                  Value *tPtr = lb.CreateInBoundsGEP(
+                      replacewith->getType()->getPointerElementType(),
+                      replacewith, ArrayRef<Value *>(tid));
+#else
+                  Value *tPtr =
+                      lb.CreateInBoundsGEP(replacewith, ArrayRef<Value *>(tid));
+#endif
+                  replacewith = lb.CreateLoad(
+                      replacewith->getType()->getPointerElementType(), tPtr);
+                }
                 if (li->getType() != replacewith->getType()) {
                   llvm::errs() << " oldFunc: " << *oldFunc << "\n";
                   llvm::errs() << " newFunc: " << *newFunc << "\n";
