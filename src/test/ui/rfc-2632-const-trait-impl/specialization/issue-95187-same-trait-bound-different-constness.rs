@@ -1,4 +1,4 @@
-// Tests that `T: ~const Foo` and `T: Foo` are treated as equivalent for the
+// Tests that `T: Foo` and `T: ~const Foo` are treated as equivalent for the
 // purposes of min_specialization.
 
 // check-pass
@@ -14,14 +14,14 @@ trait Foo {}
 
 trait Bar {}
 
-impl<T> const Bar for T
-where
-    T: ~const Foo,
-{}
-
 impl<T> Bar for T
 where
     T: Foo,
+{}
+
+impl<T> const Bar for T
+where
+    T: ~const Foo,
     T: Specialize,
 {}
 
