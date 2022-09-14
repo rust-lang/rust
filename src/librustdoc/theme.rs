@@ -202,8 +202,18 @@ pub(crate) fn get_differences(
 ) {
     for (selector, entry) in origin.iter() {
         match against.get(selector) {
-            Some(a) => get_differences(&a.children, &entry.children, v),
-            None => v.push(format!("  Missing rule `{}`", selector)),
+            Some(a) => {
+                get_differences(&entry.children, &a.children, v);
+                if selector == ":root" {
+                    // We need to check that all variables have been set.
+                    for rule in entry.rules.keys() {
+                        if !a.rules.contains_key(rule) {
+                            v.push(format!("  Missing CSS variable `{rule}` in `:root`"));
+                        }
+                    }
+                }
+            }
+            None => v.push(format!("  Missing rule `{selector}`")),
         }
     }
 }
