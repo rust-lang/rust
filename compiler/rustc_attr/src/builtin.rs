@@ -21,6 +21,12 @@ use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 /// For more, see [this pull request](https://github.com/rust-lang/rust/pull/100591).
 pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
 
+pub fn rust_version_symbol() -> Symbol {
+    let version = option_env!("CFG_VERSION").unwrap_or("<current>");
+    let version = version.split(' ').next().unwrap();
+    Symbol::intern(&version)
+}
+
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
 }
@@ -495,9 +501,7 @@ where
                     }
 
                     if let Some(s) = since && s.as_str() == VERSION_PLACEHOLDER {
-                        let version = option_env!("CFG_VERSION").unwrap_or("<current>");
-                        let version = version.split(' ').next().unwrap();
-                        since = Some(Symbol::intern(&version));
+                        since = Some(rust_version_symbol());
                     }
 
                     match (feature, since) {
