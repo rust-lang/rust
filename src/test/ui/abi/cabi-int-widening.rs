@@ -8,7 +8,9 @@ extern "C" {
 }
 
 fn main() {
-    let x = unsafe { rust_int8_to_int32(-1) };
+    let x = unsafe {
+        rust_int8_to_int32(-1)
+    };
 
     assert!(x == -1);
 }

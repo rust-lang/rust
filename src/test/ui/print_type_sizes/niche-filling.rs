@@ -21,21 +21,16 @@
 
 use std::num::NonZeroU32;
 
-pub enum MyOption<T> {
-    None,
-    Some(T),
-}
+pub enum MyOption<T> { None, Some(T) }
 
 #[rustc_layout_scalar_valid_range_start(0)]
 #[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
 pub struct MyNotNegativeOne {
-    _i: i32,
+  _i: i32,
 }
 
 impl<T> Default for MyOption<T> {
-    fn default() -> Self {
-        MyOption::None
-    }
+    fn default() -> Self { MyOption::None }
 }
 
 pub enum EmbeddedDiscr {
@@ -44,9 +39,7 @@ pub enum EmbeddedDiscr {
 }
 
 impl Default for EmbeddedDiscr {
-    fn default() -> Self {
-        EmbeddedDiscr::None
-    }
+    fn default() -> Self { EmbeddedDiscr::None }
 }
 
 #[derive(Default)]
@@ -72,7 +65,7 @@ pub enum Enum4<A, B, C, D> {
     One(A),
     Two(B),
     Three(C),
-    Four(D),
+    Four(D)
 }
 
 pub union Union1<A: Copy> {

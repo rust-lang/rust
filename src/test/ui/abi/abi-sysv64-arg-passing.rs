@@ -34,34 +34,31 @@
 
 #[allow(dead_code)]
 #[allow(improper_ctypes)]
+
 #[cfg(target_arch = "x86_64")]
 mod tests {
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq, Debug)]
     pub struct TwoU8s {
-        one: u8,
-        two: u8,
+        one: u8, two: u8
     }
 
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq, Debug)]
     pub struct TwoU16s {
-        one: u16,
-        two: u16,
+        one: u16, two: u16
     }
 
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq, Debug)]
     pub struct TwoU32s {
-        one: u32,
-        two: u32,
+        one: u32, two: u32
     }
 
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq, Debug)]
     pub struct TwoU64s {
-        one: u64,
-        two: u64,
+        one: u64, two: u64
     }
 
     #[repr(C)]
@@ -87,33 +84,19 @@ mod tests {
 
     #[repr(C)]
     #[derive(Copy, Clone)]
-    pub struct Quad {
-        a: u64,
-        b: u64,
-        c: u64,
-        d: u64,
-    }
+    pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
 
     #[derive(Copy, Clone)]
-    pub struct QuadFloats {
-        a: f32,
-        b: f32,
-        c: f32,
-        d: f32,
-    }
+    pub struct QuadFloats { a: f32, b: f32, c: f32, d: f32 }
 
     #[repr(C)]
     #[derive(Copy, Clone)]
-    pub struct Floats {
-        a: f64,
-        b: u8,
-        c: f64,
-    }
+    pub struct Floats { a: f64, b: u8, c: f64 }
 
     #[repr(C, u8)]
     pub enum U8TaggedEnumOptionU64U64 {
         None,
-        Some(u64, u64),
+        Some(u64,u64),
     }
 
     #[repr(C, u8)]
@@ -141,13 +124,8 @@ mod tests {
         pub fn get_x(x: S) -> u64;
         pub fn get_y(x: S) -> u64;
         pub fn get_z(x: S) -> u64;
-        pub fn get_c_many_params(
-            _: *const (),
-            _: *const (),
-            _: *const (),
-            _: *const (),
-            f: Quad,
-        ) -> u64;
+        pub fn get_c_many_params(_: *const (), _: *const (),
+                                 _: *const (), _: *const (), f: Quad) -> u64;
         pub fn get_c_exhaust_sysv64_ints(
             _: *const (),
             _: *const (),
@@ -173,7 +151,9 @@ mod tests {
     }
 
     pub fn cabi_int_widening() {
-        let x = unsafe { rust_int8_to_int32(-1) };
+        let x = unsafe {
+            rust_int8_to_int32(-1)
+        };
 
         assert!(x == -1);
     }
@@ -210,7 +190,7 @@ mod tests {
                 arg3: 4,
                 arg4: 5,
                 arg5: 6,
-                arg6: TwoU8s { one: 7, two: 8 },
+                arg6: TwoU8s { one: 7, two: 8, }
             };
             let y = ManyInts {
                 arg1: 1,
@@ -218,7 +198,7 @@ mod tests {
                 arg3: 3,
                 arg4: 4,
                 arg5: 5,
-                arg6: TwoU8s { one: 6, two: 7 },
+                arg6: TwoU8s { one: 6, two: 7, }
             };
             let empty = Empty;
             rust_dbg_extern_empty_struct(x, empty, y);
@@ -227,7 +207,7 @@ mod tests {
 
     pub fn extern_pass_twou8s() {
         unsafe {
-            let x = TwoU8s { one: 22, two: 23 };
+            let x = TwoU8s {one: 22, two: 23};
             let y = rust_dbg_extern_identity_TwoU8s(x);
             assert_eq!(x, y);
         }
@@ -235,7 +215,7 @@ mod tests {
 
     pub fn extern_pass_twou16s() {
         unsafe {
-            let x = TwoU16s { one: 22, two: 23 };
+            let x = TwoU16s {one: 22, two: 23};
             let y = rust_dbg_extern_identity_TwoU16s(x);
             assert_eq!(x, y);
         }
@@ -243,7 +223,7 @@ mod tests {
 
     pub fn extern_pass_twou32s() {
         unsafe {
-            let x = TwoU32s { one: 22, two: 23 };
+            let x = TwoU32s {one: 22, two: 23};
             let y = rust_dbg_extern_identity_TwoU32s(x);
             assert_eq!(x, y);
         }
@@ -251,7 +231,7 @@ mod tests {
 
     pub fn extern_pass_twou64s() {
         unsafe {
-            let x = TwoU64s { one: 22, two: 23 };
+            let x = TwoU64s {one: 22, two: 23};
             let y = rust_dbg_extern_identity_TwoU64s(x);
             assert_eq!(x, y);
         }
@@ -291,7 +271,9 @@ mod tests {
 
     #[inline(never)]
     fn indirect_call(func: unsafe extern "sysv64" fn(s: S) -> u64, s: S) -> u64 {
-        unsafe { func(s) }
+        unsafe {
+            func(s)
+        }
     }
 
     pub fn foreign_fn_with_byval() {
@@ -305,7 +287,12 @@ mod tests {
         use std::ptr;
         unsafe {
             let null = ptr::null();
-            let q = Quad { a: 1, b: 2, c: 3, d: 4 };
+            let q = Quad {
+                a: 1,
+                b: 2,
+                c: 3,
+                d: 4
+            };
             assert_eq!(get_c_many_params(null, null, null, null, q), q.c);
         }
     }
@@ -318,8 +305,16 @@ mod tests {
         use std::ptr;
         unsafe {
             let null = ptr::null();
-            let q = QuadFloats { a: 10.2, b: 20.3, c: 30.4, d: 40.5 };
-            assert_eq!(get_c_exhaust_sysv64_ints(null, null, null, null, null, null, null, q), q.c);
+            let q = QuadFloats {
+                a: 10.2,
+                b: 20.3,
+                c: 30.4,
+                d: 40.5
+            };
+            assert_eq!(
+                get_c_exhaust_sysv64_ints(null, null, null, null, null, null, null, q),
+                q.c,
+            );
         }
     }
 
@@ -329,12 +324,10 @@ mod tests {
 
     fn test1() {
         unsafe {
-            let q = Quad {
-                a: 0xaaaa_aaaa_aaaa_aaaa,
-                b: 0xbbbb_bbbb_bbbb_bbbb,
-                c: 0xcccc_cccc_cccc_cccc,
-                d: 0xdddd_dddd_dddd_dddd,
-            };
+            let q = Quad { a: 0xaaaa_aaaa_aaaa_aaaa,
+                     b: 0xbbbb_bbbb_bbbb_bbbb,
+                     c: 0xcccc_cccc_cccc_cccc,
+                     d: 0xdddd_dddd_dddd_dddd };
             let qq = rust_dbg_abi_1(q);
             println!("a: {:x}", qq.a as usize);
             println!("b: {:x}", qq.b as usize);
@@ -349,7 +342,9 @@ mod tests {
 
     fn test2() {
         unsafe {
-            let f = Floats { a: 1.234567890e-15_f64, b: 0b_1010_1010, c: 1.0987654321e-15_f64 };
+            let f = Floats { a: 1.234567890e-15_f64,
+                     b: 0b_1010_1010,
+                     c: 1.0987654321e-15_f64 };
             let ff = rust_dbg_abi_2(f);
             println!("a: {}", ff.a as f64);
             println!("b: {}", ff.b as usize);
@@ -375,7 +370,7 @@ mod tests {
         }
 
         let none_u64u64 = unsafe { rust_dbg_new_none_u64u64() };
-        if let U8TaggedEnumOptionU64U64::Some(_, _) = none_u64u64 {
+        if let U8TaggedEnumOptionU64U64::Some(_,_) = none_u64u64 {
             panic!("unexpected some");
         }
 
@@ -449,4 +444,6 @@ fn main() {
 }
 
 #[cfg(not(target_arch = "x86_64"))]
-fn main() {}
+fn main() {
+
+}

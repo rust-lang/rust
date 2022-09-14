@@ -21,7 +21,7 @@ struct A(i32);
 
 enum E {
     A(i32),
-    B(A),
+    B(A)
 }
 
 #[derive(Default)]

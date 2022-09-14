@@ -35,7 +35,10 @@ pub struct Pair<T> {
 
 impl<T> Pair<T> {
     fn new(a: T, d: T) -> Self {
-        Pair { _car: a, _cdr: d }
+        Pair {
+            _car: a,
+            _cdr: d,
+        }
     }
 }
 
@@ -46,20 +49,17 @@ pub struct FiftyBytes([u8; 50]);
 pub struct ZeroSized;
 
 impl SevenBytes {
-    fn new() -> Self {
-        SevenBytes([0; 7])
-    }
+    fn new() -> Self { SevenBytes([0; 7]) }
 }
 
 impl FiftyBytes {
-    fn new() -> Self {
-        FiftyBytes([0; 50])
-    }
+    fn new() -> Self { FiftyBytes([0; 50]) }
 }
 
-pub fn f1<T: Copy>(x: T) {
+pub fn f1<T:Copy>(x: T) {
     let _v: Pair<T> = Pair::new(x, x);
-    let _v2: Pair<FiftyBytes> = Pair::new(FiftyBytes::new(), FiftyBytes::new());
+    let _v2: Pair<FiftyBytes> =
+        Pair::new(FiftyBytes::new(), FiftyBytes::new());
 }
 
 #[start]

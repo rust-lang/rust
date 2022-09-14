@@ -17,9 +17,7 @@ fn main() {
     // Call to Rust function is fine.
     foo::foo();
     // Call to foreign function should warn.
-    unsafe {
-        foo();
-    }
+    unsafe { foo(); }
     //~^ WARNING call to foreign function with FFI-unwind ABI
     let ptr: extern "C-unwind" fn() = foo::foo;
     // Call to function pointer should also warn.

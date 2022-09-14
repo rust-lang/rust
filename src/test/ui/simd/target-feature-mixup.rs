@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 #![allow(stable_features)]
 #![allow(overflowing_literals)]
+
 // ignore-emscripten
 // ignore-sgx no processes
 // ignore-fuchsia must translate zircon signal to SIGILL, FIXME (#58590)
@@ -9,12 +10,12 @@
 #![feature(repr_simd, target_feature, cfg_target_feature)]
 #![feature(avx512_target_feature)]
 
-use std::env;
 use std::process::{Command, ExitStatus};
+use std::env;
 
 fn main() {
     if let Some(level) = env::args().nth(1) {
-        return test::main(&level);
+        return test::main(&level)
     }
 
     let me = env::current_exe().unwrap();
@@ -22,7 +23,7 @@ fn main() {
         let status = Command::new(&me).arg(level).status().unwrap();
         if status.success() {
             println!("success with {}", level);
-            continue;
+            continue
         }
 
         // We don't actually know if our computer has the requisite target features
@@ -30,7 +31,7 @@ fn main() {
         // for now just assume sigill means this is a machine that can't run this test.
         if is_sigill(status) {
             println!("sigill with {}, assuming spurious", level);
-            continue;
+            continue
         }
         panic!("invalid status at {}: {}", level, status);
     }
@@ -70,11 +71,11 @@ mod test {
             main_normal(level);
             main_sse(level);
             if level == "sse" {
-                return;
+                return
             }
             main_avx(level);
             if level == "avx" {
-                return;
+                return
             }
             main_avx512(level);
         }
@@ -122,6 +123,7 @@ mod test {
         #[target_feature(enable = "avx512bw")]
         unsafe fn main_avx512(level: &str) { ... }
     }
+
 
     #[target_feature(enable = "sse2")]
     unsafe fn id_sse_128(a: __m128i) -> __m128i {

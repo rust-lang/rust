@@ -5,7 +5,9 @@
 // ignore-sgx
 
 #[cfg(windows)]
-pub fn main() {}
+pub fn main() {
+}
 
 #[cfg(unix)]
-pub fn main() {}
+pub fn main() {
+}

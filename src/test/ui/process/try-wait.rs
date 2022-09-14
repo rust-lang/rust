@@ -4,6 +4,7 @@
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-uefi spawn function is blocking. Also kill not implemented.
+
 #![feature(process_try_wait)]
 
 use std::env;
@@ -18,10 +19,13 @@ fn main() {
             "sleep" => thread::sleep(Duration::new(1_000, 0)),
             _ => {}
         }
-        return;
+        return
     }
 
-    let mut me = Command::new(env::current_exe().unwrap()).arg("sleep").spawn().unwrap();
+    let mut me = Command::new(env::current_exe().unwrap())
+                         .arg("sleep")
+                         .spawn()
+                         .unwrap();
     let maybe_status = me.try_wait().unwrap();
     assert!(maybe_status.is_none());
     let maybe_status = me.try_wait().unwrap();
@@ -35,12 +39,15 @@ fn main() {
     let status = me.try_wait().unwrap().unwrap();
     assert!(!status.success());
 
-    let mut me = Command::new(env::current_exe().unwrap()).arg("return-quickly").spawn().unwrap();
+    let mut me = Command::new(env::current_exe().unwrap())
+                         .arg("return-quickly")
+                         .spawn()
+                         .unwrap();
     loop {
         match me.try_wait() {
             Ok(Some(res)) => {
                 assert!(res.success());
-                break;
+                break
             }
             Ok(None) => {
                 thread::sleep(Duration::from_millis(1));

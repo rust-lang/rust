@@ -20,9 +20,7 @@ use std::thread;
 // Inlining to avoid llvm turning the recursive functions into tail calls,
 // which doesn't consume stack.
 #[inline(always)]
-pub fn black_box<T>(dummy: T) {
-    std::intrinsics::black_box(dummy);
-}
+pub fn black_box<T>(dummy: T) { std::intrinsics::black_box(dummy); }
 
 fn silent_recurse() {
     let buf = [0u8; 1000];
@@ -37,7 +35,8 @@ fn loud_recurse() {
 }
 
 #[cfg(unix)]
-fn check_status(status: std::process::ExitStatus) {
+fn check_status(status: std::process::ExitStatus)
+{
     use std::os::unix::process::ExitStatusExt;
 
     assert!(!status.success());
@@ -45,9 +44,11 @@ fn check_status(status: std::process::ExitStatus) {
 }
 
 #[cfg(not(unix))]
-fn check_status(status: std::process::ExitStatus) {
+fn check_status(status: std::process::ExitStatus)
+{
     assert!(!status.success());
 }
+
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -78,11 +79,8 @@ fn main() {
             check_status(silent.status);
 
             let error = String::from_utf8_lossy(&silent.stderr);
-            assert!(
-                error.contains("has overflowed its stack"),
-                "missing overflow message: {}",
-                error
-            );
+            assert!(error.contains("has overflowed its stack"),
+                    "missing overflow message: {}", error);
         }
     }
 }

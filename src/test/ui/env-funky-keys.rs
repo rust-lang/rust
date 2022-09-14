@@ -29,7 +29,10 @@ fn main() {
         return;
     }
 
-    let current_exe = CString::new(env::current_exe().unwrap().as_os_str().as_bytes()).unwrap();
+    let current_exe = CString::new(env::current_exe()
+                                       .unwrap()
+                                       .as_os_str()
+                                       .as_bytes()).unwrap();
     let new_env_var = CString::new("FOOBAR").unwrap();
     let filename: *const c_char = current_exe.as_ptr();
     let argv: &[*const c_char] = &[filename, filename, ptr::null()];

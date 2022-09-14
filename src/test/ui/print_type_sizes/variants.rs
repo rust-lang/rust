@@ -12,7 +12,7 @@
 
 #![feature(start)]
 
-pub struct SevenBytes([u8; 7]);
+pub struct SevenBytes([u8;  7]);
 pub struct FiftyBytes([u8; 50]);
 
 pub enum Enum {

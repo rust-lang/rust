@@ -14,9 +14,9 @@ struct LARGE_INTEGER_U {
 #[derive(Clone, Copy)]
 #[repr(C)]
 union LARGE_INTEGER {
-    __unnamed__: LARGE_INTEGER_U,
-    u: LARGE_INTEGER_U,
-    QuadPart: u64,
+  __unnamed__: LARGE_INTEGER_U,
+  u: LARGE_INTEGER_U,
+  QuadPart: u64,
 }
 
 #[link(name = "rust_test_helpers", kind = "static")]
