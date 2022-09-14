@@ -294,7 +294,7 @@ struct WrongKindOfAnnotation {
 struct OptionsInErrors {
     #[label(typeck::label)]
     label: Option<Span>,
-    #[suggestion(typeck::suggestion)]
+    #[suggestion(typeck::suggestion, code = "...")]
     opt_sugg: Option<(Span, Applicability)>,
 }
 

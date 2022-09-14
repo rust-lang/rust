@@ -462,7 +462,7 @@ pub struct LinkSection {
 pub struct NoMangleForeign {
     #[label]
     pub span: Span,
-    #[suggestion(applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable")]
     pub attr_span: Span,
     pub foreign_item_kind: &'static str,
 }
@@ -596,7 +596,7 @@ pub enum UnusedNote {
 #[derive(LintDiagnostic)]
 #[diag(passes::unused)]
 pub struct Unused {
-    #[suggestion(applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable")]
     pub attr_span: Span,
     #[subdiagnostic]
     pub note: UnusedNote,
