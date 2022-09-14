@@ -121,25 +121,7 @@ pub(crate) fn codegen_constant<'tcx>(
             ConstKind::Value(valtree) => {
                 (fx.tcx.valtree_to_const_val((const_.ty(), valtree)), const_.ty())
             }
-            ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-                if fx.tcx.is_static(def.did) =>
-            {
-                assert!(substs.is_empty());
-                assert_eq!(promoted, ());
-                return codegen_static_ref(fx, def.did, fx.layout_of(const_.ty())).to_cvalue(fx);
-            }
-            ConstKind::Unevaluated(unevaluated) => {
-                match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated.expand(), None)
-                {
-                    Ok(const_val) => (const_val, const_.ty()),
-                    Err(_) => {
-                        span_bug!(
-                            constant.span,
-                            "erroneous constant not captured by required_consts"
-                        );
-                    }
-                }
-            }
+            ConstKind::Unevaluated(_) => bug!("expected constant to be evaluated at this stage"),
             ConstKind::Param(_)
             | ConstKind::Infer(_)
             | ConstKind::Bound(_, _)
