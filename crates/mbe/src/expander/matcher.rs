@@ -212,7 +212,7 @@ impl BindingsBuilder {
         self.collect_nodes(link_nodes, &mut nodes);
 
         for cmd in nodes {
-            match &**cmd {
+            match cmd {
                 BindingKind::Empty(name) => {
                     bindings.push_empty(name);
                 }
@@ -272,12 +272,7 @@ impl BindingsBuilder {
         nested.extend(nested_refs.into_iter().map(|iter| self.build_inner(iter)));
     }
 
-    fn collect_nodes_ref<'a>(
-        &'a self,
-        id: usize,
-        len: usize,
-        nodes: &mut Vec<&'a Rc<BindingKind>>,
-    ) {
+    fn collect_nodes_ref<'a>(&'a self, id: usize, len: usize, nodes: &mut Vec<&'a BindingKind>) {
         self.nodes[id].iter().take(len).for_each(|it| match it {
             LinkNode::Node(it) => nodes.push(it),
             LinkNode::Parent { idx, len } => self.collect_nodes_ref(*idx, *len, nodes),
@@ -287,7 +282,7 @@ impl BindingsBuilder {
     fn collect_nodes<'a>(
         &'a self,
         link_nodes: &'a [LinkNode<Rc<BindingKind>>],
-        nodes: &mut Vec<&'a Rc<BindingKind>>,
+        nodes: &mut Vec<&'a BindingKind>,
     ) {
         link_nodes.iter().for_each(|it| match it {
             LinkNode::Node(it) => nodes.push(it),
