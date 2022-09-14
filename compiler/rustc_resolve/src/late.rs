@@ -19,7 +19,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{BindingAnnotation, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_lifetime::Set1;
 use rustc_middle::ty::DefIdTree;
@@ -2576,7 +2576,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             },
             |this| {
                 // Dummy self type for better errors if `Self` is used in the trait path.
-                this.with_self_rib(Res::SelfTy { trait_: None, alias_to: None }, |this| {
+                this.with_self_rib(Res::SelfTy { trait_: Some(LOCAL_CRATE.as_def_id()), alias_to: None }, |this| {
                     this.with_lifetime_rib(
                         LifetimeRibKind::AnonymousCreateParameter {
                             binder: item_id,
