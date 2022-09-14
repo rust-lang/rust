@@ -203,12 +203,11 @@ impl BindingsBuilder {
     }
 
     fn build(self, idx: &BindingsIdx) -> Bindings {
-        let mut bindings = Bindings::default();
-        self.build_inner(&mut bindings, &self.nodes[idx.0]);
-        bindings
+        self.build_inner(&self.nodes[idx.0])
     }
 
-    fn build_inner(&self, bindings: &mut Bindings, link_nodes: &[LinkNode<Rc<BindingKind>>]) {
+    fn build_inner(&self, link_nodes: &[LinkNode<Rc<BindingKind>>]) -> Bindings {
+        let mut bindings = Bindings::default();
         let mut nodes = Vec::new();
         self.collect_nodes(link_nodes, &mut nodes);
 
@@ -246,6 +245,8 @@ impl BindingsBuilder {
                 }
             }
         }
+
+        bindings
     }
 
     fn collect_nested_ref<'a>(
@@ -270,8 +271,7 @@ impl BindingsBuilder {
         nested_refs.push(last);
 
         nested_refs.into_iter().for_each(|iter| {
-            let mut child_bindings = Bindings::default();
-            self.build_inner(&mut child_bindings, iter);
+            let child_bindings = self.build_inner(iter);
             nested.push(child_bindings)
         })
     }
