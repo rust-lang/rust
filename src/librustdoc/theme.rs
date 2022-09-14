@@ -133,7 +133,6 @@ fn parse_rules(
         }
         match rules.entry(rule) {
             Entry::Occupied(mut o) => {
-                eprintln!("Duplicated rule `{}` in CSS selector `{selector}`", o.key());
                 *o.get_mut() = value;
             }
             Entry::Vacant(v) => {
@@ -147,7 +146,6 @@ fn parse_rules(
 
     match paths.entry(selector) {
         Entry::Occupied(mut o) => {
-            eprintln!("Duplicated CSS selector: `{}`", o.key());
             let v = o.get_mut();
             for (key, value) in rules.into_iter() {
                 v.rules.insert(key, value);
