@@ -595,7 +595,6 @@ store.register_lints(&[
     vec_init_then_push::VEC_INIT_THEN_PUSH,
     wildcard_imports::ENUM_GLOB_USE,
     wildcard_imports::WILDCARD_IMPORTS,
-    write::POSITIONAL_NAMED_FORMAT_PARAMETERS,
     write::PRINTLN_EMPTY_STRING,
     write::PRINT_LITERAL,
     write::PRINT_STDERR,

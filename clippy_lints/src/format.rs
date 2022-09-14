@@ -71,12 +71,12 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
             let value = arg.param.value;
             if_chain! {
                 if format_args.format_string.parts == [kw::Empty];
+                if arg.format.is_default();
                 if match cx.typeck_results().expr_ty(value).peel_refs().kind() {
                     ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::String, adt.did()),
                     ty::Str => true,
                     _ => false,
                 };
-                if !arg.format.has_string_formatting();
                 then {
                     let is_new_string = match value.kind {
                         ExprKind::Binary(..) => true,

@@ -391,7 +391,6 @@ docs! {
     "partialeq_to_none",
     "path_buf_push_overwrite",
     "pattern_type_mismatch",
-    "positional_named_format_parameters",
     "possible_missing_comma",
     "precedence",
     "print_in_format_impl",

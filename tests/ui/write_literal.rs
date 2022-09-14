@@ -25,11 +25,13 @@ fn main() {
     writeln!(v, "{} of {:b} people know binary, the other half doesn't", 1, 2);
     writeln!(v, "10 / 4 is {}", 2.5);
     writeln!(v, "2 + 1 = {}", 3);
+    writeln!(v, "From expansion {}", stringify!(not a string literal));
 
     // these should throw warnings
     write!(v, "Hello {}", "world");
     writeln!(v, "Hello {} {}", world, "world");
     writeln!(v, "Hello {}", "world");
+    writeln!(v, "{} {:.4}", "a literal", 5);
 
     // positional args don't change the fact
     // that we're using a literal -- this should
