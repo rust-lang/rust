@@ -22,12 +22,12 @@ fn main() {
     // if else if
     if a {
         123
-    } else {i32::from(b)};
+    } else { i32::from(b) };
 
     // if else if inverted
     if a {
         123
-    } else {i32::from(!b)};
+    } else { i32::from(!b) };
 
     // Shouldn't lint
 

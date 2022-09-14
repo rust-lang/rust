@@ -1,9 +1,9 @@
-use rustc_ast::{ExprPrecedence, LitKind};
+use rustc_ast::LitKind;
 use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use clippy_utils::{diagnostics::span_lint_and_then, is_else_clause, source::snippet_block_with_applicability};
+use clippy_utils::{diagnostics::span_lint_and_then, is_else_clause, sugg::Sugg};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -69,28 +69,27 @@ fn check_if_else<'tcx>(ctx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx
             return;
         };
         let mut applicability = Applicability::MachineApplicable;
-        let snippet = snippet_block_with_applicability(ctx, check.span, "..", None, &mut applicability);
-
-        let invert = if inverted { "!" } else { "" };
-        let need_parens = should_have_parentheses(check);
-
-        let snippet_with_braces = {
-            let (left_paren, right_paren) = if need_parens {("(", ")")} else {("", "")};
-            format!("{invert}{left_paren}{snippet}{right_paren}")
+        let snippet = {
+            let mut sugg = Sugg::hir_with_applicability(ctx, check, "..", &mut applicability);
+            if inverted {
+                sugg = !sugg;
+            }
+            sugg
         };
 
         let ty = ctx.typeck_results().expr_ty(then_lit); // then and else must be of same type
 
         let suggestion = {
             let wrap_in_curly = is_else_clause(ctx.tcx, expr);
-            let (left_curly, right_curly) = if wrap_in_curly {("{", "}")} else {("", "")};
-            let (left_paren, right_paren) = if inverted && need_parens {("(", ")")} else {("", "")};
-            format!(
-                "{left_curly}{ty}::from({invert}{left_paren}{snippet}{right_paren}){right_curly}"
-            )
+            let mut s = Sugg::NonParen(format!("{ty}::from({snippet})").into());
+            if wrap_in_curly {
+                s = s.blockify();
+            }
+            s
         }; // when used in else clause if statement should be wrapped in curly braces
 
-        let (inverted_left_paren, inverted_right_paren) = if inverted {("(", ")")} else {("", "")};
+        let into_snippet = snippet.clone().maybe_par();
+        let as_snippet = snippet.as_ty(ty);
 
         span_lint_and_then(ctx,
             BOOL_TO_INT_WITH_IF,
@@ -103,7 +102,7 @@ fn check_if_else<'tcx>(ctx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx
                 suggestion,
                 applicability,
             );
-            diag.note(format!("`{snippet_with_braces} as {ty}` or `{inverted_left_paren}{snippet_with_braces}{inverted_right_paren}.into()` can also be valid options"));
+            diag.note(format!("`{as_snippet}` or `{into_snippet}.into()` can also be valid options"));
         });
     };
 }
@@ -134,8 +133,4 @@ fn check_int_literal_equals_val<'tcx>(expr: &'tcx rustc_hir::Expr<'tcx>, expecte
     } else {
         false
     }
-}
-
-fn should_have_parentheses<'tcx>(check: &'tcx rustc_hir::Expr<'tcx>) -> bool {
-    check.precedence().order() < ExprPrecedence::Cast.order()
 }

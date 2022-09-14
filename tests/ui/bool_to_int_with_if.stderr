@@ -33,7 +33,7 @@ LL | |         0
 LL | |     };
    | |_____^ help: replace with from: `i32::from(!a)`
    |
-   = note: `!a as i32` or `!a.into()` can also be valid options
+   = note: `!a as i32` or `(!a).into()` can also be valid options
 
 error: boolean to int conversion using if
   --> $DIR/bool_to_int_with_if.rs:30:5
@@ -80,7 +80,7 @@ LL | |         1
 LL | |     } else {
 LL | |         0
 LL | |     };
-   | |_____^ help: replace with from: `{i32::from(b)}`
+   | |_____^ help: replace with from: `{ i32::from(b) }`
    |
    = note: `b as i32` or `b.into()` can also be valid options
 
@@ -93,7 +93,7 @@ LL | |         0
 LL | |     } else {
 LL | |         1
 LL | |     };
-   | |_____^ help: replace with from: `{i32::from(!b)}`
+   | |_____^ help: replace with from: `{ i32::from(!b) }`
    |
    = note: `!b as i32` or `(!b).into()` can also be valid options
 
