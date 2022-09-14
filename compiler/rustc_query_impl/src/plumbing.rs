@@ -109,7 +109,7 @@ impl QueryContext for QueryCtxt<'_> {
         // when accessing the `ImplicitCtxt`.
         tls::with_related_context(**self, move |current_icx| {
             if depth_limit && !self.recursion_limit().value_within_limit(current_icx.query_depth) {
-                self.depth_limit_error();
+                self.depth_limit_error(token);
             }
 
             // Update the `ImplicitCtxt` to point to our new query job.

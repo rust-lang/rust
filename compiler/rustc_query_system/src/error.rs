@@ -77,4 +77,16 @@ pub struct IncrementCompilation {
 
 #[derive(SessionDiagnostic)]
 #[diag(query_system::query_overflow)]
-pub struct QueryOverflow;
+pub struct QueryOverflow {
+    #[subdiagnostic]
+    pub layout_of_depth: Option<LayoutOfDepth>,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[note(query_system::layout_of_depth)]
+pub struct LayoutOfDepth {
+    #[primary_span]
+    pub span: Span,
+    pub desc: String,
+    pub depth: usize,
+}

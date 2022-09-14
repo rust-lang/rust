@@ -23,3 +23,5 @@ query_system_cycle_recursive_trait_alias = trait aliases cannot be recursive
 query_system_cycle_which_requires = ...which requires {$desc}...
 
 query_system_query_overflow = queries overflow the depth limit!
+
+query_system_layout_of_depth = Query depth increased by {$depth} when {$desc}!
