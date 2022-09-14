@@ -309,6 +309,8 @@ impl<'a> Parser<'a> {
             {
                 Some(SuggEscapeToUseAsIdentifier {
                     span: ident.span.shrink_to_lo(),
+                    // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
+                    // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
                     ident_name: ident.name.to_string(),
                 })
             }
