@@ -5,6 +5,7 @@
 
 #![warn(clippy::manual_assert)]
 #![allow(clippy::nonminimal_bool)]
+#![allow(dead_code)]
 
 macro_rules! one {
     () => {
@@ -27,8 +28,8 @@ fn main() {
     {
         panic!("qaqaq{:?}", a);
     }
-    assert!(a.is_empty(), "qaqaq{:?}", a);
-    assert!(a.is_empty(), "qwqwq");
+    assert!(!(!a.is_empty()), "qaqaq{:?}", a);
+    assert!(!(!a.is_empty()), "qwqwq");
     if a.len() == 3 {
         println!("qwq");
         println!("qwq");
@@ -49,4 +50,15 @@ fn main() {
     assert!(!(b.is_empty() || a.is_empty()), "panic4");
     assert!(!(a.is_empty() || !b.is_empty()), "panic5");
     assert!(!a.is_empty(), "with expansion {}", one!());
+}
+
+fn issue7730() {
+    // Suggestion should preserve comment
+    // comment
+/* this is a
+        multiline
+        comment */
+/// Doc comment
+// comment after `panic!`
+assert!(!true, "panic with comment");
 }

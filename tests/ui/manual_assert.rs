@@ -5,6 +5,7 @@
 
 #![warn(clippy::manual_assert)]
 #![allow(clippy::nonminimal_bool)]
+#![allow(dead_code)]
 
 macro_rules! one {
     () => {
@@ -64,5 +65,17 @@ fn main() {
     }
     if a.is_empty() {
         panic!("with expansion {}", one!())
+    }
+}
+
+fn issue7730() {
+    // Suggestion should preserve comment
+    if true {
+        // comment
+        /* this is a
+        multiline
+        comment */
+        /// Doc comment
+        panic!("panic with comment") // comment after `panic!`
     }
 }
