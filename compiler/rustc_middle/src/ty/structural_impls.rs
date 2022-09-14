@@ -3,7 +3,7 @@
 //! hand, though we've recently added some macros and proc-macros to help with the tedium.
 
 use crate::mir::interpret;
-use crate::mir::ProjectionKind;
+use crate::mir::{Field, ProjectionKind};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -645,6 +645,20 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
                 Some(ty::InstanceDef::CloneShim(def_id, tcx.lift(ty)?))
             }
         }
+    }
+}
+
+impl<'tcx> Lift<'tcx> for Field {
+    type Lifted = Field;
+    fn lift_to_tcx(self, _tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        Some(self)
+    }
+}
+
+impl<'tcx> Lift<'tcx> for crate::mir::ReturnConstraint {
+    type Lifted = crate::mir::ReturnConstraint;
+    fn lift_to_tcx(self, _tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        Some(self)
     }
 }
 
