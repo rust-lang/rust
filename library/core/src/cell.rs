@@ -1811,7 +1811,36 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// [`.get_mut()`]: `UnsafeCell::get_mut`
 ///
-/// `UnsafeCell<T>` has the same in-memory representation as its inner type `T`.
+/// `UnsafeCell<T>` has the same in-memory representation as its inner type `T`. A consequence
+/// of this guarantee is that it is possible to convert between `T` and `UnsafeCell<T>`.
+/// However, it is only valid to obtain a `*mut T` pointer or `&mut T` reference to the
+/// contents of an `UnsafeCell<T>` through [`.get()`], [`.raw_get()`] or [`.get_mut()`], e.g.:
+///
+/// ```rust
+/// use std::cell::UnsafeCell;
+///
+/// let mut x: UnsafeCell<u32> = UnsafeCell::new(5);
+/// let p1: &UnsafeCell<u32> = &x;
+/// // using `.get()` is okay:
+/// unsafe {
+///     // SAFETY: there exist no other references to the contents of `x`
+///     let p2: &mut u32 = &mut *p1.get();
+/// };
+/// // using `.raw_get()` is also okay:
+/// unsafe {
+///     // SAFETY: there exist no other references to the contents of `x` in this scope
+///     let p2: &mut u32 = &mut *UnsafeCell::raw_get(p1 as *const _);
+/// };
+/// // using `.get_mut()` is always safe:
+/// let p2: &mut u32 = x.get_mut();
+/// // but the following is not allowed!
+/// // let p2: &mut u32 = unsafe {
+/// //     let t: *mut u32 = &x as *const _ as *mut u32;
+/// //     &mut *t
+/// // };
+/// ```
+///
+/// [`.raw_get()`]: `UnsafeCell::raw_get`
 ///
 /// # Examples
 ///
