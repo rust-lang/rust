@@ -1039,9 +1039,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return Err(Unimplemented);
                 }
 
-                // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`.
-                let source_tail = tail_field_ty.subst(tcx, substs_a);
-                let target_tail = tail_field_ty.subst(tcx, substs_b);
+                // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`,
+                // normalizing in the process, since `type_of` returns something directly from
+                // astconv (which means it's un-normalized).
+                let source_tail = normalize_with_depth_to(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    tail_field_ty.subst(tcx, substs_a),
+                    &mut nested,
+                );
+                let target_tail = normalize_with_depth_to(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    tail_field_ty.subst(tcx, substs_b),
+                    &mut nested,
+                );
 
                 // Check that the source struct with the target's
                 // unsizing parameters is equal to the target.
