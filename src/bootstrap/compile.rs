@@ -299,9 +299,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
     // Determine if we're going to compile in optimized C intrinsics to
     // the `compiler-builtins` crate. These intrinsics live in LLVM's
-    // `compiler-rt` repository, but our `src/llvm-project` submodule isn't
-    // always checked out, so we need to conditionally look for this. (e.g. if
-    // an external LLVM is used we skip the LLVM submodule checkout).
+    // `compiler-rt` repository.
     //
     // Note that this shouldn't affect the correctness of `compiler-builtins`,
     // but only its speed. Some intrinsics in C haven't been translated to Rust
@@ -312,8 +310,15 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     // If `compiler-rt` is available ensure that the `c` feature of the
     // `compiler-builtins` crate is enabled and it's configured to learn where
     // `compiler-rt` is located.
-    let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-    let compiler_builtins_c_feature = if compiler_builtins_root.exists() {
+    let compiler_builtins_c_feature = if builder.config.optimized_compiler_builtins {
+        if !builder.is_rust_llvm(target) {
+            panic!(
+                "need a managed LLVM submodule for optimized intrinsics support; unset `llvm-config` or `optimized-compiler-builtins`"
+            );
+        }
+
+        builder.update_submodule(&Path::new("src").join("llvm-project"));
+        let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
         // Note that `libprofiler_builtins/build.rs` also computes this so if
         // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
