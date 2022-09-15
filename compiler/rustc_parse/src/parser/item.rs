@@ -705,7 +705,7 @@ impl<'a> Parser<'a> {
                     if is_let {
                         err.span_suggestion(
                             non_item_span,
-                            "considering use `const` instead of `let` for associated const",
+                            "consider using `const` instead of `let` for associated const",
                             "const",
                             Applicability::MachineApplicable,
                         );

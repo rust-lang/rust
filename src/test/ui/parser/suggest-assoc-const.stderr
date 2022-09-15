@@ -2,7 +2,7 @@ error: non-item in item list
   --> $DIR/suggest-assoc-const.rs:4:5
    |
 LL |     let _X: i32;
-   |     ^^^ help: considering use `const` instead of `let` for associated const: `const`
+   |     ^^^ help: consider using `const` instead of `let` for associated const: `const`
 
 error: aborting due to previous error
 
