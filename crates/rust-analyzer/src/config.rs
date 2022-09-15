@@ -1102,7 +1102,7 @@ impl Config {
         if !self.data.checkOnSave_enable {
             return None;
         }
-        let invocation_strategy = match self.data.cargo_buildScripts_invocationStrategy {
+        let invocation_strategy = match self.data.checkOnSave_invocationStrategy {
             InvocationStrategy::OnceInRoot => flycheck::InvocationStrategy::OnceInRoot,
             InvocationStrategy::PerWorkspaceWithManifestPath => {
                 flycheck::InvocationStrategy::PerWorkspaceWithManifestPath
