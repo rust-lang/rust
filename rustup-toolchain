@@ -33,7 +33,7 @@ echo "$NEW_COMMIT" > rust-version
 shift || true # don't fail if shifting fails
 
 # Check if we already are at that commit.
-CUR_COMMIT=$(rustc +miri --version -v 2>/dev/null | egrep "^commit-hash: " | cut -d " " -f 2)
+CUR_COMMIT=$(rustc +miri --version -v 2>/dev/null | grep "^commit-hash: " | cut -d " " -f 2)
 if [[ "$CUR_COMMIT" == "$NEW_COMMIT" ]]; then
     echo "miri toolchain is already at commit $CUR_COMMIT."
     rustup override set miri
