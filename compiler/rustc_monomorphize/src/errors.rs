@@ -83,3 +83,17 @@ pub struct SymbolAlreadyDefined {
     pub span: Option<Span>,
     pub symbol: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(monomorphize::encountered_error_while_instantiating)]
+pub struct EncounteredErrorWhileInstantiating {
+    #[primary_span]
+    pub span: Span,
+    pub formatted_item: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(monomorphize::unknown_cgu_collection_mode)]
+pub struct UnknownCguCollectionMode<'a> {
+    pub mode: &'a str,
+}

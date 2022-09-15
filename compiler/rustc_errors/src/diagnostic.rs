@@ -43,6 +43,12 @@ pub trait IntoDiagnosticArg {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
 }
 
+impl<'a, T: Clone + IntoDiagnosticArg> IntoDiagnosticArg for &'a T {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.clone().into_diagnostic_arg()
+    }
+}
+
 pub struct DiagnosticArgFromDisplay<'a>(pub &'a dyn fmt::Display);
 
 impl IntoDiagnosticArg for DiagnosticArgFromDisplay<'_> {
@@ -94,7 +100,7 @@ into_diagnostic_arg_using_display!(
     MacroRulesNormalizedIdent,
     ParseIntError,
     StackProtector,
-    &TargetTriple,
+    TargetTriple,
     SplitDebuginfo
 );
 

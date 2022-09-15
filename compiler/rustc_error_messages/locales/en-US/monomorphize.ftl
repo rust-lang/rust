@@ -24,3 +24,9 @@ monomorphize_large_assignments =
 
 monomorphize_requires_lang_item =
     requires `{$lang_item}` lang_item
+
+monomorphize_encountered_error_while_instantiating =
+    the above error was encountered while instantiating `{$formatted_item}`
+
+monomorphize_unknown_cgu_collection_mode =
+    unknown codegen-item collection mode '{$mode}', falling back to 'lazy' mode
