@@ -2793,7 +2793,7 @@ pub unsafe fn vcreate_p16(a: u64) -> poly16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -8341,7 +8341,7 @@ pub unsafe fn vld1q_p16_x4(a: *const p16) -> poly16x8x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64_x2)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -8354,7 +8354,7 @@ pub unsafe fn vld1_p64_x2(a: *const p64) -> poly64x1x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64_x3)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -8367,7 +8367,7 @@ pub unsafe fn vld1_p64_x3(a: *const p64) -> poly64x1x3_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64_x4)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -8380,7 +8380,7 @@ pub unsafe fn vld1_p64_x4(a: *const p64) -> poly64x1x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64_x2)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -8393,7 +8393,7 @@ pub unsafe fn vld1q_p64_x2(a: *const p64) -> poly64x2x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64_x3)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -8406,7 +8406,7 @@ pub unsafe fn vld1q_p64_x3(a: *const p64) -> poly64x2x3_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64_x4)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -8907,7 +8907,7 @@ pub unsafe fn vld2_u64(a: *const u64) -> uint64x1x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -9360,7 +9360,7 @@ pub unsafe fn vld2_dup_u64(a: *const u64) -> uint64x1x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -10192,7 +10192,7 @@ pub unsafe fn vld3_u64(a: *const u64) -> uint64x1x3_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -10645,7 +10645,7 @@ pub unsafe fn vld3_dup_u64(a: *const u64) -> uint64x1x3_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -11477,7 +11477,7 @@ pub unsafe fn vld4_u64(a: *const u64) -> uint64x1x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -11930,7 +11930,7 @@ pub unsafe fn vld4_dup_u64(a: *const u64) -> uint64x1x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -12688,7 +12688,7 @@ pub unsafe fn vst1q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
@@ -12703,7 +12703,7 @@ pub unsafe fn vst1_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
@@ -14008,7 +14008,7 @@ pub unsafe fn vst1q_p16_x4(a: *mut p16, b: poly16x8x4_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64_x2)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -14021,7 +14021,7 @@ pub unsafe fn vst1_p64_x2(a: *mut p64, b: poly64x1x2_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64_x3)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -14034,7 +14034,7 @@ pub unsafe fn vst1_p64_x3(a: *mut p64, b: poly64x1x3_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64_x4)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -14047,7 +14047,7 @@ pub unsafe fn vst1_p64_x4(a: *mut p64, b: poly64x1x4_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64_x2)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -14060,7 +14060,7 @@ pub unsafe fn vst1q_p64_x2(a: *mut p64, b: poly64x2x2_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64_x3)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -14073,7 +14073,7 @@ pub unsafe fn vst1q_p64_x3(a: *mut p64, b: poly64x2x3_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64_x4)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -14658,7 +14658,7 @@ pub unsafe fn vst2_u64(a: *mut u64, b: uint64x1x2_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -15490,7 +15490,7 @@ pub unsafe fn vst3_u64(a: *mut u64, b: uint64x1x3_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -16322,7 +16322,7 @@ pub unsafe fn vst4_u64(a: *mut u64, b: uint64x1x4_t) {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23196,7 +23196,7 @@ pub unsafe fn vreinterpretq_p16_u32(a: uint32x4_t) -> poly16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23209,7 +23209,7 @@ pub unsafe fn vreinterpret_s32_p64(a: poly64x1_t) -> int32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23222,7 +23222,7 @@ pub unsafe fn vreinterpret_u32_p64(a: poly64x1_t) -> uint32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23235,7 +23235,7 @@ pub unsafe fn vreinterpretq_s32_p64(a: poly64x2_t) -> int32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23248,7 +23248,7 @@ pub unsafe fn vreinterpretq_u32_p64(a: poly64x2_t) -> uint32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23261,7 +23261,7 @@ pub unsafe fn vreinterpretq_s64_p128(a: p128) -> int64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23274,7 +23274,7 @@ pub unsafe fn vreinterpretq_u64_p128(a: p128) -> uint64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23781,7 +23781,7 @@ pub unsafe fn vreinterpretq_p16_u8(a: uint8x16_t) -> poly16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_s32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23794,7 +23794,7 @@ pub unsafe fn vreinterpret_p64_s32(a: int32x2_t) -> poly64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_u32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23807,7 +23807,7 @@ pub unsafe fn vreinterpret_p64_u32(a: uint32x2_t) -> poly64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_s32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23820,7 +23820,7 @@ pub unsafe fn vreinterpretq_p64_s32(a: int32x4_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_u32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23833,7 +23833,7 @@ pub unsafe fn vreinterpretq_p64_u32(a: uint32x4_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23846,7 +23846,7 @@ pub unsafe fn vreinterpretq_p128_s64(a: int64x2_t) -> p128 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -23859,7 +23859,7 @@ pub unsafe fn vreinterpretq_p128_u64(a: uint64x2_t) -> p128 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24184,7 +24184,7 @@ pub unsafe fn vreinterpretq_p16_u64(a: uint64x2_t) -> poly16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24197,7 +24197,7 @@ pub unsafe fn vreinterpret_s16_p64(a: poly64x1_t) -> int16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24210,7 +24210,7 @@ pub unsafe fn vreinterpret_u16_p64(a: poly64x1_t) -> uint16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24223,7 +24223,7 @@ pub unsafe fn vreinterpret_p16_p64(a: poly64x1_t) -> poly16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24236,7 +24236,7 @@ pub unsafe fn vreinterpretq_s16_p64(a: poly64x2_t) -> int16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24249,7 +24249,7 @@ pub unsafe fn vreinterpretq_u16_p64(a: poly64x2_t) -> uint16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24262,7 +24262,7 @@ pub unsafe fn vreinterpretq_p16_p64(a: poly64x2_t) -> poly16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24275,7 +24275,7 @@ pub unsafe fn vreinterpretq_s32_p128(a: p128) -> int32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24600,7 +24600,7 @@ pub unsafe fn vreinterpretq_u64_u16(a: uint16x8_t) -> uint64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_p16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24613,7 +24613,7 @@ pub unsafe fn vreinterpret_p64_p16(a: poly16x4_t) -> poly64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_s16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24626,7 +24626,7 @@ pub unsafe fn vreinterpret_p64_s16(a: int16x4_t) -> poly64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_u16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24639,7 +24639,7 @@ pub unsafe fn vreinterpret_p64_u16(a: uint16x4_t) -> poly64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_p16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24652,7 +24652,7 @@ pub unsafe fn vreinterpretq_p64_p16(a: poly16x8_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_s16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24665,7 +24665,7 @@ pub unsafe fn vreinterpretq_p64_s16(a: int16x8_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_u16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24678,7 +24678,7 @@ pub unsafe fn vreinterpretq_p64_u16(a: uint16x8_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24691,7 +24691,7 @@ pub unsafe fn vreinterpretq_p128_s32(a: int32x4_t) -> p128 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24860,7 +24860,7 @@ pub unsafe fn vreinterpretq_p8_u64(a: uint64x2_t) -> poly8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24873,7 +24873,7 @@ pub unsafe fn vreinterpret_s8_p64(a: poly64x1_t) -> int8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24886,7 +24886,7 @@ pub unsafe fn vreinterpret_u8_p64(a: poly64x1_t) -> uint8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24899,7 +24899,7 @@ pub unsafe fn vreinterpret_p8_p64(a: poly64x1_t) -> poly8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24912,7 +24912,7 @@ pub unsafe fn vreinterpretq_s8_p64(a: poly64x2_t) -> int8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24925,7 +24925,7 @@ pub unsafe fn vreinterpretq_u8_p64(a: poly64x2_t) -> uint8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24938,7 +24938,7 @@ pub unsafe fn vreinterpretq_p8_p64(a: poly64x2_t) -> poly8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24951,7 +24951,7 @@ pub unsafe fn vreinterpretq_s16_p128(a: p128) -> int16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -24964,7 +24964,7 @@ pub unsafe fn vreinterpretq_u16_p128(a: p128) -> uint16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25133,7 +25133,7 @@ pub unsafe fn vreinterpretq_u64_u8(a: uint8x16_t) -> uint64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_p8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25146,7 +25146,7 @@ pub unsafe fn vreinterpret_p64_p8(a: poly8x8_t) -> poly64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_s8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25159,7 +25159,7 @@ pub unsafe fn vreinterpret_p64_s8(a: int8x8_t) -> poly64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_u8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25172,7 +25172,7 @@ pub unsafe fn vreinterpret_p64_u8(a: uint8x8_t) -> poly64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_p8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25185,7 +25185,7 @@ pub unsafe fn vreinterpretq_p64_p8(a: poly8x16_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_s8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25198,7 +25198,7 @@ pub unsafe fn vreinterpretq_p64_s8(a: int8x16_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_u8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25211,7 +25211,7 @@ pub unsafe fn vreinterpretq_p64_u8(a: uint8x16_t) -> poly64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25224,7 +25224,7 @@ pub unsafe fn vreinterpretq_p128_s16(a: int16x8_t) -> p128 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25237,7 +25237,7 @@ pub unsafe fn vreinterpretq_p128_u16(a: uint16x8_t) -> p128 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_p16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25250,7 +25250,7 @@ pub unsafe fn vreinterpretq_p128_p16(a: poly16x8_t) -> p128 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25263,7 +25263,7 @@ pub unsafe fn vreinterpretq_p128_s8(a: int8x16_t) -> p128 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25276,7 +25276,7 @@ pub unsafe fn vreinterpretq_p128_u8(a: uint8x16_t) -> p128 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_p8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25289,7 +25289,7 @@ pub unsafe fn vreinterpretq_p128_p8(a: poly8x16_t) -> p128 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25302,7 +25302,7 @@ pub unsafe fn vreinterpretq_s8_p128(a: p128) -> int8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -25315,7 +25315,7 @@ pub unsafe fn vreinterpretq_u8_p128(a: p128) -> uint8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
@@ -27060,7 +27060,7 @@ pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
@@ -27225,7 +27225,7 @@ pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]

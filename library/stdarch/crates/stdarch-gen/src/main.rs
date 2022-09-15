@@ -1,6 +1,7 @@
 use self::Suffix::*;
 use self::TargetFeature::*;
 use std::env;
+use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -468,6 +469,186 @@ enum TargetFeature {
     RDM,
     SM4,
     FTTS,
+}
+
+impl TargetFeature {
+    /// A string for use with `#[target_feature(...)]`.
+    fn as_target_feature_arg_aarch64(&self) -> &str {
+        match *self {
+            // Features included with AArch64 NEON.
+            Self::Default => "neon",
+            Self::ArmV7 => "neon",
+            Self::Vfp4 => "neon",
+            Self::FPArmV8 => "neon",
+            // Optional features.
+            Self::AES => "neon,aes",
+            Self::FCMA => "neon,fcma",
+            Self::Dotprod => "neon,dotprod",
+            Self::I8MM => "neon,i8mm",
+            Self::SHA3 => "neon,sha3",
+            Self::RDM => "rdm",
+            Self::SM4 => "neon,sm4",
+            Self::FTTS => "neon,frintts",
+        }
+    }
+
+    /// A string for use with #[simd_test(...)] (or `is_aarch64_feature_detected!(...)`).
+    fn as_simd_test_arg_aarch64(&self) -> &str {
+        match *self {
+            // Features included with AArch64 NEON.
+            Self::Default => "neon",
+            Self::ArmV7 => "neon",
+            Self::Vfp4 => "neon",
+            Self::FPArmV8 => "neon",
+            // Optional features.
+            Self::AES => "neon",     // TODO: Missing "aes".
+            Self::FCMA => "neon",    // TODO: Missing "fcma".
+            Self::Dotprod => "neon", // TODO: Missing "dotprod".
+            Self::I8MM => "neon,i8mm",
+            Self::SHA3 => "neon,sha3",
+            Self::RDM => "neon", // TODO: Should be "rdm".
+            Self::SM4 => "neon,sm4",
+            Self::FTTS => "neon,frintts",
+        }
+    }
+
+    /// A string for use with `#[target_feature(...)]`.
+    fn as_target_feature_arg_arm(&self) -> &str {
+        match *self {
+            Self::Default => "neon,v7",
+            Self::ArmV7 => "neon,v7",
+            Self::Vfp4 => "neon,vfp4",
+            Self::FPArmV8 => "neon,fp-armv8,v8",
+            Self::AES => "neon,v8,aes",
+            Self::FCMA => "neon,v8,fcma",
+            Self::Dotprod => "neon,v8,dotprod",
+            Self::I8MM => "neon,v8,i8mm",
+            // Features not supported on 32-bit "arm".
+            Self::SHA3 => unimplemented!(),
+            Self::RDM => unimplemented!(),
+            Self::SM4 => unimplemented!(),
+            Self::FTTS => unimplemented!(),
+        }
+    }
+
+    /// A string for use with #[simd_test(...)] (or `is_arm_feature_detected!(...)`).
+    fn as_simd_test_arg_arm(&self) -> &str {
+        self.as_simd_test_arg_aarch64()
+    }
+
+    fn attr(name: &str, value: impl fmt::Display) -> String {
+        format!(r#"#[{name}(enable = "{value}")]"#)
+    }
+
+    fn attr_for_arch(arch: &str, name: &str, value: impl fmt::Display) -> String {
+        format!(r#"#[cfg_attr(target_arch = "{arch}", {name}(enable = "{value}"))]"#)
+    }
+
+    /// Generate target_feature attributes for a test that will compile for both "arm" and "aarch64".
+    fn to_target_feature_attr_shared(&self) -> Lines {
+        let arm = self.as_target_feature_arg_arm().split(",");
+        let aarch64 = self.as_target_feature_arg_aarch64().split(",");
+
+        // Combine common features into an unconditional `target_feature` annotation, but guard
+        // others behind `cfg_attr`.
+        // TODO: It's much simpler to emit separate, guarded attributes for each architecture (as
+        // for `simd_test`). However, this has an unfortunate impact on documentation, since
+        // rustdoc can't currently look inside `cfg_attr` (stdarch/issues/1268).
+        let mut aarch64: Vec<_> = aarch64.collect();
+        let (both, arm): (Vec<_>, Vec<_>) = arm.partition(|v| aarch64.contains(v));
+        aarch64.retain(|v| !both.contains(v));
+        let mut lines = Vec::new();
+        if !both.is_empty() {
+            lines.push(Self::attr("target_feature", both.join(",")));
+        };
+        if !arm.is_empty() {
+            lines.push(Self::attr_for_arch("arm", "target_feature", arm.join(",")));
+        }
+        if !aarch64.is_empty() {
+            lines.push(Self::attr_for_arch(
+                "aarch64",
+                "target_feature",
+                aarch64.join(","),
+            ));
+        }
+        lines.into()
+    }
+
+    /// Generate a target_feature attribute for a test that will compile only for "aarch64".
+    fn to_target_feature_attr_aarch64(&self) -> Lines {
+        Lines::single(Self::attr(
+            "target_feature",
+            self.as_target_feature_arg_aarch64(),
+        ))
+    }
+
+    /// Generate a target_feature attribute for a test that will compile only for "arm".
+    fn to_target_feature_attr_arm(&self) -> Lines {
+        Lines::single(Self::attr(
+            "target_feature",
+            self.as_target_feature_arg_arm(),
+        ))
+    }
+
+    /// Generate simd_test attributes for a test that will compile for both "arm" and "aarch64".
+    fn to_simd_test_attr_shared(&self) -> Lines {
+        let arm = self.as_simd_test_arg_arm();
+        let aarch64 = self.as_simd_test_arg_aarch64();
+        if arm == aarch64 {
+            Lines::single(Self::attr("simd_test", arm))
+        } else {
+            vec![
+                Self::attr_for_arch("arm", "simd_test", arm),
+                Self::attr_for_arch("aarch64", "simd_test", aarch64),
+            ]
+            .into()
+        }
+    }
+
+    /// Generate a simd_test attribute for a test that will compile only for "aarch64".
+    fn to_simd_test_attr_aarch64(&self) -> Lines {
+        Lines::single(Self::attr("simd_test", self.as_simd_test_arg_aarch64()))
+    }
+}
+
+/// Complete lines of generated source.
+///
+/// This enables common generation tasks to be factored out without precluding basic
+/// context-specific formatting.
+///
+/// The convention in this generator is to prefix (not suffix) lines with a newline, so the
+/// implementation of `std::fmt::Display` behaves in the same way.
+struct Lines {
+    indent: usize,
+    lines: Vec<String>,
+}
+
+impl Lines {
+    fn indented(self, indent: usize) -> Self {
+        Self {
+            indent: indent + self.indent,
+            ..self
+        }
+    }
+
+    fn single(line: String) -> Self {
+        Self::from(vec![line])
+    }
+}
+
+impl From<Vec<String>> for Lines {
+    fn from(lines: Vec<String>) -> Self {
+        Self { indent: 0, lines }
+    }
+}
+
+impl std::fmt::Display for Lines {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        for line in self.lines.iter() {
+            write!(f, "\n{:width$}{line}", "", width = self.indent)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -1106,20 +1287,6 @@ fn gen_aarch64(
         Rot => type_to_rot_suffix(current_name, type_to_suffix(out_t)),
         RotLane => type_to_rot_suffix(current_name, &type_to_lane_suffixes(out_t, in_t[2], false)),
     };
-    let current_target = match target {
-        Default => "neon",
-        ArmV7 => "neon",
-        Vfp4 => "neon",
-        FPArmV8 => "neon",
-        AES => "neon,aes",
-        FCMA => "neon,fcma",
-        Dotprod => "neon,dotprod",
-        I8MM => "neon,i8mm",
-        SHA3 => "neon,sha3",
-        RDM => "rdm",
-        SM4 => "neon,sm4",
-        FTTS => "neon,frintts",
-    };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
             panic!("[{name}] Can't specify link and fn at the same time.")
@@ -1415,33 +1582,18 @@ fn gen_aarch64(
         RDM => String::from("\n#[stable(feature = \"rdm_intrinsics\", since = \"1.62.0\")]"),
         _ => String::new(),
     };
-    let function_doc = create_doc_string(current_comment, &name);
     let function = format!(
         r#"
-{}
-#[inline]
-#[target_feature(enable = "{}")]
-#[cfg_attr(test, assert_instr({}{}))]{}{}
-{}{{
-    {}
+{function_doc}
+#[inline]{target_feature}
+#[cfg_attr(test, assert_instr({current_aarch64}{const_assert}))]{const_legacy}{stable}
+{fn_decl}{{
+    {call_params}
 }}
 "#,
-        function_doc,
-        current_target,
-        current_aarch64,
-        const_assert,
-        const_legacy,
-        stable,
-        fn_decl,
-        call_params
+        function_doc = create_doc_string(current_comment, &name),
+        target_feature = target.to_target_feature_attr_aarch64()
     );
-    let test_target = match target {
-        I8MM => "neon,i8mm",
-        SM4 => "neon,sm4",
-        SHA3 => "neon,sha3",
-        FTTS => "neon,frintts",
-        _ => "neon",
-    };
     let test = match fn_type {
         Fntype::Normal => gen_test(
             &name,
@@ -1451,7 +1603,7 @@ fn gen_aarch64(
             [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
             type_len(out_t),
             para_num,
-            test_target,
+            target.to_simd_test_attr_aarch64(),
         ),
         Fntype::Load => gen_load_test(&name, in_t, &out_t, current_tests, type_len(out_t)),
         Fntype::Store => gen_store_test(&name, in_t, &out_t, current_tests, type_len(in_t[1])),
@@ -1473,10 +1625,9 @@ fn gen_load_test(
     type_len: usize,
 ) -> String {
     let mut test = format!(
-        r#"
-    #[simd_test(enable = "neon")]
-    unsafe fn test_{}() {{"#,
-        name,
+        r#"{simd_test}
+    unsafe fn test_{name}() {{"#,
+        simd_test = Default.to_simd_test_attr_shared().indented(4)
     );
     for (a, b, _, n, e) in current_tests {
         let a: Vec<String> = a.iter().take(type_len + 1).cloned().collect();
@@ -1571,10 +1722,9 @@ fn gen_store_test(
     type_len: usize,
 ) -> String {
     let mut test = format!(
-        r#"
-    #[simd_test(enable = "neon")]
-    unsafe fn test_{}() {{"#,
-        name,
+        r#"{simd_test}
+    unsafe fn test_{name}() {{"#,
+        simd_test = Default.to_simd_test_attr_shared().indented(4)
     );
     for (a, _, _, constn, e) in current_tests {
         let a: Vec<String> = a.iter().take(type_len + 1).cloned().collect();
@@ -1639,14 +1789,10 @@ fn gen_test(
     len_in: [usize; 3],
     len_out: usize,
     para_num: i32,
-    target: &str,
+    attributes: Lines,
 ) -> String {
-    let mut test = format!(
-        r#"
-    #[simd_test(enable = "{}")]
-    unsafe fn test_{}() {{"#,
-        target, name,
-    );
+    let mut test = attributes.indented(4).to_string();
+    test.push_str(&format!("\n    unsafe fn test_{name}() {{"));
     for (a, b, c, n, e) in current_tests {
         let a: Vec<String> = a.iter().take(len_in[0]).cloned().collect();
         let b: Vec<String> = b.iter().take(len_in[1]).cloned().collect();
@@ -1833,34 +1979,6 @@ fn gen_arm(
     let current_aarch64 = current_aarch64
         .clone()
         .unwrap_or_else(|| current_arm.to_string());
-    let current_target_aarch64 = match target {
-        Default => "neon",
-        ArmV7 => "neon",
-        Vfp4 => "neon",
-        FPArmV8 => "neon",
-        AES => "neon,aes",
-        FCMA => "neon,fcma",
-        Dotprod => "neon,dotprod",
-        I8MM => "neon,i8mm",
-        SHA3 => "neon,sha3",
-        RDM => "rdm",
-        SM4 => "neon,sm4",
-        FTTS => "neon,frintts",
-    };
-    let current_target_arm = match target {
-        Default => "v7",
-        ArmV7 => "v7",
-        Vfp4 => "vfp4",
-        FPArmV8 => "fp-armv8,v8",
-        AES => "aes,v8",
-        FCMA => "v8",    // v8.3a
-        Dotprod => "v8", // v8.2a
-        I8MM => "v8,i8mm",
-        RDM => unreachable!(),
-        SM4 => unreachable!(),
-        SHA3 => unreachable!(),
-        FTTS => unreachable!(),
-    };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() || link_arm.is_some() {
             panic!(
@@ -2378,33 +2496,22 @@ fn gen_arm(
         let function_doc = create_doc_string(current_comment, &name);
         format!(
             r#"
-{}
+{function_doc}
 #[inline]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,{}")]
-#[cfg_attr(test, assert_instr({}{}))]{}
-{}
+#[cfg(target_arch = "arm")]{target_feature_arm}
+#[cfg_attr(test, assert_instr({assert_arm}{const_assert}))]{const_legacy}
+{call_arm}
 
-{}
+{function_doc}
 #[inline]
-#[cfg(target_arch = "aarch64")]
-#[target_feature(enable = "{}")]
-#[cfg_attr(test, assert_instr({}{}))]{}{}
-{}
+#[cfg(target_arch = "aarch64")]{target_feature_aarch64}
+#[cfg_attr(test, assert_instr({assert_aarch64}{const_assert}))]{const_legacy}{stable_aarch64}
+{call_aarch64}
 "#,
-            function_doc,
-            current_target_arm,
-            expand_intrinsic(&current_arm, in_t[1]),
-            const_assert,
-            const_legacy,
-            call_arm,
-            function_doc,
-            current_target_aarch64,
-            expand_intrinsic(&current_aarch64, in_t[1]),
-            const_assert,
-            const_legacy,
-            stable_aarch64,
-            call_aarch64,
+            target_feature_arm = target.to_target_feature_attr_arm(),
+            target_feature_aarch64 = target.to_target_feature_attr_aarch64(),
+            assert_arm = expand_intrinsic(&current_arm, in_t[1]),
+            assert_aarch64 = expand_intrinsic(&current_aarch64, in_t[1]),
         )
     } else {
         let call = {
@@ -2444,35 +2551,19 @@ fn gen_arm(
             RDM => String::from("\n#[cfg_attr(not(target_arch = \"arm\"), stable(feature = \"rdm_intrinsics\", since = \"1.62.0\"))]"),
             _ => String::new(),
         };
-        let function_doc = create_doc_string(current_comment, &name);
         format!(
             r#"
-{}
-#[inline]
-#[target_feature(enable = "{}")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "{}"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr({}{}))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({}{}))]{}{}
-{}
+{function_doc}
+#[inline]{target_feature}
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr({assert_arm}{const_assert}))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({assert_aarch64}{const_assert}))]{const_legacy}{stable_aarch64}
+{call}
 "#,
-            function_doc,
-            current_target_aarch64,
-            current_target_arm,
-            expand_intrinsic(&current_arm, in_t[1]),
-            const_assert,
-            expand_intrinsic(&current_aarch64, in_t[1]),
-            const_assert,
-            const_legacy,
-            stable_aarch64,
-            call,
+            function_doc = create_doc_string(current_comment, &name),
+            assert_arm = expand_intrinsic(&current_arm, in_t[1]),
+            assert_aarch64 = expand_intrinsic(&current_aarch64, in_t[1]),
+            target_feature = target.to_target_feature_attr_shared(),
         )
-    };
-    let test_target = match target {
-        I8MM => "neon,i8mm",
-        SM4 => "neon,sm4",
-        SHA3 => "neon,sha3",
-        FTTS => "neon,frintts",
-        _ => "neon",
     };
     let test = match fn_type {
         Fntype::Normal => gen_test(
@@ -2483,7 +2574,7 @@ fn gen_arm(
             [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
             type_len(out_t),
             para_num,
-            test_target,
+            target.to_simd_test_attr_shared(),
         ),
         Fntype::Load => gen_load_test(&name, in_t, &out_t, current_tests, type_len(out_t)),
         Fntype::Store => gen_store_test(&name, in_t, &out_t, current_tests, type_len(in_t[1])),
