@@ -101,6 +101,14 @@ rustc_queries! {
         desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
+    /// Gives access to the HIR indexing information.
+    ///
+    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// Avoid calling this query directly.
+    query hir_owner_indices(key: LocalDefId) -> hir::MaybeOwner<&'tcx hir::OwnerIndexing> {
+        desc { |tcx| "HIR owner indices in `{}`", tcx.def_path_str(key.to_def_id()) }
+    }
+
     /// Gives access to the HIR attributes inside the HIR owner `key`.
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.

@@ -777,15 +777,6 @@ pub struct WhereEqPredicate<'hir> {
     pub rhs_ty: &'hir Ty<'hir>,
 }
 
-/// HIR node coupled with its parent's id in the same HIR owner.
-///
-/// The parent is trash when the node is a HIR owner.
-#[derive(Clone, Debug)]
-pub struct ParentedNode<'tcx> {
-    pub parent: ItemLocalId,
-    pub node: Node<'tcx>,
-}
-
 /// Attributes owned by a HIR owner.
 #[derive(Debug)]
 pub struct AttributeMap<'tcx> {
@@ -812,20 +803,15 @@ pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the item signature, sithout recursing into the body.
     pub hash_without_bodies: Fingerprint,
     /// Full HIR for the current owner.
-    // The zeroth node's parent should never be accessed: the owner's parent is computed by the
-    // hir_owner_parent query.  It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
-    // used.
-    pub nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
+    pub nodes: IndexVec<ItemLocalId, Option<Node<'tcx>>>,
     /// Content of local bodies.
     pub bodies: SortedMap<ItemLocalId, &'tcx Body<'tcx>>,
-    /// Non-owning definitions contained in this owner.
-    pub local_id_to_def_id: SortedMap<ItemLocalId, LocalDefId>,
 }
 
 impl<'tcx> OwnerNodes<'tcx> {
     pub fn node(&self) -> OwnerNode<'tcx> {
         use rustc_index::vec::Idx;
-        let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
+        let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap();
         let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
         node
     }
@@ -836,20 +822,25 @@ impl fmt::Debug for OwnerNodes<'_> {
         f.debug_struct("OwnerNodes")
             // Do not print all the pointers to all the nodes, as it would be unreadable.
             .field("node", &self.nodes[ItemLocalId::from_u32(0)])
-            .field(
-                "parents",
-                &self
-                    .nodes
-                    .iter_enumerated()
-                    .map(|(id, parented_node)| (id, parented_node.as_ref().map(|node| node.parent)))
-                    .collect::<Vec<_>>(),
-            )
             .field("bodies", &self.bodies)
-            .field("local_id_to_def_id", &self.local_id_to_def_id)
             .field("hash_without_bodies", &self.hash_without_bodies)
             .field("hash_including_bodies", &self.hash_including_bodies)
             .finish()
     }
+}
+
+/// Parenting map of all HIR nodes inside the current owner.
+/// These nodes are mapped by `ItemLocalId` alongside the index of their parent node.
+#[derive(Debug, HashStable_Generic)]
+pub struct OwnerIndexing {
+    // The zeroth node's parent should never be accessed: the owner's parent is computed by the
+    // hir_owner_parent query.  It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
+    // used.
+    pub local_parents: IndexVec<ItemLocalId, Option<ItemLocalId>>,
+    /// Non-owning definitions contained in this owner.
+    pub local_id_to_def_id: SortedMap<ItemLocalId, LocalDefId>,
+    /// Map from each nested owner to its parent's local id.
+    pub nested_owner_parents: FxHashMap<LocalDefId, ItemLocalId>,
 }
 
 /// Full information resulting from lowering an AST node.
@@ -857,8 +848,8 @@ impl fmt::Debug for OwnerNodes<'_> {
 pub struct OwnerInfo<'hir> {
     /// Contents of the HIR.
     pub nodes: OwnerNodes<'hir>,
-    /// Map from each nested owner to its parent's local id.
-    pub parenting: FxHashMap<LocalDefId, ItemLocalId>,
+    /// Relationship between indices.
+    pub indices: OwnerIndexing,
     /// Collected attributes of the HIR nodes.
     pub attrs: AttributeMap<'hir>,
     /// Map indicating what traits are in scope for places where this

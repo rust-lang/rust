@@ -18,8 +18,9 @@ pub(super) struct NodeCollector<'a, 'hir> {
     bodies: &'a SortedMap<ItemLocalId, &'hir Body<'hir>>,
 
     /// Outputs
-    nodes: IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>,
-    parenting: FxHashMap<LocalDefId, ItemLocalId>,
+    nodes: IndexVec<ItemLocalId, Option<Node<'hir>>>,
+    local_parents: IndexVec<ItemLocalId, Option<ItemLocalId>>,
+    nested_owner_parents: FxHashMap<LocalDefId, ItemLocalId>,
 
     /// The parent of this node
     parent_node: hir::ItemLocalId,
@@ -35,20 +36,27 @@ pub(super) fn index_hir<'hir>(
     definitions: &definitions::Definitions,
     item: hir::OwnerNode<'hir>,
     bodies: &SortedMap<ItemLocalId, &'hir Body<'hir>>,
-) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, FxHashMap<LocalDefId, ItemLocalId>) {
+) -> (
+    IndexVec<ItemLocalId, Option<Node<'hir>>>,
+    IndexVec<ItemLocalId, Option<ItemLocalId>>,
+    FxHashMap<LocalDefId, ItemLocalId>,
+) {
     let mut nodes = IndexVec::new();
+    let mut local_parents = IndexVec::new();
     // This node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query.  Make it invalid (= ItemLocalId::MAX) to force an ICE whenever it is
     // used.
-    nodes.push(Some(ParentedNode { parent: ItemLocalId::INVALID, node: item.into() }));
+    nodes.push(Some(item.into()));
+    local_parents.push(Some(ItemLocalId::INVALID));
     let mut collector = NodeCollector {
         source_map: sess.source_map(),
         definitions,
         owner: item.def_id(),
         parent_node: ItemLocalId::new(0),
         nodes,
+        local_parents,
         bodies,
-        parenting: FxHashMap::default(),
+        nested_owner_parents: FxHashMap::default(),
     };
 
     match item {
@@ -61,7 +69,7 @@ pub(super) fn index_hir<'hir>(
         OwnerNode::ForeignItem(item) => collector.visit_foreign_item(item),
     };
 
-    (collector.nodes, collector.parenting)
+    (collector.nodes, collector.local_parents, collector.nested_owner_parents)
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
@@ -89,7 +97,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             }
         }
 
-        self.nodes.insert(hir_id.local_id, ParentedNode { parent: self.parent_node, node: node });
+        self.nodes.insert(hir_id.local_id, node);
+        self.local_parents.insert(hir_id.local_id, self.parent_node);
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_node_id: HirId, f: F) {
@@ -101,7 +110,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 
     fn insert_nested(&mut self, item: LocalDefId) {
-        self.parenting.insert(item, self.parent_node);
+        self.nested_owner_parents.insert(item, self.parent_node);
     }
 }
 

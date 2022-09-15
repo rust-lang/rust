@@ -642,15 +642,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bodies.sort_by_key(|(k, _)| *k);
         let bodies = SortedMap::from_presorted_elements(bodies);
         let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
-        let (nodes, parenting) =
+        let (nodes, local_parents, nested_owner_parents) =
             index::index_hir(self.tcx.sess, &*self.tcx.definitions_untracked(), node, &bodies);
-        let nodes = hir::OwnerNodes {
-            hash_including_bodies,
-            hash_without_bodies,
-            nodes,
-            bodies,
-            local_id_to_def_id,
-        };
+        let nodes = hir::OwnerNodes { hash_including_bodies, hash_without_bodies, nodes, bodies };
+        let indices =
+            hir::OwnerIndexing { local_parents, nested_owner_parents, local_id_to_def_id };
         let attrs = {
             let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
                 let mut stable_hasher = StableHasher::new();
@@ -660,7 +656,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::AttributeMap { map: attrs, hash }
         };
 
-        self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
+        self.arena.alloc(hir::OwnerInfo { nodes, indices, attrs, trait_map })
     }
 
     /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate

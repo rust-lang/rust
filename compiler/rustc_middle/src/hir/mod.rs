@@ -129,12 +129,13 @@ pub fn provide(providers: &mut Providers) {
         }
     };
     providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id].map(|i| &i.nodes);
+    providers.hir_owner_indices = |tcx, id| tcx.hir_crate(()).owners[id].map(|i| &i.indices);
     providers.hir_owner_parent = |tcx, id| {
         // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
         tcx.opt_local_parent(id).map_or(CRATE_HIR_ID, |parent| {
             let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent);
             if let Some(local_id) =
-                tcx.hir_crate(()).owners[parent_hir_id.owner].unwrap().parenting.get(&id)
+                tcx.hir_owner_indices(parent_hir_id.owner).unwrap().nested_owner_parents.get(&id)
             {
                 parent_hir_id.local_id = *local_id;
             }

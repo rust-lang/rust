@@ -189,7 +189,7 @@ impl<'hir> Map<'hir> {
             Some(hir_id.owner)
         } else {
             self.tcx
-                .hir_owner_nodes(hir_id.owner)
+                .hir_owner_indices(hir_id.owner)
                 .as_owner()?
                 .local_id_to_def_id
                 .get(&hir_id.local_id)
@@ -304,11 +304,11 @@ impl<'hir> Map<'hir> {
         if id.local_id == ItemLocalId::from_u32(0) {
             Some(self.tcx.hir_owner_parent(id.owner))
         } else {
-            let owner = self.tcx.hir_owner_nodes(id.owner).as_owner()?;
-            let node = owner.nodes[id.local_id].as_ref()?;
-            let hir_id = HirId { owner: id.owner, local_id: node.parent };
+            let owner = self.tcx.hir_owner_indices(id.owner).as_owner()?;
+            let parent = owner.local_parents[id.local_id]?;
+            let hir_id = HirId { owner: id.owner, local_id: parent };
             // HIR indexing should have checked that.
-            debug_assert_ne!(id.local_id, node.parent);
+            debug_assert_ne!(id.local_id, parent);
             Some(hir_id)
         }
     }
@@ -325,8 +325,8 @@ impl<'hir> Map<'hir> {
             Some(owner.node.into())
         } else {
             let owner = self.tcx.hir_owner_nodes(id.owner).as_owner()?;
-            let node = owner.nodes[id.local_id].as_ref()?;
-            Some(node.node)
+            let node = owner.nodes[id.local_id]?;
+            Some(node)
         }
     }
 
