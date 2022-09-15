@@ -660,9 +660,18 @@ impl<'a> Parser<'a> {
     fn recover_not_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
         // Emit the error...
         let negated_token = self.look_ahead(1, |t| t.clone());
+        let negtated_msg = if negated_token.is_numeric_lit() {
+            "bitwise not"
+        } else if negated_token.is_bool_lit() {
+            "logical negation"
+        } else {
+            "logical negation or bitwise not"
+        };
+
         self.sess.emit_err(NotAsNegationOperator {
             negated: negated_token.span,
             negated_desc: super::token_descr(&negated_token),
+            negated_msg: negtated_msg.to_string(),
             // Span the `not` plus trailing whitespace to avoid
             // trailing whitespace after the `!` in our suggestion
             not: self.sess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),

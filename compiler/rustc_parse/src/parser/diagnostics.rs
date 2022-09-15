@@ -430,6 +430,7 @@ pub(crate) struct NotAsNegationOperator {
     #[primary_span]
     pub negated: Span,
     pub negated_desc: String,
+    pub negated_msg: String,
     #[suggestion_short(applicability = "machine-applicable", code = "!")]
     pub not: Span,
 }

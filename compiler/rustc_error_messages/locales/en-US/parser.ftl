@@ -47,7 +47,7 @@ parser_invalid_comparison_operator = invalid comparison operator `{$invalid}`
     .spaceship_operator_invalid = `<=>` is not a valid comparison operator, use `std::cmp::Ordering`
 
 parser_invalid_logical_operator = `{$incorrect}` is not a logical operator
-    .note = unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
+    .note = unlike in e.g., Python and PHP, `&&` and `||` are used for logical operators
     .use_amp_amp_for_conjunction = use `&&` to perform logical conjunction
     .use_pipe_pipe_for_disjunction = use `||` to perform logical disjunction
 
@@ -55,7 +55,7 @@ parser_tilde_is_not_unary_operator = `~` cannot be used as a unary operator
     .suggestion = use `!` to perform bitwise not
 
 parser_unexpected_token_after_not = unexpected {$negated_desc} after identifier
-    .suggestion = use `!` to perform bitwise not
+    .suggestion = use `!` to perform {$negated_msg}
 
 parser_malformed_loop_label = malformed loop label
     .suggestion = use the correct loop label format
