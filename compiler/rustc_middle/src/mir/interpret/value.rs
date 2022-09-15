@@ -8,7 +8,7 @@ use rustc_apfloat::{
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
+use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
     AllocId, AllocRange, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
@@ -27,7 +27,7 @@ pub struct ConstAlloc<'tcx> {
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable)]
+#[derive(HashStable, Lift)]
 pub enum ConstValue<'tcx> {
     /// Used only for types with `layout::abi::Scalar` ABI.
     ///
@@ -52,22 +52,6 @@ pub enum ConstValue<'tcx> {
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstValue<'_>, 32);
-
-impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
-    type Lifted = ConstValue<'tcx>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ConstValue<'tcx>> {
-        Some(match self {
-            ConstValue::Scalar(s) => ConstValue::Scalar(s),
-            ConstValue::ZeroSized => ConstValue::ZeroSized,
-            ConstValue::Slice { data, start, end } => {
-                ConstValue::Slice { data: tcx.lift(data)?, start, end }
-            }
-            ConstValue::ByRef { alloc, offset } => {
-                ConstValue::ByRef { alloc: tcx.lift(alloc)?, offset }
-            }
-        })
-    }
-}
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]

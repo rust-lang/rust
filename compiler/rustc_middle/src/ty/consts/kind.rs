@@ -50,7 +50,7 @@ impl<'tcx, P: Default> Unevaluated<'tcx, P> {
 
 /// Represents a constant in Rust.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
-#[derive(Hash, HashStable)]
+#[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum ConstKind<'tcx> {
     /// A const generic parameter.
     Param(ty::ParamConst),

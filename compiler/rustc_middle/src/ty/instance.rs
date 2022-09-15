@@ -20,14 +20,14 @@ use std::fmt;
 /// simply couples a potentially generic `InstanceDef` with some substs, and codegen and const eval
 /// will do all required substitution as they run.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, Lift)]
+#[derive(HashStable, Lift, TypeFoldable, TypeVisitable)]
 pub struct Instance<'tcx> {
     pub def: InstanceDef<'tcx>,
     pub substs: SubstsRef<'tcx>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum InstanceDef<'tcx> {
     /// A user-defined callable item.
     ///

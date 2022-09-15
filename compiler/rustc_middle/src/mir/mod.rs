@@ -2028,6 +2028,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// particular, one must be wary of `NaN`!
 
 #[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct Constant<'tcx> {
     pub span: Span,
 
@@ -2550,8 +2551,6 @@ impl UserTypeProjection {
         self
     }
 }
-
-TrivialTypeTraversalAndLiftImpls! { ProjectionKind, }
 
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
