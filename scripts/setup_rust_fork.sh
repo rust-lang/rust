@@ -68,3 +68,7 @@ popd
 
 # FIXME remove once inline asm is fully supported
 export RUSTFLAGS="$RUSTFLAGS --cfg=rustix_use_libc"
+
+# Allow the testsuite to use llvm tools
+host_triple=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
+export LLVM_BIN_DIR="$(rustc --print sysroot)/lib/rustlib/$host_triple/bin"

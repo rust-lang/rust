@@ -116,6 +116,8 @@ rm src/test/ui/test-attrs/test-type.rs # TODO panic message on stderr. correct s
 # not sure if this is actually a bug in the test suite, but the symbol list shows the function without leading _ for some reason
 rm -r src/test/run-make/native-link-modifier-bundle
 
+rm src/test/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
+
 echo "[TEST] rustc test suite"
 RUST_TEST_NOCAPTURE=1 COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 src/test/{codegen-units,run-make,run-pass-valgrind,ui,incremental}
 popd
