@@ -30,7 +30,12 @@ struct ExpectedSig<'tcx> {
 }
 
 struct ClosureSignatures<'tcx> {
+    /// The signature users of the closure see.
     bound_sig: ty::PolyFnSig<'tcx>,
+    /// The signature within the function body.
+    /// This mostly differs in the sense that lifetimes are now early bound and any
+    /// opaque types from the signature expectation are overriden in case there are
+    /// explicit hidden types written by the user in the closure signature.
     liberated_sig: ty::FnSig<'tcx>,
 }
 
@@ -444,18 +449,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Along the way, it also writes out entries for types that the user
         // wrote into our typeck results, which are then later used by the privacy
         // check.
-        match self.check_supplied_sig_against_expectation(
+        match self.merge_supplied_sig_with_expectation(
             hir_id,
             expr_def_id,
             decl,
             body,
-            &closure_sigs,
+            closure_sigs,
         ) {
             Ok(infer_ok) => self.register_infer_ok_obligations(infer_ok),
-            Err(_) => return self.sig_of_closure_no_expectation(hir_id, expr_def_id, decl, body),
+            Err(_) => self.sig_of_closure_no_expectation(hir_id, expr_def_id, decl, body),
         }
-
-        closure_sigs
     }
 
     fn sig_of_closure_with_mismatched_number_of_arguments(
@@ -497,21 +500,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Enforce the user's types against the expectation. See
     /// `sig_of_closure_with_expectation` for details on the overall
     /// strategy.
-    fn check_supplied_sig_against_expectation(
+    #[instrument(level = "debug", skip(self, hir_id, expr_def_id, decl, body, expected_sigs))]
+    fn merge_supplied_sig_with_expectation(
         &self,
         hir_id: hir::HirId,
         expr_def_id: DefId,
         decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
-        expected_sigs: &ClosureSignatures<'tcx>,
-    ) -> InferResult<'tcx, ()> {
+        mut expected_sigs: ClosureSignatures<'tcx>,
+    ) -> InferResult<'tcx, ClosureSignatures<'tcx>> {
         // Get the signature S that the user gave.
         //
         // (See comment on `sig_of_closure_with_expectation` for the
         // meaning of these letters.)
         let supplied_sig = self.supplied_sig_of_closure(hir_id, expr_def_id, decl, body);
 
-        debug!("check_supplied_sig_against_expectation: supplied_sig={:?}", supplied_sig);
+        debug!(?supplied_sig);
 
         // FIXME(#45727): As discussed in [this comment][c1], naively
         // forcing equality here actually results in suboptimal error
@@ -529,23 +533,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // [c2]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341096796
         self.commit_if_ok(|_| {
             let mut all_obligations = vec![];
+            let inputs: Vec<_> = iter::zip(
+                decl.inputs,
+                supplied_sig.inputs().skip_binder(), // binder moved to (*) below
+            )
+            .map(|(hir_ty, &supplied_ty)| {
+                // Instantiate (this part of..) S to S', i.e., with fresh variables.
+                self.replace_bound_vars_with_fresh_vars(
+                    hir_ty.span,
+                    LateBoundRegionConversionTime::FnCall,
+                    // (*) binder moved to here
+                    supplied_sig.inputs().rebind(supplied_ty),
+                )
+            })
+            .collect();
 
             // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.
             for ((hir_ty, &supplied_ty), expected_ty) in iter::zip(
-                iter::zip(
-                    decl.inputs,
-                    supplied_sig.inputs().skip_binder(), // binder moved to (*) below
-                ),
+                iter::zip(decl.inputs, &inputs),
                 expected_sigs.liberated_sig.inputs(), // `liberated_sig` is E'.
             ) {
-                // Instantiate (this part of..) S to S', i.e., with fresh variables.
-                let supplied_ty = self.replace_bound_vars_with_fresh_vars(
-                    hir_ty.span,
-                    LateBoundRegionConversionTime::FnCall,
-                    supplied_sig.inputs().rebind(supplied_ty),
-                ); // recreated from (*) above
-
                 // Check that E' = S'.
                 let cause = self.misc(hir_ty.span);
                 let InferOk { value: (), obligations } =
@@ -564,7 +572,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .eq(expected_sigs.liberated_sig.output(), supplied_output_ty)?;
             all_obligations.extend(obligations);
 
-            Ok(InferOk { value: (), obligations: all_obligations })
+            let inputs = inputs.into_iter().map(|ty| self.resolve_vars_if_possible(ty));
+
+            expected_sigs.liberated_sig = self.tcx.mk_fn_sig(
+                inputs,
+                supplied_output_ty,
+                expected_sigs.liberated_sig.c_variadic,
+                hir::Unsafety::Normal,
+                Abi::RustCall,
+            );
+
+            Ok(InferOk { value: expected_sigs, obligations: all_obligations })
         })
     }
 
