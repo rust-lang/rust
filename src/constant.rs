@@ -117,17 +117,7 @@ pub(crate) fn codegen_constant<'tcx>(
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
     let (const_val, ty) = match fx.monomorphize(constant.literal) {
-        ConstantKind::Ty(const_) => match const_.kind() {
-            ConstKind::Value(valtree) => {
-                (fx.tcx.valtree_to_const_val((const_.ty(), valtree)), const_.ty())
-            }
-            ConstKind::Unevaluated(_) => bug!("expected constant to be evaluated at this stage"),
-            ConstKind::Param(_)
-            | ConstKind::Infer(_)
-            | ConstKind::Bound(_, _)
-            | ConstKind::Placeholder(_)
-            | ConstKind::Error(_) => unreachable!("{:?}", const_),
-        },
+        ConstantKind::Ty(const_) => unreachable!("{:?}", const_),
         ConstantKind::Unevaluated(ty::Unevaluated { def, substs, promoted }, ty)
             if fx.tcx.is_static(def.did) =>
         {
