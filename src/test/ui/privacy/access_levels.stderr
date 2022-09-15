@@ -1,125 +1,104 @@
-error: None
-  --> $DIR/access_levels.rs:3:23
+error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+  --> $DIR/access_levels.rs:4:1
    |
-LL | #[rustc_access_level] mod outer {
-   |                       ^^^^^^^^^
+LL | mod outer {
+   | ^^^^^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:4:27
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:6:5
    |
-LL |     #[rustc_access_level] pub mod inner {
-   |                           ^^^^^^^^^^^^^
+LL |     pub mod inner1 {
+   |     ^^^^^^^^^^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:6:9
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:9:9
    |
-LL | /         extern "C" {
-LL | |             #[rustc_access_level] static a: u8;
-LL | |             #[rustc_access_level] pub fn b();
-LL | |         }
-   | |_________^
+LL |         extern "C" {}
+   |         ^^^^^^^^^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:11:9
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:12:9
    |
-LL |         pub trait Trait {
-   |         ^^^^^^^^^^^^^^^
+LL |         pub trait PubTrait {
+   |         ^^^^^^^^^^^^^^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:17:9
+error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+  --> $DIR/access_levels.rs:20:9
    |
-LL |         pub struct Struct {
+LL |         struct PrivStruct;
    |         ^^^^^^^^^^^^^^^^^
 
-error: None
-  --> $DIR/access_levels.rs:18:35
-   |
-LL |             #[rustc_access_level] a: u8,
-   |                                   ^^^^^
-
-error: Some(Exported)
-  --> $DIR/access_levels.rs:19:35
-   |
-LL |             #[rustc_access_level] pub b: u8,
-   |                                   ^^^^^^^^^
-
-error: Some(Exported)
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:23:9
    |
-LL |         pub union Union {
-   |         ^^^^^^^^^^^^^^^
+LL |         pub union PubUnion {
+   |         ^^^^^^^^^^^^^^^^^^
 
-error: None
-  --> $DIR/access_levels.rs:24:35
+error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+  --> $DIR/access_levels.rs:25:13
    |
-LL |             #[rustc_access_level] a: u8,
-   |                                   ^^^^^
+LL |             a: u8,
+   |             ^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:25:35
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:27:13
    |
-LL |             #[rustc_access_level] pub b: u8,
-   |                                   ^^^^^^^^^
+LL |             pub b: u8,
+   |             ^^^^^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:29:9
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:31:9
    |
 LL |         pub enum Enum {
    |         ^^^^^^^^^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:30:35
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:33:13
    |
-LL |             #[rustc_access_level] A(
-   |                                   ^
+LL |             A(
+   |             ^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:31:39
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:35:17
    |
-LL |                 #[rustc_access_level] Struct,
-   |                                       ^^^^^^
+LL |                 PubUnion,
+   |                 ^^^^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:32:39
+error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+  --> $DIR/access_levels.rs:41:5
    |
-LL |                 #[rustc_access_level] Union,
-   |                                       ^^^^^
+LL |     macro_rules! none_macro {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: None
-  --> $DIR/access_levels.rs:37:27
+error: Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:47:5
    |
-LL |     #[rustc_access_level] macro_rules! none_macro {
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     macro_rules! public_macro {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Some(Public)
-  --> $DIR/access_levels.rs:42:27
+error: Public: pub(self), Exported: pub(self), Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:52:5
    |
-LL |     #[rustc_access_level] macro_rules! public_macro {
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     pub struct ReachableStruct {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:12:35
+error: Public: pub(self), Exported: pub(self), Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:54:9
    |
-LL |             #[rustc_access_level] const A: i32;
-   |                                   ^^^^^^^^^^^^
+LL |         pub a: u8,
+   |         ^^^^^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:13:35
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:14:13
    |
-LL |             #[rustc_access_level] type B;
-   |                                   ^^^^^^
+LL |             const A: i32;
+   |             ^^^^^^^^^^^^
 
-error: None
-  --> $DIR/access_levels.rs:7:35
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:16:13
    |
-LL |             #[rustc_access_level] static a: u8;
-   |                                   ^^^^^^^^^^^^
+LL |             type B;
+   |             ^^^^^^
 
-error: Some(Exported)
-  --> $DIR/access_levels.rs:8:35
-   |
-LL |             #[rustc_access_level] pub fn b();
-   |                                   ^^^^^^^^^^
-
-error: aborting due to 20 previous errors
+error: aborting due to 17 previous errors
 
