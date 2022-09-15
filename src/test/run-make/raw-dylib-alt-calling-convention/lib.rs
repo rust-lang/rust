@@ -32,6 +32,8 @@ extern "stdcall" {
     fn stdcall_fn_7(a: S2, b: i32);
     fn stdcall_fn_8(a: S3, b: S3);
     fn stdcall_fn_9(x: u8, y: f64);
+    #[link_name = "stdcall_fn_10"]
+    fn stdcall_fn_10_renamed(i: i32);
 }
 
 #[link(name = "extern", kind = "raw-dylib")]
@@ -45,6 +47,8 @@ extern "fastcall" {
     fn fastcall_fn_7(a: S2, b: i32);
     fn fastcall_fn_8(a: S3, b: S3);
     fn fastcall_fn_9(x: u8, y: f64);
+    #[link_name = "fastcall_fn_10"]
+    fn fastcall_fn_10_renamed(i: i32);
 }
 
 #[cfg(target_env = "msvc")]
@@ -59,6 +63,8 @@ extern "vectorcall" {
     fn vectorcall_fn_7(a: S2, b: i32);
     fn vectorcall_fn_8(a: S3, b: S3);
     fn vectorcall_fn_9(x: u8, y: f64);
+    #[link_name = "vectorcall_fn_10"]
+    fn vectorcall_fn_10_renamed(i: i32);
 }
 
 pub fn library_function(run_msvc_only: bool) {
@@ -73,6 +79,7 @@ pub fn library_function(run_msvc_only: bool) {
             stdcall_fn_7(S2 { x: 15, y: 16 }, 3);
             stdcall_fn_8(S3 { x: [1, 2, 3, 4, 5] }, S3 { x: [6, 7, 8, 9, 10] });
             stdcall_fn_9(1, 3.0);
+            stdcall_fn_10_renamed(19);
 
             fastcall_fn_1(14);
             fastcall_fn_2(16, 3.5);
@@ -81,6 +88,7 @@ pub fn library_function(run_msvc_only: bool) {
             fastcall_fn_6(Some(&S { x: 10, y: 12 }));
             fastcall_fn_8(S3 { x: [1, 2, 3, 4, 5] }, S3 { x: [6, 7, 8, 9, 10] });
             fastcall_fn_9(1, 3.0);
+            fastcall_fn_10_renamed(19);
         } else {
             // FIXME: 91167
             // rustc generates incorrect code for the calls to fastcall_fn_5 and fastcall_fn_7
@@ -100,6 +108,7 @@ pub fn library_function(run_msvc_only: bool) {
                 vectorcall_fn_7(S2 { x: 15, y: 16 }, 3);
                 vectorcall_fn_8(S3 { x: [1, 2, 3, 4, 5] }, S3 { x: [6, 7, 8, 9, 10] });
                 vectorcall_fn_9(1, 3.0);
+                vectorcall_fn_10_renamed(19);
             }
         }
     }

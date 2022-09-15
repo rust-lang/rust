@@ -70,6 +70,11 @@ __declspec(dllexport) void __stdcall stdcall_fn_9(uint8_t x, double y) {
     fflush(stdout);
 }
 
+__declspec(dllexport) void __stdcall stdcall_fn_10(int i) {
+    printf("stdcall_fn_10(%d)\n", i);
+    fflush(stdout);
+}
+
 __declspec(dllexport) void __fastcall fastcall_fn_1(int i) {
     printf("fastcall_fn_1(%d)\n", i);
     fflush(stdout);
@@ -119,6 +124,11 @@ __declspec(dllexport) void __fastcall fastcall_fn_8(struct S3 s, struct S3 t) {
 
 __declspec(dllexport) void __fastcall fastcall_fn_9(uint8_t x, double y) {
     printf("fastcall_fn_9(%d, %.1f)\n", x, y);
+    fflush(stdout);
+}
+
+__declspec(dllexport) void __fastcall fastcall_fn_10(int i) {
+    printf("fastcall_fn_10(%d)\n", i);
     fflush(stdout);
 }
 
@@ -173,6 +183,11 @@ __declspec(dllexport) void __vectorcall vectorcall_fn_8(struct S3 s, struct S3 t
 
 __declspec(dllexport) void __vectorcall vectorcall_fn_9(uint8_t x, double y) {
     printf("vectorcall_fn_9(%d, %.1f)\n", x, y);
+    fflush(stdout);
+}
+
+__declspec(dllexport) void __vectorcall vectorcall_fn_10(int i) {
+    printf("vectorcall_fn_10(%d)\n", i);
     fflush(stdout);
 }
 #endif
