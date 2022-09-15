@@ -1724,6 +1724,20 @@ impl<'a> Parser<'a> {
                 err.help("unlike in C++, Java, and C#, functions are declared in `impl` blocks");
                 err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
                 err
+            } else if self.check_keyword(kw::Struct) {
+                let kw_token = self.token.clone();
+                let item = self.parse_item(ForceCollect::No)?;
+                let mut err = self.struct_span_err(
+                    kw_token.span,
+                    &format!("structs are not allowed in {adt_ty} definitions"),
+                );
+                err.span_suggestion(
+                    item.unwrap().span,
+                    &format!("consider creating a new `struct` definition instead of nesting"),
+                    "",
+                    Applicability::MaybeIncorrect,
+                );
+                err
             } else {
                 self.expected_ident_found()
             };
