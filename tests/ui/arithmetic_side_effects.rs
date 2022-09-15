@@ -1,7 +1,10 @@
 #![allow(
     clippy::assign_op_pattern,
-    unconditional_panic,
-    clippy::unnecessary_owned_empty_strings
+    clippy::erasing_op,
+    clippy::identity_op,
+    clippy::unnecessary_owned_empty_strings,
+    arithmetic_overflow,
+    unconditional_panic
 )]
 #![feature(inline_const, saturating_int_impl)]
 #![warn(clippy::arithmetic_side_effects)]
@@ -30,7 +33,7 @@ pub fn hard_coded_allowed() {
 }
 
 #[rustfmt::skip]
-pub fn non_overflowing_ops() {
+pub fn non_overflowing_const_ops() {
     const _: i32 = { let mut n = 1; n += 1; n };
     let _ = const { let mut n = 1; n += 1; n };
 
@@ -41,33 +44,54 @@ pub fn non_overflowing_ops() {
     let _ = const { let mut n = 1; n = 1 + n; n };
 
     const _: i32 = 1 + 1;
-    let _ = 1 + 1;
     let _ = const { 1 + 1 };
+}
 
-    let mut _a = 1;
-    _a += 0;
-    _a -= 0;
-    _a /= 99;
-    _a %= 99;
-    _a *= 0;
-    _a *= 1;
+pub fn non_overflowing_runtime_ops() {
+    let mut _n = i32::MAX;
+
+    // Assign
+    _n += 0;
+    _n -= 0;
+    _n /= 99;
+    _n %= 99;
+    _n *= 0;
+    _n *= 1;
+
+    // Binary
+    _n = _n + 0;
+    _n = 0 + _n;
+    _n = _n - 0;
+    _n = 0 - _n;
+    _n = _n / 99;
+    _n = _n % 99;
+    _n = _n * 0;
+    _n = 0 * _n;
+    _n = _n * 1;
+    _n = 1 * _n;
+    _n = 23 + 85;
 }
 
 #[rustfmt::skip]
-pub fn overflowing_ops() {
-    let mut _a = 1; _a += 1;
+pub fn overflowing_runtime_ops() {
+    let mut _n = i32::MAX;
 
-    let mut _b = 1; _b = _b + 1;
+    // Assign
+    _n += 1;
+    _n -= 1;
+    _n /= 0;
+    _n %= 0;
+    _n *= 2;
 
-    let mut _c = 1; _c = 1 + _c;
-
-    let mut _a = 1;
-    _a += 1;
-    _a -= 1;
-    _a /= 0;
-    _a %= 0;
-    _a *= 2;
-    _a *= 3;
+    // Binary
+    _n = _n + 1;
+    _n = 1 + _n;
+    _n = _n - 1;
+    _n = 1 - _n;
+    _n = _n / 0;
+    _n = _n % 0;
+    _n = _n * 2;
+    _n = 2 * _n;
 }
 
 fn main() {}
