@@ -701,9 +701,9 @@ fn codegen_stmt<'tcx>(
                     let operand = codegen_operand(fx, operand);
                     operand.unsize_value(fx, lval);
                 }
-                Rvalue::Cast(CastKind::DynStar, _, _) => {
-                    // FIXME(dyn-star)
-                    unimplemented!()
+                Rvalue::Cast(CastKind::DynStar, ref operand, _) => {
+                    let operand = codegen_operand(fx, operand);
+                    operand.coerce_dyn_star(fx, lval);
                 }
                 Rvalue::Discriminant(place) => {
                     let place = codegen_place(fx, place);

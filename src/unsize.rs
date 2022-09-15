@@ -147,6 +147,22 @@ pub(crate) fn coerce_unsized_into<'tcx>(
     }
 }
 
+pub(crate) fn coerce_dyn_star<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    src: CValue<'tcx>,
+    dst: CPlace<'tcx>,
+) {
+    let data = src.load_scalar(fx);
+
+    let vtable = if let ty::Dynamic(data, _, ty::DynStar) = dst.layout().ty.kind() {
+        crate::vtable::get_vtable(fx, src.layout().ty, data.principal())
+    } else {
+        bug!("Only valid to do a DynStar cast into a DynStar type")
+    };
+
+    dst.write_cvalue(fx, CValue::by_val_pair(data, vtable, dst.layout()));
+}
+
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/glue.rs
 
 pub(crate) fn size_and_align_of_dst<'tcx>(

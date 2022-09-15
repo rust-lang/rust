@@ -236,6 +236,10 @@ impl<'tcx> CValue<'tcx> {
         crate::unsize::coerce_unsized_into(fx, self, dest);
     }
 
+    pub(crate) fn coerce_dyn_star(self, fx: &mut FunctionCx<'_, '_, 'tcx>, dest: CPlace<'tcx>) {
+        crate::unsize::coerce_dyn_star(fx, self, dest);
+    }
+
     /// If `ty` is signed, `const_val` must already be sign extended.
     pub(crate) fn const_val(
         fx: &mut FunctionCx<'_, '_, 'tcx>,
