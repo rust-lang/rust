@@ -126,7 +126,7 @@ impl ShallowLintLevelMap {
             return (Some(level), src);
         }
 
-        for (parent, _) in tcx.hir().parent_iter(start) {
+        for parent in tcx.hir().parent_id_iter(start) {
             let specs = tcx.shallow_lint_levels_on(parent);
             if let Some(&(level, src)) = specs.specs.get(&id) {
                 return (Some(level), src);
