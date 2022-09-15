@@ -67,8 +67,6 @@ impl<T: DepContext> HasDepContext for T {
 pub enum FingerprintStyle {
     /// The fingerprint is actually a DefPathHash.
     DefPathHash,
-    /// The fingerprint is actually a HirId.
-    HirId,
     /// Query key was `()` or equivalent, so fingerprint is just zero.
     Unit,
     /// Some opaque hash.
@@ -79,9 +77,7 @@ impl FingerprintStyle {
     #[inline]
     pub fn reconstructible(self) -> bool {
         match self {
-            FingerprintStyle::DefPathHash | FingerprintStyle::Unit | FingerprintStyle::HirId => {
-                true
-            }
+            FingerprintStyle::DefPathHash | FingerprintStyle::Unit => true,
             FingerprintStyle::Opaque => false,
         }
     }
