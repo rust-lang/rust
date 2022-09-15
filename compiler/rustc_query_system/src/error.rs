@@ -1,7 +1,7 @@
 use rustc_errors::AddToDiagnostic;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
-use rustc_macros::{Diagnostic, Subdiagnostic};
 
 pub struct CycleStack {
     pub span: Span,

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use rustc_errors::IntoDiagnostic;
 use rustc_errors::ErrorGuaranteed;
+use rustc_errors::IntoDiagnostic;
 use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_span::Span;
 

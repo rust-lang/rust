@@ -449,7 +449,7 @@ error[E0277]: the trait bound `Hello: IntoDiagnosticArg` is not satisfied
   --> $DIR/diagnostic-derive.rs:331:10
    |
 LL | #[derive(Diagnostic)]
-   |          ^^^^^^^^^^^^^^^^^ the trait `IntoDiagnosticArg` is not implemented for `Hello`
+   |          ^^^^^^^^^^ the trait `IntoDiagnosticArg` is not implemented for `Hello`
    |
    = help: normalized in stderr
 note: required by a bound in `DiagnosticBuilder::<'a, G>::set_arg`

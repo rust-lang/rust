@@ -20,7 +20,7 @@ use rustc_span::Span;
 
 #[derive(Diagnostic)]
 #[diag(parser::expect_path)]
-struct DeriveSessionDiagnostic {
+struct DeriveDiagnostic {
     #[primary_span]
     span: Span,
 }
@@ -32,18 +32,18 @@ struct Note {
     span: Span,
 }
 
-pub struct UntranslatableInSessionDiagnostic;
+pub struct UntranslatableInIntoDiagnostic;
 
-impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for UntranslatableInSessionDiagnostic {
+impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for UntranslatableInIntoDiagnostic {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         handler.struct_err("untranslatable diagnostic")
         //~^ ERROR diagnostics should be created using translatable messages
     }
 }
 
-pub struct TranslatableInSessionDiagnostic;
+pub struct TranslatableInIntoDiagnostic;
 
-impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for TranslatableInSessionDiagnostic {
+impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for TranslatableInIntoDiagnostic {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         handler.struct_err(fluent::parser::expect_path)
     }

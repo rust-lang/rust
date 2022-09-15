@@ -3,6 +3,7 @@
 
 pub use crate::options::*;
 
+use crate::errors::TargetDataLayoutErrorsWrapper;
 use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{early_error, early_warn, Session};
@@ -898,7 +899,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     let max_atomic_width = sess.target.max_atomic_width();
     let atomic_cas = sess.target.atomic_cas;
     let layout = TargetDataLayout::parse(&sess.target).unwrap_or_else(|err| {
-        sess.emit_fatal(err);
+        sess.emit_fatal(TargetDataLayoutErrorsWrapper(err));
     });
 
     let mut ret = CrateConfig::default();

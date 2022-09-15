@@ -5,7 +5,7 @@ mod fluent;
 mod subdiagnostic;
 mod utils;
 
-use diagnostic::{LintDiagnosticDerive, SessionDiagnosticDerive};
+use diagnostic::{DiagnosticDerive, LintDiagnosticDerive};
 pub(crate) use fluent::fluent_messages;
 use proc_macro2::TokenStream;
 use quote::format_ident;
@@ -59,7 +59,7 @@ use synstructure::Structure;
 /// See rustc dev guide for more examples on using the `#[derive(Diagnostic)]`:
 /// <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html>
 pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
-    SessionDiagnosticDerive::new(format_ident!("diag"), format_ident!("handler"), s).into_tokens()
+    DiagnosticDerive::new(format_ident!("diag"), format_ident!("handler"), s).into_tokens()
 }
 
 /// Implements `#[derive(LintDiagnostic)]`, which allows for lints to be specified as a struct,
@@ -103,7 +103,7 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// ```
 ///
 /// See rustc dev guide for more examples on using the `#[derive(LintDiagnostic)]`:
-/// <https://rustc-dev-guide.rust-lang.org/diagnostics/sessiondiagnostic.html>
+/// <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html#reference>
 pub fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
     LintDiagnosticDerive::new(format_ident!("diag"), s).into_tokens()
 }

@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rustc_errors::{error_code, IntoDiagnostic, ErrorGuaranteed};
+use rustc_errors::{error_code, ErrorGuaranteed, IntoDiagnostic};
 use rustc_macros::Diagnostic;
 use rustc_session::config;
 use rustc_span::{sym, Span, Symbol};

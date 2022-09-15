@@ -27,8 +27,8 @@ use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    error_code, fallback_fluent_bundle, DiagnosticBuilder, IntoDiagnostic, DiagnosticId,
-    DiagnosticMessage, ErrorGuaranteed, FluentBundle, LazyFallbackBundle, MultiSpan,
+    error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
+    ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;

@@ -11,7 +11,7 @@ use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{
-    Applicability, DiagnosticBuilder, IntoDiagnostic, ErrorGuaranteed, MultiSpan, PResult,
+    Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, MultiSpan, PResult,
 };
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};

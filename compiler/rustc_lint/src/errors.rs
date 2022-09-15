@@ -1,4 +1,4 @@
-use rustc_errors::{fluent, AddToDiagnostic, IntoDiagnostic, ErrorGuaranteed, Handler};
+use rustc_errors::{fluent, AddToDiagnostic, ErrorGuaranteed, Handler, IntoDiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};

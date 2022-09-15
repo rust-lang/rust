@@ -4,7 +4,7 @@ use crate::query::{QueryContext, QueryStackFrame};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    Diagnostic, DiagnosticBuilder, IntoDiagnostic, ErrorGuaranteed, Handler, Level,
+    Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, Level,
 };
 use rustc_hir::def::DefKind;
 use rustc_session::Session;

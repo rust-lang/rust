@@ -9,13 +9,13 @@ use syn::spanned::Spanned;
 use synstructure::Structure;
 
 /// The central struct for constructing the `into_diagnostic` method from an annotated struct.
-pub(crate) struct SessionDiagnosticDerive<'a> {
+pub(crate) struct DiagnosticDerive<'a> {
     structure: Structure<'a>,
     handler: syn::Ident,
     builder: DiagnosticDeriveBuilder,
 }
 
-impl<'a> SessionDiagnosticDerive<'a> {
+impl<'a> DiagnosticDerive<'a> {
     pub(crate) fn new(diag: syn::Ident, handler: syn::Ident, structure: Structure<'a>) -> Self {
         Self {
             builder: DiagnosticDeriveBuilder {
@@ -31,7 +31,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
-        let SessionDiagnosticDerive { mut structure, handler, mut builder } = self;
+        let DiagnosticDerive { mut structure, handler, mut builder } = self;
 
         let ast = structure.ast();
         let implementation = {

@@ -11,8 +11,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
-    fallback_fluent_bundle, Applicability, Diagnostic, DiagnosticBuilder, IntoDiagnostic,
-    DiagnosticId, DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, MultiSpan, StashKey,
+    fallback_fluent_bundle, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
+    DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, IntoDiagnostic, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;

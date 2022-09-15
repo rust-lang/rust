@@ -434,7 +434,7 @@ pub(crate) struct NotAsNegationOperator {
     pub sub: NotAsNegationOperatorSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum NotAsNegationOperatorSub {
     #[suggestion_short(
         parser::unexpected_token_after_not_default,
@@ -737,7 +737,7 @@ pub(crate) struct RemoveLet {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(parser::use_eq_instead)]
 pub(crate) struct UseEqInstead {
     #[primary_span]

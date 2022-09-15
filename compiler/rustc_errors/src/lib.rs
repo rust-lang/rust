@@ -437,11 +437,11 @@ struct HandlerInner {
     /// have been converted.
     check_unstable_expect_diagnostics: bool,
 
-    /// Expected [`Diagnostic`]s store a [`LintExpectationId`] as part of
+    /// Expected [`Diagnostic`][diagnostic::Diagnostic]s store a [`LintExpectationId`] as part of
     /// the lint level. [`LintExpectationId`]s created early during the compilation
     /// (before `HirId`s have been defined) are not stable and can therefore not be
     /// stored on disk. This buffer stores these diagnostics until the ID has been
-    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`]s are the
+    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`][diagnostic::Diagnostic]s are the
     /// submitted for storage and added to the list of fulfilled expectations.
     unstable_expect_diagnostics: Vec<Diagnostic>,
 
@@ -647,8 +647,6 @@ impl Handler {
 
     /// Construct a builder with the `msg` at the level appropriate for the specific `EmissionGuarantee`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_diagnostic<G: EmissionGuarantee>(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -662,8 +660,6 @@ impl Handler {
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_span_warn(
         &self,
         span: impl Into<MultiSpan>,
@@ -680,8 +676,6 @@ impl Handler {
     /// Attempting to `.emit()` the builder will only emit if either:
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_span_warn_with_expectation(
         &self,
         span: impl Into<MultiSpan>,
@@ -695,8 +689,6 @@ impl Handler {
 
     /// Construct a builder at the `Allow` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_span_allow(
         &self,
         span: impl Into<MultiSpan>,
@@ -710,8 +702,6 @@ impl Handler {
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     /// Also include a code.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_span_warn_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -729,8 +719,6 @@ impl Handler {
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Warning(None), msg)
     }
@@ -741,8 +729,6 @@ impl Handler {
     /// Attempting to `.emit()` the builder will only emit if either:
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_warn_with_expectation(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -753,16 +739,12 @@ impl Handler {
 
     /// Construct a builder at the `Allow` level with the `msg`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Allow, msg)
     }
 
     /// Construct a builder at the `Expect` level with the `msg`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_expect(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -773,8 +755,6 @@ impl Handler {
 
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_span_err(
         &self,
         span: impl Into<MultiSpan>,
@@ -787,8 +767,6 @@ impl Handler {
 
     /// Construct a builder at the `Error` level at the given `span`, with the `msg`, and `code`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_span_err_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -803,8 +781,6 @@ impl Handler {
     /// Construct a builder at the `Error` level with the `msg`.
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -814,16 +790,12 @@ impl Handler {
 
     /// This should only be used by `rustc_middle::lint::struct_lint_level`. Do not use it for hard errors.
     #[doc(hidden)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_err_lint(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Error { lint: true }, msg)
     }
 
     /// Construct a builder at the `Error` level with the `msg` and the `code`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_err_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -836,8 +808,6 @@ impl Handler {
 
     /// Construct a builder at the `Warn` level with the `msg` and the `code`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_warn_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -850,8 +820,6 @@ impl Handler {
 
     /// Construct a builder at the `Fatal` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_span_fatal(
         &self,
         span: impl Into<MultiSpan>,
@@ -864,8 +832,6 @@ impl Handler {
 
     /// Construct a builder at the `Fatal` level at the given `span`, with the `msg`, and `code`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_span_fatal_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -879,24 +845,18 @@ impl Handler {
 
     /// Construct a builder at the `Error` level with the `msg`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         DiagnosticBuilder::new_fatal(self, msg)
     }
 
     /// Construct a builder at the `Help` level with the `msg`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_help(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Help, msg)
     }
 
     /// Construct a builder at the `Note` level with the `msg`.
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_note_without_error(
         &self,
         msg: impl Into<DiagnosticMessage>,

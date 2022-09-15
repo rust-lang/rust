@@ -1,5 +1,5 @@
 use crate::infer::error_reporting::nice_region_error::find_anon_type;
-use rustc_errors::{self, fluent, AddSubdiagnostic, IntoDiagnosticArg};
+use rustc_errors::{self, fluent, AddToDiagnostic, IntoDiagnosticArg};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{symbol::kw, Span};
 
@@ -158,7 +158,7 @@ impl RegionExplanation<'_> {
     }
 }
 
-impl AddSubdiagnostic for RegionExplanation<'_> {
+impl AddToDiagnostic for RegionExplanation<'_> {
     fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
         if let Some(span) = self.desc.span {
             diag.span_note(span, fluent::infer::region_explanation);

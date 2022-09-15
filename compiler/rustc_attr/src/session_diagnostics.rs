@@ -2,8 +2,7 @@ use std::num::IntErrorKind;
 
 use rustc_ast as ast;
 use rustc_errors::{
-    error_code, fluent, Applicability, DiagnosticBuilder, IntoDiagnostic, ErrorGuaranteed,
-    Handler,
+    error_code, fluent, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
 };
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};

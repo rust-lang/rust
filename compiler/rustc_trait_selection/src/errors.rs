@@ -1,4 +1,4 @@
-use rustc_errors::{fluent, IntoDiagnostic, ErrorGuaranteed, Handler};
+use rustc_errors::{fluent, ErrorGuaranteed, Handler, IntoDiagnostic};
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::{PolyTraitRef, Ty, Unevaluated};
 use rustc_session::Limit;

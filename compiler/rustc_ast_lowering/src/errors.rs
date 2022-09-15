@@ -335,7 +335,7 @@ pub struct InclusiveRangeWithNoEnd {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::trait_fn_async, code = "E0706")]
 #[note]
 #[note(ast_lowering::note2)]
