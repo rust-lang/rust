@@ -4,6 +4,7 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, FnRetTy, GenericBound, GenericBounds, GenericParam, Generics, Lifetime,
     MacCall, MutTy, Mutability, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax, Ty, TyKind,
@@ -267,7 +268,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Underscore) {
             // A type to be inferred `_`
             TyKind::Infer
-        } else if self.check_fn_front_matter(false, false) {
+        } else if self.check_fn_front_matter(false, Case::Sensitive) {
             // Function pointer type
             self.parse_ty_bare_fn(lo, Vec::new(), recover_return_sign)?
         } else if self.check_keyword(kw::For) {
@@ -275,7 +276,7 @@ impl<'a> Parser<'a> {
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
             let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-            if self.check_fn_front_matter(false, false) {
+            if self.check_fn_front_matter(false, Case::Sensitive) {
                 self.parse_ty_bare_fn(lo, lifetime_defs, recover_return_sign)?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;

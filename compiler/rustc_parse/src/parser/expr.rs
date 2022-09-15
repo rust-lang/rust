@@ -33,6 +33,7 @@ use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
+use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
@@ -2024,7 +2025,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
         let asyncness = if self.token.uninterpolated_span().rust_2018() {
-            self.parse_asyncness(false)
+            self.parse_asyncness(Case::Sensitive)
         } else {
             Async::No
         };

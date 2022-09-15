@@ -29,6 +29,7 @@ extern crate rustc_macros;
 extern crate tracing;
 
 pub mod util {
+    pub mod case;
     pub mod classify;
     pub mod comments;
     pub mod literal;
