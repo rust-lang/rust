@@ -1816,12 +1816,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         if let Operand::Constant(constant) = op {
             let maybe_uneval = match constant.literal {
-                ConstantKind::Ty(ct) => match ct.kind() {
-                    ty::ConstKind::Unevaluated(uv) => Some(uv.expand()),
-                    _ => None,
-                },
+                ConstantKind::Val(..) | ConstantKind::Ty(_) => None,
                 ConstantKind::Unevaluated(uv, _) => Some(uv),
-                ConstantKind::Val(..) => None,
             };
 
             if let Some(uv) = maybe_uneval {

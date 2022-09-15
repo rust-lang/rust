@@ -307,9 +307,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             // Promoteds must lint and not error as the user didn't ask for them
                             true
                         }
-                        ConstantKind::Unevaluated(_, ty) | ConstantKind::Val(_, ty) => {
-                            ty.needs_subst()
-                        }
+                        ConstantKind::Unevaluated(..) | ConstantKind::Val(..) => c.needs_subst(),
                     };
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused

@@ -38,6 +38,11 @@ where
     })
 }
 
+// FIXME(valtrees): This function is necessary because `fold_regions`
+// panics for mir constants in the visitor.
+//
+// Once `visit_mir_constant` is removed we can also remove this function
+// and just use `renumber_regions`.
 fn renumber_regions_in_mir_constant<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     value: ConstantKind<'tcx>,
