@@ -1,5 +1,5 @@
 error[E0038]: the trait alias `SelfInput` cannot be made into an object
-  --> $DIR/self-in-generics.rs:12:19
+  --> $DIR/self-in-generics.rs:8:19
    |
 LL | pub fn f(_f: &dyn SelfInput) {}
    |                   ^^^^^^^^^
