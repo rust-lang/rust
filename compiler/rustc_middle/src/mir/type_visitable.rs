@@ -137,18 +137,6 @@ impl<'tcx> TypeVisitable<'tcx> for Operand<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for PlaceElem<'tcx> {
-    fn visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<Vs::BreakTy> {
-        use crate::mir::ProjectionElem::*;
-
-        match self {
-            Field(_, ty) => ty.visit_with(visitor),
-            Index(v) => v.visit_with(visitor),
-            _ => ControlFlow::CONTINUE,
-        }
-    }
-}
-
 impl<'tcx> TypeVisitable<'tcx> for GeneratorSavedLocal {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE

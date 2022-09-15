@@ -175,23 +175,6 @@ impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for PlaceElem<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        use crate::mir::ProjectionElem::*;
-
-        Ok(match self {
-            Deref => Deref,
-            Field(f, ty) => Field(f, ty.try_fold_with(folder)?),
-            Index(v) => Index(v.try_fold_with(folder)?),
-            Downcast(symbol, variantidx) => Downcast(symbol, variantidx),
-            ConstantIndex { offset, min_length, from_end } => {
-                ConstantIndex { offset, min_length, from_end }
-            }
-            Subslice { from, to, from_end } => Subslice { from, to, from_end },
-        })
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
         Ok(self)

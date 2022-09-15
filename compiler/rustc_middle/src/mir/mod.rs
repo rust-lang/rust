@@ -2551,8 +2551,6 @@ impl UserTypeProjection {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! { ProjectionKind, }
-
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Ok(UserTypeProjection {
