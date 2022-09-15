@@ -129,6 +129,17 @@ List of features to activate. Defaults to
 
 Set to `"all"` to pass `--all-features` to Cargo.
 --
+[[rust-analyzer.checkOnSave.invocationStrategy]]rust-analyzer.checkOnSave.invocationStrategy (default: `"per_workspace"`)::
++
+--
+Specifies the invocation strategy to use when running the checkOnSave command.
+If `per_workspace_with_manifest_path` is set, the command will be executed for each
+workspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and
+the command will be executed from the project root.
+If `per_workspace` is set, the command will be executed for each workspace and the
+command will be executed from the corresponding workspace root.
+If `once_in_root` is set, the command will be executed once in the project root.
+--
 [[rust-analyzer.checkOnSave.noDefaultFeatures]]rust-analyzer.checkOnSave.noDefaultFeatures (default: `null`)::
 +
 --

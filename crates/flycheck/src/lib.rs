@@ -6,6 +6,7 @@
 
 use std::{
     fmt, io,
+    path::Path,
     process::{ChildStderr, ChildStdout, Command, Stdio},
     time::Duration,
 };
@@ -21,6 +22,14 @@ pub use cargo_metadata::diagnostic::{
     DiagnosticSpanMacroExpansion,
 };
 
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum InvocationStrategy {
+    OnceInRoot,
+    PerWorkspaceWithManifestPath,
+    #[default]
+    PerWorkspace,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
     CargoCommand {
@@ -32,11 +41,13 @@ pub enum FlycheckConfig {
         features: Vec<String>,
         extra_args: Vec<String>,
         extra_env: FxHashMap<String, String>,
+        invocation_strategy: InvocationStrategy,
     },
     CustomCommand {
         command: String,
         args: Vec<String>,
         extra_env: FxHashMap<String, String>,
+        invocation_strategy: InvocationStrategy,
     },
 }
 
@@ -136,7 +147,9 @@ enum Restart {
     No,
 }
 
+/// A [`FlycheckActor`] is a single check instance of a workspace.
 struct FlycheckActor {
+    /// The workspace id of this flycheck instance.
     id: usize,
     sender: Box<dyn Fn(Message) + Send>,
     config: FlycheckConfig,
@@ -164,9 +177,11 @@ impl FlycheckActor {
         tracing::info!(%id, ?workspace_root, "Spawning flycheck");
         FlycheckActor { id, sender, config, workspace_root, cargo_handle: None }
     }
-    fn progress(&self, progress: Progress) {
+
+    fn report_progress(&self, progress: Progress) {
         self.send(Message::Progress { id: self.id, progress });
     }
+
     fn next_event(&self, inbox: &Receiver<Restart>) -> Option<Event> {
         let check_chan = self.cargo_handle.as_ref().map(|cargo| &cargo.receiver);
         if let Ok(msg) = inbox.try_recv() {
@@ -178,6 +193,7 @@ impl FlycheckActor {
             recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
         }
     }
+
     fn run(mut self, inbox: Receiver<Restart>) {
         'event: while let Some(event) = self.next_event(&inbox) {
             match event {
@@ -194,7 +210,20 @@ impl FlycheckActor {
                         }
                     }
 
-                    let command = self.check_command();
+                    let mut command = self.check_command();
+                    let invocation_strategy = self.invocation_strategy();
+                    match invocation_strategy {
+                        InvocationStrategy::OnceInRoot => (),
+                        InvocationStrategy::PerWorkspaceWithManifestPath => {
+                            command.arg("--manifest-path");
+                            command.arg(<_ as AsRef<Path>>::as_ref(
+                                &self.workspace_root.join("Cargo.toml"),
+                            ));
+                        }
+                        InvocationStrategy::PerWorkspace => {
+                            command.current_dir(&self.workspace_root);
+                        }
+                    }
                     tracing::debug!(?command, "will restart flycheck");
                     match CargoHandle::spawn(command) {
                         Ok(cargo_handle) => {
@@ -203,10 +232,10 @@ impl FlycheckActor {
                                 "did  restart flycheck"
                             );
                             self.cargo_handle = Some(cargo_handle);
-                            self.progress(Progress::DidStart);
+                            self.report_progress(Progress::DidStart);
                         }
                         Err(error) => {
-                            self.progress(Progress::DidFailToRestart(format!(
+                            self.report_progress(Progress::DidFailToRestart(format!(
                                 "Failed to run the following command: {:?} error={}",
                                 self.check_command(),
                                 error
@@ -226,11 +255,11 @@ impl FlycheckActor {
                             self.check_command()
                         );
                     }
-                    self.progress(Progress::DidFinish(res));
+                    self.report_progress(Progress::DidFinish(res));
                 }
                 Event::CheckEvent(Some(message)) => match message {
                     CargoMessage::CompilerArtifact(msg) => {
-                        self.progress(Progress::DidCheckCrate(msg.target.name));
+                        self.report_progress(Progress::DidCheckCrate(msg.target.name));
                     }
 
                     CargoMessage::Diagnostic(msg) => {
@@ -254,7 +283,14 @@ impl FlycheckActor {
                 "did  cancel flycheck"
             );
             cargo_handle.cancel();
-            self.progress(Progress::DidCancel);
+            self.report_progress(Progress::DidCancel);
+        }
+    }
+
+    fn invocation_strategy(&self) -> InvocationStrategy {
+        match self.config {
+            FlycheckConfig::CargoCommand { invocation_strategy, .. }
+            | FlycheckConfig::CustomCommand { invocation_strategy, .. } => invocation_strategy,
         }
     }
 
@@ -269,6 +305,7 @@ impl FlycheckActor {
                 extra_args,
                 features,
                 extra_env,
+                invocation_strategy: _,
             } => {
                 let mut cmd = Command::new(toolchain::cargo());
                 cmd.arg(command);
@@ -297,7 +334,7 @@ impl FlycheckActor {
                 cmd.envs(extra_env);
                 cmd
             }
-            FlycheckConfig::CustomCommand { command, args, extra_env } => {
+            FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy: _ } => {
                 let mut cmd = Command::new(command);
                 cmd.args(args);
                 cmd.envs(extra_env);

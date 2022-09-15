@@ -130,6 +130,14 @@ config_data! {
         ///
         /// Set to `"all"` to pass `--all-features` to Cargo.
         checkOnSave_features: Option<CargoFeaturesDef>      = "null",
+        /// Specifies the invocation strategy to use when running the checkOnSave command.
+        /// If `per_workspace_with_manifest_path` is set, the command will be executed for each
+        /// workspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and
+        /// the command will be executed from the project root.
+        /// If `per_workspace` is set, the command will be executed for each workspace and the
+        /// command will be executed from the corresponding workspace root.
+        /// If `once_in_root` is set, the command will be executed once in the project root.
+        checkOnSave_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Whether to pass `--no-default-features` to Cargo. Defaults to
         /// `#rust-analyzer.cargo.noDefaultFeatures#`.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
@@ -1094,6 +1102,13 @@ impl Config {
         if !self.data.checkOnSave_enable {
             return None;
         }
+        let invocation_strategy = match self.data.cargo_buildScripts_invocationStrategy {
+            InvocationStrategy::OnceInRoot => flycheck::InvocationStrategy::OnceInRoot,
+            InvocationStrategy::PerWorkspaceWithManifestPath => {
+                flycheck::InvocationStrategy::PerWorkspaceWithManifestPath
+            }
+            InvocationStrategy::PerWorkspace => flycheck::InvocationStrategy::PerWorkspace,
+        };
         let flycheck_config = match &self.data.checkOnSave_overrideCommand {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
@@ -1102,6 +1117,7 @@ impl Config {
                     command,
                     args,
                     extra_env: self.check_on_save_extra_env(),
+                    invocation_strategy,
                 }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
@@ -1131,6 +1147,7 @@ impl Config {
                 },
                 extra_args: self.data.checkOnSave_extraArgs.clone(),
                 extra_env: self.check_on_save_extra_env(),
+                invocation_strategy,
             },
         };
         Some(flycheck_config)
