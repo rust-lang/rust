@@ -459,12 +459,6 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for SubstsRef<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|t| t.visit_with(visitor))
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         // This code is fairly hot, though not as hot as `SubstsRef`.
@@ -497,7 +491,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
+impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &'tcx ty::List<T> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }

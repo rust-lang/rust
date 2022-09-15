@@ -1,13 +1,7 @@
 //! `TypeVisitable` implementations for MIR types
 
 use super::*;
-use crate::ty;
 
-impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|t| t.visit_with(visitor))
-    }
-}
 impl<'tcx, R: Idx, C: Idx> TypeVisitable<'tcx> for BitMatrix<R, C> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
