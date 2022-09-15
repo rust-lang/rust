@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Node, PatKind, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::middle::privacy;
+use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
@@ -619,13 +619,10 @@ fn create_and_seed_worklist<'tcx>(
     // see `MarkSymbolVisitor::struct_constructors`
     let mut struct_constructors = Default::default();
     let mut worklist = access_levels
-        .map
         .iter()
-        .filter_map(
-            |(&id, &level)| {
-                if level >= privacy::AccessLevel::Reachable { Some(id) } else { None }
-            },
-        )
+        .filter_map(|(&id, effective_vis)| {
+            effective_vis.is_public_at_level(AccessLevel::Reachable).then_some(id)
+        })
         // Seed entry point
         .chain(tcx.entry_fn(()).and_then(|(def_id, _)| def_id.as_local()))
         .collect::<Vec<_>>();
