@@ -246,7 +246,6 @@ TrivialTypeTraversalAndLiftImpls! {
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
 
-// FIXME(eddyb) replace all the uses of `Option::map` with `?`.
 impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
     type Lifted = (A::Lifted, B::Lifted);
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
@@ -264,10 +263,7 @@ impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>, C: Lift<'tcx>> Lift<'tcx> for (A, B, C)
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
     type Lifted = Option<T::Lifted>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        match self {
-            Some(x) => tcx.lift(x).map(Some),
-            None => Some(None),
-        }
+        tcx.lift(self?).map(Some)
     }
 }
 
@@ -284,21 +280,21 @@ impl<'tcx, T: Lift<'tcx>, E: Lift<'tcx>> Lift<'tcx> for Result<T, E> {
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Box<T> {
     type Lifted = Box<T::Lifted>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(*self).map(Box::new)
+        Some(Box::new(tcx.lift(*self)?))
     }
 }
 
 impl<'tcx, T: Lift<'tcx> + Clone> Lift<'tcx> for Rc<T> {
     type Lifted = Rc<T::Lifted>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(self.as_ref().clone()).map(Rc::new)
+        Some(Rc::new(tcx.lift(self.as_ref().clone())?))
     }
 }
 
 impl<'tcx, T: Lift<'tcx> + Clone> Lift<'tcx> for Arc<T> {
     type Lifted = Arc<T::Lifted>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(self.as_ref().clone()).map(Arc::new)
+        Some(Arc::new(tcx.lift(self.as_ref().clone())?))
     }
 }
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Vec<T> {
