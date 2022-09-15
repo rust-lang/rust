@@ -31448,7 +31448,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vcreate_p64() {
         let a: u64 = 1;
         let e: i64x1 = i64x1::new(1);
@@ -33836,7 +33836,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vrndn_f32() {
         let a: f32x2 = f32x2::new(-1.5, 0.5);
         let e: f32x2 = f32x2::new(-2.0, 0.0);
@@ -33844,7 +33845,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vrndnq_f32() {
         let a: f32x4 = f32x4::new(-1.5, 0.5, 1.5, 2.5);
         let e: f32x4 = f32x4::new(-2.0, 0.0, 2.0, 2.0);
@@ -38406,7 +38408,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vfma_f32() {
         let a: f32x2 = f32x2::new(8.0, 18.0);
         let b: f32x2 = f32x2::new(6.0, 4.0);
@@ -38416,7 +38419,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vfmaq_f32() {
         let a: f32x4 = f32x4::new(8.0, 18.0, 12.0, 10.0);
         let b: f32x4 = f32x4::new(6.0, 4.0, 7.0, 8.0);
@@ -38426,7 +38430,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vfma_n_f32() {
         let a: f32x2 = f32x2::new(2.0, 3.0);
         let b: f32x2 = f32x2::new(6.0, 4.0);
@@ -38436,7 +38441,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vfmaq_n_f32() {
         let a: f32x4 = f32x4::new(2.0, 3.0, 4.0, 5.0);
         let b: f32x4 = f32x4::new(6.0, 4.0, 7.0, 8.0);
@@ -38446,7 +38452,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vfms_f32() {
         let a: f32x2 = f32x2::new(20.0, 30.0);
         let b: f32x2 = f32x2::new(6.0, 4.0);
@@ -38456,7 +38463,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vfmsq_f32() {
         let a: f32x4 = f32x4::new(20.0, 30.0, 40.0, 50.0);
         let b: f32x4 = f32x4::new(6.0, 4.0, 7.0, 8.0);
@@ -38466,7 +38474,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vfms_n_f32() {
         let a: f32x2 = f32x2::new(50.0, 35.0);
         let b: f32x2 = f32x2::new(6.0, 4.0);
@@ -38476,7 +38485,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vfmsq_n_f32() {
         let a: f32x4 = f32x4::new(50.0, 35.0, 60.0, 69.0);
         let b: f32x4 = f32x4::new(6.0, 4.0, 7.0, 8.0);
@@ -39167,7 +39177,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vmaxnm_f32() {
         let a: f32x2 = f32x2::new(1.0, 2.0);
         let b: f32x2 = f32x2::new(8.0, 16.0);
@@ -39176,7 +39187,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vmaxnmq_f32() {
         let a: f32x4 = f32x4::new(1.0, 2.0, 3.0, -4.0);
         let b: f32x4 = f32x4::new(8.0, 16.0, -1.0, 6.0);
@@ -39311,7 +39323,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vminnm_f32() {
         let a: f32x2 = f32x2::new(1.0, 2.0);
         let b: f32x2 = f32x2::new(8.0, 16.0);
@@ -39320,7 +39333,8 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,crc"))]
+    #[cfg_attr(target_arch = "aarch64", simd_test(enable = "neon"))]
     unsafe fn test_vminnmq_f32() {
         let a: f32x4 = f32x4::new(1.0, 2.0, 3.0, -4.0);
         let b: f32x4 = f32x4::new(8.0, 16.0, -1.0, 6.0);
@@ -41120,7 +41134,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_s32_p64() {
         let a: i64x1 = i64x1::new(0);
         let e: i32x2 = i32x2::new(0, 0);
@@ -41128,7 +41142,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_u32_p64() {
         let a: i64x1 = i64x1::new(0);
         let e: u32x2 = u32x2::new(0, 0);
@@ -41136,7 +41150,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_s32_p64() {
         let a: i64x2 = i64x2::new(0, 1);
         let e: i32x4 = i32x4::new(0, 0, 1, 0);
@@ -41144,7 +41158,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_u32_p64() {
         let a: i64x2 = i64x2::new(0, 1);
         let e: u32x4 = u32x4::new(0, 0, 1, 0);
@@ -41152,7 +41166,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_s64_p128() {
         let a: p128 = 0;
         let e: i64x2 = i64x2::new(0, 0);
@@ -41160,7 +41174,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_u64_p128() {
         let a: p128 = 0;
         let e: u64x2 = u64x2::new(0, 0);
@@ -41168,7 +41182,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p64_p128() {
         let a: p128 = 0;
         let e: i64x2 = i64x2::new(0, 0);
@@ -41480,7 +41494,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_p64_s32() {
         let a: i32x2 = i32x2::new(0, 0);
         let e: i64x1 = i64x1::new(0);
@@ -41488,7 +41502,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_p64_u32() {
         let a: u32x2 = u32x2::new(0, 0);
         let e: i64x1 = i64x1::new(0);
@@ -41496,7 +41510,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p64_s32() {
         let a: i32x4 = i32x4::new(0, 0, 1, 0);
         let e: i64x2 = i64x2::new(0, 1);
@@ -41504,7 +41518,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p64_u32() {
         let a: u32x4 = u32x4::new(0, 0, 1, 0);
         let e: i64x2 = i64x2::new(0, 1);
@@ -41512,7 +41526,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_s64() {
         let a: i64x2 = i64x2::new(0, 0);
         let e: p128 = 0;
@@ -41520,7 +41534,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_u64() {
         let a: u64x2 = u64x2::new(0, 0);
         let e: p128 = 0;
@@ -41528,7 +41542,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_p64() {
         let a: i64x2 = i64x2::new(0, 0);
         let e: p128 = 0;
@@ -41728,7 +41742,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_s16_p64() {
         let a: i64x1 = i64x1::new(0);
         let e: i16x4 = i16x4::new(0, 0, 0, 0);
@@ -41736,7 +41750,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_u16_p64() {
         let a: i64x1 = i64x1::new(0);
         let e: u16x4 = u16x4::new(0, 0, 0, 0);
@@ -41744,7 +41758,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_p16_p64() {
         let a: i64x1 = i64x1::new(0);
         let e: i16x4 = i16x4::new(0, 0, 0, 0);
@@ -41752,7 +41766,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_s16_p64() {
         let a: i64x2 = i64x2::new(0, 1);
         let e: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
@@ -41760,7 +41774,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_u16_p64() {
         let a: i64x2 = i64x2::new(0, 1);
         let e: u16x8 = u16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
@@ -41768,7 +41782,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p16_p64() {
         let a: i64x2 = i64x2::new(0, 1);
         let e: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
@@ -41776,7 +41790,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_s32_p128() {
         let a: p128 = 0;
         let e: i32x4 = i32x4::new(0, 0, 0, 0);
@@ -41784,7 +41798,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_u32_p128() {
         let a: p128 = 0;
         let e: u32x4 = u32x4::new(0, 0, 0, 0);
@@ -41984,7 +41998,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_p64_p16() {
         let a: i16x4 = i16x4::new(0, 0, 0, 0);
         let e: i64x1 = i64x1::new(0);
@@ -41992,7 +42006,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_p64_s16() {
         let a: i16x4 = i16x4::new(0, 0, 0, 0);
         let e: i64x1 = i64x1::new(0);
@@ -42000,7 +42014,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_p64_u16() {
         let a: u16x4 = u16x4::new(0, 0, 0, 0);
         let e: i64x1 = i64x1::new(0);
@@ -42008,7 +42022,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p64_p16() {
         let a: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
         let e: i64x2 = i64x2::new(0, 1);
@@ -42016,7 +42030,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p64_s16() {
         let a: i16x8 = i16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
         let e: i64x2 = i64x2::new(0, 1);
@@ -42024,7 +42038,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p64_u16() {
         let a: u16x8 = u16x8::new(0, 0, 0, 0, 1, 0, 0, 0);
         let e: i64x2 = i64x2::new(0, 1);
@@ -42032,7 +42046,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_s32() {
         let a: i32x4 = i32x4::new(0, 0, 0, 0);
         let e: p128 = 0;
@@ -42040,7 +42054,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_u32() {
         let a: u32x4 = u32x4::new(0, 0, 0, 0);
         let e: p128 = 0;
@@ -42144,7 +42158,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_s8_p64() {
         let a: i64x1 = i64x1::new(0);
         let e: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -42152,7 +42166,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_u8_p64() {
         let a: i64x1 = i64x1::new(0);
         let e: u8x8 = u8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -42160,7 +42174,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_p8_p64() {
         let a: i64x1 = i64x1::new(0);
         let e: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -42168,7 +42182,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_s8_p64() {
         let a: i64x2 = i64x2::new(0, 1);
         let e: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
@@ -42176,7 +42190,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_u8_p64() {
         let a: i64x2 = i64x2::new(0, 1);
         let e: u8x16 = u8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
@@ -42184,7 +42198,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p8_p64() {
         let a: i64x2 = i64x2::new(0, 1);
         let e: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
@@ -42192,7 +42206,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_s16_p128() {
         let a: p128 = 0;
         let e: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -42200,7 +42214,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_u16_p128() {
         let a: p128 = 0;
         let e: u16x8 = u16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -42208,7 +42222,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p16_p128() {
         let a: p128 = 0;
         let e: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -42312,7 +42326,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_p64_p8() {
         let a: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: i64x1 = i64x1::new(0);
@@ -42320,7 +42334,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_p64_s8() {
         let a: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: i64x1 = i64x1::new(0);
@@ -42328,7 +42342,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpret_p64_u8() {
         let a: u8x8 = u8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: i64x1 = i64x1::new(0);
@@ -42336,7 +42350,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p64_p8() {
         let a: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
         let e: i64x2 = i64x2::new(0, 1);
@@ -42344,7 +42358,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p64_s8() {
         let a: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
         let e: i64x2 = i64x2::new(0, 1);
@@ -42352,7 +42366,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p64_u8() {
         let a: u8x16 = u8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
         let e: i64x2 = i64x2::new(0, 1);
@@ -42360,7 +42374,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_s16() {
         let a: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 0;
@@ -42368,7 +42382,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_u16() {
         let a: u16x8 = u16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 0;
@@ -42376,7 +42390,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_p16() {
         let a: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 0;
@@ -42384,7 +42398,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_s8() {
         let a: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 1;
@@ -42392,7 +42406,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_u8() {
         let a: u8x16 = u8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 1;
@@ -42400,7 +42414,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p128_p8() {
         let a: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 1;
@@ -42408,7 +42422,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_s8_p128() {
         let a: p128 = 1;
         let e: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -42416,7 +42430,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_u8_p128() {
         let a: p128 = 1;
         let e: u8x16 = u8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -42424,7 +42438,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vreinterpretq_p8_p128() {
         let a: p128 = 1;
         let e: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -43376,7 +43390,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vset_lane_p64() {
         let a: p64 = 1;
         let b: i64x1 = i64x1::new(0);
@@ -43475,7 +43489,7 @@ mod test {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
+    #[simd_test(enable = "neon,aes")]
     unsafe fn test_vsetq_lane_p64() {
         let a: p64 = 1;
         let b: i64x2 = i64x2::new(0, 2);

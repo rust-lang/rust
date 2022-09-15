@@ -494,22 +494,7 @@ impl TargetFeature {
 
     /// A string for use with #[simd_test(...)] (or `is_aarch64_feature_detected!(...)`).
     fn as_simd_test_arg_aarch64(&self) -> &str {
-        match *self {
-            // Features included with AArch64 NEON.
-            Self::Default => "neon",
-            Self::ArmV7 => "neon",
-            Self::Vfp4 => "neon",
-            Self::FPArmV8 => "neon",
-            // Optional features.
-            Self::AES => "neon",     // TODO: Missing "aes".
-            Self::FCMA => "neon",    // TODO: Missing "fcma".
-            Self::Dotprod => "neon", // TODO: Missing "dotprod".
-            Self::I8MM => "neon,i8mm",
-            Self::SHA3 => "neon,sha3",
-            Self::RDM => "neon", // TODO: Should be "rdm".
-            Self::SM4 => "neon,sm4",
-            Self::FTTS => "neon,frintts",
-        }
+        self.as_target_feature_arg_aarch64()
     }
 
     /// A string for use with `#[target_feature(...)]`.
@@ -533,7 +518,35 @@ impl TargetFeature {
 
     /// A string for use with #[simd_test(...)] (or `is_arm_feature_detected!(...)`).
     fn as_simd_test_arg_arm(&self) -> &str {
-        self.as_simd_test_arg_aarch64()
+        // TODO: Ideally, these would match the target_feature strings (as for AArch64).
+        match *self {
+            // We typically specify the "v7" or "v8" target_features for codegen, but we can't test
+            // them at runtime. However, in many cases we can test a specific named feature, and
+            // this is sufficient. For example, Neon always requires at least Armv7.
+
+            // "v7" extensions.
+            Self::Default => "neon",
+            Self::ArmV7 => "neon",
+
+            // TODO: We can specify these features for code generation, but they have no runtime
+            // detection, so we can't provide an accurate string for simd_test. For now, we use a
+            // common Armv8 feature as a proxy, but we should improve std_detect support here and
+            // update these accordingly.
+            Self::Vfp4 => "neon,crc",
+            Self::FPArmV8 => "neon,crc",
+
+            // "v8" extensions.
+            Self::AES => "neon,aes",
+            Self::FCMA => "neon,fcma",
+            Self::Dotprod => "neon,dotprod",
+            Self::I8MM => "neon,i8mm",
+
+            // Features not supported on 32-bit "arm".
+            Self::SHA3 => unimplemented!(),
+            Self::RDM => unimplemented!(),
+            Self::SM4 => unimplemented!(),
+            Self::FTTS => unimplemented!(),
+        }
     }
 
     fn attr(name: &str, value: impl fmt::Display) -> String {
