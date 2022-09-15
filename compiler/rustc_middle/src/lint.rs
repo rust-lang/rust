@@ -125,19 +125,15 @@ impl ShallowLintLevelMap {
         if let Some(&(level, src)) = self.specs.get(&id) {
             return (Some(level), src);
         }
-        let mut cur = start;
 
-        loop {
-            let parent = tcx.hir().get_parent_node(cur);
-            if cur == parent {
-                return (None, LintLevelSource::Default);
-            }
+        for parent in tcx.hir().parent_id_iter(start) {
             let specs = tcx.shallow_lint_levels_on(parent);
             if let Some(&(level, src)) = specs.specs.get(&id) {
                 return (Some(level), src);
             }
-            cur = parent
         }
+
+        (None, LintLevelSource::Default)
     }
 
     /// Fetch and return the user-visible lint level for the given lint at the given HirId.
