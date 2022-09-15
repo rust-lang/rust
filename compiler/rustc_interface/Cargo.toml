@@ -45,6 +45,7 @@ rustc_plugin_impl = { path = "../rustc_plugin_impl" }
 rustc_privacy = { path = "../rustc_privacy" }
 rustc_query_impl = { path = "../rustc_query_impl" }
 rustc_resolve = { path = "../rustc_resolve" }
+rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 
@@ -53,9 +54,6 @@ libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["libloaderapi"] }
-
-[dev-dependencies]
-rustc_target = { path = "../rustc_target" }
 
 [features]
 llvm = ['rustc_codegen_llvm']

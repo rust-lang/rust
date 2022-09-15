@@ -219,3 +219,9 @@ impl crate::SessionDiagnostic<'_> for InvalidCharacterInCrateName<'_> {
         diag
     }
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(session::optimization_fuel_exhausted)]
+pub struct OptimisationFuelExhausted {
+    pub msg: String,
+}

@@ -373,7 +373,7 @@ pub use diagnostic::{
     AddSubdiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgFromDisplay,
     DiagnosticArgValue, DiagnosticId, DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
-pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, LintDiagnosticBuilder};
+pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, LintDiagnosticBuilder, Noted};
 use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.
@@ -936,6 +936,7 @@ impl Handler {
         self.emit_diag_at_span(Diagnostic::new(Bug, msg), span);
     }
 
+    #[rustc_lint_diagnostics]
     pub fn span_note_without_error(
         &self,
         span: impl Into<MultiSpan>,
@@ -944,6 +945,7 @@ impl Handler {
         self.emit_diag_at_span(Diagnostic::new(Note, msg), span);
     }
 
+    #[rustc_lint_diagnostics]
     pub fn span_note_diag(
         &self,
         span: Span,
@@ -955,19 +957,23 @@ impl Handler {
     }
 
     // NOTE: intentionally doesn't raise an error so rustc_codegen_ssa only reports fatal errors in the main thread
+    #[rustc_lint_diagnostics]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> FatalError {
         self.inner.borrow_mut().fatal(msg)
     }
 
+    #[rustc_lint_diagnostics]
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         self.inner.borrow_mut().err(msg)
     }
 
+    #[rustc_lint_diagnostics]
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
         let mut db = DiagnosticBuilder::new(self, Warning(None), msg);
         db.emit();
     }
 
+    #[rustc_lint_diagnostics]
     pub fn note_without_error(&self, msg: impl Into<DiagnosticMessage>) {
         DiagnosticBuilder::new(self, Note, msg).emit();
     }
