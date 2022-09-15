@@ -14,7 +14,7 @@ pub use self::caches::{
 mod config;
 pub use self::config::{QueryConfig, QueryDescription, QueryVTable};
 
-use crate::dep_graph::{DepContext, DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 use rustc_data_structures::sync::Lock;
 use rustc_errors::Diagnostic;
 use rustc_hir::def::DefKind;
@@ -123,18 +123,5 @@ pub trait QueryContext: HasDepContext {
         compute: impl FnOnce() -> R,
     ) -> R;
 
-    fn depth_limit_error(&self, job: QueryJobId) {
-        let sess = self.dep_context().sess();
-        let mut layout_of_depth = None;
-        if let Some(map) = self.try_collect_active_jobs() {
-            if let Some((info, depth)) = job.try_find_layout_root(map) {
-                layout_of_depth = Some(crate::error::LayoutOfDepth {
-                    span: info.job.span,
-                    desc: info.query.description,
-                    depth,
-                });
-            }
-        }
-        sess.emit_fatal(crate::error::QueryOverflow { layout_of_depth });
-    }
+    fn depth_limit_error(&self, job: QueryJobId);
 }

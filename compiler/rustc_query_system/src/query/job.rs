@@ -160,10 +160,7 @@ impl QueryJobId {
 
     #[cold]
     #[inline(never)]
-    pub(super) fn try_find_layout_root(
-        &self,
-        query_map: QueryMap,
-    ) -> Option<(QueryJobInfo, usize)> {
+    pub fn try_find_layout_root(&self, query_map: QueryMap) -> Option<(QueryJobInfo, usize)> {
         let mut last_layout = None;
         let mut current_id = Some(*self);
         let mut depth = 0;
