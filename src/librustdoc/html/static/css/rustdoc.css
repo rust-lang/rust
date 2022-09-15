@@ -1365,27 +1365,19 @@ pre.rust {
 }
 
 #titles {
-	height: 35px;
+	display: flex;
+	flex-direction: row;
+	gap: 1px;
+	margin-bottom: 4px;
 }
 
 #titles > button {
-	float: left;
-	width: 33.3%;
 	text-align: center;
 	font-size: 1.125rem;
 	cursor: pointer;
 	border: 0;
 	border-top: 2px solid;
-}
-
-#titles > button:first-child:last-child {
-	margin-right: 1px;
-	width: calc(100% - 1px);
-}
-
-#titles > button:not(:last-child) {
-	margin-right: 1px;
-	width: calc(33.3% - 1px);
+	flex: 1;
 }
 
 #titles > button > div.count {
@@ -1882,12 +1874,7 @@ in storage.js plus the media query with (min-width: 701px)
 	}
 
 	#titles > button > div.count {
-		float: left;
-		width: 100%;
-	}
-
-	#titles {
-		height: 50px;
+		display: block;
 	}
 
 	/* Because of ios, we need to actually have a full height sidebar title so the
@@ -2018,10 +2005,6 @@ in storage.js plus the media query with (min-width: 701px)
 }
 
 @media (max-width: 464px) {
-	#titles, #titles > button {
-		height: 73px;
-	}
-
 	#crate-search {
 		border-radius: 4px;
 	}
