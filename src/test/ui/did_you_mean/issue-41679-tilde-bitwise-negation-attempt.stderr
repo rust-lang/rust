@@ -4,5 +4,13 @@ error: `~` cannot be used as a unary operator
 LL |     let _x = ~1;
    |              ^ help: use `!` to perform bitwise not
 
-error: aborting due to previous error
+error: unexpected `1` after identifier
+  --> $DIR/issue-41679-tilde-bitwise-negation-attempt.rs:5:18
+   |
+LL |     let _y = not 1;
+   |              ----^
+   |              |
+   |              help: use `!` to perform bitwise not
+
+error: aborting due to 2 previous errors
 
