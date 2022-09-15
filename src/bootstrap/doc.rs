@@ -430,13 +430,23 @@ impl Step for Std {
         t!(fs::create_dir_all(&out));
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
 
+        let content = fs::read_to_string(builder.src.join("src/doc/version-switcher.js")).unwrap();
+        fs::write(
+            out.join("version-switcher.js"),
+            content.replace("/* VERSION TO BE REPLACED */", &builder.version),
+        )
+        .unwrap();
+
         let index_page = builder.src.join("src/doc/index.md").into_os_string();
+        let switcher_script = builder.src.join("src/doc/switcher.inc").into_os_string();
         let mut extra_args = vec![
             OsStr::new("--markdown-css"),
             OsStr::new("rust.css"),
             OsStr::new("--markdown-no-toc"),
             OsStr::new("--index-page"),
             &index_page,
+            OsStr::new("--html-in-header"),
+            &switcher_script,
         ];
 
         if !builder.config.docs_minification {
