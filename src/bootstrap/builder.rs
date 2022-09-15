@@ -1325,6 +1325,9 @@ impl<'a> Builder<'a> {
     ) -> Cargo {
         let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
+        // Run cargo from the source root so it can find .cargo/config.
+        // This matters when using vendoring and the working directory is outside the repository.
+        cargo.current_dir(&self.src);
 
         // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
         // so we need to explicitly clear out if they've been updated.
