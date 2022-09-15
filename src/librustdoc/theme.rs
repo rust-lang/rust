@@ -17,19 +17,31 @@ pub(crate) struct CssPath {
 }
 
 /// When encountering a `"` or a `'`, returns the whole string, including the quote characters.
-fn get_string(iter: &mut Peekable<Chars<'_>>, string_start: char) -> String {
-    let mut s = String::with_capacity(2);
-
-    s.push(string_start);
+fn get_string(iter: &mut Peekable<Chars<'_>>, string_start: char, buffer: &mut String) {
+    buffer.push(string_start);
     while let Some(c) = iter.next() {
-        s.push(c);
+        buffer.push(c);
         if c == '\\' {
             iter.next();
         } else if c == string_start {
             break;
         }
     }
-    s
+}
+
+fn get_inside_paren(
+    iter: &mut Peekable<Chars<'_>>,
+    paren_start: char,
+    paren_end: char,
+    buffer: &mut String,
+) {
+    buffer.push(paren_start);
+    while let Some(c) = iter.next() {
+        handle_common_chars(c, buffer, iter);
+        if c == paren_end {
+            break;
+        }
+    }
 }
 
 /// Skips a `/*` comment.
@@ -52,9 +64,11 @@ fn skip_line_comment(iter: &mut Peekable<Chars<'_>>) {
 
 fn handle_common_chars(c: char, buffer: &mut String, iter: &mut Peekable<Chars<'_>>) {
     match c {
-        '"' | '\'' => buffer.push_str(&get_string(iter, c)),
+        '"' | '\'' => get_string(iter, c, buffer),
         '/' if iter.peek() == Some(&'*') => skip_comment(iter),
         '/' if iter.peek() == Some(&'/') => skip_line_comment(iter),
+        '(' => get_inside_paren(iter, c, ')', buffer),
+        '[' => get_inside_paren(iter, c, ']', buffer),
         _ => buffer.push(c),
     }
 }

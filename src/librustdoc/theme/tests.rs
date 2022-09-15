@@ -138,7 +138,6 @@ fn test_media() {
     assert!(p.children.get("a:hover").is_some());
     assert!(p.children.get("b").is_some());
 
-    eprintln!("{:?}", paths);
     let p = paths.get("@media (max-width:1001px)");
     assert!(p.is_some());
     let p = p.unwrap();
@@ -168,4 +167,21 @@ fn test_css_variables() {
     assert!(ret.is_empty());
     get_differences(&other, &against, &mut ret);
     assert_eq!(ret, vec!["  Missing CSS variable `--b` in `:root`".to_owned()]);
+}
+
+#[test]
+fn test_weird_rule_value() {
+    let x = r#"
+a[text=("a")] {
+    b: url({;}.png);
+    c: #fff
+}
+"#;
+
+    let paths = load_css_paths(&x).unwrap();
+    let p = paths.get("a[text=(\"a\")]");
+    assert!(p.is_some());
+    let p = p.unwrap();
+    assert_eq!(p.rules.get("b"), Some(&"url({;}.png)".to_owned()));
+    assert_eq!(p.rules.get("c"), Some(&"#fff".to_owned()));
 }
