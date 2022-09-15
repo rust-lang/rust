@@ -1147,7 +1147,9 @@ impl<'a> Parser<'a> {
     fn parse_field_name(&mut self) -> PResult<'a, Ident> {
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind
         {
-            self.expect_no_suffix(self.token.span, "a tuple index", suffix);
+            if let Some(suffix) = suffix {
+                self.expect_no_tuple_index_suffix(self.token.span, suffix);
+            }
             self.bump();
             Ok(Ident::new(symbol, self.prev_token.span))
         } else {

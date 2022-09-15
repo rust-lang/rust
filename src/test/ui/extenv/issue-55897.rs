@@ -14,7 +14,7 @@ mod nonexistent_env {
 
 mod erroneous_literal {
     include!(concat!("NON_EXISTENT"suffix, "/data.rs"));
-    //~^ ERROR suffixes on a string literal are invalid
+    //~^ ERROR suffixes on string literals are invalid
 }
 
 fn main() {}

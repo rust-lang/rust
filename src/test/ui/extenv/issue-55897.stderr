@@ -6,7 +6,7 @@ LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
    |
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: suffixes on a string literal are invalid
+error: suffixes on string literals are invalid
   --> $DIR/issue-55897.rs:16:22
    |
 LL |     include!(concat!("NON_EXISTENT"suffix, "/data.rs"));

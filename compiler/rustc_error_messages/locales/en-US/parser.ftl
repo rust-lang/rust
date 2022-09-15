@@ -215,6 +215,15 @@ parser_octal_float_literal_not_supported = octal float literal is not supported
 parser_binary_float_literal_not_supported = binary float literal is not supported
 parser_not_supported = not supported
 
+parser_invalid_literal_suffix = suffixes on {$kind} literals are invalid
+    .label = invalid suffix `{$suffix}`
+
+parser_invalid_literal_suffix_on_tuple_index = suffixes on a tuple index are invalid
+    .label = invalid suffix `{$suffix}`
+    .tuple_exception_line_1 = `{$suffix}` is *temporarily* accepted on tuple index fields as it was incorrectly accepted on stable for a few releases
+    .tuple_exception_line_2 = on proc macros, you'll want to use `syn::Index::from` or `proc_macro::Literal::*_unsuffixed` for code that will desugar to tuple field access
+    .tuple_exception_line_3 = see issue #60210 <https://github.com/rust-lang/rust/issues/60210> for more information
+
 parser_non_string_abi_literal = non-string ABI literal
     .suggestion = specify the ABI with a string literal
 

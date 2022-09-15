@@ -6,13 +6,13 @@ use super::diagnostics::{
     FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt, IfExpressionMissingCondition,
     IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub, InvalidBlockMacroSegment,
     InvalidComparisonOperator, InvalidComparisonOperatorSub, InvalidInterpolatedExpression,
-    InvalidLogicalOperator, InvalidLogicalOperatorSub, LabeledLoopInBreak, LeftArrowOperator,
-    LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
-    MatchArmBodyWithoutBraces, MissingInInForLoop, MissingInInForLoopSub,
-    MissingSemicolonBeforeArray, NoFieldsForFnCall, NotAsNegationOperator,
-    NotAsNegationOperatorSub, OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
-    RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, SnapshotParser,
-    StructLiteralNotAllowedHere, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
+    InvalidLiteralSuffix, InvalidLiteralSuffixOnTupleIndex, InvalidLogicalOperator,
+    InvalidLogicalOperatorSub, LabeledLoopInBreak, LeftArrowOperator, LifetimeInBorrowExpression,
+    MacroInvocationWithQualifiedPath, MalformedLoopLabel, MatchArmBodyWithoutBraces,
+    MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall,
+    NotAsNegationOperator, NotAsNegationOperatorSub, OuterAttributeNotAllowedOnIfElse,
+    ParenthesesWithStructFields, RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric,
+    SnapshotParser, StructLiteralNotAllowedHere, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
     UnexpectedTokenAfterLabelSugg,
 };
 use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
@@ -1158,7 +1158,9 @@ impl<'a> Parser<'a> {
         }
         let span = self.prev_token.span;
         let field = ExprKind::Field(base, Ident::new(field, span));
-        self.expect_no_suffix(span, "a tuple index", suffix);
+        if let Some(suffix) = suffix {
+            self.expect_no_tuple_index_suffix(span, suffix);
+        }
         self.mk_expr(lo.to(span), field)
     }
 
@@ -1829,11 +1831,13 @@ impl<'a> Parser<'a> {
             // by lexer, so here we don't report it the second time.
             LitError::LexerError => {}
             LitError::InvalidSuffix => {
-                self.expect_no_suffix(
-                    span,
-                    &format!("{} {} literal", kind.article(), kind.descr()),
-                    suffix,
-                );
+                if let Some(suffix) = suffix {
+                    self.sess.emit_err(InvalidLiteralSuffix {
+                        span,
+                        kind: format!("{}", kind.descr()),
+                        suffix,
+                    });
+                }
             }
             LitError::InvalidIntSuffix => {
                 let suf = suffix.expect("suffix error with no suffix");
@@ -1872,38 +1876,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<Symbol>) {
-        if let Some(suf) = suffix {
-            let mut err = if kind == "a tuple index"
-                && [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suf)
-            {
-                // #59553: warn instead of reject out of hand to allow the fix to percolate
-                // through the ecosystem when people fix their macros
-                let mut err = self
-                    .sess
-                    .span_diagnostic
-                    .struct_span_warn(sp, &format!("suffixes on {kind} are invalid"));
-                err.note(&format!(
-                    "`{}` is *temporarily* accepted on tuple index fields as it was \
-                        incorrectly accepted on stable for a few releases",
-                    suf,
-                ));
-                err.help(
-                    "on proc macros, you'll want to use `syn::Index::from` or \
-                        `proc_macro::Literal::*_unsuffixed` for code that will desugar \
-                        to tuple field access",
-                );
-                err.note(
-                    "see issue #60210 <https://github.com/rust-lang/rust/issues/60210> \
-                     for more information",
-                );
-                err
-            } else {
-                self.struct_span_err(sp, &format!("suffixes on {kind} are invalid"))
-                    .forget_guarantee()
-            };
-            err.span_label(sp, format!("invalid suffix `{suf}`"));
-            err.emit();
+    pub(super) fn expect_no_tuple_index_suffix(&self, span: Span, suffix: Symbol) {
+        if [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suffix) {
+            // #59553: warn instead of reject out of hand to allow the fix to percolate
+            // through the ecosystem when people fix their macros
+            self.sess.emit_warning(InvalidLiteralSuffixOnTupleIndex {
+                span,
+                suffix,
+                exception: Some(()),
+            });
+        } else {
+            self.sess.emit_err(InvalidLiteralSuffixOnTupleIndex { span, suffix, exception: None });
         }
     }
 

@@ -24,7 +24,7 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
+use rustc_span::{Span, SpanSnippetError, Symbol, DUMMY_SP};
 use std::ops::{Deref, DerefMut};
 
 use std::mem::take;
@@ -973,6 +973,30 @@ pub(crate) struct BinaryFloatLiteralNotSupported {
     #[primary_span]
     #[label(parser::not_supported)]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::invalid_literal_suffix)]
+pub(crate) struct InvalidLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    // FIXME(#100717)
+    pub kind: String,
+    pub suffix: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::invalid_literal_suffix_on_tuple_index)]
+pub(crate) struct InvalidLiteralSuffixOnTupleIndex {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: Symbol,
+    #[help(parser::tuple_exception_line_1)]
+    #[help(parser::tuple_exception_line_2)]
+    #[help(parser::tuple_exception_line_3)]
+    pub exception: Option<()>,
 }
 
 #[derive(Diagnostic)]
