@@ -227,9 +227,9 @@ functions to deal with macros:
   crates
 
   ```rust
- use rustc_middle::lint::in_external_macro;
+  use rustc_middle::lint::in_external_macro;
 
- use a_crate_with_macros::foo;
+  use a_crate_with_macros::foo;
 
   // `foo` is defined in `a_crate_with_macros`
   foo!("bar");
