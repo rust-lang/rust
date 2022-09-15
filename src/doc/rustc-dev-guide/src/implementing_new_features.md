@@ -28,6 +28,12 @@ get by with only an r+. For example, it is OK to add or modify
 unstable command-line flags or attributes without an FCP for
 compiler development or standard library use, as long as you don't
 expect them to be in wide use in the nightly ecosystem.
+Some teams have lighter weight processes that they use in scenarios
+like this; for example, the compiler team recommends
+filing a Major Change Proposal ([MCP][mcp]) as a lightweight way to
+garner support and feedback without requiring full consensus.
+
+[mcp]: compiler/mcp.md#public-facing-changes-require-rfcbot-fcp
 
 You don't need to have the implementation fully ready for r+ to propose an FCP,
 but it is generally a good idea to have at least a proof
