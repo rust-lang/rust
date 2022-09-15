@@ -151,19 +151,31 @@ impl<'tcx> QueryCtxt<'tcx> {
         encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx>,
         query_result_index: &mut on_disk_cache::EncodedDepNodeIndex,
     ) {
+        macro_rules! expand_if_cached {
+            ([] $encode:expr) => {};
+            ([(cache) $($rest:tt)*] $encode:expr) => {
+                $encode
+            };
+            ([$other:tt $($modifiers:tt)*] $encode:expr) => {
+                expand_if_cached!([$($modifiers)*] $encode)
+            };
+        }
+
         macro_rules! encode_queries {
-            ($($query:ident,)*) => {
+            (
+            $($(#[$attr:meta])*
+                [$($modifiers:tt)*] fn $query:ident($($K:tt)*) -> $V:ty,)*) => {
                 $(
-                    on_disk_cache::encode_query_results::<_, super::queries::$query<'_>>(
+                    expand_if_cached!([$($modifiers)*] on_disk_cache::encode_query_results::<_, super::queries::$query<'_>>(
                         self,
                         encoder,
                         query_result_index
-                    );
+                    ));
                 )*
             }
         }
 
-        rustc_cached_queries!(encode_queries!);
+        rustc_query_append!(encode_queries!);
     }
 
     pub fn try_print_query_stack(

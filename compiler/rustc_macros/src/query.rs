@@ -289,7 +289,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
-    let mut dep_node_def_stream = quote! {};
     let mut cached_queries = quote! {};
 
     for query in queries.0 {
@@ -331,6 +330,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         if modifiers.cache.is_some() {
             attributes.push(quote! { (cache) });
         }
+        // Pass on the cache modifier
+        if modifiers.cache.is_some() {
+            attributes.push(quote! { (cache) });
+        }
 
         // This uses the span of the query definition for the commas,
         // which can be important if we later encounter any ambiguity
@@ -340,16 +343,11 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         // be very useful.
         let span = name.span();
         let attribute_stream = quote_spanned! {span=> #(#attributes),*};
-        let doc_comments = query.doc_comments.iter();
+        let doc_comments = &query.doc_comments;
         // Add the query to the group
         query_stream.extend(quote! {
             #(#doc_comments)*
             [#attribute_stream] fn #name(#arg) #result,
-        });
-
-        // Create a dep node for the query
-        dep_node_def_stream.extend(quote! {
-            [#attribute_stream] #name(#arg),
         });
 
         add_query_description_impl(&query, &mut query_description_stream);
@@ -358,27 +356,14 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     TokenStream::from(quote! {
         #[macro_export]
         macro_rules! rustc_query_append {
-            ($macro:ident !) => {
+            ($macro:ident! $( [$($other:tt)*] )?) => {
                 $macro! {
+                    $( $($other)* )?
                     #query_stream
                 }
             }
         }
-        macro_rules! rustc_dep_node_append {
-            ($macro:ident! [$($other:tt)*]) => {
-                $macro!(
-                    $($other)*
 
-                    #dep_node_def_stream
-                );
-            }
-        }
-        #[macro_export]
-        macro_rules! rustc_cached_queries {
-            ( $macro:ident! ) => {
-                $macro!(#cached_queries);
-            }
-        }
         #[macro_export]
         macro_rules! rustc_query_description {
             #query_description_stream
