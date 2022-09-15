@@ -120,7 +120,7 @@ impl ArithmeticSideEffects {
             return;
         }
         let has_valid_op = match (
-            Self::is_literal_integer(lhs, cx.typeck_results().expr_ty(rhs).peel_refs()),
+            Self::is_literal_integer(lhs, cx.typeck_results().expr_ty(lhs).peel_refs()),
             Self::is_literal_integer(rhs, cx.typeck_results().expr_ty(rhs).peel_refs()),
         ) {
             (true, true) => true,
