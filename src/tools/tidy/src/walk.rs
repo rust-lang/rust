@@ -23,6 +23,7 @@ pub fn filter_dirs(path: &Path) -> bool {
         "src/doc/book",
         // Filter RLS output directories
         "target/rls",
+        "src/bootstrap/target",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }

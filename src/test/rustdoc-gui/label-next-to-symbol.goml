@@ -31,15 +31,9 @@ compare-elements-position: (
 )
 
 // Ensure no wrap
-compare-elements-position-near: (
-    "//*[@class='item-left module-item']//a[text()='replaced_function']",
-    "//*[@class='item-right docblock-short']//p[text()='a thing with a label']",
-    {"y": 2},
-)
-// compare parent elements
 compare-elements-position: (
     "//*[@class='item-left module-item']//a[text()='replaced_function']/..",
-    "//*[@class='item-right docblock-short']//p[text()='a thing with a label']/..",
+    "//*[@class='item-right docblock-short'][text()='a thing with a label']",
     ("y"),
 )
 
@@ -60,19 +54,13 @@ compare-elements-position: (
 )
 
 // Ensure wrap
-compare-elements-position-near-false: (
-    "//*[@class='item-left module-item']//a[text()='replaced_function']",
-    "//*[@class='item-right docblock-short']//p[text()='a thing with a label']",
-    {"y": 12},
-)
-// compare parent elements
 compare-elements-position-false: (
     "//*[@class='item-left module-item']//a[text()='replaced_function']/..",
-    "//*[@class='item-right docblock-short']//p[text()='a thing with a label']/..",
+    "//*[@class='item-right docblock-short'][text()='a thing with a label']",
     ("y"),
 )
 compare-elements-position-false: (
     ".item-left .stab.deprecated",
-    "//*[@class='item-right docblock-short']//p[text()='a thing with a label']",
+    "//*[@class='item-right docblock-short'][text()='a thing with a label']",
     ("y"),
 )
