@@ -491,30 +491,14 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     use DefKind::*;
     debug!("register_res({:?})", res);
 
-    let (did, kind) = match res {
-        // These should be added to the cache using `record_extern_fqn`.
+    let (kind, did) = match res {
         Res::Def(
             kind @ (AssocTy | AssocFn | AssocConst | Variant | Fn | TyAlias | Enum | Trait | Struct
             | Union | Mod | ForeignTy | Const | Static(_) | Macro(..) | TraitAlias),
-            i,
-        ) => (i, kind.into()),
-        // This is part of a trait definition or trait impl; document the trait.
-        Res::SelfTy { trait_: Some(trait_def_id), alias_to: _ } => (trait_def_id, ItemType::Trait),
-        // This is an inherent impl or a type definition; it doesn't have its own page.
-        Res::SelfTy { trait_: None, alias_to: Some((item_def_id, _)) } => return item_def_id,
-        Res::SelfTy { trait_: None, alias_to: None }
-        | Res::PrimTy(_)
-        | Res::ToolMod
-        | Res::SelfCtor(_)
-        | Res::Local(_)
-        | Res::NonMacroAttr(_)
-        | Res::Err => return res.def_id(),
-        Res::Def(
-            TyParam | ConstParam | Ctor(..) | ExternCrate | Use | ForeignMod | AnonConst
-            | InlineConst | OpaqueTy | ImplTraitPlaceholder | Field | LifetimeParam | GlobalAsm
-            | Impl | Closure | Generator,
-            id,
-        ) => return id,
+            did,
+        ) => (kind.into(), did),
+
+        _ => panic!("register_res: unexpected {:?}", res),
     };
     if did.is_local() {
         return did;
