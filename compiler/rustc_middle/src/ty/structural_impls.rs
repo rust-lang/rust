@@ -9,7 +9,6 @@ use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
-use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -241,6 +240,16 @@ TrivialTypeTraversalAndLiftImpls! {
     Field,
     interpret::Scalar,
     rustc_target::abi::Size,
+    ty::DelaySpanBugEmitted,
+    rustc_type_ir::DebruijnIndex,
+    ty::BoundVar,
+    ty::Placeholder<ty::BoundVar>,
+}
+
+TrivialTypeTraversalAndLiftImpls! {
+    for<'tcx> {
+        ty::ValTree<'tcx>,
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -613,68 +622,6 @@ impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<ProjectionKind> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        use crate::ty::InstanceDef::*;
-        Ok(Self {
-            substs: self.substs.try_fold_with(folder)?,
-            def: match self.def {
-                Item(def) => Item(def.try_fold_with(folder)?),
-                VTableShim(did) => VTableShim(did.try_fold_with(folder)?),
-                ReifyShim(did) => ReifyShim(did.try_fold_with(folder)?),
-                Intrinsic(did) => Intrinsic(did.try_fold_with(folder)?),
-                FnPtrShim(did, ty) => {
-                    FnPtrShim(did.try_fold_with(folder)?, ty.try_fold_with(folder)?)
-                }
-                Virtual(did, i) => Virtual(did.try_fold_with(folder)?, i),
-                ClosureOnceShim { call_once, track_caller } => {
-                    ClosureOnceShim { call_once: call_once.try_fold_with(folder)?, track_caller }
-                }
-                DropGlue(did, ty) => {
-                    DropGlue(did.try_fold_with(folder)?, ty.try_fold_with(folder)?)
-                }
-                CloneShim(did, ty) => {
-                    CloneShim(did.try_fold_with(folder)?, ty.try_fold_with(folder)?)
-                }
-            },
-        })
-    }
-}
-
-impl<'tcx> TypeVisitable<'tcx> for ty::instance::Instance<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        use crate::ty::InstanceDef::*;
-        self.substs.visit_with(visitor)?;
-        match self.def {
-            Item(def) => def.visit_with(visitor),
-            VTableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
-                did.visit_with(visitor)
-            }
-            FnPtrShim(did, ty) | CloneShim(did, ty) => {
-                did.visit_with(visitor)?;
-                ty.visit_with(visitor)
-            }
-            DropGlue(did, ty) => {
-                did.visit_with(visitor)?;
-                ty.visit_with(visitor)
-            }
-            ClosureOnceShim { call_once, track_caller: _ } => call_once.visit_with(visitor),
-        }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for interpret::GlobalId<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(Self { instance: self.instance.try_fold_with(folder)?, promoted: self.promoted })
-    }
-}
-
-impl<'tcx> TypeVisitable<'tcx> for interpret::GlobalId<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.instance.visit_with(visitor)
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_ty(self)
@@ -902,34 +849,6 @@ impl<'tcx> TypeSuperVisitable<'tcx> for ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::ConstKind<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(match self {
-            ty::ConstKind::Infer(ic) => ty::ConstKind::Infer(ic.try_fold_with(folder)?),
-            ty::ConstKind::Param(p) => ty::ConstKind::Param(p.try_fold_with(folder)?),
-            ty::ConstKind::Unevaluated(uv) => ty::ConstKind::Unevaluated(uv.try_fold_with(folder)?),
-            ty::ConstKind::Value(_)
-            | ty::ConstKind::Bound(..)
-            | ty::ConstKind::Placeholder(..)
-            | ty::ConstKind::Error(_) => self,
-        })
-    }
-}
-
-impl<'tcx> TypeVisitable<'tcx> for ty::ConstKind<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        match *self {
-            ty::ConstKind::Infer(ic) => ic.visit_with(visitor),
-            ty::ConstKind::Param(p) => p.visit_with(visitor),
-            ty::ConstKind::Unevaluated(uv) => uv.visit_with(visitor),
-            ty::ConstKind::Value(_)
-            | ty::ConstKind::Bound(..)
-            | ty::ConstKind::Placeholder(_)
-            | ty::ConstKind::Error(_) => ControlFlow::CONTINUE,
-        }
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _folder: &mut F) -> Result<Self, F::Error> {
         Ok(self)
@@ -982,17 +901,5 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx, ()> {
 impl<'tcx> TypeVisitable<'tcx> for ty::Unevaluated<'tcx, ()> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.expand().visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for hir::Constness {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
-impl<'tcx> TypeVisitable<'tcx> for hir::Constness {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
     }
 }

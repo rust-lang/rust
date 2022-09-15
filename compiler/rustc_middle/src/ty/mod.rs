@@ -1526,7 +1526,7 @@ impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
         Ok(ParamEnv::new(
             self.caller_bounds().try_fold_with(folder)?,
             self.reveal().try_fold_with(folder)?,
-            self.constness().try_fold_with(folder)?,
+            self.constness(),
         ))
     }
 }
@@ -1534,8 +1534,7 @@ impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
 impl<'tcx> TypeVisitable<'tcx> for ParamEnv<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.caller_bounds().visit_with(visitor)?;
-        self.reveal().visit_with(visitor)?;
-        self.constness().visit_with(visitor)
+        self.reveal().visit_with(visitor)
     }
 }
 
