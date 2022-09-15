@@ -2028,6 +2028,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// particular, one must be wary of `NaN`!
 
 #[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct Constant<'tcx> {
     pub span: Span,
 
