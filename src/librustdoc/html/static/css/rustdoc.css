@@ -222,7 +222,6 @@ details.rustdoc-toggle.non-exhaustive > summary::before,
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
-h1, h2, h3, h4,
 a#toggle-all-docs,
 a.anchor,
 .small-section-header a,
