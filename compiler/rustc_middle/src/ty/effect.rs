@@ -1,4 +1,4 @@
-use super::Placeholder;
+use super::{Lift, Placeholder, TyCtxt};
 use crate::ty;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
@@ -52,6 +52,20 @@ pub enum EffectValue<'tcx> {
     Err(ErrorGuaranteed),
 }
 
+impl<'a, 'tcx> Lift<'tcx> for EffectValue<'a> {
+    type Lifted = EffectValue<'tcx>;
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<EffectValue<'tcx>> {
+        Some(match self {
+            Self::Rigid { on } => EffectValue::Rigid { on },
+            Self::Param { index } => EffectValue::Param { index },
+            Self::Infer(infer) => EffectValue::Infer(infer.lift_to_tcx(tcx)?),
+            Self::Bound(di, bv) => EffectValue::Bound(di, bv),
+            Self::Placeholder(ph) => EffectValue::Placeholder(ph),
+            Self::Err(e) => EffectValue::Err(e),
+        })
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, Debug, TyEncodable, TyDecodable)]
 #[derive(Copy, TypeFoldable, TypeVisitable)]
 pub enum EffectKind {
@@ -61,7 +75,7 @@ pub enum EffectKind {
 }
 
 /// An inference variable for an effect, for use in effect generics.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash, Lift)]
 #[derive(HashStable)]
 pub enum InferEffect<'tcx> {
     /// Infer the value of the const.
@@ -76,6 +90,13 @@ pub enum InferEffect<'tcx> {
 pub struct EffectVid<'tcx> {
     pub index: u32,
     pub phantom: PhantomData<&'tcx ()>,
+}
+
+impl<'a, 'tcx> Lift<'tcx> for EffectVid<'a> {
+    type Lifted = EffectVid<'tcx>;
+    fn lift_to_tcx(self, _tcx: TyCtxt<'tcx>) -> Option<EffectVid<'tcx>> {
+        Some(EffectVid { index: self.index, phantom: PhantomData })
+    }
 }
 
 pub type PlaceholderEffect = Placeholder<ty::BoundVar>;
