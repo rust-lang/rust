@@ -249,7 +249,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         // the original values `v_o` that was canonicalized into a
         // variable...
 
-        let constraint_category = ConstraintCategory::BoringNoLocation;
+        let constraint_category = cause.to_constraint_category();
 
         for (index, original_value) in original_values.var_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
@@ -643,7 +643,7 @@ pub fn make_query_region_constraints<'tcx>(
 
     let outlives: Vec<_> = constraints
         .iter()
-        .map(|(k, _)| {
+        .map(|(k, origin)| {
             let constraint = ty::Binder::dummy(match *k {
                 // Swap regions because we are going from sub (<=) to outlives
                 // (>=).
@@ -660,7 +660,7 @@ pub fn make_query_region_constraints<'tcx>(
                 Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
             });
 
-            (constraint, ConstraintCategory::BoringNoLocation)
+            (constraint, origin.to_constraint_category())
         })
         .chain(
             outlives_obligations

@@ -20,6 +20,7 @@ use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
+use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
 use rustc_middle::ty::abstract_const::{AbstractConst, FailureKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -421,6 +422,15 @@ pub enum SubregionOrigin<'tcx> {
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(SubregionOrigin<'_>, 32);
+
+impl<'tcx> SubregionOrigin<'tcx> {
+    pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
+        match self {
+            Self::Subtype(type_trace) => type_trace.cause.to_constraint_category(),
+            _ => ConstraintCategory::BoringNoLocation,
+        }
+    }
+}
 
 /// Times when we replace late-bound regions with variables:
 #[derive(Clone, Copy, Debug)]
