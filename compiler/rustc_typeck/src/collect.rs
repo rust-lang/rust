@@ -3129,6 +3129,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                         E0535,
                         "invalid argument"
                     )
+                    .help("valid inline arguments are `always` and `never`")
                     .emit();
 
                     InlineAttr::None
