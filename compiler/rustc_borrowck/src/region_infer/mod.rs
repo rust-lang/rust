@@ -2073,6 +2073,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     from_closure,
                     cause: ObligationCause::new(span, CRATE_HIR_ID, cause_code),
                     variance_info: constraint.variance_info,
+                    outlives_constraint: *constraint,
                 }
             })
             .collect();
@@ -2328,4 +2329,5 @@ pub struct BlameConstraint<'tcx> {
     pub from_closure: bool,
     pub cause: ObligationCause<'tcx>,
     pub variance_info: ty::VarianceDiagInfo<'tcx>,
+    pub outlives_constraint: OutlivesConstraint<'tcx>,
 }
