@@ -206,7 +206,12 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 ref types_to_skip,
             }) = self.stack.last();
             if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
-            if !matches!(path.res, Res::SelfTy { .. } | Res::Def(DefKind::TyParam, _));
+            if !matches!(
+                path.res,
+                Res::SelfTyParam { .. }
+                | Res::SelfTyAlias { .. }
+                | Res::Def(DefKind::TyParam, _)
+            );
             if !types_to_skip.contains(&hir_ty.hir_id);
             let ty = if in_body > 0 {
                 cx.typeck_results().node_type(hir_ty.hir_id)
@@ -230,7 +235,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         }
         match expr.kind {
             ExprKind::Struct(QPath::Resolved(_, path), ..) => match path.res {
-                Res::SelfTy { .. } => (),
+                Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => (),
                 Res::Def(DefKind::Variant, _) => lint_path_to_variant(cx, path),
                 _ => span_lint(cx, path.span),
             },
