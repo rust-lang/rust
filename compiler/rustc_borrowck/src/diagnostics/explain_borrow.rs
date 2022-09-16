@@ -272,9 +272,12 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
                 for extra in extra_info {
                     match extra {
-                        _ => {}
+                        ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
+                            err.span_note(*span, format!("due to current limitations in the borrow checker, this implies a `'static` lifetime"));
+                        }
                     }
                 }
+
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
             }
             _ => {}

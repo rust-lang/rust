@@ -246,7 +246,9 @@ enum Trace<'tcx> {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum ExtraConstraintInfo {}
+pub enum ExtraConstraintInfo {
+    PlaceholderFromPredicate(Span),
+}
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Creates a new region inference context with a total of
@@ -2028,7 +2030,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .collect::<Vec<_>>()
         );
 
-        let extra_info = vec![];
+        let mut extra_info = vec![];
+        for constraint in path.iter() {
+            let outlived = constraint.sub;
+            let Some(origin) = self.var_infos.get(outlived) else { continue; };
+            let RegionVariableOrigin::Nll(NllRegionVariableOrigin::Placeholder(p)) = origin.origin else { continue; };
+            debug!(?constraint, ?p);
+            let ConstraintCategory::Predicate(span) = constraint.category else { continue; };
+            extra_info.push(ExtraConstraintInfo::PlaceholderFromPredicate(span));
+            // We only want to point to one
+            break;
+        }
 
         // We try to avoid reporting a `ConstraintCategory::Predicate` as our best constraint.
         // Instead, we use it to produce an improved `ObligationCauseCode`.
