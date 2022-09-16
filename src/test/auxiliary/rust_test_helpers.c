@@ -1,6 +1,7 @@
 // Helper functions used only in tests
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <stdarg.h>
 
@@ -414,4 +415,15 @@ rust_dbg_unpack_option_u64u64(struct U8TaggedEnumOptionU64U64 o, uint64_t *a, ui
         assert(0 && "unexpected tag");
         return 0;
     }
+}
+
+uint16_t issue_97463_leak_uninit_data(uint32_t a, uint32_t b, uint32_t c) {
+    struct bloc { uint16_t a; uint16_t b; uint16_t c; };
+    struct bloc *data = malloc(sizeof(struct bloc));
+
+    data->a = a & 0xFFFF;
+    data->b = b & 0xFFFF;
+    data->c = c & 0xFFFF;
+
+    return data->b; /* leak data */
 }
