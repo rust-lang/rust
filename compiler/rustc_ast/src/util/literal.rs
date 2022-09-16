@@ -281,11 +281,13 @@ fn filtered_float_lit(
     })
 }
 
+#[inline]
 fn float_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitError> {
     debug!("float_lit: {:?}, {:?}", symbol, suffix);
     filtered_float_lit(strip_underscores(symbol), suffix, 10)
 }
 
+#[inline]
 fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitError> {
     debug!("integer_lit: {:?}, {:?}", symbol, suffix);
     let symbol = strip_underscores(symbol);
