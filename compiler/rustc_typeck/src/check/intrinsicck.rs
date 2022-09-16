@@ -1,12 +1,14 @@
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_hir as hir;
+use rustc_hir::HirId;
 use rustc_index::vec::Idx;
+use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitable, UintTy};
 use rustc_session::lint;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};
 use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
 
@@ -39,63 +41,108 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     ty
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {
-        let convert = |ty: Ty<'tcx>| {
-            let ty = self.resolve_vars_if_possible(ty);
-            let ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
-            (SizeSkeleton::compute(ty, self.tcx, self.param_env), ty)
-        };
-        let (sk_from, from) = convert(from);
-        let (sk_to, to) = convert(to);
+fn inner_check_transmute<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    hir_id: HirId,
+    from: Ty<'tcx>,
+    to: Ty<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    let convert = |ty: Ty<'tcx>| {
+        let ty = tcx.normalize_erasing_regions(param_env, ty);
+        (SizeSkeleton::compute(ty, tcx, param_env), ty)
+    };
+    let (sk_from, from) = convert(from);
+    let (sk_to, to) = convert(to);
 
-        // Check for same size using the skeletons.
-        if let (Ok(sk_from), Ok(sk_to)) = (sk_from, sk_to) {
-            if sk_from.same_size(sk_to) {
-                return;
-            }
-
-            // Special-case transmuting from `typeof(function)` and
-            // `Option<typeof(function)>` to present a clearer error.
-            let from = unpack_option_like(self.tcx, from);
-            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) && size_to == Pointer.size(&self.tcx) {
-                struct_span_err!(self.tcx.sess, span, E0591, "can't transmute zero-sized type")
-                    .note(&format!("source type: {from}"))
-                    .note(&format!("target type: {to}"))
-                    .help("cast with `as` to a pointer instead")
-                    .emit();
-                return;
-            }
+    // Check for same size using the skeletons.
+    if let (Ok(sk_from), Ok(sk_to)) = (sk_from, sk_to) {
+        if sk_from.same_size(sk_to) {
+            return Ok(());
         }
 
-        // Try to display a sensible error with as much information as possible.
-        let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
-            Ok(SizeSkeleton::Known(size)) => format!("{} bits", size.bits()),
-            Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
-            Err(LayoutError::Unknown(bad)) => {
-                if bad == ty {
-                    "this type does not have a fixed size".to_owned()
-                } else {
-                    format!("size can vary because of {bad}")
-                }
-            }
-            Err(err) => err.to_string(),
-        };
+        // Special-case transmuting from `typeof(function)` and
+        // `Option<typeof(function)>` to present a clearer error.
+        let from = unpack_option_like(tcx, from);
+        if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) && size_to == Pointer.size(&tcx) {
+            let err = struct_span_err!(
+                    tcx.sess,
+                    tcx.hir().span(hir_id),
+                    E0591,
+                    "can't transmute zero-sized type",
+                )
+                .note(&format!("source type: {from}"))
+                .note(&format!("target type: {to}"))
+                .help("cast with `as` to a pointer instead")
+                .emit();
+            return Err(err);
+        }
+    }
 
-        let mut err = struct_span_err!(
-            self.tcx.sess,
-            span,
-            E0512,
-            "cannot transmute between types of different sizes, \
-                                        or dependently-sized types"
+    // HACK: We retry with `Reveal::All` for backwards
+    // compatability reasons, see #101478 for more details.
+    if param_env.reveal() != Reveal::All {
+        let param_env_reveal_all = ty::ParamEnv::new(
+            tcx.normalize_opaque_types(param_env.caller_bounds()),
+            Reveal::All,
+            param_env.constness(),
         );
-        if from == to {
-            err.note(&format!("`{from}` does not have a fixed size"));
-        } else {
-            err.note(&format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
-                .note(&format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
+
+        match inner_check_transmute(tcx, param_env_reveal_all, hir_id, from, to) {
+            Ok(()) => {
+                tcx.struct_span_lint_hir(
+                    rustc_session::lint::builtin::HIDDEN_TYPE_OF_OPAQUE_TYPES_IN_TYPE_SYSTEM,
+                    hir_id,
+                    tcx.hir().span(hir_id),
+                    |err| {
+                        err.build(
+                            "relying on the underlying type of an opaque type in the type system",
+                        )
+                        .note("checking whether this transmute is valid relies on the underlying type of an opaque type")
+                        .emit()
+                    },
+                );
+                return Ok(());
+            }
+            Err(e) => return Err(e),
         }
-        err.emit();
+    }
+
+    // Try to display a sensible error with as much information as possible.
+    let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
+        Ok(SizeSkeleton::Known(size)) => format!("{} bits", size.bits()),
+        Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
+        Err(LayoutError::Unknown(bad)) => {
+            if bad == ty {
+                "this type does not have a fixed size".to_owned()
+            } else {
+                format!("size can vary because of {bad}")
+            }
+        }
+        Err(err) => err.to_string(),
+    };
+
+    let mut err = struct_span_err!(
+        tcx.sess,
+        tcx.hir().span(hir_id),
+        E0512,
+        "cannot transmute between types of different sizes, \
+                                    or dependently-sized types"
+    );
+    if from == to {
+        err.note(&format!("`{from}` does not have a fixed size"));
+    } else {
+        err.note(&format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
+            .note(&format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
+    }
+    Err(err.emit())
+}
+
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn check_transmute(&self, hir_id: HirId, from: Ty<'tcx>, to: Ty<'tcx>) {
+        let from = self.resolve_vars_if_possible(from);
+        let to = self.resolve_vars_if_possible(to);
+        let _ = inner_check_transmute(self.tcx, self.param_env, hir_id, from, to);
     }
 }
 

@@ -55,7 +55,7 @@ pub struct Inherited<'a, 'tcx> {
 
     pub(super) deferred_cast_checks: RefCell<Vec<super::cast::CastCheck<'tcx>>>,
 
-    pub(super) deferred_transmute_checks: RefCell<Vec<(Ty<'tcx>, Ty<'tcx>, Span)>>,
+    pub(super) deferred_transmute_checks: RefCell<Vec<(Ty<'tcx>, Ty<'tcx>, hir::HirId)>>,
 
     pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, hir::HirId)>>,
 

@@ -1,5 +1,5 @@
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/transmute-specialization.rs:1:12
+  --> $DIR/transmute-specialization.rs:2:12
    |
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^
@@ -8,15 +8,16 @@ LL | #![feature(specialization)]
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: consider using `min_specialization` instead, which is more stable and complete
 
-error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/transmute-specialization.rs:11:9
+warning: relying on the underlying type of an opaque type in the type system
+  --> $DIR/transmute-specialization.rs:12:9
    |
 LL |         std::mem::transmute::<u16, <() as Specializable>::Output>(0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: `u16` (16 bits)
-   = note: target type: `<() as Specializable>::Output` (this type does not have a fixed size)
+   = note: `#[warn(hidden_type_of_opaque_types_in_type_system)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue # <https://github.com/rust-lang/rust/issues/101478>
+   = note: checking whether this transmute is valid relies on the underlying type of an opaque type
 
-error: aborting due to previous error; 1 warning emitted
+warning: 2 warnings emitted
 
-For more information about this error, try `rustc --explain E0512`.
