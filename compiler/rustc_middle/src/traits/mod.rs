@@ -10,6 +10,7 @@ mod structural_impls;
 pub mod util;
 
 use crate::infer::canonical::Canonical;
+use crate::mir::ConstraintCategory;
 use crate::ty::abstract_const::NotConstEvaluatable;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
@@ -182,6 +183,13 @@ impl<'tcx> ObligationCause<'tcx> {
         self.code =
             variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code }).into();
         self
+    }
+
+    pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
+        match self.code() {
+            MatchImpl(cause, _) => cause.to_constraint_category(),
+            _ => ConstraintCategory::BoringNoLocation,
+        }
     }
 }
 

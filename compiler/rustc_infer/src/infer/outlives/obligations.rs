@@ -164,7 +164,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
             let outlives =
                 &mut TypeOutlives::new(self, self.tcx, &region_bound_pairs, None, param_env);
-            let category = ConstraintCategory::BoringNoLocation;
+            let category = origin.to_constraint_category();
             outlives.type_must_outlive(origin, sup_type, sub_region, category);
         }
     }
@@ -394,7 +394,7 @@ where
         if approx_env_bounds.is_empty() && trait_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
-            let constraint = ConstraintCategory::BoringNoLocation;
+            let constraint = origin.to_constraint_category();
             for k in projection_ty.substs {
                 match k.unpack() {
                     GenericArgKind::Lifetime(lt) => {
@@ -444,7 +444,7 @@ where
             let unique_bound = trait_bounds[0];
             debug!("projection_must_outlive: unique trait bound = {:?}", unique_bound);
             debug!("projection_must_outlive: unique declared bound appears in trait ref");
-            let category = ConstraintCategory::BoringNoLocation;
+            let category = origin.to_constraint_category();
             self.delegate.push_sub_region_constraint(origin, region, unique_bound, category);
             return;
         }
