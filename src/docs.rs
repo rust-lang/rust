@@ -221,6 +221,7 @@ docs! {
     "items_after_statements",
     "iter_cloned_collect",
     "iter_count",
+    "iter_kv_map",
     "iter_next_loop",
     "iter_next_slice",
     "iter_not_returning_iterator",
