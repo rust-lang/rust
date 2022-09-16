@@ -560,14 +560,13 @@ impl<'tcx> Collector<'tcx> {
             }
         };
 
-        let import_name_type = self
-            .tcx
-            .codegen_fn_attrs(item.id.def_id)
+        let codegen_fn_attrs = self.tcx.codegen_fn_attrs(item.id.def_id);
+        let import_name_type = codegen_fn_attrs
             .link_ordinal
             .map_or(import_name_type, |ord| Some(PeImportNameType::Ordinal(ord)));
 
         DllImport {
-            name: item.ident.name,
+            name: codegen_fn_attrs.link_name.unwrap_or(item.ident.name),
             import_name_type,
             calling_convention,
             span: item.span,

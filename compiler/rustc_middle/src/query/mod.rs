@@ -164,7 +164,8 @@ rustc_queries! {
     query collect_trait_impl_trait_tys(key: DefId)
         -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>
     {
-        desc { "better description please" }
+        desc { "compare an impl and trait method signature, inferring any hidden `impl Trait` types in the process" }
+        cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
