@@ -66,7 +66,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         seg,
                         ParamMode::Optional,
                         ParenthesizedGenericArgs::Err,
-                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     ));
                     let receiver = self.lower_expr(receiver);
                     let args =
@@ -89,14 +89,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Cast(ref expr, ref ty) => {
                     let expr = self.lower_expr(expr);
-                    let ty = self
-                        .lower_ty(ty, &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                    let ty =
+                        self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type));
                     hir::ExprKind::Cast(expr, ty)
                 }
                 ExprKind::Type(ref expr, ref ty) => {
                     let expr = self.lower_expr(expr);
-                    let ty = self
-                        .lower_ty(ty, &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                    let ty =
+                        self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type));
                     hir::ExprKind::Type(expr, ty)
                 }
                 ExprKind::AddrOf(k, m, ref ohs) => {
@@ -225,7 +225,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     );
                     hir::ExprKind::Path(qpath)
                 }
@@ -259,7 +259,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             &se.qself,
                             &se.path,
                             ParamMode::Optional,
-                            &mut ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         )),
                         self.arena
                             .alloc_from_iter(se.fields.iter().map(|x| self.lower_expr_field(x))),
@@ -556,14 +556,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         async_gen_kind: hir::AsyncGeneratorKind,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
-        let output =
-            match ret_ty {
-                Some(ty) => hir::FnRetTy::Return(self.lower_ty(
-                    &ty,
-                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock),
-                )),
-                None => hir::FnRetTy::DefaultReturn(self.lower_span(span)),
-            };
+        let output = match ret_ty {
+            Some(ty) => hir::FnRetTy::Return(
+                self.lower_ty(&ty, &ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock)),
+            ),
+            None => hir::FnRetTy::DefaultReturn(self.lower_span(span)),
+        };
 
         // Resume argument type. We let the compiler infer this to simplify the lowering. It is
         // fully constrained by `future::from_generator`.
@@ -855,22 +853,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (body_id, generator_option)
         });
 
-        self.lower_lifetime_binder(closure_id, generic_params, |lctx, bound_generic_params| {
-            // Lower outside new scope to preserve `is_in_loop_condition`.
-            let fn_decl = lctx.lower_fn_decl(decl, None, fn_decl_span, FnDeclKind::Closure, None);
+        let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
+        // Lower outside new scope to preserve `is_in_loop_condition`.
+        let fn_decl = self.lower_fn_decl(decl, None, fn_decl_span, FnDeclKind::Closure, None);
 
-            let c = lctx.arena.alloc(hir::Closure {
-                binder: binder_clause,
-                capture_clause,
-                bound_generic_params,
-                fn_decl,
-                body: body_id,
-                fn_decl_span: lctx.lower_span(fn_decl_span),
-                movability: generator_option,
-            });
+        let c = self.arena.alloc(hir::Closure {
+            binder: binder_clause,
+            capture_clause,
+            bound_generic_params,
+            fn_decl,
+            body: body_id,
+            fn_decl_span: self.lower_span(fn_decl_span),
+            movability: generator_option,
+        });
 
-            hir::ExprKind::Closure(c)
-        })
+        hir::ExprKind::Closure(c)
     }
 
     fn generator_movability_for_fn(
@@ -957,24 +954,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body_id
         });
 
-        self.lower_lifetime_binder(closure_id, generic_params, |lctx, bound_generic_params| {
-            // We need to lower the declaration outside the new scope, because we
-            // have to conserve the state of being inside a loop condition for the
-            // closure argument types.
-            let fn_decl =
-                lctx.lower_fn_decl(&outer_decl, None, fn_decl_span, FnDeclKind::Closure, None);
+        let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
+        // We need to lower the declaration outside the new scope, because we
+        // have to conserve the state of being inside a loop condition for the
+        // closure argument types.
+        let fn_decl =
+            self.lower_fn_decl(&outer_decl, None, fn_decl_span, FnDeclKind::Closure, None);
 
-            let c = lctx.arena.alloc(hir::Closure {
-                binder: binder_clause,
-                capture_clause,
-                bound_generic_params,
-                fn_decl,
-                body,
-                fn_decl_span: lctx.lower_span(fn_decl_span),
-                movability: None,
-            });
-            hir::ExprKind::Closure(c)
-        })
+        let c = self.arena.alloc(hir::Closure {
+            binder: binder_clause,
+            capture_clause,
+            bound_generic_params,
+            fn_decl,
+            body,
+            fn_decl_span: self.lower_span(fn_decl_span),
+            movability: None,
+        });
+        hir::ExprKind::Closure(c)
     }
 
     /// Destructure the LHS of complex assignments.
@@ -1133,7 +1129,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     );
                     // Destructure like a tuple struct.
                     let tuple_struct_pat = hir::PatKind::TupleStruct(
@@ -1152,7 +1148,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     );
                     // Destructure like a unit struct.
                     let unit_struct_pat = hir::PatKind::Path(qpath);
@@ -1176,7 +1172,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &se.qself,
                     &se.path,
                     ParamMode::Optional,
-                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 );
                 let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
