@@ -79,12 +79,15 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        self.normalize_with_cause(value, ObligationCause::misc(self.span, hir::CRATE_HIR_ID))
+    }
+
+    fn normalize_with_cause<T>(&mut self, value: T, cause: ObligationCause<'tcx>) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
         self.infcx
-            .partially_normalize_associated_types_in(
-                ObligationCause::misc(self.span, hir::CRATE_HIR_ID),
-                self.param_env,
-                value,
-            )
+            .partially_normalize_associated_types_in(cause, self.param_env, value)
             .into_value_registering_obligations(self.infcx, self.fulfill_cx)
     }
 
@@ -154,6 +157,8 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
                 hir::CRATE_HIR_ID,
                 ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span),
             );
+            let instantiated_predicate =
+                self.normalize_with_cause(instantiated_predicate, cause.clone());
             self.prove_predicate(instantiated_predicate, cause);
         }
 
