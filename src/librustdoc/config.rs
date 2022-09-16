@@ -412,7 +412,13 @@ impl Options {
 
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
-            let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
+            let paths = match theme::load_css_paths(static_files::themes::LIGHT) {
+                Ok(p) => p,
+                Err(e) => {
+                    diag.struct_err(&e.to_string()).emit();
+                    return Err(1);
+                }
+            };
             let mut errors = 0;
 
             println!("rustdoc: [check-theme] Starting tests! (Ignoring all other arguments)");
@@ -547,7 +553,13 @@ impl Options {
 
         let mut themes = Vec::new();
         if matches.opt_present("theme") {
-            let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
+            let paths = match theme::load_css_paths(static_files::themes::LIGHT) {
+                Ok(p) => p,
+                Err(e) => {
+                    diag.struct_err(&e.to_string()).emit();
+                    return Err(1);
+                }
+            };
 
             for (theme_file, theme_s) in
                 matches.opt_strs("theme").iter().map(|s| (PathBuf::from(&s), s.to_owned()))

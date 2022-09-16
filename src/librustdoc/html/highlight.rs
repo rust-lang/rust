@@ -29,6 +29,8 @@ pub(crate) struct HrefContext<'a, 'b, 'c> {
     /// This field is used to know "how far" from the top of the directory we are to link to either
     /// documentation pages or other source pages.
     pub(crate) root_path: &'c str,
+    /// This field is used to calculate precise local URLs.
+    pub(crate) current_href: &'c str,
 }
 
 /// Decorations are represented as a map from CSS class to vector of character ranges.
@@ -977,9 +979,9 @@ fn string_without_closing_tag<T: Display>(
                 // a link to their definition can be generated using this:
                 // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
                 match href {
-                    LinkFromSrc::Local(span) => context
-                        .href_from_span(*span, true)
-                        .map(|s| format!("{}{}", href_context.root_path, s)),
+                    LinkFromSrc::Local(span) => {
+                        context.href_from_span_relative(*span, href_context.current_href)
+                    }
                     LinkFromSrc::External(def_id) => {
                         format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .ok()

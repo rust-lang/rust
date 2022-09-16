@@ -698,11 +698,22 @@ impl<'a> Parser<'a> {
                     let semicolon_span = self.token.span;
                     // We have to bail or we'll potentially never make progress.
                     let non_item_span = self.token.span;
-                    self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
+                    let is_let = self.token.is_keyword(kw::Let);
+
                     let mut err = self.struct_span_err(non_item_span, "non-item in item list");
-                    err.span_label(open_brace_span, "item list starts here")
-                        .span_label(non_item_span, "non-item starts here")
-                        .span_label(self.prev_token.span, "item list ends here");
+                    self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
+                    if is_let {
+                        err.span_suggestion(
+                            non_item_span,
+                            "consider using `const` instead of `let` for associated const",
+                            "const",
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.span_label(open_brace_span, "item list starts here")
+                            .span_label(non_item_span, "non-item starts here")
+                            .span_label(self.prev_token.span, "item list ends here");
+                    }
                     if is_unnecessary_semicolon {
                         err.span_suggestion(
                             semicolon_span,

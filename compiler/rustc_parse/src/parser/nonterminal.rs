@@ -66,18 +66,18 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr { .. } => {
                 match token.kind {
-                token::Ident(..) |                  // box, ref, mut, and other identifiers (can stricten)
-                token::OpenDelim(Delimiter::Parenthesis) |    // tuple pattern
-                token::OpenDelim(Delimiter::Bracket) |  // slice pattern
-                token::BinOp(token::And) |          // reference
-                token::BinOp(token::Minus) |        // negative literal
-                token::AndAnd |                     // double reference
-                token::Literal(..) |                // literal
-                token::DotDot |                     // range pattern (future compat)
-                token::DotDotDot |                  // range pattern (future compat)
-                token::ModSep |                     // path
-                token::Lt |                         // path (UFCS constant)
-                token::BinOp(token::Shl) => true,   // path (double UFCS)
+                token::Ident(..) |                          // box, ref, mut, and other identifiers (can stricten)
+                token::OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
+                token::OpenDelim(Delimiter::Bracket) |      // slice pattern
+                token::BinOp(token::And) |                  // reference
+                token::BinOp(token::Minus) |                // negative literal
+                token::AndAnd |                             // double reference
+                token::Literal(..) |                        // literal
+                token::DotDot |                             // range pattern (future compat)
+                token::DotDotDot |                          // range pattern (future compat)
+                token::ModSep |                             // path
+                token::Lt |                                 // path (UFCS constant)
+                token::BinOp(token::Shl) => true,           // path (double UFCS)
                 // leading vert `|` or-pattern
                 token::BinOp(token::Or) =>  matches!(kind, NonterminalKind::PatWithOr {..}),
                 token::Interpolated(ref nt) => may_be_ident(nt),

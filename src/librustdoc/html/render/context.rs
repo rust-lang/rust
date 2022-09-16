@@ -31,6 +31,7 @@ use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
 use crate::html::format::{join_with_double_colon, Buffer};
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
+use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
@@ -369,6 +370,35 @@ impl<'tcx> Context<'tcx> {
             path = path,
             anchor = anchor
         ))
+    }
+
+    pub(crate) fn href_from_span_relative(
+        &self,
+        span: clean::Span,
+        relative_to: &str,
+    ) -> Option<String> {
+        self.href_from_span(span, false).map(|s| {
+            let mut url = UrlPartsBuilder::new();
+            let mut dest_href_parts = s.split('/');
+            let mut cur_href_parts = relative_to.split('/');
+            for (cur_href_part, dest_href_part) in (&mut cur_href_parts).zip(&mut dest_href_parts) {
+                if cur_href_part != dest_href_part {
+                    url.push(dest_href_part);
+                    break;
+                }
+            }
+            for dest_href_part in dest_href_parts {
+                url.push(dest_href_part);
+            }
+            let loline = span.lo(self.sess()).line;
+            let hiline = span.hi(self.sess()).line;
+            format!(
+                "{}{}#{}",
+                "../".repeat(cur_href_parts.count()),
+                url.finish(),
+                if loline == hiline { loline.to_string() } else { format!("{loline}-{hiline}") }
+            )
+        })
     }
 }
 
