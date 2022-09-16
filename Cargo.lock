@@ -660,6 +660,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "limit",
+ "memchr",
  "once_cell",
  "parser",
  "profile",
