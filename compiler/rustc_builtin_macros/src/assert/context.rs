@@ -71,7 +71,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///       __local_bind0
     ///     } == 1
     ///   ) {
-    ///     panic!("Assertion failed: elem == 1\nWith captures:\n  elem = {}", __capture0)
+    ///     panic!("Assertion failed: elem == 1\nWith captures:\n  elem = {:?}", __capture0)
     ///   }
     /// }
     /// ```
