@@ -354,12 +354,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let BlameConstraint { category, cause, variance_info, .. } = self
-            .regioncx
-            .best_blame_constraint(fr, fr_origin, |r| {
+        let BlameConstraint { category, cause, variance_info, from_closure: _ } =
+            self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
                 self.regioncx.provides_universal_region(r, fr, outlived_fr)
-            })
-            .0;
+            });
 
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
 

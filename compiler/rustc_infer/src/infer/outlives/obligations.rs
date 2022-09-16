@@ -69,7 +69,6 @@ use crate::infer::{
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeVisitable};
 use smallvec::smallvec;
@@ -164,8 +163,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
             let outlives =
                 &mut TypeOutlives::new(self, self.tcx, &region_bound_pairs, None, param_env);
-            let category = origin.to_constraint_category();
-            outlives.type_must_outlive(origin, sup_type, sub_region, category);
+            outlives.type_must_outlive(origin, sup_type, sub_region);
         }
     }
 
@@ -209,7 +207,6 @@ pub trait TypeOutlivesDelegate<'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
-        constraint_category: ConstraintCategory<'tcx>,
     );
 
     fn push_verify(
@@ -258,13 +255,12 @@ where
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
-        category: ConstraintCategory<'tcx>,
     ) {
         assert!(!ty.has_escaping_bound_vars());
 
         let mut components = smallvec![];
         push_outlives_components(self.tcx, ty, &mut components);
-        self.components_must_outlive(origin, &components, region, category);
+        self.components_must_outlive(origin, &components, region);
     }
 
     fn components_must_outlive(
@@ -272,13 +268,12 @@ where
         origin: infer::SubregionOrigin<'tcx>,
         components: &[Component<'tcx>],
         region: ty::Region<'tcx>,
-        category: ConstraintCategory<'tcx>,
     ) {
         for component in components.iter() {
             let origin = origin.clone();
             match component {
                 Component::Region(region1) => {
-                    self.delegate.push_sub_region_constraint(origin, region, *region1, category);
+                    self.delegate.push_sub_region_constraint(origin, region, *region1);
                 }
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, *param_ty);
@@ -287,7 +282,7 @@ where
                     self.projection_must_outlive(origin, region, *projection_ty);
                 }
                 Component::EscapingProjection(subcomponents) => {
-                    self.components_must_outlive(origin, &subcomponents, region, category);
+                    self.components_must_outlive(origin, &subcomponents, region);
                 }
                 Component::UnresolvedInferenceVariable(v) => {
                     // ignore this, we presume it will yield an error
@@ -397,20 +392,10 @@ where
             for k in projection_ty.substs {
                 match k.unpack() {
                     GenericArgKind::Lifetime(lt) => {
-                        self.delegate.push_sub_region_constraint(
-                            origin.clone(),
-                            region,
-                            lt,
-                            origin.to_constraint_category(),
-                        );
+                        self.delegate.push_sub_region_constraint(origin.clone(), region, lt);
                     }
                     GenericArgKind::Type(ty) => {
-                        self.type_must_outlive(
-                            origin.clone(),
-                            ty,
-                            region,
-                            origin.to_constraint_category(),
-                        );
+                        self.type_must_outlive(origin.clone(), ty, region);
                     }
                     GenericArgKind::Const(_) => {
                         // Const parameters don't impose constraints.
@@ -448,8 +433,7 @@ where
             let unique_bound = trait_bounds[0];
             debug!("projection_must_outlive: unique trait bound = {:?}", unique_bound);
             debug!("projection_must_outlive: unique declared bound appears in trait ref");
-            let category = origin.to_constraint_category();
-            self.delegate.push_sub_region_constraint(origin, region, unique_bound, category);
+            self.delegate.push_sub_region_constraint(origin, region, unique_bound);
             return;
         }
 
@@ -471,7 +455,6 @@ impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'cx, 'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
-        _constraint_category: ConstraintCategory<'tcx>,
     ) {
         self.sub_regions(origin, a, b)
     }
