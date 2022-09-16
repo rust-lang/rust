@@ -919,6 +919,10 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 #[derive(Encodable, Decodable, HashStable)]
 pub struct EarlyBinder<T>(pub T);
 
+/// For early binders, you should first call `subst` before using any visitors.
+impl<'tcx, T> !TypeFoldable<'tcx> for ty::EarlyBinder<T> {}
+impl<'tcx, T> !TypeVisitable<'tcx> for ty::EarlyBinder<T> {}
+
 impl<T> EarlyBinder<T> {
     pub fn as_ref(&self) -> EarlyBinder<&T> {
         EarlyBinder(&self.0)

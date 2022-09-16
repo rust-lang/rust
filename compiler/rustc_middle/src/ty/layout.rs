@@ -2770,7 +2770,10 @@ impl<'tcx> ty::Instance<'tcx> {
                 // track of a polymorphization `ParamEnv` to allow normalizing later.
                 let mut sig = match *ty.kind() {
                     ty::FnDef(def_id, substs) => tcx
-                        .normalize_erasing_regions(tcx.param_env(def_id), tcx.bound_fn_sig(def_id))
+                        .bound_fn_sig(def_id)
+                        .map_bound(|fn_sig| {
+                            tcx.normalize_erasing_regions(tcx.param_env(def_id), fn_sig)
+                        })
                         .subst(tcx, substs),
                     _ => unreachable!(),
                 };
