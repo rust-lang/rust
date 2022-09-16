@@ -25,7 +25,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// constraints should occur within this method so that those
     /// constraints can be properly localized!**
     #[instrument(skip(self, op), level = "trace")]
-    pub(super) fn fully_perform_op<R, Op>(
+    pub(super) fn fully_perform_op<R: fmt::Debug, Op>(
         &mut self,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
@@ -38,6 +38,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let old_universe = self.infcx.universe();
 
         let TypeOpOutput { output, constraints, error_info } = op.fully_perform(self.infcx)?;
+
+        debug!(?output, ?constraints);
 
         if let Some(data) = constraints {
             self.push_region_constraints(locations, category, data);

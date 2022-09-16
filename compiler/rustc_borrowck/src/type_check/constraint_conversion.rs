@@ -86,7 +86,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
-    pub(super) fn convert(&mut self, query_constraint: &QueryOutlivesConstraint<'tcx>) {
+    fn convert(&mut self, query_constraint: &QueryOutlivesConstraint<'tcx>) {
         debug!("generate: constraints at: {:#?}", self.locations);
 
         // Extract out various useful fields we'll need below.

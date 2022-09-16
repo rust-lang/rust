@@ -130,7 +130,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 tcx,
-                region_obligations.iter().map(|r_o| (r_o.sup_type, r_o.sub_region)),
+                region_obligations
+                    .iter()
+                    .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
                 region_constraints,
             )
         });
@@ -630,7 +632,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 /// creates query region constraints.
 pub fn make_query_region_constraints<'tcx>(
     tcx: TyCtxt<'tcx>,
-    outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>)>,
+    outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>, ConstraintCategory<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys, givens, member_constraints } =
@@ -644,6 +646,7 @@ pub fn make_query_region_constraints<'tcx>(
     let outlives: Vec<_> = constraints
         .iter()
         .map(|(k, origin)| {
+            // no bound vars in the code above
             let constraint = ty::Binder::dummy(match *k {
                 // Swap regions because we are going from sub (<=) to outlives
                 // (>=).
@@ -659,17 +662,13 @@ pub fn make_query_region_constraints<'tcx>(
                 }
                 Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
             });
-
             (constraint, origin.to_constraint_category())
         })
         .chain(
             outlives_obligations
                 // no bound vars in the code above
-                .map(|(ty, r)| {
-                    (
-                        ty::Binder::dummy(ty::OutlivesPredicate(ty.into(), r)),
-                        ConstraintCategory::BoringNoLocation,
-                    )
+                .map(|(ty, r, constraint_category)| {
+                    (ty::Binder::dummy(ty::OutlivesPredicate(ty.into(), r)), constraint_category)
                 }),
         )
         .collect();
