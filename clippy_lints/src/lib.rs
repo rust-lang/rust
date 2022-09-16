@@ -268,6 +268,7 @@ mod main_recursion;
 mod manual_assert;
 mod manual_async_fn;
 mod manual_bits;
+mod manual_clamp;
 mod manual_instant_elapsed;
 mod manual_non_exhaustive;
 mod manual_rem_euclid;
@@ -899,6 +900,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::<std_instead_of_core::StdReexports>::default());
     store.register_late_pass(|_| Box::new(manual_instant_elapsed::ManualInstantElapsed));
     store.register_late_pass(|_| Box::new(partialeq_to_none::PartialeqToNone));
+    store.register_late_pass(move |_| Box::new(manual_clamp::ManualClamp::new(msrv)));
     store.register_late_pass(|_| Box::new(manual_string_new::ManualStringNew));
     store.register_late_pass(|_| Box::new(unused_peekable::UnusedPeekable));
     store.register_early_pass(|| Box::new(multi_assignments::MultiAssignments));
