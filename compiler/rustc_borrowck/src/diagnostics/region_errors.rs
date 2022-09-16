@@ -31,7 +31,7 @@ use crate::session_diagnostics::{
 };
 
 use super::{OutlivesSuggestionBuilder, RegionName};
-use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
+use crate::region_infer::BlameConstraint;
 use crate::{
     nll::ConstraintDescription,
     region_infer::{values::RegionElement, TypeTest},
@@ -354,11 +354,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (blame_constraint, extra_info) =
-            self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
+        let BlameConstraint { category, cause, variance_info, .. } = self
+            .regioncx
+            .best_blame_constraint(fr, fr_origin, |r| {
                 self.regioncx.provides_universal_region(r, fr, outlived_fr)
-            });
-        let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
+            })
+            .0;
 
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
 
@@ -467,14 +468,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        for extra in extra_info {
-            match extra {
-                ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
-                    diag.span_note(span, format!("due to current limitations in the borrow checker, this implies a `'static` lifetime"));
-                }
-            }
-        }
-
         self.buffer_error(diag);
     }
 
@@ -566,7 +559,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// LL |     ref_obj(x)
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
     /// ```
-    #[instrument(level = "debug", skip(self))]
     fn report_escaping_data_error(
         &self,
         errci: &ErrorConstraintInfo<'tcx>,

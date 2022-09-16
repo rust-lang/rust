@@ -21,7 +21,10 @@ pub(crate) struct OutlivesConstraintSet<'tcx> {
 
 impl<'tcx> OutlivesConstraintSet<'tcx> {
     pub(crate) fn push(&mut self, constraint: OutlivesConstraint<'tcx>) {
-        debug!("OutlivesConstraintSet::push({:?})", constraint);
+        debug!(
+            "OutlivesConstraintSet::push({:?}: {:?} @ {:?}",
+            constraint.sup, constraint.sub, constraint.locations
+        );
         if constraint.sup == constraint.sub {
             // 'a: 'a is pretty uninteresting
             return;
