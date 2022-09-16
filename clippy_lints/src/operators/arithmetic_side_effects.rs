@@ -42,9 +42,9 @@ impl ArithmeticSideEffects {
         }
     }
 
-    /// Assuming that `expr` is a literal integer, checks assign operators (+=, -=, *=, /=) in a
+    /// Assuming that `expr` is a literal integer, checks operators (+=, -=, *, /) in a
     /// non-constant environment that won't overflow.
-    fn has_valid_assign_op(op: &Spanned<hir::BinOpKind>, expr: &hir::Expr<'_>) -> bool {
+    fn has_valid_op(op: &Spanned<hir::BinOpKind>, expr: &hir::Expr<'_>) -> bool {
         if let hir::BinOpKind::Add | hir::BinOpKind::Sub = op.node
             && let hir::ExprKind::Lit(ref lit) = expr.kind
             && let ast::LitKind::Int(0, _) = lit.node
@@ -124,8 +124,8 @@ impl ArithmeticSideEffects {
             Self::is_literal_integer(rhs, cx.typeck_results().expr_ty(rhs).peel_refs()),
         ) {
             (true, true) => true,
-            (true, false) => Self::has_valid_assign_op(op, lhs),
-            (false, true) => Self::has_valid_assign_op(op, rhs),
+            (true, false) => Self::has_valid_op(op, lhs),
+            (false, true) => Self::has_valid_op(op, rhs),
             (false, false) => false,
         };
         if !has_valid_op {
