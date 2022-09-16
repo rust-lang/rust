@@ -1,0 +1,12 @@
+[package]
+name = "jsondoclint"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.62"
+fs-err = "2.8.1"
+rustdoc-json-types = { version = "0.1.0", path = "../../rustdoc-json-types" }
+serde_json = "1.0.85"
