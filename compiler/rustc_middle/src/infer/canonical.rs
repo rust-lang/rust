@@ -47,9 +47,9 @@ pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
 impl<'tcx> ty::TypeFoldable<'tcx> for CanonicalVarInfos<'tcx> {
     fn try_fold_with<F: ty::FallibleTypeFolder<'tcx>>(
         self,
-        folder: &mut F,
+        _folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_canonical_var_infos(v))
+        Ok(self)
     }
 }
 
@@ -99,7 +99,6 @@ impl<'tcx> Default for OriginalQueryValues<'tcx> {
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub struct CanonicalVarInfo<'tcx> {
     pub kind: CanonicalVarKind<'tcx>,
 }
@@ -125,7 +124,6 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum CanonicalVarKind<'tcx> {
     /// Some kind of type inference variable.
     Ty(CanonicalTyVarKind),
@@ -310,7 +308,8 @@ pub type QueryOutlivesConstraint<'tcx> = (
 TrivialTypeTraversalAndLiftImpls! {
     for <'tcx> {
         crate::infer::canonical::Certainty,
-        crate::infer::canonical::CanonicalTyVarKind,
+        crate::infer::canonical::CanonicalVarInfo<'tcx>,
+        crate::infer::canonical::CanonicalVarKind<'tcx>,
     }
 }
 
