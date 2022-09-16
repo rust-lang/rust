@@ -188,6 +188,9 @@ impl<'tcx> ObligationCause<'tcx> {
     pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self.code() {
             MatchImpl(cause, _) => cause.to_constraint_category(),
+            AscribeUserTypeProvePredicate(predicate_span) => {
+                ConstraintCategory::Predicate(*predicate_span)
+            }
             _ => ConstraintCategory::BoringNoLocation,
         }
     }
@@ -426,6 +429,8 @@ pub enum ObligationCauseCode<'tcx> {
         is_lit: bool,
         output_ty: Option<Ty<'tcx>>,
     },
+
+    AscribeUserTypeProvePredicate(Span),
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.
