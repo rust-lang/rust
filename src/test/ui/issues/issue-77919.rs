@@ -1,6 +1,5 @@
 fn main() {
     [1; <Multiply<Five, Five>>::VAL];
-    //~^ ERROR unable to use constant with a hidden value in the type system
 }
 trait TypeVal<T> {
     const VAL: T;

@@ -1,6 +1,8 @@
 // This previously compiled, but was intentionally changed in #101478.
 //
 // See that PR for more details.
+//
+// check-pass
 trait MyTrait: Copy {
     const ASSOC: usize;
 }
@@ -19,7 +21,9 @@ const fn output<T: MyTrait>(_: T) -> usize {
 
 fn main() {
     let x = [0u8; output(yeet())];
-    //~^ ERROR unable to use constant with a hidden value in the type system
+    //~^ WARNING relying on the underlying type of an opaque type in the type system
+    //~| WARNING this was previously accepted by the compiler
+    //~| WARNING relying on the underlying type of an opaque type in the type system
+    //~| WARNING this was previously accepted by the compiler
     println!("{:?}", x);
-    //~^ ERROR unable to use constant with a hidden value in the type system
 }

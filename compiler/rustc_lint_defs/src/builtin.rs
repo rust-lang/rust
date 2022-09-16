@@ -3365,6 +3365,7 @@ declare_lint_pass! {
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DUPLICATE_MACRO_ATTRIBUTES,
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
+        HIDDEN_TYPE_OF_OPAQUE_TYPES_IN_TYPE_SYSTEM,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         TEST_UNSTABLE_LINT,
         FFI_UNWIND_CALLS,
@@ -3978,6 +3979,47 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
         reference: "issue #93367 <https://github.com/rust-lang/rust/issues/93367>",
+    };
+}
+
+declare_lint! {
+    /// The `hidden_type_of_opaque_types_in_type_system` backward compatibility
+    /// lint detects when the hidden type of an opaque type is required by the type
+    /// system.
+    ///
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// use std::mem::transmute;
+    /// fn foo() -> impl Sized {
+    ///     0u8
+    /// }
+    ///
+    /// fn main() {
+    ///     unsafe {
+    ///         transmute::<_, u8>(foo());
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// When using an opaque type, i.e. `impl Trait`, the
+    /// concrete underlying type should not be revealed to
+    /// the type system. The compiler previously revealed this
+    /// underlying type in some instances causing bugs.
+    /// It is still unclear whether this lint will be converted to
+    /// a hard error in the future or whether a different implementation
+    /// can support these use-cases.
+    pub HIDDEN_TYPE_OF_OPAQUE_TYPES_IN_TYPE_SYSTEM,
+    Warn,
+    "the rules governing auto traits will change in the future",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reference: "issue # <https://github.com/rust-lang/rust/issues/101478>",
     };
 }
 

@@ -2,6 +2,8 @@
 // This was used in https://github.com/GoldsteinE/name-it.
 //
 // See that PR for more details.
+//
+// check-pass
 use std::mem;
 fn returns_opaque() -> impl Sized {
     0u8
@@ -9,7 +11,8 @@ fn returns_opaque() -> impl Sized {
 
 struct NamedOpaqueType {
     data: [mem::MaybeUninit<u8>; size_of_fut(returns_opaque)]
-    //~^ ERROR unable to use constant with a hidden value in the type system
+    //~^ WARNING relying on the underlying type of an opaque type in the type system
+    //~| WARNING this was previously accepted by the compiler
 }
 
 const fn size_of_fut<FUT>(x: fn() -> FUT) -> usize {

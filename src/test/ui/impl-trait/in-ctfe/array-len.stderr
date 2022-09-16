@@ -1,21 +1,23 @@
-error: unable to use constant with a hidden value in the type system
-  --> $DIR/array-len.rs:21:19
+warning: relying on the underlying type of an opaque type in the type system
+  --> $DIR/array-len.rs:23:19
    |
 LL |     let x = [0u8; output(yeet())];
    |                   ^^^^^^^^^^^^^^
    |
-   = note: this most often happens when trying to look into an opaque type
-   = note: the type system cannot access the hidden type of opaque types
+   = note: `#[warn(hidden_type_of_opaque_types_in_type_system)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue # <https://github.com/rust-lang/rust/issues/101478>
+   = note: evaluating this constant relies on the underlying type of an opaque type
 
-error: unable to use constant with a hidden value in the type system
-  --> $DIR/array-len.rs:23:22
+warning: relying on the underlying type of an opaque type in the type system
+  --> $DIR/array-len.rs:23:19
    |
-LL |     println!("{:?}", x);
-   |                      ^
+LL |     let x = [0u8; output(yeet())];
+   |                   ^^^^^^^^^^^^^^
    |
-   = note: this most often happens when trying to look into an opaque type
-   = note: the type system cannot access the hidden type of opaque types
-   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue # <https://github.com/rust-lang/rust/issues/101478>
+   = note: evaluating this constant relies on the underlying type of an opaque type
 
-error: aborting due to 2 previous errors
+warning: 2 warnings emitted
 

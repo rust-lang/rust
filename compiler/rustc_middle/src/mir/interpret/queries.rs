@@ -1,10 +1,11 @@
 use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult, GlobalId};
 
 use crate::mir;
+use crate::traits::Reveal;
 use crate::ty::subst::InternalSubsts;
 use crate::ty::visit::TypeVisitable;
 use crate::ty::{self, query::TyCtxtAt, query::TyCtxtEnsure, TyCtxt};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_span::{Span, DUMMY_SP};
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -61,6 +62,42 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// HACK: We retry evaluation with `Reveal::All` for backwards
+    /// compatability reasons, see #101478 for more details.
+    #[cold]
+    fn const_eval_resolve_for_typeck_backcompat_hack(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        ct: ty::Unevaluated<'tcx>,
+        span: Option<Span>,
+    ) -> EvalToValTreeResult<'tcx> {
+        let param_env_reveal_all = ty::ParamEnv::new(
+            self.normalize_opaque_types(param_env.caller_bounds()),
+            Reveal::All,
+            param_env.constness(),
+        );
+
+        match self.const_eval_resolve_for_typeck(param_env_reveal_all, ct, span) {
+            Ok(Some(v)) => {
+                let local_def_id = ct.def.did.as_local().unwrap_or(CRATE_DEF_ID);
+                self.struct_span_lint_hir(
+                    rustc_session::lint::builtin::HIDDEN_TYPE_OF_OPAQUE_TYPES_IN_TYPE_SYSTEM,
+                    self.hir().local_def_id_to_hir_id(local_def_id),
+                    self.def_span(ct.def.did),
+                    |err| {
+                        err.build(
+                            "relying on the underlying type of an opaque type in the type system",
+                        )
+                        .note("evaluating this constant relies on the underlying type of an opaque type")
+                        .emit()
+                    },
+                );
+                Ok(Some(v))
+            }
+            res => res,
+        }
+    }
+
     #[instrument(level = "debug", skip(self))]
     pub fn const_eval_resolve_for_typeck(
         self,
@@ -78,13 +115,22 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
+        let result = match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: ct.promoted };
                 self.const_eval_global_id_for_typeck(param_env, cid, span)
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),
             Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
+        };
+
+        match result {
+            Err(ErrorHandled::TooGeneric)
+                if param_env.reveal() != Reveal::All && !ct.needs_subst() =>
+            {
+                self.const_eval_resolve_for_typeck_backcompat_hack(param_env, ct, span)
+            }
+            result => result,
         }
     }
 

@@ -1,6 +1,8 @@
 // ICE fixed by #101478.
 //
 // See that PR for more details.
+//
+// check-pass
 #![feature(specialization)]
 //~^ WARNING the feature `specialization` is incomplete and may not be safe to use
 
@@ -22,8 +24,10 @@ impl Trait for u32 {
 
 fn foo() -> [u8; 0] {
     [0; <<Vec<u32> as Foo>::Assoc as Trait>::ASSOC]
-    //~^ ERROR unable to use constant with a hidden value in the type system
-    //~| ERROR mismatched types
+    //~^ WARNING relying on the underlying type of an opaque type in the type system
+    //~| WARNING this was previously accepted by the compiler
+    //~| WARNING relying on the underlying type of an opaque type in the type system
+    //~| WARNING this was previously accepted by the compiler
 }
 
 fn main() {}

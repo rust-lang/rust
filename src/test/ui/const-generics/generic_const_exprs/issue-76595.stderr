@@ -16,15 +16,6 @@ help: add missing generic argument
 LL |     test::<2, P>();
    |             +++
 
-error: unable to use constant with a hidden value in the type system
-  --> $DIR/issue-76595.rs:15:5
-   |
-LL |     test::<2>();
-   |     ^^^^^^^^^
-   |
-   = note: this most often happens when trying to look into an opaque type
-   = note: the type system cannot access the hidden type of opaque types
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0107`.

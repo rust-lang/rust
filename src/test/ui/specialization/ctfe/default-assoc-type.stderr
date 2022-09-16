@@ -1,5 +1,5 @@
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/default-assoc-type.rs:4:12
+  --> $DIR/default-assoc-type.rs:6:12
    |
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^
@@ -8,26 +8,26 @@ LL | #![feature(specialization)]
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: consider using `min_specialization` instead, which is more stable and complete
 
-error[E0308]: mismatched types
-  --> $DIR/default-assoc-type.rs:24:5
-   |
-LL | fn foo() -> [u8; 0] {
-   |             ------- expected `[u8; 0]` because of return type
-LL |     [0; <<Vec<u32> as Foo>::Assoc as Trait>::ASSOC]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `0`, found `<<Vec<u32> as Foo>::Assoc as Trait>::ASSOC`
-   |
-   = note: expected array `[u8; 0]`
-              found array `[u8; _]`
-
-error: unable to use constant with a hidden value in the type system
-  --> $DIR/default-assoc-type.rs:24:9
+warning: relying on the underlying type of an opaque type in the type system
+  --> $DIR/default-assoc-type.rs:26:9
    |
 LL |     [0; <<Vec<u32> as Foo>::Assoc as Trait>::ASSOC]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this most often happens when trying to look into an opaque type
-   = note: the type system cannot access the hidden type of opaque types
+   = note: `#[warn(hidden_type_of_opaque_types_in_type_system)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue # <https://github.com/rust-lang/rust/issues/101478>
+   = note: evaluating this constant relies on the underlying type of an opaque type
 
-error: aborting due to 2 previous errors; 1 warning emitted
+warning: relying on the underlying type of an opaque type in the type system
+  --> $DIR/default-assoc-type.rs:26:9
+   |
+LL |     [0; <<Vec<u32> as Foo>::Assoc as Trait>::ASSOC]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue # <https://github.com/rust-lang/rust/issues/101478>
+   = note: evaluating this constant relies on the underlying type of an opaque type
 
-For more information about this error, try `rustc --explain E0308`.
+warning: 3 warnings emitted
+
