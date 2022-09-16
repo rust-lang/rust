@@ -78,6 +78,9 @@ impl FlagComputation {
                 ty::BoundVariableKind::Const => {
                     computation.flags |= TypeFlags::HAS_CT_LATE_BOUND;
                 }
+                ty::BoundVariableKind::Effect => {
+                    computation.flags |= TypeFlags::HAS_EFFECT_LATE_BOUND;
+                }
             }
         }
 

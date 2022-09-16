@@ -745,6 +745,10 @@ fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
                 tcx.type_of(param.def_id),
             )
             .into(),
+
+        ty::GenericParamDefKind::Effect { kind } => tcx
+            .mk_effect(ty::EffectValue::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)), kind)
+            .into(),
     })
 }
 

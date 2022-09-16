@@ -48,6 +48,15 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
             ct.super_fold_with(self)
         }
     }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        if !e.has_non_region_infer() {
+            e // micro-optimize -- if there is nothing in this effect that this fold affects...
+        } else {
+            let e = self.infcx.shallow_resolve(e);
+            e.super_fold_with(self)
+        }
+    }
 }
 
 /// The opportunistic region resolver opportunistically resolves regions
@@ -100,6 +109,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
             ct // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
             ct.super_fold_with(self)
+        }
+    }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        if !e.has_infer_regions() {
+            e // micro-optimize -- if there is nothing in this effect that this fold affects...
+        } else {
+            e.super_fold_with(self)
         }
     }
 }

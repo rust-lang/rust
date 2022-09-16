@@ -1246,6 +1246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
+                    GenericParamDefKind::Effect { .. } => self.fcx.var_for_def(self.span, param),
                 }
             }
         }

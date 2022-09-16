@@ -1328,11 +1328,15 @@ fn compare_synthetic_generics<'tcx>(
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
     let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-        GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => None,
+        GenericParamDefKind::Lifetime
+        | GenericParamDefKind::Effect { .. }
+        | GenericParamDefKind::Const { .. } => None,
     });
     let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-        GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => None,
+        GenericParamDefKind::Lifetime
+        | GenericParamDefKind::Effect { .. }
+        | GenericParamDefKind::Const { .. } => None,
     });
     for ((impl_def_id, impl_synthetic), (trait_def_id, trait_synthetic)) in
         iter::zip(impl_m_type_params, trait_m_type_params)
@@ -1503,6 +1507,7 @@ fn compare_generic_param_kinds<'tcx>(
             // to make sure this error is reported for them.
             (Const { .. }, Const { .. }) | (Type { .. }, Type { .. }) => false,
             (Lifetime { .. }, _) | (_, Lifetime { .. }) => unreachable!(),
+            (Effect { .. }, _) | (_, Effect { .. }) => unreachable!(),
         } {
             let param_impl_span = tcx.def_span(param_impl.def_id);
             let param_trait_span = tcx.def_span(param_trait.def_id);
@@ -1523,6 +1528,7 @@ fn compare_generic_param_kinds<'tcx>(
                 }
                 Type { .. } => format!("{} type parameter", prefix),
                 Lifetime { .. } => unreachable!(),
+                Effect { .. } => unreachable!(),
             };
 
             let trait_header_span = tcx.def_ident_span(tcx.parent(trait_item.def_id)).unwrap();
@@ -1854,6 +1860,18 @@ pub(super) fn check_type_bounds<'tcx>(
             tcx.mk_const(
                 ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(bound_vars.len() - 1)),
                 tcx.type_of(param.def_id),
+            )
+            .into()
+        }
+        GenericParamDefKind::Effect { kind } => {
+            let bound_var = ty::BoundVariableKind::Effect;
+            bound_vars.push(bound_var);
+            tcx.mk_effect(
+                ty::EffectValue::Bound(
+                    ty::INNERMOST,
+                    ty::BoundVar::from_usize(bound_vars.len() - 1),
+                ),
+                kind,
             )
             .into()
         }

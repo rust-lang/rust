@@ -480,6 +480,7 @@ pub enum GenericParamDefKind {
         type_: Type,
         default: Option<String>,
     },
+    Effect,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -830,6 +830,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
         for param in &self.ev.tcx.generics_of(self.item_def_id).params {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Effect { .. } => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
                         self.visit(self.ev.tcx.type_of(param.def_id));
@@ -1735,6 +1736,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         for param in &self.tcx.generics_of(self.item_def_id).params {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Effect { .. } => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
                         self.visit(self.tcx.type_of(param.def_id));

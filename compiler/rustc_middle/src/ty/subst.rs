@@ -833,7 +833,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
-        // FIXME(keyword_generics): handle other effects
         if let ty::EffectValue::Param { index } = e.val {
             self.effect_for_param(index, e)
         } else {

@@ -283,6 +283,9 @@ bitflags! {
 
         /// Does this have `Effect::Placeholder`?
         const HAS_EFFECT_PLACEHOLDER      = 1 << 25;
+
+        /// Does this have any `Effect::Bound` consts?
+        const HAS_EFFECT_LATE_BOUND           = 1 << 26;
     }
 }
 

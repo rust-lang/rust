@@ -15,7 +15,9 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::{
+    ConstVariableOrigin, ConstVariableOriginKind, EffectVariableOriginKind,
+};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
@@ -271,6 +273,22 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                 ty,
                 ConstVariableOrigin { kind: ConstVariableOriginKind::ConstInference, span },
             )
+        }
+    }
+
+    fn effect_infer(
+        &self,
+        kind: ty::EffectKind,
+        param: Option<&ty::GenericParamDef>,
+        span: Span,
+    ) -> ty::Effect<'tcx> {
+        if let Some(param) = param {
+            if let GenericArgKind::Effect(e) = self.var_for_def(span, param).unpack() {
+                return e;
+            }
+            unreachable!()
+        } else {
+            self.next_effect_var(span, EffectVariableOriginKind::EffectInference, kind)
         }
     }
 

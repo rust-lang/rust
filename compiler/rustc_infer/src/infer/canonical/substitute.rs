@@ -85,6 +85,12 @@ where
                 GenericArgKind::Const(ct) => ct,
                 c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
             },
+            effects: &mut |bound_effect: ty::BoundVar, _| match var_values.var_values[bound_effect]
+                .unpack()
+            {
+                GenericArgKind::Effect(e) => e,
+                c => bug!("{:?} is an effect but value is {:?}", bound_effect, c),
+            },
         };
 
         tcx.replace_escaping_bound_vars_uncached(value, delegate)

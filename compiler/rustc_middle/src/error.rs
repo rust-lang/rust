@@ -66,9 +66,9 @@ pub(crate) struct StrictCoherenceNeedsNegativeCoherence {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_const_not_used_in_type_alias)]
-pub(super) struct ConstNotUsedTraitAlias {
-    pub ct: String,
+#[diag(middle_param_not_used_in_type_alias)]
+pub(super) struct ParamNotUsedTraitAlias {
+    pub param: String,
     #[primary_span]
     pub span: Span,
 }

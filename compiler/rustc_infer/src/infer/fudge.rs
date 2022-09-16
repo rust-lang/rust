@@ -266,4 +266,20 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
             ct.super_fold_with(self)
         }
     }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        if let ty::EffectValue::Infer(ty::InferEffect::Var(vid)) = e.val {
+            if self.effect_vars.0.contains(&vid) {
+                // This variable was created during the fudging.
+                // Recreate it with a fresh variable here.
+                let idx = (vid.index - self.effect_vars.0.start.index) as usize;
+                let origin = self.effect_vars.1[idx];
+                self.infcx.next_effect_var(origin.span, origin.kind, e.kind)
+            } else {
+                e
+            }
+        } else {
+            e.super_fold_with(self)
+        }
+    }
 }

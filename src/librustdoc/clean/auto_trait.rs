@@ -645,6 +645,7 @@ where
                     }
                 }
                 GenericParamDefKind::Lifetime { .. } => {}
+                GenericParamDefKind::Effect { .. } => {}
                 GenericParamDefKind::Const { ref mut default, .. } => {
                     // We never want something like `impl<const N: usize = 10>`
                     default.take();

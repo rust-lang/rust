@@ -140,6 +140,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
                         variances[param.index as usize] = ty::Bivariant;
                     }
                     ty::GenericParamDefKind::Type { .. }
+                    | ty::GenericParamDefKind::Effect { .. }
                     | ty::GenericParamDefKind::Const { .. } => {}
                 }
             }

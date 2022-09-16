@@ -316,6 +316,7 @@ impl<'a> Validator<'a> {
             rustdoc_json_types::GenericParamDefKind::Const { type_, default: _ } => {
                 self.check_type(type_)
             }
+            rustdoc_json_types::GenericParamDefKind::Effect {} => {}
         }
     }
 

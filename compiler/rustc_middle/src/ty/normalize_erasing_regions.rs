@@ -214,6 +214,10 @@ impl<'tcx> TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
     fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
         self.normalize_generic_arg_after_erasing_regions(c.into()).expect_const()
     }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        self.normalize_generic_arg_after_erasing_regions(e.into()).expect_effect()
+    }
 }
 
 struct TryNormalizeAfterErasingRegionsFolder<'tcx> {

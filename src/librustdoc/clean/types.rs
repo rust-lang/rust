@@ -1424,6 +1424,7 @@ pub(crate) enum GenericParamDefKind {
     Lifetime { outlives: Vec<Lifetime> },
     Type { did: DefId, bounds: Vec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
     Const { did: DefId, ty: Box<Type>, default: Option<Box<String>> },
+    Effect { did: DefId },
 }
 
 impl GenericParamDefKind {
@@ -1445,7 +1446,9 @@ impl GenericParamDef {
 
     pub(crate) fn is_synthetic_type_param(&self) -> bool {
         match self.kind {
-            GenericParamDefKind::Lifetime { .. } | GenericParamDefKind::Const { .. } => false,
+            GenericParamDefKind::Lifetime { .. }
+            | GenericParamDefKind::Const { .. }
+            | GenericParamDefKind::Effect { .. } => false,
             GenericParamDefKind::Type { synthetic, .. } => synthetic,
         }
     }

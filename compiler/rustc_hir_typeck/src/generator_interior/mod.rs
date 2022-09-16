@@ -296,6 +296,7 @@ pub fn resolve_interior<'a, 'tcx>(
                 },
                 types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
                 consts: &mut |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),
+                effects: &mut |b, kind| bug!("unexpected bound effect in binder: {b:?} {kind:?}"),
             },
         )
     } else {

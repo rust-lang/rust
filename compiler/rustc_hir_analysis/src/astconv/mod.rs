@@ -91,6 +91,14 @@ pub trait AstConv<'tcx> {
         span: Span,
     ) -> Const<'tcx>;
 
+    /// Returns the effect to use when an effect is omitted.
+    fn effect_infer(
+        &self,
+        kind: ty::EffectKind,
+        param: Option<&ty::GenericParamDef>,
+        span: Span,
+    ) -> ty::Effect<'tcx>;
+
     /// Projecting an associated type from a (potentially)
     /// higher-ranked trait reference is more complicated, because of
     /// the possibility of late-bound regions appearing in the
@@ -516,6 +524,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // We've already errored above about the mismatch.
                                 tcx.const_error(ty).into()
                             }
+                        }
+                    }
+                    GenericParamDefKind::Effect { kind } => {
+                        if infer_args {
+                            self.astconv.effect_infer(kind, Some(param), self.span).into()
+                        } else {
+                            // We've already errored above about the mismatch.
+                            tcx.effect_error_with_message(
+                                self.span,
+                                "non-inference missing effect args",
+                                kind,
+                            )
+                            .into()
                         }
                     }
                 }

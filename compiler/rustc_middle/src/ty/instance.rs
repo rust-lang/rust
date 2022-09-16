@@ -338,6 +338,9 @@ impl<'tcx> Instance<'tcx> {
             ty::GenericParamDefKind::Const { .. } => {
                 bug!("Instance::mono: {:?} has const parameters", def_id)
             }
+            ty::GenericParamDefKind::Effect { .. } => {
+                bug!("Instance::mono: {:?} has effect parameters", def_id)
+            }
         });
 
         Instance::new(def_id, substs)

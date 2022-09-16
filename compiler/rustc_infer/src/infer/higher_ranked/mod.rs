@@ -97,6 +97,15 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.tcx
                     .mk_const(ty::PlaceholderConst { universe: next_universe, name: bound_var }, ty)
             },
+            effects: &mut |bound_var: ty::BoundVar, kind| {
+                self.tcx.mk_effect(
+                    ty::EffectValue::Placeholder(ty::PlaceholderEffect {
+                        universe: next_universe,
+                        name: bound_var,
+                    }),
+                    kind,
+                )
+            },
         };
 
         debug!(?next_universe);

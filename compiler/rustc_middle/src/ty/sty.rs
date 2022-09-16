@@ -930,6 +930,7 @@ pub enum BoundVariableKind {
     Ty(BoundTyKind),
     Region(BoundRegionKind),
     Const,
+    Effect,
 }
 
 impl BoundVariableKind {
@@ -951,6 +952,13 @@ impl BoundVariableKind {
         match self {
             BoundVariableKind::Const => (),
             _ => bug!("expected a const, but found another kind"),
+        }
+    }
+
+    pub fn expect_effect(self) {
+        match self {
+            BoundVariableKind::Effect => (),
+            _ => bug!("expected a effect, but found another kind"),
         }
     }
 }

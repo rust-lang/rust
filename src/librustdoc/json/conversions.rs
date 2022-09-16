@@ -424,6 +424,7 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
                 type_: (*ty).into_tcx(tcx),
                 default: default.map(|x| *x),
             },
+            Effect { did: _ } => GenericParamDefKind::Effect,
         }
     }
 }

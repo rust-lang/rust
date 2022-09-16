@@ -564,6 +564,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 )
                                 .into()
                             }
+                            GenericParamDefKind::Effect { kind } => {
+                                let bound_var = ty::BoundVariableKind::Effect;
+                                bound_vars.push(bound_var);
+                                tcx.mk_effect(
+                                    ty::EffectValue::Bound(
+                                        ty::INNERMOST,
+                                        ty::BoundVar::from_usize(bound_vars.len() - 1),
+                                    ),
+                                    kind,
+                                )
+                                .into()
+                            }
                         });
                         let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
                         let assoc_ty_substs = tcx.intern_substs(&substs);

@@ -21,7 +21,6 @@ use rustc_infer::infer::{
     type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
     RegionVariableOrigin,
 };
-use rustc_middle::infer::unify_key::EffectVariableOrigin;
 use rustc_middle::infer::unify_key::EffectVariableOriginKind;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::util::supertraits;
@@ -1191,11 +1190,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .into(),
                             GenericArgKind::Effect(e) => self
                                 .next_effect_var(
+                                    rustc_span::DUMMY_SP,
+                                    EffectVariableOriginKind::MiscVariable,
                                     e.kind,
-                                    EffectVariableOrigin {
-                                        span: rustc_span::DUMMY_SP,
-                                        kind: EffectVariableOriginKind::MiscVariable,
-                                    },
                                 )
                                 .into(),
                         }

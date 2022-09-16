@@ -511,6 +511,9 @@ fn clean_generic_param_def<'tcx>(
                 },
             },
         ),
+        ty::GenericParamDefKind::Effect { .. } => {
+            (def.name, GenericParamDefKind::Effect { did: def.def_id })
+        }
     };
 
     GenericParamDef { name, kind }
@@ -609,6 +612,7 @@ pub(crate) fn clean_generics<'tcx>(
                     cx.impl_trait_bounds.insert(did.into(), bounds.clone());
                 }
                 GenericParamDefKind::Const { .. } => unreachable!(),
+                GenericParamDefKind::Effect { .. } => unreachable!(),
             }
             param
         })
@@ -688,7 +692,9 @@ pub(crate) fn clean_generics<'tcx>(
                     }
                 }
             }
-            GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+            GenericParamDefKind::Type { .. }
+            | GenericParamDefKind::Effect { .. }
+            | GenericParamDefKind::Const { .. } => {
                 // nothing to do here.
             }
         }
@@ -745,6 +751,7 @@ fn clean_ty_generics<'tcx>(
                 Some(clean_generic_param_def(param, cx))
             }
             ty::GenericParamDefKind::Const { .. } => Some(clean_generic_param_def(param, cx)),
+            ty::GenericParamDefKind::Effect { .. } => None,
         })
         .collect::<ThinVec<GenericParamDef>>();
 

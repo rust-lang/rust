@@ -20,6 +20,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::infer::unify_key::EffectVariableOrigin;
+use rustc_middle::infer::unify_key::EffectVariableOriginKind;
 use rustc_middle::infer::unify_key::EffectVariableValue;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
@@ -1090,10 +1091,14 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn next_effect_var(
         &self,
+        span: Span,
+        origin: EffectVariableOriginKind,
         kind: ty::EffectKind,
-        origin: EffectVariableOrigin,
     ) -> ty::Effect<'tcx> {
-        self.tcx.mk_effect(self.next_effect_var_id(origin), kind)
+        self.tcx.mk_effect(
+            self.next_effect_var_id(EffectVariableOrigin { span, kind: origin, effect_kind: kind }),
+            kind,
+        )
     }
 
     pub fn next_effect_var_in_universe(
@@ -1224,6 +1229,25 @@ impl<'tcx> InferCtxt<'tcx> {
                         val: ConstVariableValue::Unknown { universe: self.universe() },
                     });
                 self.tcx.mk_const(const_var_id, self.tcx.type_of(param.def_id)).into()
+            }
+            GenericParamDefKind::Effect { kind } => {
+                let origin = EffectVariableOrigin {
+                    kind: EffectVariableOriginKind::EffectParameterDefinition(
+                        param.name,
+                        param.def_id,
+                    ),
+                    span,
+                    effect_kind: kind,
+                };
+                let var_id =
+                    self.inner.borrow_mut().effect_unification_table().new_key(EffectVarValue {
+                        origin,
+                        val: EffectVariableValue::Unknown { universe: self.universe() },
+                    });
+
+                self.tcx
+                    .mk_effect(ty::EffectValue::Infer(ty::InferEffect::Var(var_id)), kind)
+                    .into()
             }
         }
     }
@@ -1548,6 +1572,24 @@ impl<'tcx> InferCtxt<'tcx> {
                             .into()
                     })
                     .expect_const()
+            }
+            fn replace_effects(
+                &mut self,
+                bv: ty::BoundVar,
+                kind: ty::EffectKind,
+            ) -> ty::Effect<'tcx> {
+                self.map
+                    .entry(bv)
+                    .or_insert_with(|| {
+                        self.infcx
+                            .next_effect_var(
+                                self.span,
+                                EffectVariableOriginKind::MiscVariable,
+                                kind,
+                            )
+                            .into()
+                    })
+                    .expect_effect()
             }
         }
         let delegate = ToFreshVars { infcx: self, span, lbrct, map: Default::default() };
@@ -1967,6 +2009,21 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
                 .unwrap_or(ct)
         } else {
             ct
+        }
+    }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        if let ty::EffectValue::Infer(ty::InferEffect::Var(vid)) = e.val {
+            self.infcx
+                .inner
+                .borrow_mut()
+                .effect_unification_table()
+                .probe_value(vid)
+                .val
+                .known()
+                .unwrap_or(e)
+        } else {
+            e
         }
     }
 }

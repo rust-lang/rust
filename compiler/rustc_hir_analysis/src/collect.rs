@@ -405,6 +405,15 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         self.tcx().const_error_with_message(ty, span, "bad placeholder constant")
     }
 
+    fn effect_infer(
+        &self,
+        kind: ty::EffectKind,
+        _: Option<&ty::GenericParamDef>,
+        span: Span,
+    ) -> ty::Effect<'tcx> {
+        span_bug!(span, "bad placeholder effect: {kind:?}")
+    }
+
     fn projected_ty_from_poly_trait_ref(
         &self,
         span: Span,

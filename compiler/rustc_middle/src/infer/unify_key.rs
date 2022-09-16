@@ -167,6 +167,7 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
 pub struct EffectVariableOrigin {
     pub kind: EffectVariableOriginKind,
     pub span: Span,
+    pub effect_kind: ty::EffectKind,
 }
 
 /// Reasons to create a effect inference variable

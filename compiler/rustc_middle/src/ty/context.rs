@@ -712,6 +712,28 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    /// Like [TyCtxt::ty_error] but for effects.
+    #[track_caller]
+    pub fn effect_error(self, kind: ty::EffectKind) -> ty::Effect<'tcx> {
+        self.effect_error_with_message(
+            DUMMY_SP,
+            "ty::EffectValue::Error constructed but no error reported",
+            kind,
+        )
+    }
+
+    /// Like [TyCtxt::ty_error] but for effects.
+    #[track_caller]
+    pub fn effect_error_with_message(
+        self,
+        span: Span,
+        msg: &str,
+        kind: ty::EffectKind,
+    ) -> ty::Effect<'tcx> {
+        let reported = self.sess.delay_span_bug(span, msg);
+        self.mk_effect(ty::EffectValue::Err(reported), kind)
+    }
+
     /// Like [TyCtxt::ty_error_with_message] but for constants.
     #[track_caller]
     pub fn const_error_with_message<S: Into<MultiSpan>>(
@@ -1834,7 +1856,9 @@ impl<'tcx> TyCtxt<'tcx> {
         let adt_def = self.adt_def(wrapper_def_id);
         let substs =
             InternalSubsts::for_item(self, wrapper_def_id, |param, substs| match param.kind {
-                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => bug!(),
+                GenericParamDefKind::Effect { .. }
+                | GenericParamDefKind::Lifetime
+                | GenericParamDefKind::Const { .. } => bug!(),
                 GenericParamDefKind::Type { has_default, .. } => {
                     if param.index == 0 {
                         ty_param.into()
@@ -2055,6 +2079,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     self.type_of(param.def_id),
                 )
                 .into(),
+
+            GenericParamDefKind::Effect { kind } => {
+                self.mk_effect(ty::EffectValue::Param { index: param.index }, kind).into()
+            }
         }
     }
 

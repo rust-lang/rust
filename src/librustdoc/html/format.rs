@@ -239,6 +239,15 @@ impl clean::GenericParamDef {
 
                 Ok(())
             }
+            clean::GenericParamDefKind::Effect { .. } => {
+                if f.alternate() {
+                    write!(f, "effect {}", self.name)?;
+                } else {
+                    write!(f, "effect {}:&nbsp;", self.name)?;
+                }
+
+                Ok(())
+            }
         })
     }
 }

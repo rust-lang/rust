@@ -191,9 +191,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             for param in generics.params.iter() {
                 let value = match param.kind {
-                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        substs[param.index as usize].to_string()
-                    }
+                    GenericParamDefKind::Effect { .. }
+                    | GenericParamDefKind::Type { .. }
+                    | GenericParamDefKind::Const { .. } => substs[param.index as usize].to_string(),
                     GenericParamDefKind::Lifetime => continue,
                 };
                 let name = param.name;
@@ -609,10 +609,14 @@ impl<'tcx> OnUnimplementedFormatString {
             .iter()
             .filter_map(|param| {
                 let value = match param.kind {
-                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+                    GenericParamDefKind::Effect { .. }
+                    | GenericParamDefKind::Type { .. }
+                    | GenericParamDefKind::Const { .. } => {
                         trait_ref.substs[param.index as usize].to_string()
                     }
-                    GenericParamDefKind::Lifetime => return None,
+                    GenericParamDefKind::Lifetime => {
+                        return None;
+                    }
                 };
                 let name = param.name;
                 Some((name, value))

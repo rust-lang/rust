@@ -147,6 +147,11 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                     );
                 }
             }
+            ty::GenericParamDefKind::Effect { .. } => {
+                if !input_parameters.contains(&cgp::Parameter(param.index)) {
+                    report_unused_parameter(tcx, tcx.def_span(param.def_id), "effect", param.name);
+                }
+            }
         }
     }
 

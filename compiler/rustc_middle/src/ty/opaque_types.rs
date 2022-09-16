@@ -1,4 +1,4 @@
-use crate::error::ConstNotUsedTraitAlias;
+use crate::error::ParamNotUsedTraitAlias;
 use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
 use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -202,8 +202,8 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
                     None => {
                         if !self.ignore_errors {
-                            self.tcx.sess.emit_err(ConstNotUsedTraitAlias {
-                                ct: ct.to_string(),
+                            self.tcx.sess.emit_err(ParamNotUsedTraitAlias {
+                                param: ct.to_string(),
                                 span: self.span,
                             });
                         }
@@ -214,6 +214,30 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             }
 
             _ => ct,
+        }
+    }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        match e.val {
+            ty::EffectValue::Param { .. } => {
+                // Look it up in the substitution list.
+                match self.map.get(&e.into()).map(|k| k.unpack()) {
+                    // Found it in the substitution list, replace with the parameter from the
+                    // opaque type.
+                    Some(GenericArgKind::Effect(e)) => e,
+                    Some(u) => panic!("effect mapped to unexpected kind: {:?}", u),
+                    None => {
+                        self.tcx.sess.emit_err(ParamNotUsedTraitAlias {
+                            param: e.to_string(),
+                            span: self.span,
+                        });
+
+                        self.tcx().effect_error(e.kind)
+                    }
+                }
+            }
+
+            _ => e,
         }
     }
 }

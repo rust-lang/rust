@@ -13,6 +13,7 @@ pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
     Const { has_default: bool },
+    Effect { kind: ty::EffectKind },
 }
 
 impl GenericParamDefKind {
@@ -21,20 +22,21 @@ impl GenericParamDefKind {
             GenericParamDefKind::Lifetime => "lifetime",
             GenericParamDefKind::Type { .. } => "type",
             GenericParamDefKind::Const { .. } => "constant",
+            GenericParamDefKind::Effect { .. } => "effect",
         }
     }
     pub fn to_ord(&self) -> ast::ParamKindOrd {
         match self {
             GenericParamDefKind::Lifetime => ast::ParamKindOrd::Lifetime,
-            GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                ast::ParamKindOrd::TypeOrConst
-            }
+            GenericParamDefKind::Type { .. }
+            | GenericParamDefKind::Const { .. }
+            | GenericParamDefKind::Effect { .. } => ast::ParamKindOrd::TypeOrConst,
         }
     }
 
     pub fn is_ty_or_const(&self) -> bool {
         match self {
-            GenericParamDefKind::Lifetime => false,
+            GenericParamDefKind::Effect { .. } | GenericParamDefKind::Lifetime => false,
             GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => true,
         }
     }
@@ -79,10 +81,7 @@ impl GenericParamDef {
         }
     }
 
-    pub fn default_value<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<EarlyBinder<ty::GenericArg<'tcx>>> {
+    fn default_value<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<EarlyBinder<ty::GenericArg<'tcx>>> {
         match self.kind {
             GenericParamDefKind::Type { has_default, .. } if has_default => {
                 Some(tcx.bound_type_of(self.def_id).map_bound(|t| t.into()))
@@ -99,9 +98,10 @@ impl GenericParamDef {
         tcx: TyCtxt<'tcx>,
         preceding_substs: &[ty::GenericArg<'tcx>],
     ) -> ty::GenericArg<'tcx> {
-        match &self.kind {
+        match self.kind {
             ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_static.into(),
             ty::GenericParamDefKind::Type { .. } => tcx.ty_error().into(),
+            ty::GenericParamDefKind::Effect { kind, .. } => tcx.effect_error(kind).into(),
             ty::GenericParamDefKind::Const { .. } => {
                 tcx.const_error(tcx.bound_type_of(self.def_id).subst(tcx, preceding_substs)).into()
             }
@@ -114,6 +114,7 @@ pub struct GenericParamCount {
     pub lifetimes: usize,
     pub types: usize,
     pub consts: usize,
+    pub effects: usize,
 }
 
 /// Information about the formal type/lifetime parameters associated
@@ -167,6 +168,7 @@ impl<'tcx> Generics {
                 GenericParamDefKind::Lifetime => own_counts.lifetimes += 1,
                 GenericParamDefKind::Type { .. } => own_counts.types += 1,
                 GenericParamDefKind::Const { .. } => own_counts.consts += 1,
+                GenericParamDefKind::Effect { .. } => own_counts.effects += 1,
             }
         }
 
@@ -179,6 +181,7 @@ impl<'tcx> Generics {
         for param in &self.params {
             match param.kind {
                 GenericParamDefKind::Lifetime => (),
+                GenericParamDefKind::Effect { .. } => (),
                 GenericParamDefKind::Type { has_default, .. } => {
                     own_defaults.types += has_default as usize;
                 }
@@ -207,7 +210,9 @@ impl<'tcx> Generics {
     pub fn own_requires_monomorphization(&self) -> bool {
         for param in &self.params {
             match param.kind {
-                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+                GenericParamDefKind::Effect { .. }
+                | GenericParamDefKind::Type { .. }
+                | GenericParamDefKind::Const { .. } => {
                     return true;
                 }
                 GenericParamDefKind::Lifetime => {}
@@ -298,9 +303,10 @@ impl<'tcx> Generics {
             .iter()
             .rev()
             .take_while(|param| {
-                param.default_value(tcx).map_or(false, |default| {
-                    default.subst(tcx, substs) == substs[param.index as usize]
-                })
+                matches!(param.kind, ty::GenericParamDefKind::Effect { .. })
+                    || param.default_value(tcx).map_or(false, |default| {
+                        default.subst(tcx, substs) == substs[param.index as usize]
+                    })
             })
             .count();
 

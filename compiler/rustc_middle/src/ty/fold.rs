@@ -368,12 +368,14 @@ pub trait BoundVarReplacerDelegate<'tcx> {
     fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx>;
     fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx>;
     fn replace_const(&mut self, bv: ty::BoundVar, ty: Ty<'tcx>) -> ty::Const<'tcx>;
+    fn replace_effects(&mut self, bv: ty::BoundVar, kind: ty::EffectKind) -> ty::Effect<'tcx>;
 }
 
 pub struct FnMutDelegate<'a, 'tcx> {
     pub regions: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
     pub types: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
     pub consts: &'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx> + 'a),
+    pub effects: &'a mut (dyn FnMut(ty::BoundVar, ty::EffectKind) -> ty::Effect<'tcx> + 'a),
 }
 
 impl<'a, 'tcx> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<'a, 'tcx> {
@@ -385,6 +387,9 @@ impl<'a, 'tcx> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<'a, 'tcx> {
     }
     fn replace_const(&mut self, bv: ty::BoundVar, ty: Ty<'tcx>) -> ty::Const<'tcx> {
         (self.consts)(bv, ty)
+    }
+    fn replace_effects(&mut self, bv: ty::BoundVar, kind: ty::EffectKind) -> ty::Effect<'tcx> {
+        (self.effects)(bv, kind)
     }
 }
 
@@ -465,6 +470,16 @@ where
         }
     }
 
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        match e.val {
+            ty::EffectValue::Bound(debruijn, bound_effect) if debruijn == self.current_index => {
+                let e = self.delegate.replace_effects(bound_effect, e.kind);
+                ty::fold::shift_vars(self.tcx, e, self.current_index.as_u32())
+            }
+            _ => e.super_fold_with(self),
+        }
+    }
+
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
@@ -516,6 +531,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 regions: &mut replace_regions,
                 types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
                 consts: &mut |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),
+                effects: &mut |b, kind| bug!("unexpected bound effect in binder: {b:?} {kind:?}"),
             };
             let mut replacer = BoundVarReplacer::new(self, delegate);
             value.fold_with(&mut replacer)
@@ -590,6 +606,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 consts: &mut |c, ty: Ty<'tcx>| {
                     self.mk_const(ty::ConstKind::Bound(ty::INNERMOST, shift_bv(c)), ty)
                 },
+                effects: &mut |e, kind| {
+                    self.mk_effect(ty::EffectValue::Bound(ty::INNERMOST, shift_bv(e)), kind)
+                },
             },
         )
     }
@@ -640,6 +659,17 @@ impl<'tcx> TyCtxt<'tcx> {
                 let var = ty::BoundVar::from_usize(index);
                 let () = entry.or_insert_with(|| ty::BoundVariableKind::Const).expect_const();
                 self.tcx.mk_const(ty::ConstKind::Bound(ty::INNERMOST, var), ty)
+            }
+            fn replace_effects(
+                &mut self,
+                bv: ty::BoundVar,
+                kind: ty::EffectKind,
+            ) -> ty::Effect<'tcx> {
+                let entry = self.map.entry(bv);
+                let index = entry.index();
+                let var = ty::BoundVar::from_usize(index);
+                let () = entry.or_insert_with(|| ty::BoundVariableKind::Effect).expect_effect();
+                self.tcx.mk_effect(ty::EffectValue::Bound(ty::INNERMOST, var), kind)
             }
         }
 
@@ -723,6 +753,19 @@ impl<'tcx> TypeFolder<'tcx> for Shifter<'tcx> {
 
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
+    }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        if let ty::EffectValue::Bound(debruijn, bound_effect) = e.val {
+            if self.amount == 0 || debruijn < self.current_index {
+                e
+            } else {
+                let debruijn = debruijn.shifted_in(self.amount);
+                self.tcx.mk_effect(ty::EffectValue::Bound(debruijn, bound_effect), e.kind)
+            }
+        } else {
+            e.super_fold_with(self)
+        }
     }
 }
 

@@ -13,6 +13,7 @@ use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_middle::infer::unify_key::EffectVariableOriginKind;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
@@ -1845,9 +1846,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             // In general, during probe we erase regions.
                             self.tcx.lifetimes.re_erased.into()
                         }
-                        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                            self.var_for_def(self.span, param)
-                        }
+                        GenericParamDefKind::Type { .. }
+                        | GenericParamDefKind::Const { .. }
+                        | GenericParamDefKind::Effect { .. } => self.var_for_def(self.span, param),
                     }
                 }
             });
@@ -1881,6 +1882,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     span,
                 };
                 self.next_const_var(self.tcx.type_of(param.def_id), origin).into()
+            }
+            GenericParamDefKind::Effect { kind } => {
+                let span = self.tcx.def_span(def_id);
+                self.next_effect_var(span, EffectVariableOriginKind::SubstitutionPlaceholder, kind)
+                    .into()
             }
         })
     }
