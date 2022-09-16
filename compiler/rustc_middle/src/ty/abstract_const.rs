@@ -1,7 +1,7 @@
 //! A subset of a mir body used for const evaluatability checking.
 use crate::mir;
 use crate::ty::visit::TypeVisitable;
-use crate::ty::{self, subst::Subst, DelaySpanBugEmitted, EarlyBinder, SubstsRef, Ty, TyCtxt};
+use crate::ty::{self, DelaySpanBugEmitted, EarlyBinder, SubstsRef, Ty, TyCtxt};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use std::cmp;

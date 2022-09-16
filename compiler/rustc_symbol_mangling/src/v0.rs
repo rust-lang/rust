@@ -7,10 +7,10 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
     self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, UintTy,
 };
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::kw;
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;

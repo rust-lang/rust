@@ -1,7 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::subst::Subst;
 use crate::ty::{
     self, layout_sanity_check::sanity_check_layout, subst::SubstsRef, EarlyBinder, ReprOptions, Ty,
     TyCtxt, TypeVisitable,

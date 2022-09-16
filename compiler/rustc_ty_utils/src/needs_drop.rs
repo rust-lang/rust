@@ -2,7 +2,6 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};

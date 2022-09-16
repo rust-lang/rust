@@ -15,7 +15,7 @@ use rustc_hir::HirId;
 use rustc_hir::Node;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, RvalueScopes, Subst, TyCtxt};
+use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
 use rustc_span::Span;
 
 pub(crate) fn thir_body<'tcx>(

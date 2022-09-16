@@ -4,7 +4,6 @@
  */
 
 use crate::mir::*;
-use crate::ty::subst::Subst;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_target::abi::VariantIdx;

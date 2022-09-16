@@ -21,7 +21,7 @@ use rustc_middle::mir::{
     TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::Span;

@@ -22,7 +22,6 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitor};
 use rustc_span::symbol::sym;
