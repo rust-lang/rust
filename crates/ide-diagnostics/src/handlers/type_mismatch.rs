@@ -315,25 +315,25 @@ fn main() {
     fn test_add_reference_to_macro_call() {
         check_fix(
             r#"
-macro_rules! hello_world {
+macro_rules! thousand {
     () => {
-        "Hello World".to_string()
+        1000_u64
     };
 }
-fn test(foo: &String) {}
+fn test(foo: &u64) {}
 fn main() {
-    test($0hello_world!());
+    test($0thousand!());
 }
             "#,
             r#"
-macro_rules! hello_world {
+macro_rules! thousand {
     () => {
-        "Hello World".to_string()
+        1000_u64
     };
 }
-fn test(foo: &String) {}
+fn test(foo: &u64) {}
 fn main() {
-    test(&hello_world!());
+    test(&thousand!());
 }
             "#,
         );
