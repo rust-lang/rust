@@ -8,6 +8,7 @@ use rustc_hir::{FnRetTy, Ty};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{Region, TyCtxt};
 use rustc_span::symbol::kw;
+use rustc_span::Symbol;
 use rustc_span::{symbol::Ident, BytePos, Span};
 
 use crate::infer::error_reporting::{
@@ -618,4 +619,100 @@ pub struct TraitImplDiff {
     pub rel_help: Option<RelationshipHelp>,
     pub expected: String,
     pub found: String,
+}
+
+pub struct DynTraitConstraintSuggestion {
+    pub span: Span,
+    pub ident: Ident,
+}
+
+impl AddSubdiagnostic for DynTraitConstraintSuggestion {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        let mut multi_span: MultiSpan = vec![self.span].into();
+        multi_span.push_span_label(self.span, fluent::infer::dtcs_has_lifetime_req_label);
+        multi_span.push_span_label(self.ident.span, fluent::infer::dtcs_introduces_requirement);
+        diag.span_note(multi_span, fluent::infer::dtcs_has_req_note);
+        diag.span_suggestion_verbose(
+            self.span.shrink_to_hi(),
+            fluent::infer::dtcs_suggestion,
+            " + '_",
+            Applicability::MaybeIncorrect,
+        );
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(infer::but_calling_introduces, code = "E0772")]
+pub struct ButCallingIntroduces {
+    #[label(infer::label1)]
+    pub param_ty_span: Span,
+    #[primary_span]
+    #[label(infer::label2)]
+    pub cause_span: Span,
+
+    pub has_param_name: bool,
+    pub param_name: String,
+    pub has_lifetime: bool,
+    pub lifetime: String,
+    pub assoc_item: Symbol,
+    pub has_impl_path: bool,
+    pub impl_path: String,
+}
+
+pub struct ReqIntroducedLocations {
+    pub span: MultiSpan,
+    pub spans: Vec<Span>,
+    pub fn_decl_span: Span,
+    pub cause_span: Span,
+    pub add_label: bool,
+}
+
+impl AddSubdiagnostic for ReqIntroducedLocations {
+    fn add_to_diagnostic(mut self, diag: &mut rustc_errors::Diagnostic) {
+        for sp in self.spans {
+            self.span.push_span_label(sp, fluent::infer::ril_introduced_here);
+        }
+
+        if self.add_label {
+            self.span.push_span_label(self.fn_decl_span, fluent::infer::ril_introduced_by);
+        }
+        self.span.push_span_label(self.cause_span, fluent::infer::ril_because_of);
+        diag.span_note(self.span, fluent::infer::ril_static_introduced_by);
+    }
+}
+
+pub struct MoreTargeted {
+    pub ident: Symbol,
+}
+
+impl AddSubdiagnostic for MoreTargeted {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        diag.code(rustc_errors::error_code!(E0772));
+        diag.set_primary_message(fluent::infer::more_targeted);
+        diag.set_arg("ident", self.ident);
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(infer::but_needs_to_satisfy, code = "E0759")]
+pub struct ButNeedsToSatisfy {
+    #[primary_span]
+    pub sp: Span,
+    #[label(infer::influencer)]
+    pub influencer_point: Span,
+    #[label(infer::used_here)]
+    pub spans: Vec<Span>,
+    #[label(infer::require)]
+    pub require_span_as_label: Option<Span>,
+    #[note(infer::require)]
+    pub require_span_as_note: Option<Span>,
+    #[note(infer::introduced_by_bound)]
+    pub bound: Option<Span>,
+
+    #[subdiagnostic]
+    pub req_introduces_loc: Option<ReqIntroducedLocations>,
+
+    pub spans_empty: bool,
+    pub has_lifetime: bool,
+    pub lifetime: String,
 }

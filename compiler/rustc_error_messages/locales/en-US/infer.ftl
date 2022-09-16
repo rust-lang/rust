@@ -221,3 +221,55 @@ infer_trait_impl_diff = `impl` item signature doesn't match `trait` item signatu
 infer_tid_rel_help = verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
 infer_tid_consider_borriwing = consider borrowing this type parameter in the trait
 infer_tid_param_help = the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
+
+infer_dtcs_has_lifetime_req_label = this has an implicit `'static` lifetime requirement
+infer_dtcs_introduces_requirement = calling this method introduces the `impl`'s 'static` requirement
+infer_dtcs_has_req_note = the used `impl` has a `'static` requirement
+infer_dtcs_suggestion = consider relaxing the implicit `'static` requirement
+
+infer_but_calling_introduces = {$has_param_name ->
+    [true] `{$param_name}`
+    *[false] `fn` parameter
+} has {$lifetime_kind ->
+    [named] lifetime `{lifetime}`
+    *[anon] an anonymous lifetime `'_`
+} but calling `{assoc_item}` introduces an implicit `'static` lifetime requirement
+    .label1 = {$has_lifetime ->
+        [named] lifetime `{lifetime}`
+        *[anon] an anonymous lifetime `'_`
+    }
+    .label2 = ...is used and required to live as long as `'static` here because of an implicit lifetime bound on the {$has_impl_path ->
+        [named] `impl` of `{$impl_path}`
+        *[anon] inherent `impl`
+    }
+
+infer_but_needs_to_satisfy = {$has_param_name ->
+    [true] `{$param_name}`
+    *[false] `fn` parameter
+} has {$has_lifetime ->
+    [named] lifetime `{lifetime}`
+    *[anon] an anonymous lifetime `'_`
+} but it needs to satisfy a `'static` lifetime requirement
+    .influencer = this data with {$has_lifetime ->
+        [named] lifetime `{lifetime}`
+        *[anon] an anonymous lifetime `'_`
+    }...
+    .require = {$spans_empty ->
+        *[true] ...is used and required to live as long as `'static` here
+        [false] ...and is required to live as long as `'static` here
+    }
+    .used_here = ...is used here...
+    .introduced_by_bound = 'static` lifetime requirement introduced by this bound
+
+infer_more_targeted = {$has_param_name ->
+    [true] `{$param_name}`
+    *[false] `fn` parameter
+} has {$has_lifetime ->
+    [named] lifetime `{lifetime}`
+    *[anon] an anonymous lifetime `'_`
+} but calling `{$ident}` introduces an implicit `'static` lifetime requirement
+
+infer_ril_introduced_here = `'static` requirement introduced here
+infer_ril_introduced_by = requirement introduced by this return type
+infer_ril_because_of = because of this returned expression
+infer_ril_static_introduced_by = "`'static` lifetime requirement introduced by the return type
