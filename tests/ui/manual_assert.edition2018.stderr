@@ -9,7 +9,7 @@ LL | |     }
    = note: `-D clippy::manual-assert` implied by `-D warnings`
 help: try instead
    |
-LL |     assert!(!(!a.is_empty()), "qaqaq{:?}", a);
+LL |     assert!(a.is_empty(), "qaqaq{:?}", a);
    |
 
 error: only a `panic!` in `if`-then statement
@@ -22,7 +22,7 @@ LL | |     }
    |
 help: try instead
    |
-LL |     assert!(!(!a.is_empty()), "qwqwq");
+LL |     assert!(a.is_empty(), "qwqwq");
    |
 
 error: only a `panic!` in `if`-then statement

@@ -4,7 +4,7 @@ use clippy_utils::macros::{root_macro_call, FormatArgsExpn};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{peel_blocks_with_stmt, span_extract_comment, sugg};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -55,9 +55,12 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
                 if !comments.is_empty() {
                     comments += "\n";
                 }
-                // we need to negate the <cond> expression because `assert!` panics when <cond> is `false`, wherease original pattern panicked when evaluating to `true`
-                let cond_sugg = !sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability);
-                let sugg = format!("assert!({cond_sugg}, {format_args_snip});");
+                let (cond, not) = match cond.kind {
+                     ExprKind::Unary(UnOp::Not, e) => (e, ""),
+                     _ => (cond, "!"),
+                 };
+                let cond_sugg = sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability).maybe_par();
+                let sugg = format!("assert!({not}{cond_sugg}, {format_args_snip});");
                 // we show to the user the suggestion without the comments, but when applicating the fix, include the comments in the block
                 span_lint_and_then(
                     cx,
