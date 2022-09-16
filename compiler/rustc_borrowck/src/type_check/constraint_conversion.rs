@@ -98,9 +98,12 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         // region constraints like `for<'a> 'a: 'b`. At some point
         // when we move to universes, we will, and this assertion
         // will start to fail.
-        let ty::OutlivesPredicate(k1, r2) = query_constraint.no_bound_vars().unwrap_or_else(|| {
-            bug!("query_constraint {:?} contained bound vars", query_constraint,);
-        });
+        let ty::OutlivesPredicate(k1, r2) =
+            query_constraint.0.no_bound_vars().unwrap_or_else(|| {
+                bug!("query_constraint {:?} contained bound vars", query_constraint,);
+            });
+
+        let _constraint_category = query_constraint.1;
 
         match k1.unpack() {
             GenericArgKind::Lifetime(r1) => {

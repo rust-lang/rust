@@ -2295,7 +2295,13 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
                              outlives_requirement={:?}",
                             region, outlived_region, outlives_requirement,
                         );
-                        ty::Binder::dummy(ty::OutlivesPredicate(region.into(), outlived_region))
+                        (
+                            ty::Binder::dummy(ty::OutlivesPredicate(
+                                region.into(),
+                                outlived_region,
+                            )),
+                            ConstraintCategory::BoringNoLocation,
+                        )
                     }
 
                     ClosureOutlivesSubject::Ty(ty) => {
@@ -2305,7 +2311,10 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
                              outlives_requirement={:?}",
                             ty, outlived_region, outlives_requirement,
                         );
-                        ty::Binder::dummy(ty::OutlivesPredicate(ty.into(), outlived_region))
+                        (
+                            ty::Binder::dummy(ty::OutlivesPredicate(ty.into(), outlived_region)),
+                            ConstraintCategory::BoringNoLocation,
+                        )
                     }
                 }
             })
