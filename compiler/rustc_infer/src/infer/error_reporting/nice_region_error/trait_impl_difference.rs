@@ -156,7 +156,8 @@ impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
                 [segment]
                     if matches!(
                         segment.res,
-                        Res::SelfTy { trait_: _, alias_to: _ }
+                        Res::SelfTyParam { .. }
+                            | Res::SelfTyAlias { .. }
                             | Res::Def(hir::def::DefKind::TyParam, _)
                     ) =>
                 {

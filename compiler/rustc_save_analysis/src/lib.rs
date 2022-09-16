@@ -740,7 +740,8 @@ impl<'tcx> SaveContext<'tcx> {
                 _,
             )
             | Res::PrimTy(..)
-            | Res::SelfTy { .. }
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
             | Res::ToolMod
             | Res::NonMacroAttr(..)
             | Res::SelfCtor(..)
@@ -805,7 +806,7 @@ impl<'tcx> SaveContext<'tcx> {
 
     fn lookup_def_id(&self, ref_id: hir::HirId) -> Option<DefId> {
         match self.get_path_res(ref_id) {
-            Res::PrimTy(_) | Res::SelfTy { .. } | Res::Err => None,
+            Res::PrimTy(_) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::Err => None,
             def => def.opt_def_id(),
         }
     }

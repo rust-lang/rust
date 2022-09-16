@@ -1902,7 +1902,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
         let bound = match (&qself_ty.kind(), qself_res) {
-            (_, Res::SelfTy { trait_: Some(_), alias_to: Some((impl_def_id, _)) }) => {
+            (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
                 let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
@@ -1921,8 +1921,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             (
                 &ty::Param(_),
-                Res::SelfTy { trait_: Some(param_did), alias_to: None }
-                | Res::Def(DefKind::TyParam, param_did),
+                Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
             ) => self.find_bound_for_assoc_item(param_did.expect_local(), assoc_ident, span)?,
             _ => {
                 let reported = if variant_resolution.is_some() {
@@ -2417,7 +2416,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let index = generics.param_def_id_to_index[&def_id.to_def_id()];
                 tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id))
             }
-            Res::SelfTy { trait_: Some(_), alias_to: None } => {
+            Res::SelfTyParam { .. } => {
                 // `Self` in trait or type alias.
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments.iter(), |err| {
@@ -2432,7 +2431,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 });
                 tcx.types.self_param
             }
-            Res::SelfTy { trait_: _, alias_to: Some((def_id, forbid_generic)) } => {
+            Res::SelfTyAlias { alias_to: def_id, forbid_generic, .. } => {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 // Try to evaluate any array length constants.

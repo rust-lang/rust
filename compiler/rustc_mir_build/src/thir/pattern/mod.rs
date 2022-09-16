@@ -433,7 +433,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 | DefKind::AssocTy,
                 _,
             )
-            | Res::SelfTy { .. }
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..) => PatKind::Leaf { subpatterns },
             _ => {
                 let pattern_error = match res {

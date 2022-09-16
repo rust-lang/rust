@@ -511,24 +511,18 @@ impl<'a> Resolver<'a> {
 
                 let sm = self.session.source_map();
                 let def_id = match outer_res {
-                    Res::SelfTy { trait_: maybe_trait_defid, alias_to: maybe_impl_defid } => {
-                        if let Some(impl_span) =
-                            maybe_impl_defid.and_then(|(def_id, _)| self.opt_span(def_id))
-                        {
+                    Res::SelfTyParam { .. } => {
+                        err.span_label(span, "can't use `Self` here");
+                        return err;
+                    }
+                    Res::SelfTyAlias { alias_to: def_id, .. } => {
+                        if let Some(impl_span) = self.opt_span(def_id) {
                             err.span_label(
                                 reduce_impl_span_to_impl_keyword(sm, impl_span),
                                 "`Self` type implicitly declared here, by this `impl`",
                             );
                         }
-                        match (maybe_trait_defid, maybe_impl_defid) {
-                            (Some(_), None) => {
-                                err.span_label(span, "can't use `Self` here");
-                            }
-                            (_, Some(_)) => {
-                                err.span_label(span, "use a type here instead");
-                            }
-                            (None, None) => bug!("`impl` without trait nor type?"),
-                        }
+                        err.span_label(span, "use a type here instead");
                         return err;
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
@@ -545,8 +539,9 @@ impl<'a> Resolver<'a> {
                     }
                     _ => {
                         bug!(
-                            "GenericParamsFromOuterFunction should only be used with Res::SelfTy, \
-                            DefKind::TyParam or DefKind::ConstParam"
+                            "GenericParamsFromOuterFunction should only be used with \
+                            Res::SelfTyParam, Res::SelfTyAlias, DefKind::TyParam or \
+                            DefKind::ConstParam"
                         );
                     }
                 };
