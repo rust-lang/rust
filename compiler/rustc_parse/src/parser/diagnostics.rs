@@ -430,9 +430,32 @@ pub(crate) struct NotAsNegationOperator {
     #[primary_span]
     pub negated: Span,
     pub negated_desc: String,
-    pub negated_msg: String,
-    #[suggestion_short(applicability = "machine-applicable", code = "!")]
-    pub not: Span,
+    #[subdiagnostic]
+    pub sub: NotAsNegationOperatorSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum NotAsNegationOperatorSub {
+    #[suggestion_short(
+        parser::unexpected_token_after_not_default,
+        applicability = "machine-applicable",
+        code = "!"
+    )]
+    SuggestNotDefault(#[primary_span] Span),
+
+    #[suggestion_short(
+        parser::unexpected_token_after_not_bitwise,
+        applicability = "machine-applicable",
+        code = "!"
+    )]
+    SuggestNotBitwise(#[primary_span] Span),
+
+    #[suggestion_short(
+        parser::unexpected_token_after_not_logical,
+        applicability = "machine-applicable",
+        code = "!"
+    )]
+    SuggestNotLogical(#[primary_span] Span),
 }
 
 #[derive(SessionDiagnostic)]

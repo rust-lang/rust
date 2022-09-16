@@ -55,7 +55,9 @@ parser_tilde_is_not_unary_operator = `~` cannot be used as a unary operator
     .suggestion = use `!` to perform bitwise not
 
 parser_unexpected_token_after_not = unexpected {$negated_desc} after identifier
-    .suggestion = use `!` to perform {$negated_msg}
+parser_unexpected_token_after_not_bitwise = use `!` to perform bitwise not
+parser_unexpected_token_after_not_logical = use `!` to perform logical negation
+parser_unexpected_token_after_not_default = use `!` to perform logical negation or bitwise not
 
 parser_malformed_loop_label = malformed loop label
     .suggestion = use the correct loop label format

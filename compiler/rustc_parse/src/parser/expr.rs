@@ -6,8 +6,9 @@ use super::diagnostics::{
     InvalidComparisonOperatorSub, InvalidLogicalOperator, InvalidLogicalOperatorSub,
     LeftArrowOperator, LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath,
     MalformedLoopLabel, MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
-    NotAsNegationOperator, OuterAttributeNotAllowedOnIfElse, RequireColonAfterLabeledExpression,
-    SnapshotParser, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
+    NotAsNegationOperator, NotAsNegationOperatorSub, OuterAttributeNotAllowedOnIfElse,
+    RequireColonAfterLabeledExpression, SnapshotParser, TildeAsUnaryOperator,
+    UnexpectedTokenAfterLabel,
 };
 use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
@@ -660,21 +661,23 @@ impl<'a> Parser<'a> {
     fn recover_not_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
         // Emit the error...
         let negated_token = self.look_ahead(1, |t| t.clone());
-        let negtated_msg = if negated_token.is_numeric_lit() {
-            "bitwise not"
+
+        let sub_diag = if negated_token.is_numeric_lit() {
+            NotAsNegationOperatorSub::SuggestNotBitwise
         } else if negated_token.is_bool_lit() {
-            "logical negation"
+            NotAsNegationOperatorSub::SuggestNotLogical
         } else {
-            "logical negation or bitwise not"
+            NotAsNegationOperatorSub::SuggestNotDefault
         };
 
         self.sess.emit_err(NotAsNegationOperator {
             negated: negated_token.span,
             negated_desc: super::token_descr(&negated_token),
-            negated_msg: negtated_msg.to_string(),
             // Span the `not` plus trailing whitespace to avoid
             // trailing whitespace after the `!` in our suggestion
-            not: self.sess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),
+            sub: sub_diag(
+                self.sess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),
+            ),
         });
 
         // ...and recover!
