@@ -436,6 +436,43 @@ impl Step for StdLink {
         let libdir = builder.sysroot_libdir(target_compiler, target);
         let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
+
+        if compiler.stage == 0 {
+            // special handling for stage0, to make `rustup toolchain link` and `x dist --stage 0`
+            // work for stage0-sysroot
+
+            // copy bin files from stage0/bin to stage0-sysroot/bin
+            let sysroot = builder.out.join(&compiler.host.triple).join("stage0-sysroot");
+
+            let host = compiler.host.triple;
+            let stage0_bin_dir = builder.out.join(&host).join("stage0/bin");
+            let sysroot_bin_dir = sysroot.join("bin");
+            t!(fs::create_dir_all(&sysroot_bin_dir));
+            builder.cp_r(&stage0_bin_dir, &sysroot_bin_dir);
+
+            // copy all *.so files from stage0/lib to stage0-sysroot/lib
+            let stage0_lib_dir = builder.out.join(&host).join("stage0/lib");
+            if let Ok(files) = fs::read_dir(&stage0_lib_dir) {
+                for file in files {
+                    let file = t!(file);
+                    let path = file.path();
+                    if path.is_file() && is_dylib(&file.file_name().into_string().unwrap()) {
+                        builder.copy(&path, &sysroot.join("lib").join(path.file_name().unwrap()));
+                    }
+                }
+            }
+
+            // copy codegen-backends from stage0
+            let sysroot_codegen_backends = builder.sysroot_codegen_backends(compiler);
+            t!(fs::create_dir_all(&sysroot_codegen_backends));
+            let stage0_codegen_backends = builder
+                .out
+                .join(&host)
+                .join("stage0/lib/rustlib")
+                .join(&host)
+                .join("codegen-backends");
+            builder.cp_r(&stage0_codegen_backends, &sysroot_codegen_backends);
+        }
     }
 }
 
