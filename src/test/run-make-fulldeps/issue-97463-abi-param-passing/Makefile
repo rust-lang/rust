@@ -1,5 +1,7 @@
 -include ../tools.mk
 
+# ignore-msvc
+
 # The issue exercised by this test, rust-lang/rust#97463, explicitly needs `-O`
 # flags (like `-O3`) to reproduce. Thus, we call $(CC) instead of nicer
 # alternatives provided by tools.mk like using `COMPILE_OBJ` or using a
