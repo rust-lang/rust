@@ -11,7 +11,6 @@ doctest = false
 bitflags = "1.0"
 cstr = "0.2"
 libc = "0.2"
-libloading = "0.7.1"
 measureme = "10.0.0"
 object = { version = "0.29.0", default-features = false, features = ["std", "read_core", "archive", "coff", "elf", "macho", "pe"] }
 tracing = "0.1"
