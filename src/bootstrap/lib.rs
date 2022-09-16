@@ -825,6 +825,11 @@ impl Build {
         self.out.join(&*target.triple).join("doc")
     }
 
+    /// Output directory for all JSON-formatted documentation for a target
+    fn json_doc_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("json-doc")
+    }
+
     fn test_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(&*target.triple).join("test")
     }
