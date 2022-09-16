@@ -15,7 +15,6 @@ fn main() {
     let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
     let _ = map.iter().map(|(_, value)| value).collect::<Vec<_>>();
     let _ = map.iter().map(|(_, v)| v + 2).collect::<Vec<_>>();
-    let _ = map.iter().map(|(_, val)| val).collect::<Vec<_>>();
 
     let _ = map.clone().into_iter().map(|(key, _)| key).collect::<Vec<_>>();
     let _ = map.clone().into_iter().map(|(key, _)| key + 2).collect::<Vec<_>>();
@@ -42,7 +41,6 @@ fn main() {
     let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
     let _ = map.iter().map(|(_, value)| value).collect::<Vec<_>>();
     let _ = map.iter().map(|(_, v)| v + 2).collect::<Vec<_>>();
-    let _ = map.iter().map(|(_, val)| val).collect::<Vec<_>>();
 
     let _ = map.clone().into_iter().map(|(key, _)| key).collect::<Vec<_>>();
     let _ = map.clone().into_iter().map(|(key, _)| key + 2).collect::<Vec<_>>();
