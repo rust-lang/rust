@@ -1418,12 +1418,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         code: impl Fn(usize, Span) -> ObligationCauseCode<'tcx>,
     ) {
-        let mut param_env = self.param_env;
-        match self.tcx.def_kind(def_id) {
+        let param_env = self.param_env;
+
+        let remap = match self.tcx.def_kind(def_id) {
             // Associated consts have `Self: ~const Trait` bounds that should be satisfiable when
             // `Self: Trait` is satisfied because it does not matter whether the impl is `const`.
             // Therefore we have to remap the param env here to be non-const.
-            hir::def::DefKind::AssocConst => param_env = param_env.without_const(),
+            hir::def::DefKind::AssocConst => true,
             hir::def::DefKind::AssocFn
                 if self.tcx.def_kind(self.tcx.parent(def_id)) == hir::def::DefKind::Trait =>
             {
@@ -1437,19 +1438,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 // FIXME(fee1-dead) FIXME(const_trait_impl): update this doc when trait methods can satisfy
                 // `~const FnOnce` or can be coerced to `const fn` pointer.
-                param_env = param_env.without_const();
+                true
             }
-            _ => {}
-        }
+            _ => false,
+        };
         let (bounds, _) = self.instantiate_bounds(span, def_id, &substs);
 
-        for obligation in traits::predicates_for_generics(
+        for mut obligation in traits::predicates_for_generics(
             |idx, predicate_span| {
                 traits::ObligationCause::new(span, self.body_id, code(idx, predicate_span))
             },
             param_env,
             bounds,
         ) {
+            if remap {
+                obligation = obligation.without_const(self.tcx);
+            }
             self.register_predicate(obligation);
         }
     }

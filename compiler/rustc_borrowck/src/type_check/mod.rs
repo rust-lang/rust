@@ -436,7 +436,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     locations,
                 );
                 self.cx.param_env = prev;
-                
             }
         }
     }

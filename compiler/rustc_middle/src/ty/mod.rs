@@ -861,6 +861,11 @@ impl<'tcx> TraitPredicate<'tcx> {
             (BoundConstness::ConstIfConst, hir::Constness::NotConst) => false,
         }
     }
+
+    pub fn without_const(mut self) -> Self {
+        self.constness = BoundConstness::NotConst;
+        self
+    }
 }
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
