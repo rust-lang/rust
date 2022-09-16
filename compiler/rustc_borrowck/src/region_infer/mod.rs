@@ -1398,7 +1398,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// whether any of the constraints were too strong. In particular,
     /// we want to check for a case where a universally quantified
     /// region exceeded its bounds. Consider:
-    /// ```compile_fail,E0312
+    /// ```ignore(compile_fail,E0312)
     /// fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
     /// ```
     /// In this case, returning `x` requires `&'a u32 <: &'b u32`
@@ -1451,7 +1451,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// <https://smallcultfollowing.com/babysteps/blog/2019/01/17/polonius-and-region-errors/>
     ///
     /// In the canonical example
-    /// ```compile_fail,E0312
+    /// ```ignore(compile_fail,E0312)
     /// fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
     /// ```
     /// returning `x` requires `&'a u32 <: &'b u32` and hence we establish (transitively) a
