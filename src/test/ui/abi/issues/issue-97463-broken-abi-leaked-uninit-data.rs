@@ -18,7 +18,7 @@ fn main() {
     let value: u16 = unsafe { issue_97463_leak_uninit_data(r1 as u32, r2 as u32, r3 as u32) };
 
     // NOTE: as an example of the sensitivity of this test to optimization choices,
-    // uncommenting this block of code makes the bug go away on pnkfeix's machine.
+    // uncommenting this block of code makes the bug go away on pnkfelix's machine.
     // (But observing via `dbg!` doesn't hide the bug. At least sometimes.)
     /*
     println!("{}", value);
