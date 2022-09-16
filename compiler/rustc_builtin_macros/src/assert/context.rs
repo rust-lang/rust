@@ -58,6 +58,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     /// Builds the whole `assert!` expression. For example, `let elem = 1; assert!(elem == 1);` expands to:
     ///
     /// ```rust
+    /// #![feature(generic_assert_internals)]
     /// let elem = 1;
     /// {
     ///   #[allow(unused_imports)]
