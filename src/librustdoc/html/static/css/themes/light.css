@@ -82,23 +82,24 @@ a.result-keyword:focus { background-color: #afc6e4; }
 
 .content .item-info::before { color: #ccc; }
 
-.content span.enum, .content a.enum, .block a.current.enum { color: #AD378A; }
-.content span.struct, .content a.struct, .block a.current.struct { color: #AD378A; }
-.content span.type, .content a.type, .block a.current.type { color:  #AD378A; }
+.content span.enum, .content a.enum { color: #AD378A; }
+.content span.struct, .content a.struct { color: #AD378A; }
+.content span.type, .content a.type { color:  #AD378A; }
 .content span.associatedtype, .content a.associatedtype { color: #3873AD; }
-.content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #3873AD; }
-.content span.attr, .content a.attr, .block a.current.attr,
-.content span.derive, .content a.derive, .block a.current.derive,
-.content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
-.content span.union, .content a.union, .block a.current.union { color: #AD378A; }
-.content span.constant, .content a.constant, .block a.current.constant,
-.content span.static, .content a.static, .block a.current.static { color: #3873AD; }
-.content span.primitive, .content a.primitive, .block a.current.primitive { color: #AD378A; }
-.content span.trait, .content a.trait, .block a.current.trait { color: #6E4FC9; }
-.content span.traitalias, .content a.traitalias, .block a.current.traitalias { color: #5137AD; }
-.content span.fn, .content a.fn, .block a.current.fn,
+.content span.foreigntype, .content a.foreigntype { color: #3873AD; }
+.content span.attr, .content a.attr,
+.content span.derive, .content a.derive,
+.content span.macro, .content a.macro { color: #068000; }
+.content span.union, .content a.union { color: #AD378A; }
+.content span.constant, .content a.constant,
+.content span.static, .content a.static { color: #3873AD; }
+.content span.primitive, .content a.primitive { color: #AD378A; }
+.content span.mod, .content a.mod { color: #3873AD; }
+.content span.trait, .content a.trait { color: #6E4FC9; }
+.content span.traitalias, .content a.traitalias { color: #5137AD; }
+.content span.fn, .content a.fn,
 .content .fnname { color: #AD7C37; }
-.content span.keyword, .content a.keyword, .block a.current.keyword { color: #3873AD; }
+.content span.keyword, .content a.keyword { color: #3873AD; }
 
 .sidebar a { color: #356da4; }
 .sidebar a.current.enum { color: #a63283; }
