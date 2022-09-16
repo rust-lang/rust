@@ -245,6 +245,9 @@ enum Trace<'tcx> {
     NotVisited,
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum ExtraConstraintInfo {}
+
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Creates a new region inference context with a total of
     /// `num_region_variables` valid inference variables; the first N
@@ -1818,10 +1821,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr1_origin: NllRegionVariableOrigin,
         fr2: RegionVid,
     ) -> (ConstraintCategory<'tcx>, ObligationCause<'tcx>) {
-        let BlameConstraint { category, cause, .. } =
-            self.best_blame_constraint(fr1, fr1_origin, |r| {
-                self.provides_universal_region(r, fr1, fr2)
-            });
+        let BlameConstraint { category, cause, .. } = self
+            .best_blame_constraint(fr1, fr1_origin, |r| self.provides_universal_region(r, fr1, fr2))
+            .0;
         (category, cause)
     }
 
@@ -2010,7 +2012,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         from_region: RegionVid,
         from_region_origin: NllRegionVariableOrigin,
         target_test: impl Fn(RegionVid) -> bool,
-    ) -> BlameConstraint<'tcx> {
+    ) -> (BlameConstraint<'tcx>, Vec<ExtraConstraintInfo>) {
         // Find all paths
         let (path, target_region) =
             self.find_constraint_paths_between_regions(from_region, target_test).unwrap();
@@ -2025,6 +2027,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 ))
                 .collect::<Vec<_>>()
         );
+
+        let extra_info = vec![];
 
         // We try to avoid reporting a `ConstraintCategory::Predicate` as our best constraint.
         // Instead, we use it to produce an improved `ObligationCauseCode`.
@@ -2175,7 +2179,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let best_choice =
             if blame_source { range.rev().find(find_region) } else { range.find(find_region) };
 
-        debug!(?best_choice, ?blame_source);
+        debug!(?best_choice, ?blame_source, ?extra_info);
 
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
@@ -2184,7 +2188,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 {
                     // The return expression is being influenced by the return type being
                     // impl Trait, point at the return type and not the return expr.
-                    return next.clone();
+                    return (next.clone(), extra_info);
                 }
             }
 
@@ -2204,7 +2208,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
             }
 
-            return categorized_path[i].clone();
+            return (categorized_path[i].clone(), extra_info);
         }
 
         // If that search fails, that is.. unusual. Maybe everything
@@ -2214,7 +2218,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         categorized_path.sort_by(|p0, p1| p0.category.cmp(&p1.category));
         debug!("sorted_path={:#?}", categorized_path);
 
-        categorized_path.remove(0)
+        (categorized_path.remove(0), extra_info)
     }
 
     pub(crate) fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
