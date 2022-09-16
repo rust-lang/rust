@@ -754,9 +754,8 @@ fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
     hir_id: HirId,
     witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
 ) {
-    cx.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, hir_id, sp, |build| {
+    cx.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, hir_id, sp, "some variants are not matched explicitly", |lint| {
         let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
-        let mut lint = build.build("some variants are not matched explicitly");
         lint.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
         lint.help(
             "ensure that all variants are matched explicitly by adding the suggested match arms",
@@ -765,7 +764,7 @@ fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
             "the matched value is of type `{}` and the `non_exhaustive_omitted_patterns` attribute was found",
             scrut_ty,
         ));
-        lint.emit();
+        lint
     });
 }
 

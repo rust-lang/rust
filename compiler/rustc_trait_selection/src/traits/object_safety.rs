@@ -14,7 +14,7 @@ use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
 use hir::def::DefKind;
-use rustc_errors::{FatalError, MultiSpan};
+use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst};
@@ -164,37 +164,42 @@ fn lint_object_unsafe_trait(
 ) {
     // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
     // It's also hard to get a use site span, so we use the method definition span.
-    tcx.struct_span_lint_hir(WHERE_CLAUSES_OBJECT_SAFETY, hir::CRATE_HIR_ID, span, |lint| {
-        let mut err = lint.build(&format!(
-            "the trait `{}` cannot be made into an object",
-            tcx.def_path_str(trait_def_id)
-        ));
-        let node = tcx.hir().get_if_local(trait_def_id);
-        let mut spans = MultiSpan::from_span(span);
-        if let Some(hir::Node::Item(item)) = node {
-            spans.push_span_label(item.ident.span, "this trait cannot be made into an object...");
-            spans.push_span_label(span, format!("...because {}", violation.error_msg()));
-        } else {
-            spans.push_span_label(
-                span,
-                format!(
-                    "the trait cannot be made into an object because {}",
-                    violation.error_msg()
-                ),
+    tcx.struct_span_lint_hir(
+        WHERE_CLAUSES_OBJECT_SAFETY,
+        hir::CRATE_HIR_ID,
+        span,
+        DelayDm(|| format!("the trait `{}` cannot be made into an object", tcx.def_path_str(trait_def_id))),
+        |err| {
+            let node = tcx.hir().get_if_local(trait_def_id);
+            let mut spans = MultiSpan::from_span(span);
+            if let Some(hir::Node::Item(item)) = node {
+                spans.push_span_label(
+                    item.ident.span,
+                    "this trait cannot be made into an object...",
+                );
+                spans.push_span_label(span, format!("...because {}", violation.error_msg()));
+            } else {
+                spans.push_span_label(
+                    span,
+                    format!(
+                        "the trait cannot be made into an object because {}",
+                        violation.error_msg()
+                    ),
+                );
+            };
+            err.span_note(
+                spans,
+                "for a trait to be \"object safe\" it needs to allow building a vtable to allow the \
+                call to be resolvable dynamically; for more information visit \
+                <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
             );
-        };
-        err.span_note(
-            spans,
-            "for a trait to be \"object safe\" it needs to allow building a vtable to allow the \
-             call to be resolvable dynamically; for more information visit \
-             <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
-        );
-        if node.is_some() {
-            // Only provide the help if its a local trait, otherwise it's not
-            violation.solution(&mut err);
-        }
-        err.emit();
-    });
+            if node.is_some() {
+                // Only provide the help if its a local trait, otherwise it's not
+                violation.solution(err);
+            }
+            err
+        },
+    );
 }
 
 fn sized_trait_bound_spans<'tcx>(

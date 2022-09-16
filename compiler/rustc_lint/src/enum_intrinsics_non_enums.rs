@@ -50,26 +50,24 @@ fn enforce_mem_discriminant(
 ) {
     let ty_param = cx.typeck_results().node_substs(func_expr.hir_id).type_at(0);
     if is_non_enum(ty_param) {
-        cx.struct_span_lint(ENUM_INTRINSICS_NON_ENUMS, expr_span, |builder| {
-            builder
-                .build(fluent::lint::enum_intrinsics_mem_discriminant)
-                .set_arg("ty_param", ty_param)
-                .span_note(args_span, fluent::lint::note)
-                .emit();
-        });
+        cx.struct_span_lint(
+            ENUM_INTRINSICS_NON_ENUMS,
+            expr_span,
+            fluent::lint::enum_intrinsics_mem_discriminant,
+            |lint| lint.set_arg("ty_param", ty_param).span_note(args_span, fluent::lint::note),
+        );
     }
 }
 
 fn enforce_mem_variant_count(cx: &LateContext<'_>, func_expr: &hir::Expr<'_>, span: Span) {
     let ty_param = cx.typeck_results().node_substs(func_expr.hir_id).type_at(0);
     if is_non_enum(ty_param) {
-        cx.struct_span_lint(ENUM_INTRINSICS_NON_ENUMS, span, |builder| {
-            builder
-                .build(fluent::lint::enum_intrinsics_mem_variant)
-                .set_arg("ty_param", ty_param)
-                .note(fluent::lint::note)
-                .emit();
-        });
+        cx.struct_span_lint(
+            ENUM_INTRINSICS_NON_ENUMS,
+            span,
+            fluent::lint::enum_intrinsics_mem_variant,
+            |lint| lint.set_arg("ty_param", ty_param).note(fluent::lint::note),
+        );
     }
 }
 

@@ -90,13 +90,11 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         }
         let expr_span = expr.span;
         let span = expr_span.with_lo(receiver.span.hi());
-        cx.struct_span_lint(NOOP_METHOD_CALL, span, |lint| {
-            lint.build(fluent::lint::noop_method_call)
-                .set_arg("method", call.ident.name)
+        cx.struct_span_lint(NOOP_METHOD_CALL, span, fluent::lint::noop_method_call, |lint| {
+            lint.set_arg("method", call.ident.name)
                 .set_arg("receiver_ty", receiver_ty)
                 .span_label(span, fluent::lint::label)
                 .note(fluent::lint::note)
-                .emit();
         });
     }
 }

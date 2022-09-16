@@ -370,10 +370,13 @@ impl CheckAttrVisitor<'_> {
                 b.push_str(&(allowed_target.to_string() + "s"));
                 b
             });
-            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                lint.build(&format!("`#[{name}]` only has an effect on {}", supported_names))
-                    .emit();
-            });
+            self.tcx.struct_span_lint_hir(
+                UNUSED_ATTRIBUTES,
+                hir_id,
+                attr.span,
+                &format!("`#[{name}]` only has an effect on {}", supported_names),
+                |lint| lint,
+            );
         }
     }
 
@@ -877,25 +880,31 @@ impl CheckAttrVisitor<'_> {
         hir_id: HirId,
     ) -> bool {
         if hir_id != CRATE_HIR_ID {
-            self.tcx.struct_span_lint_hir(INVALID_DOC_ATTRIBUTES, hir_id, meta.span(), |lint| {
-                let mut err = lint.build(fluent::passes::attr_crate_level);
-                if attr.style == AttrStyle::Outer
-                    && self.tcx.hir().get_parent_item(hir_id) == CRATE_OWNER_ID
-                {
-                    if let Ok(mut src) = self.tcx.sess.source_map().span_to_snippet(attr.span) {
-                        src.insert(1, '!');
-                        err.span_suggestion_verbose(
-                            attr.span,
-                            fluent::passes::suggestion,
-                            src,
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else {
-                        err.span_help(attr.span, fluent::passes::help);
+            self.tcx.struct_span_lint_hir(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                fluent::passes::attr_crate_level,
+                |err| {
+                    if attr.style == AttrStyle::Outer
+                        && self.tcx.hir().get_parent_item(hir_id) == CRATE_OWNER_ID
+                    {
+                        if let Ok(mut src) = self.tcx.sess.source_map().span_to_snippet(attr.span) {
+                            src.insert(1, '!');
+                            err.span_suggestion_verbose(
+                                attr.span,
+                                fluent::passes::suggestion,
+                                src,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.span_help(attr.span, fluent::passes::help);
+                        }
                     }
-                }
-                err.note(fluent::passes::note).emit();
-            });
+                    err.note(fluent::passes::note);
+                    err
+                },
+            );
             return false;
         }
         true

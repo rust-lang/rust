@@ -3,7 +3,7 @@ use crate::late::unerased_lint_store;
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diagnostic, LintDiagnosticBuilder, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::nested_filter;
@@ -214,14 +214,14 @@ impl<'s> LintLevelsBuilder<'s> {
                     self.struct_lint(
                         FORBIDDEN_LINT_GROUPS,
                         Some(src.span().into()),
-                        |diag_builder| {
-                            let mut diag_builder = diag_builder.build(&format!(
-                                "{}({}) incompatible with previous forbid",
-                                level.as_str(),
-                                src.name(),
-                            ));
-                            decorate_diag(&mut diag_builder);
-                            diag_builder.emit();
+                        format!(
+                            "{}({}) incompatible with previous forbid",
+                            level.as_str(),
+                            src.name(),
+                        ),
+                        |lint| {
+                            decorate_diag(lint);
+                            lint
                         },
                     );
                 }
@@ -466,20 +466,18 @@ impl<'s> LintLevelsBuilder<'s> {
                                     lvl,
                                     src,
                                     Some(sp.into()),
+                                    format!(
+                                        "lint name `{}` is deprecated \
+                                         and may not have an effect in the future.",
+                                        name
+                                    ),
                                     |lint| {
-                                        let msg = format!(
-                                            "lint name `{}` is deprecated \
-                                             and may not have an effect in the future.",
-                                            name
-                                        );
-                                        lint.build(&msg)
-                                            .span_suggestion(
-                                                sp,
-                                                "change it to",
-                                                new_lint_name,
-                                                Applicability::MachineApplicable,
-                                            )
-                                            .emit();
+                                        lint.span_suggestion(
+                                            sp,
+                                            "change it to",
+                                            new_lint_name,
+                                            Applicability::MachineApplicable,
+                                        )
                                     },
                                 );
 
@@ -533,17 +531,17 @@ impl<'s> LintLevelsBuilder<'s> {
                             renamed_lint_level,
                             src,
                             Some(sp.into()),
+                            msg,
                             |lint| {
-                                let mut err = lint.build(msg);
                                 if let Some(new_name) = &renamed {
-                                    err.span_suggestion(
+                                    lint.span_suggestion(
                                         sp,
                                         "use the new name",
                                         new_name,
                                         Applicability::MachineApplicable,
                                     );
                                 }
-                                err.emit();
+                                lint
                             },
                         );
                     }
@@ -555,23 +553,30 @@ impl<'s> LintLevelsBuilder<'s> {
                             Some(self.current_specs()),
                             self.sess,
                         );
-                        struct_lint_level(self.sess, lint, level, src, Some(sp.into()), |lint| {
-                            let name = if let Some(tool_ident) = tool_ident {
-                                format!("{}::{}", tool_ident.name, name)
-                            } else {
-                                name.to_string()
-                            };
-                            let mut db = lint.build(format!("unknown lint: `{}`", name));
-                            if let Some(suggestion) = suggestion {
-                                db.span_suggestion(
-                                    sp,
-                                    "did you mean",
-                                    suggestion,
-                                    Applicability::MachineApplicable,
-                                );
-                            }
-                            db.emit();
-                        });
+                        let name = if let Some(tool_ident) = tool_ident {
+                            format!("{}::{}", tool_ident.name, name)
+                        } else {
+                            name.to_string()
+                        };
+                        struct_lint_level(
+                            self.sess,
+                            lint,
+                            level,
+                            src,
+                            Some(sp.into()),
+                            format!("unknown lint: `{}`", name),
+                            |lint| {
+                                if let Some(suggestion) = suggestion {
+                                    lint.span_suggestion(
+                                        sp,
+                                        "did you mean",
+                                        suggestion,
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
+                                lint
+                            },
+                        );
                     }
                 }
                 // If this lint was renamed, apply the new lint instead of ignoring the attribute.
@@ -621,14 +626,12 @@ impl<'s> LintLevelsBuilder<'s> {
                     lint_level,
                     lint_src,
                     Some(lint_attr_span.into()),
-                    |lint| {
-                        let mut db = lint.build(&format!(
-                            "{}({}) is ignored unless specified at crate level",
-                            level.as_str(),
-                            lint_attr_name
-                        ));
-                        db.emit();
-                    },
+                    format!(
+                        "{}({}) is ignored unless specified at crate level",
+                        level.as_str(),
+                        lint_attr_name
+                    ),
+                    |lint| lint,
                 );
                 // don't set a separate error for every lint in the group
                 break;
@@ -665,13 +668,21 @@ impl<'s> LintLevelsBuilder<'s> {
             if !self.sess.features_untracked().enabled(feature) {
                 let lint = builtin::UNKNOWN_LINTS;
                 let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
-                struct_lint_level(self.sess, lint, level, src, Some(span.into()), |lint_db| {
-                    let mut db =
-                        lint_db.build(&format!("unknown lint: `{}`", lint_id.lint.name_lower()));
-                    db.note(&format!("the `{}` lint is unstable", lint_id.lint.name_lower(),));
-                    add_feature_diagnostics(&mut db, &self.sess.parse_sess, feature);
-                    db.emit();
-                });
+                struct_lint_level(
+                    self.sess,
+                    lint,
+                    level,
+                    src,
+                    Some(span.into()),
+                    format!("unknown lint: `{}`", lint_id.lint.name_lower()),
+                    |lint| {
+                        lint.note(
+                            &format!("the `{}` lint is unstable", lint_id.lint.name_lower(),),
+                        );
+                        add_feature_diagnostics(lint, &self.sess.parse_sess, feature);
+                        lint
+                    },
+                );
                 return false;
             }
         }
@@ -694,10 +705,13 @@ impl<'s> LintLevelsBuilder<'s> {
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'b mut DiagnosticBuilder<'a, ()>,
+        ) -> &'b mut DiagnosticBuilder<'a, ()>,
     ) {
         let (level, src) = self.lint_level(lint);
-        struct_lint_level(self.sess, lint, level, src, span, decorate)
+        struct_lint_level(self.sess, lint, level, src, span, msg, decorate)
     }
 
     /// Registers the ID provided with the current set of lints stored in

@@ -7,7 +7,7 @@ use super::{PatCtxt, PatternError};
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
 use rustc_errors::{
-    error_code, pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder,
+    error_code, pluralize, struct_span_err, Applicability, DelayDm, Diagnostic, DiagnosticBuilder,
     ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
@@ -347,19 +347,23 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             let span_end = affix.last().unwrap().unwrap().0;
             let span = span_start.to(span_end);
             let cnt = affix.len();
-            cx.tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, top, span, |lint| {
-                let s = pluralize!(cnt);
-                let mut diag = lint.build(&format!("{kind} irrefutable pattern{s} in let chain"));
-                diag.note(&format!(
-                    "{these} pattern{s} will always match",
-                    these = pluralize!("this", cnt),
-                ));
-                diag.help(&format!(
-                    "consider moving {} {suggestion}",
-                    if cnt > 1 { "them" } else { "it" }
-                ));
-                diag.emit()
-            });
+            let s = pluralize!(cnt);
+            cx.tcx.struct_span_lint_hir(
+                IRREFUTABLE_LET_PATTERNS,
+                top,
+                span,
+                format!("{kind} irrefutable pattern{s} in let chain"),
+                |lint| {
+                    lint.note(format!(
+                        "{these} pattern{s} will always match",
+                        these = pluralize!("this", cnt),
+                    ))
+                    .help(format!(
+                        "consider moving {} {suggestion}",
+                        if cnt > 1 { "them" } else { "it" }
+                    ))
+                },
+            );
         };
         if let Some(until) = chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, false)))) && until > 0 {
             // The chain has a non-zero prefix of irrefutable `let` statements.
@@ -561,26 +565,28 @@ fn check_for_bindings_named_same_as_variants(
                 BINDINGS_WITH_VARIANT_NAME,
                 p.hir_id,
                 p.span,
+                DelayDm(|| format!(
+                    "pattern binding `{}` is named the same as one \
+                        of the variants of the type `{}`",
+                    ident, cx.tcx.def_path_str(edef.did())
+                )),
                 |lint| {
                     let ty_path = cx.tcx.def_path_str(edef.did());
-                    let mut err = lint.build(&format!(
-                        "pattern binding `{}` is named the same as one \
-                         of the variants of the type `{}`",
-                        ident, ty_path
-                    ));
-                    err.code(error_code!(E0170));
+                    lint.code(error_code!(E0170));
+
                     // If this is an irrefutable pattern, and there's > 1 variant,
                     // then we can't actually match on this. Applying the below
                     // suggestion would produce code that breaks on `check_irrefutable`.
                     if rf == Refutable || variant_count == 1 {
-                        err.span_suggestion(
+                        lint.span_suggestion(
                             p.span,
                             "to match on the variant, qualify the path",
                             format!("{}::{}", ty_path, ident),
                             Applicability::MachineApplicable,
                         );
                     }
-                    err.emit();
+
+                    lint
                 },
             )
         }
@@ -598,14 +604,13 @@ fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
 }
 
 fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<Span>) {
-    tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, |lint| {
-        let mut err = lint.build("unreachable pattern");
+    tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, "unreachable pattern", |lint| {
         if let Some(catchall) = catchall {
             // We had a catchall pattern, hint at that.
-            err.span_label(span, "unreachable pattern");
-            err.span_label(catchall, "matches any value");
+            lint.span_label(span, "unreachable pattern");
+            lint.span_label(catchall, "matches any value");
         }
-        err.emit();
+        lint
     });
 }
 
@@ -621,6 +626,11 @@ fn irrefutable_let_patterns(
     count: usize,
     span: Span,
 ) {
+    let span = match source {
+        LetSource::LetElse(span) => span,
+        _ => span,
+    };
+
     macro_rules! emit_diag {
         (
             $lint:expr,
@@ -630,18 +640,23 @@ fn irrefutable_let_patterns(
         ) => {{
             let s = pluralize!(count);
             let these = pluralize!("this", count);
-            let mut diag = $lint.build(&format!("irrefutable {} pattern{s}", $source_name));
-            diag.note(&format!("{these} pattern{s} will always match, so the {}", $note_sufix));
-            diag.help(concat!("consider ", $help_sufix));
-            diag.emit()
+            tcx.struct_span_lint_hir(
+                IRREFUTABLE_LET_PATTERNS,
+                id,
+                span,
+                format!("irrefutable {} pattern{s}", $source_name),
+                |lint| {
+                    lint.note(&format!(
+                        "{these} pattern{s} will always match, so the {}",
+                        $note_sufix
+                    ))
+                    .help(concat!("consider ", $help_sufix))
+                },
+            )
         }};
     }
 
-    let span = match source {
-        LetSource::LetElse(span) => span,
-        _ => span,
-    };
-    tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| match source {
+    match source {
         LetSource::GenericLet => {
             emit_diag!(lint, "`let`", "`let` is useless", "removing `let`");
         }
@@ -677,7 +692,7 @@ fn irrefutable_let_patterns(
                 "instead using a `loop { ... }` with a `let` inside it"
             );
         }
-    });
+    };
 }
 
 fn is_let_irrefutable<'p, 'tcx>(

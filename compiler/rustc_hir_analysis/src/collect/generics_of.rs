@@ -266,9 +266,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                             lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                             param.hir_id,
                             param.span,
-                            |lint| {
-                                lint.build(TYPE_DEFAULT_NOT_ALLOWED).emit();
-                            },
+                            TYPE_DEFAULT_NOT_ALLOWED,
+                            |lint| lint,
                         );
                     }
                     Defaults::Deny => {

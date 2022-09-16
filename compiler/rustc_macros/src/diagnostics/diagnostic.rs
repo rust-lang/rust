@@ -96,37 +96,42 @@ impl<'a> LintDiagnosticDerive<'a> {
             let body = builder.body(&variant);
 
             let diag = &builder.parent.diag;
-            let init = match builder.slug.value_ref() {
+
+            quote! {
+                #preamble
+                #body
+                #diag
+            }
+        });
+
+        let msg = builder.each_variant(&mut structure, |mut builder, variant| {
+            // HACK(wafflelapkin): initialize slug (???)
+            let _preamble = builder.preamble(&variant);
+
+            match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
                         .help(&format!(
                             "specify the slug as the first argument to the attribute, such as \
-                             `#[diag(typeck::example_error)]`",
+                            `#[diag(typeck::example_error)]`",
                         ))
                         .emit();
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
                 }
-                Some(slug) => {
-                    quote! {
-                        let mut #diag = #diag.build(rustc_errors::fluent::#slug);
-                    }
-                }
-            };
-
-            quote! {
-                #init
-                #preamble
-                #body
-                #diag.emit();
+                Some(slug) => quote! { rustc_errors::fluent::#slug.into() },
             }
         });
 
         let diag = &builder.diag;
         structure.gen_impl(quote! {
             gen impl<'__a> rustc_errors::DecorateLint<'__a, ()> for @Self {
-                fn decorate_lint(self, #diag: rustc_errors::LintDiagnosticBuilder<'__a, ()>) {
+                fn decorate_lint<'__b>(self, #diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>) -> &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()> {
                     use rustc_errors::IntoDiagnosticArg;
                     #implementation
+                }
+
+                fn msg(&self) -> rustc_errors::DiagnosticMessage {
+                    #msg
                 }
             }
         })

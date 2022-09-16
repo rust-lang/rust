@@ -299,10 +299,10 @@ impl IntRange {
                 lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
                 hir_id,
                 pcx.span,
+                "multiple patterns overlap on their endpoints",
                 |lint| {
-                    let mut err = lint.build("multiple patterns overlap on their endpoints");
                     for (int_range, span) in overlaps {
-                        err.span_label(
+                        lint.span_label(
                             span,
                             &format!(
                                 "this range overlaps on `{}`...",
@@ -310,9 +310,9 @@ impl IntRange {
                             ),
                         );
                     }
-                    err.span_label(pcx.span, "... with this range");
-                    err.note("you likely meant to write mutually exclusive ranges");
-                    err.emit();
+                    lint.span_label(pcx.span, "... with this range");
+                    lint.note("you likely meant to write mutually exclusive ranges");
+                    lint
                 },
             );
         }

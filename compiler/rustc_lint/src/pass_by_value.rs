@@ -29,18 +29,20 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
                     }
                 }
                 if let Some(t) = path_for_pass_by_value(cx, &inner_ty) {
-                    cx.struct_span_lint(PASS_BY_VALUE, ty.span, |lint| {
-                        lint.build(fluent::lint::pass_by_value)
-                            .set_arg("ty", t.clone())
-                            .span_suggestion(
+                    cx.struct_span_lint(
+                        PASS_BY_VALUE,
+                        ty.span,
+                        fluent::lint::pass_by_value,
+                        |lint| {
+                            lint.set_arg("ty", t.clone()).span_suggestion(
                                 ty.span,
                                 fluent::lint::suggestion,
                                 t,
                                 // Changing type of function argument
                                 Applicability::MaybeIncorrect,
                             )
-                            .emit();
-                    })
+                        },
+                    )
                 }
             }
             _ => {}

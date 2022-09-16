@@ -233,10 +233,10 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 rustc_session::lint::builtin::CONST_ERR,
                 hir_id,
                 tcx.span,
+                message,
                 |lint| {
-                    let mut lint = lint.build(message);
-                    finish(&mut lint, Some(err_msg));
-                    lint.emit();
+                    finish(lint, Some(err_msg));
+                    lint
                 },
             );
             ErrorHandled::Linted

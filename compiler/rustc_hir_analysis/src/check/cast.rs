@@ -33,7 +33,7 @@ use super::FnCtxt;
 use crate::hir::def_id::DefId;
 use crate::type_error_struct;
 use hir::def_id::LOCAL_CRATE;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{struct_span_err, Applicability, DelayDm, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::mir::Mutability;
@@ -754,19 +754,25 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         } else {
             ("", lint::builtin::TRIVIAL_CASTS)
         };
-        fcx.tcx.struct_span_lint_hir(lint, self.expr.hir_id, self.span, |err| {
-            err.build(&format!(
-                "trivial {}cast: `{}` as `{}`",
-                adjective,
-                fcx.ty_to_string(t_expr),
-                fcx.ty_to_string(t_cast)
-            ))
-            .help(&format!(
-                "cast can be replaced by coercion; this might \
-                                   require {type_asc_or}a temporary variable"
-            ))
-            .emit();
-        });
+        fcx.tcx.struct_span_lint_hir(
+            lint,
+            self.expr.hir_id,
+            self.span,
+            DelayDm(|| {
+                format!(
+                    "trivial {}cast: `{}` as `{}`",
+                    adjective,
+                    fcx.ty_to_string(t_expr),
+                    fcx.ty_to_string(t_cast)
+                )
+            }),
+            |lint| {
+                lint.help(format!(
+                    "cast can be replaced by coercion; this might \
+                     require {type_asc_or}a temporary variable"
+                ))
+            },
+        );
     }
 
     #[instrument(skip(fcx), level = "debug")]
@@ -1074,12 +1080,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 lint::builtin::CENUM_IMPL_DROP_CAST,
                 self.expr.hir_id,
                 self.span,
-                |err| {
-                    err.build(&format!(
-                        "cannot cast enum `{}` into integer `{}` because it implements `Drop`",
-                        self.expr_ty, self.cast_ty
-                    ))
-                    .emit();
+                DelayDm(|| format!(
+                    "cannot cast enum `{}` into integer `{}` because it implements `Drop`",
+                    self.expr_ty, self.cast_ty
+                )),
+                |lint| {
+                    lint
                 },
             );
         }
@@ -1090,12 +1096,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             lint::builtin::LOSSY_PROVENANCE_CASTS,
             self.expr.hir_id,
             self.span,
-            |err| {
-                let mut err = err.build(&format!(
+            DelayDm(|| format!(
                     "under strict provenance it is considered bad style to cast pointer `{}` to integer `{}`",
                     self.expr_ty, self.cast_ty
-                ));
-
+                )),
+            |lint| {
                 let msg = "use `.addr()` to obtain the address of a pointer";
 
                 let expr_prec = self.expr.precedence().order();
@@ -1114,9 +1119,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         (cast_span, format!(").addr(){scalar_cast}")),
                     ];
 
-                    err.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
+                    lint.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
                 } else {
-                    err.span_suggestion(
+                    lint.span_suggestion(
                         cast_span,
                         msg,
                         format!(".addr(){scalar_cast}"),
@@ -1124,12 +1129,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     );
                 }
 
-                err.help(
+                lint.help(
                     "if you can't comply with strict provenance and need to expose the pointer \
                     provenance you can use `.expose_addr()` instead"
                 );
 
-                err.emit();
+                lint
             },
         );
     }
@@ -1139,24 +1144,24 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             lint::builtin::FUZZY_PROVENANCE_CASTS,
             self.expr.hir_id,
             self.span,
-            |err| {
-                let mut err = err.build(&format!(
-                    "strict provenance disallows casting integer `{}` to pointer `{}`",
-                    self.expr_ty, self.cast_ty
-                ));
+            DelayDm(|| format!(
+                "strict provenance disallows casting integer `{}` to pointer `{}`",
+                self.expr_ty, self.cast_ty
+            )),
+            |lint| {
                 let msg = "use `.with_addr()` to adjust a valid pointer in the same allocation, to this address";
                 let suggestions = vec![
                     (self.expr_span.shrink_to_lo(), String::from("(...).with_addr(")),
                     (self.expr_span.shrink_to_hi().to(self.cast_span), String::from(")")),
                 ];
 
-                err.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
-                err.help(
+                lint.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
+                lint.help(
                     "if you can't comply with strict provenance and don't have a pointer with \
                     the correct provenance you can use `std::ptr::from_exposed_addr()` instead"
                  );
 
-                err.emit();
+                lint
             },
         );
     }

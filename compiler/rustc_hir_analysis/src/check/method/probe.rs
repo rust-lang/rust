@@ -409,9 +409,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                         scope_expr_id,
                         span,
-                        |lint| {
-                            lint.build("type annotations needed").emit();
-                        },
+                        "type annotations needed",
+                        |lint| lint,
                     );
                 }
             } else {
@@ -1358,24 +1357,24 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         stable_pick: &Pick<'_>,
         unstable_candidates: &[(Candidate<'tcx>, Symbol)],
     ) {
+        let def_kind = stable_pick.item.kind.as_def_kind();
         self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             self.scope_expr_id,
             self.span,
+            format!(
+                "{} {} with this name may be added to the standard library in the future",
+                def_kind.article(),
+                def_kind.descr(stable_pick.item.def_id),
+            ),
             |lint| {
-                let def_kind = stable_pick.item.kind.as_def_kind();
-                let mut diag = lint.build(&format!(
-                    "{} {} with this name may be added to the standard library in the future",
-                    def_kind.article(),
-                    def_kind.descr(stable_pick.item.def_id),
-                ));
                 match (stable_pick.item.kind, stable_pick.item.container) {
                     (ty::AssocKind::Fn, _) => {
                         // FIXME: This should be a `span_suggestion` instead of `help`
                         // However `self.span` only
                         // highlights the method name, so we can't use it. Also consider reusing
                         // the code from `report_method_error()`.
-                        diag.help(&format!(
+                        lint.help(&format!(
                             "call with fully qualified syntax `{}(...)` to keep using the current \
                              method",
                             self.tcx.def_path_str(stable_pick.item.def_id),
@@ -1383,7 +1382,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                     (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer) => {
                         let def_id = stable_pick.item.container_id(self.tcx);
-                        diag.span_suggestion(
+                        lint.span_suggestion(
                             self.span,
                             "use the fully qualified path to the associated const",
                             format!(
@@ -1399,7 +1398,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
                 if self.tcx.sess.is_nightly_build() {
                     for (candidate, feature) in unstable_candidates {
-                        diag.help(&format!(
+                        lint.help(&format!(
                             "add `#![feature({})]` to the crate attributes to enable `{}`",
                             feature,
                             self.tcx.def_path_str(candidate.item.def_id),
@@ -1407,7 +1406,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                 }
 
-                diag.emit();
+                lint
             },
         );
     }

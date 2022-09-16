@@ -347,10 +347,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         panic: AssertKind<impl std::fmt::Debug>,
     ) {
         if let Some(lint_root) = self.lint_root(source_info) {
-            self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, |lint| {
-                let mut err = lint.build(message);
-                err.span_label(source_info.span, format!("{:?}", panic));
-                err.emit();
+            self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, message, |lint| {
+                lint.span_label(source_info.span, format!("{:?}", panic))
             });
         }
     }

@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_errors::{Diagnostic, DiagnosticId, LintDiagnosticBuilder, MultiSpan};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, MultiSpan};
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
@@ -283,7 +283,11 @@ pub fn struct_lint_level<'s, 'd>(
     level: Level,
     src: LintLevelSource,
     span: Option<MultiSpan>,
-    decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>) + 'd,
+    msg: impl Into<DiagnosticMessage>,
+    decorate: impl 'd
+    + for<'a, 'b> FnOnce(
+        &'b mut DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut DiagnosticBuilder<'a, ()>,
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
@@ -293,7 +297,13 @@ pub fn struct_lint_level<'s, 'd>(
         level: Level,
         src: LintLevelSource,
         span: Option<MultiSpan>,
-        decorate: Box<dyn for<'b> FnOnce(LintDiagnosticBuilder<'b, ()>) + 'd>,
+        msg: impl Into<DiagnosticMessage>,
+        decorate: Box<
+            dyn 'd
+                + for<'a, 'b> FnOnce(
+                    &'b mut DiagnosticBuilder<'a, ()>,
+                ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        >,
     ) {
         // Check for future incompatibility lints and issue a stronger warning.
         let future_incompatible = lint.future_incompatible;
@@ -344,6 +354,9 @@ pub fn struct_lint_level<'s, 'd>(
             (Level::Deny | Level::Forbid, None) => sess.diagnostic().struct_err_lint(""),
         };
 
+        err.set_primary_message(msg);
+        err.set_is_lint();
+
         // If this code originates in a foreign macro, aka something that this crate
         // did not itself author, then it's likely that there's nothing this crate
         // can do about it. We probably want to skip the lint entirely.
@@ -373,11 +386,13 @@ pub fn struct_lint_level<'s, 'd>(
         if let Level::Expect(_) = level {
             let name = lint.name_lower();
             err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn: false });
-            decorate(LintDiagnosticBuilder::new(err));
+
+            decorate(&mut err);
+            err.emit();
             return;
         }
 
-        explain_lint_level_source(lint, level, src, &mut err);
+        explain_lint_level_source(lint, level, src, &mut *err);
 
         let name = lint.name_lower();
         let is_force_warn = matches!(level, Level::ForceWarn(_));
@@ -417,10 +432,11 @@ pub fn struct_lint_level<'s, 'd>(
             }
         }
 
-        // Finally, run `decorate`. This function is also responsible for emitting the diagnostic.
-        decorate(LintDiagnosticBuilder::new(err));
+        // Finally, run `decorate`.
+        decorate(&mut err);
+        err.emit()
     }
-    struct_lint_level_impl(sess, lint, level, src, span, Box::new(decorate))
+    struct_lint_level_impl(sess, lint, level, src, span, msg, Box::new(decorate))
 }
 
 /// Returns whether `span` originates in a foreign crate's external macro.

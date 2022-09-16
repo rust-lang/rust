@@ -48,11 +48,18 @@ fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, boo
             return;
         }
 
-        cx.struct_span_lint(REDUNDANT_SEMICOLONS, span, |lint| {
-            lint.build(fluent::lint::redundant_semicolons)
-                .set_arg("multiple", multiple)
-                .span_suggestion(span, fluent::lint::suggestion, "", Applicability::MaybeIncorrect)
-                .emit();
-        });
+        cx.struct_span_lint(
+            REDUNDANT_SEMICOLONS,
+            span,
+            fluent::lint::redundant_semicolons,
+            |lint| {
+                lint.set_arg("multiple", multiple).span_suggestion(
+                    span,
+                    fluent::lint::suggestion,
+                    "",
+                    Applicability::MaybeIncorrect,
+                )
+            },
+        );
     }
 }

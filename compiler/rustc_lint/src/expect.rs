@@ -43,17 +43,17 @@ fn emit_unfulfilled_expectation_lint(
         builtin::UNFULFILLED_LINT_EXPECTATIONS,
         hir_id,
         expectation.emission_span,
-        |diag| {
-            let mut diag = diag.build(fluent::lint::expectation);
+        fluent::lint::expectation,
+        |lint| {
             if let Some(rationale) = expectation.reason {
-                diag.note(rationale.as_str());
+                lint.note(rationale.as_str());
             }
 
             if expectation.is_unfulfilled_lint_expectations {
-                diag.note(fluent::lint::note);
+                lint.note(fluent::lint::note);
             }
 
-            diag.emit();
+            lint
         },
     );
 }

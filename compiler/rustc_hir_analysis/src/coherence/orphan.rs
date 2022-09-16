@@ -2,7 +2,7 @@
 //! crate or pertains to a type defined in this crate.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, DelayDm};
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_middle::ty::subst::GenericArgKind;
@@ -412,30 +412,31 @@ fn lint_auto_trait_impl<'tcx>(
         lint::builtin::SUSPICIOUS_AUTO_TRAIT_IMPLS,
         tcx.hir().local_def_id_to_hir_id(impl_def_id),
         tcx.def_span(impl_def_id),
-        |err| {
-            let item_span = tcx.def_span(self_type_did);
-            let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
-            let mut err = err.build(&format!(
+        DelayDm(|| {
+            format!(
                 "cross-crate traits with a default impl, like `{}`, \
                          should not be specialized",
                 tcx.def_path_str(trait_ref.def_id),
-            ));
+            )
+        }),
+        |lint| {
+            let item_span = tcx.def_span(self_type_did);
+            let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
             match arg {
                 ty::util::NotUniqueParam::DuplicateParam(arg) => {
-                    err.note(&format!("`{}` is mentioned multiple times", arg));
+                    lint.note(&format!("`{}` is mentioned multiple times", arg));
                 }
                 ty::util::NotUniqueParam::NotParam(arg) => {
-                    err.note(&format!("`{}` is not a generic parameter", arg));
+                    lint.note(&format!("`{}` is not a generic parameter", arg));
                 }
             }
-            err.span_note(
+            lint.span_note(
                 item_span,
                 &format!(
                     "try using the same sequence of generic parameters as the {} definition",
                     self_descr,
                 ),
-            );
-            err.emit();
+            )
         },
     );
 }
