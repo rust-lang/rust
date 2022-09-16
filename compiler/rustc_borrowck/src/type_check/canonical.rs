@@ -25,7 +25,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// constraints should occur within this method so that those
     /// constraints can be properly localized!**
     #[instrument(skip(self, op), level = "trace")]
-    pub(super) fn fully_perform_op<R: fmt::Debug, Op>(
+    pub(super) fn fully_perform_op<R, Op>(
         &mut self,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
@@ -38,8 +38,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let old_universe = self.infcx.universe();
 
         let TypeOpOutput { output, constraints, error_info } = op.fully_perform(self.infcx)?;
-
-        debug!(?output, ?constraints);
 
         if let Some(data) = constraints {
             self.push_region_constraints(locations, category, data);
@@ -104,7 +102,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
-    #[instrument(level = "debug", skip(self))]
     pub(super) fn normalize_and_prove_instantiated_predicates(
         &mut self,
         // Keep this parameter for now, in case we start using
@@ -119,9 +116,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .zip(instantiated_predicates.spans.into_iter())
         {
             debug!(?predicate);
-            let category = ConstraintCategory::Predicate(span);
-            let predicate = self.normalize_with_category(predicate, locations, category);
-            self.prove_predicate(predicate, locations, category);
+            let predicate = self.normalize(predicate, locations);
+            self.prove_predicate(predicate, locations, ConstraintCategory::Predicate(span));
         }
     }
 
@@ -157,27 +153,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         })
     }
 
-    pub(super) fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
-    where
-        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
-    {
-        self.normalize_with_category(value, location, ConstraintCategory::Boring)
-    }
-
     #[instrument(skip(self), level = "debug")]
-    pub(super) fn normalize_with_category<T>(
-        &mut self,
-        value: T,
-        location: impl NormalizeLocation,
-        category: ConstraintCategory<'tcx>,
-    ) -> T
+    pub(super) fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
         let param_env = self.param_env;
         self.fully_perform_op(
             location.to_locations(),
-            category,
+            ConstraintCategory::Boring,
             param_env.and(type_op::normalize::Normalize::new(value)),
         )
         .unwrap_or_else(|NoSolution| {

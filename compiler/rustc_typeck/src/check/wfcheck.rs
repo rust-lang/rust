@@ -10,7 +10,6 @@ use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::{OutlivesEnvironment, RegionBoundPairs};
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -664,7 +663,7 @@ fn ty_known_to_outlive<'tcx>(
     resolve_regions_with_wf_tys(tcx, id, param_env, &wf_tys, |infcx, region_bound_pairs| {
         let origin = infer::RelateParamBound(DUMMY_SP, ty, None);
         let outlives = &mut TypeOutlives::new(infcx, tcx, region_bound_pairs, None, param_env);
-        outlives.type_must_outlive(origin, ty, region, ConstraintCategory::BoringNoLocation);
+        outlives.type_must_outlive(origin, ty, region);
     })
 }
 
@@ -682,12 +681,7 @@ fn region_known_to_outlive<'tcx>(
         use rustc_infer::infer::outlives::obligations::TypeOutlivesDelegate;
         let origin = infer::RelateRegionParamBound(DUMMY_SP);
         // `region_a: region_b` -> `region_b <= region_a`
-        infcx.push_sub_region_constraint(
-            origin,
-            region_b,
-            region_a,
-            ConstraintCategory::BoringNoLocation,
-        );
+        infcx.push_sub_region_constraint(origin, region_b, region_a);
     })
 }
 

@@ -2256,8 +2256,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::QuestionMark
             | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
-            | ObligationCauseCode::BinOp { .. }
-            | ObligationCauseCode::AscribeUserTypeProvePredicate(..) => {}
+            | ObligationCauseCode::BinOp { .. } => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
