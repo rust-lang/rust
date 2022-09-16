@@ -394,7 +394,8 @@ impl MiscEarlyLints {
             _ => return,
         };
 
-        if let LitKind::Int(value, lit_int_type) = lit.kind {
+        let lit_kind = LitKind::from_token_lit(lit.token_lit);
+        if let Ok(LitKind::Int(value, lit_int_type)) = lit_kind {
             let suffix = match lit_int_type {
                 LitIntType::Signed(ty) => ty.name_str(),
                 LitIntType::Unsigned(ty) => ty.name_str(),
@@ -408,7 +409,7 @@ impl MiscEarlyLints {
             } else if value != 0 && lit_snip.starts_with('0') {
                 zero_prefixed_literal::check(cx, lit, &lit_snip);
             }
-        } else if let LitKind::Float(_, LitFloatType::Suffixed(float_ty)) = lit.kind {
+        } else if let Ok(LitKind::Float(_, LitFloatType::Suffixed(float_ty))) = lit_kind {
             let suffix = float_ty.name_str();
             literal_suffix::check(cx, lit, &lit_snip, suffix, "float");
         }

@@ -552,7 +552,7 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribut
 }
 
 fn check_semver(cx: &LateContext<'_>, span: Span, lit: &Lit) {
-    if let LitKind::Str(is, _) = lit.kind {
+    if let Ok(LitKind::Str(is, _)) = LitKind::from_token_lit(lit.token_lit) {
         if Version::parse(is.as_str()).is_ok() {
             return;
         }

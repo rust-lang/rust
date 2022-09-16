@@ -335,7 +335,7 @@ pub fn mk_name_value_item_str(ident: Ident, str: Symbol, str_span: Span) -> Meta
 }
 
 pub fn mk_name_value_item(ident: Ident, lit_kind: LitKind, lit_span: Span) -> MetaItem {
-    let lit = Lit::from_lit_kind(lit_kind, lit_span);
+    let lit = Lit { token_lit: lit_kind.to_token_lit(), span: lit_span };
     let span = ident.span.to(lit_span);
     MetaItem { path: Path::from_ident(ident), span, kind: MetaItemKind::NameValue(lit) }
 }
@@ -519,8 +519,8 @@ impl MetaItem {
 impl MetaItemKind {
     pub fn value_str(&self) -> Option<Symbol> {
         match self {
-            MetaItemKind::NameValue(ref v) => match v.kind {
-                LitKind::Str(ref s, _) => Some(*s),
+            MetaItemKind::NameValue(ref v) => match LitKind::from_token_lit(v.token_lit) {
+                Ok(LitKind::Str(ref s, _)) => Some(*s),
                 _ => None,
             },
             _ => None,
@@ -605,7 +605,7 @@ impl MetaItemKind {
                 MetaItemKind::name_value_from_tokens(&mut inner_tokens.into_trees())
             }
             Some(TokenTree::Token(token, _)) => {
-                Lit::from_token(&token).ok().map(MetaItemKind::NameValue)
+                Lit::from_token(&token).map(MetaItemKind::NameValue)
             }
             _ => None,
         }
@@ -667,9 +667,7 @@ impl NestedMetaItem {
         I: Iterator<Item = TokenTree>,
     {
         match tokens.peek() {
-            Some(TokenTree::Token(token, _))
-                if let Ok(lit) = Lit::from_token(token) =>
-            {
+            Some(TokenTree::Token(token, _)) if let Some(lit) = Lit::from_token(token) => {
                 tokens.next();
                 return Some(NestedMetaItem::Literal(lit));
             }

@@ -109,7 +109,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                             }
                             match &meta_item.kind {
                                 MetaItemKind::List(..) => {}
-                                MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
+                                MetaItemKind::NameValue(lit) if !lit.token_lit.is_str() => {
                                     error!("argument value must be a string");
                                 }
                                 MetaItemKind::NameValue(..) | MetaItemKind::Word => {
@@ -190,8 +190,9 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                             .or_insert_with(|| FxHashSet::default());
 
                                         for val in values {
-                                            if let Some(LitKind::Str(s, _)) =
-                                                val.literal().map(|lit| &lit.kind)
+                                            if let Some(Ok(LitKind::Str(s, _))) = val
+                                                .literal()
+                                                .map(|lit| LitKind::from_token_lit(lit.token_lit))
                                             {
                                                 ident_values.insert(s.to_string());
                                             } else {

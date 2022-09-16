@@ -5,7 +5,7 @@
 //! item.
 
 use crate::errors;
-use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::{ast, token, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{fluent, struct_span_err, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
@@ -722,8 +722,8 @@ impl CheckAttrVisitor<'_> {
             let mut errors = 0;
             for v in values {
                 match v.literal() {
-                    Some(l) => match l.kind {
-                        LitKind::Str(s, _) => {
+                    Some(l) => match LitKind::from_token_lit(l.token_lit) {
+                        Ok(LitKind::Str(s, _)) => {
                             if !self.check_doc_alias_value(v, s, hir_id, target, true, aliases) {
                                 errors += 1;
                             }
@@ -1342,7 +1342,13 @@ impl CheckAttrVisitor<'_> {
             return false;
         };
 
-        if matches!(&list[..], &[NestedMetaItem::Literal(Lit { kind: LitKind::Int(..), .. })]) {
+        if matches!(
+            &list[..],
+            &[NestedMetaItem::Literal(Lit {
+                token_lit: token::Lit { kind: token::LitKind::Integer, .. },
+                ..
+            })]
+        ) {
             true
         } else {
             self.tcx.sess.emit_err(errors::RustcLayoutScalarValidRangeArg { attr_span: attr.span });
@@ -1403,8 +1409,10 @@ impl CheckAttrVisitor<'_> {
         let arg_count = decl.inputs.len() as u128 + generics.params.len() as u128;
         let mut invalid_args = vec![];
         for meta in list {
-            if let Some(LitKind::Int(val, _)) = meta.literal().map(|lit| &lit.kind) {
-                if *val >= arg_count {
+            if let Some(Ok(LitKind::Int(val, _))) =
+                meta.literal().map(|lit| LitKind::from_token_lit(lit.token_lit))
+            {
+                if val >= arg_count {
                     let span = meta.span();
                     self.tcx.sess.emit_err(errors::RustcLegacyConstGenericsIndexExceed {
                         span,

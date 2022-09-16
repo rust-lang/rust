@@ -1268,8 +1268,8 @@ impl Attributes {
         for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
             if let Some(values) = attr.meta_item_list() {
                 for l in values {
-                    match l.literal().unwrap().kind {
-                        ast::LitKind::Str(s, _) => {
+                    match ast::LitKind::from_token_lit(l.literal().unwrap().token_lit) {
+                        Ok(ast::LitKind::Str(s, _)) => {
                             aliases.insert(s);
                         }
                         _ => unreachable!(),

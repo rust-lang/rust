@@ -1222,9 +1222,9 @@ pub fn expr_to_spanned_string<'a>(
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
 
     Err(match expr.kind {
-        ast::ExprKind::Lit(ref l) => match l.kind {
-            ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
-            ast::LitKind::ByteStr(_) => {
+        ast::ExprKind::Lit(ref l) => match ast::LitKind::from_token_lit(l.token_lit) {
+            Ok(ast::LitKind::Str(s, style)) => return Ok((s, style, expr.span)),
+            Ok(ast::LitKind::ByteStr(_)) => {
                 let mut err = cx.struct_span_err(l.span, err_msg);
                 err.span_suggestion(
                     expr.span.shrink_to_lo(),
@@ -1234,7 +1234,8 @@ pub fn expr_to_spanned_string<'a>(
                 );
                 Some((err, true))
             }
-            ast::LitKind::Err => None,
+            Ok(ast::LitKind::Err) => None,
+            Err(_) => None,
             _ => Some((cx.struct_span_err(l.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,

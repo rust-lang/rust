@@ -6,12 +6,10 @@ use crate::token::{self, Token};
 use rustc_lexer::unescape::{unescape_byte, unescape_char};
 use rustc_lexer::unescape::{unescape_byte_literal, unescape_literal, Mode};
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
 
 use std::ascii;
 
 pub enum LitError {
-    NotLiteral,
     LexerError,
     InvalidSuffix,
     InvalidIntSuffix,
@@ -149,7 +147,7 @@ impl LitKind {
         })
     }
 
-    /// Attempts to recover a token from semantic literal.
+    /// Creates a token literal from a semantic literal kind.
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
     pub fn to_token_lit(&self) -> token::Lit {
@@ -203,39 +201,30 @@ impl LitKind {
 }
 
 impl Lit {
-    /// Converts literal token into an AST literal.
-    pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<Lit, LitError> {
-        Ok(Lit { token_lit, kind: LitKind::from_token_lit(token_lit)?, span })
-    }
-
-    /// Converts arbitrary token into an AST literal.
+    /// Converts an arbitrary token into an AST literal. Returns `None` if the
+    /// token is not a literal. The literal may be invalid in some fashion
+    /// (e.g. invalid suffix, too-large int, etc.); this will be caught during
+    /// lowering to HIR.
     ///
     /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
-    pub fn from_token(token: &Token) -> Result<Lit, LitError> {
-        let lit = match token.uninterpolate().kind {
+    pub fn from_token(token: &Token) -> Option<Lit> {
+        let token_lit = match token.uninterpolate().kind {
             token::Ident(name, false) if name.is_bool_lit() => {
                 token::Lit::new(token::Bool, name, None)
             }
-            token::Literal(lit) => lit,
+            token::Literal(token_lit) => token_lit,
             token::Interpolated(ref nt) => {
                 if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt
                     && let ast::ExprKind::Lit(lit) = &expr.kind
                 {
-                    return Ok(lit.clone());
+                    return Some(lit.clone());
                 }
-                return Err(LitError::NotLiteral);
+                return None;
             }
-            _ => return Err(LitError::NotLiteral),
+            _ => return None,
         };
 
-        Lit::from_token_lit(lit, token.span)
-    }
-
-    /// Attempts to recover an AST literal from semantic literal.
-    /// This function is used when the original token doesn't exist (e.g. the literal is created
-    /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn from_lit_kind(kind: LitKind, span: Span) -> Lit {
-        Lit { token_lit: kind.to_token_lit(), kind, span }
+        Some(Lit { token_lit, span: token.span })
     }
 
     /// Losslessly convert an AST literal into a token.

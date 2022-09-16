@@ -593,7 +593,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     ast::MetaItemKind::Word => {} // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
                         if item.path == sym::reason {
-                            if let ast::LitKind::Str(rationale, _) = name_value.kind {
+                            if let Ok(ast::LitKind::Str(rationale, _)) =
+                                ast::LitKind::from_token_lit(name_value.token_lit)
+                            {
                                 if !self.sess.features_untracked().lint_reasons {
                                     feature_err(
                                         &self.sess.parse_sess,

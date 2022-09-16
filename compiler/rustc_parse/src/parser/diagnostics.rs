@@ -500,61 +500,6 @@ pub(crate) struct FloatLiteralRequiresIntegerPart {
 }
 
 #[derive(SessionDiagnostic)]
-#[diag(parser::invalid_int_literal_width)]
-#[help]
-pub(crate) struct InvalidIntLiteralWidth {
-    #[primary_span]
-    pub span: Span,
-    pub width: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[diag(parser::invalid_num_literal_base_prefix)]
-#[note]
-pub(crate) struct InvalidNumLiteralBasePrefix {
-    #[primary_span]
-    #[suggestion(applicability = "maybe-incorrect", code = "{fixed}")]
-    pub span: Span,
-    pub fixed: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[diag(parser::invalid_num_literal_suffix)]
-#[help]
-pub(crate) struct InvalidNumLiteralSuffix {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub suffix: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[diag(parser::invalid_float_literal_width)]
-#[help]
-pub(crate) struct InvalidFloatLiteralWidth {
-    #[primary_span]
-    pub span: Span,
-    pub width: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[diag(parser::invalid_float_literal_suffix)]
-#[help]
-pub(crate) struct InvalidFloatLiteralSuffix {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub suffix: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[diag(parser::int_literal_too_large)]
-pub(crate) struct IntLiteralTooLarge {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(SessionDiagnostic)]
 #[diag(parser::missing_semicolon_before_array)]
 pub(crate) struct MissingSemicolonBeforeArray {
     #[primary_span]

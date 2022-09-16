@@ -85,24 +85,21 @@ impl PathVisitor {
 
 impl<'ast> MetaVisitor<'ast> for PathVisitor {
     fn visit_meta_name_value(&mut self, meta_item: &'ast ast::MetaItem, lit: &'ast ast::Lit) {
-        if meta_item.has_name(Symbol::intern("path")) && lit.kind.is_str() {
+        if meta_item.has_name(Symbol::intern("path")) && lit.token_lit.is_str() {
             self.paths.push(lit_to_str(lit));
         }
     }
 }
 
-#[cfg(not(windows))]
 fn lit_to_str(lit: &ast::Lit) -> String {
-    match lit.kind {
-        ast::LitKind::Str(symbol, ..) => symbol.to_string(),
-        _ => unreachable!(),
-    }
-}
-
-#[cfg(windows)]
-fn lit_to_str(lit: &ast::Lit) -> String {
-    match lit.kind {
-        ast::LitKind::Str(symbol, ..) => symbol.as_str().replace("/", "\\"),
+    match ast::LitKind::from_token_lit(lit.token_lit) {
+        Ok(ast::LitKind::Str(symbol, ..)) => {
+            if cfg!(windows) {
+                symbol.as_str().replace("/", "\\")
+            } else {
+                symbol.to_string()
+            }
+        }
         _ => unreachable!(),
     }
 }

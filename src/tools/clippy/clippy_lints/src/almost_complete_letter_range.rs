@@ -75,9 +75,18 @@ fn check_range(cx: &EarlyContext<'_>, span: Span, start: &Expr, end: &Expr, sugg
     if let ExprKind::Lit(start_lit) = &start.peel_parens().kind
         && let ExprKind::Lit(end_lit) = &end.peel_parens().kind
         && matches!(
-            (&start_lit.kind, &end_lit.kind),
-            (LitKind::Byte(b'a') | LitKind::Char('a'), LitKind::Byte(b'z') | LitKind::Char('z'))
-            | (LitKind::Byte(b'A') | LitKind::Char('A'), LitKind::Byte(b'Z') | LitKind::Char('Z'))
+            (
+                LitKind::from_token_lit(start_lit.token_lit),
+                LitKind::from_token_lit(end_lit.token_lit),
+            ),
+            (
+                Ok(LitKind::Byte(b'a') | LitKind::Char('a')),
+                Ok(LitKind::Byte(b'z') | LitKind::Char('z'))
+            )
+            | (
+                Ok(LitKind::Byte(b'A') | LitKind::Char('A')),
+                Ok(LitKind::Byte(b'Z') | LitKind::Char('Z')),
+            )
         )
     {
         span_lint_and_then(

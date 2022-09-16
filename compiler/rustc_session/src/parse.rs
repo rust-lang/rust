@@ -19,7 +19,7 @@ use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{Span, Symbol};
+use rustc_span::{sym, Span, Symbol};
 
 use rustc_ast::attr::AttrIdGenerator;
 use std::str;
@@ -331,6 +331,43 @@ impl ParseSess {
             vec![(span.shrink_to_lo(), "(".to_string()), (span.shrink_to_hi(), ")".to_string())],
             Applicability::MachineApplicable,
         );
+    }
+
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)]
+    pub fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<Symbol>) {
+        if let Some(suf) = suffix {
+            let mut err = if kind == "a tuple index"
+                && [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suf)
+            {
+                // #59553: warn instead of reject out of hand to allow the fix to percolate
+                // through the ecosystem when people fix their macros
+                let mut err = self
+                    .span_diagnostic
+                    .struct_span_warn(sp, &format!("suffixes on {kind} are invalid"));
+                err.note(&format!(
+                    "`{}` is *temporarily* accepted on tuple index fields as it was \
+                        incorrectly accepted on stable for a few releases",
+                    suf,
+                ));
+                err.help(
+                    "on proc macros, you'll want to use `syn::Index::from` or \
+                        `proc_macro::Literal::*_unsuffixed` for code that will desugar \
+                        to tuple field access",
+                );
+                err.note(
+                    "see issue #60210 <https://github.com/rust-lang/rust/issues/60210> \
+                     for more information",
+                );
+                err
+            } else {
+                self.span_diagnostic
+                    .struct_span_err(sp, &format!("suffixes on {kind} are invalid"))
+                    .forget_guarantee()
+            };
+            err.span_label(sp, format!("invalid suffix `{suf}`"));
+            err.emit();
+        }
     }
 
     pub fn save_proc_macro_span(&self, span: Span) -> usize {

@@ -952,7 +952,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 } else {
                     Lit {
                         token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),
-                        kind: LitKind::Err,
                         span: DUMMY_SP,
                     }
                 };

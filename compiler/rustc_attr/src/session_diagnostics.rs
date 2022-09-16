@@ -306,12 +306,12 @@ pub(crate) enum IncorrectReprFormatGenericCause<'a> {
 }
 
 impl<'a> IncorrectReprFormatGenericCause<'a> {
-    pub fn from_lit_kind(span: Span, kind: &ast::LitKind, name: &'a str) -> Option<Self> {
+    pub fn from_lit_kind(span: Span, kind: Option<ast::LitKind>, name: &'a str) -> Option<Self> {
         match kind {
-            ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                Some(Self::Int { span, name, int: *int })
+            Some(ast::LitKind::Int(int, ast::LitIntType::Unsuffixed)) => {
+                Some(Self::Int { span, name, int })
             }
-            ast::LitKind::Str(symbol, _) => Some(Self::Symbol { span, name, symbol: *symbol }),
+            Some(ast::LitKind::Str(symbol, _)) => Some(Self::Symbol { span, name, symbol }),
             _ => None,
         }
     }

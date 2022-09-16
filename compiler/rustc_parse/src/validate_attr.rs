@@ -50,7 +50,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
             }
             MacArgs::Eq(_, MacArgsEq::Ast(expr)) => {
                 if let ast::ExprKind::Lit(lit) = &expr.kind {
-                    if !lit.kind.is_unsuffixed() {
+                    if lit.token_lit.suffix.is_some() {
                         let mut err = sess.span_diagnostic.struct_span_err(
                             lit.span,
                             "suffixed literals are not allowed in attributes",
@@ -101,7 +101,7 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
     match meta {
         MetaItemKind::Word => template.word,
         MetaItemKind::List(..) => template.list.is_some(),
-        MetaItemKind::NameValue(lit) if lit.kind.is_str() => template.name_value_str.is_some(),
+        MetaItemKind::NameValue(lit) if lit.token_lit.is_str() => template.name_value_str.is_some(),
         MetaItemKind::NameValue(..) => false,
     }
 }

@@ -80,6 +80,28 @@ pub struct Lit {
     pub suffix: Option<Symbol>,
 }
 
+impl Lit {
+    pub fn is_bool_true(&self) -> bool {
+        matches!(self.kind, LitKind::Bool) && self.symbol == kw::True
+    }
+
+    /// Returns `true` if this literal is a string.
+    pub fn is_str(&self) -> bool {
+        matches!(self.kind, LitKind::Str | LitKind::StrRaw(_))
+    }
+
+    /// Returns `true` if this literal is byte literal string.
+    pub fn is_bytestr(&self) -> bool {
+        matches!(self.kind, LitKind::ByteStr | LitKind::ByteStrRaw(_))
+    }
+
+    /// Returns `true` if this literal has no suffix.
+    /// Note: this will return true for literals with prefixes such as raw strings and byte strings.
+    pub fn is_unsuffixed(&self) -> bool {
+        self.suffix.is_none()
+    }
+}
+
 impl fmt::Display for Lit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Lit { kind, symbol, suffix } = *self;

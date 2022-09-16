@@ -47,7 +47,8 @@ pub struct NumericLiteral<'a> {
 
 impl<'a> NumericLiteral<'a> {
     pub fn from_lit(src: &'a str, lit: &Lit) -> Option<NumericLiteral<'a>> {
-        NumericLiteral::from_lit_kind(src, &lit.kind)
+        let lit_kind = LitKind::from_token_lit(lit.token_lit).ok()?;
+        NumericLiteral::from_lit_kind(src, &lit_kind)
     }
 
     pub fn from_lit_kind(src: &'a str, lit_kind: &LitKind) -> Option<NumericLiteral<'a>> {

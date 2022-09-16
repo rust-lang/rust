@@ -1198,13 +1198,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 return Bound::Unbounded;
             };
             debug!("layout_scalar_valid_range: attr={:?}", attr);
-            if let Some(
-                &[
-                    ast::NestedMetaItem::Literal(ast::Lit {
-                        kind: ast::LitKind::Int(a, _), ..
-                    }),
-                ],
-            ) = attr.meta_item_list().as_deref()
+            if let Some(&[ast::NestedMetaItem::Literal(ast::Lit { token_lit, .. })]) =
+                attr.meta_item_list().as_deref()
+            && let Ok(ast::LitKind::Int(a, _)) = ast::LitKind::from_token_lit(token_lit)
             {
                 Bound::Included(a)
             } else {

@@ -1,14 +1,17 @@
 use super::errors::{
     AsyncGeneratorsNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     BaseExpressionDoubleDot, ClosureCannotBeStatic, FunctionalRecordUpdateDestructuringAssignemnt,
-    GeneratorTooManyParameters, InclusiveRangeWithNoEnd, NotSupportedForLifetimeBinderAsyncClosure,
-    RustcBoxAttributeError, UnderscoreExprLhsAssign,
+    GeneratorTooManyParameters, InclusiveRangeWithNoEnd, IntLiteralTooLarge,
+    InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth, InvalidIntLiteralWidth,
+    InvalidNumLiteralBasePrefix, InvalidNumLiteralSuffix,
+    NotSupportedForLifetimeBinderAsyncClosure, RustcBoxAttributeError, UnderscoreExprLhsAssign,
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 use crate::{FnDeclKind, ImplTraitPosition};
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
+use rustc_ast::util::literal::LitError;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
@@ -84,8 +87,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ohs = self.lower_expr(ohs);
                     hir::ExprKind::Unary(op, ohs)
                 }
-                ExprKind::Lit(ref l) => {
-                    hir::ExprKind::Lit(respan(self.lower_span(l.span), l.kind.clone()))
+                ExprKind::Lit(ref lit) => {
+                    let token_lit = lit.token_lit;
+                    let lit_kind = match LitKind::from_token_lit(token_lit) {
+                        Ok(lit_kind) => lit_kind,
+                        Err(err) => {
+                            let span = lit.span;
+                            self.report_lit_error(err, token_lit, span);
+                            LitKind::Err
+                        }
+                    };
+                    hir::ExprKind::Lit(respan(self.lower_span(lit.span), lit_kind))
                 }
                 ExprKind::Cast(ref expr, ref ty) => {
                     let expr = self.lower_expr(expr);
@@ -304,6 +316,86 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_attrs(hir_id, &e.attrs);
             hir::Expr { hir_id, kind, span: self.lower_span(e.span) }
         })
+    }
+
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)]
+    fn report_lit_error(&self, err: LitError, lit: token::Lit, span: Span) {
+        // Checks if `s` looks like i32 or u1234 etc.
+        fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
+            s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
+        }
+
+        // Try to lowercase the prefix if it's a valid base prefix.
+        fn fix_base_capitalisation(s: &str) -> Option<String> {
+            if let Some(stripped) = s.strip_prefix('B') {
+                Some(format!("0b{stripped}"))
+            } else if let Some(stripped) = s.strip_prefix('O') {
+                Some(format!("0o{stripped}"))
+            } else if let Some(stripped) = s.strip_prefix('X') {
+                Some(format!("0x{stripped}"))
+            } else {
+                None
+            }
+        }
+
+        let token::Lit { kind, suffix, .. } = lit;
+        match err {
+            // `LexerError` *is* an error, but it was already reported
+            // by lexer, so here we don't report it the second time.
+            LitError::LexerError => {}
+            LitError::InvalidSuffix => {
+                self.tcx.sess.parse_sess.expect_no_suffix(
+                    span,
+                    &format!("{} {} literal", kind.article(), kind.descr()),
+                    suffix,
+                );
+            }
+            LitError::InvalidIntSuffix => {
+                let suf = suffix.expect("suffix error with no suffix");
+                let suf = suf.as_str();
+                if looks_like_width_suffix(&['i', 'u'], &suf) {
+                    // If it looks like a width, try to be helpful.
+                    self.tcx.sess.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() });
+                } else if let Some(fixed) = fix_base_capitalisation(suf) {
+                    self.tcx.sess.emit_err(InvalidNumLiteralBasePrefix { span, fixed });
+                } else {
+                    self.tcx
+                        .sess
+                        .emit_err(InvalidNumLiteralSuffix { span, suffix: suf.to_string() });
+                }
+            }
+            LitError::InvalidFloatSuffix => {
+                let suf = suffix.expect("suffix error with no suffix");
+                let suf = suf.as_str();
+                if looks_like_width_suffix(&['f'], suf) {
+                    // If it looks like a width, try to be helpful.
+                    self.tcx
+                        .sess
+                        .emit_err(InvalidFloatLiteralWidth { span, width: suf[1..].to_string() });
+                } else {
+                    self.tcx
+                        .sess
+                        .emit_err(InvalidFloatLiteralSuffix { span, suffix: suf.to_string() });
+                }
+            }
+            LitError::NonDecimalFloat(base) => {
+                let descr = match base {
+                    16 => "hexadecimal",
+                    8 => "octal",
+                    2 => "binary",
+                    _ => unreachable!(),
+                };
+                self.tcx
+                    .sess
+                    .struct_span_err(span, &format!("{descr} float literal is not supported"))
+                    .span_label(span, "not supported")
+                    .emit();
+            }
+            LitError::IntTooLarge => {
+                self.tcx.sess.emit_err(IntLiteralTooLarge { span });
+            }
+        }
     }
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {

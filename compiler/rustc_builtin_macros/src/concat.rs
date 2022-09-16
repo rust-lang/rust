@@ -18,31 +18,34 @@ pub fn expand_concat(
     let mut has_errors = false;
     for e in es {
         match e.kind {
-            ast::ExprKind::Lit(ref lit) => match lit.kind {
-                ast::LitKind::Str(ref s, _) | ast::LitKind::Float(ref s, _) => {
-                    accumulator.push_str(s.as_str());
+            ast::ExprKind::Lit(ref lit) => {
+                match ast::LitKind::from_token_lit(lit.token_lit) {
+                    Ok(ast::LitKind::Str(ref s, _) | ast::LitKind::Float(ref s, _)) => {
+                        accumulator.push_str(s.as_str());
+                    }
+                    Ok(ast::LitKind::Char(c)) => {
+                        accumulator.push(c);
+                    }
+                    Ok(ast::LitKind::Int(i, _)) => {
+                        accumulator.push_str(&i.to_string());
+                    }
+                    Ok(ast::LitKind::Bool(b)) => {
+                        accumulator.push_str(&b.to_string());
+                    }
+                    Ok(ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..)) => {
+                        cx.span_err(e.span, "cannot concatenate a byte string literal");
+                        has_errors = true;
+                    }
+                    Ok(ast::LitKind::Err) => {
+                        has_errors = true;
+                    }
+                    Err(_) => {
+                        // "invalid literal" is not very helpful.
+                        cx.span_err(e.span, "cannot concatenate an invalid literal");
+                        has_errors = true;
+                    }
                 }
-                ast::LitKind::Char(c) => {
-                    accumulator.push(c);
-                }
-                ast::LitKind::Int(
-                    i,
-                    ast::LitIntType::Unsigned(_)
-                    | ast::LitIntType::Signed(_)
-                    | ast::LitIntType::Unsuffixed,
-                ) => {
-                    accumulator.push_str(&i.to_string());
-                }
-                ast::LitKind::Bool(b) => {
-                    accumulator.push_str(&b.to_string());
-                }
-                ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..) => {
-                    cx.span_err(e.span, "cannot concatenate a byte string literal");
-                }
-                ast::LitKind::Err => {
-                    has_errors = true;
-                }
-            },
+            }
             ast::ExprKind::Err => {
                 has_errors = true;
             }

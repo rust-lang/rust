@@ -857,8 +857,8 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
         .filter_map(|a| a.meta_item_list())
     {
         for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.literal()).enumerate() {
-            match literal.kind {
-                ast::LitKind::Int(a, _) => {
+            match ast::LitKind::from_token_lit(literal.token_lit) {
+                Ok(ast::LitKind::Int(a, _)) => {
                     let gen = func.generics.params.remove(0);
                     if let GenericParamDef { name, kind: GenericParamDefKind::Const { ty, .. } } =
                         gen

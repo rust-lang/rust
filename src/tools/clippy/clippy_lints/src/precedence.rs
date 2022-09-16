@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
-use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind, UnOp};
+use rustc_ast::ast::{BinOpKind, Expr, ExprKind, UnOp};
+use rustc_ast::token;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -120,7 +121,7 @@ impl EarlyLintPass for Precedence {
             if_chain! {
                 if !all_odd;
                 if let ExprKind::Lit(lit) = &arg.kind;
-                if let LitKind::Int(..) | LitKind::Float(..) = &lit.kind;
+                if let token::LitKind::Integer | token::LitKind::Float = lit.token_lit.kind;
                 then {
                     let mut applicability = Applicability::MachineApplicable;
                     span_lint_and_sugg(

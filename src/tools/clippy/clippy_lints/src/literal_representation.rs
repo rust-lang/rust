@@ -472,7 +472,7 @@ impl DecimalLiteralRepresentation {
     fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         // Lint integral literals.
         if_chain! {
-            if let LitKind::Int(val, _) = lit.kind;
+            if let Ok(LitKind::Int(val, _)) = LitKind::from_token_lit(lit.token_lit);
             if let Some(src) = snippet_opt(cx, lit.span);
             if let Some(num_lit) = NumericLiteral::from_lit(&src, lit);
             if num_lit.radix == Radix::Decimal;

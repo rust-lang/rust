@@ -1,7 +1,7 @@
 //! Parsing and validation of builtin attributes
 
 use rustc_ast as ast;
-use rustc_ast::{Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem, NodeId};
+use rustc_ast::{token, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
@@ -658,7 +658,8 @@ pub fn eval_condition(
         ast::MetaItemKind::List(ref mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
             let (min_version, span) = match &mis[..] {
-                [NestedMetaItem::Literal(Lit { kind: LitKind::Str(sym, ..), span, .. })] => {
+                [NestedMetaItem::Literal(Lit { token_lit, span, .. })]
+                if let Ok(LitKind::Str(sym, ..)) = LitKind::from_token_lit(*token_lit) => {
                     (sym, span)
                 }
                 [
@@ -759,13 +760,13 @@ pub fn eval_condition(
             sess.emit_err(session_diagnostics::CfgPredicateIdentifier { span: cfg.path.span });
             true
         }
-        MetaItemKind::NameValue(ref lit) if !lit.kind.is_str() => {
+        MetaItemKind::NameValue(ref lit) if !lit.token_lit.is_str() => {
             handle_errors(
                 sess,
                 lit.span,
                 AttrError::UnsupportedLiteral(
                     UnsupportedLiteralReason::CfgString,
-                    lit.kind.is_bytestr(),
+                    lit.token_lit.is_bytestr(),
                 ),
             );
             true
@@ -844,7 +845,7 @@ where
                                 lit.span,
                                 AttrError::UnsupportedLiteral(
                                     UnsupportedLiteralReason::DeprecatedString,
-                                    lit.kind.is_bytestr(),
+                                    lit.token_lit.is_bytestr(),
                                 ),
                             );
                         } else {
@@ -1009,13 +1010,13 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 let mut literal_error = None;
                 if name == sym::align {
                     recognised = true;
-                    match parse_alignment(&value.kind) {
+                    match parse_alignment(value.token_lit) {
                         Ok(literal) => acc.push(ReprAlign(literal)),
                         Err(message) => literal_error = Some(message),
                     };
                 } else if name == sym::packed {
                     recognised = true;
-                    match parse_alignment(&value.kind) {
+                    match parse_alignment(value.token_lit) {
                         Ok(literal) => acc.push(ReprPacked(literal)),
                         Err(message) => literal_error = Some(message),
                     };
@@ -1045,7 +1046,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                             repr_arg: &name,
                             cause: IncorrectReprFormatGenericCause::from_lit_kind(
                                 item.span(),
-                                &value.kind,
+                                LitKind::from_token_lit(value.token_lit).ok(),
                                 &name,
                             ),
                         });
@@ -1198,11 +1199,13 @@ fn allow_unstable<'a>(
     })
 }
 
-pub fn parse_alignment(node: &ast::LitKind) -> Result<u32, &'static str> {
-    if let ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed) = node {
-        if literal.is_power_of_two() {
+pub fn parse_alignment(token_lit: token::Lit) -> Result<u32, &'static str> {
+    if let Ok(ast::LitKind::Int(n, ast::LitIntType::Unsuffixed)) =
+        ast::LitKind::from_token_lit(token_lit)
+    {
+        if n.is_power_of_two() {
             // rustc_middle::ty::layout::Align restricts align to <= 2^29
-            if *literal <= 1 << 29 { Ok(*literal as u32) } else { Err("larger than 2^29") }
+            if n <= 1 << 29 { Ok(n as u32) } else { Err("larger than 2^29") }
         } else {
             Err("not a power of two")
         }

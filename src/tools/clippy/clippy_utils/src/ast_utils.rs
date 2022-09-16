@@ -152,7 +152,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         },
         (Binary(lo, ll, lr), Binary(ro, rl, rr)) => lo.node == ro.node && eq_expr(ll, rl) && eq_expr(lr, rr),
         (Unary(lo, l), Unary(ro, r)) => mem::discriminant(lo) == mem::discriminant(ro) && eq_expr(l, r),
-        (Lit(l), Lit(r)) => l.kind == r.kind,
+        (Lit(l), Lit(r)) => l.token_lit == r.token_lit,
         (Cast(l, lt), Cast(r, rt)) | (Type(l, lt), Type(r, rt)) => eq_expr(l, r) && eq_ty(lt, rt),
         (Let(lp, le, _), Let(rp, re, _)) => eq_pat(lp, rp) && eq_expr(le, re),
         (If(lc, lt, le), If(rc, rt, re)) => eq_expr(lc, rc) && eq_block(lt, rt) && eq_expr_opt(le, re),
@@ -706,7 +706,7 @@ pub fn eq_mac_args(l: &MacArgs, r: &MacArgs) -> bool {
         (Empty, Empty) => true,
         (Delimited(_, ld, lts), Delimited(_, rd, rts)) => ld == rd && lts.eq_unspanned(rts),
         (Eq(_, MacArgsEq::Ast(le)), Eq(_, MacArgsEq::Ast(re))) => eq_expr(le, re),
-        (Eq(_, MacArgsEq::Hir(ll)), Eq(_, MacArgsEq::Hir(rl))) => ll.kind == rl.kind,
+        (Eq(_, MacArgsEq::Hir(ll)), Eq(_, MacArgsEq::Hir(rl))) => ll.token_lit == rl.token_lit,
         _ => false,
     }
 }

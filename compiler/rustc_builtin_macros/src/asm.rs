@@ -172,7 +172,7 @@ pub fn parse_asm_args<'a>(
             // If it can't possibly expand to a string, provide diagnostics here to include other
             // things it could have been.
             match template.kind {
-                ast::ExprKind::Lit(ast::Lit { kind: ast::LitKind::Str(..), .. }) => {}
+                ast::ExprKind::Lit(ast::Lit { token_lit, .. }) if token_lit.is_str() => {}
                 ast::ExprKind::MacCall(..) => {}
                 _ => {
                     let errstr = if is_global_asm {

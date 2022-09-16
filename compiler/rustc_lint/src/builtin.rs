@@ -100,7 +100,7 @@ impl EarlyLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::While(cond, _, label) = &e.kind {
             if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind {
-                if let ast::LitKind::Bool(true) = lit.kind {
+                if lit.token_lit.is_bool_true() {
                     if !lit.span.from_expansion() {
                         let condition_span = e.span.with_hi(cond.span.hi());
                         cx.struct_span_lint(WHILE_TRUE, condition_span, |lint| {

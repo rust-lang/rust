@@ -1,74 +1,81 @@
-error: suffixes on a string literal are invalid
-  --> $DIR/literals.rs:15:9
-   |
-LL | #[doc = "documentation"suffix]
-   |         ^^^^^^^^^^^^^^^^^^^^^ invalid suffix `suffix`
-
-error: suffixes on a string literal are invalid
-  --> $DIR/literals.rs:26:9
+error: cannot concatenate an invalid literal
+  --> $DIR/literals.rs:30:9
    |
 LL |         "abc"suffix,
-   |         ^^^^^^^^^^^ invalid suffix `suffix`
+   |         ^^^^^^^^^^^
 
-error: suffixes on a string literal are invalid
-  --> $DIR/literals.rs:27:9
+error: cannot concatenate an invalid literal
+  --> $DIR/literals.rs:31:9
    |
 LL |         "blah"foo,
-   |         ^^^^^^^^^ invalid suffix `foo`
+   |         ^^^^^^^^^
 
-error: invalid width `33` for integer literal
-  --> $DIR/literals.rs:28:9
+error: cannot concatenate an invalid literal
+  --> $DIR/literals.rs:32:9
    |
 LL |         3u33,
    |         ^^^^
-   |
-   = help: valid widths are 8, 16, 32, 64 and 128
 
-error: suffixes on a string literal are invalid
-  --> $DIR/literals.rs:31:27
+error: cannot concatenate invalid literals
+  --> $DIR/literals.rs:35:27
    |
 LL |     let x = concat_bytes!("foo"blah, 3u33);
-   |                           ^^^^^^^^^ invalid suffix `blah`
+   |                           ^^^^^^^^^
 
-error: invalid width `33` for integer literal
-  --> $DIR/literals.rs:31:38
-   |
-LL |     let x = concat_bytes!("foo"blah, 3u33);
-   |                                      ^^^^
-   |
-   = help: valid widths are 8, 16, 32, 64 and 128
-
-error: integer literal is too large
-  --> $DIR/literals.rs:8:14
-   |
-LL | #[repr(align(340282366920938463463374607431768211456))]
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: invalid width `7` for integer literal
-  --> $DIR/literals.rs:12:14
+error: suffixed literals are not allowed in attributes
+  --> $DIR/literals.rs:13:14
    |
 LL | #[repr(align(4u7))]
    |              ^^^
    |
-   = help: valid widths are 8, 16, 32, 64 and 128
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 
-error: invalid width `7` for integer literal
-  --> $DIR/literals.rs:21:15
+error: suffixed literals are not allowed in attributes
+  --> $DIR/literals.rs:19:9
+   |
+LL | #[doc = "documentation"suffix]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/literals.rs:23:15
    |
 LL | #[doc(alias = 0u7)]
    |               ^^^
    |
-   = help: valid widths are 8, 16, 32, 64 and 128
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 
-error: attribute must be of the form `#[doc(hidden|inline|...)]` or `#[doc = "string"]`
-  --> $DIR/literals.rs:15:1
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/literals.rs:8:8
    |
-LL | #[doc = "documentation"suffix]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[repr(align(340282366920938463463374607431768211456))]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/literals.rs:13:8
    |
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+LL | #[repr(align(4u7))]
+   |        ^^^^^^^^^^
 
-error: aborting due to 10 previous errors
+error: doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
+  --> $DIR/literals.rs:23:7
+   |
+LL | #[doc(alias = 0u7)]
+   |       ^^^^^^^^^^^
 
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/literals.rs:8:8
+   |
+LL | #[repr(align(340282366920938463463374607431768211456))]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/literals.rs:13:8
+   |
+LL | #[repr(align(4u7))]
+   |        ^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0589`.

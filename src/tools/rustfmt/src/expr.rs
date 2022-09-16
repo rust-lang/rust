@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use itertools::Itertools;
-use rustc_ast::token::{Delimiter, LitKind};
+use rustc_ast::token::{Delimiter, Lit, LitKind};
 use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, Span};
 
@@ -274,10 +274,12 @@ pub(crate) fn format_expr(
 
             fn needs_space_before_range(context: &RewriteContext<'_>, lhs: &ast::Expr) -> bool {
                 match lhs.kind {
-                    ast::ExprKind::Lit(ref lit) => match lit.kind {
-                        ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
-                            context.snippet(lit.span).ends_with('.')
-                        }
+                    ast::ExprKind::Lit(ref lit) => match lit.token_lit {
+                        Lit {
+                            kind: LitKind::Float,
+                            suffix: None,
+                            ..
+                        } => context.snippet(lit.span).ends_with('.'),
                         _ => false,
                     },
                     ast::ExprKind::Unary(_, ref expr) => needs_space_before_range(context, expr),
@@ -1187,9 +1189,9 @@ pub(crate) fn rewrite_literal(
     l: &ast::Lit,
     shape: Shape,
 ) -> Option<String> {
-    match l.kind {
-        ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
-        ast::LitKind::Int(..) => rewrite_int_lit(context, l, shape),
+    match l.token_lit.kind {
+        LitKind::Str => rewrite_string_lit(context, l.span, shape),
+        LitKind::Integer => rewrite_int_lit(context, l, shape),
         _ => wrap_str(
             context.snippet(l.span).to_owned(),
             context.config.max_width(),

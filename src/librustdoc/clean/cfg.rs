@@ -74,18 +74,20 @@ impl Cfg {
                 let cfg = Cfg::Cfg(name, None);
                 if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
             }
-            MetaItemKind::NameValue(ref lit) => match lit.kind {
-                LitKind::Str(value, _) => {
-                    let cfg = Cfg::Cfg(name, Some(value));
-                    if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
+            MetaItemKind::NameValue(ref lit) => {
+                match LitKind::from_token_lit(lit.token_lit) {
+                    Ok(LitKind::Str(value, _)) => {
+                        let cfg = Cfg::Cfg(name, Some(value));
+                        if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
+                    }
+                    _ => Err(InvalidCfgError {
+                        // FIXME: if the main #[cfg] syntax decided to support non-string literals,
+                        // this should be changed as well.
+                        msg: "value of cfg option should be a string literal",
+                        span: lit.span,
+                    }),
                 }
-                _ => Err(InvalidCfgError {
-                    // FIXME: if the main #[cfg] syntax decided to support non-string literals,
-                    // this should be changed as well.
-                    msg: "value of cfg option should be a string literal",
-                    span: lit.span,
-                }),
-            },
+            }
             MetaItemKind::List(ref items) => {
                 let orig_len = items.len();
                 let sub_cfgs =

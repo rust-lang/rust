@@ -4,16 +4,13 @@ use rustc_errors::Applicability;
 use rustc_expand::base::{self, DummyResult};
 
 /// Emits errors for literal expressions that are invalid inside and outside of an array.
-fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_nested: bool) {
-    let ast::ExprKind::Lit(lit) = &expr.kind else {
-        unreachable!();
-    };
-    match lit.kind {
-        ast::LitKind::Char(_) => {
-            let mut err = cx.struct_span_err(expr.span, "cannot concatenate character literals");
-            if let Ok(snippet) = cx.sess.source_map().span_to_snippet(expr.span) {
+fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, lit: &ast::Lit, is_nested: bool) {
+    match ast::LitKind::from_token_lit(lit.token_lit) {
+        Ok(ast::LitKind::Char(_)) => {
+            let mut err = cx.struct_span_err(lit.span, "cannot concatenate character literals");
+            if let Ok(snippet) = cx.sess.source_map().span_to_snippet(lit.span) {
                 err.span_suggestion(
-                    expr.span,
+                    lit.span,
                     "try using a byte character",
                     format!("b{}", snippet),
                     Applicability::MachineApplicable,
@@ -21,13 +18,13 @@ fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_ne
                 .emit();
             }
         }
-        ast::LitKind::Str(_, _) => {
-            let mut err = cx.struct_span_err(expr.span, "cannot concatenate string literals");
+        Ok(ast::LitKind::Str(_, _)) => {
+            let mut err = cx.struct_span_err(lit.span, "cannot concatenate string literals");
             // suggestion would be invalid if we are nested
             if !is_nested {
-                if let Ok(snippet) = cx.sess.source_map().span_to_snippet(expr.span) {
+                if let Ok(snippet) = cx.sess.source_map().span_to_snippet(lit.span) {
                     err.span_suggestion(
-                        expr.span,
+                        lit.span,
                         "try using a byte string",
                         format!("b{}", snippet),
                         Applicability::MachineApplicable,
@@ -36,18 +33,18 @@ fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_ne
             }
             err.emit();
         }
-        ast::LitKind::Float(_, _) => {
-            cx.span_err(expr.span, "cannot concatenate float literals");
+        Ok(ast::LitKind::Float(_, _)) => {
+            cx.span_err(lit.span, "cannot concatenate float literals");
         }
-        ast::LitKind::Bool(_) => {
-            cx.span_err(expr.span, "cannot concatenate boolean literals");
+        Ok(ast::LitKind::Bool(_)) => {
+            cx.span_err(lit.span, "cannot concatenate boolean literals");
         }
-        ast::LitKind::Err => {}
-        ast::LitKind::Int(_, _) if !is_nested => {
-            let mut err = cx.struct_span_err(expr.span, "cannot concatenate numeric literals");
-            if let Ok(snippet) = cx.sess.source_map().span_to_snippet(expr.span) {
+        Ok(ast::LitKind::Err) => {}
+        Ok(ast::LitKind::Int(_, _)) if !is_nested => {
+            let mut err = cx.struct_span_err(lit.span, "cannot concatenate numeric literals");
+            if let Ok(snippet) = cx.sess.source_map().span_to_snippet(lit.span) {
                 err.span_suggestion(
-                    expr.span,
+                    lit.span,
                     "try wrapping the number in an array",
                     format!("[{}]", snippet),
                     Applicability::MachineApplicable,
@@ -55,17 +52,20 @@ fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_ne
             }
             err.emit();
         }
-        ast::LitKind::Int(
+        Ok(ast::LitKind::Int(
             val,
             ast::LitIntType::Unsuffixed | ast::LitIntType::Unsigned(ast::UintTy::U8),
-        ) => {
+        )) => {
             assert!(val > u8::MAX.into()); // must be an error
-            cx.span_err(expr.span, "numeric literal is out of bounds");
+            cx.span_err(lit.span, "numeric literal is out of bounds");
         }
-        ast::LitKind::Int(_, _) => {
-            cx.span_err(expr.span, "numeric literal is not a `u8`");
+        Ok(ast::LitKind::Int(_, _)) => {
+            cx.span_err(lit.span, "numeric literal is not a `u8`");
         }
-        _ => unreachable!(),
+        Ok(ast::LitKind::Byte(_) | ast::LitKind::ByteStr(_)) => unreachable!(),
+        Err(_) => {
+            cx.span_err(lit.span, "cannot concatenate invalid literals");
+        }
     }
 }
 
@@ -83,14 +83,14 @@ fn handle_array_element(
             *has_errors = true;
             None
         }
-        ast::ExprKind::Lit(ref lit) => match lit.kind {
-            ast::LitKind::Int(
+        ast::ExprKind::Lit(ref lit) => match ast::LitKind::from_token_lit(lit.token_lit) {
+            Ok(ast::LitKind::Int(
                 val,
                 ast::LitIntType::Unsuffixed | ast::LitIntType::Unsigned(ast::UintTy::U8),
-            ) if val <= u8::MAX.into() => Some(val as u8),
+            )) if val <= u8::MAX.into() => Some(val as u8),
 
-            ast::LitKind::Byte(val) => Some(val),
-            ast::LitKind::ByteStr(_) => {
+            Ok(ast::LitKind::Byte(val)) => Some(val),
+            Ok(ast::LitKind::ByteStr(_)) => {
                 if !*has_errors {
                     cx.struct_span_err(expr.span, "cannot concatenate doubly nested array")
                         .note("byte strings are treated as arrays of bytes")
@@ -102,7 +102,7 @@ fn handle_array_element(
             }
             _ => {
                 if !*has_errors {
-                    invalid_type_err(cx, expr, true);
+                    invalid_type_err(cx, lit, true);
                 }
                 *has_errors = true;
                 None
@@ -138,9 +138,9 @@ pub fn expand_concat_bytes(
                 }
             }
             ast::ExprKind::Repeat(ref expr, ref count) => {
-                if let ast::ExprKind::Lit(ast::Lit {
-                    kind: ast::LitKind::Int(count_val, _), ..
-                }) = count.value.kind
+                if let ast::ExprKind::Lit(lit) = &count.value.kind
+                && let Ok(ast::LitKind::Int(count_val, _)) =
+                    ast::LitKind::from_token_lit(lit.token_lit)
                 {
                     if let Some(elem) =
                         handle_array_element(cx, &mut has_errors, &mut missing_literals, expr)
@@ -153,16 +153,16 @@ pub fn expand_concat_bytes(
                     cx.span_err(count.value.span, "repeat count is not a positive number");
                 }
             }
-            ast::ExprKind::Lit(ref lit) => match lit.kind {
-                ast::LitKind::Byte(val) => {
+            ast::ExprKind::Lit(ref lit) => match ast::LitKind::from_token_lit(lit.token_lit) {
+                Ok(ast::LitKind::Byte(val)) => {
                     accumulator.push(val);
                 }
-                ast::LitKind::ByteStr(ref bytes) => {
+                Ok(ast::LitKind::ByteStr(ref bytes)) => {
                     accumulator.extend_from_slice(&bytes);
                 }
                 _ => {
                     if !has_errors {
-                        invalid_type_err(cx, &e, false);
+                        invalid_type_err(cx, lit, false);
                     }
                     has_errors = true;
                 }

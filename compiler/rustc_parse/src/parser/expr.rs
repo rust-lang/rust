@@ -16,18 +16,12 @@ use super::{
     SemiColonMode, SeqSep, TokenExpectType, TokenType, TrailingToken,
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
-use crate::parser::diagnostics::{
-    IntLiteralTooLarge, InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth,
-    InvalidIntLiteralWidth, InvalidNumLiteralBasePrefix, InvalidNumLiteralSuffix,
-    MissingCommaAfterMatchArm,
-};
-
+use crate::parser::diagnostics::MissingCommaAfterMatchArm;
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::classify;
-use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast::visit::Visitor;
 use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp, DUMMY_NODE_ID};
@@ -1720,8 +1714,8 @@ impl<'a> Parser<'a> {
     /// and returns `None` if the next token is not literal at all.
     pub fn parse_str_lit(&mut self) -> Result<ast::StrLit, Option<Lit>> {
         match self.parse_opt_lit() {
-            Some(lit) => match lit.kind {
-                ast::LitKind::Str(symbol_unescaped, style) => Ok(ast::StrLit {
+            Some(lit) => match ast::LitKind::from_token_lit(lit.token_lit) {
+                Ok(ast::LitKind::Str(symbol_unescaped, style)) => Ok(ast::StrLit {
                     style,
                     symbol: lit.token_lit.symbol,
                     suffix: lit.token_lit.suffix,
@@ -1784,25 +1778,11 @@ impl<'a> Parser<'a> {
 
         let token = recovered.as_ref().unwrap_or(&self.token);
         match Lit::from_token(token) {
-            Ok(lit) => {
+            Some(lit) => {
                 self.bump();
                 Some(lit)
             }
-            Err(LitError::NotLiteral) => None,
-            Err(err) => {
-                let span = token.span;
-                let token::Literal(lit) = token.kind else {
-                    unreachable!();
-                };
-                self.bump();
-                self.report_lit_error(err, lit, span);
-                // Pack possible quotes and prefixes from the original literal into
-                // the error literal's symbol so they can be pretty-printed faithfully.
-                let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
-                let symbol = Symbol::intern(&suffixless_lit.to_string());
-                let lit = token::Lit::new(token::Err, symbol, lit.suffix);
-                Some(Lit::from_token_lit(lit, span).unwrap_or_else(|_| unreachable!()))
-            }
+            None => None,
         }
     }
 
@@ -1811,80 +1791,6 @@ impl<'a> Parser<'a> {
             span: token.span,
             correct: pprust::token_to_string(token).into_owned(),
         });
-    }
-
-    fn report_lit_error(&self, err: LitError, lit: token::Lit, span: Span) {
-        // Checks if `s` looks like i32 or u1234 etc.
-        fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
-            s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
-        }
-
-        // Try to lowercase the prefix if it's a valid base prefix.
-        fn fix_base_capitalisation(s: &str) -> Option<String> {
-            if let Some(stripped) = s.strip_prefix('B') {
-                Some(format!("0b{stripped}"))
-            } else if let Some(stripped) = s.strip_prefix('O') {
-                Some(format!("0o{stripped}"))
-            } else if let Some(stripped) = s.strip_prefix('X') {
-                Some(format!("0x{stripped}"))
-            } else {
-                None
-            }
-        }
-
-        let token::Lit { kind, suffix, .. } = lit;
-        match err {
-            // `NotLiteral` is not an error by itself, so we don't report
-            // it and give the parser opportunity to try something else.
-            LitError::NotLiteral => {}
-            // `LexerError` *is* an error, but it was already reported
-            // by lexer, so here we don't report it the second time.
-            LitError::LexerError => {}
-            LitError::InvalidSuffix => {
-                self.expect_no_suffix(
-                    span,
-                    &format!("{} {} literal", kind.article(), kind.descr()),
-                    suffix,
-                );
-            }
-            LitError::InvalidIntSuffix => {
-                let suf = suffix.expect("suffix error with no suffix");
-                let suf = suf.as_str();
-                if looks_like_width_suffix(&['i', 'u'], &suf) {
-                    // If it looks like a width, try to be helpful.
-                    self.sess.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() });
-                } else if let Some(fixed) = fix_base_capitalisation(suf) {
-                    self.sess.emit_err(InvalidNumLiteralBasePrefix { span, fixed });
-                } else {
-                    self.sess.emit_err(InvalidNumLiteralSuffix { span, suffix: suf.to_string() });
-                }
-            }
-            LitError::InvalidFloatSuffix => {
-                let suf = suffix.expect("suffix error with no suffix");
-                let suf = suf.as_str();
-                if looks_like_width_suffix(&['f'], suf) {
-                    // If it looks like a width, try to be helpful.
-                    self.sess
-                        .emit_err(InvalidFloatLiteralWidth { span, width: suf[1..].to_string() });
-                } else {
-                    self.sess.emit_err(InvalidFloatLiteralSuffix { span, suffix: suf.to_string() });
-                }
-            }
-            LitError::NonDecimalFloat(base) => {
-                let descr = match base {
-                    16 => "hexadecimal",
-                    8 => "octal",
-                    2 => "binary",
-                    _ => unreachable!(),
-                };
-                self.struct_span_err(span, &format!("{descr} float literal is not supported"))
-                    .span_label(span, "not supported")
-                    .emit();
-            }
-            LitError::IntTooLarge => {
-                self.sess.emit_err(IntLiteralTooLarge { span });
-            }
-        }
     }
 
     pub(super) fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<Symbol>) {

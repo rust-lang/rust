@@ -462,7 +462,8 @@ impl LateLintPass<'_> for BadOptAccess {
                 let Some(items) = attr.meta_item_list()  &&
                 let Some(item) = items.first()  &&
                 let Some(literal) = item.literal()  &&
-                let ast::LitKind::Str(val, _) = literal.kind
+                let Ok(ast::LitKind::Str(val, _)) =
+                    ast::LitKind::from_token_lit(literal.token_lit)
             {
                 cx.struct_span_lint(BAD_OPT_ACCESS, expr.span, |lint| {
                     lint.build(val.as_str()).emit(); }

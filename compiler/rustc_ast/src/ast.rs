@@ -1691,10 +1691,6 @@ pub enum StrStyle {
 pub struct Lit {
     /// The original literal token as written in source code.
     pub token_lit: token::Lit,
-    /// The "semantic" representation of the literal lowered from the original tokens.
-    /// Strings are unescaped, hexadecimal forms are eliminated, etc.
-    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
-    pub kind: LitKind,
     pub span: Span,
 }
 
@@ -1717,11 +1713,7 @@ impl StrLit {
             StrStyle::Cooked => token::Str,
             StrStyle::Raw(n) => token::StrRaw(n),
         };
-        Lit {
-            token_lit: token::Lit::new(token_kind, self.symbol, self.suffix),
-            span: self.span,
-            kind: LitKind::Str(self.symbol_unescaped, self.style),
-        }
+        Lit { token_lit: token::Lit::new(token_kind, self.symbol, self.suffix), span: self.span }
     }
 }
 
@@ -1778,20 +1770,9 @@ impl LitKind {
         matches!(self, LitKind::Str(..))
     }
 
-    /// Returns `true` if this literal is byte literal string.
-    pub fn is_bytestr(&self) -> bool {
-        matches!(self, LitKind::ByteStr(_))
-    }
-
     /// Returns `true` if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
         matches!(self, LitKind::Int(..) | LitKind::Float(..))
-    }
-
-    /// Returns `true` if this literal has no suffix.
-    /// Note: this will return true for literals with prefixes such as raw strings and byte strings.
-    pub fn is_unsuffixed(&self) -> bool {
-        !self.is_suffixed()
     }
 
     /// Returns `true` if this literal has a suffix.
@@ -3056,7 +3037,7 @@ mod size_asserts {
     static_assert_size!(Impl, 200);
     static_assert_size!(Item, 184);
     static_assert_size!(ItemKind, 112);
-    static_assert_size!(Lit, 48);
+    static_assert_size!(Lit, 20);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
     static_assert_size!(Param, 40);

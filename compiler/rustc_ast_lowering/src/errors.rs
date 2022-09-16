@@ -2,6 +2,61 @@ use rustc_errors::{fluent, AddSubdiagnostic, Applicability, Diagnostic, Diagnost
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_int_literal_width)]
+#[help]
+pub(crate) struct InvalidIntLiteralWidth {
+    #[primary_span]
+    pub span: Span,
+    pub width: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_num_literal_base_prefix)]
+#[note]
+pub(crate) struct InvalidNumLiteralBasePrefix {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "{fixed}")]
+    pub span: Span,
+    pub fixed: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_num_literal_suffix)]
+#[help]
+pub(crate) struct InvalidNumLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_float_literal_width)]
+#[help]
+pub(crate) struct InvalidFloatLiteralWidth {
+    #[primary_span]
+    pub span: Span,
+    pub width: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_float_literal_suffix)]
+#[help]
+pub(crate) struct InvalidFloatLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::int_literal_too_large)]
+pub(crate) struct IntLiteralTooLarge {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(SessionDiagnostic, Clone, Copy)]
 #[diag(ast_lowering::generic_type_with_parentheses, code = "E0214")]
 pub struct GenericTypeWithParentheses {
