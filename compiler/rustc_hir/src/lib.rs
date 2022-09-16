@@ -5,7 +5,7 @@
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
 #![feature(const_btree_new)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(once_cell)]
 #![feature(min_specialization)]
 #![feature(never_type)]

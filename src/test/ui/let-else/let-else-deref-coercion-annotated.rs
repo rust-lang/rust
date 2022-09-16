@@ -6,7 +6,7 @@
 // Deref/DerefMut to Bar. You can do this with an irrefutable binding, so it should work with
 // let-else too.
 
-#![feature(let_else)]
+
 use std::ops::{Deref, DerefMut};
 
 struct Foo(Bar);

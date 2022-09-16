@@ -1,6 +1,6 @@
 // run-pass
 // adapted from src/test/ui/binding/if-let.rs
-#![feature(let_else)]
+
 #![allow(dead_code)]
 
 fn none() -> bool {

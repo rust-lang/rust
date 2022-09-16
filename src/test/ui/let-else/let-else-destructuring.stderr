@@ -1,11 +1,11 @@
 error: <assignment> ... else { ... } is not allowed
-  --> $DIR/let-else-destructuring.rs:11:9
+  --> $DIR/let-else-destructuring.rs:10:9
    |
 LL |         &Foo::Nested(Some(value)) = value else { break };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/let-else-destructuring.rs:11:35
+  --> $DIR/let-else-destructuring.rs:10:35
    |
 LL |         &Foo::Nested(Some(value)) = value else { break };
    |         ------------------------- ^

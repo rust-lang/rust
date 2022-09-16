@@ -6,7 +6,7 @@
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(min_specialization)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]

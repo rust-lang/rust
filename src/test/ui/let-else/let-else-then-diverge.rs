@@ -2,7 +2,7 @@
 // popped up in in #94012, where an alternative desugaring was
 // causing unreachable code errors
 
-#![feature(let_else)]
+
 #![deny(unused_variables)]
 #![deny(unreachable_code)]
 
