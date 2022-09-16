@@ -241,6 +241,49 @@ pre.rust a,
 	color: var(--main-color);
 }
 
+.content span.enum, .content a.enum,
+.content span.struct, .content a.struct,
+.content span.union, .content a.union,
+.content span.primitive, .content a.primitive,
+.content span.type, .content a.type,
+.content span.foreigntype, .content a.foreigntype {
+	color: var(--type-link-color);
+}
+
+.content span.trait, .content a.trait,
+.content span.traitalias, .content a.traitalias {
+	color: var(--trait-link-color);
+}
+
+.content span.associatedtype, .content a.associatedtype,
+.content span.constant, .content a.constant,
+.content span.static, .content a.static {
+	color: var(--assoc-item-link-color);
+}
+
+.content span.fn, .content a.fn,
+.content .fnname {
+	color: var(--function-link-color);
+}
+
+.content span.attr, .content a.attr,
+.content span.derive, .content a.derive,
+.content span.macro, .content a.macro {
+	color: var(--macro-link-color);
+}
+
+.content span.mod, .content a.mod, .block a.current.mod {
+	color: var(--mod-link-color);
+}
+
+.content span.keyword, .content a.keyword {
+	color: var(--keyword-link-color);
+}
+
+a {
+	color: var(--link-color);
+}
+
 ol, ul {
 	padding-left: 24px;
 }
