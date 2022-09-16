@@ -371,6 +371,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some(arm.span),
                         Some(arm.scope),
                         Some(match_scope),
+                        false,
                     );
 
                     if let Some(source_scope) = scope {
@@ -416,6 +417,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         arm_span: Option<Span>,
         arm_scope: Option<region::Scope>,
         match_scope: Option<region::Scope>,
+        storages_alive: bool,
     ) -> BasicBlock {
         if candidate.subcandidates.is_empty() {
             // Avoid generating another `BasicBlock` when we only have one
@@ -429,6 +431,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 arm_span,
                 match_scope,
                 true,
+                storages_alive,
             )
         } else {
             // It's helpful to avoid scheduling drops multiple times to save
@@ -466,6 +469,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         arm_span,
                         match_scope,
                         schedule_drops,
+                        storages_alive,
                     );
                     if arm_scope.is_none() {
                         schedule_drops = false;
@@ -641,6 +645,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             None,
             None,
             None,
+            false,
         )
         .unit()
     }
@@ -1813,6 +1818,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             None,
             None,
             None,
+            false,
         );
 
         post_guard_block.unit()
@@ -1836,6 +1842,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         arm_span: Option<Span>,
         match_scope: Option<region::Scope>,
         schedule_drops: bool,
+        storages_alive: bool,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
 
@@ -2051,7 +2058,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(local_id));
             }
             assert!(schedule_drops, "patterns with guards must schedule drops");
-            self.bind_matched_candidate_for_arm_body(post_guard_block, true, by_value_bindings);
+            self.bind_matched_candidate_for_arm_body(
+                post_guard_block,
+                true,
+                by_value_bindings,
+                storages_alive,
+            );
 
             post_guard_block
         } else {
@@ -2065,6 +2077,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .iter()
                     .flat_map(|(bindings, _)| bindings)
                     .chain(&candidate.bindings),
+                storages_alive,
             );
             block
         }
@@ -2154,6 +2167,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         schedule_drops: bool,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
+        storages_alive: bool,
     ) where
         'tcx: 'b,
     {
@@ -2163,13 +2177,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Assign each of the bindings. This may trigger moves out of the candidate.
         for binding in bindings {
             let source_info = self.source_info(binding.span);
-            let local = self.storage_live_binding(
-                block,
-                binding.var_id,
-                binding.span,
-                OutsideGuard,
-                schedule_drops,
-            );
+            let local = if storages_alive {
+                // Here storages are already alive, probably because this is a binding
+                // from let-else.
+                // We just need to schedule drop for the value.
+                self.var_local_id(binding.var_id, OutsideGuard).into()
+            } else {
+                self.storage_live_binding(
+                    block,
+                    binding.var_id,
+                    binding.span,
+                    OutsideGuard,
+                    schedule_drops,
+                )
+            };
             if schedule_drops {
                 self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
             }
@@ -2300,6 +2321,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 None,
                 None,
                 None,
+                true,
             );
             // This block is for the failure case
             let failure = this.bind_pattern(
@@ -2311,6 +2333,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 None,
                 None,
                 None,
+                true,
             );
             this.break_for_else(failure, *let_else_scope, this.source_info(initializer_span));
             matching.unit()
