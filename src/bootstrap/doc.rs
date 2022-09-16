@@ -383,15 +383,9 @@ impl Step for Standalone {
             }
 
             if filename == "not_found.md" {
-                cmd.arg("--markdown-css")
-                    .arg(format!("https://doc.rust-lang.org/rustdoc{}.css", &builder.version))
-                    .arg("--markdown-css")
-                    .arg("https://doc.rust-lang.org/rust.css");
+                cmd.arg("--markdown-css").arg("https://doc.rust-lang.org/rust.css");
             } else {
-                cmd.arg("--markdown-css")
-                    .arg(format!("rustdoc{}.css", &builder.version))
-                    .arg("--markdown-css")
-                    .arg("rust.css");
+                cmd.arg("--markdown-css").arg("rust.css");
             }
             builder.run(&mut cmd);
         }
