@@ -877,6 +877,26 @@ impl SourceMap {
         Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt(), None)
     }
 
+    /// Returns a new span to check next none-whitespace character or some specified expected character
+    /// If `expect` is none, the first span of non-whitespace character is returned.
+    /// If `expect` presented, the first span of the character `expect` is returned
+    /// Otherwise, the span reached to limit is returned.
+    pub fn span_look_ahead(&self, span: Span, expect: Option<&str>, limit: Option<usize>) -> Span {
+        let mut sp = span;
+        for _ in 0..limit.unwrap_or(100 as usize) {
+            sp = self.next_point(sp);
+            if let Ok(ref snippet) = self.span_to_snippet(sp) {
+                if expect.map_or(false, |es| snippet == es) {
+                    break;
+                }
+                if expect.is_none() && snippet.chars().any(|c| !c.is_whitespace()) {
+                    break;
+                }
+            }
+        }
+        sp
+    }
+
     /// Finds the width of the character, either before or after the end of provided span,
     /// depending on the `forwards` parameter.
     fn find_width_of_character_at_span(&self, sp: Span, forwards: bool) -> u32 {
