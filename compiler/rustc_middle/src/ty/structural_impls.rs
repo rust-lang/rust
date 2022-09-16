@@ -602,9 +602,23 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::Existentia
     }
 }
 
+impl<'tcx> TypeVisitable<'tcx>
+    for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
+{
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.iter().try_for_each(|p| p.visit_with(visitor))
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ProjectionKind> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_projs(v))
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<ProjectionKind> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
 
@@ -780,6 +794,12 @@ impl<'tcx> TypeSuperVisitable<'tcx> for ty::Predicate<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_predicates(v))
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.iter().try_for_each(|p| p.visit_with(visitor))
     }
 }
 

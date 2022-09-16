@@ -44,15 +44,6 @@ pub struct Canonical<'tcx, V> {
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
 
-impl<'tcx> ty::TypeFoldable<'tcx> for CanonicalVarInfos<'tcx> {
-    fn try_fold_with<F: ty::FallibleTypeFolder<'tcx>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_canonical_var_infos(v))
-    }
-}
-
 /// A set of values corresponding to the canonical variables from some
 /// `Canonical`. You can give these values to
 /// `canonical_value.substitute` to substitute them into the canonical
@@ -311,6 +302,12 @@ TrivialTypeTraversalAndLiftImpls! {
     for <'tcx> {
         crate::infer::canonical::Certainty,
         crate::infer::canonical::CanonicalTyVarKind,
+    }
+}
+
+TrivialTypeTraversalImpls! {
+    for <'tcx> {
+        crate::infer::canonical::CanonicalVarInfos<'tcx>,
     }
 }
 
