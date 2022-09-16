@@ -813,11 +813,8 @@ impl<'tcx> ExtraInfo<'tcx> {
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             hir_id,
             self.sp,
-            |lint| {
-                let mut diag = lint.build(msg);
-                diag.help(help);
-                diag.emit();
-            },
+            msg,
+            |lint| lint.help(help),
         );
     }
 }

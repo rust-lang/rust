@@ -404,12 +404,8 @@ pub(crate) fn run_global_ctxt(
         tcx.struct_lint_node(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
-            |lint| {
-                let mut diag =
-                    lint.build("no documentation found for this crate's top-level module");
-                diag.help(&help);
-                diag.emit();
-            },
+            "no documentation found for this crate's top-level module",
+            |lint| lint.help(help),
         );
     }
 

@@ -1609,9 +1609,7 @@ fn report_diagnostic(
 
     let sp = item.attr_span(tcx);
 
-    tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
-        let mut diag = lint.build(msg);
-
+    tcx.struct_span_lint_hir(lint, hir_id, sp, msg, |lint| {
         let span =
             super::source_span_for_markdown_range(tcx, dox, link_range, &item.attrs).map(|sp| {
                 if dox.as_bytes().get(link_range.start) == Some(&b'`')
@@ -1624,7 +1622,7 @@ fn report_diagnostic(
             });
 
         if let Some(sp) = span {
-            diag.set_span(sp);
+            lint.set_span(sp);
         } else {
             // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
             //                       ^     ~~~~
@@ -1634,7 +1632,7 @@ fn report_diagnostic(
             let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
             // Print the line containing the `link_range` and manually mark it with '^'s.
-            diag.note(&format!(
+            lint.note(&format!(
                 "the link appears in this line:\n\n{line}\n\
                      {indicator: <before$}{indicator:^<found$}",
                 line = line,
@@ -1644,9 +1642,9 @@ fn report_diagnostic(
             ));
         }
 
-        decorate(&mut diag, span);
+        decorate(lint, span);
 
-        diag.emit();
+        lint
     });
 }
 
