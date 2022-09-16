@@ -41,7 +41,7 @@ $ rustc -Zself-profile -Zself-profile-events=default,args
 
 - `llvm`
   - Adds tracing information about LLVM passes and codegeneration.
-  - Disabled by default because this only works when `-Znew-llvm-pass-manager` is enabled.
+  - Disabled by default for historical reasons.
 
 ## Event synonyms
 

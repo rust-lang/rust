@@ -758,7 +758,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, Some(true));
-    tracked!(new_llvm_pass_manager, Some(true));
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
     tracked!(no_unique_section_names, true);

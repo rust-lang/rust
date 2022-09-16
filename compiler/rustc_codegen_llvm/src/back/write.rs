@@ -513,10 +513,6 @@ pub(crate) unsafe fn maybe_optimize(
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);
 
-    if let Some(false) = config.new_llvm_pass_manager {
-        diag_handler.warn("ignoring `-Z new-llvm-pass-manager=no`, which is no longer supported");
-    }
-
     if config.emit_no_opt_bc {
         let out = cgcx.output_filenames.temp_path_ext("no-opt.bc", module_name);
         let out = path_to_c_string(&out);
