@@ -2591,7 +2591,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 .enumerate()
                 .filter_map(|(idx, constraint)| {
                     let ty::OutlivesPredicate(k1, r2) =
-                        constraint.no_bound_vars().unwrap_or_else(|| {
+                        constraint.0.no_bound_vars().unwrap_or_else(|| {
                             bug!("query_constraint {:?} contained bound vars", constraint,);
                         });
 
