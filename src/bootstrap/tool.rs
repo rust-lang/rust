@@ -778,13 +778,9 @@ impl Step for RustAnalyzerProcMacroSrv {
             source_type: SourceType::InTree,
         })?;
 
-        // Copy `rust-analyzer-proc-macro-srv` to `build/triple/stageN/libexec/`
+        // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
         // so that r-a can use it.
-        let libexec_path = builder
-            .out
-            .join(&*builder.config.build.triple)
-            .join(format!("stage{}", self.compiler.stage))
-            .join("libexec");
+        let libexec_path = builder.sysroot(self.compiler).join("libexec");
         t!(fs::create_dir_all(&libexec_path));
         builder.copy(&path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
 
