@@ -139,11 +139,10 @@ impl LifetimeName {
         match self {
             LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Infer => true,
 
-            // It might seem surprising that `Fresh` counts as
-            // *not* elided -- but this is because, as far as the code
-            // in the compiler is concerned -- `Fresh` variants act
-            // equivalently to "some fresh name". They correspond to
-            // early-bound regions on an impl, in other words.
+            // It might seem surprising that `Fresh` counts as not *elided*
+            // -- but this is because, as far as the code in the compiler is
+            // concerned -- `Fresh` variants act equivalently to "some fresh name".
+            // They correspond to early-bound regions on an impl, in other words.
             LifetimeName::Error | LifetimeName::Param(..) | LifetimeName::Static => false,
         }
     }

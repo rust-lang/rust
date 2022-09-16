@@ -297,11 +297,11 @@ impl ExprPrecedence {
         match self {
             ExprPrecedence::Closure => PREC_CLOSURE,
 
-            ExprPrecedence::Break |
-            ExprPrecedence::Continue |
-            ExprPrecedence::Ret |
-            ExprPrecedence::Yield |
-            ExprPrecedence::Yeet => PREC_JUMP,
+            ExprPrecedence::Break
+            | ExprPrecedence::Continue
+            | ExprPrecedence::Ret
+            | ExprPrecedence::Yield
+            | ExprPrecedence::Yeet => PREC_JUMP,
 
             // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
             // parse, instead of parsing as `(x .. x) = x`.  Giving `Range` a lower precedence
@@ -318,43 +318,43 @@ impl ExprPrecedence {
             ExprPrecedence::AssignOp => AssocOp::Assign.precedence() as i8,
 
             // Unary, prefix
-            ExprPrecedence::Box |
-            ExprPrecedence::AddrOf |
+            ExprPrecedence::Box
+            | ExprPrecedence::AddrOf
             // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
             // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
-            ExprPrecedence::Let |
-            ExprPrecedence::Unary => PREC_PREFIX,
+            | ExprPrecedence::Let
+            | ExprPrecedence::Unary => PREC_PREFIX,
 
             // Unary, postfix
-            ExprPrecedence::Await |
-            ExprPrecedence::Call |
-            ExprPrecedence::MethodCall |
-            ExprPrecedence::Field |
-            ExprPrecedence::Index |
-            ExprPrecedence::Try |
-            ExprPrecedence::InlineAsm |
-            ExprPrecedence::Mac => PREC_POSTFIX,
+            ExprPrecedence::Await
+            | ExprPrecedence::Call
+            | ExprPrecedence::MethodCall
+            | ExprPrecedence::Field
+            | ExprPrecedence::Index
+            | ExprPrecedence::Try
+            | ExprPrecedence::InlineAsm
+            | ExprPrecedence::Mac => PREC_POSTFIX,
 
             // Never need parens
-            ExprPrecedence::Array |
-            ExprPrecedence::Repeat |
-            ExprPrecedence::Tup |
-            ExprPrecedence::Lit |
-            ExprPrecedence::Path |
-            ExprPrecedence::Paren |
-            ExprPrecedence::If |
-            ExprPrecedence::While |
-            ExprPrecedence::ForLoop |
-            ExprPrecedence::Loop |
-            ExprPrecedence::Match |
-            ExprPrecedence::ConstBlock |
-            ExprPrecedence::Block |
-            ExprPrecedence::TryBlock |
-            ExprPrecedence::Async |
-            ExprPrecedence::Struct |
-            ExprPrecedence::Err => PREC_PAREN,
+            ExprPrecedence::Array
+            | ExprPrecedence::Repeat
+            | ExprPrecedence::Tup
+            | ExprPrecedence::Lit
+            | ExprPrecedence::Path
+            | ExprPrecedence::Paren
+            | ExprPrecedence::If
+            | ExprPrecedence::While
+            | ExprPrecedence::ForLoop
+            | ExprPrecedence::Loop
+            | ExprPrecedence::Match
+            | ExprPrecedence::ConstBlock
+            | ExprPrecedence::Block
+            | ExprPrecedence::TryBlock
+            | ExprPrecedence::Async
+            | ExprPrecedence::Struct
+            | ExprPrecedence::Err => PREC_PAREN,
         }
     }
 }
