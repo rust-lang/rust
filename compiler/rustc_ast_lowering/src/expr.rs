@@ -1609,11 +1609,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Desugar `ExprKind::Yeet` from: `do yeet <expr>` into:
-    /// ```rust
+    /// ```ignore(illustrative)
     /// // If there is an enclosing `try {...}`:
-    /// break 'catch_target FromResidual::from_residual(Yeet(residual)),
+    /// break 'catch_target FromResidual::from_residual(Yeet(residual));
     /// // Otherwise:
-    /// return FromResidual::from_residual(Yeet(residual)),
+    /// return FromResidual::from_residual(Yeet(residual));
     /// ```
     /// But to simplify this, there's a `from_yeet` lang item function which
     /// handles the combined `FromResidual::from_residual(Yeet(residual))`.
