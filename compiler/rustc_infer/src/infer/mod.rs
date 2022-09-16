@@ -409,7 +409,11 @@ pub enum SubregionOrigin<'tcx> {
 
     /// Comparing the signature and requirements of an impl method against
     /// the containing trait.
-    CompareImplItemObligation { span: Span, impl_item_def_id: LocalDefId, trait_item_def_id: DefId },
+    CompareImplItemObligation {
+        span: Span,
+        impl_item_def_id: LocalDefId,
+        trait_item_def_id: DefId,
+    },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
@@ -417,6 +421,8 @@ pub enum SubregionOrigin<'tcx> {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
+
+    AscribeUserTypeProvePredicate(Span),
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -1998,6 +2004,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             DataBorrowed(_, a) => a,
             ReferenceOutlivesReferent(_, a) => a,
             CompareImplItemObligation { span, .. } => span,
+            AscribeUserTypeProvePredicate(span) => span,
             CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
         }
     }
@@ -2029,6 +2036,10 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 trait_item_def_id,
                 parent: Box::new(default()),
             },
+
+            traits::ObligationCauseCode::AscribeUserTypeProvePredicate(span) => {
+                SubregionOrigin::AscribeUserTypeProvePredicate(span)
+            }
 
             _ => default(),
         }

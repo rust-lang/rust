@@ -77,6 +77,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::CheckAssociatedTypeBounds { ref parent, .. } => {
                 self.note_region_origin(err, &parent);
             }
+            infer::AscribeUserTypeProvePredicate(span) => {
+                RegionOriginNote::Plain {
+                    span,
+                    msg: fluent::infer::ascribe_user_type_prove_predicate,
+                }
+                .add_to_diagnostic(err);
+            }
         }
     }
 
@@ -354,6 +361,27 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     );
                 }
 
+                err
+            }
+            infer::AscribeUserTypeProvePredicate(span) => {
+                let mut err =
+                    struct_span_err!(self.tcx.sess, span, E0478, "lifetime bound not satisfied");
+                note_and_explain_region(
+                    self.tcx,
+                    &mut err,
+                    "lifetime instantiated with ",
+                    sup,
+                    "",
+                    None,
+                );
+                note_and_explain_region(
+                    self.tcx,
+                    &mut err,
+                    "but lifetime must outlive ",
+                    sub,
+                    "",
+                    None,
+                );
                 err
             }
         }
