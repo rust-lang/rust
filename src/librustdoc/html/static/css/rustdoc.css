@@ -207,7 +207,6 @@ a.source,
 .out-of-band,
 span.since,
 details.rustdoc-toggle > summary::before,
-.content ul.crate a.crate,
 a.srclink,
 #help-button > button,
 details.rustdoc-toggle.top-doc > summary,
@@ -218,7 +217,7 @@ details.rustdoc-toggle.non-exhaustive > summary::before,
 .more-examples-toggle summary, .more-examples-toggle .hide-more,
 .example-links a,
 /* This selector is for the items listed in the "all items" page. */
-#main-content > ul.docblock > li > a {
+ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
@@ -786,6 +785,7 @@ h2.small-section-header > .anchor {
 	content: '§';
 }
 
+.all-items a:hover,
 .docblock a:not(.srclink):not(.test-arrow):not(.scrape-help):hover,
 .docblock-short a:not(.srclink):not(.test-arrow):not(.scrape-help):hover, .item-info a {
 	text-decoration: underline;
@@ -1515,10 +1515,7 @@ kbd {
 	cursor: default;
 }
 
-#main-content > ul {
-	padding-left: 10px;
-}
-#main-content > ul > li {
+ul.all-items > li {
 	list-style: none;
 }
 
