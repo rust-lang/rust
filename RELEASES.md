@@ -40,15 +40,49 @@ Libraries
 
 Stabilized APIs
 ---------------
-- [Partially stabilize `const_slice_from_raw_parts`](https://github.com/rust-lang/rust/pull/97522/)
-- [Partial stabilization of `nonzero_checked_ops`.](https://github.com/rust-lang/rust/pull/97547/)
-- [Document and stabilize `process_set_process_group`](https://github.com/rust-lang/rust/pull/99088/)
-- [Stabilize `core::ffi:c_*` and re-export in `std::ffi`](https://github.com/rust-lang/rust/pull/98315/)
-- [Stabilize `core::ffi::CStr`, `alloc::ffi::CString`, and friends](https://github.com/rust-lang/rust/pull/99277/)
-- [Stabilize Windows `FileTypeExt` with `is_symlink_dir` and `is_symlink_file`](https://github.com/rust-lang/rust/pull/98583/)
-- [Stabilize `into_future`](https://github.com/rust-lang/rust/pull/98718/)
-- [Stabilize `future_poll_fn`](https://github.com/rust-lang/rust/pull/99306/)
-- [Stabilize `core::task::ready!`](https://github.com/rust-lang/rust/pull/99419/)
+
+- [`ffi::CStr`](https://doc.rust-lang.org/stable/std/ffi/struct.CStr.html)
+- [`ffi::CString`](https://doc.rust-lang.org/stable/std/ffi/struct.CString.html)
+- [`ffi::FromBytesWithNulError`](https://doc.rust-lang.org/stable/std/ffi/struct.FromBytesWithNulError.html)
+- [`ffi::FromVecWithNulError`](https://doc.rust-lang.org/stable/std/ffi/struct.FromVecWithNulError.html)
+- [`ffi::IntoStringError`](https://doc.rust-lang.org/stable/std/ffi/struct.IntoStringError.html)
+- [`ffi::NulError`](https://doc.rust-lang.org/stable/std/ffi/struct.NulError.html)
+- [`ffi::c_char`](https://doc.rust-lang.org/stable/std/ffi/type.c_char.html)
+- [`ffi::c_double`](https://doc.rust-lang.org/stable/std/ffi/type.c_double.html)
+- [`ffi::c_float`](https://doc.rust-lang.org/stable/std/ffi/type.c_float.html)
+- [`ffi::c_int`](https://doc.rust-lang.org/stable/std/ffi/type.c_int.html)
+- [`ffi::c_long`](https://doc.rust-lang.org/stable/std/ffi/type.c_long.html)
+- [`ffi::c_longlong`](https://doc.rust-lang.org/stable/std/ffi/type.c_longlong.html)
+- [`ffi::c_schar`](https://doc.rust-lang.org/stable/std/ffi/type.c_schar.html)
+- [`ffi::c_short`](https://doc.rust-lang.org/stable/std/ffi/type.c_short.html)
+- [`ffi::c_uchar`](https://doc.rust-lang.org/stable/std/ffi/type.c_uchar.html)
+- [`ffi::c_uint`](https://doc.rust-lang.org/stable/std/ffi/type.c_uint.html)
+- [`ffi::c_ulong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulong.html)
+- [`ffi::c_ulonglong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulonglong.html)
+- [`ffi::c_ushort`](https://doc.rust-lang.org/stable/std/ffi/type.c_ushort.html)
+- [`future::IntoFuture`](https://doc.rust-lang.org/stable/std/future/trait.IntoFuture.html)
+- [`future::poll_fn`](https://doc.rust-lang.org/stable/std/future/fn.poll_fn.html)
+- [`task::ready!`](https://doc.rust-lang.org/stable/std/task/macro.ready.html)
+- [`num::NonZero*::checked_mul`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.checked_mul)
+- [`num::NonZero*::checked_pow`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.checked_pow)
+- [`num::NonZero*::saturating_mul`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.saturating_mul)
+- [`num::NonZero*::saturating_pow`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.saturating_pow)
+- [`num::NonZeroI*::abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.abs)
+- [`num::NonZeroI*::checked_abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.checked_abs)
+- [`num::NonZeroI*::overflowing_abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.overflowing_abs)
+- [`num::NonZeroI*::saturating_abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.saturating_abs)
+- [`num::NonZeroI*::unsigned_abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.unsigned_abs)
+- [`num::NonZeroI*::wrapping_abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.wrapping_abs)
+- [`num::NonZeroU*::checked_add`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.checked_add)
+- [`num::NonZeroU*::checked_next_power_of_two`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.checked_next_power_of_two)
+- [`num::NonZeroU*::saturating_add`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.saturating_add)
+- [`os::unix::process::CommandExt::process_group`](https://doc.rust-lang.org/stable/std/os/unix/process/trait.CommandExt.html#tymethod.process_group)
+- [`os::windows::fs::FileTypeExt::is_symlink_dir`](https://doc.rust-lang.org/stable/std/os/windows/fs/trait.FileTypeExt.html#tymethod.is_symlink_dir)
+- [`os::windows::fs::FileTypeExt::is_symlink_file`](https://doc.rust-lang.org/stable/std/os/windows/fs/trait.FileTypeExt.html#tymethod.is_symlink_file)
+
+These APIs are now usable in const contexts:
+
+- [`slice::from_raw_parts`](https://doc.rust-lang.org/stable/core/slice/fn.from_raw_parts.html)
 
 Cargo
 -----
