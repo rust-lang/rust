@@ -49,6 +49,7 @@ mod array_into_iter;
 pub mod builtin;
 mod context;
 mod early;
+mod empty_iterator;
 mod enum_intrinsics_non_enums;
 mod errors;
 mod expect;
@@ -85,6 +86,7 @@ use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
+use empty_iterator::EmptyIteratorRange;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use hidden_unicode_codepoints::*;
 use internal::*;
@@ -226,6 +228,7 @@ macro_rules! late_lint_mod_passes {
                 InvalidAtomicOrdering: InvalidAtomicOrdering,
                 NamedAsmLabels: NamedAsmLabels,
                 OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
+                EmptyIteratorRange: EmptyIteratorRange,
             ]
         );
     };

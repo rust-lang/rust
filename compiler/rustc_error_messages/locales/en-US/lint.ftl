@@ -13,6 +13,11 @@ lint_enum_intrinsics_mem_variant =
     the return value of `mem::variant_count` is unspecified when called with a non-enum type
     .note = the type parameter of `variant_count` should be an enum, but it was instantiated with the type `{$ty_param}`, which is not an enum.
 
+lint_empty_iter_ranges = this `for` loop is never run
+    .clarification = this loop is never run because it's iterating over an empty iterator
+    .note = ranges that have a bigger start than their end will produce an empty iterator
+    .help = if you want a decreasing range sequence, create an increasing range and call `.rev()` on it
+
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
 
