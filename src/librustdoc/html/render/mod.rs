@@ -294,16 +294,15 @@ impl AllTypes {
 
 impl AllTypes {
     fn print(self, f: &mut Buffer) {
-        fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, title: &str, class: &str) {
+        fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, title: &str) {
             if !e.is_empty() {
                 let mut e: Vec<&ItemEntry> = e.iter().collect();
                 e.sort();
                 write!(
                     f,
-                    "<h3 id=\"{}\">{}</h3><ul class=\"{} docblock\">",
+                    "<h3 id=\"{}\">{}</h3><ul class=\"all-items\">",
                     title.replace(' ', "-"), // IDs cannot contain whitespaces.
-                    title,
-                    class
+                    title
                 );
 
                 for s in e.iter() {
@@ -321,20 +320,20 @@ impl AllTypes {
         );
         // Note: print_entries does not escape the title, because we know the current set of titles
         // doesn't require escaping.
-        print_entries(f, &self.structs, "Structs", "structs");
-        print_entries(f, &self.enums, "Enums", "enums");
-        print_entries(f, &self.unions, "Unions", "unions");
-        print_entries(f, &self.primitives, "Primitives", "primitives");
-        print_entries(f, &self.traits, "Traits", "traits");
-        print_entries(f, &self.macros, "Macros", "macros");
-        print_entries(f, &self.attributes, "Attribute Macros", "attributes");
-        print_entries(f, &self.derives, "Derive Macros", "derives");
-        print_entries(f, &self.functions, "Functions", "functions");
-        print_entries(f, &self.typedefs, "Typedefs", "typedefs");
-        print_entries(f, &self.trait_aliases, "Trait Aliases", "trait-aliases");
-        print_entries(f, &self.opaque_tys, "Opaque Types", "opaque-types");
-        print_entries(f, &self.statics, "Statics", "statics");
-        print_entries(f, &self.constants, "Constants", "constants")
+        print_entries(f, &self.structs, "Structs");
+        print_entries(f, &self.enums, "Enums");
+        print_entries(f, &self.unions, "Unions");
+        print_entries(f, &self.primitives, "Primitives");
+        print_entries(f, &self.traits, "Traits");
+        print_entries(f, &self.macros, "Macros");
+        print_entries(f, &self.attributes, "Attribute Macros");
+        print_entries(f, &self.derives, "Derive Macros");
+        print_entries(f, &self.functions, "Functions");
+        print_entries(f, &self.typedefs, "Typedefs");
+        print_entries(f, &self.trait_aliases, "Trait Aliases");
+        print_entries(f, &self.opaque_tys, "Opaque Types");
+        print_entries(f, &self.statics, "Statics");
+        print_entries(f, &self.constants, "Constants");
     }
 }
 
