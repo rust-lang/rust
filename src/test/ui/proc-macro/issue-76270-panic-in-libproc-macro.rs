@@ -1,5 +1,6 @@
 // aux-build:proc-macro-panic.rs
 // edition:2018
+// needs-unwind proc macro panics to report errors
 
 // Regression test for issue #76270
 // Tests that we don't print an ICE message when a panic

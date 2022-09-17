@@ -542,7 +542,7 @@ pub enum Term {
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "kind", content = "inner")]
 pub enum Type {
-    /// Structs and enums
+    /// Structs, enums, and unions
     ResolvedPath(Path),
     DynTrait(DynTrait),
     /// Parameterized types

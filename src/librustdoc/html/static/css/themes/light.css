@@ -82,35 +82,29 @@ a.result-keyword:focus { background-color: #afc6e4; }
 
 .content .item-info::before { color: #ccc; }
 
-.content span.enum, .content a.enum, .block a.current.enum { color: #AD378A; }
-.content span.struct, .content a.struct, .block a.current.struct { color: #AD378A; }
-.content span.type, .content a.type, .block a.current.type { color:  #AD378A; }
-.content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #3873AD; }
-.content span.associatedtype,
-.content a.associatedtype,
-.block a.current.associatedtype { color: #3873AD; }
-.content span.attr, .content a.attr, .block a.current.attr,
-.content span.derive, .content a.derive, .block a.current.derive,
-.content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
-.content span.union, .content a.union, .block a.current.union { color: #AD378A; }
-.content span.constant, .content a.constant, .block a.current.constant,
-.content span.static, .content a.static, .block a.current.static { color: #3873AD; }
-.content span.primitive, .content a.primitive, .block a.current.primitive { color: #AD378A; }
-.content span.externcrate,
-.content span.mod, .content a.mod, .block a.current.mod { color: #3873AD; }
-.content span.trait, .content a.trait, .block a.current.trait { color: #6E4FC9; }
-.content span.traitalias, .content a.traitalias, .block a.current.traitalias { color: #5137AD; }
-.content span.fn, .content a.fn, .block a.current.fn,
-.content span.method, .content a.method, .block a.current.method,
-.content span.tymethod, .content a.tymethod, .block a.current.tymethod,
+.content span.enum, .content a.enum { color: #AD378A; }
+.content span.struct, .content a.struct { color: #AD378A; }
+.content span.type, .content a.type { color:  #AD378A; }
+.content span.associatedtype, .content a.associatedtype { color: #3873AD; }
+.content span.foreigntype, .content a.foreigntype { color: #3873AD; }
+.content span.attr, .content a.attr,
+.content span.derive, .content a.derive,
+.content span.macro, .content a.macro { color: #068000; }
+.content span.union, .content a.union { color: #AD378A; }
+.content span.constant, .content a.constant,
+.content span.static, .content a.static { color: #3873AD; }
+.content span.primitive, .content a.primitive { color: #AD378A; }
+.content span.mod, .content a.mod { color: #3873AD; }
+.content span.trait, .content a.trait { color: #6E4FC9; }
+.content span.traitalias, .content a.traitalias { color: #5137AD; }
+.content span.fn, .content a.fn,
 .content .fnname { color: #AD7C37; }
-.content span.keyword, .content a.keyword, .block a.current.keyword { color: #3873AD; }
+.content span.keyword, .content a.keyword { color: #3873AD; }
 
 .sidebar a { color: #356da4; }
 .sidebar a.current.enum { color: #a63283; }
 .sidebar a.current.struct { color: #a63283; }
 .sidebar a.current.type { color: #a63283; }
-.sidebar a.current.associatedtype { color: #356da4; }
 .sidebar a.current.foreigntype { color: #356da4; }
 .sidebar a.current.attr,
 .sidebar a.current.derive,
@@ -119,13 +113,9 @@ a.result-keyword:focus { background-color: #afc6e4; }
 .sidebar a.current.constant
 .sidebar a.current.static { color: #356da4; }
 .sidebar a.current.primitive { color: #a63283; }
-.sidebar a.current.externcrate
-.sidebar a.current.mod { color: #356da4; }
 .sidebar a.current.trait { color: #6849c3; }
 .sidebar a.current.traitalias { color: #4b349e; }
-.sidebar a.current.fn,
-.sidebar a.current.method,
-.sidebar a.current.tymethod { color: #a67736; }
+.sidebar a.current.fn { color: #a67736; }
 .sidebar a.current.keyword { color: #356da4; }
 
 a {

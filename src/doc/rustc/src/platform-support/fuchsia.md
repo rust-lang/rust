@@ -42,6 +42,11 @@ authoritative if this occurs. Instead of pinging individual members, use
 1. [Testing](#testing)
     1. [Running unit tests](#running-unit-tests)
     1. [Running the compiler test suite](#running-the-compiler-test-suite)
+1. [Debugging](#debugging)
+    1. [`zxdb`](#zxdb)
+    1. [Attaching `zxdb`](#attaching-zxdb)
+    1. [Using `zxdb`](#using-zxdb)
+    1. [Displaying source code in `zxdb`](#displaying-source-code-in-zxdb)
 
 ## Requirements
 
@@ -136,7 +141,7 @@ These options configure the following:
 
 * `-Lnative=${SDK_PATH}/arch/${ARCH}/lib`: Link against Fuchsia libraries from
   the SDK
-* `-Lnative=${SDK_PATH}/arch/${ARCH}/sysroot/lib`: Link against Fuchsia kernel
+* `-Lnative=${SDK_PATH}/arch/${ARCH}/sysroot/lib`: Link against Fuchsia sysroot
   libraries from the SDK
 
 In total, our new project will look like:
@@ -253,7 +258,7 @@ the following options:
   platform of your choice
 * `-Lnative ${SDK_PATH}/arch/${ARCH}/lib`: Link against Fuchsia libraries from
   the SDK
-* `-Lnative ${SDK_PATH}/arch/${ARCH}/sysroot/lib`: Link against Fuchsia kernel
+* `-Lnative ${SDK_PATH}/arch/${ARCH}/sysroot/lib`: Link against Fuchsia sysroot
   libraries from the SDK
 
 Putting it all together:
@@ -639,6 +644,130 @@ available on the [Fuchsia devsite].
 Running the Rust test suite on Fuchsia is [not currently supported], but work is
 underway to enable it.
 
+## Debugging
+
+### `zxdb`
+
+Debugging components running on a Fuchsia emulator can be done using the
+console-mode debugger: [zxdb]. We will demonstrate attaching necessary symbol
+paths to debug our `hello-fuchsia` component.
+
+### Attaching `zxdb`
+
+In a separate terminal, issue the following command from our `hello_fuchsia`
+directory to launch `zxdb`:
+
+**In separate terminal**
+```sh
+${SDK_PATH}/tools/${ARCH}/ffx debug connect -- \
+    --symbol-path target/x86_64-fuchsia/debug
+```
+
+* `--symbol-path` gets required symbol paths, which are
+necessary for stepping through your program.
+
+The "[displaying source code in `zxdb`](#displaying-source-code-in-zxdb)" section describes how you can
+display Rust and/or Fuchsia source code in your debugging session.
+
+### Using `zxdb`
+
+Once launched, you will be presented with the window:
+
+```sh
+Connecting (use "disconnect" to cancel)...
+Connected successfully.
+👉 To get started, try "status" or "help".
+[zxdb]
+```
+
+To attach to our program, we can run:
+
+```sh
+[zxdb] attach hello_fuchsia
+```
+
+**Expected output**
+```sh
+Waiting for process matching "hello_fuchsia".
+Type "filter" to see the current filters.
+```
+
+Next, we can create a breakpoint at main using "b main":
+
+```sh
+[zxdb] b main
+```
+
+**Expected output**
+```sh
+Created Breakpoint 1 @ main
+```
+
+Finally, we can re-run the "hello_fuchsia" component from our original
+terminal:
+
+```sh
+${SDK_PATH}/tools/${ARCH}/ffx component run \
+    --recreate \
+    fuchsia-pkg://hello-fuchsia/hello_fuchsia_manifest#meta/hello_fuchsia.cm
+```
+
+Once our component is running, our `zxdb` window will stop execution
+in our main as desired:
+
+**Expected output**
+```txt
+Breakpoint 1 now matching 1 addrs for main
+🛑 on bp 1 hello_fuchsia::main() • main.rs:2
+   1 fn main() {
+ ▶ 2     println!("Hello Fuchsia!");
+   3 }
+   4
+[zxdb]
+```
+
+`zxdb` has similar commands to other debuggers like [gdb].
+To list the available commands, run "help" in the
+`zxdb` window or visit [the zxdb documentation].
+
+```sh
+[zxdb] help
+```
+
+**Expected output**
+```sh
+Help!
+
+  Type "help <command>" for command-specific help.
+
+Other help topics (see "help <topic>")
+...
+```
+
+### Displaying source code in `zxdb`
+
+By default, the debugger will not be able to display
+source code while debugging. For our user code, we displayed
+source code by pointing our debugger to our debug binary via
+the `--symbol-path` arg. To display library source code in
+the debugger, you must provide paths to the source using
+`--build-dir`. For example, to display the Rust and Fuchsia
+source code:
+
+```sh
+${SDK_PATH}/tools/${ARCH}/ffx debug connect -- \
+    --symbol-path target/x86_64-fuchsia/debug \
+    --build-dir ${RUST_SRC_PATH}/rust \
+    --build-dir ${FUCHSIA_SRC_PATH}/fuchsia/out/default
+```
+
+ * `--build-dir` links against source code paths, which
+ are not strictly necessary for debugging, but is a nice-to-have
+ for displaying source code in `zxdb`.
+
+ Linking to a Fuchsia checkout can help with debugging Fuchsia libraries,
+ such as [fdio].
+
 [Fuchsia team]: https://team-api.infra.rust-lang.org/v1/teams/fuchsia.json
 [Fuchsia]: https://fuchsia.dev/
 [source tree]: https://fuchsia.dev/fuchsia-src/get-started/learn/build
@@ -649,3 +778,7 @@ underway to enable it.
 [reference for the file format]: https://fuchsia.dev/reference/cml
 [Fuchsia devsite]: https://fuchsia.dev/reference/cml
 [not currently supported]: https://fxbug.dev/105393
+[zxdb]: https://fuchsia.dev/fuchsia-src/development/debugger
+[gdb]: https://www.sourceware.org/gdb/
+[the zxdb documentation]: https://fuchsia.dev/fuchsia-src/development/debugger
+[fdio]: https://cs.opensource.google/fuchsia/fuchsia/+/main:sdk/lib/fdio/
