@@ -460,6 +460,8 @@ fn test_range_inclusive_size_hint() {
 
 #[test]
 fn test_double_ended_range() {
+    #![cfg_attr(not(bootstrap), allow(empty_iterator_range))]
+
     assert_eq!((11..14).rev().collect::<Vec<_>>(), [13, 12, 11]);
     for _ in (10..0).rev() {
         panic!("unreachable");
