@@ -1,36 +1,34 @@
 //! Errors emitted by symbol_mangling.
 
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_macros::SessionDiagnostic;
 use rustc_span::Span;
 
 #[derive(SessionDiagnostic)]
-#[diag(symbol_mangling::invalid_symbol_name)]
-pub struct InvalidSymbolName {
+#[diag(symbol_mangling::test_output)]
+pub struct TestOutput {
     #[primary_span]
     pub span: Span,
-    pub mangled_formatted: String,
+    pub kind: Kind,
+    pub content: String,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(symbol_mangling::invalid_trait_item)]
-pub struct InvalidTraitItem {
-    #[primary_span]
-    pub span: Span,
-    pub demangling_formatted: String,
+pub enum Kind {
+    SymbolName,
+    Demangling,
+    DemanglingAlt,
+    DefPath,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(symbol_mangling::alt_invalid_trait_item)]
-pub struct AltInvalidTraitItem {
-    #[primary_span]
-    pub span: Span,
-    pub alt_demangling_formatted: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[diag(symbol_mangling::invalid_def_path)]
-pub struct InvalidDefPath {
-    #[primary_span]
-    pub span: Span,
-    pub def_path: String,
+impl IntoDiagnosticArg for Kind {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        let kind = match self {
+            Kind::SymbolName => "symbol-name",
+            Kind::Demangling => "demangling",
+            Kind::DemanglingAlt => "demangling-alt",
+            Kind::DefPath => "def-path",
+        }
+        .into();
+        DiagnosticArgValue::Str(kind)
+    }
 }
