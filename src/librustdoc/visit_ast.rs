@@ -230,7 +230,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     } else {
                         // All items need to be handled here in case someone wishes to link
                         // to them with intra-doc links
-                        self.cx.cache.access_levels.map.insert(did, AccessLevel::Public);
+                        self.cx.cache.access_levels.set_access_level(did, AccessLevel::Public);
                     }
                 }
             }

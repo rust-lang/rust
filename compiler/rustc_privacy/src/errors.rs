@@ -76,8 +76,8 @@ pub struct InPublicInterface<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[diag(privacy::report_access_level)]
-pub struct ReportAccessLevel {
+#[diag(privacy::report_effective_visibility)]
+pub struct ReportEffectiveVisibility {
     #[primary_span]
     pub span: Span,
     pub descr: String,
