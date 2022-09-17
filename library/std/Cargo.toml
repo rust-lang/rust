@@ -11,7 +11,7 @@ crate-type = ["dylib", "rlib"]
 
 [dependencies]
 alloc = { path = "../alloc" }
-cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
+cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core" }

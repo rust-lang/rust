@@ -184,6 +184,18 @@ impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
     }
 }
 
+/// Tries to create an array `[T; N]` by copying from a slice `&[T]`. Succeeds if
+/// `slice.len() == N`.
+///
+/// ```
+/// let bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: [u8; 2] = <[u8; 2]>::try_from(&bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(bytes_head));
+///
+/// let bytes_tail: [u8; 2] = bytes[1..3].try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(bytes_tail));
+/// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 impl<T, const N: usize> TryFrom<&[T]> for [T; N]
 where
@@ -196,6 +208,18 @@ where
     }
 }
 
+/// Tries to create an array `[T; N]` by copying from a mutable slice `&mut [T]`.
+/// Succeeds if `slice.len() == N`.
+///
+/// ```
+/// let mut bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: [u8; 2] = <[u8; 2]>::try_from(&mut bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(bytes_head));
+///
+/// let bytes_tail: [u8; 2] = (&mut bytes[1..3]).try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(bytes_tail));
+/// ```
 #[stable(feature = "try_from_mut_slice_to_array", since = "1.59.0")]
 impl<T, const N: usize> TryFrom<&mut [T]> for [T; N]
 where
@@ -208,6 +232,18 @@ where
     }
 }
 
+/// Tries to create an array ref `&[T; N]` from a slice ref `&[T]`. Succeeds if
+/// `slice.len() == N`.
+///
+/// ```
+/// let bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: &[u8; 2] = <&[u8; 2]>::try_from(&bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(*bytes_head));
+///
+/// let bytes_tail: &[u8; 2] = bytes[1..3].try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(*bytes_tail));
+/// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     type Error = TryFromSliceError;
@@ -223,6 +259,18 @@ impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     }
 }
 
+/// Tries to create a mutable array ref `&mut [T; N]` from a mutable slice ref
+/// `&mut [T]`. Succeeds if `slice.len() == N`.
+///
+/// ```
+/// let mut bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: &mut [u8; 2] = <&mut [u8; 2]>::try_from(&mut bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(*bytes_head));
+///
+/// let bytes_tail: &mut [u8; 2] = (&mut bytes[1..3]).try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(*bytes_tail));
+/// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
     type Error = TryFromSliceError;

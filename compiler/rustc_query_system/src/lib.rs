@@ -23,4 +23,6 @@ pub mod query;
 mod values;
 
 pub use error::HandleCycleError;
+pub use error::LayoutOfDepth;
+pub use error::QueryOverflow;
 pub use values::Value;
