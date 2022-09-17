@@ -34,7 +34,7 @@ Libraries
 - [`impl<T: AsRawFd> AsRawFd for {Arc,Box}<T>`](https://github.com/rust-lang/rust/pull/97437/)
 - [ptr::copy and ptr::swap are doing untyped copies](https://github.com/rust-lang/rust/pull/97712/)
 - [Add assertion that `transmute_copy`'s U is not larger than T](https://github.com/rust-lang/rust/pull/98839/)
-- [Add `PhantomData` marker for dropck to `BTreeMap`](https://github.com/rust-lang/rust/pull/99413/)
+- [A soundness bug in `BTreeMap` was fixed](https://github.com/rust-lang/rust/pull/99413/) that allowed data it was borrowing to be dropped before the container.
 - [Add cgroupv1 support to `available_parallelism`](https://github.com/rust-lang/rust/pull/97925/)
 - [mem::uninitialized: mitigate many incorrect uses of this function](https://github.com/rust-lang/rust/pull/99182/)
 
@@ -120,7 +120,7 @@ Compatibility Notes
 - The minimum required versions for all `-linux-gnu` targets are now at least kernel 3.2 and glibc 2.17, for targets that previously supported older versions: [Increase the minimum linux-gnu versions](https://github.com/rust-lang/rust/pull/95026/)
 - [Implement network primitives with ideal Rust layout, not C system layout](https://github.com/rust-lang/rust/pull/78802/)
 - [Add assertion that `transmute_copy`'s U is not larger than T](https://github.com/rust-lang/rust/pull/98839/)
-- [Add `PhantomData` marker for dropck to `BTreeMap`](https://github.com/rust-lang/rust/pull/99413/)
+- [A soundness bug in `BTreeMap` was fixed](https://github.com/rust-lang/rust/pull/99413/) that allowed data it was borrowing to be dropped before the container.
 - [The Drop behavior of C-like enums cast to ints has changed](https://github.com/rust-lang/rust/pull/96862/). These are already discouraged by a compiler warning.
 - [Relate late-bound closure lifetimes to parent fn in NLL](https://github.com/rust-lang/rust/pull/98835/)
 - [Errors at const-eval time are now in future incompatibility reports](https://github.com/rust-lang/rust/pull/97743/)
