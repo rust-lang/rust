@@ -477,7 +477,11 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         sym::simd_scatter => (3, vec![param(0), param(1), param(2)], tcx.mk_unit()),
         sym::simd_insert => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
         sym::simd_extract => (2, vec![param(0), tcx.types.u32], param(1)),
-        sym::simd_cast | sym::simd_as => (2, vec![param(0)], param(1)),
+        sym::simd_cast
+        | sym::simd_as
+        | sym::simd_cast_ptr
+        | sym::simd_expose_addr
+        | sym::simd_from_exposed_addr => (2, vec![param(0)], param(1)),
         sym::simd_bitmask => (2, vec![param(0)], param(1)),
         sym::simd_select | sym::simd_select_bitmask => {
             (2, vec![param(0), param(1), param(1)], param(1))
