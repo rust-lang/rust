@@ -144,6 +144,7 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
         }
 
         if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
+            let self_ty = self.normalize(self_ty);
             let impl_self_ty = tcx.bound_type_of(impl_def_id).subst(tcx, substs);
             let impl_self_ty = self.normalize(impl_self_ty);
 

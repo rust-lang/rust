@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: #101350
+// Regression test for #101350.
+// check-fail
 
 trait Trait {
     type Ty;
@@ -11,6 +11,7 @@ impl Trait for &'static () {
 
 fn extend<'a>() {
     None::<<&'a () as Trait>::Ty>;
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

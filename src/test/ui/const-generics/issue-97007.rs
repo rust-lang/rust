@@ -1,4 +1,8 @@
-// check-pass
+//~ ERROR broken MIR
+
+// known-bug
+// failure-status: 101
+// rustc-env: RUSTC_BACKTRACE=0
 
 #![feature(adt_const_params, generic_const_exprs)]
 #![allow(incomplete_features)]

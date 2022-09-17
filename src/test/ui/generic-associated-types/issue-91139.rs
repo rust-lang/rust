@@ -14,14 +14,6 @@ fn foo<T>() {
     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
     //~^ ERROR `T` does not live long enough
     //~| ERROR `T` does not live long enough
-    //~| ERROR `T` does not live long enough
-    //~| ERROR `T` does not live long enough
-    //~| ERROR `T` does not live long enough
-    //~| ERROR `T` does not live long enough
-    //~| ERROR `T` does not live long enough
-    //~| ERROR `T` does not live long enough
-    //~| ERROR `T` may not live long enough
-    //~| ERROR `T` may not live long enough
     //
     // FIXME: This error is bogus, but it arises because we try to validate
     // that `<() as Foo<T>>::Type<'a>` is valid, which requires proving

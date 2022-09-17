@@ -338,7 +338,7 @@ fn typeck_with_fallback<'tcx>(
         fcx.resolve_generator_interiors(def_id.to_def_id());
 
         for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
-            let ty = fcx.normalize_ty(span, ty);
+            let ty = fcx.normalize_associated_types_in(span, ty);
             fcx.require_type_is_sized(ty, span, code);
         }
 

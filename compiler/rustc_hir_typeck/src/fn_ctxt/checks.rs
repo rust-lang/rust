@@ -5,7 +5,7 @@ use crate::method::MethodCallee;
 use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
 use crate::{
-    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, Needs,
+    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, Needs, RawTy,
     TupleArgumentsFlag,
 };
 use rustc_ast as ast;
@@ -1215,13 +1215,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 return None;
             }
-            Res::Def(DefKind::Variant, _) => match ty.kind() {
+            Res::Def(DefKind::Variant, _) => match ty.normalized.kind() {
                 ty::Adt(adt, substs) => Some((adt.variant_of_res(def), adt.did(), substs)),
-                _ => bug!("unexpected type: {:?}", ty),
+                _ => bug!("unexpected type: {:?}", ty.normalized),
             },
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
             | Res::SelfTyParam { .. }
-            | Res::SelfTyAlias { .. } => match ty.kind() {
+            | Res::SelfTyAlias { .. } => match ty.normalized.kind() {
                 ty::Adt(adt, substs) if !adt.is_enum() => {
                     Some((adt.non_enum_variant(), adt.did(), substs))
                 }
@@ -1232,14 +1232,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some((variant, did, substs)) = variant {
             debug!("check_struct_path: did={:?} substs={:?}", did, substs);
-            self.write_user_type_annotation_from_substs(hir_id, did, substs, None);
+
+            // FIXME(aliemjay): We're using UserSelfTy unconditionally here because it is the only
+            // way to register the raw user ty, because `substs` is normalized.
+            let self_ty = ty::UserSelfTy { impl_def_id: did, self_ty: ty.raw };
+            self.write_user_type_annotation_from_substs(hir_id, did, substs, Some(self_ty));
 
             // Check bounds on type arguments used in the path.
             self.add_required_obligations_for_hir(path_span, did, substs, hir_id);
 
-            Some((variant, ty))
+            Some((variant, ty.normalized))
         } else {
-            match ty.kind() {
+            match ty.normalized.kind() {
                 ty::Error(_) => {
                     // E0071 might be caused by a spelling error, which will have
                     // already caused an error message and probably a suggestion
@@ -1252,7 +1256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         path_span,
                         E0071,
                         "expected struct, variant or union type, found {}",
-                        ty.sort_string(self.tcx)
+                        ty.normalized.sort_string(self.tcx)
                     )
                     .span_label(path_span, "not a struct")
                     .emit();
@@ -1643,20 +1647,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &QPath<'_>,
         path_span: Span,
         hir_id: hir::HirId,
-    ) -> (Res, Ty<'tcx>) {
+    ) -> (Res, RawTy<'tcx>) {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
-                let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
+                let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
                 let ty = <dyn AstConv<'_>>::res_to_ty(self, self_ty, path, true);
-                (path.res, ty)
+                (path.res, self.create_raw_ty(path_span, ty))
             }
             QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
 
                 let result = <dyn AstConv<'_>>::associated_path_to_ty(
-                    self, hir_id, path_span, ty, qself, segment, true,
+                    self, hir_id, path_span, ty.raw, qself, segment, true,
                 );
                 let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().ty_error());
+                let ty = self.create_raw_ty(path_span, ty);
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
                 // Write back the new resolution.
@@ -1665,7 +1670,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
             }
             QPath::LangItem(lang_item, span, id) => {
-                self.resolve_lang_item_path(lang_item, span, hir_id, id)
+                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id, id);
+                (res, self.create_raw_ty(path_span, ty))
             }
         }
     }

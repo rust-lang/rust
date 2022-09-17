@@ -205,7 +205,7 @@ error[E0223]: ambiguous associated type
   --> $DIR/ufcs-partially-resolved.rs:36:12
    |
 LL |     let _: <u8 as Tr>::Y::NN;
-   |            ^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<u16 as Trait>::NN`
+   |            ^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<<u8 as Tr>::Y as Trait>::NN`
 
 error[E0599]: no associated item named `NN` found for type `u16` in the current scope
   --> $DIR/ufcs-partially-resolved.rs:38:20

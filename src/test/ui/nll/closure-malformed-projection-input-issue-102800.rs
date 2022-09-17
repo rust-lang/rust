@@ -16,16 +16,6 @@ impl Trait for &'static () {
 
 fn main() {
     let _: for<'a> fn(<&'a () as Trait>::Ty) = |_| {};
-    //~^ ERROR lifetime may not live long enough
-    //~| ERROR higher-ranked subtype error
-    //~| ERROR higher-ranked subtype error
-    //~| ERROR implementation of `Trait` is not general enough
-    //~| ERROR implementation of `Trait` is not general enough
-    //~| ERROR implementation of `Trait` is not general enough
-    //~| ERROR implementation of `Trait` is not general enough
-    //~| ERROR implementation of `Trait` is not general enough
-    //~| ERROR implementation of `Trait` is not general enough
-    //~| ERROR implementation of `Trait` is not general enough
-    //~| ERROR implementation of `Trait` is not general enough
+    //~^ ERROR implementation of `Trait` is not general enough
     //~| ERROR implementation of `Trait` is not general enough
 }

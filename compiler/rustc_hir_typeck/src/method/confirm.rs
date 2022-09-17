@@ -375,7 +375,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                             .into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.cfcx.to_ty(ty).into()
+                        self.cfcx.to_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         self.cfcx.const_arg_to_const(&ct.value, param.def_id).into()
@@ -400,7 +400,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.cfcx.var_for_def(self.cfcx.span, param)
             }
         }
-        <dyn AstConv<'_>>::create_substs_for_generic_args(
+        let substs = <dyn AstConv<'_>>::create_substs_for_generic_args(
             self.tcx,
             pick.item.def_id,
             parent_substs,
@@ -408,7 +408,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             None,
             &arg_count_correct,
             &mut MethodSubstsCtxt { cfcx: self, pick, seg },
-        )
+        );
+        // FIXME(aliemjay): Type annotation should be registered before normalization.
+        self.normalize_associated_types_in(self.span, substs)
     }
 
     fn unify_receivers(

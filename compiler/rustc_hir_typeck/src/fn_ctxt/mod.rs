@@ -17,7 +17,6 @@ use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
@@ -282,7 +281,8 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.tcx().mk_projection(item_def_id, item_substs)
     }
 
-    fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn normalize_ty_2(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        use rustc_middle::ty::TypeVisitable;
         if ty.has_escaping_bound_vars() {
             ty // FIXME: normalization and escaping regions
         } else {
@@ -294,7 +294,19 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.infcx.set_tainted_by_errors(e)
     }
 
-    fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, _span: Span) {
-        self.write_ty(hir_id, ty)
+    fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span) {
+        self.write_ty(hir_id, self.normalize_ty_2(span, ty))
     }
+}
+
+/// Represents a user-provided type in the raw form (never normalized).
+///
+/// This is a bridge between the interface of `AstConv`, which outputs a raw `Ty`,
+/// and the API in this module, which expect `Ty` to be fully normalized.
+#[derive(Clone, Copy, Debug)]
+pub struct RawTy<'tcx> {
+    pub raw: Ty<'tcx>,
+
+    /// The normalized form of `raw`, stored here for efficiency.
+    pub normalized: Ty<'tcx>,
 }
