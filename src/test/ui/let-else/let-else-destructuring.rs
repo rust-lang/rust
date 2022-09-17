@@ -1,4 +1,3 @@
-#![feature(let_else)]
 #[derive(Debug)]
 enum Foo {
     Done,

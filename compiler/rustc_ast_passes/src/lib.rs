@@ -9,7 +9,7 @@
 #![feature(if_let_guard)]
 #![feature(iter_is_partitioned)]
 #![feature(let_chains)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![recursion_limit = "256"]
 
 #[macro_use]

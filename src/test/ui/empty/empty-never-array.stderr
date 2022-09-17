@@ -18,7 +18,7 @@ help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL |     let u = if let Helper::U(u) = Helper::T(t, []) { u } else { todo!() };
    |     ++++++++++                                     ++++++++++++++++++++++
-help: alternatively, on nightly, you might want to use `#![feature(let_else)]` to handle the variant that isn't matched
+help: alternatively, you might want to use let else to handle the variant that isn't matched
    |
 LL |     let Helper::U(u) = Helper::T(t, []) else { todo!() };
    |                                         ++++++++++++++++

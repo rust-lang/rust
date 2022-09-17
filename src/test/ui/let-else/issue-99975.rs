@@ -1,7 +1,7 @@
 // run-pass
 // compile-flags: -C opt-level=3 -Zvalidate-mir
 
-#![feature(let_else)]
+
 
 fn return_result() -> Option<String> {
     Some("ok".to_string())

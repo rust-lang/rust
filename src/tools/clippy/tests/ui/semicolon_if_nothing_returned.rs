@@ -1,6 +1,5 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
 #![allow(clippy::redundant_closure)]
-#![feature(let_else)]
 
 fn get_unit() {}
 

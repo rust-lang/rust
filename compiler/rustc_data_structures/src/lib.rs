@@ -13,7 +13,7 @@
 #![feature(cell_leak)]
 #![feature(control_flow_enum)]
 #![feature(extend_one)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(hash_raw_entry)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(maybe_uninit_uninit_array)]

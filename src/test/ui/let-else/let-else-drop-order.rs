@@ -16,7 +16,7 @@
 // This is important as it's easy to update the stdout file
 // with a --bless and miss the impact of that change.
 
-#![feature(let_else)]
+
 #![allow(irrefutable_let_patterns)]
 
 use std::cell::RefCell;
