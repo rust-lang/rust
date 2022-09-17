@@ -59,6 +59,7 @@ impl QueryJobId {
     }
 }
 
+#[derive(Clone)]
 pub struct QueryJobInfo {
     pub query: QueryStackFrame,
     pub job: QueryJob,
@@ -116,10 +117,10 @@ impl QueryJob {
     }
 }
 
-#[cfg(not(parallel_compiler))]
 impl QueryJobId {
     #[cold]
     #[inline(never)]
+    #[cfg(not(parallel_compiler))]
     pub(super) fn find_cycle_in_stack(
         &self,
         query_map: QueryMap,
@@ -155,6 +156,24 @@ impl QueryJobId {
         }
 
         panic!("did not find a cycle")
+    }
+
+    #[cold]
+    #[inline(never)]
+    pub fn try_find_layout_root(&self, query_map: QueryMap) -> Option<(QueryJobInfo, usize)> {
+        let mut last_layout = None;
+        let mut current_id = Some(*self);
+        let mut depth = 0;
+
+        while let Some(id) = current_id {
+            let info = query_map.get(&id).unwrap();
+            if info.query.name == "layout_of" {
+                depth += 1;
+                last_layout = Some((info.clone(), depth));
+            }
+            current_id = info.job.parent;
+        }
+        last_layout
     }
 }
 

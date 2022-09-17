@@ -23,3 +23,6 @@ query_system_cycle_recursive_trait_alias = trait aliases cannot be recursive
 query_system_cycle_which_requires = ...which requires {$desc}...
 
 query_system_query_overflow = queries overflow the depth limit!
+    .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
+
+query_system_layout_of_depth = query depth increased by {$depth} when {$desc}
