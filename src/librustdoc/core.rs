@@ -10,7 +10,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path, TraitCandidate};
 use rustc_interface::interface;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
@@ -364,9 +363,7 @@ pub(crate) fn run_global_ctxt(
         .copied()
         .filter(|&trait_def_id| tcx.trait_is_auto(trait_def_id))
         .collect();
-    let access_levels = AccessLevels {
-        map: tcx.privacy_access_levels(()).map.iter().map(|(k, v)| (k.to_def_id(), *v)).collect(),
-    };
+    let access_levels = tcx.privacy_access_levels(()).map_id(Into::into);
 
     let mut ctxt = DocContext {
         tcx,

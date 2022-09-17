@@ -38,10 +38,10 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
     fn update(&mut self, did: DefId, level: Option<AccessLevel>) -> Option<AccessLevel> {
         let is_hidden = self.tcx.is_doc_hidden(did);
 
-        let old_level = self.access_levels.map.get(&did).cloned();
+        let old_level = self.access_levels.get_access_level(did);
         // Accessibility levels can only grow
         if level > old_level && !is_hidden {
-            self.access_levels.map.insert(did, level.unwrap());
+            self.access_levels.set_access_level(did, level.unwrap());
             level
         } else {
             old_level

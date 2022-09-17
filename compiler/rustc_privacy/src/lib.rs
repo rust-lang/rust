@@ -42,7 +42,7 @@ use std::{cmp, fmt, mem};
 
 use errors::{
     FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
-    InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint, ReportAccessLevel,
+    InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint, ReportEffectiveVisibility,
     UnnamedItemIsPrivate,
 };
 
@@ -376,7 +376,7 @@ impl VisibilityLike for Option<AccessLevel> {
     // (which require reaching the `DefId`s in them).
     const SHALLOW: bool = true;
     fn new_min(find: &FindMin<'_, '_, Self>, def_id: LocalDefId) -> Self {
-        cmp::min(find.access_levels.map.get(&def_id).copied(), find.min)
+        cmp::min(find.access_levels.get_access_level(def_id), find.min)
     }
 }
 
@@ -416,7 +416,7 @@ struct ReachEverythingInTheInterfaceVisitor<'a, 'tcx> {
 
 impl<'tcx> EmbargoVisitor<'tcx> {
     fn get(&self, def_id: LocalDefId) -> Option<AccessLevel> {
-        self.access_levels.map.get(&def_id).copied()
+        self.access_levels.get_access_level(def_id)
     }
 
     fn update_with_hir_id(
@@ -433,7 +433,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         let old_level = self.get(def_id);
         // Accessibility levels can only grow.
         if level > old_level {
-            self.access_levels.map.insert(def_id, level.unwrap());
+            self.access_levels.set_access_level(def_id, level.unwrap());
             self.changed = true;
             level
         } else {
@@ -914,10 +914,31 @@ pub struct TestReachabilityVisitor<'tcx, 'a> {
 
 impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
     fn access_level_diagnostic(&mut self, def_id: LocalDefId) {
-        if self.tcx.has_attr(def_id.to_def_id(), sym::rustc_access_level) {
-            let access_level = format!("{:?}", self.access_levels.map.get(&def_id));
-            let span = self.tcx.def_span(def_id.to_def_id());
-            self.tcx.sess.emit_err(ReportAccessLevel { span, descr: access_level });
+        let span = self.tcx.def_span(def_id.to_def_id());
+        if self.tcx.has_attr(def_id.to_def_id(), sym::rustc_effective_visibility) {
+            let mut error_msg = String::new();
+
+            let effective_vis =
+                self.access_levels.get_effective_vis(def_id).copied().unwrap_or_default();
+            for level in [
+                AccessLevel::Public,
+                AccessLevel::Exported,
+                AccessLevel::Reachable,
+                AccessLevel::ReachableFromImplTrait,
+            ] {
+                let vis_str = match effective_vis.get(level) {
+                    Some(ty::Visibility::Restricted(restricted_id)) => {
+                        format!("pub({})", self.tcx.item_name(restricted_id.to_def_id()))
+                    }
+                    Some(ty::Visibility::Public) => "pub".to_string(),
+                    None => "pub(self)".to_string(),
+                };
+                if level != AccessLevel::Public {
+                    error_msg.push_str(", ");
+                }
+                error_msg.push_str(&format!("{:?}: {}", level, vis_str));
+            }
+            self.tcx.sess.emit_err(ReportEffectiveVisibility { span, descr: error_msg });
         }
     }
 }

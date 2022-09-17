@@ -46,7 +46,7 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
     /// This will also follow `use` chains (see PrivacyVisitor::set_import_binding_access_level).
     fn set_bindings_access_level(&mut self, module_id: LocalDefId) {
         assert!(self.r.module_map.contains_key(&&module_id.to_def_id()));
-        let module_level = self.r.access_levels.map.get(&module_id).copied();
+        let module_level = self.r.access_levels.get_access_level(module_id);
         if !module_level.is_some() {
             return;
         }
@@ -103,9 +103,9 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
         def_id: LocalDefId,
         access_level: Option<AccessLevel>,
     ) -> Option<AccessLevel> {
-        let old_level = self.r.access_levels.map.get(&def_id).copied();
+        let old_level = self.r.access_levels.get_access_level(def_id);
         if old_level < access_level {
-            self.r.access_levels.map.insert(def_id, access_level.unwrap());
+            self.r.access_levels.set_access_level(def_id, access_level.unwrap());
             self.changed = true;
             access_level
         } else {
@@ -131,7 +131,7 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
             // Foreign modules inherit level from parents.
             ast::ItemKind::ForeignMod(..) => {
                 let parent_level =
-                    self.r.access_levels.map.get(&self.r.local_parent(def_id)).copied();
+                    self.r.access_levels.get_access_level(self.r.local_parent(def_id));
                 self.set_access_level(item.id, parent_level);
             }
 
@@ -151,7 +151,7 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
                 self.set_bindings_access_level(def_id);
                 for variant in variants {
                     let variant_def_id = self.r.local_def_id(variant.id);
-                    let variant_level = self.r.access_levels.map.get(&variant_def_id).copied();
+                    let variant_level = self.r.access_levels.get_access_level(variant_def_id);
                     for field in variant.data.fields() {
                         self.set_access_level(field.id, variant_level);
                     }
@@ -159,7 +159,7 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
             }
 
             ast::ItemKind::Struct(ref def, _) | ast::ItemKind::Union(ref def, _) => {
-                let inherited_level = self.r.access_levels.map.get(&def_id).copied();
+                let inherited_level = self.r.access_levels.get_access_level(def_id);
                 for field in def.fields() {
                     if field.vis.kind.is_pub() {
                         self.set_access_level(field.id, inherited_level);

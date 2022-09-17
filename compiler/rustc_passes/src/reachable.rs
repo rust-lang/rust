@@ -12,7 +12,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc_middle::middle::privacy;
+use rustc_middle::middle::privacy::{self, AccessLevel};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::config::CrateType;
@@ -373,7 +373,13 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
     //         If other crates link to us, they're going to expect to be able to
     //         use the lang items, so we need to be sure to mark them as
     //         exported.
-    reachable_context.worklist.extend(access_levels.map.keys());
+    reachable_context.worklist = access_levels
+        .iter()
+        .filter_map(|(&id, effective_vis)| {
+            effective_vis.is_public_at_level(AccessLevel::ReachableFromImplTrait).then_some(id)
+        })
+        .collect::<Vec<_>>();
+
     for item in tcx.lang_items().items().iter() {
         if let Some(def_id) = *item {
             if let Some(def_id) = def_id.as_local() {
