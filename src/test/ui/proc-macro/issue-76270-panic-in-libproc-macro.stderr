@@ -1,5 +1,5 @@
 error: proc macro panicked
-  --> $DIR/issue-76270-panic-in-libproc-macro.rs:10:1
+  --> $DIR/issue-76270-panic-in-libproc-macro.rs:11:1
    |
 LL | proc_macro_panic::panic_in_libproc_macro!();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

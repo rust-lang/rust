@@ -1,5 +1,5 @@
 error[E0428]: the name `Baz` is defined multiple times
-  --> $DIR/issue-36935.rs:7:1
+  --> $DIR/issue-36935.rs:8:1
    |
 LL | struct Baz {
    | ^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | struct Baz {
    = note: `Baz` must be defined only once in the type namespace of this module
 
 error: proc-macro derive panicked
-  --> $DIR/issue-36935.rs:6:20
+  --> $DIR/issue-36935.rs:7:20
    |
 LL | #[derive(Identity, Panic)]
    |                    ^^^^^
