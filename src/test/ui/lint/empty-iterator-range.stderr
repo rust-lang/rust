@@ -1,0 +1,34 @@
+error: this `for` loop is never run
+  --> $DIR/empty-iterator-range.rs:4:5
+   |
+LL |     for _i in 10..0 {
+   |     ^^^^^^^^^^^^^^^ this loop is never run because it's iterating over an empty iterator
+   |
+   = note: ranges that have a bigger start than their end will produce an empty iterator
+   = help: if you want a decreasing range sequence, create an increasing range and call `.rev()` on it
+note: the lint level is defined here
+  --> $DIR/empty-iterator-range.rs:1:9
+   |
+LL | #![deny(empty_iterator_range)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: this `for` loop is never run
+  --> $DIR/empty-iterator-range.rs:7:5
+   |
+LL |     for _i in (10..0).rev() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ this loop is never run because it's iterating over an empty iterator
+   |
+   = note: ranges that have a bigger start than their end will produce an empty iterator
+   = help: if you want a decreasing range sequence, create an increasing range and call `.rev()` on it
+
+error: this `for` loop is never run
+  --> $DIR/empty-iterator-range.rs:10:5
+   |
+LL |     for _i in (10..0).step_by(1) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this loop is never run because it's iterating over an empty iterator
+   |
+   = note: ranges that have a bigger start than their end will produce an empty iterator
+   = help: if you want a decreasing range sequence, create an increasing range and call `.rev()` on it
+
+error: aborting due to 3 previous errors
+
