@@ -1,5 +1,6 @@
 use rustc_errors::AddSubdiagnostic;
-use rustc_span::Span;
+use rustc_session::Limit;
+use rustc_span::{Span, Symbol};
 
 pub struct CycleStack {
     pub span: Span,
@@ -76,5 +77,20 @@ pub struct IncrementCompilation {
 }
 
 #[derive(SessionDiagnostic)]
+#[help]
 #[diag(query_system::query_overflow)]
-pub struct QueryOverflow;
+pub struct QueryOverflow {
+    #[primary_span]
+    pub span: Option<Span>,
+    #[subdiagnostic]
+    pub layout_of_depth: Option<LayoutOfDepth>,
+    pub suggested_limit: Limit,
+    pub crate_name: Symbol,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[note(query_system::layout_of_depth)]
+pub struct LayoutOfDepth {
+    pub desc: String,
+    pub depth: usize,
+}
