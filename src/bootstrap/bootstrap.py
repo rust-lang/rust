@@ -771,7 +771,8 @@ class RustBuild(object):
         elif color == "never":
             args.append("--color=never")
 
-        run(args, env=env, verbose=self.verbose)
+        # Run this from the source directory so cargo finds .cargo/config
+        run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
 
     def build_triple(self):
         """Build triple as in LLVM
