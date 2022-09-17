@@ -564,22 +564,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
             visitor.visit_enum_def(enum_definition, item.hir_id())
         }
-        ItemKind::Impl(Impl {
-            unsafety: _,
-            defaultness: _,
-            polarity: _,
-            constness: _,
-            defaultness_span: _,
-            ref generics,
-            ref of_trait,
-            ref self_ty,
-            items,
-        }) => {
+        ItemKind::Impl(impl_) => {
             visitor.visit_id(item.hir_id());
-            visitor.visit_generics(generics);
-            walk_list!(visitor, visit_trait_ref, of_trait);
-            visitor.visit_ty(self_ty);
-            walk_list!(visitor, visit_impl_item_ref, *items);
+            walk_impl(visitor, impl_);
         }
         ItemKind::Struct(ref struct_definition, ref generics)
         | ItemKind::Union(ref struct_definition, ref generics) => {
@@ -798,6 +785,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
         }
         ForeignItemKind::Static(ref typ, _) => visitor.visit_ty(typ),
         ForeignItemKind::Type => (),
+        ForeignItemKind::Impl(ref impl_) => walk_impl(visitor, impl_),
     }
 }
 
@@ -976,6 +964,13 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_ty(ty);
         }
     }
+}
+
+pub fn walk_impl<'v, V: Visitor<'v>>(visitor: &mut V, impl_: &'v Impl<'v>) {
+    visitor.visit_generics(impl_.generics);
+    walk_list!(visitor, visit_trait_ref, &impl_.of_trait);
+    visitor.visit_ty(impl_.self_ty);
+    walk_list!(visitor, visit_impl_item_ref, impl_.items);
 }
 
 pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(

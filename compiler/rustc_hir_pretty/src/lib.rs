@@ -375,7 +375,8 @@ impl<'a> State<'a> {
     pub fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(self.attrs(item.hir_id()));
+        let attrs = self.attrs(item.hir_id());
+        self.print_outer_attributes(attrs);
         match item.kind {
             hir::ForeignItemKind::Fn(decl, arg_names, generics) => {
                 self.head("");
@@ -415,6 +416,7 @@ impl<'a> State<'a> {
                 self.end(); // end the head-ibox
                 self.end() // end the outer cbox
             }
+            hir::ForeignItemKind::Impl(impl_) => self.print_impl(impl_, attrs, item.span),
         }
     }
 
@@ -475,6 +477,48 @@ impl<'a> State<'a> {
         inner(self);
         self.word(";");
         self.end(); // end the outer ibox
+    }
+
+    fn print_impl(
+        &mut self,
+        impl_: &hir::Impl<'_>,
+        attrs: &[ast::Attribute],
+        span: rustc_span::Span,
+    ) {
+        self.head("");
+        self.print_defaultness(impl_.defaultness);
+        self.print_unsafety(impl_.unsafety);
+        self.word_nbsp("impl");
+
+        if !impl_.generics.params.is_empty() {
+            self.print_generic_params(impl_.generics.params);
+            self.space();
+        }
+
+        if impl_.constness == hir::Constness::Const {
+            self.word_nbsp("const");
+        }
+
+        if let hir::ImplPolarity::Negative(_) = impl_.polarity {
+            self.word("!");
+        }
+
+        if let Some(ref t) = impl_.of_trait {
+            self.print_trait_ref(t);
+            self.space();
+            self.word_space("for");
+        }
+
+        self.print_type(impl_.self_ty);
+        self.print_where_clause(impl_.generics);
+
+        self.space();
+        self.bopen();
+        self.print_inner_attributes(attrs);
+        for impl_item in impl_.items {
+            self.ann.nested(self, Nested::ImplItem(impl_item.id));
+        }
+        self.bclose(span);
     }
 
     /// Pretty-print an item
@@ -619,52 +663,7 @@ impl<'a> State<'a> {
                 self.head("union");
                 self.print_struct(struct_def, generics, item.ident.name, item.span, true);
             }
-            hir::ItemKind::Impl(&hir::Impl {
-                unsafety,
-                polarity,
-                defaultness,
-                constness,
-                defaultness_span: _,
-                generics,
-                ref of_trait,
-                self_ty,
-                items,
-            }) => {
-                self.head("");
-                self.print_defaultness(defaultness);
-                self.print_unsafety(unsafety);
-                self.word_nbsp("impl");
-
-                if !generics.params.is_empty() {
-                    self.print_generic_params(generics.params);
-                    self.space();
-                }
-
-                if constness == hir::Constness::Const {
-                    self.word_nbsp("const");
-                }
-
-                if let hir::ImplPolarity::Negative(_) = polarity {
-                    self.word("!");
-                }
-
-                if let Some(t) = of_trait {
-                    self.print_trait_ref(t);
-                    self.space();
-                    self.word_space("for");
-                }
-
-                self.print_type(self_ty);
-                self.print_where_clause(generics);
-
-                self.space();
-                self.bopen();
-                self.print_inner_attributes(attrs);
-                for impl_item in items {
-                    self.ann.nested(self, Nested::ImplItem(impl_item.id));
-                }
-                self.bclose(item.span);
-            }
+            hir::ItemKind::Impl(impl_) => self.print_impl(impl_, attrs, item.span),
             hir::ItemKind::Trait(is_auto, unsafety, generics, bounds, trait_items) => {
                 self.head("");
                 self.print_is_auto(is_auto);

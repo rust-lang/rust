@@ -1463,6 +1463,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     self.dumper.dump_def(&access, var_data);
                 }
             }
+            hir::ForeignItemKind::Impl(..) => {}
         }
     }
 }

@@ -1198,6 +1198,25 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }
         ForeignItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
+        ForeignItemKind::Impl(box Impl {
+            defaultness,
+            unsafety,
+            generics,
+            constness,
+            polarity,
+            of_trait,
+            self_ty,
+            items,
+        }) => {
+            visit_defaultness(defaultness, visitor);
+            visit_unsafety(unsafety, visitor);
+            visitor.visit_generics(generics);
+            visit_constness(constness, visitor);
+            visit_polarity(polarity, visitor);
+            visit_opt(of_trait, |trait_ref| visitor.visit_trait_ref(trait_ref));
+            visitor.visit_ty(self_ty);
+            items.flat_map_in_place(|item| visitor.flat_map_impl_item(item));
+        }
     }
     visitor.visit_span(span);
     visit_lazy_tts(tokens, visitor);

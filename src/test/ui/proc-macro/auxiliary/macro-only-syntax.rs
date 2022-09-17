@@ -63,6 +63,25 @@ pub fn expect_unsafe_extern_cpp_mod(_attrs: TokenStream, input: TokenStream) -> 
     TokenStream::new()
 }
 
+// extern "C" {
+//   impl T {
+//      fn f();
+//   }
+// }
+#[proc_macro_attribute]
+pub fn expect_extern_impl_block(_attrs: TokenStream, input: TokenStream) -> TokenStream {
+    let tokens = &mut input.into_iter();
+    expect(tokens, "extern");
+    let extern_tokens = &mut expect_brace(tokens);
+    expect(extern_tokens, "impl");
+    expect(extern_tokens, "T");
+    let impl_tokens = &mut expect_brace(extern_tokens);
+    expect(impl_tokens, "fn");
+    let f = expect(impl_tokens, "f");
+    check_useful_span(f, "extern-impl-block.rs");
+    TokenStream::new()
+}
+
 fn expect(tokens: &mut token_stream::IntoIter, expected: &str) -> TokenTree {
     match tokens.next() {
         Some(token) if token.to_string() == expected => token,

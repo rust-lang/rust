@@ -2218,6 +2218,8 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                 ForeignStaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: None })
             }
             hir::ForeignItemKind::Type => ForeignTypeItem,
+            // This should be unreachable, as this AST will be rejected earlier
+            hir::ForeignItemKind::Impl(..) => bug!("foreign impl should only exist in macros"),
         };
 
         Item::from_hir_id_and_parts(

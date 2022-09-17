@@ -1302,7 +1302,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
                 hir::ForeignItemKind::Static(ref ty, _) => {
                     vis.check_foreign_static(it.hir_id(), ty.span);
                 }
-                hir::ForeignItemKind::Type => (),
+                hir::ForeignItemKind::Type | hir::ForeignItemKind::Impl(..) => (),
             }
         }
     }

@@ -235,6 +235,7 @@ impl<'hir> Map<'hir> {
                 ForeignItemKind::Fn(..) => DefKind::Fn,
                 ForeignItemKind::Static(_, mt) => DefKind::Static(mt),
                 ForeignItemKind::Type => DefKind::ForeignTy,
+                ForeignItemKind::Impl(..) => DefKind::Impl,
             },
             Node::TraitItem(item) => match item.kind {
                 TraitItemKind::Const(..) => DefKind::AssocConst,

@@ -928,6 +928,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             ForeignItemKind::Static(_, mt, _) => (DefKind::Static(mt), ValueNS),
             ForeignItemKind::TyAlias(..) => (DefKind::ForeignTy, TypeNS),
             ForeignItemKind::MacCall(_) => unreachable!(),
+            ForeignItemKind::Impl(_) => (DefKind::Impl, TypeNS),
         };
         let parent = self.parent_scope.module;
         let expansion = self.parent_scope.expansion;

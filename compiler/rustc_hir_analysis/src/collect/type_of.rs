@@ -364,6 +364,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             ForeignItemKind::Static(t, _) => icx.to_ty(t),
             ForeignItemKind::Type => tcx.mk_foreign(def_id.to_def_id()),
+            ForeignItemKind::Impl(..) => span_bug!(foreign_item.span, "compute_type_of_foreign_item: unexpected item type: {:?}", foreign_item.kind),
         },
 
         Node::Ctor(&ref def) | Node::Variant(Variant { data: ref def, .. }) => match *def {

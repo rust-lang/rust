@@ -2217,7 +2217,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
         Node::ForeignItem(item) => match item.kind {
             ForeignItemKind::Static(..) => NO_GENERICS,
-            ForeignItemKind::Fn(_, _, ref generics) => *generics,
+            ForeignItemKind::Fn(_, _, ref generics)
+            | ForeignItemKind::Impl(hir::Impl { ref generics, .. }) => *generics,
             ForeignItemKind::Type => NO_GENERICS,
         },
 

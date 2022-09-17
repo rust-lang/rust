@@ -260,6 +260,7 @@ fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) {
         }
         hir::ForeignItemKind::Static(ty, ..) => check_item_type(tcx, def_id, ty.span, true),
         hir::ForeignItemKind::Type => (),
+        hir::ForeignItemKind::Impl(..) => (),
     }
 }
 

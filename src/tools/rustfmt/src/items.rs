@@ -659,6 +659,17 @@ pub(crate) fn format_impl(
     iimpl: &ast::Impl,
     offset: Indent,
 ) -> Option<String> {
+    rewrite_impl(context, &item.vis, item.span, &item.attrs, iimpl, offset)
+}
+
+fn rewrite_impl(
+    context: &RewriteContext<'_>,
+    visibility: &ast::Visibility,
+    span: Span,
+    attrs: &[ast::Attribute],
+    iimpl: &ast::Impl,
+    offset: Indent,
+) -> Option<String> {
     let ast::Impl {
         generics,
         self_ty,
@@ -666,7 +677,7 @@ pub(crate) fn format_impl(
         ..
     } = iimpl;
     let mut result = String::with_capacity(128);
-    let ref_and_type = format_impl_ref_and_type(context, item, iimpl, offset)?;
+    let ref_and_type = format_impl_ref_and_type(context, visibility, iimpl, offset)?;
     let sep = offset.to_string_with_newline(context.config);
     result.push_str(&ref_and_type);
 
@@ -677,7 +688,7 @@ pub(crate) fn format_impl(
     };
 
     let mut option = WhereClauseOption::snuggled(&ref_and_type);
-    let snippet = context.snippet(item.span);
+    let snippet = context.snippet(span);
     let open_pos = snippet.find_uncommented("{")? + 1;
     if !contains_comment(&snippet[open_pos..])
         && items.is_empty()
@@ -689,7 +700,7 @@ pub(crate) fn format_impl(
         option.allow_single_line();
     }
 
-    let missing_span = mk_sp(self_ty.span.hi(), item.span.hi());
+    let missing_span = mk_sp(self_ty.span.hi(), span.hi());
     let where_span_end = context.snippet_provider.opt_span_before(missing_span, "{");
     let where_clause_str = rewrite_where_clause(
         context,
@@ -722,7 +733,7 @@ pub(crate) fn format_impl(
         }
     }
 
-    if is_impl_single_line(context, items.as_slice(), &result, &where_clause_str, item)? {
+    if is_impl_single_line(context, items.as_slice(), &result, &where_clause_str, span)? {
         result.push_str(&where_clause_str);
         if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
             // if the where_clause contains extra comments AND
@@ -757,7 +768,7 @@ pub(crate) fn format_impl(
     result.push('{');
     // this is an impl body snippet(impl SampleImpl { /* here */ })
     let lo = max(self_ty.span.hi(), generics.where_clause.span.hi());
-    let snippet = context.snippet(mk_sp(lo, item.span.hi()));
+    let snippet = context.snippet(mk_sp(lo, span.hi()));
     let open_pos = snippet.find_uncommented("{")? + 1;
 
     if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
@@ -766,10 +777,10 @@ pub(crate) fn format_impl(
         visitor.block_indent = item_indent;
         visitor.last_pos = lo + BytePos(open_pos as u32);
 
-        visitor.visit_attrs(&item.attrs, ast::AttrStyle::Inner);
+        visitor.visit_attrs(&attrs, ast::AttrStyle::Inner);
         visitor.visit_impl_items(items);
 
-        visitor.format_missing(item.span.hi() - BytePos(1));
+        visitor.format_missing(span.hi() - BytePos(1));
 
         let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
         let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
@@ -791,9 +802,9 @@ fn is_impl_single_line(
     items: &[ptr::P<ast::AssocItem>],
     result: &str,
     where_clause_str: &str,
-    item: &ast::Item,
+    span: Span,
 ) -> Option<bool> {
-    let snippet = context.snippet(item.span);
+    let snippet = context.snippet(span);
     let open_pos = snippet.find_uncommented("{")? + 1;
 
     Some(
@@ -807,7 +818,7 @@ fn is_impl_single_line(
 
 fn format_impl_ref_and_type(
     context: &RewriteContext<'_>,
-    item: &ast::Item,
+    visibility: &ast::Visibility,
     iimpl: &ast::Impl,
     offset: Indent,
 ) -> Option<String> {
@@ -823,7 +834,7 @@ fn format_impl_ref_and_type(
     } = *iimpl;
     let mut result = String::with_capacity(128);
 
-    result.push_str(&format_visibility(context, &item.vis));
+    result.push_str(&format_visibility(context, visibility));
     result.push_str(format_defaultness(defaultness));
     result.push_str(format_unsafety(unsafety));
 
@@ -3233,6 +3244,14 @@ impl Rewrite for ast::ForeignItem {
             ast::ForeignItemKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Item)
             }
+            ast::ForeignItemKind::Impl(ref impl_) => rewrite_impl(
+                context,
+                &self.vis,
+                self.span,
+                &self.attrs,
+                impl_,
+                shape.indent,
+            ),
         }?;
 
         let missing_span = if self.attrs.is_empty() {

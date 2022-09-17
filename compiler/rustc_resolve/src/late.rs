@@ -783,6 +783,23 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             ForeignItemKind::MacCall(..) => {
                 panic!("unexpanded macro in resolve!")
             }
+            ForeignItemKind::Impl(box Impl {
+                ref generics,
+                ref of_trait,
+                ref self_ty,
+                items: ref impl_items,
+                ..
+            }) => {
+                self.diagnostic_metadata.current_impl_items = Some(impl_items);
+                self.resolve_implementation(
+                    generics,
+                    of_trait,
+                    &self_ty,
+                    foreign_item.id,
+                    impl_items,
+                );
+                self.diagnostic_metadata.current_impl_items = None;
+            }
         }
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, fn_id: NodeId) {

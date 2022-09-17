@@ -1,0 +1,17 @@
+error: extern block cannot be declared unsafe
+  --> $DIR/unsafe-foreign-mod.rs:3:1
+   |
+LL | unsafe extern "C++" {
+   | ^^^^^^
+
+error[E0703]: invalid ABI: found `C++`
+  --> $DIR/unsafe-foreign-mod.rs:3:15
+   |
+LL | unsafe extern "C++" {
+   |               ^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions.
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0703`.

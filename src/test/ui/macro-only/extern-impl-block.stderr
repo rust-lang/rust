@@ -1,0 +1,10 @@
+error: `impl` blocks are not allowed in `extern` blocks
+  --> $DIR/extern-impl-block.rs:6:5
+   |
+LL | /     impl T {
+LL | |         fn f();
+LL | |     }
+   | |_____^
+
+error: aborting due to previous error
+

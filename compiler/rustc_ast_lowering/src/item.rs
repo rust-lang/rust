@@ -142,8 +142,11 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             // Evaluate with the lifetimes in `params` in-scope.
             // This is used to track which lifetimes have already been defined,
             // and which need to be replicated when lowering an async fn.
-            match parent_hir.node().expect_item().kind {
-                hir::ItemKind::Impl(hir::Impl { ref of_trait, .. }) => {
+            match parent_hir.node() {
+                hir::OwnerNode::Item(hir::Item {
+                    kind: hir::ItemKind::Impl(hir::Impl { ref of_trait, .. }),
+                    ..
+                }) => {
                     lctx.is_in_trait_impl = of_trait.is_some();
                 }
                 _ => {}
@@ -685,6 +688,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
                 ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),
+                // This is not a type, but we will have emitted an error earlier and want the
+                // compiler to finish its work cleanly.
+                ForeignItemKind::Impl(_) => hir::ForeignItemKind::Type,
             },
             vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),

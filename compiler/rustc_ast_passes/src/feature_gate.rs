@@ -356,6 +356,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, extern_types, i.span, "extern types are experimental");
             }
             ast::ForeignItemKind::MacCall(..) => {}
+            ast::ForeignItemKind::Impl(..) => {}
         }
 
         visit::walk_foreign_item(self, i)

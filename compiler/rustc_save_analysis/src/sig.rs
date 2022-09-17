@@ -789,6 +789,7 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
 
                 Ok(Signature { text, defs, refs: vec![] })
             }
+            hir::ForeignItemKind::Impl(..) => Err("foreign impl has no semantics"),
         }
     }
 }

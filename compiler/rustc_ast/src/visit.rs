@@ -575,6 +575,21 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignI
         ForeignItemKind::MacCall(mac) => {
             visitor.visit_mac_call(mac);
         }
+        ForeignItemKind::Impl(box Impl {
+            defaultness: _,
+            unsafety: _,
+            ref generics,
+            constness: _,
+            polarity: _,
+            ref of_trait,
+            ref self_ty,
+            ref items,
+        }) => {
+            visitor.visit_generics(generics);
+            walk_list!(visitor, visit_trait_ref, of_trait);
+            visitor.visit_ty(self_ty);
+            walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Impl);
+        }
     }
 }
 

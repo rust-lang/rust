@@ -634,15 +634,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         match item.kind {
-            hir::ForeignItemKind::Fn(_, _, ref generics) => {
+            hir::ForeignItemKind::Fn(_, _, ref generics)
+            | hir::ForeignItemKind::Impl(hir::Impl { ref generics, .. }) => {
                 self.visit_early_late(item.hir_id(), generics, |this| {
                     intravisit::walk_foreign_item(this, item);
                 })
             }
-            hir::ForeignItemKind::Static(..) => {
-                intravisit::walk_foreign_item(self, item);
-            }
-            hir::ForeignItemKind::Type => {
+            hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => {
                 intravisit::walk_foreign_item(self, item);
             }
         }

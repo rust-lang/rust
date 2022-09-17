@@ -1285,6 +1285,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::MacCall(..) => {}
+            ForeignItemKind::Impl(..) => {
+                self.err_handler()
+                    .struct_span_err(fi.span, "`impl` blocks are not allowed in `extern` blocks")
+                    .emit();
+                return;
+            }
         }
 
         visit::walk_foreign_item(self, fi)

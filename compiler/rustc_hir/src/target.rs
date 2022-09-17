@@ -139,6 +139,7 @@ impl Target {
             hir::ForeignItemKind::Fn(..) => Target::ForeignFn,
             hir::ForeignItemKind::Static(..) => Target::ForeignStatic,
             hir::ForeignItemKind::Type => Target::ForeignTy,
+            hir::ForeignItemKind::Impl(..) => Target::Impl,
         }
     }
 

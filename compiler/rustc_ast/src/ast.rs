@@ -3005,6 +3005,9 @@ pub enum ForeignItemKind {
     TyAlias(Box<TyAlias>),
     /// A macro expanding to foreign items.
     MacCall(P<MacCall>),
+    /// An impl declaration - parseable for proc_macro purposes, but currently has no meaning in
+    /// real Rust code.
+    Impl(Box<Impl>),
 }
 
 impl From<ForeignItemKind> for ItemKind {
@@ -3014,6 +3017,7 @@ impl From<ForeignItemKind> for ItemKind {
             ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             ForeignItemKind::MacCall(a) => ItemKind::MacCall(a),
+            ForeignItemKind::Impl(i) => ItemKind::Impl(i),
         }
     }
 }
@@ -3027,6 +3031,7 @@ impl TryFrom<ItemKind> for ForeignItemKind {
             ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_alias_kind) => ForeignItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => ForeignItemKind::MacCall(a),
+            ItemKind::Impl(i) => ForeignItemKind::Impl(i),
             _ => return Err(item_kind),
         })
     }

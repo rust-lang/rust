@@ -254,7 +254,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) {
         record_variants!(
             (self, i, i.kind, Id::Node(i.hir_id()), hir, ForeignItem, ForeignItemKind),
-            [Fn, Static, Type]
+            [Fn, Static, Type, Impl]
         );
         hir_visit::walk_foreign_item(self, i)
     }
@@ -476,7 +476,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_foreign_item(&mut self, i: &'v ast::ForeignItem) {
         record_variants!(
             (self, i, i.kind, Id::None, ast, ForeignItem, ForeignItemKind),
-            [Static, Fn, TyAlias, MacCall]
+            [Static, Fn, TyAlias, MacCall, Impl]
         );
         ast_visit::walk_foreign_item(self, i)
     }

@@ -201,6 +201,8 @@ impl<'tcx> SaveContext<'tcx> {
             }
             // FIXME(plietar): needs a new DefKind in rls-data
             hir::ForeignItemKind::Type => None,
+            // foreign impl blocks have no semantics
+            hir::ForeignItemKind::Impl(..) => None,
         }
     }
 

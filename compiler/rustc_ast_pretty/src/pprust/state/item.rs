@@ -58,6 +58,53 @@ impl<'a> State<'a> {
                     self.word(";");
                 }
             }
+            ast::ForeignItemKind::Impl(box ast::Impl {
+                unsafety,
+                polarity,
+                defaultness,
+                constness,
+                ref generics,
+                ref of_trait,
+                ref self_ty,
+                ref items,
+            }) => {
+                self.head("");
+                self.print_visibility(&item.vis);
+                self.print_defaultness(*defaultness);
+                self.print_unsafety(*unsafety);
+                self.word("impl");
+
+                if generics.params.is_empty() {
+                    self.nbsp();
+                } else {
+                    self.print_generic_params(&generics.params);
+                    self.space();
+                }
+
+                self.print_constness(*constness);
+
+                if let ast::ImplPolarity::Negative(_) = polarity {
+                    self.word("!");
+                }
+
+                if let Some(ref t) = *of_trait {
+                    self.print_trait_ref(t);
+                    self.space();
+                    self.word_space("for");
+                }
+
+                self.print_type(self_ty);
+                self.print_where_clause(&generics.where_clause);
+
+                self.space();
+                self.bopen();
+                self.print_inner_attributes(&item.attrs);
+                for impl_item in items {
+                    self.print_assoc_item(impl_item);
+                }
+                let empty = item.attrs.is_empty() && items.is_empty();
+                self.bclose(item.span, empty);
+            }
         }
         self.ann.post(self, AnnNode::SubItem(id))
     }

@@ -54,7 +54,6 @@ extern "C" {
     default trait foo = Ord; //~ ERROR a trait alias cannot be `default`
     //~^ ERROR trait alias is not supported in `extern` blocks
     default impl foo {}
-    //~^ ERROR implementation is not supported in `extern` blocks
     default!();
     default::foo::bar!();
     default default!(); //~ ERROR an item macro invocation cannot be `default`

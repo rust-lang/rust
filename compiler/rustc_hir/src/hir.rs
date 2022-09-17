@@ -3186,6 +3186,8 @@ pub enum ForeignItemKind<'hir> {
     Static(&'hir Ty<'hir>, Mutability),
     /// A foreign type.
     Type,
+    /// A foreign impl (currently meaningless)
+    Impl(&'hir Impl<'hir>),
 }
 
 /// A variable captured by a closure.

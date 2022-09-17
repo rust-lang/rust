@@ -14,16 +14,25 @@ pub fn provide(providers: &mut ty::query::Providers) {
 }
 
 fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
-    let item = tcx.hir().expect_item(def_id.expect_local());
-    match item.kind {
-        hir::ItemKind::Trait(.., ref trait_item_refs) => tcx.arena.alloc_from_iter(
-            trait_item_refs.iter().map(|trait_item_ref| trait_item_ref.id.def_id.to_def_id()),
-        ),
-        hir::ItemKind::Impl(ref impl_) => tcx.arena.alloc_from_iter(
-            impl_.items.iter().map(|impl_item_ref| impl_item_ref.id.def_id.to_def_id()),
-        ),
-        hir::ItemKind::TraitAlias(..) => &[],
-        _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
+    let node = tcx.hir().get_by_def_id(def_id.expect_local());
+    match node {
+        hir::Node::Item(item) => match item.kind {
+            hir::ItemKind::Trait(.., ref trait_item_refs) => tcx.arena.alloc_from_iter(
+                trait_item_refs.iter().map(|trait_item_ref| trait_item_ref.id.def_id.to_def_id()),
+            ),
+            hir::ItemKind::Impl(ref impl_) => tcx.arena.alloc_from_iter(
+                impl_.items.iter().map(|impl_item_ref| impl_item_ref.id.def_id.to_def_id()),
+            ),
+            hir::ItemKind::TraitAlias(..) => &[],
+            _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
+        },
+        hir::Node::ForeignItem(foreign_item) => match foreign_item.kind {
+            hir::ForeignItemKind::Impl(ref impl_) => tcx.arena.alloc_from_iter(
+                impl_.items.iter().map(|impl_item_ref| impl_item_ref.id.def_id.to_def_id()),
+            ),
+            _ => span_bug!(foreign_item.span, "associated_item_def_ids: not impl or trait"),
+        },
+        _ => bug!("associated_item_ids: not item or foreign item"),
     }
 }
 
@@ -42,9 +51,12 @@ fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> FxHashMap<DefId
 fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
     let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let parent_def_id = tcx.hir().get_parent_item(id);
-    let parent_item = tcx.hir().expect_item(parent_def_id.def_id);
-    match parent_item.kind {
-        hir::ItemKind::Impl(ref impl_) => {
+    match tcx.hir().get_by_def_id(parent_def_id.def_id) {
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(ref impl_), .. })
+        | hir::Node::ForeignItem(hir::ForeignItem {
+            kind: hir::ForeignItemKind::Impl(ref impl_),
+            ..
+        }) => {
             if let Some(impl_item_ref) =
                 impl_.items.iter().find(|i| i.id.def_id.to_def_id() == def_id)
             {
@@ -52,9 +64,12 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
                 debug_assert_eq!(assoc_item.def_id, def_id);
                 return assoc_item;
             }
+            bug!("impl item def_id not found in expected parent impl")
         }
 
-        hir::ItemKind::Trait(.., ref trait_item_refs) => {
+        hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Trait(.., ref trait_item_refs), ..
+        }) => {
             if let Some(trait_item_ref) =
                 trait_item_refs.iter().find(|i| i.id.def_id.to_def_id() == def_id)
             {
@@ -62,16 +77,20 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
                 debug_assert_eq!(assoc_item.def_id, def_id);
                 return assoc_item;
             }
+            bug!("trait item def_id not found in expected parent trait")
         }
-
-        _ => {}
+        hir::Node::Item(parent_item) => span_bug!(
+            parent_item.span,
+            "unexpected parent of trait or impl item or item not found: {:?}",
+            parent_item.kind
+        ),
+        hir::Node::ForeignItem(parent_item) => span_bug!(
+            parent_item.span,
+            "unexpected parent of foreign impl item or item not found: {:?}",
+            parent_item.kind
+        ),
+        _ => bug!("Parent of associated item should be an item or foreign item"),
     }
-
-    span_bug!(
-        parent_item.span,
-        "unexpected parent of trait or impl item or item not found: {:?}",
-        parent_item.kind
-    )
 }
 
 fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty::AssocItem {

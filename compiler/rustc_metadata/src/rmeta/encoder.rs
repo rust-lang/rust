@@ -1966,7 +1966,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.constness.set(def_id.index, constness);
                 record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             }
-            hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => {}
+            hir::ForeignItemKind::Static(..)
+            | hir::ForeignItemKind::Type
+            | hir::ForeignItemKind::Impl(..) => {}
         }
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
             if tcx.is_intrinsic(def_id) {
