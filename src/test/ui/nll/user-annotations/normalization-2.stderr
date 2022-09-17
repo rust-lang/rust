@@ -1,0 +1,141 @@
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:32:12
+   |
+LL | fn test_local<'a>() {
+   |               -- lifetime `'a` defined here
+LL |     let _: Ty<'a> = MyTy::Unit;
+   |            ^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:37:6
+   |
+LL | fn test_closure_sig<'a, 'b>() {
+   |                     -- lifetime `'a` defined here
+LL |     |_: Ty<'a>| {};
+   |      ^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:39:11
+   |
+LL | fn test_closure_sig<'a, 'b>() {
+   |                         -- lifetime `'b` defined here
+...
+LL |     || -> Option<Ty<'b>> { None };
+   |           ^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+   = help: replace `'b` with `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:44:5
+   |
+LL | fn test_path<'a, 'b, 'c, 'd>() {
+   |              -- lifetime `'a` defined here
+LL |     <Ty<'a>>::method::<Ty<'static>>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:46:5
+   |
+LL | fn test_path<'a, 'b, 'c, 'd>() {
+   |                  -- lifetime `'b` defined here
+...
+LL |     <Ty<'static>>::method::<Ty<'b>>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+   = help: replace `'b` with `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:51:5
+   |
+LL | fn test_call<'a, 'b, 'c>() {
+   |              -- lifetime `'a` defined here
+LL |     <Ty<'a>>::method::<Ty<'static>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:53:5
+   |
+LL | fn test_call<'a, 'b, 'c>() {
+   |                  -- lifetime `'b` defined here
+...
+LL |     <Ty<'static>>::method::<Ty<'b>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+   = help: replace `'b` with `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:58:5
+   |
+LL | fn test_variants<'a, 'b, 'c>() {
+   |                  -- lifetime `'a` defined here
+LL |     <Ty<'a>>::Struct {}; //TODO
+   |     ^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:60:5
+   |
+LL | fn test_variants<'a, 'b, 'c>() {
+   |                      -- lifetime `'b` defined here
+...
+LL |     <Ty<'b>>::Tuple();
+   |     ^^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:62:5
+   |
+LL | fn test_variants<'a, 'b, 'c>() {
+   |                          -- lifetime `'c` defined here
+...
+LL |     <Ty<'c>>::Unit;
+   |     ^^^^^^^^^^^^^^ requires that `'c` must outlive `'static`
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+   = help: replace `'b` with `'static`
+   = help: replace `'c` with `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:69:9
+   |
+LL | fn test_pattern<'a, 'b, 'c>() {
+   |                 -- lifetime `'a` defined here
+...
+LL |         Struct::<Ty<'a>> {..} => {},
+   |         ^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:71:9
+   |
+LL | fn test_pattern<'a, 'b, 'c>() {
+   |                     -- lifetime `'b` defined here
+...
+LL |         Tuple::<Ty<'b>> (..) => {},
+   |         ^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:73:9
+   |
+LL | fn test_pattern<'a, 'b, 'c>() {
+   |                         -- lifetime `'c` defined here
+...
+LL |         Unit::<Ty<'c>> => {},
+   |         ^^^^^^^^^^^^^^ requires that `'c` must outlive `'static`
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+   = help: replace `'b` with `'static`
+   = help: replace `'c` with `'static`
+
+error: aborting due to 13 previous errors
+

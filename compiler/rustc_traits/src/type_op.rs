@@ -91,6 +91,7 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     }
 
     if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
+        let self_ty = ocx.normalize(&cause, param_env, self_ty);
         let impl_self_ty = tcx.bound_type_of(impl_def_id).subst(tcx, substs);
         let impl_self_ty = ocx.normalize(&cause, param_env, impl_self_ty);
 

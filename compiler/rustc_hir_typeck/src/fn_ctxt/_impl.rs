@@ -1,7 +1,7 @@
 use crate::callee::{self, DeferredCallResolution};
 use crate::method::{self, MethodCallee, SelfSource};
 use crate::rvalue_scopes;
-use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
+use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, RawTy};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
@@ -410,23 +410,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> Ty<'tcx> {
+    pub fn create_raw_ty(&self, span: Span, ty: Ty<'tcx>) -> RawTy<'tcx> {
+        RawTy { raw: ty, normalized: self.normalize(span, ty) }
+    }
+
+    pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> RawTy<'tcx> {
         let t = <dyn AstConv<'_>>::ast_ty_to_ty(self, ast_t);
         self.register_wf_obligation(t.into(), ast_t.span, traits::WellFormed(None));
-        t
+        self.create_raw_ty(ast_t.span, t)
     }
 
     pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
         let ty = self.to_ty(ast_ty);
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
-        if Self::can_contain_user_lifetime_bounds(ty) {
-            let c_ty = self.canonicalize_response(UserType::Ty(ty));
+        if Self::can_contain_user_lifetime_bounds(ty.raw) {
+            let c_ty = self.canonicalize_response(UserType::Ty(ty.raw));
             debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
             self.typeck_results.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
         }
 
-        ty
+        ty.normalized
     }
 
     pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
@@ -780,7 +784,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &'tcx QPath<'tcx>,
         hir_id: hir::HirId,
         span: Span,
-    ) -> (Res, Option<Ty<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
+    ) -> (Res, Option<RawTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
         debug!(
             "resolve_ty_and_res_fully_qualified_call: qpath={:?} hir_id={:?} span={:?}",
             qpath, hir_id, span
@@ -803,7 +807,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // to be object-safe.
                 // We manually call `register_wf_obligation` in the success path
                 // below.
-                (<dyn AstConv<'_>>::ast_ty_to_ty_in_path(self, qself), qself, segment)
+                let ty = <dyn AstConv<'_>>::ast_ty_to_ty_in_path(self, qself);
+                (self.create_raw_ty(span, ty), qself, segment)
             }
             QPath::LangItem(..) => {
                 bug!("`resolve_ty_and_res_fully_qualified_call` called on `LangItem`")
@@ -811,7 +816,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let Some(&cached_result) = self.typeck_results.borrow().type_dependent_defs().get(hir_id)
         {
-            self.register_wf_obligation(ty.into(), qself.span, traits::WellFormed(None));
+            self.register_wf_obligation(ty.raw.into(), qself.span, traits::WellFormed(None));
             // Return directly on cache hit. This is useful to avoid doubly reporting
             // errors with default match binding modes. See #44614.
             let def = cached_result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id));
@@ -819,7 +824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let item_name = item_segment.ident;
         let result = self
-            .resolve_fully_qualified_call(span, item_name, ty, qself.span, hir_id)
+            .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
             .or_else(|error| {
                 let result = match error {
                     method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
@@ -830,13 +835,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // a WF obligation for `dyn MyTrait` when method lookup fails. Otherwise,
                 // register a WF obligation so that we can detect any additional
                 // errors in the self type.
-                if !(matches!(error, method::MethodError::NoMatch(_)) && ty.is_trait()) {
-                    self.register_wf_obligation(ty.into(), qself.span, traits::WellFormed(None));
+                if !(matches!(error, method::MethodError::NoMatch(_)) && ty.normalized.is_trait()) {
+                    self.register_wf_obligation(
+                        ty.raw.into(),
+                        qself.span,
+                        traits::WellFormed(None),
+                    );
                 }
                 if item_name.name != kw::Empty {
                     if let Some(mut e) = self.report_method_error(
                         span,
-                        ty,
+                        ty.normalized,
                         item_name,
                         SelfSource::QPath(qself),
                         error,
@@ -849,7 +858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
 
         if result.is_ok() {
-            self.register_wf_obligation(ty.into(), qself.span, traits::WellFormed(None));
+            self.register_wf_obligation(ty.raw.into(), qself.span, traits::WellFormed(None));
         }
 
         // Write back the new resolution.
@@ -986,7 +995,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn instantiate_value_path(
         &self,
         segments: &[hir::PathSegment<'_>],
-        self_ty: Option<Ty<'tcx>>,
+        self_ty: Option<RawTy<'tcx>>,
         res: Res,
         span: Span,
         hir_id: hir::HirId,
@@ -996,7 +1005,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let path_segs = match res {
             Res::Local(_) | Res::SelfCtor(_) => vec![],
             Res::Def(kind, def_id) => <dyn AstConv<'_>>::def_ids_for_value_path_segments(
-                self, segments, self_ty, kind, def_id,
+                self,
+                segments,
+                self_ty.map(|ty| ty.normalized),
+                kind,
+                def_id,
             ),
             _ => bug!("instantiate_value_path on {:?}", res),
         };
@@ -1007,8 +1020,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Def(DefKind::Ctor(CtorOf::Variant, _), _)
                 if let Some(self_ty) = self_ty =>
             {
-                let adt_def = self_ty.ty_adt_def().unwrap();
-                user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did(), self_ty });
+                let adt_def = self_ty.normalized.ty_adt_def().unwrap();
+                user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did(), self_ty: self_ty.raw });
                 is_alias_variant_ctor = true;
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
@@ -1027,7 +1040,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // inherent impl, we need to record the
                             // `T` for posterity (see `UserSelfTy` for
                             // details).
-                            let self_ty = self_ty.expect("UFCS sugared assoc missing Self");
+                            let self_ty = self_ty.expect("UFCS sugared assoc missing Self").raw;
                             user_self_ty = Some(UserSelfTy { impl_def_id: container_id, self_ty });
                         }
                     }
@@ -1109,7 +1122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .unwrap_or(false);
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
-            let ty = self.normalize_ty(span, tcx.at(span).type_of(impl_def_id));
+            let ty = self.normalize_ty_2(span, tcx.at(span).type_of(impl_def_id));
             match *ty.kind() {
                 ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
@@ -1193,7 +1206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         <dyn AstConv<'_>>::ast_region_to_region(self.fcx, lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.fcx.to_ty(ty).into()
+                        self.fcx.to_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         self.fcx.const_arg_to_const(&ct.value, param.def_id).into()
@@ -1227,7 +1240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // is missing.
                             let default = tcx.bound_type_of(param.def_id);
                             self.fcx
-                                .normalize_ty(self.span, default.subst(tcx, substs.unwrap()))
+                                .normalize_ty_2(self.span, default.subst(tcx, substs.unwrap()))
                                 .into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
@@ -1250,13 +1263,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let substs = self_ctor_substs.unwrap_or_else(|| {
+        let substs_raw = self_ctor_substs.unwrap_or_else(|| {
             <dyn AstConv<'_>>::create_substs_for_generic_args(
                 tcx,
                 def_id,
                 &[],
                 has_self,
-                self_ty,
+                self_ty.map(|s| s.raw),
                 &arg_count,
                 &mut CreateCtorSubstsContext {
                     fcx: self,
@@ -1269,7 +1282,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
 
         // First, store the "user substs" for later.
-        self.write_user_type_annotation_from_substs(hir_id, def_id, substs, user_self_ty);
+        self.write_user_type_annotation_from_substs(hir_id, def_id, substs_raw, user_self_ty);
+
+        // Normalize only after registering type annotations.
+        let substs = self.normalize(span, substs_raw);
 
         self.add_required_obligations_for_hir(span, def_id, &substs, hir_id);
 
@@ -1287,6 +1303,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // with the substituted impl type.
             // This also occurs for an enum variant on a type alias.
             let impl_ty = self.normalize(span, tcx.bound_type_of(impl_def_id).subst(tcx, substs));
+            let self_ty = self.normalize(span, self_ty);
             match self.at(&self.misc(span), self.param_env).eq(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {

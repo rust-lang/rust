@@ -11,8 +11,10 @@ struct SomeStruct<T> { t: T }
 #[rustc_dump_user_substs]
 fn main() {
     SomeStruct { t: 22 }; // Nothing given, no annotation.
+    //~^ ERROR SomeStruct<^0>
 
     SomeStruct::<_> { t: 22 }; // Nothing interesting given, no annotation.
+    //~^ ERROR SomeStruct<^0>
 
     SomeStruct::<u32> { t: 22 }; // No lifetime bounds given.
 

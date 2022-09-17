@@ -1,8 +1,20 @@
-error: user substs: UserSubsts { substs: [&ReStatic u32], user_self_ty: None }
-  --> $DIR/dump-adt-brace-struct.rs:19:5
+error: user substs: UserSubsts { substs: [^0], user_self_ty: Some(UserSelfTy { impl_def_id: DefId(0:3 ~ dump_adt_brace_struct[4679]::SomeStruct), self_ty: SomeStruct<^0> }) }
+  --> $DIR/dump-adt-brace-struct.rs:13:5
+   |
+LL |     SomeStruct { t: 22 }; // Nothing given, no annotation.
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: user substs: UserSubsts { substs: [^0], user_self_ty: Some(UserSelfTy { impl_def_id: DefId(0:3 ~ dump_adt_brace_struct[4679]::SomeStruct), self_ty: SomeStruct<^0> }) }
+  --> $DIR/dump-adt-brace-struct.rs:16:5
+   |
+LL |     SomeStruct::<_> { t: 22 }; // Nothing interesting given, no annotation.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: user substs: UserSubsts { substs: [&ReStatic u32], user_self_ty: Some(UserSelfTy { impl_def_id: DefId(0:3 ~ dump_adt_brace_struct[4679]::SomeStruct), self_ty: SomeStruct<&ReStatic u32> }) }
+  --> $DIR/dump-adt-brace-struct.rs:21:5
    |
 LL |     SomeStruct::<&'static u32> { t: &22 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 3 previous errors
 
