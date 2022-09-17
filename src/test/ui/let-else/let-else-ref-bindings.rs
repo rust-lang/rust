@@ -1,5 +1,5 @@
-#![feature(let_else)]
 #![allow(unused_variables)]
+
 
 fn ref_() {
     let bytes: Vec<u8> = b"Hello"[..].to_vec();

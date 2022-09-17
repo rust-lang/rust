@@ -7,7 +7,7 @@
 #![feature(if_let_guard)]
 #![feature(adt_const_params)]
 #![feature(let_chains)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(never_type)]
 #![feature(result_option_inspect)]
 #![feature(rustc_attrs)]
@@ -633,6 +633,10 @@ impl Handler {
     pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_, ()>> {
         let mut inner = self.inner.borrow_mut();
         inner.steal((span, key)).map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
+    }
+
+    pub fn has_stashed_diagnostic(&self, span: Span, key: StashKey) -> bool {
+        self.inner.borrow().stashed_diagnostics.get(&(span, key)).is_some()
     }
 
     /// Emit all stashed diagnostics.

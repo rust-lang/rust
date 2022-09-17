@@ -255,7 +255,7 @@
 #![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(lang_items)]
 #![feature(let_chains)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(linkage)]
 #![feature(link_cfg)]
 #![feature(min_specialization)]

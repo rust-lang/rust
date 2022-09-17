@@ -169,7 +169,7 @@
 #![cfg_attr(not(test), feature(generator_trait))]
 #![feature(hashmap_internals)]
 #![feature(lang_items)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]

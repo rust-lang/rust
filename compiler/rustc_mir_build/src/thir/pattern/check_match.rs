@@ -491,8 +491,8 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                     err.span_suggestion_verbose(
                         semi_span.shrink_to_lo(),
                         &format!(
-                            "alternatively, on nightly, you might want to use \
-                             `#![feature(let_else)]` to handle the variant{} that {} matched",
+                            "alternatively, you might want to use \
+                             let else to handle the variant{} that {} matched",
                             pluralize!(witnesses.len()),
                             match witnesses.len() {
                                 1 => "isn't",

@@ -4,7 +4,7 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]

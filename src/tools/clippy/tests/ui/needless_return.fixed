@@ -1,7 +1,6 @@
 // run-rustfix
 
 #![feature(lint_reasons)]
-#![feature(let_else)]
 #![allow(unused)]
 #![allow(
     clippy::if_same_then_else,
