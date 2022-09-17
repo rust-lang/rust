@@ -635,6 +635,10 @@ impl Handler {
         inner.steal((span, key)).map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
     }
 
+    pub fn has_stashed_diagnostic(&self, span: Span, key: StashKey) -> bool {
+        self.inner.borrow().stashed_diagnostics.get(&(span, key)).is_some()
+    }
+
     /// Emit all stashed diagnostics.
     pub fn emit_stashed_diagnostics(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow_mut().emit_stashed_diagnostics()
