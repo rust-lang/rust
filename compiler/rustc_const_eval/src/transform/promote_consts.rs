@@ -840,21 +840,15 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
                 let substs = tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def.did));
-                let _const = tcx.mk_const(ty::ConstS {
-                    ty,
-                    kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
-                        def,
-                        substs,
-                        promoted: Some(promoted_id),
-                    }),
-                });
+                let uneval = ty::Unevaluated { def, substs, promoted: Some(promoted_id) };
 
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: ConstantKind::from_const(_const, tcx),
+                    literal: ConstantKind::Unevaluated(uneval, ty),
                 }))
             };
+
             let blocks = self.source.basic_blocks.as_mut();
             let local_decls = &mut self.source.local_decls;
             let loc = candidate.location;

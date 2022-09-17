@@ -51,7 +51,7 @@ fn full_tested_match() -> () {
 
     bb5: {
         StorageLive(_6);                 // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:15
-        _11 = const full_tested_match::promoted[0]; // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:15
+        _11 = const _;                   // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:15
                                          // mir::Constant
                                          // + span: $DIR/match_false_edges.rs:14:14: 14:15
                                          // + literal: Const { ty: &Option<i32>, val: Unevaluated(full_tested_match, [], Some(promoted[0])) }

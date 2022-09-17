@@ -564,8 +564,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 throw_inval!(AlreadyReported(reported))
             }
             ty::ConstKind::Unevaluated(uv) => {
+                // NOTE: We evaluate to a `ValTree` here as a check to ensure
+                // we're working with valid constants, even though we never need it.
                 let instance = self.resolve(uv.def, uv.substs)?;
-                Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
+                let cid = GlobalId { instance, promoted: None };
+                let _valtree = self
+                    .tcx
+                    .eval_to_valtree(self.param_env.and(cid))?
+                    .unwrap_or_else(|| bug!("unable to create ValTree for {:?}", uv));
+
+                Ok(self.eval_to_allocation(cid)?.into())
             }
             ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
                 span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", c)
@@ -586,6 +594,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match val {
             mir::ConstantKind::Ty(ct) => self.const_to_op(*ct, layout),
             mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, *ty, layout),
+            mir::ConstantKind::Unevaluated(uv, _) => {
+                let instance = self.resolve(uv.def, uv.substs)?;
+                Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
+            }
         }
     }
 

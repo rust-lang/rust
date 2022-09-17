@@ -615,7 +615,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if tcx.features().generic_const_exprs =>
         {
-            tcx.try_unify_abstract_consts(relation.param_env().and((au.shrink(), bu.shrink())))
+            tcx.try_unify_abstract_consts(relation.param_env().and((au, bu)))
         }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
@@ -624,6 +624,8 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if au.def == bu.def && au.promoted == bu.promoted =>
         {
+            assert_eq!(au.promoted, ());
+
             let substs = relation.relate_with_variance(
                 ty::Variance::Invariant,
                 ty::VarianceDiagInfo::default(),
@@ -634,7 +636,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                 kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: au.def,
                     substs,
-                    promoted: au.promoted,
+                    promoted: (),
                 }),
                 ty: a.ty(),
             }));

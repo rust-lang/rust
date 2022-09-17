@@ -142,7 +142,7 @@ fn main() -> () {
         Retag(_20);                      // scope 7 at $DIR/retag.rs:+18:5: +18:24
         StorageLive(_22);                // scope 7 at $DIR/retag.rs:+18:21: +18:23
         StorageLive(_23);                // scope 7 at $DIR/retag.rs:+18:21: +18:23
-        _28 = const main::promoted[0];   // scope 7 at $DIR/retag.rs:+18:21: +18:23
+        _28 = const _;                   // scope 7 at $DIR/retag.rs:+18:21: +18:23
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:48:21: 48:23
                                          // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[0])) }

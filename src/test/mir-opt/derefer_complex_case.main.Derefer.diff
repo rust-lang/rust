@@ -28,7 +28,7 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
           StorageLive(_2);                 // scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
-          _14 = const main::promoted[0];   // scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
+          _14 = const _;                   // scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
                                            // mir::Constant
                                            // + span: $DIR/derefer_complex_case.rs:6:17: 6:26
                                            // + literal: Const { ty: &[i32; 2], val: Unevaluated(main, [], Some(promoted[0])) }

@@ -456,7 +456,7 @@ impl<'tcx> WfPredicates<'tcx> {
                             self.out.extend(obligations);
 
                             let predicate =
-                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv.shrink()))
+                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv))
                                     .to_predicate(self.tcx());
                             let cause = self.cause(traits::WellFormed(None));
                             self.out.push(traits::Obligation::with_depth(

@@ -63,7 +63,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_resolve_for_typeck(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        ct: ty::Unevaluated<'tcx>,
+        ct: ty::Unevaluated<'tcx, ()>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
@@ -78,7 +78,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
             Ok(Some(instance)) => {
-                let cid = GlobalId { instance, promoted: ct.promoted };
+                let cid = GlobalId { instance, promoted: None };
                 self.const_eval_global_id_for_typeck(param_env, cid, span)
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),

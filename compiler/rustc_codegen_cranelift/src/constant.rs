@@ -41,36 +41,30 @@ impl ConstantCx {
 pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
     let mut all_constants_ok = true;
     for constant in &fx.mir.required_consts {
-        let const_ = match fx.monomorphize(constant.literal) {
-            ConstantKind::Ty(ct) => ct,
+        let unevaluated = match fx.monomorphize(constant.literal) {
+            ConstantKind::Ty(ct) => match ct.kind() {
+                ConstKind::Unevaluated(uv) => uv.expand(),
+                ConstKind::Value(_) => continue,
+                ConstKind::Param(_)
+                | ConstKind::Infer(_)
+                | ConstKind::Bound(_, _)
+                | ConstKind::Placeholder(_)
+                | ConstKind::Error(_) => unreachable!("{:?}", ct),
+            },
+            ConstantKind::Unevaluated(uv, _) => uv,
             ConstantKind::Val(..) => continue,
         };
-        match const_.kind() {
-            ConstKind::Value(_) => {}
-            ConstKind::Unevaluated(unevaluated) => {
-                if let Err(err) =
-                    fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None)
-                {
-                    all_constants_ok = false;
-                    match err {
-                        ErrorHandled::Reported(_) | ErrorHandled::Linted => {
-                            fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
-                        }
-                        ErrorHandled::TooGeneric => {
-                            span_bug!(
-                                constant.span,
-                                "codegen encountered polymorphic constant: {:?}",
-                                err
-                            );
-                        }
-                    }
+
+        if let Err(err) = fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
+            all_constants_ok = false;
+            match err {
+                ErrorHandled::Reported(_) | ErrorHandled::Linted => {
+                    fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
+                }
+                ErrorHandled::TooGeneric => {
+                    span_bug!(constant.span, "codegen encountered polymorphic constant: {:?}", err);
                 }
             }
-            ConstKind::Param(_)
-            | ConstKind::Infer(_)
-            | ConstKind::Bound(_, _)
-            | ConstKind::Placeholder(_)
-            | ConstKind::Error(_) => unreachable!("{:?}", const_),
         }
     }
     all_constants_ok
@@ -122,36 +116,28 @@ pub(crate) fn codegen_constant<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
-    let const_ = match fx.monomorphize(constant.literal) {
-        ConstantKind::Ty(ct) => ct,
-        ConstantKind::Val(val, ty) => return codegen_const_value(fx, val, ty),
-    };
-    let const_val = match const_.kind() {
-        ConstKind::Value(valtree) => fx.tcx.valtree_to_const_val((const_.ty(), valtree)),
-        ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
+    let (const_val, ty) = match fx.monomorphize(constant.literal) {
+        ConstantKind::Ty(const_) => unreachable!("{:?}", const_),
+        ConstantKind::Unevaluated(ty::Unevaluated { def, substs, promoted }, ty)
             if fx.tcx.is_static(def.did) =>
         {
             assert!(substs.is_empty());
             assert!(promoted.is_none());
 
-            return codegen_static_ref(fx, def.did, fx.layout_of(const_.ty())).to_cvalue(fx);
+            return codegen_static_ref(fx, def.did, fx.layout_of(ty)).to_cvalue(fx);
         }
-        ConstKind::Unevaluated(unevaluated) => {
+        ConstantKind::Unevaluated(unevaluated, ty) => {
             match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
-                Ok(const_val) => const_val,
+                Ok(const_val) => (const_val, ty),
                 Err(_) => {
                     span_bug!(constant.span, "erroneous constant not captured by required_consts");
                 }
             }
         }
-        ConstKind::Param(_)
-        | ConstKind::Infer(_)
-        | ConstKind::Bound(_, _)
-        | ConstKind::Placeholder(_)
-        | ConstKind::Error(_) => unreachable!("{:?}", const_),
+        ConstantKind::Val(val, ty) => (val, ty),
     };
 
-    codegen_const_value(fx, const_val, const_.ty())
+    codegen_const_value(fx, const_val, ty)
 }
 
 pub(crate) fn codegen_const_value<'tcx>(
@@ -496,6 +482,9 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                 .eval_for_mir(fx.tcx, ParamEnv::reveal_all())
                 .try_to_value(fx.tcx),
             ConstantKind::Val(val, _) => Some(val),
+            ConstantKind::Unevaluated(uv, _) => {
+                fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), uv, None).ok()
+            }
         },
         // FIXME(rust-lang/rust#85105): Casts like `IMM8 as u32` result in the const being stored
         // inside a temporary before being passed to the intrinsic requiring the const argument.

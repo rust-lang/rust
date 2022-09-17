@@ -1673,7 +1673,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn try_const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::Unevaluated<'tcx>,
+        unevaluated: ty::Unevaluated<'tcx, ()>,
         ty: Ty<'tcx>,
         span: Option<Span>,
     ) -> Result<ty::Const<'tcx>, ErrorHandled> {
@@ -1708,7 +1708,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn const_eval_resolve(
         &self,
         mut param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::Unevaluated<'tcx>,
+        unevaluated: ty::Unevaluated<'tcx, ()>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
         let mut substs = self.resolve_vars_if_possible(unevaluated.substs);
@@ -1717,7 +1717,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
         if substs.has_infer_types_or_consts() {
-            let ac = AbstractConst::new(self.tcx, unevaluated.shrink());
+            let ac = AbstractConst::new(self.tcx, unevaluated);
             match ac {
                 Ok(None) => {
                     substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
@@ -1739,11 +1739,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!(?param_env_erased);
         debug!(?substs_erased);
 
-        let unevaluated = ty::Unevaluated {
-            def: unevaluated.def,
-            substs: substs_erased,
-            promoted: unevaluated.promoted,
-        };
+        let unevaluated =
+            ty::Unevaluated { def: unevaluated.def, substs: substs_erased, promoted: () };
 
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.

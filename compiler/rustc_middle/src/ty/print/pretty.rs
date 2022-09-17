@@ -1201,15 +1201,9 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         match ct.kind() {
-            ty::ConstKind::Unevaluated(ty::Unevaluated {
-                def,
-                substs,
-                promoted: Some(promoted),
-            }) => {
-                p!(print_value_path(def.did, substs));
-                p!(write("::{:?}", promoted));
-            }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted: None }) => {
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
+                assert_eq!(promoted, ());
+
                 match self.tcx().def_kind(def.did) {
                     DefKind::Static(..) | DefKind::Const | DefKind::AssocConst => {
                         p!(print_value_path(def.did, substs))

@@ -699,11 +699,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.kind(), c2.kind())
                         {
-                            if self.infcx.try_unify_abstract_consts(
-                                a.shrink(),
-                                b.shrink(),
-                                obligation.param_env,
-                            ) {
+                            if self.infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
                                 return Ok(EvaluatedToOk);
                             }
                         }

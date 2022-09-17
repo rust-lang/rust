@@ -366,7 +366,9 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     _ => mir::ConstantKind::Ty(const_folded),
                 }
             }
-            mir::ConstantKind::Val(_, _) => constant.try_super_fold_with(self)?,
+            mir::ConstantKind::Val(_, _) | mir::ConstantKind::Unevaluated(..) => {
+                constant.try_super_fold_with(self)?
+            }
         })
     }
 

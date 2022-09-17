@@ -42,7 +42,7 @@ impl<'tcx> AbstractConst<'tcx> {
         ct: ty::Const<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
         match ct.kind() {
-            ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv.shrink()),
+            ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv),
             ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => Err(reported),
             _ => Ok(None),
         }
