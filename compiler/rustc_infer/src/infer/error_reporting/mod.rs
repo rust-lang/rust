@@ -2172,6 +2172,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 }
                             }
                         }
+                        (expected_type, ty::Adt(found_type, _)) => {
+                            let is_found_result = self.tcx.is_diagnostic_item(sym::Result, found_type.did());
+                            let is_expected_result = match expected_type {
+                                ty::Adt(idk, _) => self.tcx.is_diagnostic_item(sym::Result, idk.did()),
+                                _ => false
+                            };
+                            if is_found_result && !is_expected_result {
+                                if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
+                                    err.span_suggestion(
+                                        span,
+                                        "Either change the return type or use `unwrap`",
+                                        format!("{}.unwrap()", code),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
+                            }
+                        }
                         _ => {}
                     }
                 }
