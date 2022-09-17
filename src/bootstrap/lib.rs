@@ -1307,10 +1307,6 @@ impl Build {
         self.package_vers(&self.version)
     }
 
-    fn llvm_link_tools_dynamically(&self, target: TargetSelection) -> bool {
-        target.contains("linux-gnu") || target.contains("apple-darwin")
-    }
-
     /// Returns the `version` string associated with this compiler for Rust
     /// itself.
     ///
