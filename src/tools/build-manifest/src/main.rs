@@ -543,8 +543,18 @@ impl Builder {
             for (substr, fallback_target) in fallback {
                 if target_name.contains(substr) {
                     let t = Target::from_compressed_tar(self, &tarball_name!(fallback_target));
-                    // Fallbacks must always be available.
-                    assert!(t.available);
+                    // Fallbacks should typically be available on 'production' builds
+                    // but may not be available for try builds, which only build one target by
+                    // default. Ideally we'd gate this being a hard error on whether we're in a
+                    // production build or not, but it's not information that's readily available
+                    // here.
+                    if !t.available {
+                        eprintln!(
+                            "{:?} not available for fallback",
+                            tarball_name!(fallback_target)
+                        );
+                        continue;
+                    }
                     return t;
                 }
             }
