@@ -507,6 +507,10 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-core",
+]
 
 [[package]]
 name = "chalk-derive"
@@ -4613,7 +4617,7 @@ version = "0.0.0"
 dependencies = [
  "addr2line 0.16.0",
  "alloc",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "compiler_builtins",
  "core",
  "dlmalloc",
@@ -4637,7 +4641,7 @@ dependencies = [
 name = "std_detect"
 version = "0.1.5"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "compiler_builtins",
  "libc",
  "rustc-std-workspace-alloc",
