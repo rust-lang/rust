@@ -305,6 +305,9 @@ button#toggle-all-docs {
 	background: none;
 	border: none;
 	cursor: pointer;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
 }
 
 /* end tweaks for normalize.css 8 */
