@@ -33,6 +33,21 @@ pub enum ArrayIntoIterDiagSub {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_enum_intrinsics_mem_discriminant)]
+pub struct EnumIntrinsicsMemDiscriminate<'a> {
+    pub ty_param: Ty<'a>,
+    #[note]
+    pub note: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_enum_intrinsics_mem_variant)]
+#[note]
+pub struct EnumIntrinsicsMemVariant<'a> {
+    pub ty_param: Ty<'a>,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_cstring_ptr)]
 #[note]
 #[help]
