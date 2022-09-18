@@ -166,7 +166,7 @@ impl<'a> SessionSubdiagnosticDerive<'a> {
         };
 
         let ret = structure.gen_impl(quote! {
-            gen impl rustc_errors::AddSubdiagnostic for @Self {
+            gen impl rustc_errors::AddToDiagnostic for @Self {
                 fn add_to_diagnostic(self, #diag: &mut rustc_errors::Diagnostic) {
                     use rustc_errors::{Applicability, IntoDiagnosticArg};
                     #implementation

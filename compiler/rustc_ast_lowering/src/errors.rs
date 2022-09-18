@@ -1,4 +1,4 @@
-use rustc_errors::{fluent, AddSubdiagnostic, Applicability, Diagnostic, DiagnosticArgFromDisplay};
+use rustc_errors::{fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgFromDisplay};
 use rustc_macros::{DiagnosticHandler, SessionSubdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -18,7 +18,7 @@ pub struct UseAngleBrackets {
     pub close_param: Span,
 }
 
-impl AddSubdiagnostic for UseAngleBrackets {
+impl AddToDiagnostic for UseAngleBrackets {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         diag.multipart_suggestion(
             fluent::ast_lowering::use_angle_brackets,
@@ -54,7 +54,7 @@ pub enum AssocTyParenthesesSub {
     NotEmpty { open_param: Span, close_param: Span },
 }
 
-impl AddSubdiagnostic for AssocTyParenthesesSub {
+impl AddToDiagnostic for AssocTyParenthesesSub {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         match self {
             Self::Empty { parentheses_span } => diag.multipart_suggestion(

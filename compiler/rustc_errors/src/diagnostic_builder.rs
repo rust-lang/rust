@@ -580,7 +580,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
     forward!(pub fn subdiagnostic(
         &mut self,
-        subdiagnostic: impl crate::AddSubdiagnostic
+        subdiagnostic: impl crate::AddToDiagnostic
     ) -> &mut Self);
 }
 

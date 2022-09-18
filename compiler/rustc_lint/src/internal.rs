@@ -372,7 +372,7 @@ declare_tool_lint! {
 declare_tool_lint! {
     pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
     Allow,
-    "prevent creation of diagnostics outside of `DiagnosticHandler`/`AddSubdiagnostic` impls",
+    "prevent creation of diagnostics outside of `DiagnosticHandler`/`AddToDiagnostic` impls",
     report_in_external_macro: true
 }
 
