@@ -295,7 +295,10 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
             let main_ptr = ecx.create_fn_alloc_ptr(FnVal::Instance(entry_instance));
 
-            let sigpipe = 2; // Inlining of `DEFAULT` from https://github.com/rust-lang/rust/blob/master/compiler/rustc_session/src/config/sigpipe.rs
+            // Inlining of `DEFAULT` from
+            // https://github.com/rust-lang/rust/blob/master/compiler/rustc_session/src/config/sigpipe.rs.
+            // Alaways using DEFAULT is okay since we don't support signals in Miri anyway.
+            let sigpipe = 2;
 
             ecx.call_function(
                 start_instance,
