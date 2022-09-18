@@ -8,9 +8,9 @@ LL | |
 LL | |     )) {}
    | |_____^
    |
-   = note: `#[warn(anonymous_parameters)]` on by default
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
+   = note: `#[warn(anonymous_parameters)]` on by default
 help: try naming the parameter or explicitly ignoring it
    |
 LL ~     fn test(x: u32, _: (

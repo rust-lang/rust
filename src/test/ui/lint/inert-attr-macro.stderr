@@ -4,17 +4,17 @@ warning: unused attribute `inline`
 LL |     #[inline] foo!();
    |     ^^^^^^^^^
    |
+note: the built-in attribute `inline` will be ignored, since it's applied to the macro invocation `foo`
+  --> $DIR/inert-attr-macro.rs:10:15
+   |
+LL |     #[inline] foo!();
+   |               ^^^
 note: the lint level is defined here
   --> $DIR/inert-attr-macro.rs:3:9
    |
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unused_attributes)]` implied by `#[warn(unused)]`
-note: the built-in attribute `inline` will be ignored, since it's applied to the macro invocation `foo`
-  --> $DIR/inert-attr-macro.rs:10:15
-   |
-LL |     #[inline] foo!();
-   |               ^^^
 
 warning: unused attribute `allow`
   --> $DIR/inert-attr-macro.rs:14:5

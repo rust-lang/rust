@@ -92,8 +92,8 @@ LL |     // if access_level != "user" { // Check if admin
    |     |                        '\u{202b}'
    |     this comment contains invisible unicode text flow control codepoints
    |
-   = note: `#[deny(text_direction_codepoint_in_comment)]` on by default
    = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+   = note: `#[deny(text_direction_codepoint_in_comment)]` on by default
    = help: if their presence wasn't intentional, you can remove them
 
 error: unicode codepoint changing visible direction of text present in comment
@@ -123,8 +123,8 @@ LL |     println!("{:?}", "/* } if isAdmin  begin admins only ");
    |                      |  '\u{202e}'
    |                      this literal contains invisible unicode text flow control codepoints
    |
-   = note: `#[deny(text_direction_codepoint_in_literal)]` on by default
    = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+   = note: `#[deny(text_direction_codepoint_in_literal)]` on by default
    = help: if their presence wasn't intentional, you can remove them
 help: if you want to keep them but make them visible in your source code, you can escape them
    |

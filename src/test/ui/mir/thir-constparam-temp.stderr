@@ -4,7 +4,6 @@ warning: taking a mutable reference to a `const` item
 LL |     YIKES.mut_self()
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(const_item_mutation)]` on by default
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: mutable reference created due to call to this method
@@ -17,6 +16,7 @@ note: `const` item defined here
    |
 LL | fn foo<const YIKES: Yikes>() {
    |        ^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(const_item_mutation)]` on by default
 
 warning: 1 warning emitted
 

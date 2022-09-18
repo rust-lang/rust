@@ -4,13 +4,13 @@ warning: trait method `into_iter` will become ambiguous in Rust 2021
 LL |     let y = points.into_iter();
    |             ^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `MyIntoIter::into_iter(points)`
    |
+   = warning: this changes meaning in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 note: the lint level is defined here
   --> $DIR/array-into-iter-ambiguous.rs:5:9
    |
 LL | #![warn(array_into_iter)]
    |         ^^^^^^^^^^^^^^^
-   = warning: this changes meaning in Rust 2021
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 
 warning: 1 warning emitted
 

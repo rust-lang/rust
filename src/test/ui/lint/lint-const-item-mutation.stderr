@@ -4,13 +4,13 @@ warning: attempting to modify a `const` item
 LL |     ARRAY[0] = 5;
    |     ^^^^^^^^^^^^
    |
-   = note: `#[warn(const_item_mutation)]` on by default
    = note: each usage of a `const` item creates a new temporary; the original `const` item will not be modified
 note: `const` item defined here
   --> $DIR/lint-const-item-mutation.rs:26:1
    |
 LL | const ARRAY: [u8; 1] = [25];
    | ^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(const_item_mutation)]` on by default
 
 warning: attempting to modify a `const` item
   --> $DIR/lint-const-item-mutation.rs:38:5

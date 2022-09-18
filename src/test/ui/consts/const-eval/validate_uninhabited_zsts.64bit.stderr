@@ -7,8 +7,8 @@ LL |     unsafe { std::mem::transmute(()) }
    |              this code causes undefined behavior when executed
    |              help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: `#[warn(invalid_value)]` on by default
    = note: the `!` type has no valid value
+   = note: `#[warn(invalid_value)]` on by default
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/validate_uninhabited_zsts.rs:4:14

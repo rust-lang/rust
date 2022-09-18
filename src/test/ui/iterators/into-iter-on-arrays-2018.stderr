@@ -4,9 +4,9 @@ warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (du
 LL |     let _: Iter<'_, i32> = array.into_iter();
    |                                  ^^^^^^^^^
    |
-   = note: `#[warn(array_into_iter)]` on by default
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+   = note: `#[warn(array_into_iter)]` on by default
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     let _: Iter<'_, i32> = array.iter();

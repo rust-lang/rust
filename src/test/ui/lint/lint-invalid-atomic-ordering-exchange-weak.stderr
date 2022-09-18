@@ -4,8 +4,8 @@ error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRe
 LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Relaxed, Ordering::AcqRel);
    |                                                                   ^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = note: `#[deny(invalid_atomic_ordering)]` on by default
    = help: consider using `Acquire` or `Relaxed` failure ordering instead
+   = note: `#[deny(invalid_atomic_ordering)]` on by default
 
 error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:30:67

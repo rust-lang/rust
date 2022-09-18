@@ -4,9 +4,9 @@ error: any use of this value will cause an error
 LL | const LEN: usize = ONE - TWO;
    | ----------------   ^^^^^^^^^ attempt to compute `1_usize - 2_usize`, which would overflow
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-len-underflow-separate-spans.rs:12:17
@@ -24,7 +24,7 @@ error: any use of this value will cause an error
 LL | const LEN: usize = ONE - TWO;
    | ----------------   ^^^^^^^^^ attempt to compute `1_usize - 2_usize`, which would overflow
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 

@@ -4,12 +4,12 @@ error: trivial numeric cast: `i32` as `i32`
 LL |     let _ = 42_i32 as i32;
    |             ^^^^^^^^^^^^^
    |
+   = help: cast can be replaced by coercion; this might require a temporary variable
 note: the lint level is defined here
   --> $DIR/trivial_casts.rs:4:24
    |
 LL | #![deny(trivial_casts, trivial_numeric_casts)]
    |                        ^^^^^^^^^^^^^^^^^^^^^
-   = help: cast can be replaced by coercion; this might require a temporary variable
 
 error: trivial numeric cast: `u8` as `u8`
   --> $DIR/trivial_casts.rs:19:13
@@ -25,12 +25,12 @@ error: trivial cast: `&u32` as `*const u32`
 LL |     let _ = x as *const u32;
    |             ^^^^^^^^^^^^^^^
    |
+   = help: cast can be replaced by coercion; this might require a temporary variable
 note: the lint level is defined here
   --> $DIR/trivial_casts.rs:4:9
    |
 LL | #![deny(trivial_casts, trivial_numeric_casts)]
    |         ^^^^^^^^^^^^^
-   = help: cast can be replaced by coercion; this might require a temporary variable
 
 error: trivial cast: `&mut u32` as `*mut u32`
   --> $DIR/trivial_casts.rs:28:13

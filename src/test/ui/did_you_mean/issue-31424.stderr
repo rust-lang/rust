@@ -24,8 +24,8 @@ LL |     fn bar(self: &mut Self) {
 LL |         (&mut self).bar();
    |         ----------------- recursive call site
    |
-   = note: `#[warn(unconditional_recursion)]` on by default
    = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-31424.rs:16:9

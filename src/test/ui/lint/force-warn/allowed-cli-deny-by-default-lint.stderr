@@ -4,9 +4,9 @@ warning: any use of this value will cause an error
 LL | const C: i32 = 1 / 0;
    | ------------   ^^^^^ attempt to divide `1_i32` by zero
    |
-   = note: requested on the command line with `--force-warn const-err`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: requested on the command line with `--force-warn const-err`
 
 warning: 1 warning emitted
 
@@ -17,7 +17,7 @@ warning: any use of this value will cause an error
 LL | const C: i32 = 1 / 0;
    | ------------   ^^^^^ attempt to divide `1_i32` by zero
    |
-   = note: requested on the command line with `--force-warn const-err`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: requested on the command line with `--force-warn const-err`
 

@@ -4,8 +4,8 @@ warning: the feature `repr128` is incomplete and may not be safe to use and/or c
 LL | #![feature(repr128)]
    |            ^^^^^^^
    |
-   = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #56071 <https://github.com/rust-lang/rust/issues/56071> for more information
+   = note: `#[warn(incomplete_features)]` on by default
 
 warning: 1 warning emitted
 

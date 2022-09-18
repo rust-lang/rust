@@ -4,9 +4,9 @@ error: any use of this value will cause an error
 LL |     static_assert!(2 + 2 == 5);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
    = note: this error originates in the macro `static_assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
@@ -18,8 +18,8 @@ error: any use of this value will cause an error
 LL |     static_assert!(2 + 2 == 5);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
    = note: this error originates in the macro `static_assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 

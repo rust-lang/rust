@@ -7,8 +7,8 @@ LL |     Bar(u8),
 LL |     Void(Void),
    |     ^^^^
    |
-   = note: `-W dead-code` implied by `-W unused`
    = note: `Foo` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+   = note: `-W dead-code` implied by `-W unused`
 
 warning: 1 warning emitted
 

@@ -4,13 +4,13 @@ warning: any use of this value will cause an error
 LL |     const VOID: ! = { let x = 0 * std::mem::size_of::<T>(); [][x] };
    |     -------------                                           ^^^^^ index out of bounds: the length is 0 but the index is 0
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/index-out-of-bounds-never-type.rs:4:9
    |
 LL | #![warn(const_err, unconditional_panic)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: erroneous constant encountered
   --> $DIR/index-out-of-bounds-never-type.rs:17:13
@@ -27,11 +27,11 @@ warning: any use of this value will cause an error
 LL |     const VOID: ! = { let x = 0 * std::mem::size_of::<T>(); [][x] };
    |     -------------                                           ^^^^^ index out of bounds: the length is 0 but the index is 0
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/index-out-of-bounds-never-type.rs:4:9
    |
 LL | #![warn(const_err, unconditional_panic)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 

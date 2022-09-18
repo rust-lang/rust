@@ -7,9 +7,9 @@ LL |
 LL | impl Foo for dyn Send + Send {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + 'static)`
    |
-   = note: `#[deny(order_dependent_trait_objects)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
+   = note: `#[deny(order_dependent_trait_objects)]` on by default
 
 error: conflicting implementations of trait `Foo` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
   --> $DIR/lint-incoherent-auto-trait-objects.rs:11:1

@@ -32,11 +32,11 @@ LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 LL |     const F: u32 = (U::X, 42).1;
    |     ------------
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/assoc_const.rs:4:10
    |
 LL | #![allow(const_err)]
    |          ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 

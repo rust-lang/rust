@@ -7,13 +7,13 @@ LL |     (
 LL |      i8::MIN * 2,
    |      ^^^^^^^^^^^ attempt to compute `i8::MIN * 2_i8`, which would overflow
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2c.rs:21:6
@@ -109,13 +109,13 @@ LL |     (
 LL |      i8::MIN * 2,
    |      ^^^^^^^^^^^ attempt to compute `i8::MIN * 2_i8`, which would overflow
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -127,13 +127,13 @@ LL |     (
 LL |      i16::MIN * 2,
    |      ^^^^^^^^^^^^ attempt to compute `i16::MIN * 2_i16`, which would overflow
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -145,13 +145,13 @@ LL |     (
 LL |      i32::MIN * 2,
    |      ^^^^^^^^^^^^ attempt to compute `i32::MIN * 2_i32`, which would overflow
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -163,13 +163,13 @@ LL |     (
 LL |      i64::MIN * 2,
    |      ^^^^^^^^^^^^ attempt to compute `i64::MIN * 2_i64`, which would overflow
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -181,13 +181,13 @@ LL |     (
 LL |      u8::MAX * 2,
    |      ^^^^^^^^^^^ attempt to compute `u8::MAX * 2_u8`, which would overflow
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -198,13 +198,13 @@ LL | const VALS_U16: (u16,) = (
 LL |      u16::MAX * 2,
    |      ^^^^^^^^^^^^ attempt to compute `u16::MAX * 2_u16`, which would overflow
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -215,13 +215,13 @@ LL | const VALS_U32: (u32,) = (
 LL |      u32::MAX * 2,
    |      ^^^^^^^^^^^^ attempt to compute `u32::MAX * 2_u32`, which would overflow
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -233,11 +233,11 @@ LL |     (
 LL |      u64::MAX * 2,
    |      ^^^^^^^^^^^^ attempt to compute `u64::MAX * 2_u64`, which would overflow
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 

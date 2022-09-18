@@ -4,12 +4,12 @@ error: unused attribute
 LL | #[repr()]
    | ^^^^^^^^^ help: remove this attribute
    |
+   = note: attribute `repr` with an empty list has no effect
 note: the lint level is defined here
   --> $DIR/empty-attributes.rs:3:9
    |
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: attribute `repr` with an empty list has no effect
 
 error: unused attribute
   --> $DIR/empty-attributes.rs:14:1

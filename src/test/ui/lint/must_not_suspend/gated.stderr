@@ -4,10 +4,10 @@ warning: unknown lint: `must_not_suspend`
 LL | #![deny(must_not_suspend)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_lints)]` on by default
    = note: the `must_not_suspend` lint is unstable
    = note: see issue #83310 <https://github.com/rust-lang/rust/issues/83310> for more information
    = help: add `#![feature(must_not_suspend)]` to the crate attributes to enable
+   = note: `#[warn(unknown_lints)]` on by default
 
 warning: unknown lint: `must_not_suspend`
   --> $DIR/gated.rs:4:1

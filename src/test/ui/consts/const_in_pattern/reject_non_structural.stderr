@@ -64,13 +64,13 @@ warning: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be a
 LL |     match &Some(NoDerive) { ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops"), };
    |                             ^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
 note: the lint level is defined here
   --> $DIR/reject_non_structural.rs:12:9
    |
 LL | #![warn(indirect_structural_match)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
 
 error: aborting due to 10 previous errors; 1 warning emitted
 

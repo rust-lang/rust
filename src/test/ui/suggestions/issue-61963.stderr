@@ -4,13 +4,13 @@ error: trait objects without an explicit `dyn` are deprecated
 LL |     bar: Box<Bar>,
    |              ^^^
    |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 note: the lint level is defined here
   --> $DIR/issue-61963.rs:3:9
    |
 LL | #![deny(bare_trait_objects)]
    |         ^^^^^^^^^^^^^^^^^^
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
 LL |     bar: Box<dyn Bar>,

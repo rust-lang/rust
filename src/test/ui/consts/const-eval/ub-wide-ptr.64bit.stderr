@@ -26,11 +26,11 @@ error: any use of this value will cause an error
 LL | const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
   --> $DIR/ub-wide-ptr.rs:46:1
@@ -320,11 +320,11 @@ error: any use of this value will cause an error
 LL | const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -333,11 +333,11 @@ error: any use of this value will cause an error
 LL | const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -346,11 +346,11 @@ error: any use of this value will cause an error
 LL | const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -359,11 +359,11 @@ error: any use of this value will cause an error
 LL | const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -372,9 +372,9 @@ error: any use of this value will cause an error
 LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
    | ------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -383,9 +383,9 @@ error: any use of this value will cause an error
 LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
    | --------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -394,7 +394,7 @@ error: any use of this value will cause an error
 LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
    | --------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 

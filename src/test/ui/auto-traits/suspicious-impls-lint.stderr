@@ -4,11 +4,6 @@ error: cross-crate traits with a default impl, like `Send`, should not be specia
 LL | unsafe impl<T: Send> Send for MayImplementSendErr<&T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/suspicious-impls-lint.rs:1:9
-   |
-LL | #![deny(suspicious_auto_trait_impls)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
    = note: `&T` is not a generic parameter
@@ -17,6 +12,11 @@ note: try using the same sequence of generic parameters as the struct definition
    |
 LL | struct MayImplementSendErr<T>(T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/suspicious-impls-lint.rs:1:9
+   |
+LL | #![deny(suspicious_auto_trait_impls)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Send`, should not be specialized
   --> $DIR/suspicious-impls-lint.rs:21:1
