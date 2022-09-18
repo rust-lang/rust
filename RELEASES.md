@@ -3,15 +3,12 @@ Version 1.64.0 (2022-09-22)
 
 Language
 --------
-- [make `const_err` show up in future breakage reports](https://github.com/rust-lang/rust/pull/97743/)
 - [Unions with mutable references or tuples of allowed types are now allowed](https://github.com/rust-lang/rust/pull/97995/)
 - It is now considered valid to deallocate memory pointed to by a shared reference `&T` [if every byte in `T` is inside an `UnsafeCell`](https://github.com/rust-lang/rust/pull/98017/)
 - Unused tuple struct fields are now warned against in an allow-by-default lint, [`unused_tuple_struct_fields`](https://github.com/rust-lang/rust/pull/95977/), similar to the existing warning for unused struct fields. This lint will become warn-by-default in the future.
 
 Compiler
 --------
-- The minimum required versions for all `-linux-gnu` targets are now at least kernel 3.2 and glibc 2.17, for targets that previously supported older versions: [Increase the minimum linux-gnu versions](https://github.com/rust-lang/rust/pull/95026/)
-- [Keep unstable target features for asm feature checking](https://github.com/rust-lang/rust/pull/99155/)
 - [Add Nintendo Switch as tier 3 target](https://github.com/rust-lang/rust/pull/88991/)
   - Refer to Rust's [platform support page][platform-support-doc] for more
     information on Rust's tiered platform support.
@@ -25,7 +22,6 @@ Compiler
 
 Libraries
 ---------
-- [Implement network primitives with ideal Rust layout, not C system layout](https://github.com/rust-lang/rust/pull/78802/)
 - [Remove restrictions on compare-exchange memory ordering.](https://github.com/rust-lang/rust/pull/98383/)
 - You can now `write!` or `writeln!` into an `OsString`: [Implement `fmt::Write` for `OsString`](https://github.com/rust-lang/rust/pull/97915/)
 - [Enforce that layout size fits in isize in Layout](https://github.com/rust-lang/rust/pull/95295/)
@@ -33,8 +29,6 @@ Libraries
 - [Implement `FusedIterator` for `std::net::[Into]Incoming`](https://github.com/rust-lang/rust/pull/97300/)
 - [`impl<T: AsRawFd> AsRawFd for {Arc,Box}<T>`](https://github.com/rust-lang/rust/pull/97437/)
 - [`ptr::copy` and `ptr::swap` are doing untyped copies](https://github.com/rust-lang/rust/pull/97712/)
-- [Add assertion that `transmute_copy`'s U is not larger than `T`](https://github.com/rust-lang/rust/pull/98839/)
-- [A soundness bug in `BTreeMap` was fixed](https://github.com/rust-lang/rust/pull/99413/) that allowed data it was borrowing to be dropped before the container.
 - [Add cgroupv1 support to `available_parallelism`](https://github.com/rust-lang/rust/pull/97925/)
 - [Mitigate many incorrect uses of `mem::uninitialized`](https://github.com/rust-lang/rust/pull/99182/)
 
