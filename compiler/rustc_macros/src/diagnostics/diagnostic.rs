@@ -21,7 +21,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
             builder: DiagnosticDeriveBuilder {
                 diag,
                 fields: build_field_mapping(&structure),
-                kind: DiagnosticDeriveKind::DiagnosticHandler,
+                kind: DiagnosticDeriveKind::Diagnostic,
                 code: None,
                 slug: None,
             },
@@ -72,7 +72,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
             } else {
                 span_err(
                     ast.span().unwrap(),
-                    "`#[derive(DiagnosticHandler)]` can only be used on structs",
+                    "`#[derive(Diagnostic)]` can only be used on structs",
                 )
                 .emit();
 

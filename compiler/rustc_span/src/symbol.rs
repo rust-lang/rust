@@ -177,7 +177,7 @@ symbols! {
         DecorateLint,
         Default,
         Deref,
-        DiagnosticHandler,
+        Diagnostic,
         DiagnosticMessage,
         DirBuilder,
         Display,

@@ -1,9 +1,9 @@
 use rustc_errors::{fluent, AddToDiagnostic, IntoDiagnostic, ErrorGuaranteed, Handler};
-use rustc_macros::{DiagnosticHandler, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, SessionSubdiagnostic};
 use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(lint::overruled_attribute, code = "E0453")]
 pub struct OverruledAttribute {
     #[primary_span]
@@ -42,7 +42,7 @@ impl AddToDiagnostic for OverruledAttributeSub {
     }
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(lint::malformed_attribute, code = "E0452")]
 pub struct MalformedAttribute {
     #[primary_span]
@@ -61,7 +61,7 @@ pub enum MalformedAttributeSub {
     ReasonMustComeLast(#[primary_span] Span),
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(lint::unknown_tool_in_scoped_lint, code = "E0710")]
 pub struct UnknownToolInScopedLint {
     #[primary_span]
@@ -72,7 +72,7 @@ pub struct UnknownToolInScopedLint {
     pub is_nightly_build: Option<()>,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(lint::builtin_ellipsis_inclusive_range_patterns, code = "E0783")]
 pub struct BuiltinEllpisisInclusiveRangePatterns {
     #[primary_span]
@@ -107,7 +107,7 @@ impl AddToDiagnostic for RequestedLevel {
     }
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(lint::unsupported_group, code = "E0602")]
 pub struct UnsupportedGroup {
     pub lint_group: String,
@@ -136,7 +136,7 @@ impl IntoDiagnostic<'_> for CheckNameUnknown {
     }
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(lint::check_name_unknown_tool, code = "E0602")]
 pub struct CheckNameUnknownTool {
     pub tool_name: Symbol,
@@ -144,7 +144,7 @@ pub struct CheckNameUnknownTool {
     pub sub: RequestedLevel,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(lint::check_name_warning)]
 pub struct CheckNameWarning {
     pub msg: String,
@@ -152,7 +152,7 @@ pub struct CheckNameWarning {
     pub sub: RequestedLevel,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(lint::check_name_deprecated)]
 pub struct CheckNameDeprecated {
     pub lint_name: String,

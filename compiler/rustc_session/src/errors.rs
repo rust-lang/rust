@@ -8,7 +8,7 @@ use rustc_span::{Span, Symbol};
 use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(session::incorrect_cgu_reuse_type)]
 pub struct IncorrectCguReuseType<'a> {
     #[primary_span]
@@ -19,14 +19,14 @@ pub struct IncorrectCguReuseType<'a> {
     pub at_least: u8,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(session::cgu_not_recorded)]
 pub struct CguNotRecorded<'a> {
     pub cgu_user_name: &'a str,
     pub cgu_name: &'a str,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(session::feature_gate_error, code = "E0658")]
 pub struct FeatureGateError<'a> {
     #[primary_span]
@@ -46,7 +46,7 @@ pub struct FeatureDiagnosticHelp {
     pub feature: Symbol,
 }
 
-impl DiagnosticHandler<'_, !> for TargetDataLayoutErrors<'_> {
+impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
     fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         let mut diag;
         match self {

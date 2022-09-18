@@ -15,10 +15,10 @@ use rustc_errors::{
     AddToDiagnostic, IntoDiagnostic, Diagnostic, DiagnosticBuilder,
     ErrorGuaranteed, Handler, fluent
 };
-use rustc_macros::{DiagnosticHandler, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, SessionSubdiagnostic};
 use rustc_span::Span;
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::expect_path)]
 struct DeriveSessionDiagnostic {
     #[primary_span]

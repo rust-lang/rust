@@ -2,10 +2,10 @@ use std::path::PathBuf;
 
 use rustc_errors::IntoDiagnostic;
 use rustc_errors::ErrorGuaranteed;
-use rustc_macros::{DiagnosticHandler, LintDiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_span::Span;
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(monomorphize::recursion_limit)]
 pub struct RecursionLimit {
     #[primary_span]
@@ -19,7 +19,7 @@ pub struct RecursionLimit {
     pub path: PathBuf,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(monomorphize::type_length_limit)]
 #[help(monomorphize::consider_type_length_limit)]
 pub struct TypeLengthLimit {
@@ -32,7 +32,7 @@ pub struct TypeLengthLimit {
     pub type_length: usize,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(monomorphize::requires_lang_item)]
 pub struct RequiresLangItem {
     pub lang_item: String,
@@ -72,11 +72,11 @@ pub struct LargeAssignmentsLint {
     pub limit: u64,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(monomorphize::unknown_partition_strategy)]
 pub struct UnknownPartitionStrategy;
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(monomorphize::symbol_already_defined)]
 pub struct SymbolAlreadyDefined {
     #[primary_span]

@@ -20,7 +20,7 @@ use rustc_errors::{
     fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
-use rustc_macros::{DiagnosticHandler, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, SessionSubdiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
@@ -242,7 +242,7 @@ impl MultiSugg {
     }
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::maybe_report_ambiguous_plus)]
 struct AmbiguousPlus {
     pub sum_ty: String,
@@ -251,7 +251,7 @@ struct AmbiguousPlus {
     pub span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::maybe_recover_from_bad_type_plus, code = "E0178")]
 struct BadTypePlus {
     pub ty: String,
@@ -285,7 +285,7 @@ pub enum BadTypePlusSub {
     },
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::maybe_recover_from_bad_qpath_stage_2)]
 struct BadQPathStage2 {
     #[primary_span]
@@ -294,7 +294,7 @@ struct BadQPathStage2 {
     ty: String,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::incorrect_semicolon)]
 struct IncorrectSemicolon<'a> {
     #[primary_span]
@@ -305,7 +305,7 @@ struct IncorrectSemicolon<'a> {
     name: &'a str,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::incorrect_use_of_await)]
 struct IncorrectUseOfAwait {
     #[primary_span]
@@ -313,7 +313,7 @@ struct IncorrectUseOfAwait {
     span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::incorrect_use_of_await)]
 struct IncorrectAwait {
     #[primary_span]
@@ -324,7 +324,7 @@ struct IncorrectAwait {
     question_mark: &'static str,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::in_in_typo)]
 struct InInTypo {
     #[primary_span]
@@ -333,7 +333,7 @@ struct InInTypo {
     sugg_span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::invalid_variable_declaration)]
 pub struct InvalidVariableDeclaration {
     #[primary_span]
@@ -362,7 +362,7 @@ pub enum InvalidVariableDeclarationSub {
     UseLetNotVar(#[primary_span] Span),
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::invalid_comparison_operator)]
 pub(crate) struct InvalidComparisonOperator {
     #[primary_span]
@@ -389,7 +389,7 @@ pub(crate) enum InvalidComparisonOperatorSub {
     Spaceship(#[primary_span] Span),
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::invalid_logical_operator)]
 #[note]
 pub(crate) struct InvalidLogicalOperator {
@@ -416,7 +416,7 @@ pub(crate) enum InvalidLogicalOperatorSub {
     Disjunction(#[primary_span] Span),
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::tilde_is_not_unary_operator)]
 pub(crate) struct TildeAsUnaryOperator(
     #[primary_span]
@@ -424,7 +424,7 @@ pub(crate) struct TildeAsUnaryOperator(
     pub Span,
 );
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::unexpected_token_after_not)]
 pub(crate) struct NotAsNegationOperator {
     #[primary_span]
@@ -458,7 +458,7 @@ pub enum NotAsNegationOperatorSub {
     SuggestNotLogical(#[primary_span] Span),
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::malformed_loop_label)]
 pub(crate) struct MalformedLoopLabel {
     #[primary_span]
@@ -467,7 +467,7 @@ pub(crate) struct MalformedLoopLabel {
     pub correct_label: Ident,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::lifetime_in_borrow_expression)]
 pub(crate) struct LifetimeInBorrowExpression {
     #[primary_span]
@@ -477,15 +477,15 @@ pub(crate) struct LifetimeInBorrowExpression {
     pub lifetime_span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::field_expression_with_generic)]
 pub(crate) struct FieldExpressionWithGeneric(#[primary_span] pub Span);
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::macro_invocation_with_qualified_path)]
 pub(crate) struct MacroInvocationWithQualifiedPath(#[primary_span] pub Span);
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::unexpected_token_after_label)]
 pub(crate) struct UnexpectedTokenAfterLabel(
     #[primary_span]
@@ -493,7 +493,7 @@ pub(crate) struct UnexpectedTokenAfterLabel(
     pub Span,
 );
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::require_colon_after_labeled_expression)]
 #[note]
 pub(crate) struct RequireColonAfterLabeledExpression {
@@ -505,7 +505,7 @@ pub(crate) struct RequireColonAfterLabeledExpression {
     pub label_end: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::do_catch_syntax_removed)]
 #[note]
 pub(crate) struct DoCatchSyntaxRemoved {
@@ -514,7 +514,7 @@ pub(crate) struct DoCatchSyntaxRemoved {
     pub span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::float_literal_requires_integer_part)]
 pub(crate) struct FloatLiteralRequiresIntegerPart {
     #[primary_span]
@@ -523,7 +523,7 @@ pub(crate) struct FloatLiteralRequiresIntegerPart {
     pub correct: String,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::invalid_int_literal_width)]
 #[help]
 pub(crate) struct InvalidIntLiteralWidth {
@@ -532,7 +532,7 @@ pub(crate) struct InvalidIntLiteralWidth {
     pub width: String,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::invalid_num_literal_base_prefix)]
 #[note]
 pub(crate) struct InvalidNumLiteralBasePrefix {
@@ -542,7 +542,7 @@ pub(crate) struct InvalidNumLiteralBasePrefix {
     pub fixed: String,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::invalid_num_literal_suffix)]
 #[help]
 pub(crate) struct InvalidNumLiteralSuffix {
@@ -552,7 +552,7 @@ pub(crate) struct InvalidNumLiteralSuffix {
     pub suffix: String,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::invalid_float_literal_width)]
 #[help]
 pub(crate) struct InvalidFloatLiteralWidth {
@@ -561,7 +561,7 @@ pub(crate) struct InvalidFloatLiteralWidth {
     pub width: String,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::invalid_float_literal_suffix)]
 #[help]
 pub(crate) struct InvalidFloatLiteralSuffix {
@@ -571,14 +571,14 @@ pub(crate) struct InvalidFloatLiteralSuffix {
     pub suffix: String,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::int_literal_too_large)]
 pub(crate) struct IntLiteralTooLarge {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::missing_semicolon_before_array)]
 pub(crate) struct MissingSemicolonBeforeArray {
     #[primary_span]
@@ -587,7 +587,7 @@ pub(crate) struct MissingSemicolonBeforeArray {
     pub semicolon: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::invalid_block_macro_segment)]
 pub(crate) struct InvalidBlockMacroSegment {
     #[primary_span]
@@ -596,7 +596,7 @@ pub(crate) struct InvalidBlockMacroSegment {
     pub context: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::if_expression_missing_then_block)]
 pub(crate) struct IfExpressionMissingThenBlock {
     #[primary_span]
@@ -613,7 +613,7 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
     AddThenBlock(#[primary_span] Span),
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::if_expression_missing_condition)]
 pub(crate) struct IfExpressionMissingCondition {
     #[primary_span]
@@ -623,14 +623,14 @@ pub(crate) struct IfExpressionMissingCondition {
     pub block_span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::expected_expression_found_let)]
 pub(crate) struct ExpectedExpressionFoundLet {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::expected_else_block)]
 pub(crate) struct ExpectedElseBlock {
     #[primary_span]
@@ -642,7 +642,7 @@ pub(crate) struct ExpectedElseBlock {
     pub condition_start: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::outer_attribute_not_allowed_on_if_else)]
 pub(crate) struct OuterAttributeNotAllowedOnIfElse {
     #[primary_span]
@@ -659,7 +659,7 @@ pub(crate) struct OuterAttributeNotAllowedOnIfElse {
     pub attributes: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::missing_in_in_for_loop)]
 pub(crate) struct MissingInInForLoop {
     #[primary_span]
@@ -677,7 +677,7 @@ pub(crate) enum MissingInInForLoopSub {
     AddIn(#[primary_span] Span),
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::missing_comma_after_match_arm)]
 pub(crate) struct MissingCommaAfterMatchArm {
     #[primary_span]
@@ -685,7 +685,7 @@ pub(crate) struct MissingCommaAfterMatchArm {
     pub span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::catch_after_try)]
 #[help]
 pub(crate) struct CatchAfterTry {
@@ -693,7 +693,7 @@ pub(crate) struct CatchAfterTry {
     pub span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::comma_after_base_struct)]
 #[note]
 pub(crate) struct CommaAfterBaseStruct {
@@ -703,7 +703,7 @@ pub(crate) struct CommaAfterBaseStruct {
     pub comma: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::eq_field_init)]
 pub(crate) struct EqFieldInit {
     #[primary_span]
@@ -712,7 +712,7 @@ pub(crate) struct EqFieldInit {
     pub eq: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::dotdotdot)]
 pub(crate) struct DotDotDot {
     #[primary_span]
@@ -721,7 +721,7 @@ pub(crate) struct DotDotDot {
     pub span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::left_arrow_operator)]
 pub(crate) struct LeftArrowOperator {
     #[primary_span]
@@ -729,7 +729,7 @@ pub(crate) struct LeftArrowOperator {
     pub span: Span,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(parser::remove_let)]
 pub(crate) struct RemoveLet {
     #[primary_span]

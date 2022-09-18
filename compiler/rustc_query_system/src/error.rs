@@ -46,7 +46,7 @@ pub struct CycleUsage {
     pub usage: String,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(query_system::cycle, code = "E0391")]
 pub struct Cycle {
     #[primary_span]
@@ -62,11 +62,11 @@ pub struct Cycle {
     pub cycle_usage: Option<CycleUsage>,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(query_system::reentrant)]
 pub struct Reentrant;
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(query_system::increment_compilation)]
 #[help]
 #[note(query_system::increment_compilation_note1)]

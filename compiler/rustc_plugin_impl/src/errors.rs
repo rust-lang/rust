@@ -1,9 +1,9 @@
 //! Errors emitted by plugin_impl
 
-use rustc_macros::DiagnosticHandler;
+use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(plugin_impl::load_plugin_error)]
 pub struct LoadPluginError {
     #[primary_span]
@@ -11,7 +11,7 @@ pub struct LoadPluginError {
     pub msg: String,
 }
 
-#[derive(DiagnosticHandler)]
+#[derive(Diagnostic)]
 #[diag(plugin_impl::malformed_plugin_attribute, code = "E0498")]
 pub struct MalformedPluginAttribute {
     #[primary_span]
