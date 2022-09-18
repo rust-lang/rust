@@ -2,7 +2,7 @@ const CURRENT_VERSION = "/* VERSION TO BE REPLACED */";
 
 function checkIfIsOldVersion() {
     if (["http:", "https:"].indexOf(window.location.protocol) === -1) {
-        return;
+        return false;
     }
     const parts = window.location.pathname.split("/");
 
@@ -155,9 +155,9 @@ function showSwitcher(isOldVersion) {
     const current_doc_version = window.location.pathname.split("/")[1];
     const version_picker = document.createElement("select");
 
-    version_picker.appendChild(createOption("stable", false));
-    version_picker.appendChild(createOption("beta", false));
-    version_picker.appendChild(createOption("nightly", false));
+    version_picker.appendChild(createOption("stable", current_doc_version === "stable"));
+    version_picker.appendChild(createOption("beta", current_doc_version === "beta"));
+    version_picker.appendChild(createOption("nightly", current_doc_version === "nightly"));
 
     const version_parts = CURRENT_VERSION.split(".");
     for (let major = parseInt(version_parts[0]); major >= 1; --major) {

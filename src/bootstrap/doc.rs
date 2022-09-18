@@ -430,12 +430,11 @@ impl Step for Std {
         t!(fs::create_dir_all(&out));
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
 
-        let content = fs::read_to_string(builder.src.join("src/doc/version-switcher.js")).unwrap();
-        fs::write(
+        let content = t!(fs::read_to_string(builder.src.join("src/doc/version-switcher.js")));
+        t!(fs::write(
             out.join("version-switcher.js"),
             content.replace("/* VERSION TO BE REPLACED */", &builder.version),
-        )
-        .unwrap();
+        ));
 
         let index_page = builder.src.join("src/doc/index.md").into_os_string();
         let switcher_script = builder.src.join("src/doc/switcher.inc").into_os_string();
