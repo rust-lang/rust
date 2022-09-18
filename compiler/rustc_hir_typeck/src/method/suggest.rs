@@ -14,7 +14,11 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::{
+    type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
+    RegionVariableOrigin,
+};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
@@ -392,7 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     custom_span_label = true;
                 }
                 if static_candidates.len() == 1 {
-                    let (ty_str, placeholders) = if let Some(CandidateSource::Impl(impl_did)) =
+                    let ty_str = if let Some(CandidateSource::Impl(impl_did)) =
                     static_candidates.get(0)
                     {
                         // When the "method" is resolved through dereferencing, we really want the
@@ -401,36 +405,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let ty = tcx.at(span).type_of(*impl_did);
                         match (&ty.peel_refs().kind(), &actual.peel_refs().kind()) {
                             (ty::Adt(def, _), ty::Adt(def_actual, substs)) if def == def_actual => {
-                                // If there are any inferred arguments, (`{integer}`), we shouldn't mark
-                                // this as machine-applicable.
-                                let placeholders = substs
-                                    .iter()
-                                    .filter_map(|arg| {
-                                        if let GenericArgKind::Type(ty) = arg.unpack() {
-                                            Some(ty)
-                                        } else {
-                                            None
-                                        }
+                                // If there are any inferred arguments, (`{integer}`), we should replace
+                                // them with underscores to allow the compiler to infer them
+                                let substs = substs
+                                    .into_iter()
+                                    .filter(|arg| !arg.is_suggestable(tcx, true))
+                                    .map(|arg| match arg.unpack() {
+                                        GenericArgKind::Lifetime(_) => self
+                                            .next_region_var(RegionVariableOrigin::MiscVariable(
+                                                rustc_span::DUMMY_SP,
+                                            ))
+                                            .into(),
+                                        GenericArgKind::Type(_) => self
+                                            .next_ty_var(TypeVariableOrigin {
+                                                span: rustc_span::DUMMY_SP,
+                                                kind: TypeVariableOriginKind::MiscVariable,
+                                            })
+                                            .into(),
+                                        GenericArgKind::Const(arg) => self
+                                            .next_const_var(
+                                                arg.ty(),
+                                                ConstVariableOrigin {
+                                                    span: rustc_span::DUMMY_SP,
+                                                    kind: ConstVariableOriginKind::MiscVariable,
+                                                },
+                                            )
+                                            .into(),
                                     })
-                                    .any(|ty| matches!(ty.kind(), ty::Infer(_)));
-                                // Use `actual` as it will have more `substs` filled in.
-                                (self.ty_to_value_string(actual.peel_refs()), placeholders)
+                                    .collect::<Vec<_>>();
+                                format!(
+                                    "{}",
+                                    ty::Instance::new(def_actual.did(), tcx.intern_substs(&substs))
+                                )
                             }
-                            _ => (self.ty_to_value_string(ty.peel_refs()), true),
+                            _ => self.ty_to_value_string(ty.peel_refs()),
                         }
                     } else {
-                        (self.ty_to_value_string(actual.peel_refs()), true)
-                    };
-                    let applicability = match placeholders {
-                        true => Applicability::HasPlaceholders,
-                        false => Applicability::MachineApplicable,
+                        self.ty_to_value_string(actual.peel_refs())
                     };
                     if let SelfSource::MethodCall(expr) = source {
                         err.span_suggestion(
                             expr.span.to(span),
                             "use associated function syntax instead",
                             format!("{}::{}", ty_str, item_name),
-                            applicability,
+                            Applicability::MachineApplicable,
                         );
                     } else {
                         err.help(&format!("try with `{}::{}`", ty_str, item_name,));
