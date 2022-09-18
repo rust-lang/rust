@@ -72,6 +72,28 @@ enum RetReplacement {
     Unit,
 }
 
+impl RetReplacement {
+    fn sugg_help(&self) -> &'static str {
+        match *self {
+            Self::Empty => "remove `return`",
+            Self::Block => "replace `return` with an empty block",
+            Self::Unit => "replace `return` with a unit value",
+
+        }
+    }
+}
+
+impl ToString for RetReplacement {
+    fn to_string(&self) -> String {
+        match *self {
+            Self::Empty => "",
+            Self::Block => "{}",
+            Self::Unit => "()",
+        }
+        .to_string()
+    }
+}
+
 declare_lint_pass!(Return => [LET_AND_RETURN, NEEDLESS_RETURN]);
 
 impl<'tcx> LateLintPass<'tcx> for Return {
@@ -221,74 +243,35 @@ fn emit_return_lint(
     if ret_span.from_expansion() {
         return;
     }
-    match inner_span {
-        Some(inner_span) => {
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_hir_and_then(
-                cx,
-                NEEDLESS_RETURN,
-                emission_place,
-                ret_span,
-                "unneeded `return` statement",
-                |diag| {
-                    let (snippet, _) = snippet_with_context(cx, inner_span, ret_span.ctxt(), "..", &mut applicability);
-                    diag.span_suggestion(ret_span, "remove `return`", snippet, applicability);
-                },
-            );
-        },
-        None => match replacement {
-            RetReplacement::Empty => {
-                span_lint_hir_and_then(
-                    cx,
-                    NEEDLESS_RETURN,
-                    emission_place,
+    if let Some(inner_span) = inner_span {
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_hir_and_then(
+            cx,
+            NEEDLESS_RETURN,
+            emission_place,
+            ret_span,
+            "unneeded `return` statement",
+            |diag| {
+                let (snippet, _) = snippet_with_context(cx, inner_span, ret_span.ctxt(), "..", &mut applicability);
+                diag.span_suggestion(ret_span, "remove `return`", snippet, applicability);
+            },
+        );
+    } else {
+        span_lint_hir_and_then(
+            cx,
+            NEEDLESS_RETURN,
+            emission_place,
+            ret_span,
+            "unneeded `return` statement",
+            |diag| {
+                diag.span_suggestion(
                     ret_span,
-                    "unneeded `return` statement",
-                    |diag| {
-                        diag.span_suggestion(
-                            ret_span,
-                            "remove `return`",
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        );
-                    },
+                    replacement.sugg_help(),
+                    replacement.to_string(),
+                    Applicability::MachineApplicable,
                 );
             },
-            RetReplacement::Block => {
-                span_lint_hir_and_then(
-                    cx,
-                    NEEDLESS_RETURN,
-                    emission_place,
-                    ret_span,
-                    "unneeded `return` statement",
-                    |diag| {
-                        diag.span_suggestion(
-                            ret_span,
-                            "replace `return` with an empty block",
-                            "{}".to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                    },
-                );
-            },
-            RetReplacement::Unit => {
-                span_lint_hir_and_then(
-                    cx,
-                    NEEDLESS_RETURN,
-                    emission_place,
-                    ret_span,
-                    "unneeded `return` statement",
-                    |diag| {
-                        diag.span_suggestion(
-                            ret_span,
-                            "replace `return` with a unit value",
-                            "()".to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                    },
-                );
-            },
-        },
+        )
     }
 }
 
