@@ -1,0 +1,14 @@
+error: unused variable: `s`
+  --> $DIR/issue-97074-unused-variable-suppress-unused-mut.rs:4:13
+   |
+LL |     let mut s = String::from("a");
+   |             ^ help: if this is intentional, prefix it with an underscore: `_s`
+   |
+note: the lint level is defined here
+  --> $DIR/issue-97074-unused-variable-suppress-unused-mut.rs:1:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

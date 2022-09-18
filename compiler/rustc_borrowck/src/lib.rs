@@ -17,7 +17,7 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -129,8 +129,14 @@ fn mir_borrowck<'tcx>(
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx BorrowCheckResult<'tcx> {
     let (input_body, promoted) = tcx.mir_promoted(def);
-    debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));
+
+    let def_id = def.did.to_def_id();
+    debug!("run query mir_borrowck: {}", tcx.def_path_str(def_id));
+
     let hir_owner = tcx.hir().local_def_id_to_hir_id(def.did).owner;
+
+    let is_fn = matches!(tcx.hir().body_owner_kind(def.did), hir::BodyOwnerKind::Fn);
+    let unused_variables_spans = if is_fn { tcx.check_liveness(def_id) } else { &None };
 
     let opt_closure_req = tcx
         .infer_ctxt()
@@ -138,7 +144,7 @@ fn mir_borrowck<'tcx>(
         .enter(|infcx| {
             let input_body: &Body<'_> = &input_body.borrow();
             let promoted: &IndexVec<_, _> = &promoted.borrow();
-            do_mir_borrowck(&infcx, input_body, promoted, false).0
+            do_mir_borrowck(&infcx, input_body, promoted, unused_variables_spans, false).0
         });
     debug!("mir_borrowck done");
 
@@ -155,6 +161,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexVec<Promoted, Body<'tcx>>,
+    unused_variables_spans: &Option<FxIndexSet<Span>>,
     return_body_with_facts: bool,
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.with_opt_param().as_local().unwrap();
@@ -428,6 +435,14 @@ fn do_mir_borrowck<'a, 'tcx>(
         }
 
         let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+        let ident_span = span.with_lo(mut_span.hi());
+
+        // Suppress lints if we already reported unused variables
+        if let Some(unused_variables_spans) = unused_variables_spans {
+            if unused_variables_spans.contains(&ident_span) {
+                continue;
+            }
+        }
 
         tcx.emit_spanned_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
     }

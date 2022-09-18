@@ -21,22 +21,22 @@ mod foo {
 }
 
 #[expect(
-    unused_mut,
+    unused_variables,
     //~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
-    //~| NOTE this `expect` is overridden by a `warn` attribute before the `unused_mut` lint is triggered
-    reason = "this `expect` is overridden by a `warn` attribute before the `unused_mut` lint is triggered"
+    //~| NOTE this `expect` is overridden by a `warn` attribute before the `unused_variables` lint is triggered
+    reason = "this `expect` is overridden by a `warn` attribute before the `unused_variables` lint is triggered"
 )]
 mod oof {
     #[warn(
-        unused_mut,
+        unused_variables,
         //~^ NOTE the lint level is defined here
-        reason = "this overrides the previous `expect` lint level and warns about the `unused_mut` lint here"
+        reason = "this overrides the previous `expect` lint level and warns about the `unused_variables` lint here"
     )]
     fn bar() {
         let mut v = 0;
-        //~^ WARNING variable does not need to be mutable [unused_mut]
-        //~| NOTE this overrides the previous `expect` lint level and warns about the `unused_mut` lint here
-        //~| HELP remove this `mut`
+        //~^ WARNING unused variable: `v` [unused_variables]
+        //~| NOTE this overrides the previous `expect` lint level and warns about the `unused_variables` lint here
+        //~| HELP if this is intentional, prefix it with an underscore
     }
 }
 

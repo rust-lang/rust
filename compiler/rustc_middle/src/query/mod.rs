@@ -830,7 +830,8 @@ rustc_queries! {
         desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
     }
 
-    query check_liveness(key: DefId) {
+    query check_liveness(key: DefId) -> Option<FxIndexSet<Span>> {
+        arena_cache
         desc { |tcx| "checking liveness of variables in {}", tcx.def_path_str(key) }
     }
 

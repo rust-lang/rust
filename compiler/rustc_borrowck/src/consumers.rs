@@ -34,6 +34,6 @@ pub fn get_body_with_borrowck_facts<'tcx>(
     tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(def.did)).enter(|infcx| {
         let input_body: &Body<'_> = &input_body.borrow();
         let promoted: &IndexVec<_, _> = &promoted.borrow();
-        *super::do_mir_borrowck(&infcx, input_body, promoted, true).1.unwrap()
+        *super::do_mir_borrowck(&infcx, input_body, promoted, &None, true).1.unwrap()
     })
 }

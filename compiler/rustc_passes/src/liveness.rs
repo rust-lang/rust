@@ -85,7 +85,7 @@ use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use rustc_ast::InlineAsmOptions;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -99,6 +99,7 @@ use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
 
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::io;
 use std::io::prelude::*;
@@ -138,9 +139,9 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
     }
 }
 
-fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) {
+fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxIndexSet<Span>> {
     let local_def_id = match def_id.as_local() {
-        None => return,
+        None => return None,
         Some(def_id) => def_id,
     };
 
@@ -149,12 +150,12 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) {
     if let DefKind::Impl = tcx.def_kind(parent)
         && tcx.has_attr(parent.to_def_id(), sym::automatically_derived)
     {
-        return;
+        return None;
     }
 
     // Don't run unused pass for #[naked]
     if tcx.has_attr(def_id, sym::naked) {
-        return;
+        return None;
     }
 
     let mut maps = IrMaps::new(tcx);
@@ -182,6 +183,8 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) {
     lsets.visit_body(body);
     lsets.warn_about_unused_upvars(entry_ln);
     lsets.warn_about_unused_args(body, entry_ln);
+
+    Some(lsets.unused_variables_spans.into_inner())
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -517,6 +520,8 @@ struct Liveness<'a, 'tcx> {
     // it probably doesn't now)
     break_ln: HirIdMap<LiveNode>,
     cont_ln: HirIdMap<LiveNode>,
+
+    unused_variables_spans: RefCell<FxIndexSet<Span>>,
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
@@ -541,6 +546,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             exit_ln,
             break_ln: Default::default(),
             cont_ln: Default::default(),
+            unused_variables_spans: Default::default(),
         }
     }
 
@@ -1504,6 +1510,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     }
                 } else {
                     if let Some(name) = self.should_warn(var) {
+                        self.unused_variables_spans.borrow_mut().insert(span);
                         self.ir.tcx.struct_span_lint_hir(
                             lint::builtin::UNUSED_VARIABLES,
                             var_hir_id,
@@ -1594,13 +1601,15 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 if ln == self.exit_ln { false } else { self.assigned_on_exit(ln, var) };
 
             if is_assigned {
+                let spans = hir_ids_and_spans
+                    .into_iter()
+                    .map(|(_, _, ident_span)| ident_span)
+                    .collect::<Vec<_>>();
+                self.unused_variables_spans.borrow_mut().extend(&spans);
                 self.ir.tcx.struct_span_lint_hir(
                     lint::builtin::UNUSED_VARIABLES,
                     first_hir_id,
-                    hir_ids_and_spans
-                        .into_iter()
-                        .map(|(_, _, ident_span)| ident_span)
-                        .collect::<Vec<_>>(),
+                    spans,
                     |lint| {
                         lint.build(&format!("variable `{}` is assigned to, but never used", name))
                             .note(&format!("consider using `_{}` instead", name))
@@ -1608,10 +1617,13 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     },
                 )
             } else if can_remove {
+                let spans =
+                    hir_ids_and_spans.iter().map(|(_, pat_span, _)| *pat_span).collect::<Vec<_>>();
+                self.unused_variables_spans.borrow_mut().extend(&spans);
                 self.ir.tcx.struct_span_lint_hir(
                     lint::builtin::UNUSED_VARIABLES,
                     first_hir_id,
-                    hir_ids_and_spans.iter().map(|(_, pat_span, _)| *pat_span).collect::<Vec<_>>(),
+                    spans,
                     |lint| {
                         let mut err = lint.build(&format!("unused variable: `{}`", name));
                         err.multipart_suggestion(
@@ -1654,13 +1666,15 @@ impl<'tcx> Liveness<'_, 'tcx> {
                         )
                         .collect::<Vec<_>>();
 
+                    let spans = hir_ids_and_spans
+                        .iter()
+                        .map(|(_, pat_span, _)| *pat_span)
+                        .collect::<Vec<_>>();
+                    self.unused_variables_spans.borrow_mut().extend(&spans);
                     self.ir.tcx.struct_span_lint_hir(
                         lint::builtin::UNUSED_VARIABLES,
                         first_hir_id,
-                        hir_ids_and_spans
-                            .iter()
-                            .map(|(_, pat_span, _)| *pat_span)
-                            .collect::<Vec<_>>(),
+                        spans,
                         |lint| {
                             let mut err = lint.build(&format!("unused variable: `{}`", name));
                             err.multipart_suggestion(
@@ -1677,13 +1691,15 @@ impl<'tcx> Liveness<'_, 'tcx> {
                         .map(|(_, _, ident_span)| (ident_span, format!("_{}", name)))
                         .collect::<Vec<_>>();
 
+                    let spans = hir_ids_and_spans
+                        .iter()
+                        .map(|(_, _, ident_span)| *ident_span)
+                        .collect::<Vec<_>>();
+                    self.unused_variables_spans.borrow_mut().extend(&spans);
                     self.ir.tcx.struct_span_lint_hir(
                         lint::builtin::UNUSED_VARIABLES,
                         first_hir_id,
-                        hir_ids_and_spans
-                            .iter()
-                            .map(|(_, _, ident_span)| *ident_span)
-                            .collect::<Vec<_>>(),
+                        spans,
                         |lint| {
                             let mut err = lint.build(&format!("unused variable: `{}`", name));
                             if self.has_added_lit_match_name_span(&name, opt_body, &mut err) {

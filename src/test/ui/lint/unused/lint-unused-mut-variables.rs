@@ -9,13 +9,18 @@ async fn baz_async(
     mut a: i32,
     //~^ WARN: variable does not need to be mutable
     #[allow(unused_mut)] mut b: i32,
-) {}
+) {
+    drop((a, b));
+}
+
 fn baz(
     mut a: i32,
     //~^ WARN: variable does not need to be mutable
     #[allow(unused_mut)] mut b: i32,
     #[allow(unused_mut)] (mut c, d): (i32, i32)
-) {}
+) {
+    drop((a, b, c, d));
+}
 
 struct RefStruct {}
 impl RefStruct {
@@ -23,14 +28,19 @@ impl RefStruct {
         mut a: i32,
         //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
-    ) {}
+    ) {
+        drop((a, b));
+    }
+
     fn baz(
         &self,
         mut a: i32,
         //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
         #[allow(unused_mut)] (mut c, d): (i32, i32)
-    ) {}
+    ) {
+        drop((a, b, c, d));
+    }
 }
 
 trait RefTrait {
@@ -40,8 +50,11 @@ trait RefTrait {
         //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
         #[allow(unused_mut)] (mut c, d): (i32, i32)
-    ) {}
+    ) {
+        drop((a, b, c, d));
+    }
 }
+
 impl RefTrait for () {
     fn baz(
         &self,
@@ -49,7 +62,9 @@ impl RefTrait for () {
         //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
         #[allow(unused_mut)] (mut c, d): (i32, i32)
-    ) {}
+    ) {
+        drop((a, b, c, d));
+    }
 }
 
 fn main() {
@@ -57,57 +72,55 @@ fn main() {
         mut a: i32,
         //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
-    | {};
+    | { drop((a, b)); };
     let _ = |
         mut a: i32,
         //~^ WARN: variable does not need to be mutable
         #[allow(unused_mut)] mut b: i32,
         #[allow(unused_mut)] (mut c, d): (i32, i32)
-    | {};
+    | { drop((a, b, c, d)); };
 
     // negative cases
     let mut a = 3; //~ WARN: variable does not need to be mutable
-
+    drop(a);
     let mut a = 2; //~ WARN: variable does not need to be mutable
-
+    drop(a);
     let mut b = 3; //~ WARN: variable does not need to be mutable
-
+    drop(b);
     let mut a = vec![3]; //~ WARN: variable does not need to be mutable
-
+    drop(a);
     let (mut a, b) = (1, 2); //~ WARN: variable does not need to be mutable
-
+    drop((a, b));
     let mut a; //~ WARN: variable does not need to be mutable
-
     a = 3;
-
+    drop(a);
     let mut b; //~ WARN: variable does not need to be mutable
-
     if true {
         b = 3;
     } else {
         b = 4;
     }
-
+    drop(b);
     match 30 {
-        mut x => {} //~ WARN: variable does not need to be mutable
-
+        mut x => { drop(x); } //~ WARN: variable does not need to be mutable
     }
 
     match (30, 2) {
         // FIXME: Here's a false positive,
         // shouldn't be removed `mut` not to be bound with a different way.
         (mut x, 1) | //~ WARN: variable does not need to be mutable
-
         (mut x, 2) |
         (mut x, 3) => {
+            drop(x);
         }
         _ => {}
     }
 
     let x = |mut y: isize| 10; //~ WARN: variable does not need to be mutable
 
-    fn what(mut foo: isize) {} //~ WARN: variable does not need to be mutable
-
+    fn what(mut foo: isize) { //~ WARN: variable does not need to be mutable
+        drop(foo);
+    }
 
     let mut a = &mut 5; //~ WARN: variable does not need to be mutable
 
@@ -203,5 +216,5 @@ fn bar() {
     #[allow(unused_mut)]
     let mut a = 3;
     let mut b = vec![2]; //~ ERROR: variable does not need to be mutable
-
+    drop((a, b));
 }

@@ -32,12 +32,10 @@ fn main() {
 
     let mut mut_unused_var = 1;
     //~^ WARNING unused variable: `mut_unused_var`
-    //~| WARNING variable does not need to be mutable
 
     let (mut var, unused_var) = (1, 2);
     //~^ WARNING unused variable: `var`
     //~| WARNING unused variable: `unused_var`
-    //~| WARNING variable does not need to be mutable
     // NOTE: `var` comes after `unused_var` lexicographically yet the warning
     // for `var` will be emitted before the one for `unused_var`. We use an
     // `IndexMap` to ensure this is the case instead of a `BTreeMap`.
