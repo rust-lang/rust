@@ -40,8 +40,16 @@ Miri has already discovered some [real-world bugs](#bugs-found-by-miri). If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
 list!
 
-However, be aware that Miri will **not catch all cases of undefined behavior**
-in your program, and cannot run all programs:
+By default, Miri ensures a fully deterministic execution and isolates the
+program from the host system. Some APIs that would usually access the host, such
+as gathering entropy for random number generators, environment variables, and
+clocks, are replaced by deterministic "fake" implementations. Set
+`MIRIFLAGS="-Zmiri-disable-isolation"` to access the real system APIs instead.
+(In particular, the "fake" system RNG APIs make Miri **not suited for
+cryptographic use**! Do not generate keys using Miri.)
+
+All that said, be aware that Miri will **not catch all cases of undefined
+behavior** in your program, and cannot run all programs:
 
 * There are still plenty of open questions around the basic invariants for some
   types and when these invariants even have to hold. Miri tries to avoid false
@@ -306,9 +314,7 @@ environment variable. We first document the most relevant and most commonly used
   RNG is used to pick base addresses for allocations, to determine preemption and failure of
   `compare_exchange_weak`, and to control store buffering for weak memory emulation. When isolation
   is enabled (the default), this is also used to emulate system entropy. The default seed is 0. You
-  can increase test coverage by running Miri multiple times with different seeds. **NOTE**: This
-  entropy is not good enough for cryptographic use! Do not generate secret keys in Miri or perform
-  other kinds of cryptographic operations that rely on proper random numbers.
+  can increase test coverage by running Miri multiple times with different seeds.
 * `-Zmiri-strict-provenance` enables [strict
   provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
   casting an integer to a pointer yields a result with 'invalid' provenance, i.e., with provenance
