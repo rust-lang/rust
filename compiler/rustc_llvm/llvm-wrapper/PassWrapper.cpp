@@ -31,6 +31,7 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
+#include "llvm/Transforms/IPO/Internalize.h"
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
 #include "llvm/Transforms/Utils/AddDiscriminators.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
@@ -1013,8 +1014,6 @@ extern "C" void LLVMRustPrintPasses() {
 
 extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
                                            size_t Len) {
-  llvm::legacy::PassManager passes;
-
   auto PreserveFunctions = [=](const GlobalValue &GV) {
     for (size_t I = 0; I < Len; I++) {
       if (GV.getName() == Symbols[I]) {
@@ -1024,9 +1023,7 @@ extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
     return false;
   };
 
-  passes.add(llvm::createInternalizePass(PreserveFunctions));
-
-  passes.run(*unwrap(M));
+  internalizeModule(*unwrap(M), PreserveFunctions);
 }
 
 extern "C" void
