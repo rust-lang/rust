@@ -77,30 +77,24 @@ These APIs are now usable in const contexts:
 
 Cargo
 -----
-- Packages can now inherit settings from the workspace so that the settings
-  can be centralized in one place. See
+- [Packages can now inherit settings from the workspace so that the settings
+  can be centralized in one place.](https://github.com/rust-lang/cargo/pull/10859) See
   [`workspace.package`](https://doc.rust-lang.org/nightly/cargo/reference/workspaces.html#the-workspacepackage-table)
   and
   [`workspace.dependencies`](https://doc.rust-lang.org/nightly/cargo/reference/workspaces.html#the-workspacedependencies-table)
   for more details on how to define these common settings.
-  [#10859](https://github.com/rust-lang/cargo/pull/10859)
-- Cargo commands can now accept multiple `--target` flags to build for
-  multiple targets at once, and the
+- [Cargo commands can now accept multiple `--target` flags to build for
+  multiple targets at once](https://github.com/rust-lang/cargo/pull/10766), and the
   [`build.target`](https://doc.rust-lang.org/nightly/cargo/reference/config.html#buildtarget)
   config option may now take an array of multiple targets.
-  [#10766](https://github.com/rust-lang/cargo/pull/10766)
-- The `--jobs` argument can now take a negative number to count backwards from
-  the max CPUs.
-  [#10844](https://github.com/rust-lang/cargo/pull/10844)
-- `cargo add` will now update `Cargo.lock`.
-  [#10902](https://github.com/rust-lang/cargo/pull/10902)
-- Added the
+- [The `--jobs` argument can now take a negative number to count backwards from
+  the max CPUs.](https://github.com/rust-lang/cargo/pull/10844)
+- [`cargo add` will now update `Cargo.lock`.](https://github.com/rust-lang/cargo/pull/10902)
+- [Added](https://github.com/rust-lang/cargo/pull/10838) the
   [`--crate-type`](https://doc.rust-lang.org/nightly/cargo/commands/cargo-rustc.html#option-cargo-rustc---crate-type)
   flag to `cargo rustc` to override the crate type.
-  [#10838](https://github.com/rust-lang/cargo/pull/10838)
-- Significantly improved the performance fetching git dependencies from GitHub
-  when using a hash in the `rev` field.
-  [#10079](https://github.com/rust-lang/cargo/pull/10079)
+- [Significantly improved the performance fetching git dependencies from GitHub
+  when using a hash in the `rev` field.](https://github.com/rust-lang/cargo/pull/10079)
 
 Misc
 ----
