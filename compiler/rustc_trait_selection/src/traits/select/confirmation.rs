@@ -68,10 +68,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::AutoImpl(data)
             }
 
-            ProjectionCandidate(idx) => {
+            ProjectionCandidate(idx, constness) => {
                 let obligations = self.confirm_projection_candidate(obligation, idx)?;
-                // FIXME(jschievink): constness
-                ImplSource::Param(obligations, ty::BoundConstness::NotConst)
+                ImplSource::Param(obligations, constness)
             }
 
             ObjectCandidate(idx) => {
