@@ -1,11 +1,11 @@
 use rustc_errors::{IntoDiagnosticArg, MultiSpan};
-use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{DiagnosticHandler, LintDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
 use crate::diagnostics::RegionName;
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(borrowck::move_unsized, code = "E0161")]
 pub(crate) struct MoveUnsized<'tcx> {
     pub ty: Ty<'tcx>,
@@ -14,7 +14,7 @@ pub(crate) struct MoveUnsized<'tcx> {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(borrowck::higher_ranked_lifetime_error)]
 pub(crate) struct HigherRankedLifetimeError {
     #[subdiagnostic]
@@ -31,14 +31,14 @@ pub(crate) enum HigherRankedErrorCause {
     CouldNotNormalize { value: String },
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(borrowck::higher_ranked_subtype_error)]
 pub(crate) struct HigherRankedSubtypeError {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(borrowck::generic_does_not_live_long_enough)]
 pub(crate) struct GenericDoesNotLiveLongEnough {
     pub kind: String,
@@ -53,7 +53,7 @@ pub(crate) struct VarNeedNotMut {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(borrowck::const_not_used_in_type_alias)]
 pub(crate) struct ConstNotUsedTraitAlias {
     pub ct: String,
@@ -61,7 +61,7 @@ pub(crate) struct ConstNotUsedTraitAlias {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(borrowck::var_cannot_escape_closure)]
 #[note]
 #[note(borrowck::cannot_escape)]
@@ -110,7 +110,7 @@ pub(crate) enum FnMutReturnTypeErr {
     },
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(borrowck::lifetime_constraints_error)]
 pub(crate) struct LifetimeOutliveErr {
     #[primary_span]

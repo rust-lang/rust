@@ -4,7 +4,7 @@ use crate::errors::{
 };
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
-use rustc_errors::SessionDiagnostic;
+use rustc_errors::IntoDiagnostic;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;

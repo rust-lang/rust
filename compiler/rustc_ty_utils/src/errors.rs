@@ -1,16 +1,16 @@
 //! Errors emitted by ty_utils
 
-use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{DiagnosticHandler, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(ty_utils::needs_drop_overflow)]
 pub struct NeedsDropOverflow<'tcx> {
     pub query_ty: Ty<'tcx>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(ty_utils::generic_constant_too_complex)]
 #[help]
 pub struct GenericConstantTooComplex {

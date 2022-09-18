@@ -1,9 +1,9 @@
-use rustc_macros::SessionDiagnostic;
+use rustc_macros::DiagnosticHandler;
 use rustc_span::Span;
 
 use crate::ty::Ty;
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(middle::drop_check_overflow, code = "E0320")]
 #[note]
 pub struct DropCheckOverflow<'tcx> {
@@ -13,7 +13,7 @@ pub struct DropCheckOverflow<'tcx> {
     pub overflow_ty: Ty<'tcx>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(middle::opaque_hidden_type_mismatch)]
 pub struct OpaqueHiddenTypeMismatch<'tcx> {
     pub self_ty: Ty<'tcx>,
@@ -39,7 +39,7 @@ pub enum TypeMismatchReason {
     },
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(middle::limit_invalid)]
 pub struct LimitInvalid<'a> {
     #[primary_span]

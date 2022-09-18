@@ -11,7 +11,7 @@ use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{
-    Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult, SessionDiagnostic,
+    Applicability, DiagnosticBuilder, IntoDiagnostic, ErrorGuaranteed, MultiSpan, PResult,
 };
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
@@ -1111,12 +1111,12 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn create_err(
         &self,
-        err: impl SessionDiagnostic<'a>,
+        err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.sess.create_err(err)
     }
 
-    pub fn emit_err(&self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
+    pub fn emit_err(&self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
         self.sess.emit_err(err)
     }
 

@@ -14,9 +14,10 @@ use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
-/// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
-#[rustc_diagnostic_item = "SessionDiagnostic"]
-pub trait SessionDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
+/// `#[derive(DiagnosticHandler)]` -- see [rustc_macros::DiagnosticHandler].
+#[cfg_attr(bootstrap, rustc_diagnostic_item = "SessionDiagnostic")]
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "DiagnosticHandler")]
+pub trait IntoDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `Handler`.
     #[must_use]
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, T>;

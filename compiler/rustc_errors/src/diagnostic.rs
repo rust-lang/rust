@@ -35,7 +35,7 @@ pub enum DiagnosticArgValue<'source> {
     Number(usize),
 }
 
-/// Converts a value of a type into a `DiagnosticArg` (typically a field of a `SessionDiagnostic`
+/// Converts a value of a type into a `DiagnosticArg` (typically a field of an `IntoDiagnostic`
 /// struct). Implemented as a custom trait rather than `From` so that it is implemented on the type
 /// being converted rather than on `DiagnosticArgValue`, which enables types from other `rustc_*`
 /// crates to implement this.

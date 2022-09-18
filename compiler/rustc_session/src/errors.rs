@@ -8,7 +8,7 @@ use rustc_span::{Span, Symbol};
 use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(session::incorrect_cgu_reuse_type)]
 pub struct IncorrectCguReuseType<'a> {
     #[primary_span]
@@ -19,14 +19,14 @@ pub struct IncorrectCguReuseType<'a> {
     pub at_least: u8,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(session::cgu_not_recorded)]
 pub struct CguNotRecorded<'a> {
     pub cgu_user_name: &'a str,
     pub cgu_name: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(session::feature_gate_error, code = "E0658")]
 pub struct FeatureGateError<'a> {
     #[primary_span]
@@ -46,19 +46,19 @@ pub struct FeatureDiagnosticHelp {
     pub feature: Symbol,
 }
 
-impl SessionDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
-    fn into_diagnostic(self, sess: &Handler) -> DiagnosticBuilder<'_, !> {
+impl DiagnosticHandler<'_, !> for TargetDataLayoutErrors<'_> {
+    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         let mut diag;
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
-                diag = sess.struct_fatal(fluent::session::target_invalid_address_space);
+                diag = handler.struct_fatal(fluent::session::target_invalid_address_space);
                 diag.set_arg("addr_space", addr_space);
                 diag.set_arg("cause", cause);
                 diag.set_arg("err", err);
                 diag
             }
             TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
-                diag = sess.struct_fatal(fluent::session::target_invalid_bits);
+                diag = handler.struct_fatal(fluent::session::target_invalid_bits);
                 diag.set_arg("kind", kind);
                 diag.set_arg("bit", bit);
                 diag.set_arg("cause", cause);
@@ -66,30 +66,30 @@ impl SessionDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
                 diag
             }
             TargetDataLayoutErrors::MissingAlignment { cause } => {
-                diag = sess.struct_fatal(fluent::session::target_missing_alignment);
+                diag = handler.struct_fatal(fluent::session::target_missing_alignment);
                 diag.set_arg("cause", cause);
                 diag
             }
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                diag = sess.struct_fatal(fluent::session::target_invalid_alignment);
+                diag = handler.struct_fatal(fluent::session::target_invalid_alignment);
                 diag.set_arg("cause", cause);
                 diag.set_arg("err", err);
                 diag
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
-                diag = sess.struct_fatal(fluent::session::target_inconsistent_architecture);
+                diag = handler.struct_fatal(fluent::session::target_inconsistent_architecture);
                 diag.set_arg("dl", dl);
                 diag.set_arg("target", target);
                 diag
             }
             TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
-                diag = sess.struct_fatal(fluent::session::target_inconsistent_pointer_width);
+                diag = handler.struct_fatal(fluent::session::target_inconsistent_pointer_width);
                 diag.set_arg("pointer_size", pointer_size);
                 diag.set_arg("target", target);
                 diag
             }
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
-                diag = sess.struct_fatal(fluent::session::target_invalid_bits_size);
+                diag = handler.struct_fatal(fluent::session::target_invalid_bits_size);
                 diag.set_arg("err", err);
                 diag
             }

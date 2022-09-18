@@ -1,4 +1,4 @@
-use rustc_errors::AddSubdiagnostic;
+use rustc_errors::AddToDiagnostic;
 use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
 
@@ -7,7 +7,7 @@ pub struct CycleStack {
     pub desc: String,
 }
 
-impl AddSubdiagnostic for CycleStack {
+impl AddToDiagnostic for CycleStack {
     fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
         diag.span_note(self.span, &format!("...which requires {}...", self.desc));
     }
@@ -46,7 +46,7 @@ pub struct CycleUsage {
     pub usage: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(query_system::cycle, code = "E0391")]
 pub struct Cycle {
     #[primary_span]
@@ -62,11 +62,11 @@ pub struct Cycle {
     pub cycle_usage: Option<CycleUsage>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(query_system::reentrant)]
 pub struct Reentrant;
 
-#[derive(SessionDiagnostic)]
+#[derive(DiagnosticHandler)]
 #[diag(query_system::increment_compilation)]
 #[help]
 #[note(query_system::increment_compilation_note1)]
@@ -76,7 +76,7 @@ pub struct IncrementCompilation {
     pub dep_node: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[help]
 #[diag(query_system::query_overflow)]
 pub struct QueryOverflow {
@@ -88,7 +88,7 @@ pub struct QueryOverflow {
     pub crate_name: Symbol,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[note(query_system::layout_of_depth)]
 pub struct LayoutOfDepth {
     pub desc: String,
