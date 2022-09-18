@@ -15,10 +15,7 @@ Compiler
 - [Only compile `#[used]` as llvm.compiler.used for ELF targets](https://github.com/rust-lang/rust/pull/93718/)
 - [Add the `--diagnostic-width` compiler flag to define the terminal width.](https://github.com/rust-lang/rust/pull/95635/)
 - [Fix repr(align) enum handling](https://github.com/rust-lang/rust/pull/96814/)
-- [Suggest defining variable as mutable on `&mut _` type mismatch in pats](https://github.com/rust-lang/rust/pull/98431/)
-- [Emit warning when named arguments are used positionally in format](https://github.com/rust-lang/rust/pull/98580/)
 - [Add support for link-flavor `rust-lld` for iOS, tvOS and watchOS](https://github.com/rust-lang/rust/pull/98771/)
-- [Do not mention private types from other crates as impl candidates](https://github.com/rust-lang/rust/pull/99091/)
 
 Libraries
 ---------
