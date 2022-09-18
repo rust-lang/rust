@@ -31,13 +31,11 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
-#if LLVM_VERSION_GE(15, 0)
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
-#endif
 #include "llvm/Transforms/Utils/AddDiscriminators.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
-#include "llvm/Bitcode/BitcodeWriterPass.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
 #include "llvm/Transforms/Instrumentation.h"
@@ -1377,11 +1375,6 @@ LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
     raw_string_ostream OS(Ret->data);
     {
       if (is_thin) {
-#if LLVM_VERSION_LT(15, 0)
-        legacy::PassManager PM;
-        PM.add(createWriteThinLTOBitcodePass(OS));
-        PM.run(*unwrap(M));
-#else
         PassBuilder PB;
         LoopAnalysisManager LAM;
         FunctionAnalysisManager FAM;
@@ -1395,11 +1388,8 @@ LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
         ModulePassManager MPM;
         MPM.addPass(ThinLTOBitcodeWriterPass(OS, nullptr));
         MPM.run(*unwrap(M), MAM);
-#endif
       } else {
-        legacy::PassManager PM;
-        PM.add(createBitcodeWriterPass(OS));
-        PM.run(*unwrap(M));
+        WriteBitcodeToFile(*unwrap(M), OS);
       }
     }
   }
