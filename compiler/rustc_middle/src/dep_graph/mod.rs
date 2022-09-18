@@ -27,10 +27,6 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
     const RED: Self = DepKind::Red;
 
-    fn is_codegen_unit_query(self) -> bool {
-        self == DepKind::codegen_unit
-    }
-
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}(", node.kind)?;
 

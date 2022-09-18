@@ -380,6 +380,24 @@ where
     Q::Key: DepNodeParams<TyCtxt<'tcx>>,
     Q::Value: Value<TyCtxt<'tcx>>,
 {
+    // We must avoid ever having to call `force_from_dep_node()` for a
+    // `DepNode::codegen_unit`:
+    // Since we cannot reconstruct the query key of a `DepNode::codegen_unit`, we
+    // would always end up having to evaluate the first caller of the
+    // `codegen_unit` query that *is* reconstructible. This might very well be
+    // the `compile_codegen_unit` query, thus re-codegenning the whole CGU just
+    // to re-trigger calling the `codegen_unit` query with the right key. At
+    // that point we would already have re-done all the work we are trying to
+    // avoid doing in the first place.
+    // The solution is simple: Just explicitly call the `codegen_unit` query for
+    // each CGU, right after partitioning. This way `try_mark_green` will always
+    // hit the cache instead of having to go through `force_from_dep_node`.
+    // This assertion makes sure, we actually keep applying the solution above.
+    debug_assert!(
+        dep_node.kind != DepKind::codegen_unit,
+        "calling force_from_dep_node() on DepKind::codegen_unit"
+    );
+
     if let Some(key) = Q::Key::recover(tcx, &dep_node) {
         #[cfg(debug_assertions)]
         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();

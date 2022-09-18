@@ -55,24 +55,6 @@ pub trait DepContext: Copy {
     fn try_force_from_dep_node(self, dep_node: DepNode<Self::DepKind>) -> bool {
         debug!("try_force_from_dep_node({:?}) --- trying to force", dep_node);
 
-        // We must avoid ever having to call `force_from_dep_node()` for a
-        // `DepNode::codegen_unit`:
-        // Since we cannot reconstruct the query key of a `DepNode::codegen_unit`, we
-        // would always end up having to evaluate the first caller of the
-        // `codegen_unit` query that *is* reconstructible. This might very well be
-        // the `compile_codegen_unit` query, thus re-codegenning the whole CGU just
-        // to re-trigger calling the `codegen_unit` query with the right key. At
-        // that point we would already have re-done all the work we are trying to
-        // avoid doing in the first place.
-        // The solution is simple: Just explicitly call the `codegen_unit` query for
-        // each CGU, right after partitioning. This way `try_mark_green` will always
-        // hit the cache instead of having to go through `force_from_dep_node`.
-        // This assertion makes sure, we actually keep applying the solution above.
-        debug_assert!(
-            !dep_node.kind.is_codegen_unit_query(),
-            "calling force_from_dep_node() on DepKind::codegen_unit"
-        );
-
         let cb = self.dep_kind_info(dep_node.kind);
         if let Some(f) = cb.force_from_dep_node {
             f(self, dep_node);
@@ -135,8 +117,6 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder>
 
     /// DepKind to use to create the initial forever-red node.
     const RED: Self;
-
-    fn is_codegen_unit_query(self) -> bool;
 
     /// Implementation of `std::fmt::Debug` for `DepNode`.
     fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
