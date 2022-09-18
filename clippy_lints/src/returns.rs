@@ -78,7 +78,6 @@ impl RetReplacement {
             Self::Empty => "remove `return`",
             Self::Block => "replace `return` with an empty block",
             Self::Unit => "replace `return` with a unit value",
-
         }
     }
 }
@@ -161,37 +160,33 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                 } else {
                     RetReplacement::Empty
                 };
-                check_final_expr(cx, body.value, Some(body.value.span), replacement);
+                check_final_expr(cx, body.value, body.value.span, replacement);
             },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
-                if let ExprKind::Block(block, _) = body.value.kind {
-                    check_block_return(cx, block);
-                }
+                check_block_return(cx, &body.value.kind);
             },
         }
     }
 }
 
-fn check_block_return<'tcx>(cx: &LateContext<'tcx>, block: &Block<'tcx>) {
-    if let Some(expr) = block.expr {
-        check_final_expr(cx, expr, Some(expr.span), RetReplacement::Empty);
-    } else if let Some(stmt) = block.stmts.iter().last() {
-        match stmt.kind {
-            StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
-                check_final_expr(cx, expr, Some(stmt.span), RetReplacement::Empty);
-            },
-            _ => (),
+// if `expr` is a block, check if there are needless returns in it
+fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>) {
+    if let ExprKind::Block(block, _) = expr_kind {
+        if let Some(block_expr) = block.expr {
+            check_final_expr(cx, block_expr, block_expr.span, RetReplacement::Empty);
+        } else if let Some(stmt) = block.stmts.iter().last() {
+            match stmt.kind {
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
+                    check_final_expr(cx, expr, stmt.span, RetReplacement::Empty);
+                },
+                _ => (),
+            }
         }
     }
 }
 
-fn check_final_expr<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'tcx>,
-    span: Option<Span>,
-    replacement: RetReplacement,
-) {
-    match expr.kind {
+fn check_final_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, span: Span, replacement: RetReplacement) {
+    match &expr.peel_drop_temps().kind {
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
             if cx.tcx.hir().attrs(expr.hir_id).is_empty() {
@@ -200,23 +195,17 @@ fn check_final_expr<'tcx>(
                     emit_return_lint(
                         cx,
                         inner.map_or(expr.hir_id, |inner| inner.hir_id),
-                        span.expect("`else return` is not possible"),
+                        span,
                         inner.as_ref().map(|i| i.span),
                         replacement,
                     );
                 }
             }
         },
-        // a whole block? check it!
-        ExprKind::Block(block, _) => {
-            check_block_return(cx, block);
-        },
         ExprKind::If(_, then, else_clause_opt) => {
-            if let ExprKind::Block(ifblock, _) = then.kind {
-                check_block_return(cx, ifblock);
-            }
+            check_block_return(cx, &then.kind);
             if let Some(else_clause) = else_clause_opt {
-                check_final_expr(cx, else_clause, None, RetReplacement::Empty);
+                check_block_return(cx, &else_clause.kind)
             }
         },
         // a match expr, check all arms
@@ -225,11 +214,11 @@ fn check_final_expr<'tcx>(
         // (except for unit type functions) so we don't match it
         ExprKind::Match(_, arms, MatchSource::Normal) => {
             for arm in arms.iter() {
-                check_final_expr(cx, arm.body, Some(arm.body.span), RetReplacement::Unit);
+                check_final_expr(cx, arm.body, arm.body.span, RetReplacement::Unit);
             }
         },
-        ExprKind::DropTemps(expr) => check_final_expr(cx, expr, None, RetReplacement::Empty),
-        _ => (),
+        // if it's a whole block, check it
+        other_expr_kind => check_block_return(cx, &other_expr_kind),
     }
 }
 
