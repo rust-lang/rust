@@ -232,36 +232,29 @@ fn emit_return_lint(
     if ret_span.from_expansion() {
         return;
     }
-    if let Some(inner_span) = inner_span {
-        let mut applicability = Applicability::MachineApplicable;
-        span_lint_hir_and_then(
-            cx,
-            NEEDLESS_RETURN,
-            emission_place,
-            ret_span,
-            "unneeded `return` statement",
-            |diag| {
-                let (snippet, _) = snippet_with_context(cx, inner_span, ret_span.ctxt(), "..", &mut applicability);
-                diag.span_suggestion(ret_span, "remove `return`", snippet, applicability);
-            },
-        );
+    let mut applicability = Applicability::MachineApplicable;
+    let return_replacement = inner_span.map_or_else(
+        || replacement.to_string(),
+        |inner_span| {
+            let (snippet, _) = snippet_with_context(cx, inner_span, ret_span.ctxt(), "..", &mut applicability);
+            snippet.to_string()
+        },
+    );
+    let sugg_help = if inner_span.is_some() {
+        "remove `return`"
     } else {
-        span_lint_hir_and_then(
-            cx,
-            NEEDLESS_RETURN,
-            emission_place,
-            ret_span,
-            "unneeded `return` statement",
-            |diag| {
-                diag.span_suggestion(
-                    ret_span,
-                    replacement.sugg_help(),
-                    replacement.to_string(),
-                    Applicability::MachineApplicable,
-                );
-            },
-        )
-    }
+        replacement.sugg_help()
+    };
+    span_lint_hir_and_then(
+        cx,
+        NEEDLESS_RETURN,
+        emission_place,
+        ret_span,
+        "unneeded `return` statement",
+        |diag| {
+            diag.span_suggestion(ret_span, sugg_help, return_replacement, applicability);
+        },
+    );
 }
 
 fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
