@@ -132,7 +132,7 @@ fn main() -> () {
         _16 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _17, move _18, move _20, move _22) -> bb19; // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r &[u8], &'s &[u8; 4], Option<Arguments<'t0>>) -> ! {core::panicking::assert_failed::<&[u8], &[u8; 4]>}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'r, 's, 't> fn(core::panicking::AssertKind, &'r &[u8], &'s &[u8; 4], Option<Arguments<'t>>) -> ! {core::panicking::assert_failed::<&[u8], &[u8; 4]>}, val: Value(<ZST>) }
     }
 
     bb4: {
@@ -241,7 +241,7 @@ fn main() -> () {
         _37 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _38, move _39, move _41, move _43) -> bb19; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r &[u8], &'s &[u8; 4], Option<Arguments<'t0>>) -> ! {core::panicking::assert_failed::<&[u8], &[u8; 4]>}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'r, 's, 't> fn(core::panicking::AssertKind, &'r &[u8], &'s &[u8; 4], Option<Arguments<'t>>) -> ! {core::panicking::assert_failed::<&[u8], &[u8; 4]>}, val: Value(<ZST>) }
     }
 
     bb13: {
