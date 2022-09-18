@@ -1342,6 +1342,22 @@ impl<T: ?Sized> Deref for Ref<'_, T> {
     }
 }
 
+#[stable(feature = "borrow_ref", since = "1.65.0")]
+impl<T: ?Sized> crate::convert::AsRef<T> for Ref<'_, T> {
+    #[inline]
+    fn as_ref(&self) -> &T {
+        &self
+    }
+}
+
+#[stable(feature = "borrow_ref", since = "1.65.0")]
+impl<T: ?Sized> crate::borrow::Borrow<T> for Ref<'_, T> {
+    #[inline]
+    fn borrow(&self) -> &T {
+        &self
+    }
+}
+
 impl<'b, T: ?Sized> Ref<'b, T> {
     /// Copies a `Ref`.
     ///
@@ -1730,6 +1746,22 @@ impl<T: ?Sized> DerefMut for RefMut<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         // SAFETY: the value is accessible as long as we hold our borrow.
         unsafe { self.value.as_mut() }
+    }
+}
+
+#[stable(feature = "borrow_ref", since = "1.65.0")]
+impl<T: ?Sized> crate::convert::AsRef<T> for RefMut<'_, T> {
+    #[inline]
+    fn as_ref(&self) -> &T {
+        &self
+    }
+}
+
+#[stable(feature = "borrow_ref", since = "1.65.0")]
+impl<T: ?Sized> crate::borrow::Borrow<T> for RefMut<'_, T> {
+    #[inline]
+    fn borrow(&self) -> &T {
+        &self
     }
 }
 
