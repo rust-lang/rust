@@ -7,6 +7,32 @@ use rustc_span::{symbol::Ident, Span, Symbol};
 use crate::LateContext;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_array_into_iter)]
+pub struct ArrayIntoIterDiag<'a> {
+    pub target: &'a str,
+    #[suggestion(use_iter_suggestion, code = "iter", applicability = "machine-applicable")]
+    pub suggestion: Span,
+    #[subdiagnostic]
+    pub sub: Option<ArrayIntoIterDiagSub>,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum ArrayIntoIterDiagSub {
+    #[suggestion(remove_into_iter_suggestion, code = "", applicability = "maybe-incorrect")]
+    RemoveIntoIter {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(use_explicit_into_iter_suggestion, applicability = "maybe-incorrect")]
+    UseExplicitIntoIter {
+        #[suggestion_part(code = "IntoIterator::into_iter(")]
+        start_span: Span,
+        #[suggestion_part(code = ")")]
+        end_span: Span,
+    },
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_cstring_ptr)]
 #[note]
 #[help]
@@ -454,11 +480,7 @@ pub struct PathStatementDrop {
 
 #[derive(SessionSubdiagnostic)]
 pub enum PathStatementDropSub {
-    #[suggestion(
-        suggestion,
-        code = "drop({snippet});",
-        applicability = "machine-applicable"
-    )]
+    #[suggestion(suggestion, code = "drop({snippet});", applicability = "machine-applicable")]
     Suggestion {
         #[primary_span]
         span: Span,
