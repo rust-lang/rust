@@ -1,4 +1,4 @@
-//! Linux and Android-specific definitions for socket options.
+//! Android-specific networking functionality.
 
 #![unstable(feature = "tcp_quickack", issue = "96256")]
-pub use crate::os::net::tcp::TcpStreamExt;
+pub use crate::os::net::linux_ext::tcp::TcpStreamExt;

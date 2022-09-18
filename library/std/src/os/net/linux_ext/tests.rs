@@ -1,9 +1,8 @@
-#[cfg(any(target_os = "android", target_os = "linux",))]
 #[test]
 fn quickack() {
     use crate::{
         net::{test::next_test_ip4, TcpListener, TcpStream},
-        os::net::tcp::TcpStreamExt,
+        os::net::linux_ext::tcp::TcpStreamExt,
     };
 
     macro_rules! t {
