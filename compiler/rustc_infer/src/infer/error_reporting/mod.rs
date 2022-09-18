@@ -2179,6 +2179,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 _ => false
                             };
                             if is_found_result && !is_expected_result {
+                                let is_found_type_same_as_expected_result_ok = match expected_type {
+                                    Result::Ok(ok) => ok == found_type.did()
+                                };
+                                if !is_found_type_same_as_expected_result_ok {}
                                 if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
                                     err.span_suggestion(
                                         span,
