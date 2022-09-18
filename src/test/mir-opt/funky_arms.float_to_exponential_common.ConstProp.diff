@@ -100,7 +100,7 @@
           _0 = float_to_exponential_common_exact::<T>(move _11, move _12, move _13, move _14, move _17) -> bb7; // scope 3 at $DIR/funky_arms.rs:+15:9: +15:87
                                            // mir::Constant
                                            // + span: $DIR/funky_arms.rs:26:9: 26:42
-                                           // + literal: Const { ty: for<'r, 's, 't0> fn(&'r mut Formatter<'s>, &'t0 T, Sign, u32, bool) -> Result<(), std::fmt::Error> {float_to_exponential_common_exact::<T>}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: for<'r, 's, 't> fn(&'r mut Formatter<'s>, &'t T, Sign, u32, bool) -> Result<(), std::fmt::Error> {float_to_exponential_common_exact::<T>}, val: Value(<ZST>) }
       }
   
       bb7: {
@@ -125,7 +125,7 @@
           _0 = float_to_exponential_common_shortest::<T>(move _18, move _19, move _20, move _21) -> bb9; // scope 2 at $DIR/funky_arms.rs:+17:9: +17:68
                                            // mir::Constant
                                            // + span: $DIR/funky_arms.rs:28:9: 28:45
-                                           // + literal: Const { ty: for<'r, 's, 't0> fn(&'r mut Formatter<'s>, &'t0 T, Sign, bool) -> Result<(), std::fmt::Error> {float_to_exponential_common_shortest::<T>}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: for<'r, 's, 't> fn(&'r mut Formatter<'s>, &'t T, Sign, bool) -> Result<(), std::fmt::Error> {float_to_exponential_common_shortest::<T>}, val: Value(<ZST>) }
       }
   
       bb9: {
