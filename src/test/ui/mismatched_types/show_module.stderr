@@ -7,12 +7,12 @@ LL |     meh::Foo
    |     ^^^^^^^^ expected struct `baz::Foo`, found struct `meh::Foo`
    |
    = note: struct `meh::Foo` and struct `baz::Foo` have similar names, but are actually distinct types
-note: struct `meh::Foo` is defined in module ::meh of the current crate
+note: struct `meh::Foo` is defined in module `crate::meh` of the current crate
   --> $DIR/show_module.rs:8:5
    |
 LL |     pub struct Foo;
    |     ^^^^^^^^^^^^^^
-note: struct `baz::Foo` is defined in module ::blah::baz of the current crate
+note: struct `baz::Foo` is defined in module `crate::blah::baz` of the current crate
   --> $DIR/show_module.rs:3:9
    |
 LL |         pub struct Foo;

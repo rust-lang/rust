@@ -7,12 +7,12 @@ LL |     return x;
    |            ^ expected enum `y::Foo`, found enum `x::Foo`
    |
    = note: enum `x::Foo` and enum `y::Foo` have similar names, but are actually distinct types
-note: enum `x::Foo` is defined in module ::x of the current crate
+note: enum `x::Foo` is defined in module `crate::x` of the current crate
   --> $DIR/fully-qualified-type-name2.rs:4:5
    |
 LL |     pub enum Foo { }
    |     ^^^^^^^^^^^^
-note: enum `y::Foo` is defined in module ::y of the current crate
+note: enum `y::Foo` is defined in module `crate::y` of the current crate
   --> $DIR/fully-qualified-type-name2.rs:8:5
    |
 LL |     pub enum Foo { }

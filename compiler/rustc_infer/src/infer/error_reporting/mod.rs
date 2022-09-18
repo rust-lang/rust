@@ -1779,11 +1779,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         .tcx
                                         .parent_module_from_def_id(defid.expect_local())
                                         .to_def_id();
-                                    let module_name =
-                                        self.tcx.def_path(module).to_string_no_crate_verbose();
-                                    format!(
-                                        "{name} is defined in module {module_name} of the current crate"
-                                    )
+                                    let module_name = self.tcx.def_path(module).to_string_no_crate_verbose();
+                                    format!("{name} is defined in module `crate{module_name}` of the current crate")
                                 } else if defid.is_local() {
                                     format!("{name} is defined in the current crate")
                                 } else {
