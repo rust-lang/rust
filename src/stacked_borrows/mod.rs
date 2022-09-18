@@ -178,11 +178,11 @@ impl GlobalStateInner {
         id
     }
 
-    pub fn new_frame(&mut self) -> FrameExtra {
+    pub fn new_frame(&mut self, current_span: &CurrentSpan<'_, '_, '_>) -> FrameExtra {
         let call_id = self.next_call_id;
         trace!("new_frame: Assigning call ID {}", call_id);
         if self.tracked_call_ids.contains(&call_id) {
-            register_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
+            current_span.emit_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
         }
         self.next_call_id = NonZeroU64::new(call_id.get() + 1).unwrap();
         FrameExtra { call_id, protected_tags: SmallVec::new() }
@@ -199,11 +199,11 @@ impl GlobalStateInner {
         }
     }
 
-    pub fn base_ptr_tag(&mut self, id: AllocId) -> SbTag {
+    pub fn base_ptr_tag(&mut self, id: AllocId, current_span: &CurrentSpan<'_, '_, '_>) -> SbTag {
         self.base_ptr_tags.get(&id).copied().unwrap_or_else(|| {
             let tag = self.new_ptr();
             if self.tracked_pointer_tags.contains(&tag) {
-                register_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(tag.0, None));
+                current_span.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(tag.0, None));
             }
             trace!("New allocation {:?} has base tag {:?}", id, tag);
             self.base_ptr_tags.try_insert(id, tag).unwrap();
@@ -572,9 +572,9 @@ impl Stacks {
             // not through a pointer). That is, whenever we directly write to a local, this will pop
             // everything else off the stack, invalidating all previous pointers,
             // and in particular, *all* raw pointers.
-            MemoryKind::Stack => (extra.base_ptr_tag(id), Permission::Unique),
+            MemoryKind::Stack => (extra.base_ptr_tag(id, &current_span), Permission::Unique),
             // Everything else is shared by default.
-            _ => (extra.base_ptr_tag(id), Permission::SharedReadWrite),
+            _ => (extra.base_ptr_tag(id, &current_span), Permission::SharedReadWrite),
         };
         Stacks::new(size, perm, base_tag, id, &mut current_span)
     }
@@ -674,7 +674,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
          -> InterpResult<'tcx> {
             let global = this.machine.stacked_borrows.as_ref().unwrap().borrow();
             if global.tracked_pointer_tags.contains(&new_tag) {
-                register_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
+                this.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
                     new_tag.0,
                     loc.map(|(alloc_id, base_offset, _)| (alloc_id, alloc_range(base_offset, size))),
                 ));

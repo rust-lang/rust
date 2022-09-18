@@ -142,7 +142,7 @@ impl<'mir, 'tcx> GlobalStateInner {
                     let first = past_warnings.is_empty();
                     if past_warnings.insert(ecx.cur_span()) {
                         // Newly inserted, so first time we see this span.
-                        register_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
+                        ecx.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
                     }
                 });
             }

@@ -755,7 +755,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>> {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         if ecx.machine.tracked_alloc_ids.contains(&id) {
-            register_diagnostic(NonHaltingDiagnostic::CreatedAlloc(
+            ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(
                 id,
                 alloc.size(),
                 alloc.align,
@@ -813,7 +813,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         }
         let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr);
         let sb_tag = if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
-            stacked_borrows.borrow_mut().base_ptr_tag(ptr.provenance)
+            stacked_borrows.borrow_mut().base_ptr_tag(ptr.provenance, &ecx.current_span())
         } else {
             // Value does not matter, SB is disabled
             SbTag::default()
@@ -937,7 +937,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if machine.tracked_alloc_ids.contains(&alloc_id) {
-            register_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
+            emit_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id), machine, tcx);
         }
         if let Some(data_race) = &mut alloc_extra.data_race {
             data_race.deallocate(
@@ -993,7 +993,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let stacked_borrows = ecx.machine.stacked_borrows.as_ref();
 
         let extra = FrameData {
-            stacked_borrows: stacked_borrows.map(|sb| sb.borrow_mut().new_frame()),
+            stacked_borrows: stacked_borrows.map(|sb| sb.borrow_mut().new_frame(&ecx.current_span())),
             catch_unwind: None,
             timing,
         };
@@ -1018,7 +1018,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         // Possibly report our progress.
         if let Some(report_progress) = ecx.machine.report_progress {
             if ecx.machine.basic_block_count % u64::from(report_progress) == 0 {
-                register_diagnostic(NonHaltingDiagnostic::ProgressReport {
+                ecx.emit_diagnostic(NonHaltingDiagnostic::ProgressReport {
                     block_count: ecx.machine.basic_block_count,
                 });
             }

@@ -94,7 +94,7 @@ pub use crate::concurrency::{
     },
 };
 pub use crate::diagnostics::{
-    register_diagnostic, report_error, EvalContextExt as DiagnosticsEvalContextExt,
+    emit_diagnostic, report_error, EvalContextExt as DiagnosticsEvalContextExt,
     NonHaltingDiagnostic, TerminationInfo,
 };
 pub use crate::eval::{

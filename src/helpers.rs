@@ -508,7 +508,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(())
             }
             RejectOpWith::Warning => {
-                register_diagnostic(NonHaltingDiagnostic::RejectedIsolatedOp(op_name.to_string()));
+                this.emit_diagnostic(NonHaltingDiagnostic::RejectedIsolatedOp(op_name.to_string()));
                 Ok(())
             }
             RejectOpWith::NoWarning => Ok(()), // no warning
@@ -881,6 +881,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             None => tcx.item_name(def_id),
         }
     }
+
+    fn current_span(&self) -> CurrentSpan<'_, 'mir, 'tcx> {
+        let this = self.eval_context_ref();
+        CurrentSpan { current_frame_idx: None, machine: &this.machine, tcx: *this.tcx }
+    }
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -901,6 +906,12 @@ pub struct CurrentSpan<'a, 'mir, 'tcx> {
 }
 
 impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
+    /// Not really about the `CurrentSpan`, but we just happen to have all the things needed to emit
+    /// diagnostics like that.
+    pub fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
+        emit_diagnostic(e, self.machine, self.tcx);
+    }
+
     /// Get the current span, skipping non-local frames.
     /// This function is backed by a cache, and can be assumed to be very fast.
     pub fn get(&mut self) -> Span {

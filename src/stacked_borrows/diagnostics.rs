@@ -471,7 +471,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
                 Some((orig_tag, kind))
             }
         };
-        register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(*item, summary));
+        self.current_span.emit_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(*item, summary));
     }
 }
 

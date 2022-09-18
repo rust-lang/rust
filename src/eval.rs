@@ -190,11 +190,6 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         Evaluator::new(config, layout_cx),
     );
 
-    // Capture the current interpreter stack state (which should be empty) so that we can emit
-    // allocation-tracking and tag-tracking diagnostics for allocations which are part of the
-    // early runtime setup.
-    let info = ecx.preprocess_diagnostics();
-
     // Some parts of initialization require a full `InterpCx`.
     Evaluator::late_init(&mut ecx, config)?;
 
@@ -324,10 +319,6 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
     }
 
-    // Emit any diagnostics related to the setup process for the runtime, so that when the
-    // interpreter loop starts there are no unprocessed diagnostics.
-    ecx.process_diagnostics(info);
-
     Ok((ecx, ret_place))
 }
 
@@ -356,7 +347,6 @@ pub fn eval_entry<'tcx>(
     let res: thread::Result<InterpResult<'_, i64>> = panic::catch_unwind(AssertUnwindSafe(|| {
         // Main loop.
         loop {
-            let info = ecx.preprocess_diagnostics();
             match ecx.schedule()? {
                 SchedulingAction::ExecuteStep => {
                     assert!(ecx.step()?, "a terminated thread was scheduled for execution");
@@ -374,7 +364,6 @@ pub fn eval_entry<'tcx>(
                     break;
                 }
             }
-            ecx.process_diagnostics(info);
         }
         let return_code = ecx.read_scalar(&ret_place.into())?.to_machine_isize(&ecx)?;
         Ok(return_code)
