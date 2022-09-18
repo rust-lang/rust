@@ -18,7 +18,7 @@ use crate::{
     ConstId, HasModule, ImplId, LocalModuleId, MacroId, ModuleDefId, ModuleId, TraitId,
 };
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum ImportType {
     Glob,
     Named,
@@ -302,13 +302,13 @@ impl ItemScope {
                             $changed = true;
                         }
                         Entry::Occupied(mut entry)
-                            if $glob_imports.$field.contains(&$lookup)
-                                && matches!($def_import_type, ImportType::Named) =>
+                            if matches!($def_import_type, ImportType::Named) =>
                         {
-                            cov_mark::hit!(import_shadowed);
-                            $glob_imports.$field.remove(&$lookup);
-                            entry.insert(fld);
-                            $changed = true;
+                            if $glob_imports.$field.remove(&$lookup) {
+                                cov_mark::hit!(import_shadowed);
+                                entry.insert(fld);
+                                $changed = true;
+                            }
                         }
                         _ => {}
                     }
