@@ -5,6 +5,7 @@ use crate::errors;
 use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::StashKey;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     MultiSpan,
@@ -13,6 +14,8 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::PatKind::Binding;
+use rustc_hir::PathSegment;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::{
     type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
@@ -35,11 +38,11 @@ use rustc_trait_selection::traits::{
     FulfillmentError, Obligation, ObligationCause, ObligationCauseCode,
 };
 
-use std::cmp::Ordering;
-use std::iter;
-
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
+use rustc_hir::intravisit::Visitor;
+use std::cmp::Ordering;
+use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
@@ -1468,6 +1471,61 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return true;
         }
         false
+    }
+
+    /// For code `rect::area(...)`,
+    /// if `rect` is a local variable and `area` is a valid assoc method for it,
+    /// we try to suggest `rect.area()`
+    pub(crate) fn suggest_assoc_method_call(&self, segs: &[PathSegment<'_>]) {
+        debug!("suggest_assoc_method_call segs: {:?}", segs);
+        let [seg1, seg2] = segs else { return; };
+        let Some(mut diag) =
+                self.tcx.sess.diagnostic().steal_diagnostic(seg1.ident.span, StashKey::CallAssocMethod)
+                else { return };
+
+        let map = self.infcx.tcx.hir();
+        let body = map.body(rustc_hir::BodyId { hir_id: self.body_id });
+        struct LetVisitor<'a> {
+            result: Option<&'a hir::Expr<'a>>,
+            ident_name: Symbol,
+        }
+
+        impl<'v> Visitor<'v> for LetVisitor<'v> {
+            fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
+                if let hir::StmtKind::Local(hir::Local { pat, init, .. }) = &ex.kind {
+                    if let Binding(_, _, ident, ..) = pat.kind &&
+                        ident.name == self.ident_name {
+                        self.result = *init;
+                    }
+                }
+                hir::intravisit::walk_stmt(self, ex);
+            }
+        }
+
+        let mut visitor = LetVisitor { result: None, ident_name: seg1.ident.name };
+        visitor.visit_body(&body);
+
+        let parent = self.tcx.hir().get_parent_node(seg1.hir_id);
+        if let Some(Node::Expr(call_expr)) = self.tcx.hir().find(parent) &&
+            let Some(expr) = visitor.result {
+            let self_ty = self.node_ty(expr.hir_id);
+            let probe = self.lookup_probe(
+                seg2.ident,
+                self_ty,
+                call_expr,
+                ProbeScope::TraitsInScope,
+            );
+            if probe.is_ok() {
+                let sm = self.infcx.tcx.sess.source_map();
+                diag.span_suggestion_verbose(
+                    sm.span_extend_while(seg1.ident.span.shrink_to_hi(), |c| c == ':').unwrap(),
+                    "you may have meant to call an instance method",
+                    ".".to_string(),
+                    Applicability::MaybeIncorrect
+                );
+            }
+        }
+        diag.emit();
     }
 
     /// Suggest calling a method on a field i.e. `a.field.bar()` instead of `a.bar()`
