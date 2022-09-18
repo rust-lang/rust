@@ -474,6 +474,34 @@ impl CStr {
         self.inner.as_ptr()
     }
 
+    /// Returns `true` if `self.to_bytes()` has a length of 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cstr_is_empty)]
+    ///
+    /// use std::ffi::CStr;
+    /// # use std::ffi::FromBytesWithNulError;
+    ///
+    /// # fn main() { test().unwrap(); }
+    /// # fn test() -> Result<(), FromBytesWithNulError> {
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0")?;
+    /// assert!(!cstr.is_empty());
+    ///
+    /// let empty_cstr = CStr::from_bytes_with_nul(b"\0")?;
+    /// assert!(empty_cstr.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "cstr_is_empty", issue = "102444")]
+    pub const fn is_empty(&self) -> bool {
+        // SAFETY: We know there is at least one byte; for empty strings it
+        // is the NUL terminator.
+        (unsafe { self.inner.get_unchecked(0) }) == &0
+    }
+
     /// Converts this C string to a byte slice.
     ///
     /// The returned slice will **not** contain the trailing nul terminator that this C
