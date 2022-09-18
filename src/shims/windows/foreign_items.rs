@@ -294,8 +294,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let flags = this.read_scalar(flags)?.to_u32()?;
                 match flags {
                     0 => {
-                        // BCRYPT_RNG_ALG_HANDLE
                         if algorithm != 0x81 {
+                            // BCRYPT_RNG_ALG_HANDLE
                             throw_unsup_format!(
                                 "BCryptGenRandom algorithm must be BCRYPT_RNG_ALG_HANDLE when the flag is 0"
                             );
