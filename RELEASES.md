@@ -14,7 +14,6 @@ Compiler
     information on Rust's tiered platform support.
 - [Only compile `#[used]` as llvm.compiler.used for ELF targets](https://github.com/rust-lang/rust/pull/93718/)
 - [Add the `--diagnostic-width` compiler flag to define the terminal width.](https://github.com/rust-lang/rust/pull/95635/)
-- [Fix repr(align) enum handling](https://github.com/rust-lang/rust/pull/96814/)
 - [Add support for link-flavor `rust-lld` for iOS, tvOS and watchOS](https://github.com/rust-lang/rust/pull/98771/)
 
 Libraries
