@@ -533,10 +533,6 @@ img {
 	border: none;
 }
 
-.location a:first-of-type {
-	font-weight: 500;
-}
-
 .block ul, .block li {
 	padding: 0;
 	margin: 0;
