@@ -1,5 +1,5 @@
 use rustc_errors::{fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgFromDisplay};
-use rustc_macros::{Diagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(Diagnostic, Clone, Copy)]
@@ -221,7 +221,7 @@ pub struct InvalidAsmTemplateModifierRegClass {
     pub sub: InvalidAsmTemplateModifierRegClassSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum InvalidAsmTemplateModifierRegClassSub {
     #[note(ast_lowering::support_modifiers)]
     SupportModifier { class_name: Symbol, modifiers: String },

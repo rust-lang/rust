@@ -20,7 +20,7 @@ use rustc_errors::{
     fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
-use rustc_macros::{Diagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
@@ -261,7 +261,7 @@ struct BadTypePlus {
     pub sub: BadTypePlusSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum BadTypePlusSub {
     #[suggestion(
         parser::add_paren,
@@ -342,7 +342,7 @@ pub struct InvalidVariableDeclaration {
     pub sub: InvalidVariableDeclarationSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum InvalidVariableDeclarationSub {
     #[suggestion(
         parser::switch_mut_let_order,
@@ -372,7 +372,7 @@ pub(crate) struct InvalidComparisonOperator {
     pub sub: InvalidComparisonOperatorSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum InvalidComparisonOperatorSub {
     #[suggestion_short(
         parser::use_instead,
@@ -400,7 +400,7 @@ pub(crate) struct InvalidLogicalOperator {
     pub sub: InvalidLogicalOperatorSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum InvalidLogicalOperatorSub {
     #[suggestion_short(
         parser::use_amp_amp_for_conjunction,
@@ -605,7 +605,7 @@ pub(crate) struct IfExpressionMissingThenBlock {
     pub sub: IfExpressionMissingThenBlockSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum IfExpressionMissingThenBlockSub {
     #[help(parser::condition_possibly_unfinished)]
     UnfinishedCondition(#[primary_span] Span),
@@ -668,7 +668,7 @@ pub(crate) struct MissingInInForLoop {
     pub sub: MissingInInForLoopSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum MissingInInForLoopSub {
     // Has been misleading, at least in the past (closed Issue #48492), thus maybe-incorrect
     #[suggestion_short(parser::use_in_not_of, applicability = "maybe-incorrect", code = "in")]

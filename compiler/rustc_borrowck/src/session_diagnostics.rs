@@ -1,5 +1,5 @@
 use rustc_errors::{IntoDiagnosticArg, MultiSpan};
-use rustc_macros::{Diagnostic, LintDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
@@ -23,7 +23,7 @@ pub(crate) struct HigherRankedLifetimeError {
     pub span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum HigherRankedErrorCause {
     #[note(borrowck::could_not_prove)]
     CouldNotProve { predicate: String },
@@ -72,7 +72,7 @@ pub(crate) struct FnMutError {
     pub ty_err: FnMutReturnTypeErr,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum VarHereDenote {
     #[label(borrowck::var_here_captured)]
     Captured {
@@ -91,7 +91,7 @@ pub(crate) enum VarHereDenote {
     },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum FnMutReturnTypeErr {
     #[label(borrowck::returned_closure_escaped)]
     ReturnClosure {
@@ -117,7 +117,7 @@ pub(crate) struct LifetimeOutliveErr {
     pub span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum LifetimeReturnCategoryErr<'a> {
     #[label(borrowck::returned_lifetime_wrong)]
     WrongReturn {
@@ -149,7 +149,7 @@ impl IntoDiagnosticArg for RegionName {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum RequireStaticErr {
     #[note(borrowck::used_impl_require_static)]
     UsedImpl {

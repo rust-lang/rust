@@ -1,5 +1,5 @@
 use rustc_errors::{fluent, AddToDiagnostic, IntoDiagnostic, ErrorGuaranteed, Handler};
-use rustc_macros::{Diagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
 
@@ -51,7 +51,7 @@ pub struct MalformedAttribute {
     pub sub: MalformedAttributeSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum MalformedAttributeSub {
     #[label(lint::bad_attribute_argument)]
     BadAttributeArgument(#[primary_span] Span),

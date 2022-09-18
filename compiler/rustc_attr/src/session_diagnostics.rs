@@ -98,7 +98,7 @@ pub(crate) struct InvalidIssueString {
 
 // The error kinds of `IntErrorKind` are duplicated here in order to allow the messages to be
 // translatable.
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum InvalidIssueStringCause {
     #[label(attr::must_not_be_zero)]
     MustNotBeZero {
@@ -274,7 +274,7 @@ pub(crate) struct IncorrectReprFormatGeneric<'a> {
     pub cause: Option<IncorrectReprFormatGenericCause<'a>>,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum IncorrectReprFormatGenericCause<'a> {
     #[suggestion(attr::suggestion, code = "{name}({int})", applicability = "machine-applicable")]
     Int {

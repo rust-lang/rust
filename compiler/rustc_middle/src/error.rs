@@ -25,7 +25,7 @@ pub struct OpaqueHiddenTypeMismatch<'tcx> {
     pub sub: TypeMismatchReason,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum TypeMismatchReason {
     #[label(middle::conflict_types)]
     ConflictType {

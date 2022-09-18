@@ -15,7 +15,7 @@ use rustc_errors::{
     AddToDiagnostic, IntoDiagnostic, Diagnostic, DiagnosticBuilder,
     ErrorGuaranteed, Handler, fluent
 };
-use rustc_macros::{Diagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
@@ -25,7 +25,7 @@ struct DeriveSessionDiagnostic {
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[note(parser::add_paren)]
 struct Note {
     #[primary_span]

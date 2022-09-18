@@ -176,8 +176,9 @@ impl IntoDiagnosticArg for hir::ConstContext {
 }
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
-/// `#[derive(SessionSubdiagnostic)]` -- see [rustc_macros::SessionSubdiagnostic].
-#[rustc_diagnostic_item = "AddSubdiagnostic"]
+/// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
+#[cfg_attr(bootstrap, rustc_diagnostic_item = "AddSubdiagnostic")]
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "Subdiagnostic")]
 pub trait AddToDiagnostic {
     /// Add a subdiagnostic to an existing diagnostic.
     fn add_to_diagnostic(self, diag: &mut Diagnostic);
@@ -891,8 +892,8 @@ impl Diagnostic {
         self
     }
 
-    /// Add a subdiagnostic from a type that implements `SessionSubdiagnostic` - see
-    /// [rustc_macros::SessionSubdiagnostic].
+    /// Add a subdiagnostic from a type that implements `Subdiagnostic` - see
+    /// [rustc_macros::Subdiagnostic].
     pub fn subdiagnostic(&mut self, subdiagnostic: impl AddToDiagnostic) -> &mut Self {
         subdiagnostic.add_to_diagnostic(self);
         self

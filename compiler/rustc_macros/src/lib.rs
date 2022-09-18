@@ -161,7 +161,7 @@ decl_derive!(
         suggestion_verbose)] => diagnostics::lint_diagnostic_derive
 );
 decl_derive!(
-    [SessionSubdiagnostic, attributes(
+    [Subdiagnostic, attributes(
         // struct/variant attributes
         label,
         help,

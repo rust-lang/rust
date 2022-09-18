@@ -1,6 +1,6 @@
 //! Errors emitted by ty_utils
 
-use rustc_macros::{Diagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
@@ -22,7 +22,7 @@ pub struct GenericConstantTooComplex {
     pub sub: GenericConstantTooComplexSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum GenericConstantTooComplexSub {
     #[label(ty_utils::borrow_not_supported)]
     BorrowNotSupported(#[primary_span] Span),

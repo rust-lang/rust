@@ -71,7 +71,7 @@ pub struct InvalidVisibility {
     pub note: Option<InvalidVisibilityNote>,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum InvalidVisibilityNote {
     #[note(ast_passes::individual_impl_items)]
     IndividualImplItems,

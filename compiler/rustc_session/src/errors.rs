@@ -34,13 +34,13 @@ pub struct FeatureGateError<'a> {
     pub explain: &'a str,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[note(session::feature_diagnostic_for_issue)]
 pub struct FeatureDiagnosticForIssue {
     pub n: NonZeroU32,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[help(session::feature_diagnostic_help)]
 pub struct FeatureDiagnosticHelp {
     pub feature: Symbol,

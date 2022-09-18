@@ -1,6 +1,7 @@
 use rustc_errors::AddToDiagnostic;
 use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 
 pub struct CycleStack {
     pub span: Span,
@@ -20,7 +21,7 @@ pub enum HandleCycleError {
     DelayBug,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum StackCount {
     #[note(query_system::cycle_stack_single)]
     Single,
@@ -28,7 +29,7 @@ pub enum StackCount {
     Multiple,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum Alias {
     #[note(query_system::cycle_recursive_ty_alias)]
     #[help(query_system::cycle_recursive_ty_alias_help1)]
@@ -38,7 +39,7 @@ pub enum Alias {
     Trait,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[note(query_system::cycle_usage)]
 pub struct CycleUsage {
     #[primary_span]

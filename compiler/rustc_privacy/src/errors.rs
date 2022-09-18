@@ -1,5 +1,5 @@
 use rustc_errors::DiagnosticArgFromDisplay;
-use rustc_macros::{Diagnostic, LintDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -14,7 +14,7 @@ pub struct FieldIsPrivate {
     pub label: FieldIsPrivateLabel,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum FieldIsPrivateLabel {
     #[label(privacy::field_is_private_is_update_syntax_label)]
     IsUpdateSyntax {

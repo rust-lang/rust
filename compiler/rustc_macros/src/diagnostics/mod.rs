@@ -9,7 +9,7 @@ use diagnostic::{LintDiagnosticDerive, SessionDiagnosticDerive};
 pub(crate) use fluent::fluent_messages;
 use proc_macro2::TokenStream;
 use quote::format_ident;
-use subdiagnostic::SessionSubdiagnosticDerive;
+use subdiagnostic::SubdiagnosticDerive;
 use synstructure::Structure;
 
 /// Implements `#[derive(Diagnostic)]`, which allows for errors to be specified as a struct,
@@ -108,12 +108,12 @@ pub fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
     LintDiagnosticDerive::new(format_ident!("diag"), s).into_tokens()
 }
 
-/// Implements `#[derive(SessionSubdiagnostic)]`, which allows for labels, notes, helps and
+/// Implements `#[derive(Subdiagnostic)]`, which allows for labels, notes, helps and
 /// suggestions to be specified as a structs or enums, independent from the actual diagnostics
 /// emitting code or diagnostic derives.
 ///
 /// ```ignore (rust)
-/// #[derive(SessionSubdiagnostic)]
+/// #[derive(Subdiagnostic)]
 /// pub enum ExpectedIdentifierLabel<'tcx> {
 ///     #[label(parser::expected_identifier)]
 ///     WithoutFound {
@@ -128,7 +128,7 @@ pub fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 ///     }
 /// }
 ///
-/// #[derive(SessionSubdiagnostic)]
+/// #[derive(Subdiagnostic)]
 /// #[suggestion_verbose(parser::raw_identifier)]
 /// pub struct RawIdentifierSuggestion<'tcx> {
 ///     #[primary_span]
@@ -155,5 +155,5 @@ pub fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// diag.subdiagnostic(RawIdentifierSuggestion { span, applicability, ident });
 /// ```
 pub fn session_subdiagnostic_derive(s: Structure<'_>) -> TokenStream {
-    SessionSubdiagnosticDerive::new(s).into_tokens()
+    SubdiagnosticDerive::new(s).into_tokens()
 }

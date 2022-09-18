@@ -1,7 +1,7 @@
 //! Errors emitted by typeck.
 use rustc_errors::IntoDiagnostic;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler};
-use rustc_macros::{Diagnostic, LintDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -194,7 +194,7 @@ pub struct AddressOfTemporaryTaken {
     pub span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum AddReturnTypeSuggestion {
     #[suggestion(
         typeck::add_return_type_add,
@@ -217,7 +217,7 @@ pub enum AddReturnTypeSuggestion {
     },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum ExpectedReturnTypeLabel<'tcx> {
     #[label(typeck::expected_default_return_type)]
     Unit {

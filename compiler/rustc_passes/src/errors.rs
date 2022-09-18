@@ -1,5 +1,5 @@
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_macros::{Diagnostic, LintDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(LintDiagnostic)]
@@ -583,7 +583,7 @@ pub struct MacroExport;
 #[diag(passes::plugin_registrar)]
 pub struct PluginRegistrar;
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum UnusedNote {
     #[note(passes::unused_empty_lints_note)]
     EmptyList { name: Symbol },
