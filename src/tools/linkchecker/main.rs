@@ -215,6 +215,7 @@ impl Checker {
                 || url.starts_with("ftp:")
                 || url.starts_with("irc:")
                 || url.starts_with("data:")
+                || url.starts_with("mailto:")
             {
                 report.links_ignored_external += 1;
                 return;
