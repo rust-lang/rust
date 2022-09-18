@@ -2540,7 +2540,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        sort::quicksort(self, |a, b| a.lt(b));
+        sort::quicksort(self, T::lt);
     }
 
     /// Sorts the slice with a comparator function, but might not preserve the order of equal
@@ -2679,8 +2679,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        let mut f = |a: &T, b: &T| a.lt(b);
-        sort::partition_at_index(self, index, &mut f)
+        sort::partition_at_index(self, index, T::lt)
     }
 
     /// Reorder the slice with a comparator function such that the element at `index` is at its
@@ -2731,8 +2730,7 @@ impl<T> [T] {
     where
         F: FnMut(&T, &T) -> Ordering,
     {
-        let mut f = |a: &T, b: &T| compare(a, b) == Less;
-        sort::partition_at_index(self, index, &mut f)
+        sort::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
     }
 
     /// Reorder the slice with a key extraction function such that the element at `index` is at its
@@ -2784,8 +2782,7 @@ impl<T> [T] {
         F: FnMut(&T) -> K,
         K: Ord,
     {
-        let mut g = |a: &T, b: &T| f(a).lt(&f(b));
-        sort::partition_at_index(self, index, &mut g)
+        sort::partition_at_index(self, index, |a: &T, b: &T| f(a).lt(&f(b)))
     }
 
     /// Moves all consecutive repeated elements to the end of the slice according to the

@@ -205,7 +205,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        merge_sort(self, |a, b| a.lt(b));
+        merge_sort(self, T::lt);
     }
 
     /// Sorts the slice with a comparator function.
