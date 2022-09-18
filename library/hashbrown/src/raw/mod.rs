@@ -248,6 +248,12 @@ impl TableLayout {
             size.checked_mul(buckets)?.checked_add(ctrl_align - 1)? & !(ctrl_align - 1);
         let len = ctrl_offset.checked_add(buckets + Group::WIDTH)?;
 
+        // We need an additional check to ensure that the allocation doesn't
+        // exceed `isize::MAX` (https://github.com/rust-lang/rust/pull/95295).
+        if len > isize::MAX as usize - (ctrl_align - 1) {
+            return None;
+        }
+
         Some((
             unsafe { Layout::from_size_align_unchecked(len, ctrl_align) },
             ctrl_offset,
@@ -1077,15 +1083,6 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             Some(lco) => lco,
             None => return Err(fallibility.capacity_overflow()),
         };
-
-        // We need an additional check to ensure that the allocation doesn't
-        // exceed `isize::MAX`. We can skip this check on 64-bit systems since
-        // such allocations will never succeed anyways.
-        //
-        // This mirrors what Vec does in the standard library.
-        if mem::size_of::<usize>() < 8 && layout.size() > isize::MAX as usize {
-            return Err(fallibility.capacity_overflow());
-        }
 
         let ptr: NonNull<u8> = match do_alloc(&alloc, layout) {
             Ok(block) => block.cast(),
