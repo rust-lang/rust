@@ -668,6 +668,7 @@ impl Build {
             job::setup(self);
         }
 
+        let _ = &builder::Builder::new(&self).initial_rustfmt();
         self.maybe_update_submodules();
 
         if let Subcommand::Format { check, paths } = &self.config.cmd {
