@@ -1,4 +1,4 @@
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 
 // EMIT_MIR issue_101867.main.mir_map.0.mir
 fn main() {
