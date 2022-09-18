@@ -4,7 +4,7 @@ Version 1.64.0 (2022-09-22)
 Language
 --------
 - [make `const_err` show up in future breakage reports](https://github.com/rust-lang/rust/pull/97743/)
-- [allow unions with mutable references and tuples of allowed types](https://github.com/rust-lang/rust/pull/97995/)
+- [Unions with mutable references or tuples of allowed types are now allowed](https://github.com/rust-lang/rust/pull/97995/)
 - It is now considered valid to deallocate memory pointed to by a shared reference `&T` [if every byte in `T` is inside an `UnsafeCell`](https://github.com/rust-lang/rust/pull/98017/)
 - Unused tuple struct fields are now warned against in an allow-by-default lint, [`unused_tuple_struct_fields`](https://github.com/rust-lang/rust/pull/95977/), similar to the existing warning for unused struct fields. This lint will become warn-by-default in the future.
 
@@ -15,12 +15,12 @@ Compiler
 - [Add Nintendo Switch as tier 3 target](https://github.com/rust-lang/rust/pull/88991/)
   - Refer to Rust's [platform support page][platform-support-doc] for more
     information on Rust's tiered platform support.
-- [Only compile #[used] as llvm.compiler.used for ELF targets](https://github.com/rust-lang/rust/pull/93718/)
-- [sess: stabilize `-Zterminal-width` as `--diagnostic-width`](https://github.com/rust-lang/rust/pull/95635/)
+- [Only compile `#[used]` as llvm.compiler.used for ELF targets](https://github.com/rust-lang/rust/pull/93718/)
+- [Add the `--diagnostic-width` compiler flag to define the terminal width.](https://github.com/rust-lang/rust/pull/95635/)
 - [Fix repr(align) enum handling](https://github.com/rust-lang/rust/pull/96814/)
 - [Suggest defining variable as mutable on `&mut _` type mismatch in pats](https://github.com/rust-lang/rust/pull/98431/)
 - [Emit warning when named arguments are used positionally in format](https://github.com/rust-lang/rust/pull/98580/)
-- [Add support for link-flavor rust-lld for iOS, tvOS and watchOS](https://github.com/rust-lang/rust/pull/98771/)
+- [Add support for link-flavor `rust-lld` for iOS, tvOS and watchOS](https://github.com/rust-lang/rust/pull/98771/)
 - [Do not mention private types from other crates as impl candidates](https://github.com/rust-lang/rust/pull/99091/)
 
 Libraries
@@ -32,11 +32,11 @@ Libraries
 - [Make RwLockReadGuard covariant](https://github.com/rust-lang/rust/pull/96820/)
 - [Implement `FusedIterator` for `std::net::[Into]Incoming`](https://github.com/rust-lang/rust/pull/97300/)
 - [`impl<T: AsRawFd> AsRawFd for {Arc,Box}<T>`](https://github.com/rust-lang/rust/pull/97437/)
-- [ptr::copy and ptr::swap are doing untyped copies](https://github.com/rust-lang/rust/pull/97712/)
-- [Add assertion that `transmute_copy`'s U is not larger than T](https://github.com/rust-lang/rust/pull/98839/)
+- [`ptr::copy` and `ptr::swap` are doing untyped copies](https://github.com/rust-lang/rust/pull/97712/)
+- [Add assertion that `transmute_copy`'s U is not larger than `T`](https://github.com/rust-lang/rust/pull/98839/)
 - [A soundness bug in `BTreeMap` was fixed](https://github.com/rust-lang/rust/pull/99413/) that allowed data it was borrowing to be dropped before the container.
 - [Add cgroupv1 support to `available_parallelism`](https://github.com/rust-lang/rust/pull/97925/)
-- [mem::uninitialized: mitigate many incorrect uses of this function](https://github.com/rust-lang/rust/pull/99182/)
+- [Mitigate many incorrect uses of `mem::uninitialized`](https://github.com/rust-lang/rust/pull/99182/)
 
 Stabilized APIs
 ---------------
@@ -113,13 +113,13 @@ Cargo
 
 Misc
 ----
-- [Let rust-analyzer ship on stable, non-preview](https://github.com/rust-lang/rust/pull/98640/)
+- [The `rust-analyzer` rustup component is now available on the stable channel.](https://github.com/rust-lang/rust/pull/98640/)
 
 Compatibility Notes
 -------------------
 - The minimum required versions for all `-linux-gnu` targets are now at least kernel 3.2 and glibc 2.17, for targets that previously supported older versions: [Increase the minimum linux-gnu versions](https://github.com/rust-lang/rust/pull/95026/)
-- [Implement network primitives with ideal Rust layout, not C system layout](https://github.com/rust-lang/rust/pull/78802/)
-- [Add assertion that `transmute_copy`'s U is not larger than T](https://github.com/rust-lang/rust/pull/98839/)
+- [Network primitives are now implemented with the ideal Rust layout, not the C system layout](https://github.com/rust-lang/rust/pull/78802/). This can cause problems when transmuting the types.
+- [Add assertion that `transmute_copy`'s `U` is not larger than `T`](https://github.com/rust-lang/rust/pull/98839/)
 - [A soundness bug in `BTreeMap` was fixed](https://github.com/rust-lang/rust/pull/99413/) that allowed data it was borrowing to be dropped before the container.
 - [The Drop behavior of C-like enums cast to ints has changed](https://github.com/rust-lang/rust/pull/96862/). These are already discouraged by a compiler warning.
 - [Relate late-bound closure lifetimes to parent fn in NLL](https://github.com/rust-lang/rust/pull/98835/)
