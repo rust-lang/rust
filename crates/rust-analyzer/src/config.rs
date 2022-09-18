@@ -84,6 +84,9 @@ config_data! {
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
+        /// Extra environment variables that will be set when running cargo, rustc
+        /// or other commands within the workspace. Useful for setting RUSTFLAGS.
+        cargo_extraEnv: FxHashMap<String, String> = "{}",
         /// List of features to activate.
         ///
         /// Set this to `"all"` to pass `--all-features` to cargo.
@@ -105,6 +108,8 @@ config_data! {
         checkOnSave_enable: bool                         = "true",
         /// Extra arguments for `cargo check`.
         checkOnSave_extraArgs: Vec<String>               = "[]",
+        /// Extra environment variables that will be set when running `cargo check`.
+        checkOnSave_extraEnv: FxHashMap<String, String> = "{}",
         /// List of features to activate. Defaults to
         /// `#rust-analyzer.cargo.features#`.
         ///
@@ -956,6 +961,16 @@ impl Config {
         }
     }
 
+    pub fn extra_env(&self) -> &FxHashMap<String, String> {
+        &self.data.cargo_extraEnv
+    }
+
+    pub fn check_on_save_extra_env(&self) -> FxHashMap<String, String> {
+        let mut extra_env = self.data.cargo_extraEnv.clone();
+        extra_env.extend(self.data.checkOnSave_extraEnv.clone());
+        extra_env
+    }
+
     pub fn lru_capacity(&self) -> Option<usize> {
         self.data.lru_capacity
     }
@@ -1025,6 +1040,7 @@ impl Config {
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
+            extra_env: self.data.cargo_extraEnv.clone(),
         }
     }
 
@@ -1050,7 +1066,11 @@ impl Config {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
-                FlycheckConfig::CustomCommand { command, args }
+                FlycheckConfig::CustomCommand {
+                    command,
+                    args,
+                    extra_env: self.check_on_save_extra_env(),
+                }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
                 command: self.data.checkOnSave_command.clone(),
@@ -1078,6 +1098,7 @@ impl Config {
                     CargoFeatures::Listed(it) => it,
                 },
                 extra_args: self.data.checkOnSave_extraArgs.clone(),
+                extra_env: self.check_on_save_extra_env(),
             },
         };
         Some(flycheck_config)
