@@ -18,7 +18,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, DefIdTree, GenericArgKind, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
@@ -392,28 +392,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     custom_span_label = true;
                 }
                 if static_candidates.len() == 1 {
-                    let ty_str =
-                        if let Some(CandidateSource::Impl(impl_did)) = static_candidates.get(0) {
-                            // When the "method" is resolved through dereferencing, we really want the
-                            // original type that has the associated function for accurate suggestions.
-                            // (#61411)
-                            let ty = tcx.at(span).type_of(*impl_did);
-                            match (&ty.peel_refs().kind(), &actual.peel_refs().kind()) {
-                                (ty::Adt(def, _), ty::Adt(def_actual, _)) if def == def_actual => {
-                                    // Use `actual` as it will have more `substs` filled in.
-                                    self.ty_to_value_string(actual.peel_refs())
-                                }
-                                _ => self.ty_to_value_string(ty.peel_refs()),
+                    let (ty_str, placeholders) = if let Some(CandidateSource::Impl(impl_did)) =
+                    static_candidates.get(0)
+                    {
+                        // When the "method" is resolved through dereferencing, we really want the
+                        // original type that has the associated function for accurate suggestions.
+                        // (#61411)
+                        let ty = tcx.at(span).type_of(*impl_did);
+                        match (&ty.peel_refs().kind(), &actual.peel_refs().kind()) {
+                            (ty::Adt(def, _), ty::Adt(def_actual, substs)) if def == def_actual => {
+                                // If there are any inferred arguments, (`{integer}`), we shouldn't mark
+                                // this as machine-applicable.
+                                let placeholders = substs
+                                    .iter()
+                                    .filter_map(|arg| {
+                                        if let GenericArgKind::Type(ty) = arg.unpack() {
+                                            Some(ty)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .any(|ty| matches!(ty.kind(), ty::Infer(_)));
+                                // Use `actual` as it will have more `substs` filled in.
+                                (self.ty_to_value_string(actual.peel_refs()), placeholders)
                             }
-                        } else {
-                            self.ty_to_value_string(actual.peel_refs())
-                        };
+                            _ => (self.ty_to_value_string(ty.peel_refs()), true),
+                        }
+                    } else {
+                        (self.ty_to_value_string(actual.peel_refs()), true)
+                    };
+                    let applicability = match placeholders {
+                        true => Applicability::HasPlaceholders,
+                        false => Applicability::MachineApplicable,
+                    };
                     if let SelfSource::MethodCall(expr) = source {
                         err.span_suggestion(
                             expr.span.to(span),
                             "use associated function syntax instead",
                             format!("{}::{}", ty_str, item_name),
-                            Applicability::MachineApplicable,
+                            applicability,
                         );
                     } else {
                         err.help(&format!("try with `{}::{}`", ty_str, item_name,));
