@@ -20,6 +20,7 @@ use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
+use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
 use rustc_middle::ty::abstract_const::{AbstractConst, FailureKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -408,7 +409,11 @@ pub enum SubregionOrigin<'tcx> {
 
     /// Comparing the signature and requirements of an impl method against
     /// the containing trait.
-    CompareImplItemObligation { span: Span, impl_item_def_id: LocalDefId, trait_item_def_id: DefId },
+    CompareImplItemObligation {
+        span: Span,
+        impl_item_def_id: LocalDefId,
+        trait_item_def_id: DefId,
+    },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
@@ -416,11 +421,23 @@ pub enum SubregionOrigin<'tcx> {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
+
+    AscribeUserTypeProvePredicate(Span),
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(SubregionOrigin<'_>, 32);
+
+impl<'tcx> SubregionOrigin<'tcx> {
+    pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
+        match self {
+            Self::Subtype(type_trace) => type_trace.cause.to_constraint_category(),
+            Self::AscribeUserTypeProvePredicate(span) => ConstraintCategory::Predicate(*span),
+            _ => ConstraintCategory::BoringNoLocation,
+        }
+    }
+}
 
 /// Times when we replace late-bound regions with variables:
 #[derive(Clone, Copy, Debug)]
@@ -1988,6 +2005,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             DataBorrowed(_, a) => a,
             ReferenceOutlivesReferent(_, a) => a,
             CompareImplItemObligation { span, .. } => span,
+            AscribeUserTypeProvePredicate(span) => span,
             CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
         }
     }
@@ -2019,6 +2037,10 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 trait_item_def_id,
                 parent: Box::new(default()),
             },
+
+            traits::ObligationCauseCode::AscribeUserTypeProvePredicate(span) => {
+                SubregionOrigin::AscribeUserTypeProvePredicate(span)
+            }
 
             _ => default(),
         }
