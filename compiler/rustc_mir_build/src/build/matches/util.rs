@@ -106,6 +106,9 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         let mut place = match place.try_upvars_resolved(cx) {
             Ok(val) | Err(val) => val,
         };
+
+        // Only add the OpaqueCast projection if the given place is an opaque type and the
+        // expected type from the pattern is not.
         let may_need_cast = match place.base() {
             PlaceBase::Local(local) => {
                 let ty = Place::ty_from(local, place.projection(), &cx.local_decls, cx.tcx).ty;
