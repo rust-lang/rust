@@ -108,8 +108,13 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
                     if current_vis.is_at_least(nearest_available_vis, &*self.r) {nearest_available_vis} else {current_vis}
                 }
             };
+            let current_effective_vis_copy = current_effective_vis.clone();
             current_effective_vis.update(calculated_effective_vis, tag, &*self.r);
-            self.r.access_levels.set_effective_vis(current_id, current_effective_vis);
+
+            if current_effective_vis_copy != current_effective_vis {
+                self.changed = true;
+                self.r.access_levels.set_effective_vis(current_id, current_effective_vis);
+            }
         }
     }
 
