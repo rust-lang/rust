@@ -1857,13 +1857,16 @@ pub enum Foo {}
 
 ## `imports_granularity`
 
-How imports should be grouped into `use` statements. Imports will be merged or split to the configured level of granularity.
+Controls how imports are structured in `use` statements. Imports will be merged or split to the configured level of granularity.
+
+Similar to other `import` related configuration options, this option operates within the bounds of user-defined groups of imports. See [`group_imports`](#group_imports) for more information on import groups.
+
+Note that rustfmt will not modify the granularity of imports containing comments if doing so could potentially lose or misplace said comments.
 
 - **Default value**: `Preserve`
 - **Possible values**: `Preserve`, `Crate`, `Module`, `Item`, `One`
 - **Stable**: No (tracking issue: [#4991](https://github.com/rust-lang/rustfmt/issues/4991))
 
-Note that rustfmt will not modify the granularity of imports containing comments if doing so could potentially lose or misplace said comments.
 
 #### `Preserve` (default):
 
