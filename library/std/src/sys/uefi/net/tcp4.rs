@@ -173,7 +173,7 @@ impl Tcp4Protocol {
         let fragment_tables: Vec<tcp4::FragmentData> = buf
             .iter()
             .map(|b| tcp4::FragmentData {
-                fragment_length: crate::mem::size_of_val(b) as u32,
+                fragment_length: b.len() as u32,
                 fragment_buffer: (*b).as_ptr() as *mut crate::ffi::c_void,
             })
             .collect();
@@ -277,7 +277,7 @@ impl Tcp4Protocol {
         let fragment_tables: Vec<tcp4::FragmentData> = buf
             .iter_mut()
             .map(|b| tcp4::FragmentData {
-                fragment_length: crate::mem::size_of_val(b) as u32,
+                fragment_length: b.len() as u32,
                 fragment_buffer: b.as_mut_ptr().cast(),
             })
             .collect();
