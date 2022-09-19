@@ -881,16 +881,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             None => tcx.item_name(def_id),
         }
     }
-
-    fn current_span(&self) -> CurrentSpan<'_, 'mir, 'tcx> {
-        let this = self.eval_context_ref();
-        CurrentSpan { current_frame_idx: None, machine: &this.machine, tcx: *this.tcx }
-    }
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
-    pub fn current_span(&self, tcx: TyCtxt<'tcx>) -> CurrentSpan<'_, 'mir, 'tcx> {
-        CurrentSpan { current_frame_idx: None, machine: self, tcx }
+    pub fn current_span(&self) -> CurrentSpan<'_, 'mir, 'tcx> {
+        CurrentSpan { current_frame_idx: None, machine: self }
     }
 }
 
@@ -901,15 +896,12 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
 #[derive(Clone)]
 pub struct CurrentSpan<'a, 'mir, 'tcx> {
     current_frame_idx: Option<usize>,
-    tcx: TyCtxt<'tcx>,
     machine: &'a Evaluator<'mir, 'tcx>,
 }
 
 impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
-    /// Not really about the `CurrentSpan`, but we just happen to have all the things needed to emit
-    /// diagnostics like that.
-    pub fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
-        emit_diagnostic(e, self.machine, self.tcx);
+    pub fn machine(&self) -> &'a Evaluator<'mir, 'tcx> {
+        self.machine
     }
 
     /// Get the current span, skipping non-local frames.
@@ -939,13 +931,13 @@ impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
     fn current_frame_idx(&mut self) -> usize {
         *self
             .current_frame_idx
-            .get_or_insert_with(|| Self::compute_current_frame_index(self.tcx, self.machine))
+            .get_or_insert_with(|| Self::compute_current_frame_index(self.machine))
     }
 
     // Find the position of the inner-most frame which is part of the crate being
     // compiled/executed, part of the Cargo workspace, and is also not #[track_caller].
     #[inline(never)]
-    fn compute_current_frame_index(tcx: TyCtxt<'_>, machine: &Evaluator<'_, '_>) -> usize {
+    fn compute_current_frame_index(machine: &Evaluator<'_, '_>) -> usize {
         machine
             .threads
             .active_thread_stack()
@@ -955,7 +947,7 @@ impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
             .find_map(|(idx, frame)| {
                 let def_id = frame.instance.def_id();
                 if (def_id.is_local() || machine.local_crates.contains(&def_id.krate))
-                    && !frame.instance.def.requires_caller_location(tcx)
+                    && !frame.instance.def.requires_caller_location(machine.tcx)
                 {
                     Some(idx)
                 } else {

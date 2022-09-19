@@ -178,11 +178,11 @@ impl GlobalStateInner {
         id
     }
 
-    pub fn new_frame(&mut self, current_span: &CurrentSpan<'_, '_, '_>) -> FrameExtra {
+    pub fn new_frame(&mut self, machine: &Evaluator<'_, '_>) -> FrameExtra {
         let call_id = self.next_call_id;
         trace!("new_frame: Assigning call ID {}", call_id);
         if self.tracked_call_ids.contains(&call_id) {
-            current_span.emit_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
+            machine.emit_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
         }
         self.next_call_id = NonZeroU64::new(call_id.get() + 1).unwrap();
         FrameExtra { call_id, protected_tags: SmallVec::new() }
@@ -199,11 +199,11 @@ impl GlobalStateInner {
         }
     }
 
-    pub fn base_ptr_tag(&mut self, id: AllocId, current_span: &CurrentSpan<'_, '_, '_>) -> SbTag {
+    pub fn base_ptr_tag(&mut self, id: AllocId, machine: &Evaluator<'_, '_>) -> SbTag {
         self.base_ptr_tags.get(&id).copied().unwrap_or_else(|| {
             let tag = self.new_ptr();
             if self.tracked_pointer_tags.contains(&tag) {
-                current_span.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(tag.0, None));
+                machine.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(tag.0, None));
             }
             trace!("New allocation {:?} has base tag {:?}", id, tag);
             self.base_ptr_tags.try_insert(id, tag).unwrap();
@@ -572,9 +572,9 @@ impl Stacks {
             // not through a pointer). That is, whenever we directly write to a local, this will pop
             // everything else off the stack, invalidating all previous pointers,
             // and in particular, *all* raw pointers.
-            MemoryKind::Stack => (extra.base_ptr_tag(id, &current_span), Permission::Unique),
+            MemoryKind::Stack => (extra.base_ptr_tag(id, current_span.machine()), Permission::Unique),
             // Everything else is shared by default.
-            _ => (extra.base_ptr_tag(id, &current_span), Permission::SharedReadWrite),
+            _ => (extra.base_ptr_tag(id, current_span.machine()), Permission::SharedReadWrite),
         };
         Stacks::new(size, perm, base_tag, id, &mut current_span)
     }
@@ -688,7 +688,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
             let (_size, _align, alloc_kind) = this.get_alloc_info(alloc_id);
             match alloc_kind {
                 AllocKind::LiveData => {
-                    let current_span = &mut this.machine.current_span(*this.tcx);
+                    let current_span = &mut this.machine.current_span();
                     // This should have alloc_extra data, but `get_alloc_extra` can still fail
                     // if converting this alloc_id from a global to a local one
                     // uncovers a non-supported `extern static`.
@@ -805,7 +805,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
                     .expect("we should have Stacked Borrows data")
                     .borrow_mut();
                 // FIXME: can't share this with the current_span inside log_creation
-                let mut current_span = this.machine.current_span(*this.tcx);
+                let mut current_span = this.machine.current_span();
                 this.visit_freeze_sensitive(place, size, |mut range, frozen| {
                     // Adjust range.
                     range.start += base_offset;
@@ -843,7 +843,6 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
         // Here we can avoid `borrow()` calls because we have mutable references.
         // Note that this asserts that the allocation is mutable -- but since we are creating a
         // mutable pointer, that seems reasonable.
-        let tcx = *this.tcx;
         let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
         let mut stacked_borrows = alloc_extra
             .stacked_borrows
@@ -854,7 +853,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
         let range = alloc_range(base_offset, size);
         let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
         // FIXME: can't share this with the current_span inside log_creation
-        let current_span = &mut machine.current_span(tcx);
+        let current_span = &mut machine.current_span();
         let dcx = DiagnosticCxBuilder::retag(
             current_span,
             &machine.threads,

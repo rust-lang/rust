@@ -292,8 +292,16 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
 
 /// The machine itself.
 pub struct Evaluator<'mir, 'tcx> {
+    // We carry a copy of the global `TyCtxt` for convenience, so methods taking just `&Evaluator` have `tcx` access.
+    pub tcx: TyCtxt<'tcx>,
+
+    /// Stacked Borrows global data.
     pub stacked_borrows: Option<stacked_borrows::GlobalState>,
+
+    /// Data race detector global data.
     pub data_race: Option<data_race::GlobalState>,
+
+    /// Ptr-int-cast module global data.
     pub intptrcast: intptrcast::GlobalState,
 
     /// Environment variables set by `setenv`.
@@ -419,6 +427,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
         });
         let data_race = config.data_race_detector.then(|| data_race::GlobalState::new(config));
         Evaluator {
+            tcx: layout_cx.tcx,
             stacked_borrows,
             data_race,
             intptrcast: RefCell::new(intptrcast::GlobalStateInner::new(config)),
@@ -770,7 +779,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 alloc.size(),
                 stacked_borrows,
                 kind,
-                ecx.machine.current_span(*ecx.tcx),
+                ecx.machine.current_span(),
             )
         });
         let race_alloc = ecx.machine.data_race.as_ref().map(|data_race| {
@@ -813,7 +822,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         }
         let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr);
         let sb_tag = if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
-            stacked_borrows.borrow_mut().base_ptr_tag(ptr.provenance, &ecx.current_span())
+            stacked_borrows.borrow_mut().base_ptr_tag(ptr.provenance, &ecx.machine)
         } else {
             // Value does not matter, SB is disabled
             SbTag::default()
@@ -866,7 +875,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn before_memory_read(
-        tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxt<'tcx>,
         machine: &Self,
         alloc_extra: &AllocExtra,
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
@@ -886,7 +895,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 prov_extra,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
-                machine.current_span(tcx),
+                machine.current_span(),
                 &machine.threads,
             )?;
         }
@@ -898,7 +907,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn before_memory_write(
-        tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra,
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
@@ -918,7 +927,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 prov_extra,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
-                machine.current_span(tcx),
+                machine.current_span(),
                 &machine.threads,
             )?;
         }
@@ -930,14 +939,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn before_memory_deallocation(
-        tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra,
         (alloc_id, prove_extra): (AllocId, Self::ProvenanceExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if machine.tracked_alloc_ids.contains(&alloc_id) {
-            emit_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id), machine, tcx);
+            machine.emit_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
         }
         if let Some(data_race) = &mut alloc_extra.data_race {
             data_race.deallocate(
@@ -953,7 +962,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 prove_extra,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
-                machine.current_span(tcx),
+                machine.current_span(),
                 &machine.threads,
             )
         } else {
@@ -993,7 +1002,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let stacked_borrows = ecx.machine.stacked_borrows.as_ref();
 
         let extra = FrameData {
-            stacked_borrows: stacked_borrows.map(|sb| sb.borrow_mut().new_frame(&ecx.current_span())),
+            stacked_borrows: stacked_borrows.map(|sb| sb.borrow_mut().new_frame(&ecx.machine)),
             catch_unwind: None,
             timing,
         };

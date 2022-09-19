@@ -3,7 +3,6 @@ use std::num::NonZeroU64;
 
 use log::trace;
 
-use rustc_middle::ty::TyCtxt;
 use rustc_span::{source_map::DUMMY_SP, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 
@@ -91,13 +90,12 @@ enum DiagLevel {
 fn prune_stacktrace<'tcx>(
     mut stacktrace: Vec<FrameInfo<'tcx>>,
     machine: &Evaluator<'_, 'tcx>,
-    tcx: TyCtxt<'tcx>,
 ) -> (Vec<FrameInfo<'tcx>>, bool) {
     match machine.backtrace_style {
         BacktraceStyle::Off => {
             // Remove all frames marked with `caller_location` -- that attribute indicates we
             // usually want to point at the caller, not them.
-            stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(tcx));
+            stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(machine.tcx));
             // Retain one frame so that we can print a span for the error itself
             stacktrace.truncate(1);
             (stacktrace, false)
@@ -111,7 +109,7 @@ fn prune_stacktrace<'tcx>(
             if has_local_frame {
                 // Remove all frames marked with `caller_location` -- that attribute indicates we
                 // usually want to point at the caller, not them.
-                stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(tcx));
+                stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(machine.tcx));
 
                 // This is part of the logic that `std` uses to select the relevant part of a
                 // backtrace. But here, we only look for __rust_begin_short_backtrace, not
@@ -121,7 +119,7 @@ fn prune_stacktrace<'tcx>(
                     .into_iter()
                     .take_while(|frame| {
                         let def_id = frame.instance.def_id();
-                        let path = tcx.def_path_str(def_id);
+                        let path = machine.tcx.def_path_str(def_id);
                         !path.contains("__rust_begin_short_backtrace")
                     })
                     .collect::<Vec<_>>();
@@ -256,7 +254,7 @@ pub fn report_error<'tcx, 'mir>(
     };
 
     let stacktrace = ecx.generate_stacktrace();
-    let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine, *ecx.tcx);
+    let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);
     e.print_backtrace();
     msg.insert(0, e.to_string());
     report_msg(
@@ -267,7 +265,6 @@ pub fn report_error<'tcx, 'mir>(
         helps,
         &stacktrace,
         &ecx.machine,
-        *ecx.tcx,
     );
 
     // Include a note like `std` does when we omit frames from a backtrace
@@ -315,13 +312,13 @@ fn report_msg<'tcx>(
     helps: Vec<(Option<SpanData>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
     machine: &Evaluator<'_, 'tcx>,
-    tcx: TyCtxt<'tcx>,
 ) {
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
+    let sess = machine.tcx.sess;
     let mut err = match diag_level {
-        DiagLevel::Error => tcx.sess.struct_span_err(span, title).forget_guarantee(),
-        DiagLevel::Warning => tcx.sess.struct_span_warn(span, title),
-        DiagLevel::Note => tcx.sess.diagnostic().span_note_diag(span, title),
+        DiagLevel::Error => sess.struct_span_err(span, title).forget_guarantee(),
+        DiagLevel::Warning => sess.struct_span_warn(span, title),
+        DiagLevel::Note => sess.diagnostic().span_note_diag(span, title),
     };
 
     // Show main message.
@@ -370,95 +367,97 @@ fn report_msg<'tcx>(
     err.emit();
 }
 
-pub fn emit_diagnostic<'tcx>(e: NonHaltingDiagnostic, machine: &Evaluator<'_, 'tcx>, tcx: TyCtxt<'tcx>) {
-    use NonHaltingDiagnostic::*;
+impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
+    pub fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
+        use NonHaltingDiagnostic::*;
 
-    let stacktrace = MiriEvalContext::generate_stacktrace_from_stack(machine.threads.active_thread_stack());
-    let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, machine, tcx);
+        let stacktrace = MiriEvalContext::generate_stacktrace_from_stack(self.threads.active_thread_stack());
+        let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
-    let (title, diag_level) = match e {
-        RejectedIsolatedOp(_) =>
-            ("operation rejected by isolation", DiagLevel::Warning),
-        Int2Ptr { .. } => ("integer-to-pointer cast", DiagLevel::Warning),
-        CreatedPointerTag(..)
-        | PoppedPointerTag(..)
-        | CreatedCallId(..)
-        | CreatedAlloc(..)
-        | FreedAlloc(..)
-        | ProgressReport { .. }
-        | WeakMemoryOutdatedLoad =>
-            ("tracking was triggered", DiagLevel::Note),
-    };
+        let (title, diag_level) = match e {
+            RejectedIsolatedOp(_) =>
+                ("operation rejected by isolation", DiagLevel::Warning),
+            Int2Ptr { .. } => ("integer-to-pointer cast", DiagLevel::Warning),
+            CreatedPointerTag(..)
+            | PoppedPointerTag(..)
+            | CreatedCallId(..)
+            | CreatedAlloc(..)
+            | FreedAlloc(..)
+            | ProgressReport { .. }
+            | WeakMemoryOutdatedLoad =>
+                ("tracking was triggered", DiagLevel::Note),
+        };
 
-    let msg = match e {
-        CreatedPointerTag(tag, None) =>
-            format!("created tag {tag:?}"),
-        CreatedPointerTag(tag, Some((alloc_id, range))) =>
-            format!("created tag {tag:?} at {alloc_id:?}{range:?}"),
-        PoppedPointerTag(item, tag) =>
-            match tag {
-                None =>
-                    format!(
-                        "popped tracked tag for item {item:?} due to deallocation",
-                    ),
-                Some((tag, access)) => {
-                    format!(
-                        "popped tracked tag for item {item:?} due to {access:?} access for {tag:?}",
-                    )
-                }
-            },
-        CreatedCallId(id) =>
-            format!("function call with id {id}"),
-        CreatedAlloc(AllocId(id), size, align, kind) =>
-            format!(
-                "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
-                size = size.bytes(),
-                align = align.bytes(),
-            ),
-        FreedAlloc(AllocId(id)) =>
-            format!("freed allocation with id {id}"),
-        RejectedIsolatedOp(ref op) =>
-            format!("{op} was made to return an error due to isolation"),
-        ProgressReport { .. } =>
-            format!("progress report: current operation being executed is here"),
-        Int2Ptr { .. } =>
-            format!("integer-to-pointer cast"),
-        WeakMemoryOutdatedLoad =>
-            format!("weak memory emulation: outdated value returned from load"),
-    };
+        let msg = match e {
+            CreatedPointerTag(tag, None) =>
+                format!("created tag {tag:?}"),
+            CreatedPointerTag(tag, Some((alloc_id, range))) =>
+                format!("created tag {tag:?} at {alloc_id:?}{range:?}"),
+            PoppedPointerTag(item, tag) =>
+                match tag {
+                    None =>
+                        format!(
+                            "popped tracked tag for item {item:?} due to deallocation",
+                        ),
+                    Some((tag, access)) => {
+                        format!(
+                            "popped tracked tag for item {item:?} due to {access:?} access for {tag:?}",
+                        )
+                    }
+                },
+            CreatedCallId(id) =>
+                format!("function call with id {id}"),
+            CreatedAlloc(AllocId(id), size, align, kind) =>
+                format!(
+                    "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
+                    size = size.bytes(),
+                    align = align.bytes(),
+                ),
+            FreedAlloc(AllocId(id)) =>
+                format!("freed allocation with id {id}"),
+            RejectedIsolatedOp(ref op) =>
+                format!("{op} was made to return an error due to isolation"),
+            ProgressReport { .. } =>
+                format!("progress report: current operation being executed is here"),
+            Int2Ptr { .. } =>
+                format!("integer-to-pointer cast"),
+            WeakMemoryOutdatedLoad =>
+                format!("weak memory emulation: outdated value returned from load"),
+        };
 
-    let notes = match e {
-        ProgressReport { block_count } => {
-            // It is important that each progress report is slightly different, since
-            // identical diagnostics are being deduplicated.
-            vec![
-                (None, format!("so far, {block_count} basic blocks have been executed")),
-            ]
-        }
-        _ => vec![],
-    };
+        let notes = match e {
+            ProgressReport { block_count } => {
+                // It is important that each progress report is slightly different, since
+                // identical diagnostics are being deduplicated.
+                vec![
+                    (None, format!("so far, {block_count} basic blocks have been executed")),
+                ]
+            }
+            _ => vec![],
+        };
 
-    let helps = match e {
-        Int2Ptr { details: true } =>
-            vec![
-                (None, format!("This program is using integer-to-pointer casts or (equivalently) `ptr::from_exposed_addr`,")),
-                (None, format!("which means that Miri might miss pointer bugs in this program.")),
-                (None, format!("See https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation.")),
-                (None, format!("To ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead.")),
-                (None, format!("You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics.")),
-                (None, format!("Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning.")),
-            ],
-        _ => vec![],
-    };
+        let helps = match e {
+            Int2Ptr { details: true } =>
+                vec![
+                    (None, format!("This program is using integer-to-pointer casts or (equivalently) `ptr::from_exposed_addr`,")),
+                    (None, format!("which means that Miri might miss pointer bugs in this program.")),
+                    (None, format!("See https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation.")),
+                    (None, format!("To ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead.")),
+                    (None, format!("You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics.")),
+                    (None, format!("Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning.")),
+                ],
+            _ => vec![],
+        };
 
-    report_msg(diag_level, title, vec![msg], notes, helps, &stacktrace, machine, tcx);
+        report_msg(diag_level, title, vec![msg], notes, helps, &stacktrace, self);
+    }
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
         let this = self.eval_context_ref();
-        emit_diagnostic(e, &this.machine, *this.tcx);
+        this.machine.emit_diagnostic(e);
     }
 
     /// We had a panic in Miri itself, try to print something useful.
@@ -477,7 +476,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             vec![],
             &stacktrace,
             &this.machine,
-            *this.tcx,
         );
     }
 }
