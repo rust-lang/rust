@@ -1045,7 +1045,7 @@ pub trait Read {
 ///     Ok(())
 /// }
 /// ```
-#[stable(feature = "io_read_to_string", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "io_read_to_string", since = "1.65.0")]
 pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
     let mut buf = String::new();
     reader.read_to_string(&mut buf)?;
