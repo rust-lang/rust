@@ -140,6 +140,7 @@ pub(crate) fn compare_impl_method<'tcx>(
 ///
 /// Finally we register each of these predicates as an obligation and check that
 /// they hold.
+#[instrument(level = "debug", skip(tcx, impl_m_span, impl_trait_ref))]
 fn compare_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &AssocItem,
