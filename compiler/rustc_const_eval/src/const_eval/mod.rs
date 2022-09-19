@@ -100,7 +100,7 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     val: mir::ConstantKind<'tcx>,
-) -> InterpResult<'tcx, mir::DestructuredMirConstant<'tcx>> {
+) -> InterpResult<'tcx, mir::DestructuredConstant<'tcx>> {
     trace!("destructure_mir_constant: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     let op = ecx.const_to_op(&val, None)?;
@@ -129,7 +129,7 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
         .collect::<InterpResult<'tcx, Vec<_>>>()?;
     let fields = tcx.arena.alloc_from_iter(fields_iter);
 
-    Ok(mir::DestructuredMirConstant { variant, fields })
+    Ok(mir::DestructuredConstant { variant, fields })
 }
 
 #[instrument(skip(tcx), level = "debug")]
