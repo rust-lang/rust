@@ -103,7 +103,7 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
 ) -> InterpResult<'tcx, mir::DestructuredMirConstant<'tcx>> {
     trace!("destructure_mir_constant: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    let op = ecx.mir_const_to_op(&val, None)?;
+    let op = ecx.const_to_op(&val, None)?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match val.ty().kind() {
@@ -139,7 +139,7 @@ pub(crate) fn deref_mir_constant<'tcx>(
     val: mir::ConstantKind<'tcx>,
 ) -> mir::ConstantKind<'tcx> {
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    let op = ecx.mir_const_to_op(&val, None).unwrap();
+    let op = ecx.const_to_op(&val, None).unwrap();
     let mplace = ecx.deref_operand(&op).unwrap();
     if let Some(alloc_id) = mplace.ptr.provenance {
         assert_eq!(
