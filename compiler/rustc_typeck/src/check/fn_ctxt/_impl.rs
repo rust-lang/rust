@@ -20,14 +20,12 @@ use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::subst::{
-    self, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts,
-};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, ToPolyTraitRef,
     ToPredicate, Ty, UserType,
 };
+use rustc_middle::ty::{GenericArgKind, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
@@ -559,7 +557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Registers an obligation for checking later, during regionck, that `arg` is well-formed.
     pub fn register_wf_obligation(
         &self,
-        arg: subst::GenericArg<'tcx>,
+        arg: ty::GenericArg<'tcx>,
         span: Span,
         code: traits::ObligationCauseCode<'tcx>,
     ) {
@@ -1271,7 +1269,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &mut self,
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'_>,
-            ) -> subst::GenericArg<'tcx> {
+            ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
                         <dyn AstConv<'_>>::ast_region_to_region(self.fcx, lt, Some(param)).into()
@@ -1295,10 +1293,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             fn inferred_kind(
                 &mut self,
-                substs: Option<&[subst::GenericArg<'tcx>]>,
+                substs: Option<&[ty::GenericArg<'tcx>]>,
                 param: &ty::GenericParamDef,
                 infer_args: bool,
-            ) -> subst::GenericArg<'tcx> {
+            ) -> ty::GenericArg<'tcx> {
                 let tcx = self.fcx.tcx();
                 match param.kind {
                     GenericParamDefKind::Lifetime => {

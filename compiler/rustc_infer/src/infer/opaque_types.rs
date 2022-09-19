@@ -8,7 +8,7 @@ use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::subst::{GenericArgKind, Subst};
+use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
     self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitor,

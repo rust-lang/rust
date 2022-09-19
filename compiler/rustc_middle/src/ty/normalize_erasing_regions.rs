@@ -10,8 +10,7 @@
 use crate::mir;
 use crate::traits::query::NoSolution;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
-use crate::ty::subst::{Subst, SubstsRef};
-use crate::ty::{self, EarlyBinder, Ty, TyCtxt};
+use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt};
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
 pub enum NormalizationError<'tcx> {

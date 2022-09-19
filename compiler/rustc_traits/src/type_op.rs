@@ -5,10 +5,10 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCauseCode, TraitEngineExt as _};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
 use rustc_middle::ty::{
     self, EarlyBinder, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable, Variance,
 };
+use rustc_middle::ty::{GenericArg, UserSelfTy, UserSubsts};
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Predicate, ToPredicate};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;

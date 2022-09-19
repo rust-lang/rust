@@ -14,7 +14,7 @@ use rustc_hir::{
 use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, IsSuggestable, Subst, ToPredicate, Ty};
+use rustc_middle::ty::{self, Binder, IsSuggestable, ToPredicate, Ty};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;

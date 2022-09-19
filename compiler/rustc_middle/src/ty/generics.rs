@@ -1,6 +1,5 @@
 use crate::ty;
-use crate::ty::subst::{Subst, SubstsRef};
-use crate::ty::EarlyBinder;
+use crate::ty::{EarlyBinder, SubstsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;

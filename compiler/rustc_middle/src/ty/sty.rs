@@ -3,7 +3,7 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 use crate::infer::canonical::Canonical;
-use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
+use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
@@ -551,7 +551,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         layout.variant_fields.iter().map(move |variant| {
             variant
                 .iter()
-                .map(move |field| EarlyBinder(layout.field_tys[*field]).subst(tcx, self.substs))
+                .map(move |field| ty::EarlyBinder(layout.field_tys[*field]).subst(tcx, self.substs))
         })
     }
 
@@ -912,73 +912,6 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::PolyTraitRef<'tcx> {
         self.map_bound(|trait_ref| trait_ref.with_self_ty(tcx, self_ty))
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable, HashStable)]
-pub struct EarlyBinder<T>(pub T);
-
-impl<T> EarlyBinder<T> {
-    pub fn as_ref(&self) -> EarlyBinder<&T> {
-        EarlyBinder(&self.0)
-    }
-
-    pub fn map_bound_ref<F, U>(&self, f: F) -> EarlyBinder<U>
-    where
-        F: FnOnce(&T) -> U,
-    {
-        self.as_ref().map_bound(f)
-    }
-
-    pub fn map_bound<F, U>(self, f: F) -> EarlyBinder<U>
-    where
-        F: FnOnce(T) -> U,
-    {
-        let value = f(self.0);
-        EarlyBinder(value)
-    }
-
-    pub fn try_map_bound<F, U, E>(self, f: F) -> Result<EarlyBinder<U>, E>
-    where
-        F: FnOnce(T) -> Result<U, E>,
-    {
-        let value = f(self.0)?;
-        Ok(EarlyBinder(value))
-    }
-
-    pub fn rebind<U>(&self, value: U) -> EarlyBinder<U> {
-        EarlyBinder(value)
-    }
-}
-
-impl<T> EarlyBinder<Option<T>> {
-    pub fn transpose(self) -> Option<EarlyBinder<T>> {
-        self.0.map(|v| EarlyBinder(v))
-    }
-}
-
-impl<T, U> EarlyBinder<(T, U)> {
-    pub fn transpose_tuple2(self) -> (EarlyBinder<T>, EarlyBinder<U>) {
-        (EarlyBinder(self.0.0), EarlyBinder(self.0.1))
-    }
-}
-
-pub struct EarlyBinderIter<T> {
-    t: T,
-}
-
-impl<T: IntoIterator> EarlyBinder<T> {
-    pub fn transpose_iter(self) -> EarlyBinderIter<T::IntoIter> {
-        EarlyBinderIter { t: self.0.into_iter() }
-    }
-}
-
-impl<T: Iterator> Iterator for EarlyBinderIter<T> {
-    type Item = EarlyBinder<T::Item>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.t.next().map(|i| EarlyBinder(i))
     }
 }
 

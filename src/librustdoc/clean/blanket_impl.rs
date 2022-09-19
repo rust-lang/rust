@@ -2,7 +2,6 @@ use crate::rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtE
 use rustc_hir as hir;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
-use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::ToPredicate;
 use rustc_span::DUMMY_SP;
 

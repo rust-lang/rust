@@ -497,18 +497,79 @@ impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &'tcx ty::List<T> {
     }
 }
 
-// Just call `foo.subst(tcx, substs)` to perform a substitution across `foo`.
-#[rustc_on_unimplemented(message = "Calling `subst` must now be done through an `EarlyBinder`")]
-pub trait Subst<'tcx>: Sized {
-    type Inner;
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable)]
+pub struct EarlyBinder<T>(pub T);
 
-    fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> Self::Inner;
+/// For early binders, you should first call `subst` before using any visitors.
+impl<'tcx, T> !TypeFoldable<'tcx> for ty::EarlyBinder<T> {}
+impl<'tcx, T> !TypeVisitable<'tcx> for ty::EarlyBinder<T> {}
+
+impl<T> EarlyBinder<T> {
+    pub fn as_ref(&self) -> EarlyBinder<&T> {
+        EarlyBinder(&self.0)
+    }
+
+    pub fn map_bound_ref<F, U>(&self, f: F) -> EarlyBinder<U>
+    where
+        F: FnOnce(&T) -> U,
+    {
+        self.as_ref().map_bound(f)
+    }
+
+    pub fn map_bound<F, U>(self, f: F) -> EarlyBinder<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        let value = f(self.0);
+        EarlyBinder(value)
+    }
+
+    pub fn try_map_bound<F, U, E>(self, f: F) -> Result<EarlyBinder<U>, E>
+    where
+        F: FnOnce(T) -> Result<U, E>,
+    {
+        let value = f(self.0)?;
+        Ok(EarlyBinder(value))
+    }
+
+    pub fn rebind<U>(&self, value: U) -> EarlyBinder<U> {
+        EarlyBinder(value)
+    }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for ty::EarlyBinder<T> {
-    type Inner = T;
+impl<T> EarlyBinder<Option<T>> {
+    pub fn transpose(self) -> Option<EarlyBinder<T>> {
+        self.0.map(|v| EarlyBinder(v))
+    }
+}
 
-    fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> Self::Inner {
+impl<T, U> EarlyBinder<(T, U)> {
+    pub fn transpose_tuple2(self) -> (EarlyBinder<T>, EarlyBinder<U>) {
+        (EarlyBinder(self.0.0), EarlyBinder(self.0.1))
+    }
+}
+
+pub struct EarlyBinderIter<T> {
+    t: T,
+}
+
+impl<T: IntoIterator> EarlyBinder<T> {
+    pub fn transpose_iter(self) -> EarlyBinderIter<T::IntoIter> {
+        EarlyBinderIter { t: self.0.into_iter() }
+    }
+}
+
+impl<T: Iterator> Iterator for EarlyBinderIter<T> {
+    type Item = EarlyBinder<T::Item>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.t.next().map(|i| EarlyBinder(i))
+    }
+}
+
+impl<'tcx, T: TypeFoldable<'tcx>> ty::EarlyBinder<T> {
+    pub fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> T {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
         self.0.fold_with(&mut folder)
     }

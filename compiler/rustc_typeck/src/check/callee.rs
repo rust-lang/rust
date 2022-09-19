@@ -17,7 +17,7 @@ use rustc_infer::{
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};

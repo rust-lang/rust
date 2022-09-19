@@ -1,7 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::subst::Subst;
 use crate::ty::{
     self, layout_sanity_check::sanity_check_layout, subst::SubstsRef, EarlyBinder, ReprOptions, Ty,
     TyCtxt, TypeVisitable,
@@ -2768,9 +2767,14 @@ impl<'tcx> ty::Instance<'tcx> {
                 // (i.e. due to being inside a projection that got normalized, see
                 // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
                 // track of a polymorphization `ParamEnv` to allow normalizing later.
+                //
+                // We normalize the `fn_sig` again after substituting at a later point.
                 let mut sig = match *ty.kind() {
                     ty::FnDef(def_id, substs) => tcx
-                        .normalize_erasing_regions(tcx.param_env(def_id), tcx.bound_fn_sig(def_id))
+                        .bound_fn_sig(def_id)
+                        .map_bound(|fn_sig| {
+                            tcx.normalize_erasing_regions(tcx.param_env(def_id), fn_sig)
+                        })
                         .subst(tcx, substs),
                     _ => unreachable!(),
                 };

@@ -34,12 +34,11 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
-    self, DefIdTree, GenericParamDefKind, Subst, ToPredicate, Ty, TyCtxt, TypeSuperVisitable,
-    VtblEntry,
+    self, DefIdTree, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeSuperVisitable, VtblEntry,
 };
+use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
 

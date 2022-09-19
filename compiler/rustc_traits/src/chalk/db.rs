@@ -7,8 +7,8 @@
 //! `crate::chalk::lowering` (to lower rustc types into Chalk types).
 
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
-use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, AssocKind, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::{InternalSubsts, SubstsRef};
 
 use rustc_ast::ast;
 use rustc_attr as attr;

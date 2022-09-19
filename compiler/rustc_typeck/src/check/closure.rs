@@ -3,7 +3,6 @@
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
-use crate::rustc_middle::ty::subst::Subst;
 use hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
