@@ -53,6 +53,7 @@ pub struct OutlivesEnvironment<'tcx> {
 }
 
 /// Builder of OutlivesEnvironment.
+#[derive(Debug)]
 struct OutlivesEnvironmentBuilder<'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     region_relation: TransitiveRelationBuilder<Region<'tcx>>,
@@ -109,6 +110,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
 
 impl<'a, 'tcx> OutlivesEnvironmentBuilder<'tcx> {
     #[inline]
+    #[instrument(level = "debug")]
     fn build(self) -> OutlivesEnvironment<'tcx> {
         OutlivesEnvironment {
             param_env: self.param_env,
