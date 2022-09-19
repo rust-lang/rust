@@ -1,58 +1,82 @@
-error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:58:21
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:80:5
    |
-LL |     let mut _a = 1; _a += 1;
-   |                     ^^^^^^^
+LL |     _n += 1;
+   |     ^^^^^^^
    |
    = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
 
-error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:60:26
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:81:5
    |
-LL |     let mut _b = 1; _b = _b + 1;
-   |                          ^^^^^^
-
-error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:62:26
-   |
-LL |     let mut _c = 1; _c = 1 + _c;
-   |                          ^^^^^^
-
-error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:65:5
-   |
-LL |     _a += 1;
+LL |     _n -= 1;
    |     ^^^^^^^
 
-error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:66:5
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:82:5
    |
-LL |     _a -= 1;
+LL |     _n /= 0;
    |     ^^^^^^^
 
-error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:67:5
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:83:5
    |
-LL |     _a /= 0;
+LL |     _n %= 0;
    |     ^^^^^^^
 
-error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:68:5
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:84:5
    |
-LL |     _a %= 0;
+LL |     _n *= 2;
    |     ^^^^^^^
 
-error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:69:5
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:87:10
    |
-LL |     _a *= 2;
-   |     ^^^^^^^
+LL |     _n = _n + 1;
+   |          ^^^^^^
 
-error: arithmetic detected
-  --> $DIR/arithmetic_side_effects.rs:70:5
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:88:10
    |
-LL |     _a *= 3;
-   |     ^^^^^^^
+LL |     _n = 1 + _n;
+   |          ^^^^^^
 
-error: aborting due to 9 previous errors
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:89:10
+   |
+LL |     _n = _n - 1;
+   |          ^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:90:10
+   |
+LL |     _n = 1 - _n;
+   |          ^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:91:10
+   |
+LL |     _n = _n / 0;
+   |          ^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:92:10
+   |
+LL |     _n = _n % 0;
+   |          ^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:93:10
+   |
+LL |     _n = _n * 2;
+   |          ^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:94:10
+   |
+LL |     _n = 2 * _n;
+   |          ^^^^^^
+
+error: aborting due to 13 previous errors
 
