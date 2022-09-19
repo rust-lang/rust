@@ -3,6 +3,8 @@ error[E0535]: invalid argument
    |
 LL | #[inline(unknown)]
    |          ^^^^^^^
+   |
+   = help: valid inline arguments are `always` and `never`
 
 error: aborting due to previous error
 
