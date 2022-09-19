@@ -26,11 +26,6 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
     pub fn compute_access_levels<'c>(r: &'r mut Resolver<'a>, krate: &'c Crate) {
         let mut visitor = AccessLevelsVisitor { r, changed: false };
 
-        /*
-        let crate_effective_vis = EffectiveVisibility::default();
-        crate_effective_vis.update(Visibility::Public, AccessLevel::Public, visitor.r);
-        visitor.r.access_levels.set_effective_vis(CRATE_DEF_ID, crate_effective_vis);
-        */
         visitor.set_access_level_def_id(CRATE_DEF_ID, Some(AccessLevel::Public));
         visitor.set_bindings_access_level(CRATE_DEF_ID);
 
@@ -74,40 +69,29 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
         let module = self.r.get_module(module_id.to_def_id()).unwrap();
         let resolutions = self.r.resolutions(module);
 
-        for (key, name_resolution) in resolutions.borrow().iter() {
-            if let Some(binding) = name_resolution.borrow().binding() && binding.vis.is_public() && !binding.is_ambiguity() && module_level.is_some() {
-                let access_level = match binding.is_import() {
-                    true => {
-                        set_import_binding_access_level(self, binding, module_level);
-                        Some(AccessLevel::Exported)
-                    },
-                    false => module_level,
-                };
-                if let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local()) {
-                    self.set_access_level_def_id(def_id, access_level);
-                }
-            }
+        for (.., name_resolution) in resolutions.borrow().iter() {
 
             if let Some(binding) = name_resolution.borrow().binding() {
-                println!("ident: {}", key.ident.as_str());
+                let tag = match binding.is_import() {
+                    true => {
+                        if binding.vis.is_public() && !binding.is_ambiguity() && module_level.is_some() {
+                            set_import_binding_access_level(self, binding, module_level);
+                        }
+                        AccessLevel::Exported
+                    },
+                    false => AccessLevel::Public
+                };
+
                 if let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local()) {
-                    let tag = match binding.is_import() {
-                        true => AccessLevel::Exported,
-                        false => AccessLevel::Public,
-                    };
                     let vis = match binding.vis {
                         Visibility::Public => Visibility::Public,
                         Visibility::Restricted(id) => Visibility::Restricted(id.expect_local())
                     };
                     self.update_effective_vis(def_id, vis, module_id, tag);
-                };
+                }
             }
         }
     }
-
-    // fn init_crate_effective_vis(&mut self) {
-
-    // }
 
     fn update_effective_vis(
         &mut self,
@@ -117,20 +101,15 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
         tag: AccessLevel,
     ) {
         if let Some(inherited_effective_vis) = self.r.access_levels.get_effective_vis(module_id) {
-            println!("tag: {:?}", tag);
-            println!("inherited effective vis: {:?}", inherited_effective_vis);
             let mut current_effective_vis = self.r.access_levels.get_effective_vis(current_id).copied().unwrap_or_default();
             let nearest_available_vis = inherited_effective_vis.nearest_available(tag).unwrap();
-            println!("nearest available vis: {:?}", nearest_available_vis);
             let calculated_effective_vis = match current_vis {
                 Visibility::Public => nearest_available_vis,
                 Visibility::Restricted(_) => {
                     if current_vis.is_at_least(nearest_available_vis, &*self.r) {nearest_available_vis} else {current_vis}
                 }
             };
-            println!("calculated effective vis: {:?}", calculated_effective_vis);
             current_effective_vis.update(calculated_effective_vis, tag, &*self.r);
-            println!("updated effective vis: {:?}", current_effective_vis);
             self.r.access_levels.set_effective_vis(current_id, current_effective_vis);
         }
     }
