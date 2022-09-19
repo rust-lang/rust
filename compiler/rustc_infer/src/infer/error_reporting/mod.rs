@@ -2171,26 +2171,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     );
                                 }
                             }
-                        }
-                        (expected_type, ty::Adt(found_type, _)) => {
+                        },
+                        (expected_type, ty::Adt(found_type, subst)) => {
                             let is_found_result = self.tcx.is_diagnostic_item(sym::Result, found_type.did());
                             let is_expected_result = match expected_type {
                                 ty::Adt(idk, _) => self.tcx.is_diagnostic_item(sym::Result, idk.did()),
                                 _ => false
                             };
                             if is_found_result && !is_expected_result {
-                                let is_found_type_same_as_expected_result_ok = match expected_type {
-                                    Result::Ok(ok) => ok == found_type.did()
+                                let is_found_type_same_as_expected_result_ok = match subst.first() {
+                                    Some(t) => match t.unpack() {
+                                        ty::GenericArgKind::Type(t) => t.kind() == expected_type,
+                                        _ => false,
+                                    },
+                                    _ => false,
                                 };
-                                if !is_found_type_same_as_expected_result_ok {}
-                                if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
-                                    err.span_suggestion(
-                                        span,
-                                        "Either change the return type or use `unwrap`",
-                                        format!("{}.unwrap()", code),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                }
+                                if is_found_type_same_as_expected_result_ok {
+                                    if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
+                                        err.span_suggestion(
+                                            span,
+                                            "Either change the return type or use `unwrap`",
+                                            format!("{}.unwrap()", code),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    }}
+
                             }
                         }
                         _ => {}
