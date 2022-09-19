@@ -221,6 +221,15 @@ fall back to using `cargo` from the installed `nightly`, `beta`, or `stable` too
 `rustup install nightly` if you haven't already.  See the
 [rustup documentation on custom toolchains](https://rust-lang.github.io/rustup/concepts/toolchains.html#custom-toolchains).
 
+**Note:** rust-analyzer and IntelliJ Rust plugin use a component called
+`rust-analyzer-proc-macro-srv` to work with proc macros. If you intend to use a
+custom toolchain for a project (e.g. via `rustup override set stage1`) you may
+want to build this component:
+
+```bash
+./x.py build proc-macro-srv-cli
+```
+
 ## Building targets for cross-compilation
 
 To produce a compiler that can cross-compile for other targets,
