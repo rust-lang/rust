@@ -233,4 +233,31 @@ fn issue_9361() -> i32 {
     return 1 + 2;
 }
 
+fn issue8336(x: i32) -> bool {
+    if x > 0 {
+        println!("something");
+        return true;
+    } else {
+        return false;
+    };
+}
+
+fn issue8156(x: u8) -> u64 {
+    match x {
+        80 => {
+            return 10;
+        },
+        _ => {
+            return 100;
+        },
+    };
+}
+
+// Ideally the compiler should throw `unused_braces` in this case
+fn issue9192() -> i32 {
+    {
+        return 0;
+    };
+}
+
 fn main() {}

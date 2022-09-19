@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint_hir_and_then, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::{fn_def_id, path_to_local_id};
 use if_chain::if_chain;
@@ -9,7 +9,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
+use rustc_span::source_map::{Span, DUMMY_SP};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -73,8 +73,8 @@ enum RetReplacement {
 }
 
 impl RetReplacement {
-    fn sugg_help(&self) -> &'static str {
-        match *self {
+    fn sugg_help(self) -> &'static str {
+        match self {
             Self::Empty => "remove `return`",
             Self::Block => "replace `return` with an empty block",
             Self::Unit => "replace `return` with a unit value",
@@ -160,24 +160,30 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                 } else {
                     RetReplacement::Empty
                 };
-                check_final_expr(cx, body.value, body.value.span, replacement);
+                check_final_expr(cx, body.value, vec![], replacement);
             },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
-                check_block_return(cx, &body.value.kind);
+                check_block_return(cx, &body.value.kind, vec![]);
             },
         }
     }
 }
 
 // if `expr` is a block, check if there are needless returns in it
-fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>) {
+fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>, semi_spans: Vec<Span>) {
     if let ExprKind::Block(block, _) = expr_kind {
         if let Some(block_expr) = block.expr {
-            check_final_expr(cx, block_expr, block_expr.span, RetReplacement::Empty);
+            check_final_expr(cx, block_expr, semi_spans, RetReplacement::Empty);
         } else if let Some(stmt) = block.stmts.iter().last() {
             match stmt.kind {
-                StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
-                    check_final_expr(cx, expr, stmt.span, RetReplacement::Empty);
+                StmtKind::Expr(expr) => {
+                    check_final_expr(cx, expr, semi_spans, RetReplacement::Empty);
+                },
+                StmtKind::Semi(semi_expr) => {
+                    let mut semi_spans_and_this_one = semi_spans;
+                    // we only want the span containing the semicolon so we can remove it later. From `entry.rs:382`
+                    semi_spans_and_this_one.push(stmt.span.trim_start(semi_expr.span).unwrap_or(DUMMY_SP));
+                    check_final_expr(cx, semi_expr, semi_spans_and_this_one, RetReplacement::Empty);
                 },
                 _ => (),
             }
@@ -185,8 +191,15 @@ fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>) 
     }
 }
 
-fn check_final_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, span: Span, replacement: RetReplacement) {
-    match &expr.peel_drop_temps().kind {
+fn check_final_expr<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    semi_spans: Vec<Span>, /* containing all the places where we would need to remove semicolons if finding an
+                            * needless return */
+    replacement: RetReplacement,
+) {
+    let peeled_drop_expr = expr.peel_drop_temps();
+    match &peeled_drop_expr.kind {
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
             if cx.tcx.hir().attrs(expr.hir_id).is_empty() {
@@ -194,7 +207,8 @@ fn check_final_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, span: 
                 if !borrows {
                     emit_return_lint(
                         cx,
-                        span,
+                        peeled_drop_expr.span,
+                        semi_spans,
                         inner.as_ref().map(|i| i.span),
                         replacement,
                     );
@@ -202,9 +216,9 @@ fn check_final_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, span: 
             }
         },
         ExprKind::If(_, then, else_clause_opt) => {
-            check_block_return(cx, &then.kind);
+            check_block_return(cx, &then.kind, semi_spans.clone());
             if let Some(else_clause) = else_clause_opt {
-                check_block_return(cx, &else_clause.kind)
+                check_block_return(cx, &else_clause.kind, semi_spans);
             }
         },
         // a match expr, check all arms
@@ -213,17 +227,18 @@ fn check_final_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, span: 
         // (except for unit type functions) so we don't match it
         ExprKind::Match(_, arms, MatchSource::Normal) => {
             for arm in arms.iter() {
-                check_final_expr(cx, arm.body, arm.body.span, RetReplacement::Unit);
+                check_final_expr(cx, arm.body, semi_spans.clone(), RetReplacement::Unit);
             }
         },
         // if it's a whole block, check it
-        other_expr_kind => check_block_return(cx, &other_expr_kind),
+        other_expr_kind => check_block_return(cx, other_expr_kind, semi_spans),
     }
 }
 
 fn emit_return_lint(
     cx: &LateContext<'_>,
     ret_span: Span,
+    semi_spans: Vec<Span>,
     inner_span: Option<Span>,
     replacement: RetReplacement,
 ) {
@@ -243,15 +258,13 @@ fn emit_return_lint(
     } else {
         replacement.sugg_help()
     };
-    span_lint_and_then(
-        cx,
-        NEEDLESS_RETURN,
-        ret_span,
-        "unneeded `return` statement",
-        |diag| {
-            diag.span_suggestion(ret_span, sugg_help, return_replacement, applicability);
-        },
-    );
+    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
+        diag.span_suggestion_hidden(ret_span, sugg_help, return_replacement, applicability);
+        // for each parent statement, we need to remove the semicolon
+        for semi_stmt_span in semi_spans {
+            diag.tool_only_span_suggestion(semi_stmt_span, "remove this semicolon", "", applicability);
+        }
+    });
 }
 
 fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
