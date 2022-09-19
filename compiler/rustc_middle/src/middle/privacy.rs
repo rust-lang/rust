@@ -1,7 +1,7 @@
 //! A pass that checks to make sure private fields and methods aren't used
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
-use crate::ty::Visibility;
+use crate::ty::{Visibility, DefIdTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
@@ -57,6 +57,35 @@ impl EffectiveVisibility {
 
     pub fn is_public_at_level(&self, tag: AccessLevel) -> bool {
         self.get(tag).map_or(false, |vis| vis.is_public())
+    }
+
+    pub fn nearest_available(&self, tag: AccessLevel) -> Option<Visibility> {
+        for level in [AccessLevel::ReachableFromImplTrait, AccessLevel::Reachable, AccessLevel::Exported, AccessLevel::Public] {
+            if (level <= tag) && self.get(tag).is_some() {
+                return self.get(tag).cloned();
+            }
+        }
+        None
+    }
+
+    pub fn update<T: DefIdTree>(&mut self, vis: Visibility, tag: AccessLevel, tree: T) {
+        for level in [
+            AccessLevel::Public,
+            AccessLevel::Exported,
+            AccessLevel::Reachable,
+            AccessLevel::ReachableFromImplTrait,
+        ] {
+            if level <= tag {
+                let current_effective_vis = self.get_mut(level);
+                if let Some(current_effective_vis) = current_effective_vis {
+                    if vis.is_at_least(*current_effective_vis, tree) {
+                        *current_effective_vis = vis;
+                    }
+                } else {
+                    *current_effective_vis = Some(vis);
+                }
+            }
+        }
     }
 }
 
@@ -120,6 +149,10 @@ impl<Id: Hash + Eq + Copy> AccessLevels<Id> {
 
     pub fn get_effective_vis(&self, id: Id) -> Option<&EffectiveVisibility> {
         self.map.get(&id)
+    }
+
+    pub fn set_effective_vis(&mut self, id: Id, effective_vis: EffectiveVisibility) {
+        self.map.insert(id, effective_vis);
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&Id, &EffectiveVisibility)> {

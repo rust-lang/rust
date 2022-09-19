@@ -11,7 +11,7 @@ use rustc_ast::NodeId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::privacy::AccessLevel;
-use rustc_middle::ty::DefIdTree;
+use rustc_middle::ty::{DefIdTree, Visibility};
 use rustc_span::sym;
 
 pub struct AccessLevelsVisitor<'r, 'a> {
@@ -26,6 +26,11 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
     pub fn compute_access_levels<'c>(r: &'r mut Resolver<'a>, krate: &'c Crate) {
         let mut visitor = AccessLevelsVisitor { r, changed: false };
 
+        /*
+        let crate_effective_vis = EffectiveVisibility::default();
+        crate_effective_vis.update(Visibility::Public, AccessLevel::Public, visitor.r);
+        visitor.r.access_levels.set_effective_vis(CRATE_DEF_ID, crate_effective_vis);
+        */
         visitor.set_access_level_def_id(CRATE_DEF_ID, Some(AccessLevel::Public));
         visitor.set_bindings_access_level(CRATE_DEF_ID);
 
@@ -47,9 +52,6 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
     fn set_bindings_access_level(&mut self, module_id: LocalDefId) {
         assert!(self.r.module_map.contains_key(&&module_id.to_def_id()));
         let module_level = self.r.access_levels.get_access_level(module_id);
-        if !module_level.is_some() {
-            return;
-        }
         // Set the given binding access level to `AccessLevel::Public` and
         // sets the rest of the `use` chain to `AccessLevel::Exported` until
         // we hit the actual exported item.
@@ -72,8 +74,8 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
         let module = self.r.get_module(module_id.to_def_id()).unwrap();
         let resolutions = self.r.resolutions(module);
 
-        for (.., name_resolution) in resolutions.borrow().iter() {
-            if let Some(binding) = name_resolution.borrow().binding() && binding.vis.is_public() && !binding.is_ambiguity() {
+        for (key, name_resolution) in resolutions.borrow().iter() {
+            if let Some(binding) = name_resolution.borrow().binding() && binding.vis.is_public() && !binding.is_ambiguity() && module_level.is_some() {
                 let access_level = match binding.is_import() {
                     true => {
                         set_import_binding_access_level(self, binding, module_level);
@@ -85,6 +87,51 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
                     self.set_access_level_def_id(def_id, access_level);
                 }
             }
+
+            if let Some(binding) = name_resolution.borrow().binding() {
+                println!("ident: {}", key.ident.as_str());
+                if let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local()) {
+                    let tag = match binding.is_import() {
+                        true => AccessLevel::Exported,
+                        false => AccessLevel::Public,
+                    };
+                    let vis = match binding.vis {
+                        Visibility::Public => Visibility::Public,
+                        Visibility::Restricted(id) => Visibility::Restricted(id.expect_local())
+                    };
+                    self.update_effective_vis(def_id, vis, module_id, tag);
+                };
+            }
+        }
+    }
+
+    // fn init_crate_effective_vis(&mut self) {
+
+    // }
+
+    fn update_effective_vis(
+        &mut self,
+        current_id: LocalDefId,
+        current_vis: Visibility,
+        module_id: LocalDefId,
+        tag: AccessLevel,
+    ) {
+        if let Some(inherited_effective_vis) = self.r.access_levels.get_effective_vis(module_id) {
+            println!("tag: {:?}", tag);
+            println!("inherited effective vis: {:?}", inherited_effective_vis);
+            let mut current_effective_vis = self.r.access_levels.get_effective_vis(current_id).copied().unwrap_or_default();
+            let nearest_available_vis = inherited_effective_vis.nearest_available(tag).unwrap();
+            println!("nearest available vis: {:?}", nearest_available_vis);
+            let calculated_effective_vis = match current_vis {
+                Visibility::Public => nearest_available_vis,
+                Visibility::Restricted(_) => {
+                    if current_vis.is_at_least(nearest_available_vis, &*self.r) {nearest_available_vis} else {current_vis}
+                }
+            };
+            println!("calculated effective vis: {:?}", calculated_effective_vis);
+            current_effective_vis.update(calculated_effective_vis, tag, &*self.r);
+            println!("updated effective vis: {:?}", current_effective_vis);
+            self.r.access_levels.set_effective_vis(current_id, current_effective_vis);
         }
     }
 
