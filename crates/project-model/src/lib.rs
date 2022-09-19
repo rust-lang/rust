@@ -42,8 +42,8 @@ use rustc_hash::FxHashSet;
 pub use crate::{
     build_scripts::WorkspaceBuildScripts,
     cargo_workspace::{
-        CargoConfig, CargoWorkspace, Package, PackageData, PackageDependency, RustcSource, Target,
-        TargetData, TargetKind, UnsetTestCrates,
+        CargoConfig, CargoFeatures, CargoWorkspace, Package, PackageData, PackageDependency,
+        RustcSource, Target, TargetData, TargetKind, UnsetTestCrates,
     },
     manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},

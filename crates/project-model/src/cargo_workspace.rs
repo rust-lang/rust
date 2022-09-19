@@ -71,35 +71,41 @@ impl Default for UnsetTestCrates {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CargoFeatures {
+    All,
+    Selected {
+        /// List of features to activate.
+        features: Vec<String>,
+        /// Do not activate the `default` feature.
+        no_default_features: bool,
+    },
+}
+
+impl Default for CargoFeatures {
+    fn default() -> Self {
+        CargoFeatures::Selected { features: vec![], no_default_features: false }
+    }
+}
+
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CargoConfig {
-    /// Do not activate the `default` feature.
-    pub no_default_features: bool,
-
-    /// Activate all available features
-    pub all_features: bool,
-
     /// List of features to activate.
-    /// This will be ignored if `cargo_all_features` is true.
-    pub features: Vec<String>,
-
+    pub features: CargoFeatures,
     /// rustc target
     pub target: Option<String>,
-
     /// Don't load sysroot crates (`std`, `core` & friends). Might be useful
     /// when debugging isolated issues.
     pub no_sysroot: bool,
-
     /// rustc private crate source
     pub rustc_source: Option<RustcSource>,
-
     /// crates to disable `#[cfg(test)]` on
     pub unset_test_crates: UnsetTestCrates,
-
+    /// Invoke `cargo check` through the RUSTC_WRAPPER.
     pub wrap_rustc_in_build_scripts: bool,
-
+    /// The command to run instead of `cargo check` for building build scripts.
     pub run_build_script_command: Option<Vec<String>>,
-
+    /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, String>,
 }
 
@@ -143,7 +149,7 @@ pub struct PackageData {
     pub targets: Vec<Target>,
     /// Does this package come from the local filesystem (and is editable)?
     pub is_local: bool,
-    // Whether this package is a member of the workspace
+    /// Whether this package is a member of the workspace
     pub is_member: bool,
     /// List of packages this package depends on
     pub dependencies: Vec<PackageDependency>,
@@ -249,8 +255,8 @@ impl TargetKind {
     }
 }
 
+// Deserialize helper for the cargo metadata
 #[derive(Deserialize, Default)]
-// Deserialise helper for the cargo metadata
 struct PackageMetadata {
     #[serde(rename = "rust-analyzer")]
     rust_analyzer: Option<RustAnalyzerPackageMetaData>,
@@ -272,16 +278,19 @@ impl CargoWorkspace {
         let mut meta = MetadataCommand::new();
         meta.cargo_path(toolchain::cargo());
         meta.manifest_path(cargo_toml.to_path_buf());
-        if config.all_features {
-            meta.features(CargoOpt::AllFeatures);
-        } else {
-            if config.no_default_features {
-                // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
-                // https://github.com/oli-obk/cargo_metadata/issues/79
-                meta.features(CargoOpt::NoDefaultFeatures);
+        match &config.features {
+            CargoFeatures::All => {
+                meta.features(CargoOpt::AllFeatures);
             }
-            if !config.features.is_empty() {
-                meta.features(CargoOpt::SomeFeatures(config.features.clone()));
+            CargoFeatures::Selected { features, no_default_features } => {
+                if *no_default_features {
+                    // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
+                    // https://github.com/oli-obk/cargo_metadata/issues/79
+                    meta.features(CargoOpt::NoDefaultFeatures);
+                }
+                if !features.is_empty() {
+                    meta.features(CargoOpt::SomeFeatures(features.clone()));
+                }
             }
         }
         meta.current_dir(current_dir.as_os_str());
