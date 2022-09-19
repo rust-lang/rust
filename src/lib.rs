@@ -3,7 +3,6 @@
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
-#![feature(let_else)]
 #![feature(io_error_more)]
 #![feature(int_log)]
 #![feature(variant_count)]

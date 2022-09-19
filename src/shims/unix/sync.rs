@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
 use rustc_hir::LangItem;
-use rustc_middle::ty::{layout::TyAndLayout, query::TyCtxtAt, subst::Subst, Ty};
+use rustc_middle::ty::{layout::TyAndLayout, query::TyCtxtAt, Ty};
 
 use crate::concurrency::thread::Time;
 use crate::*;
