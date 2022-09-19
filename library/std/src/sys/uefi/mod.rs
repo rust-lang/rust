@@ -78,21 +78,22 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
 }
 
 pub fn abort_internal() -> ! {
-    // First try to use EFI_BOOT_SERVICES.Exit()
-    if let (Some(boot_services), Some(handle)) =
-        (common::get_boot_services(), uefi::env::image_handle())
-    {
-        let _ = unsafe {
-            ((*boot_services.as_ptr()).exit)(
-                handle.as_ptr(),
-                r_efi::efi::Status::ABORTED,
-                0,
-                crate::ptr::null_mut(),
-            )
-        };
+    if uefi::env::GLOBALS.is_completed() {
+        let handle = uefi::env::image_handle();
+        // First try to use EFI_BOOT_SERVICES.Exit()
+        if let Some(boot_services) = common::get_boot_services() {
+            let _ = unsafe {
+                ((*boot_services.as_ptr()).exit)(
+                    handle.as_ptr(),
+                    r_efi::efi::Status::ABORTED,
+                    0,
+                    crate::ptr::null_mut(),
+                )
+            };
+        }
     }
 
-    // In case SystemTable and SystemHandle cannot be reached, use `core::intrinsics::abort`
+    // In case SystemTable and ImageHandle cannot be reached, use `core::intrinsics::abort`
     core::intrinsics::abort();
 }
 

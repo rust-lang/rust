@@ -84,8 +84,7 @@ impl io::Read for Stdin {
                 return pipe::AnonPipe::new(None, None, pipe_protocol).read(buf);
             }
         }
-        let global_system_table =
-            uefi::env::system_table().ok_or(common::SYSTEM_TABLE_ERROR)?.cast();
+        let global_system_table = uefi::env::system_table().cast();
         let con_in = get_con_in(global_system_table)?;
         let con_out = get_con_out(global_system_table)?;
         let wait_for_event = get_wait_for_event()?;
@@ -138,8 +137,7 @@ impl io::Write for Stdout {
             }
         }
 
-        let global_system_table =
-            uefi::env::system_table().ok_or(common::SYSTEM_TABLE_ERROR)?.cast();
+        let global_system_table = uefi::env::system_table().cast();
         let con_out = get_con_out(global_system_table)?;
         unsafe { simple_text_output_write(con_out.as_ptr(), buf) }
     }
@@ -169,8 +167,7 @@ impl io::Write for Stderr {
                 return pipe::AnonPipe::new(None, None, pipe_protocol).write(buf);
             }
         }
-        let global_system_table =
-            uefi::env::system_table().ok_or(common::SYSTEM_TABLE_ERROR)?.cast();
+        let global_system_table = uefi::env::system_table().cast();
         let std_err = get_std_err(global_system_table)?;
         unsafe { simple_text_output_write(std_err.as_ptr(), buf) }
     }

@@ -310,7 +310,7 @@ mod uefi_command {
     impl Command {
         pub(crate) fn load_image(p: &OsStr) -> io::Result<Self> {
             let boot_services = common::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
-            let system_handle = uefi::env::image_handle().ok_or(common::IMAGE_HANDLE_ERROR)?;
+            let system_handle = uefi::env::image_handle();
             let mut path = super::super::path::device_path_from_os_str(p)?;
             let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
             let r = unsafe {

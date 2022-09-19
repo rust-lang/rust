@@ -182,12 +182,12 @@ pub fn exit(code: i32) -> ! {
         Err(_) => r_efi::efi::Status::ABORTED,
     };
 
+    let handle = uefi::env::image_handle().cast();
     // First try to use EFI_BOOT_SERVICES.Exit()
-    if let (Some(boot_services), Some(handle)) =
-        (common::get_boot_services(), uefi::env::image_handle())
-    {
-        let _ =
-            unsafe { ((*boot_services.as_ptr()).exit)(handle.as_ptr(), code, 0, [0].as_mut_ptr()) };
+    if let Some(boot_services) = common::get_boot_services() {
+        let _ = unsafe {
+            ((*boot_services.as_ptr()).exit)(handle.as_ptr(), code, 0, crate::ptr::null_mut())
+        };
     }
 
     // If exit is not possible, the call abort

@@ -12,15 +12,11 @@ pub(crate) const BOOT_SERVICES_ERROR: io::Error =
     const_io_error!(io::ErrorKind::Other, "failed to acquire boot services",);
 pub(crate) const RUNTIME_SERVICES_ERROR: io::Error =
     const_io_error!(io::ErrorKind::Other, "failed to acquire runtime services",);
-pub(crate) const SYSTEM_TABLE_ERROR: io::Error =
-    const_io_error!(io::ErrorKind::Other, "failed to acquire system table",);
-pub(crate) const IMAGE_HANDLE_ERROR: io::Error =
-    const_io_error!(io::ErrorKind::Other, "failed to acquire system handle",);
 
 /// Get the Protocol for current system handle.
 /// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
 pub(crate) fn get_current_handle_protocol<T>(protocol_guid: Guid) -> Option<NonNull<T>> {
-    let system_handle = uefi::env::image_handle()?;
+    let system_handle = uefi::env::image_handle();
     open_protocol(system_handle, protocol_guid).ok()
 }
 
@@ -240,7 +236,7 @@ pub(crate) fn open_protocol<T>(
     mut protocol_guid: Guid,
 ) -> io::Result<NonNull<T>> {
     let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
-    let system_handle = uefi::env::image_handle().ok_or(IMAGE_HANDLE_ERROR)?;
+    let system_handle = uefi::env::image_handle();
     let mut protocol: MaybeUninit<*mut T> = MaybeUninit::uninit();
 
     let r = unsafe {
@@ -469,14 +465,14 @@ where
 
 /// Get the BootServices Pointer.
 pub(crate) fn get_boot_services() -> Option<NonNull<r_efi::efi::BootServices>> {
-    let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table()?.cast();
+    let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table().cast();
     let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
     NonNull::new(boot_services)
 }
 
 /// Get the RuntimeServices Pointer.
 pub(crate) fn get_runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>> {
-    let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table()?.cast();
+    let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table().cast();
     let runtime_services = unsafe { (*system_table.as_ptr()).runtime_services };
     NonNull::new(runtime_services)
 }

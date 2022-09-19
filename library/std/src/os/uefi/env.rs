@@ -3,9 +3,11 @@
 use crate::ffi::c_void;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicPtr, Ordering};
+use crate::sync::Once;
 
 static GLOBAL_SYSTEM_TABLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
 static GLOBAL_IMAGE_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
+pub(crate) static GLOBALS: Once = Once::new();
 
 /// Initializes the global System Table and Image Handle pointers.
 ///
@@ -22,18 +24,22 @@ static GLOBAL_IMAGE_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_
 /// This function must not be called more than once.
 #[unstable(feature = "uefi_std", issue = "100499")]
 pub unsafe fn init_globals(handle: NonNull<c_void>, system_table: NonNull<c_void>) {
-    GLOBAL_SYSTEM_TABLE.store(system_table.as_ptr(), Ordering::Release);
-    GLOBAL_IMAGE_HANDLE.store(handle.as_ptr(), Ordering::Release);
+    GLOBALS.call_once(|| {
+        GLOBAL_SYSTEM_TABLE.store(system_table.as_ptr(), Ordering::Release);
+        GLOBAL_IMAGE_HANDLE.store(handle.as_ptr(), Ordering::Release);
+    })
 }
 
 /// Get the SystemTable Pointer.
 #[unstable(feature = "uefi_std", issue = "100499")]
-pub fn system_table() -> Option<NonNull<c_void>> {
-    NonNull::new(GLOBAL_SYSTEM_TABLE.load(Ordering::Acquire))
+pub fn system_table() -> NonNull<c_void> {
+    assert!(GLOBALS.is_completed());
+    unsafe { NonNull::new_unchecked(GLOBAL_SYSTEM_TABLE.load(Ordering::Acquire)) }
 }
 
 /// Get the SystemHandle Pointer.
 #[unstable(feature = "uefi_std", issue = "100499")]
-pub fn image_handle() -> Option<NonNull<c_void>> {
-    NonNull::new(GLOBAL_IMAGE_HANDLE.load(Ordering::Acquire))
+pub fn image_handle() -> NonNull<c_void> {
+    assert!(GLOBALS.is_completed());
+    unsafe { NonNull::new_unchecked(GLOBAL_IMAGE_HANDLE.load(Ordering::Acquire)) }
 }
