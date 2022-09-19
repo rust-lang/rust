@@ -22,7 +22,8 @@ use ide_db::{
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{
-    CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource, UnsetTestCrates,
+    CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource,
+    UnsetTestCrates,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de::DeserializeOwned, Deserialize};
@@ -90,7 +91,7 @@ config_data! {
         /// List of features to activate.
         ///
         /// Set this to `"all"` to pass `--all-features` to cargo.
-        cargo_features: CargoFeatures      = "[]",
+        cargo_features: CargoFeaturesDef      = "[]",
         /// Whether to pass `--no-default-features` to cargo.
         cargo_noDefaultFeatures: bool    = "false",
         /// Internal config for debugging, disables loading of sysroot crates.
@@ -114,7 +115,7 @@ config_data! {
         /// `#rust-analyzer.cargo.features#`.
         ///
         /// Set to `"all"` to pass `--all-features` to Cargo.
-        checkOnSave_features: Option<CargoFeatures>      = "null",
+        checkOnSave_features: Option<CargoFeaturesDef>      = "null",
         /// Whether to pass `--no-default-features` to Cargo. Defaults to
         /// `#rust-analyzer.cargo.noDefaultFeatures#`.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
@@ -1028,11 +1029,12 @@ impl Config {
         });
 
         CargoConfig {
-            no_default_features: self.data.cargo_noDefaultFeatures,
-            all_features: matches!(self.data.cargo_features, CargoFeatures::All),
             features: match &self.data.cargo_features {
-                CargoFeatures::All => vec![],
-                CargoFeatures::Listed(it) => it.clone(),
+                CargoFeaturesDef::All => CargoFeatures::All,
+                CargoFeaturesDef::Selected(features) => CargoFeatures::Selected {
+                    features: features.clone(),
+                    no_default_features: self.data.cargo_noDefaultFeatures,
+                },
             },
             target: self.data.cargo_target.clone(),
             no_sysroot: self.data.cargo_noSysroot,
@@ -1086,7 +1088,7 @@ impl Config {
                     .unwrap_or(self.data.cargo_noDefaultFeatures),
                 all_features: matches!(
                     self.data.checkOnSave_features.as_ref().unwrap_or(&self.data.cargo_features),
-                    CargoFeatures::All
+                    CargoFeaturesDef::All
                 ),
                 features: match self
                     .data
@@ -1094,8 +1096,8 @@ impl Config {
                     .clone()
                     .unwrap_or_else(|| self.data.cargo_features.clone())
                 {
-                    CargoFeatures::All => vec![],
-                    CargoFeatures::Listed(it) => it,
+                    CargoFeaturesDef::All => vec![],
+                    CargoFeaturesDef::Selected(it) => it,
                 },
                 extra_args: self.data.checkOnSave_extraArgs.clone(),
                 extra_env: self.check_on_save_extra_env(),
@@ -1564,10 +1566,10 @@ enum CallableCompletionDef {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
-enum CargoFeatures {
+enum CargoFeaturesDef {
     #[serde(deserialize_with = "de_unit_v::all")]
     All,
-    Listed(Vec<String>),
+    Selected(Vec<String>),
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1912,7 +1914,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Only show mutable reborrow hints."
             ]
         },
-        "CargoFeatures" => set! {
+        "CargoFeaturesDef" => set! {
             "anyOf": [
                 {
                     "type": "string",
@@ -1929,7 +1931,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 }
             ],
         },
-        "Option<CargoFeatures>" => set! {
+        "Option<CargoFeaturesDef>" => set! {
             "anyOf": [
                 {
                     "type": "string",

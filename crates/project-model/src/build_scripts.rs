@@ -15,7 +15,7 @@ use rustc_hash::FxHashMap;
 use semver::Version;
 use serde::Deserialize;
 
-use crate::{cfg_flag::CfgFlag, CargoConfig, CargoWorkspace, Package};
+use crate::{cfg_flag::CfgFlag, CargoConfig, CargoFeatures, CargoWorkspace, Package};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct WorkspaceBuildScripts {
@@ -49,7 +49,6 @@ impl WorkspaceBuildScripts {
 
         let mut cmd = Command::new(toolchain::cargo());
         cmd.envs(&config.extra_env);
-
         cmd.args(&["check", "--quiet", "--workspace", "--message-format=json"]);
 
         // --all-targets includes tests, benches and examples in addition to the
@@ -61,15 +60,18 @@ impl WorkspaceBuildScripts {
             cmd.args(&["--target", target]);
         }
 
-        if config.all_features {
-            cmd.arg("--all-features");
-        } else {
-            if config.no_default_features {
-                cmd.arg("--no-default-features");
+        match &config.features {
+            CargoFeatures::All => {
+                cmd.arg("--all-features");
             }
-            if !config.features.is_empty() {
-                cmd.arg("--features");
-                cmd.arg(config.features.join(" "));
+            CargoFeatures::Selected { features, no_default_features } => {
+                if *no_default_features {
+                    cmd.arg("--no-default-features");
+                }
+                if !features.is_empty() {
+                    cmd.arg("--features");
+                    cmd.arg(features.join(" "));
+                }
             }
         }
 
