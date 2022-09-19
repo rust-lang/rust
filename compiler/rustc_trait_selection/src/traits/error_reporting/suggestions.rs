@@ -2714,12 +2714,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         Some(t) if t.hir_owner == parent_id => t,
                         _ => self.tcx.typeck(parent_id),
                     };
-                    let ty = typeck_results.expr_ty_adjusted(expr);
-                    let span = expr.peel_blocks().span;
+                    let expr = expr.peel_blocks();
+                    let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error());
+                    let span = expr.span;
                     if Some(span) != err.span.primary_span() {
                         err.span_label(
                             span,
-                            &if ty.references_error() {
+                            if ty.references_error() {
                                 String::new()
                             } else {
                                 format!("this tail expression is of type `{:?}`", ty)
