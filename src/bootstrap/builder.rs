@@ -708,6 +708,7 @@ impl<'a> Builder<'a> {
             Kind::Dist => describe!(
                 dist::Docs,
                 dist::RustcDocs,
+                dist::JsonDocs,
                 dist::Mingw,
                 dist::Rustc,
                 dist::Std,

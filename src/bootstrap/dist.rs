@@ -87,6 +87,45 @@ impl Step for Docs {
     }
 }
 
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct JsonDocs {
+    pub host: TargetSelection,
+}
+
+impl Step for JsonDocs {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let default = run.builder.config.docs;
+        run.alias("rust-json-docs").default_condition(default)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(JsonDocs { host: run.target });
+    }
+
+    /// Builds the `rust-json-docs` installer component.
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        // This prevents JSON docs from being built for "dist" or "install"
+        // on the stable/beta channels. The JSON format is not stable yet and
+        // should not be included in stable/beta toolchains.
+        if !builder.build.unstable_features() {
+            return None;
+        }
+
+        let host = self.host;
+        builder.ensure(crate::doc::JsonStd { stage: builder.top_stage, target: host });
+
+        let dest = "share/doc/rust/json";
+
+        let mut tarball = Tarball::new(builder, "rust-json-docs", &host.triple);
+        tarball.set_product_name("Rust Documentation In JSON Format");
+        tarball.add_bulk_dir(&builder.json_doc_out(host), dest);
+        Some(tarball.generate())
+    }
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustcDocs {
     pub host: TargetSelection,
