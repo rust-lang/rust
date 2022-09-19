@@ -1346,7 +1346,7 @@ impl<T: ?Sized> Deref for Ref<'_, T> {
 impl<T: ?Sized> crate::convert::AsRef<T> for Ref<'_, T> {
     #[inline]
     fn as_ref(&self) -> &T {
-        &self
+        self
     }
 }
 
@@ -1354,7 +1354,7 @@ impl<T: ?Sized> crate::convert::AsRef<T> for Ref<'_, T> {
 impl<T: ?Sized> crate::borrow::Borrow<T> for Ref<'_, T> {
     #[inline]
     fn borrow(&self) -> &T {
-        &self
+        self
     }
 }
 
@@ -1753,7 +1753,15 @@ impl<T: ?Sized> DerefMut for RefMut<'_, T> {
 impl<T: ?Sized> crate::convert::AsRef<T> for RefMut<'_, T> {
     #[inline]
     fn as_ref(&self) -> &T {
-        &self
+        self
+    }
+}
+
+#[stable(feature = "borrow_ref", since = "1.65.0")]
+impl<T: ?Sized> crate::convert::AsMut<T> for RefMut<'_, T> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut T {
+        self
     }
 }
 
@@ -1761,7 +1769,15 @@ impl<T: ?Sized> crate::convert::AsRef<T> for RefMut<'_, T> {
 impl<T: ?Sized> crate::borrow::Borrow<T> for RefMut<'_, T> {
     #[inline]
     fn borrow(&self) -> &T {
-        &self
+        self
+    }
+}
+
+#[stable(feature = "borrow_ref", since = "1.65.0")]
+impl<T: ?Sized> crate::borrow::BorrowMut<T> for RefMut<'_, T> {
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut T {
+        self
     }
 }
 
