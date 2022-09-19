@@ -20,7 +20,6 @@ Libraries
 ---------
 - [Remove restrictions on compare-exchange memory ordering.](https://github.com/rust-lang/rust/pull/98383/)
 - You can now `write!` or `writeln!` into an `OsString`: [Implement `fmt::Write` for `OsString`](https://github.com/rust-lang/rust/pull/97915/)
-- [Enforce that layout size fits in isize in Layout](https://github.com/rust-lang/rust/pull/95295/)
 - [Make RwLockReadGuard covariant](https://github.com/rust-lang/rust/pull/96820/)
 - [Implement `FusedIterator` for `std::net::[Into]Incoming`](https://github.com/rust-lang/rust/pull/97300/)
 - [`impl<T: AsRawFd> AsRawFd for {Arc,Box}<T>`](https://github.com/rust-lang/rust/pull/97437/)
