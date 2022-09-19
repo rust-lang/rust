@@ -7,7 +7,7 @@ pub struct Error;
 // @has 'foo/trait.Write.html'
 
 pub trait Write {
-    // @snapshot 'declaration' - '//*[@class="docblock item-decl"]//code'
+    // @snapshot 'declaration' - '//*[@class="item-decl"]//code'
     fn poll_write(
         self: Option<String>,
         cx: &mut Option<String>,
