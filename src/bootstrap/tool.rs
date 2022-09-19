@@ -796,6 +796,7 @@ macro_rules! tool_extended {
        $tool_name:expr,
        stable = $stable:expr
        $(,tool_std = $tool_std:literal)?
+       $(,add_to_sysroot = $add_to_sysroot:literal)?
        ;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -838,7 +839,7 @@ macro_rules! tool_extended {
 
             #[allow(unused_mut)]
             fn run(mut $sel, $builder: &Builder<'_>) -> Option<PathBuf> {
-                $builder.ensure(ToolBuild {
+                let tool = $builder.ensure(ToolBuild {
                     compiler: $sel.compiler,
                     target: $sel.target,
                     tool: $tool_name,
@@ -847,7 +848,18 @@ macro_rules! tool_extended {
                     extra_features: $sel.extra_features,
                     is_optional_tool: true,
                     source_type: SourceType::InTree,
-                })
+                })?;
+
+                if (false $(|| $add_to_sysroot)?) && $sel.compiler.stage > 0 {
+                    let bin_dir = $builder.sysroot($sel.compiler).join("bin");
+                    t!(fs::create_dir_all(&bin_dir));
+                    let bin_tool = bin_dir.join(exe($tool_name, $sel.compiler.host));
+                    let _ = fs::remove_file(&bin_tool);
+                    $builder.copy(&tool, &bin_tool);
+                    Some(bin_tool)
+                } else {
+                    Some(tool)
+                }
             }
         }
         )+
@@ -859,17 +871,17 @@ macro_rules! tool_extended {
 // Note: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
 // invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
-    Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;
-    CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true;
-    Clippy, "src/tools/clippy", "clippy-driver", stable=true;
-    Miri, "src/tools/miri", "miri", stable=false;
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=true;
+    Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true, add_to_sysroot=true;
+    CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true, add_to_sysroot=true;
+    Clippy, "src/tools/clippy", "clippy-driver", stable=true, add_to_sysroot=true;
+    Miri, "src/tools/miri", "miri", stable=false, add_to_sysroot=true;
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, add_to_sysroot=true;
     // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
     // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
     // and this is close enough for now.
     Rls, "src/tools/rls", "rls", stable=true, tool_std=true;
     RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, tool_std=true;
-    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true;
+    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_to_sysroot=true;
 );
 
 impl<'a> Builder<'a> {
