@@ -12,6 +12,7 @@
 // ignore-pretty issue #37195
 // ignore-emscripten spawning processes is not supported
 // ignore-sgx no processes
+// ignore-fuchsia Backtrace not symbolized, trace different line alignment
 
 use std::env;
 
