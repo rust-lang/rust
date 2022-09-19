@@ -81,7 +81,6 @@ impl<'tcx> Const<'tcx> {
                 kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: def.to_global(),
                     substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
-                    promoted: (),
                 }),
                 ty,
             }),

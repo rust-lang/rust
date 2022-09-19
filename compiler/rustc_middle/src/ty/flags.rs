@@ -313,7 +313,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_unevaluated_const<P>(&mut self, ct: ty::Unevaluated<'_, P>) {
+    fn add_unevaluated_const(&mut self, ct: ty::Unevaluated<'_>) {
         self.add_substs(ct.substs);
         self.add_flags(TypeFlags::HAS_CT_PROJECTION);
     }

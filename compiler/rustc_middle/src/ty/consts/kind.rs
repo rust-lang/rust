@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
+use crate::mir;
 use crate::mir::interpret::{AllocId, ConstValue, Scalar};
-use crate::mir::Promoted;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
 use crate::ty::{self, TyCtxt, TypeVisitable};
@@ -12,13 +12,12 @@ use rustc_target::abi::Size;
 
 use super::ScalarInt;
 
-/// An unevaluated, potentially generic, constant.
+/// An unevaluated (potentially generic) constant used in the type-system.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable)]
-pub struct Unevaluated<'tcx, P = Option<Promoted>> {
+pub struct Unevaluated<'tcx> {
     pub def: ty::WithOptConstParam<DefId>,
     pub substs: SubstsRef<'tcx>,
-    pub promoted: P,
 }
 
 impl rustc_errors::IntoDiagnosticArg for Unevaluated<'_> {
@@ -29,23 +28,15 @@ impl rustc_errors::IntoDiagnosticArg for Unevaluated<'_> {
 
 impl<'tcx> Unevaluated<'tcx> {
     #[inline]
-    pub fn shrink(self) -> Unevaluated<'tcx, ()> {
-        debug_assert_eq!(self.promoted, None);
-        Unevaluated { def: self.def, substs: self.substs, promoted: () }
+    pub fn expand(self) -> mir::Unevaluated<'tcx> {
+        mir::Unevaluated { def: self.def, substs: self.substs, promoted: None }
     }
 }
 
-impl<'tcx> Unevaluated<'tcx, ()> {
+impl<'tcx> Unevaluated<'tcx> {
     #[inline]
-    pub fn expand(self) -> Unevaluated<'tcx> {
-        Unevaluated { def: self.def, substs: self.substs, promoted: None }
-    }
-}
-
-impl<'tcx, P: Default> Unevaluated<'tcx, P> {
-    #[inline]
-    pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx, P> {
-        Unevaluated { def, substs, promoted: Default::default() }
+    pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx> {
+        Unevaluated { def, substs }
     }
 }
 
@@ -67,7 +58,7 @@ pub enum ConstKind<'tcx> {
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
     /// variants when the code is monomorphic enough for that.
-    Unevaluated(Unevaluated<'tcx, ()>),
+    Unevaluated(Unevaluated<'tcx>),
 
     /// Used to hold computed value.
     Value(ty::ValTree<'tcx>),
@@ -185,8 +176,6 @@ impl<'tcx> ConstKind<'tcx> {
         if let ConstKind::Unevaluated(unevaluated) = self {
             use crate::mir::interpret::ErrorHandled;
 
-            assert_eq!(unevaluated.promoted, ());
-
             // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
             // also does later, but we want to do it before checking for
             // inference variables.
@@ -207,7 +196,6 @@ impl<'tcx> ConstKind<'tcx> {
                 tcx.param_env(unevaluated.def.did).and(ty::Unevaluated {
                     def: unevaluated.def,
                     substs: InternalSubsts::identity_for_item(tcx, unevaluated.def.did),
-                    promoted: (),
                 })
             } else {
                 param_env_and
