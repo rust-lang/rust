@@ -1,0 +1,74 @@
+error: suffixes on a string literal are invalid
+  --> $DIR/literals.rs:15:9
+   |
+LL | #[doc = "documentation"suffix]
+   |         ^^^^^^^^^^^^^^^^^^^^^ invalid suffix `suffix`
+
+error: suffixes on a string literal are invalid
+  --> $DIR/literals.rs:26:9
+   |
+LL |         "abc"suffix,
+   |         ^^^^^^^^^^^ invalid suffix `suffix`
+
+error: suffixes on a string literal are invalid
+  --> $DIR/literals.rs:27:9
+   |
+LL |         "blah"foo,
+   |         ^^^^^^^^^ invalid suffix `foo`
+
+error: invalid width `33` for integer literal
+  --> $DIR/literals.rs:28:9
+   |
+LL |         3u33,
+   |         ^^^^
+   |
+   = help: valid widths are 8, 16, 32, 64 and 128
+
+error: suffixes on a string literal are invalid
+  --> $DIR/literals.rs:31:27
+   |
+LL |     let x = concat_bytes!("foo"blah, 3u33);
+   |                           ^^^^^^^^^ invalid suffix `blah`
+
+error: invalid width `33` for integer literal
+  --> $DIR/literals.rs:31:38
+   |
+LL |     let x = concat_bytes!("foo"blah, 3u33);
+   |                                      ^^^^
+   |
+   = help: valid widths are 8, 16, 32, 64 and 128
+
+error: integer literal is too large
+  --> $DIR/literals.rs:8:14
+   |
+LL | #[repr(align(340282366920938463463374607431768211456))]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid width `7` for integer literal
+  --> $DIR/literals.rs:12:14
+   |
+LL | #[repr(align(4u7))]
+   |              ^^^
+   |
+   = help: valid widths are 8, 16, 32, 64 and 128
+
+error: invalid width `7` for integer literal
+  --> $DIR/literals.rs:21:15
+   |
+LL | #[doc(alias = 0u7)]
+   |               ^^^
+   |
+   = help: valid widths are 8, 16, 32, 64 and 128
+
+error: attribute must be of the form `#[doc(hidden|inline|...)]` or `#[doc = "string"]`
+  --> $DIR/literals.rs:15:1
+   |
+LL | #[doc = "documentation"suffix]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+
+error: aborting due to 10 previous errors
+
