@@ -964,6 +964,7 @@ impl Step for RustdocGUI {
                     .arg("doc")
                     .arg("--target-dir")
                     .arg(&out_dir)
+                    .env("RUSTC_BOOTSTRAP", "1")
                     .env("RUSTDOC", builder.rustdoc(self.compiler))
                     .env("RUSTC", builder.rustc(self.compiler))
                     .current_dir(path);
@@ -1699,6 +1700,8 @@ impl BookTest {
 
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
         let path = builder.src.join(&self.path);
+        // Books often have feature-gated example text.
+        rustbook_cmd.env("RUSTC_BOOTSTRAP", "1");
         rustbook_cmd.env("PATH", new_path).arg("test").arg(path);
         builder.add_rust_test_threads(&mut rustbook_cmd);
         builder.info(&format!("Testing rustbook {}", self.path.display()));

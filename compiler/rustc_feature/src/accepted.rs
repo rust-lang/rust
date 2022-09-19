@@ -162,7 +162,7 @@ declare_features! (
     /// Allows capturing variables in scope using format_args!
     (accepted, format_args_capture, "1.58.0", Some(67984), None),
     /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
-    (accepted, generic_associated_types, "CURRENT_RUSTC_VERSION", Some(44265), None),
+    (accepted, generic_associated_types, "1.65.0", Some(44265), None),
     /// Allows attributes on lifetime/type formal parameters in generics (RFC 1327).
     (accepted, generic_param_attrs, "1.27.0", Some(48848), None),
     /// Allows the `#[global_allocator]` attribute.
@@ -189,9 +189,9 @@ declare_features! (
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
     /// Allows `'a: { break 'a; }`.
-    (accepted, label_break_value, "CURRENT_RUSTC_VERSION", Some(48594), None),
+    (accepted, label_break_value, "1.65.0", Some(48594), None),
     /// Allows `let...else` statements.
-    (accepted, let_else, "CURRENT_RUSTC_VERSION", Some(87335), None),
+    (accepted, let_else, "1.65.0", Some(87335), None),
     /// Allows `break {expr}` with a value inside `loop`s.
     (accepted, loop_break_value, "1.19.0", Some(37339), None),
     /// Allows use of `?` as the Kleene "at most one" operator in macros.
