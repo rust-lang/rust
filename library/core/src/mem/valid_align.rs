@@ -1,5 +1,4 @@
 use crate::convert::TryFrom;
-use crate::intrinsics::assert_unsafe_precondition;
 use crate::num::NonZeroUsize;
 use crate::{cmp, fmt, hash, mem, num};
 
@@ -27,8 +26,7 @@ impl ValidAlign {
     /// It must *not* be zero.
     #[inline]
     pub(crate) const unsafe fn new_unchecked(align: usize) -> Self {
-        // SAFETY: Precondition passed to the caller.
-        unsafe { assert_unsafe_precondition!(align.is_power_of_two()) };
+        debug_assert!(align.is_power_of_two());
 
         // SAFETY: By precondition, this must be a power of two, and
         // our variants encompass all possible powers of two.
@@ -47,13 +45,6 @@ impl ValidAlign {
     #[inline]
     pub(crate) fn log2(self) -> u32 {
         self.as_nonzero().trailing_zeros()
-    }
-
-    /// Returns the alignment for a type.
-    #[inline]
-    pub(crate) fn of<T>() -> Self {
-        // SAFETY: rustc ensures that type alignment is always a power of two.
-        unsafe { ValidAlign::new_unchecked(mem::align_of::<T>()) }
     }
 }
 
