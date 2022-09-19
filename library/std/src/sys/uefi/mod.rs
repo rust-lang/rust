@@ -48,7 +48,7 @@ pub mod memchr {
     pub use core::slice::memchr::{memchr, memrchr};
 }
 
-pub fn init(_argc: isize, _argv: *const *const u8) {}
+pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
