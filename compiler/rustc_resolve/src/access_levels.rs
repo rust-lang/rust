@@ -12,7 +12,6 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::{DefIdTree, Visibility};
-use rustc_span::sym;
 
 pub struct AccessLevelsVisitor<'r, 'a> {
     r: &'r mut Resolver<'a>,
@@ -156,16 +155,15 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
 
             // Foreign modules inherit level from parents.
             ast::ItemKind::ForeignMod(..) => {
-                let parent_level =
-                    self.r.access_levels.get_access_level(self.r.local_parent(def_id));
-                self.set_access_level(item.id, parent_level);
+                let parent_id = self.r.local_parent(def_id);
+                self.update_effective_vis(def_id, Visibility::Public, parent_id, AccessLevel::Public);
             }
 
             // Only exported `macro_rules!` items are public, but they always are
             ast::ItemKind::MacroDef(ref macro_def) if macro_def.macro_rules => {
-                if item.attrs.iter().any(|attr| attr.has_name(sym::macro_export)) {
-                    self.set_access_level(item.id, Some(AccessLevel::Public));
-                }
+                let parent_id = self.r.local_parent(def_id);
+                let vis = self.r.visibilities.get(&def_id).unwrap().clone();
+                self.update_effective_vis(def_id, vis, parent_id, AccessLevel::Public);
             }
 
             ast::ItemKind::Mod(..) => {
@@ -177,19 +175,24 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
                 self.set_bindings_access_level(def_id);
                 for variant in variants {
                     let variant_def_id = self.r.local_def_id(variant.id);
-                    let variant_level = self.r.access_levels.get_access_level(variant_def_id);
                     for field in variant.data.fields() {
-                        self.set_access_level(field.id, variant_level);
+                        let field_def_id = self.r.local_def_id(field.id);
+                        let vis = self.r.visibilities.get(&field_def_id).unwrap().clone();
+                        self.update_effective_vis(
+                            field_def_id,
+                            vis,
+                            variant_def_id,
+                            AccessLevel::Public,
+                        );
                     }
                 }
             }
 
             ast::ItemKind::Struct(ref def, _) | ast::ItemKind::Union(ref def, _) => {
-                let inherited_level = self.r.access_levels.get_access_level(def_id);
                 for field in def.fields() {
-                    if field.vis.kind.is_pub() {
-                        self.set_access_level(field.id, inherited_level);
-                    }
+                    let field_def_id = self.r.local_def_id(field.id);
+                    let vis = self.r.visibilities.get(&field_def_id).unwrap();
+                    self.update_effective_vis(field_def_id, *vis, def_id, AccessLevel::Public);
                 }
             }
 
