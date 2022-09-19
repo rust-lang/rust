@@ -186,7 +186,7 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     /// Create a new `Context` from a [`&Waker`](Waker).
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_waker", issue = "none")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     #[must_use]
     #[inline]
     pub const fn from_waker(waker: &'a Waker) -> Self {
@@ -195,7 +195,7 @@ impl<'a> Context<'a> {
 
     /// Returns a reference to the [`Waker`] for the current task.
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_waker", issue = "none")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     #[must_use]
     #[inline]
     pub const fn waker(&self) -> &'a Waker {
@@ -313,7 +313,7 @@ impl Waker {
     #[inline]
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_waker", issue = "none")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const unsafe fn from_raw(waker: RawWaker) -> Waker {
         Waker { waker }
     }
