@@ -1,7 +1,7 @@
 //! A pass that checks to make sure private fields and methods aren't used
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
-use crate::ty::{Visibility, DefIdTree};
+use crate::ty::{DefIdTree, Visibility};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
@@ -60,7 +60,12 @@ impl EffectiveVisibility {
     }
 
     pub fn nearest_available(&self, tag: AccessLevel) -> Option<Visibility> {
-        for level in [AccessLevel::ReachableFromImplTrait, AccessLevel::Reachable, AccessLevel::Exported, AccessLevel::Public] {
+        for level in [
+            AccessLevel::ReachableFromImplTrait,
+            AccessLevel::Reachable,
+            AccessLevel::Exported,
+            AccessLevel::Public,
+        ] {
             if (level <= tag) && self.get(tag).is_some() {
                 return self.get(tag).cloned();
             }

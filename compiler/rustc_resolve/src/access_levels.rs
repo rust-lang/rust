@@ -56,17 +56,31 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
                     if this.r.opt_local_def_id(import.id).is_some() {
                         let vis = match binding.vis {
                             Visibility::Public => Visibility::Public,
-                            Visibility::Restricted(id) => Visibility::Restricted(id.expect_local())
+                            Visibility::Restricted(id) => Visibility::Restricted(id.expect_local()),
                         };
-                        this.update_effective_vis(this.r.local_def_id(import.id), vis, parent_id, AccessLevel::Exported);
+                        this.update_effective_vis(
+                            this.r.local_def_id(import.id),
+                            vis,
+                            parent_id,
+                            AccessLevel::Exported,
+                        );
                         if let ImportKind::Single { additional_ids, .. } = import.kind {
-
                             if let Some(id) = this.r.opt_local_def_id(additional_ids.0) {
-                                this.update_effective_vis(id, vis, parent_id, AccessLevel::Exported);
+                                this.update_effective_vis(
+                                    id,
+                                    vis,
+                                    parent_id,
+                                    AccessLevel::Exported,
+                                );
                             }
 
                             if let Some(id) = this.r.opt_local_def_id(additional_ids.1) {
-                                this.update_effective_vis(id, vis, parent_id, AccessLevel::Exported);
+                                this.update_effective_vis(
+                                    id,
+                                    vis,
+                                    parent_id,
+                                    AccessLevel::Exported,
+                                );
                             }
                         }
 
@@ -76,8 +90,8 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
                 }
             };
 
-            let module = self.r.get_module(module_id.to_def_id()).unwrap();
-            let resolutions = self.r.resolutions(module);
+        let module = self.r.get_module(module_id.to_def_id()).unwrap();
+        let resolutions = self.r.resolutions(module);
 
         for (.., name_resolution) in resolutions.borrow().iter() {
             if let Some(binding) = name_resolution.borrow().binding() {
@@ -87,8 +101,8 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
                             set_import_binding_access_level(self, binding, module_id);
                         }
                         AccessLevel::Exported
-                    },
-                    false => AccessLevel::Public
+                    }
+                    false => AccessLevel::Public,
                 };
 
                 if let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local()) && !binding.is_ambiguity(){
@@ -110,7 +124,8 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
         tag: AccessLevel,
     ) {
         if let Some(inherited_effective_vis) = self.r.access_levels.get_effective_vis(module_id) {
-            let mut current_effective_vis = self.r.access_levels.get_effective_vis(current_id).copied().unwrap_or_default();
+            let mut current_effective_vis =
+                self.r.access_levels.get_effective_vis(current_id).copied().unwrap_or_default();
             let current_effective_vis_copy = current_effective_vis.clone();
             for level in [
                 AccessLevel::Public,
@@ -119,11 +134,16 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
                 AccessLevel::ReachableFromImplTrait,
             ] {
                 if level <= tag {
-                    let nearest_available_vis = inherited_effective_vis.nearest_available(level).unwrap();
+                    let nearest_available_vis =
+                        inherited_effective_vis.nearest_available(level).unwrap();
                     let calculated_effective_vis = match current_vis {
                         Visibility::Public => nearest_available_vis,
                         Visibility::Restricted(_) => {
-                            if current_vis.is_at_least(nearest_available_vis, &*self.r) {nearest_available_vis} else {current_vis}
+                            if current_vis.is_at_least(nearest_available_vis, &*self.r) {
+                                nearest_available_vis
+                            } else {
+                                current_vis
+                            }
                         }
                     };
                     current_effective_vis.update(calculated_effective_vis, level, &*self.r);
@@ -169,7 +189,12 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
             // Foreign modules inherit level from parents.
             ast::ItemKind::ForeignMod(..) => {
                 let parent_id = self.r.local_parent(def_id);
-                self.update_effective_vis(def_id, Visibility::Public, parent_id, AccessLevel::Public);
+                self.update_effective_vis(
+                    def_id,
+                    Visibility::Public,
+                    parent_id,
+                    AccessLevel::Public,
+                );
             }
 
             // Only exported `macro_rules!` items are public, but they always are
