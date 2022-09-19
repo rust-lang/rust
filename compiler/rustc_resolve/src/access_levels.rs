@@ -69,7 +69,6 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
         let resolutions = self.r.resolutions(module);
 
         for (.., name_resolution) in resolutions.borrow().iter() {
-
             if let Some(binding) = name_resolution.borrow().binding() {
                 let tag = match binding.is_import() {
                     true => {
@@ -101,16 +100,24 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
     ) {
         if let Some(inherited_effective_vis) = self.r.access_levels.get_effective_vis(module_id) {
             let mut current_effective_vis = self.r.access_levels.get_effective_vis(current_id).copied().unwrap_or_default();
-            let nearest_available_vis = inherited_effective_vis.nearest_available(tag).unwrap();
-            let calculated_effective_vis = match current_vis {
-                Visibility::Public => nearest_available_vis,
-                Visibility::Restricted(_) => {
-                    if current_vis.is_at_least(nearest_available_vis, &*self.r) {nearest_available_vis} else {current_vis}
-                }
-            };
             let current_effective_vis_copy = current_effective_vis.clone();
-            current_effective_vis.update(calculated_effective_vis, tag, &*self.r);
-
+            for level in [
+                AccessLevel::Public,
+                AccessLevel::Exported,
+                AccessLevel::Reachable,
+                AccessLevel::ReachableFromImplTrait,
+            ] {
+                if level <= tag {
+                    let nearest_available_vis = inherited_effective_vis.nearest_available(level).unwrap();
+                    let calculated_effective_vis = match current_vis {
+                        Visibility::Public => nearest_available_vis,
+                        Visibility::Restricted(_) => {
+                            if current_vis.is_at_least(nearest_available_vis, &*self.r) {nearest_available_vis} else {current_vis}
+                        }
+                    };
+                    current_effective_vis.update(calculated_effective_vis, level, &*self.r);
+                }
+            }
             if current_effective_vis_copy != current_effective_vis {
                 self.changed = true;
                 self.r.access_levels.set_effective_vis(current_id, current_effective_vis);
