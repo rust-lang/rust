@@ -15,7 +15,7 @@ use crate::ops::Try;
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Fuse<I> {
-    // NOTE: for `I: FusedIterator`, we never bother setting `None`, but
+    // NOTE: for `I: TrustedFusedIterator`, we never bother setting `None`, but
     // we still have to be prepared for that state due to variance.
     // See rust-lang/rust#85863
     iter: Option<I>,
@@ -25,6 +25,14 @@ impl<I> Fuse<I> {
         Fuse { iter: Some(iter) }
     }
 }
+
+// Safety: only implemented by core::iter::Fuse to specialize on nested Fuse<Fuse<...>>
+#[rustc_unsafe_specialization_marker]
+unsafe trait TrustedFusedIterator: Iterator {}
+
+// Fuse properly fuses iterators when it's specialized on this trait
+// only if that specialization is correct is this impl correct
+unsafe impl<I> TrustedFusedIterator for Fuse<I> where I: Iterator {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Fuse<I> where I: Iterator {}
@@ -330,7 +338,7 @@ where
 #[doc(hidden)]
 impl<I> FuseImpl<I> for Fuse<I>
 where
-    I: FusedIterator,
+    I: TrustedFusedIterator,
 {
     #[inline]
     fn next(&mut self) -> Option<<I as Iterator>::Item> {

@@ -3,17 +3,15 @@ use crate::iter::Step;
 /// An iterator that always continues to yield `None` when exhausted.
 ///
 /// Calling next on a fused iterator that has returned `None` once is guaranteed
-/// to return [`None`] again. This trait should be implemented by all iterators
-/// that behave this way because it allows optimizing [`Iterator::fuse()`].
+/// to return [`None`] again.
 ///
 /// Note: In general, you should not use `FusedIterator` in generic bounds if
 /// you need a fused iterator. Instead, you should just call [`Iterator::fuse()`]
-/// on the iterator. If the iterator is already fused, the additional [`Fuse`]
+/// on the iterator. If the iterator is already a [`Fuse`], the additional [`Fuse`]
 /// wrapper will be a no-op with no performance penalty.
 ///
 /// [`Fuse`]: crate::iter::Fuse
 #[stable(feature = "fused", since = "1.26.0")]
-#[rustc_unsafe_specialization_marker]
 pub trait FusedIterator: Iterator {}
 
 #[stable(feature = "fused", since = "1.26.0")]
