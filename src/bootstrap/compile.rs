@@ -1099,10 +1099,11 @@ impl Step for Sysroot {
     /// 1-3.
     fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
         let compiler = self.compiler;
+        let host_dir = builder.out.join(&compiler.host.triple);
         let sysroot = if compiler.stage == 0 {
-            builder.out.join(&compiler.host.triple).join("stage0-sysroot")
+            host_dir.join("stage0-sysroot")
         } else {
-            builder.out.join(&compiler.host.triple).join(format!("stage{}", compiler.stage))
+            host_dir.join(format!("stage{}", compiler.stage))
         };
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
@@ -1113,6 +1114,11 @@ impl Step for Sysroot {
                 builder.config.build, compiler.host,
                 "Cross-compiling is not yet supported with `download-rustc`",
             );
+
+            // #102002, cleanup stage1 and stage0-sysroot folders when using download-rustc
+            let _ = fs::remove_dir_all(host_dir.join("stage1"));
+            let _ = fs::remove_dir_all(host_dir.join("stage0-sysroot"));
+
             // Copy the compiler into the correct sysroot.
             let ci_rustc_dir =
                 builder.config.out.join(&*builder.config.build.triple).join("ci-rustc");
