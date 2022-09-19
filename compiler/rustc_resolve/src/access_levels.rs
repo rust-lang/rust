@@ -7,7 +7,6 @@ use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
 use rustc_ast::Crate;
 use rustc_ast::EnumDef;
-use rustc_ast::NodeId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::privacy::AccessLevel;
@@ -45,35 +44,47 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
     /// This will also follow `use` chains (see PrivacyVisitor::set_import_binding_access_level).
     fn set_bindings_access_level(&mut self, module_id: LocalDefId) {
         assert!(self.r.module_map.contains_key(&&module_id.to_def_id()));
-        let module_level = self.r.access_levels.get_access_level(module_id);
+
         // Set the given binding access level to `AccessLevel::Public` and
         // sets the rest of the `use` chain to `AccessLevel::Exported` until
         // we hit the actual exported item.
         let set_import_binding_access_level =
-            |this: &mut Self, mut binding: &NameBinding<'a>, mut access_level| {
+            |this: &mut Self, mut binding: &NameBinding<'a>, mut parent_id| {
                 while let NameBindingKind::Import { binding: nested_binding, import, .. } =
                     binding.kind
                 {
-                    this.set_access_level(import.id, access_level);
-                    if let ImportKind::Single { additional_ids, .. } = import.kind {
-                        this.set_access_level(additional_ids.0, access_level);
-                        this.set_access_level(additional_ids.1, access_level);
-                    }
+                    if this.r.opt_local_def_id(import.id).is_some() {
+                        let vis = match binding.vis {
+                            Visibility::Public => Visibility::Public,
+                            Visibility::Restricted(id) => Visibility::Restricted(id.expect_local())
+                        };
+                        this.update_effective_vis(this.r.local_def_id(import.id), vis, parent_id, AccessLevel::Exported);
+                        if let ImportKind::Single { additional_ids, .. } = import.kind {
 
-                    access_level = Some(AccessLevel::Exported);
+                            if let Some(id) = this.r.opt_local_def_id(additional_ids.0) {
+                                this.update_effective_vis(id, vis, parent_id, AccessLevel::Exported);
+                            }
+
+                            if let Some(id) = this.r.opt_local_def_id(additional_ids.1) {
+                                this.update_effective_vis(id, vis, parent_id, AccessLevel::Exported);
+                            }
+                        }
+
+                        parent_id = this.r.local_def_id(import.id);
+                    }
                     binding = nested_binding;
                 }
             };
 
-        let module = self.r.get_module(module_id.to_def_id()).unwrap();
-        let resolutions = self.r.resolutions(module);
+            let module = self.r.get_module(module_id.to_def_id()).unwrap();
+            let resolutions = self.r.resolutions(module);
 
         for (.., name_resolution) in resolutions.borrow().iter() {
             if let Some(binding) = name_resolution.borrow().binding() {
                 let tag = match binding.is_import() {
                     true => {
-                        if binding.vis.is_public() && !binding.is_ambiguity() && module_level.is_some() {
-                            set_import_binding_access_level(self, binding, module_level);
+                        if !binding.is_ambiguity() {
+                            set_import_binding_access_level(self, binding, module_id);
                         }
                         AccessLevel::Exported
                     },
@@ -123,16 +134,6 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
                 self.r.access_levels.set_effective_vis(current_id, current_effective_vis);
             }
         }
-    }
-
-    /// Sets the access level of the `LocalDefId` corresponding to the given `NodeId`.
-    /// This function will panic if the `NodeId` does not have a `LocalDefId`
-    fn set_access_level(
-        &mut self,
-        node_id: NodeId,
-        access_level: Option<AccessLevel>,
-    ) -> Option<AccessLevel> {
-        self.set_access_level_def_id(self.r.local_def_id(node_id), access_level)
     }
 
     fn set_access_level_def_id(
