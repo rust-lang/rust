@@ -2172,21 +2172,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 }
                             }
                         },
-                        (expected_type, ty::Adt(found_type, subst)) => {
+                        (expected_type, ty::Adt(found_type, found_subst)) => {
                             let is_found_result = self.tcx.is_diagnostic_item(sym::Result, found_type.did());
                             let is_expected_result = match expected_type {
                                 ty::Adt(idk, _) => self.tcx.is_diagnostic_item(sym::Result, idk.did()),
                                 _ => false
                             };
                             if is_found_result && !is_expected_result {
-                                let is_found_type_same_as_expected_result_ok = match subst.first() {
-                                    Some(t) => match t.unpack() {
-                                        ty::GenericArgKind::Type(t) => t.kind() == expected_type,
-                                        _ => false,
-                                    },
-                                    _ => false,
-                                };
-                                if is_found_type_same_as_expected_result_ok {
+                                let found_type_ok = found_subst.first().and_then(|t| match t.unpack() {
+                                    ty::GenericArgKind::Type(t) => Some(t.kind()),
+                                    _ => None,
+                                });
+                                if found_type_ok == Some(expected_type) {
                                     if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
                                         err.span_suggestion(
                                             span,
