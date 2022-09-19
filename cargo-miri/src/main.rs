@@ -1,4 +1,3 @@
-#![feature(let_else)]
 #![allow(clippy::useless_format, clippy::derive_partial_eq_without_eq, rustc::internal)]
 
 #[macro_use]
