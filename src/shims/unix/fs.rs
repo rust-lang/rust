@@ -246,7 +246,7 @@ impl FileDescriptor for DummyOutput {
         Ok(Ok(bytes.len()))
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(DummyOutput))
     }
 }
