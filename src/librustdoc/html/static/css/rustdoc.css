@@ -1152,10 +1152,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	font-size: 1rem;
 }
 
-td.summary-column {
-	width: 100%;
-}
-
 .summary {
 	padding-right: 0px;
 }
