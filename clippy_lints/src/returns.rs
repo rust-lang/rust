@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::diagnostics::{span_lint_hir_and_then, span_lint_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::{fn_def_id, path_to_local_id};
 use if_chain::if_chain;
@@ -194,7 +194,6 @@ fn check_final_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, span: 
                 if !borrows {
                     emit_return_lint(
                         cx,
-                        inner.map_or(expr.hir_id, |inner| inner.hir_id),
                         span,
                         inner.as_ref().map(|i| i.span),
                         replacement,
@@ -224,7 +223,6 @@ fn check_final_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, span: 
 
 fn emit_return_lint(
     cx: &LateContext<'_>,
-    emission_place: HirId,
     ret_span: Span,
     inner_span: Option<Span>,
     replacement: RetReplacement,
@@ -245,10 +243,9 @@ fn emit_return_lint(
     } else {
         replacement.sugg_help()
     };
-    span_lint_hir_and_then(
+    span_lint_and_then(
         cx,
         NEEDLESS_RETURN,
-        emission_place,
         ret_span,
         "unneeded `return` statement",
         |diag| {
