@@ -74,13 +74,11 @@ To stabilize a feature, follow these steps:
 
 0. Ask a **@T-libs-api** member to start an FCP on the tracking issue and wait for
    the FCP to complete (with `disposition-merge`).
-1. Change `#[unstable(...)]` to `#[stable(since = "version")]`.
-   `version` should be the *current nightly*, i.e. stable+2. You can see which version is
-   the current nightly [on Forge](https://forge.rust-lang.org/#current-release-versions).
+1. Change `#[unstable(...)]` to `#[stable(since = "CURRENT_RUSTC_VERSION")]`.
 2. Remove `#![feature(...)]` from any test or doc-test for this API. If the feature is used in the
    compiler or tools, remove it from there as well.
 3. If applicable, change `#[rustc_const_unstable(...)]` to
-   `#[rustc_const_stable(since = "version")]`.
+   `#[rustc_const_stable(since = "CURRENT_RUSTC_VERSION")]`.
 4. Open a PR against `rust-lang/rust`.
    - Add the appropriate labels: `@rustbot modify labels: +T-libs-api`.
    - Link to the tracking issue and say "Closes #XXXXX".
