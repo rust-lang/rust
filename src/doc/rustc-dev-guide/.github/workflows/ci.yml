@@ -49,10 +49,9 @@ jobs:
 
       - name: Install latest nightly Rust toolchain
         if: steps.mdbook-cache.outputs.cache-hit != 'true'
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: nightly
-            override: true
+        run: |
+          rustup update nightly
+          rustup override set nightly
 
       - name: Install Dependencies
         if: steps.mdbook-cache.outputs.cache-hit != 'true'
