@@ -21,21 +21,21 @@ jobs:
       DEPLOY_DIR: book/html
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           # linkcheck needs the base commit.
           fetch-depth: 0
 
       - name: Cache binaries
         id: mdbook-cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin
           key: ${{ runner.os }}-${{ env.MDBOOK_VERSION }}--${{ env.MDBOOK_LINKCHECK_VERSION }}--${{ env.MDBOOK_TOC_VERSION }}--${{ env.MDBOOK_MERMAID_VERSION }}
 
       - name: Cache linkcheck
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/book/linkcheck
