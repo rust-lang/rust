@@ -14,7 +14,6 @@ python3 "$X_PY" test --stage 2 --no-fail-fast \
     src/doc/rust-by-example \
     src/doc/embedded-book \
     src/doc/edition-guide \
-    src/tools/miri \
 
 set -e
 
@@ -23,3 +22,4 @@ cat /tmp/toolstate/toolstates.json
 python3 "$X_PY" test --stage 2 check-tools
 python3 "$X_PY" test --stage 2 src/tools/clippy
 python3 "$X_PY" test --stage 2 src/tools/rustfmt
+python3 "$X_PY" test --stage 2 src/tools/miri

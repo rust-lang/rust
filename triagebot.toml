@@ -356,7 +356,7 @@ cc = ["@ehuss"]
 cc = ["@rust-lang/clippy"]
 
 [mentions."src/tools/miri"]
-message = "The Miri submodule was changed"
+message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]
 
 [mentions."src/tools/rustfmt"]
