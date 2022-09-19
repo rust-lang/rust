@@ -147,7 +147,7 @@ flowchart TD
 
 ### Relating an opaque type to another type
 
-There is one central place where an opaqe type gets its hidden type constrained,
+There is one central place where an opaque type gets its hidden type constrained,
 and that is the `handle_opaque_type` function.
 Amusingly it takes two types, so you can pass any two types,
 but one of them should be an opaque type.
@@ -216,7 +216,7 @@ and then handle it correctly.
 The MIR borrow checker relates things via `nll_relate` and only cares about regions.
 Any type relation will trigger the binding of hidden types,
 so the borrow checker is doing the same thing as the type checker,
-but ignores obivously dead code (e.g. after a panic).
+but ignores obviously dead code (e.g. after a panic).
 The borrow checker is also the source of truth when it comes to hidden types,
 as it is the only one who can properly figure out what lifetimes on the hidden type correspond
 to which lifetimes on the opaque type declaration.
@@ -224,7 +224,7 @@ to which lifetimes on the opaque type declaration.
 ## Backwards compatibility hacks
 
 `impl Trait` in return position has various quirks that were not part
-of any RFCs and are likely accidental stabilizations.
+of any RFCs and are likely accidental stabilization.
 To support these,
 the `replace_opaque_types_with_inference_vars` is being used to reintroduce the previous behaviour.
 
