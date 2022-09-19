@@ -989,17 +989,18 @@ fn iterate_inherent_methods(
             )?;
         }
         TyKind::Dyn(_) => {
-            let principal_trait = self_ty.dyn_trait().unwrap();
-            let traits = all_super_traits(db.upcast(), principal_trait);
-            iterate_inherent_trait_methods(
-                self_ty,
-                table,
-                name,
-                receiver_ty,
-                receiver_adjustments.clone(),
-                callback,
-                traits.into_iter(),
-            )?;
+            if let Some(principal_trait) = self_ty.dyn_trait() {
+                let traits = all_super_traits(db.upcast(), principal_trait);
+                iterate_inherent_trait_methods(
+                    self_ty,
+                    table,
+                    name,
+                    receiver_ty,
+                    receiver_adjustments.clone(),
+                    callback,
+                    traits.into_iter(),
+                )?;
+            }
         }
         _ => {}
     }
