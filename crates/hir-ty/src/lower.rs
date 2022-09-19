@@ -981,10 +981,11 @@ impl<'a> TyLoweringContext<'a> {
 
     fn lower_dyn_trait(&self, bounds: &[Interned<TypeBound>]) -> Ty {
         let self_ty = TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
-        // INVARIANT: The principal trait bound must come first. Others may be in any order but
-        // should be in the same order for the same set but possibly different order of bounds in
-        // the input.
-        // This invariant is used by `TyExt::dyn_trait()` and chalk.
+        // INVARIANT: The principal trait bound, if present, must come first. Others may be in any
+        // order but should be in the same order for the same set but possibly different order of
+        // bounds in the input.
+        // INVARIANT: If this function returns `DynTy`, there should be at least one trait bound.
+        // These invariants are utilized by `TyExt::dyn_trait()` and chalk.
         let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
             let mut bounds: Vec<_> = bounds
                 .iter()
@@ -1035,6 +1036,12 @@ impl<'a> TyLoweringContext<'a> {
                 return None;
             }
 
+            if bounds.first().and_then(|b| b.trait_id()).is_none() {
+                // When there's no trait bound, that's an error. This happens when the trait refs
+                // are unresolved.
+                return None;
+            }
+
             // As multiple occurrences of the same auto traits *are* permitted, we dedulicate the
             // bounds. We shouldn't have repeated elements besides auto traits at this point.
             bounds.dedup();
@@ -1046,7 +1053,8 @@ impl<'a> TyLoweringContext<'a> {
             let bounds = crate::make_single_type_binders(bounds);
             TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
         } else {
-            // FIXME: report error (additional non-auto traits or associated type rebound)
+            // FIXME: report error
+            // (additional non-auto traits, associated type rebound, or no resolved trait)
             TyKind::Error.intern(Interner)
         }
     }
