@@ -143,7 +143,7 @@ impl GlobalState {
                             project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
                                 cargo_config.target.as_deref(),
-                                &cargo_config,
+                                &cargo_config.extra_env,
                             )
                         }
                     })
@@ -402,7 +402,7 @@ impl GlobalState {
                 crate_graph.extend(ws.to_crate_graph(
                     &mut load_proc_macro,
                     &mut load,
-                    &self.config.cargo(),
+                    &self.config.cargo().extra_env,
                 ));
             }
             crate_graph

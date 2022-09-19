@@ -272,8 +272,8 @@ impl CargoWorkspace {
         let target = config
             .target
             .clone()
-            .or_else(|| cargo_config_build_target(cargo_toml, config))
-            .or_else(|| rustc_discover_host_triple(cargo_toml, config));
+            .or_else(|| cargo_config_build_target(cargo_toml, &config.extra_env))
+            .or_else(|| rustc_discover_host_triple(cargo_toml, &config.extra_env));
 
         let mut meta = MetadataCommand::new();
         meta.cargo_path(toolchain::cargo());
@@ -304,12 +304,9 @@ impl CargoWorkspace {
         // unclear whether cargo itself supports it.
         progress("metadata".to_string());
 
-        fn exec_with_env(
-            command: &cargo_metadata::MetadataCommand,
-            extra_env: &FxHashMap<String, String>,
-        ) -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
-            let mut command = command.cargo_command();
-            command.envs(extra_env);
+        (|| -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
+            let mut command = meta.cargo_command();
+            command.envs(&config.extra_env);
             let output = command.output()?;
             if !output.status.success() {
                 return Err(cargo_metadata::Error::CargoMetadata {
@@ -321,12 +318,8 @@ impl CargoWorkspace {
                 .find(|line| line.starts_with('{'))
                 .ok_or(cargo_metadata::Error::NoJson)?;
             cargo_metadata::MetadataCommand::parse(stdout)
-        }
-
-        let meta = exec_with_env(&meta, &config.extra_env)
-            .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))?;
-
-        Ok(meta)
+        })()
+        .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))
     }
 
     pub fn new(mut meta: cargo_metadata::Metadata) -> CargoWorkspace {
@@ -395,32 +388,14 @@ impl CargoWorkspace {
         }
         let resolve = meta.resolve.expect("metadata executed with deps");
         for mut node in resolve.nodes {
-            let source = match pkg_by_id.get(&node.id) {
-                Some(&src) => src,
-                // FIXME: replace this and a similar branch below with `.unwrap`, once
-                // https://github.com/rust-lang/cargo/issues/7841
-                // is fixed and hits stable (around 1.43-is probably?).
-                None => {
-                    tracing::error!("Node id do not match in cargo metadata, ignoring {}", node.id);
-                    continue;
-                }
-            };
+            let &source = pkg_by_id.get(&node.id).unwrap();
             node.deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
-            for (dep_node, kind) in node
+            let dependencies = node
                 .deps
                 .iter()
-                .flat_map(|dep| DepKind::iter(&dep.dep_kinds).map(move |kind| (dep, kind)))
-            {
-                let pkg = match pkg_by_id.get(&dep_node.pkg) {
-                    Some(&pkg) => pkg,
-                    None => {
-                        tracing::error!(
-                            "Dep node id do not match in cargo metadata, ignoring {}",
-                            dep_node.pkg
-                        );
-                        continue;
-                    }
-                };
+                .flat_map(|dep| DepKind::iter(&dep.dep_kinds).map(move |kind| (dep, kind)));
+            for (dep_node, kind) in dependencies {
+                let &pkg = pkg_by_id.get(&dep_node.pkg).unwrap();
                 let dep = PackageDependency { name: dep_node.name.clone(), pkg, kind };
                 packages[source].dependencies.push(dep);
             }
@@ -465,10 +440,7 @@ impl CargoWorkspace {
                     found = true
                 }
                 self[pkg].dependencies.iter().find_map(|dep| {
-                    if &self[dep.pkg].manifest == manifest_path {
-                        return Some(self[pkg].manifest.clone());
-                    }
-                    None
+                    (&self[dep.pkg].manifest == manifest_path).then(|| self[pkg].manifest.clone())
                 })
             })
             .collect::<Vec<ManifestPath>>();
@@ -494,9 +466,12 @@ impl CargoWorkspace {
     }
 }
 
-fn rustc_discover_host_triple(cargo_toml: &ManifestPath, config: &CargoConfig) -> Option<String> {
+fn rustc_discover_host_triple(
+    cargo_toml: &ManifestPath,
+    extra_env: &FxHashMap<String, String>,
+) -> Option<String> {
     let mut rustc = Command::new(toolchain::rustc());
-    rustc.envs(&config.extra_env);
+    rustc.envs(extra_env);
     rustc.current_dir(cargo_toml.parent()).arg("-vV");
     tracing::debug!("Discovering host platform by {:?}", rustc);
     match utf8_stdout(rustc) {
@@ -518,9 +493,12 @@ fn rustc_discover_host_triple(cargo_toml: &ManifestPath, config: &CargoConfig) -
     }
 }
 
-fn cargo_config_build_target(cargo_toml: &ManifestPath, config: &CargoConfig) -> Option<String> {
+fn cargo_config_build_target(
+    cargo_toml: &ManifestPath,
+    extra_env: &FxHashMap<String, String>,
+) -> Option<String> {
     let mut cargo_config = Command::new(toolchain::cargo());
-    cargo_config.envs(&config.extra_env);
+    cargo_config.envs(extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())
         .args(&["-Z", "unstable-options", "config", "get", "build.target"])
