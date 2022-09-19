@@ -207,7 +207,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
-        back::write::maybe_optimize(cgcx, diag_handler, module, config)
+        back::write::optimize(cgcx, diag_handler, module, config)
     }
     fn optimize_fat(
         cgcx: &CodegenContext<Self>,

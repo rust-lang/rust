@@ -416,7 +416,7 @@ fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
     }
 }
 
-pub(crate) unsafe fn optimize(
+pub(crate) unsafe fn llvm_optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
     module: &ModuleCodegen<ModuleLlvm>,
@@ -498,7 +498,7 @@ pub(crate) unsafe fn optimize(
 }
 
 // Unsafe due to LLVM calls.
-pub(crate) unsafe fn maybe_optimize(
+pub(crate) unsafe fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
     module: &ModuleCodegen<ModuleLlvm>,
@@ -526,7 +526,7 @@ pub(crate) unsafe fn maybe_optimize(
             _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
             _ => llvm::OptStage::PreLinkNoLTO,
         };
-        return optimize(cgcx, diag_handler, module, config, opt_level, opt_stage);
+        return llvm_optimize(cgcx, diag_handler, module, config, opt_level, opt_stage);
     }
     Ok(())
 }
