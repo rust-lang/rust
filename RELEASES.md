@@ -31,25 +31,6 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`ffi::CStr`](https://doc.rust-lang.org/stable/std/ffi/struct.CStr.html)
-- [`ffi::CString`](https://doc.rust-lang.org/stable/std/ffi/struct.CString.html)
-- [`ffi::FromBytesWithNulError`](https://doc.rust-lang.org/stable/std/ffi/struct.FromBytesWithNulError.html)
-- [`ffi::FromVecWithNulError`](https://doc.rust-lang.org/stable/std/ffi/struct.FromVecWithNulError.html)
-- [`ffi::IntoStringError`](https://doc.rust-lang.org/stable/std/ffi/struct.IntoStringError.html)
-- [`ffi::NulError`](https://doc.rust-lang.org/stable/std/ffi/struct.NulError.html)
-- [`ffi::c_char`](https://doc.rust-lang.org/stable/std/ffi/type.c_char.html)
-- [`ffi::c_double`](https://doc.rust-lang.org/stable/std/ffi/type.c_double.html)
-- [`ffi::c_float`](https://doc.rust-lang.org/stable/std/ffi/type.c_float.html)
-- [`ffi::c_int`](https://doc.rust-lang.org/stable/std/ffi/type.c_int.html)
-- [`ffi::c_long`](https://doc.rust-lang.org/stable/std/ffi/type.c_long.html)
-- [`ffi::c_longlong`](https://doc.rust-lang.org/stable/std/ffi/type.c_longlong.html)
-- [`ffi::c_schar`](https://doc.rust-lang.org/stable/std/ffi/type.c_schar.html)
-- [`ffi::c_short`](https://doc.rust-lang.org/stable/std/ffi/type.c_short.html)
-- [`ffi::c_uchar`](https://doc.rust-lang.org/stable/std/ffi/type.c_uchar.html)
-- [`ffi::c_uint`](https://doc.rust-lang.org/stable/std/ffi/type.c_uint.html)
-- [`ffi::c_ulong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulong.html)
-- [`ffi::c_ulonglong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulonglong.html)
-- [`ffi::c_ushort`](https://doc.rust-lang.org/stable/std/ffi/type.c_ushort.html)
 - [`future::IntoFuture`](https://doc.rust-lang.org/stable/std/future/trait.IntoFuture.html)
 - [`future::poll_fn`](https://doc.rust-lang.org/stable/std/future/fn.poll_fn.html)
 - [`task::ready!`](https://doc.rust-lang.org/stable/std/task/macro.ready.html)
@@ -69,6 +50,31 @@ Stabilized APIs
 - [`os::unix::process::CommandExt::process_group`](https://doc.rust-lang.org/stable/std/os/unix/process/trait.CommandExt.html#tymethod.process_group)
 - [`os::windows::fs::FileTypeExt::is_symlink_dir`](https://doc.rust-lang.org/stable/std/os/windows/fs/trait.FileTypeExt.html#tymethod.is_symlink_dir)
 - [`os::windows::fs::FileTypeExt::is_symlink_file`](https://doc.rust-lang.org/stable/std/os/windows/fs/trait.FileTypeExt.html#tymethod.is_symlink_file)
+
+These types were previously stable in `std::ffi`, but are now also available in `core` and `alloc`:
+
+- [`core::ffi::CStr`](https://doc.rust-lang.org/stable/core/ffi/struct.CStr.html)
+- [`core::ffi::FromBytesWithNulError`](https://doc.rust-lang.org/stable/core/ffi/struct.FromBytesWithNulError.html)
+- [`alloc::ffi::CString`](https://doc.rust-lang.org/stable/alloc/ffi/struct.CString.html)
+- [`alloc::ffi::FromVecWithNulError`](https://doc.rust-lang.org/stable/alloc/ffi/struct.FromVecWithNulError.html)
+- [`alloc::ffi::IntoStringError`](https://doc.rust-lang.org/stable/alloc/ffi/struct.IntoStringError.html)
+- [`alloc::ffi::NulError`](https://doc.rust-lang.org/stable/alloc/ffi/struct.NulError.html)
+
+These types were previously stable in `std::os::raw`, but are now also available in `core::ffi` and `std::ffi`:
+
+- [`ffi::c_char`](https://doc.rust-lang.org/stable/std/ffi/type.c_char.html)
+- [`ffi::c_double`](https://doc.rust-lang.org/stable/std/ffi/type.c_double.html)
+- [`ffi::c_float`](https://doc.rust-lang.org/stable/std/ffi/type.c_float.html)
+- [`ffi::c_int`](https://doc.rust-lang.org/stable/std/ffi/type.c_int.html)
+- [`ffi::c_long`](https://doc.rust-lang.org/stable/std/ffi/type.c_long.html)
+- [`ffi::c_longlong`](https://doc.rust-lang.org/stable/std/ffi/type.c_longlong.html)
+- [`ffi::c_schar`](https://doc.rust-lang.org/stable/std/ffi/type.c_schar.html)
+- [`ffi::c_short`](https://doc.rust-lang.org/stable/std/ffi/type.c_short.html)
+- [`ffi::c_uchar`](https://doc.rust-lang.org/stable/std/ffi/type.c_uchar.html)
+- [`ffi::c_uint`](https://doc.rust-lang.org/stable/std/ffi/type.c_uint.html)
+- [`ffi::c_ulong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulong.html)
+- [`ffi::c_ulonglong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulonglong.html)
+- [`ffi::c_ushort`](https://doc.rust-lang.org/stable/std/ffi/type.c_ushort.html)
 
 These APIs are now usable in const contexts:
 
