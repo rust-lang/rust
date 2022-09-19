@@ -80,7 +80,7 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
                     false => AccessLevel::Public
                 };
 
-                if let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local()) {
+                if let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local()) && !binding.is_ambiguity(){
                     let vis = match binding.vis {
                         Visibility::Public => Visibility::Public,
                         Visibility::Restricted(id) => Visibility::Restricted(id.expect_local())
