@@ -46,8 +46,8 @@ pub fn bytes_to_os_str<'a, 'tcx>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsSt
     Ok(OsStr::new(s))
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle.
     fn read_os_str_from_c_str<'a>(

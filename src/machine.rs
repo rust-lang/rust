@@ -291,7 +291,7 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
 }
 
 /// The machine itself.
-pub struct Evaluator<'mir, 'tcx> {
+pub struct MiriMachine<'mir, 'tcx> {
     // We carry a copy of the global `TyCtxt` for convenience, so methods taking just `&Evaluator` have `tcx` access.
     pub tcx: TyCtxt<'tcx>,
 
@@ -408,7 +408,7 @@ pub struct Evaluator<'mir, 'tcx> {
     pub(crate) since_gc: u32,
 }
 
-impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
+impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
         let target_triple = &layout_cx.tcx.sess.opts.target_triple.to_string();
         let local_crates = helpers::get_local_crates(layout_cx.tcx);
@@ -426,7 +426,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             ))
         });
         let data_race = config.data_race_detector.then(|| data_race::GlobalState::new(config));
-        Evaluator {
+        MiriMachine {
             tcx: layout_cx.tcx,
             stacked_borrows,
             data_race,
@@ -488,17 +488,17 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
     }
 
     pub(crate) fn late_init(
-        this: &mut MiriEvalContext<'mir, 'tcx>,
+        this: &mut MiriInterpCx<'mir, 'tcx>,
         config: &MiriConfig,
     ) -> InterpResult<'tcx> {
         EnvVars::init(this, config)?;
-        Evaluator::init_extern_statics(this)?;
+        MiriMachine::init_extern_statics(this)?;
         ThreadManager::init(this);
         Ok(())
     }
 
     fn add_extern_static(
-        this: &mut MiriEvalContext<'mir, 'tcx>,
+        this: &mut MiriInterpCx<'mir, 'tcx>,
         name: &str,
         ptr: Pointer<Option<Provenance>>,
     ) {
@@ -508,7 +508,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
     }
 
     fn alloc_extern_static(
-        this: &mut MiriEvalContext<'mir, 'tcx>,
+        this: &mut MiriInterpCx<'mir, 'tcx>,
         name: &str,
         val: ImmTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
@@ -519,7 +519,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
     }
 
     /// Sets up the "extern statics" for this machine.
-    fn init_extern_statics(this: &mut MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx> {
+    fn init_extern_statics(this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
         match this.tcx.sess.target.os.as_ref() {
             "linux" => {
                 // "environ"
@@ -585,26 +585,26 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
 }
 
 /// A rustc InterpCx for Miri.
-pub type MiriEvalContext<'mir, 'tcx> = InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>;
+pub type MiriInterpCx<'mir, 'tcx> = InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>;
 
 /// A little trait that's useful to be inherited by extension traits.
-pub trait MiriEvalContextExt<'mir, 'tcx> {
-    fn eval_context_ref<'a>(&'a self) -> &'a MiriEvalContext<'mir, 'tcx>;
-    fn eval_context_mut<'a>(&'a mut self) -> &'a mut MiriEvalContext<'mir, 'tcx>;
+pub trait MiriInterpCxExt<'mir, 'tcx> {
+    fn eval_context_ref<'a>(&'a self) -> &'a MiriInterpCx<'mir, 'tcx>;
+    fn eval_context_mut<'a>(&'a mut self) -> &'a mut MiriInterpCx<'mir, 'tcx>;
 }
-impl<'mir, 'tcx> MiriEvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> {
+impl<'mir, 'tcx> MiriInterpCxExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {
     #[inline(always)]
-    fn eval_context_ref(&self) -> &MiriEvalContext<'mir, 'tcx> {
+    fn eval_context_ref(&self) -> &MiriInterpCx<'mir, 'tcx> {
         self
     }
     #[inline(always)]
-    fn eval_context_mut(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
+    fn eval_context_mut(&mut self) -> &mut MiriInterpCx<'mir, 'tcx> {
         self
     }
 }
 
 /// Machine hook implementations.
-impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
+impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     type MemoryKind = MiriMemoryKind;
     type ExtraFnVal = Dlsym;
 
@@ -624,33 +624,33 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     const PANIC_ON_ALLOC_FAIL: bool = false;
 
     #[inline(always)]
-    fn enforce_alignment(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+    fn enforce_alignment(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
         ecx.machine.check_alignment != AlignmentCheck::None
     }
 
     #[inline(always)]
-    fn use_addr_for_alignment_check(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+    fn use_addr_for_alignment_check(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
         ecx.machine.check_alignment == AlignmentCheck::Int
     }
 
     #[inline(always)]
-    fn enforce_validity(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+    fn enforce_validity(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
         ecx.machine.validate
     }
 
     #[inline(always)]
-    fn enforce_abi(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+    fn enforce_abi(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
         ecx.machine.enforce_abi
     }
 
     #[inline(always)]
-    fn checked_binop_checks_overflow(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+    fn checked_binop_checks_overflow(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
         ecx.tcx.sess.overflow_checks()
     }
 
     #[inline(always)]
     fn find_mir_or_eval_fn(
-        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        ecx: &mut MiriInterpCx<'mir, 'tcx>,
         instance: ty::Instance<'tcx>,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
@@ -663,7 +663,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn call_extra_fn(
-        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        ecx: &mut MiriInterpCx<'mir, 'tcx>,
         fn_val: Dlsym,
         abi: Abi,
         args: &[OpTy<'tcx, Provenance>],
@@ -676,7 +676,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn call_intrinsic(
-        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        ecx: &mut MiriInterpCx<'mir, 'tcx>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
@@ -688,7 +688,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn assert_panic(
-        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        ecx: &mut MiriInterpCx<'mir, 'tcx>,
         msg: &mir::AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
@@ -696,13 +696,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn abort(_ecx: &mut MiriEvalContext<'mir, 'tcx>, msg: String) -> InterpResult<'tcx, !> {
+    fn abort(_ecx: &mut MiriInterpCx<'mir, 'tcx>, msg: String) -> InterpResult<'tcx, !> {
         throw_machine_stop!(TerminationInfo::Abort(msg))
     }
 
     #[inline(always)]
     fn binary_ptr_op(
-        ecx: &MiriEvalContext<'mir, 'tcx>,
+        ecx: &MiriInterpCx<'mir, 'tcx>,
         bin_op: mir::BinOp,
         left: &ImmTy<'tcx, Provenance>,
         right: &ImmTy<'tcx, Provenance>,
@@ -711,14 +711,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     fn thread_local_static_base_pointer(
-        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        ecx: &mut MiriInterpCx<'mir, 'tcx>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
         ecx.get_or_create_thread_local_alloc(def_id)
     }
 
     fn extern_static_base_pointer(
-        ecx: &MiriEvalContext<'mir, 'tcx>,
+        ecx: &MiriInterpCx<'mir, 'tcx>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
         let link_name = ecx.item_link_name(def_id);
@@ -757,7 +757,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     fn adjust_allocation<'b>(
-        ecx: &MiriEvalContext<'mir, 'tcx>,
+        ecx: &MiriInterpCx<'mir, 'tcx>,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
@@ -804,7 +804,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     fn adjust_alloc_base_pointer(
-        ecx: &MiriEvalContext<'mir, 'tcx>,
+        ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<AllocId>,
     ) -> Pointer<Provenance> {
         if cfg!(debug_assertions) {
@@ -835,7 +835,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn ptr_from_addr_cast(
-        ecx: &MiriEvalContext<'mir, 'tcx>,
+        ecx: &MiriInterpCx<'mir, 'tcx>,
         addr: u64,
     ) -> InterpResult<'tcx, Pointer<Option<Self::Provenance>>> {
         intptrcast::GlobalStateInner::ptr_from_addr_cast(ecx, addr)
@@ -859,7 +859,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     /// Convert a pointer with provenance into an allocation-offset pair,
     /// or a `None` with an absolute address if that conversion is not possible.
     fn ptr_get_alloc(
-        ecx: &MiriEvalContext<'mir, 'tcx>,
+        ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<Self::Provenance>,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
         let rel = intptrcast::GlobalStateInner::abs_ptr_to_rel(ecx, ptr);

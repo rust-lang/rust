@@ -35,8 +35,8 @@ pub struct CatchUnwindData<'tcx> {
     ret: mir::BasicBlock,
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Handles the special `miri_start_panic` intrinsic, which is called
     /// by libpanic_unwind to delegate the actual unwinding process to Miri.
     fn handle_miri_start_panic(

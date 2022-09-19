@@ -6,8 +6,8 @@ use shims::foreign_items::EmulateByNameResult;
 use shims::unix::fs::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn emulate_foreign_item_by_name(
         &mut self,
         link_name: Symbol,

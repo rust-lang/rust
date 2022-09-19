@@ -145,10 +145,10 @@ impl Handle {
     }
 }
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 
 #[allow(non_snake_case)]
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn invalid_handle(&mut self, function_name: &str) -> InterpResult<'tcx, !> {
         throw_machine_stop!(TerminationInfo::Abort(format!(
             "invalid handle passed to `{function_name}`"

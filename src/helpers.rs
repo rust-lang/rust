@@ -21,7 +21,7 @@ use rand::RngCore;
 
 use crate::*;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 
 // This mapping should match `decode_error_kind` in
 // <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/unix/mod.rs>.
@@ -96,7 +96,7 @@ fn try_resolve_did<'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
     )
 }
 
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Gets an instance for a path; fails gracefully if the path does not exist.
     fn try_resolve_path(&self, path: &[&str]) -> Option<ty::Instance<'tcx>> {
         let did = try_resolve_did(self.eval_context_ref().tcx.tcx, path)?;
@@ -391,11 +391,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         where
             F: FnMut(&MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx>,
         {
-            ecx: &'ecx MiriEvalContext<'mir, 'tcx>,
+            ecx: &'ecx MiriInterpCx<'mir, 'tcx>,
             unsafe_cell_action: F,
         }
 
-        impl<'ecx, 'mir, 'tcx: 'mir, F> ValueVisitor<'mir, 'tcx, Evaluator<'mir, 'tcx>>
+        impl<'ecx, 'mir, 'tcx: 'mir, F> ValueVisitor<'mir, 'tcx, MiriMachine<'mir, 'tcx>>
             for UnsafeCellVisitor<'ecx, 'mir, 'tcx, F>
         where
             F: FnMut(&MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx>,
@@ -403,7 +403,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             type V = MPlaceTy<'tcx, Provenance>;
 
             #[inline(always)]
-            fn ecx(&self) -> &MiriEvalContext<'mir, 'tcx> {
+            fn ecx(&self) -> &MiriInterpCx<'mir, 'tcx> {
                 self.ecx
             }
 
@@ -883,7 +883,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
-impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
+impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub fn current_span(&self) -> CurrentSpan<'_, 'mir, 'tcx> {
         CurrentSpan { current_frame_idx: None, machine: self }
     }
@@ -896,11 +896,11 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
 #[derive(Clone)]
 pub struct CurrentSpan<'a, 'mir, 'tcx> {
     current_frame_idx: Option<usize>,
-    machine: &'a Evaluator<'mir, 'tcx>,
+    machine: &'a MiriMachine<'mir, 'tcx>,
 }
 
 impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
-    pub fn machine(&self) -> &'a Evaluator<'mir, 'tcx> {
+    pub fn machine(&self) -> &'a MiriMachine<'mir, 'tcx> {
         self.machine
     }
 
@@ -919,7 +919,7 @@ impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
         Self::frame_span(self.machine, idx.wrapping_sub(1))
     }
 
-    fn frame_span(machine: &Evaluator<'_, '_>, idx: usize) -> Span {
+    fn frame_span(machine: &MiriMachine<'_, '_>, idx: usize) -> Span {
         machine
             .threads
             .active_thread_stack()
@@ -937,7 +937,7 @@ impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
     // Find the position of the inner-most frame which is part of the crate being
     // compiled/executed, part of the Cargo workspace, and is also not #[track_caller].
     #[inline(never)]
-    fn compute_current_frame_index(machine: &Evaluator<'_, '_>) -> usize {
+    fn compute_current_frame_index(machine: &MiriMachine<'_, '_>) -> usize {
         machine
             .threads
             .active_thread_stack()

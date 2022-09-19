@@ -178,7 +178,7 @@ impl GlobalStateInner {
         id
     }
 
-    pub fn new_frame(&mut self, machine: &Evaluator<'_, '_>) -> FrameExtra {
+    pub fn new_frame(&mut self, machine: &MiriMachine<'_, '_>) -> FrameExtra {
         let call_id = self.next_call_id;
         trace!("new_frame: Assigning call ID {}", call_id);
         if self.tracked_call_ids.contains(&call_id) {
@@ -199,7 +199,7 @@ impl GlobalStateInner {
         }
     }
 
-    pub fn base_ptr_tag(&mut self, id: AllocId, machine: &Evaluator<'_, '_>) -> SbTag {
+    pub fn base_ptr_tag(&mut self, id: AllocId, machine: &MiriMachine<'_, '_>) -> SbTag {
         self.base_ptr_tags.get(&id).copied().unwrap_or_else(|| {
             let tag = self.new_ptr();
             if self.tracked_pointer_tags.contains(&tag) {
@@ -651,10 +651,10 @@ impl Stacks {
 /// Retagging/reborrowing.  There is some policy in here, such as which permissions
 /// to grant for which references, and when to add protectors.
 impl<'mir: 'ecx, 'tcx: 'mir, 'ecx> EvalContextPrivExt<'mir, 'tcx, 'ecx>
-    for crate::MiriEvalContext<'mir, 'tcx>
+    for crate::MiriInterpCx<'mir, 'tcx>
 {
 }
-trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextExt<'mir, 'tcx> {
+trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Returns the `AllocId` the reborrow was done in, if some actual borrow stack manipulation
     /// happened.
     fn reborrow(
@@ -669,7 +669,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
         let this = self.eval_context_mut();
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
-        let log_creation = |this: &MiriEvalContext<'mir, 'tcx>,
+        let log_creation = |this: &MiriInterpCx<'mir, 'tcx>,
                             loc: Option<(AllocId, Size, ProvenanceExtra)>| // alloc_id, base_offset, orig_tag
          -> InterpResult<'tcx> {
             let global = this.machine.stacked_borrows.as_ref().unwrap().borrow();
@@ -919,8 +919,8 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn retag(&mut self, kind: RetagKind, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.stacked_borrows.as_mut().unwrap().get_mut().retag_fields;
@@ -956,7 +956,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // The actual visitor.
         struct RetagVisitor<'ecx, 'mir, 'tcx> {
-            ecx: &'ecx mut MiriEvalContext<'mir, 'tcx>,
+            ecx: &'ecx mut MiriInterpCx<'mir, 'tcx>,
             kind: RetagKind,
             retag_cause: RetagCause,
             retag_fields: bool,
@@ -976,13 +976,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(())
             }
         }
-        impl<'ecx, 'mir, 'tcx> MutValueVisitor<'mir, 'tcx, Evaluator<'mir, 'tcx>>
+        impl<'ecx, 'mir, 'tcx> MutValueVisitor<'mir, 'tcx, MiriMachine<'mir, 'tcx>>
             for RetagVisitor<'ecx, 'mir, 'tcx>
         {
             type V = PlaceTy<'tcx, Provenance>;
 
             #[inline(always)]
-            fn ecx(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
+            fn ecx(&mut self) -> &mut MiriInterpCx<'mir, 'tcx> {
                 self.ecx
             }
 

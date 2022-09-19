@@ -1,8 +1,8 @@
 use crate::*;
 use rustc_data_structures::fx::FxHashSet;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     fn garbage_collect_tags(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         // No reason to do anything at all if stacked borrows is off.

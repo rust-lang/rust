@@ -159,8 +159,8 @@ pub(crate) struct SynchronizationState {
 }
 
 // Private extension trait for local helper methods
-impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Take a reader out of the queue waiting for the lock.
     /// Returns `true` if some thread got the rwlock.
     #[inline]
@@ -208,8 +208,8 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 // cases, the function calls are infallible and it is the client's (shim
 // implementation's) responsibility to detect and deal with erroneous
 // situations.
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[inline]
     /// Create state for a new mutex.
     fn mutex_create(&mut self) -> MutexId {
@@ -222,7 +222,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// otherwise returns the value from the closure
     fn mutex_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, MutexId>
     where
-        F: FnOnce(&mut MiriEvalContext<'mir, 'tcx>, MutexId) -> InterpResult<'tcx, Option<MutexId>>,
+        F: FnOnce(&mut MiriInterpCx<'mir, 'tcx>, MutexId) -> InterpResult<'tcx, Option<MutexId>>,
     {
         let this = self.eval_context_mut();
         let next_index = this.machine.threads.sync.mutexes.next_index();
@@ -323,7 +323,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn rwlock_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, RwLockId>
     where
         F: FnOnce(
-            &mut MiriEvalContext<'mir, 'tcx>,
+            &mut MiriInterpCx<'mir, 'tcx>,
             RwLockId,
         ) -> InterpResult<'tcx, Option<RwLockId>>,
     {
@@ -492,7 +492,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn condvar_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, CondvarId>
     where
         F: FnOnce(
-            &mut MiriEvalContext<'mir, 'tcx>,
+            &mut MiriInterpCx<'mir, 'tcx>,
             CondvarId,
         ) -> InterpResult<'tcx, Option<CondvarId>>,
     {

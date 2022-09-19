@@ -180,18 +180,18 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     entry_id: DefId,
     entry_type: EntryFnType,
     config: &MiriConfig,
-) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>, MPlaceTy<'tcx, Provenance>)> {
+) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>, MPlaceTy<'tcx, Provenance>)> {
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx = InterpCx::new(
         tcx,
         rustc_span::source_map::DUMMY_SP,
         param_env,
-        Evaluator::new(config, layout_cx),
+        MiriMachine::new(config, layout_cx),
     );
 
     // Some parts of initialization require a full `InterpCx`.
-    Evaluator::late_init(&mut ecx, config)?;
+    MiriMachine::late_init(&mut ecx, config)?;
 
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
     let sentinel = ecx.try_resolve_path(&["core", "ascii", "escape_default"]);

@@ -14,7 +14,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> InterpResult<'tcx, (Scalar<Provenance>, bool, Ty<'tcx>)>;
 }
 
-impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
+impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
     fn binary_ptr_op(
         &self,
         bin_op: mir::BinOp,
