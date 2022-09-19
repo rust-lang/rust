@@ -1,10 +1,10 @@
-pub mod blah{
-    pub mod baz{
+pub mod blah {
+    pub mod baz {
         pub struct Foo;
     }
 }
 
-pub mod meh{
+pub mod meh {
     pub struct Foo;
 }
 
@@ -15,4 +15,4 @@ fn foo() -> Foo {
     //~^ ERROR mismatched types [E0308]
 }
 
-fn main(){}
+fn main() {}

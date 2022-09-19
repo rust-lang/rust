@@ -1656,82 +1656,39 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
 
             enum Similar<'tcx> {
-                Adts(ty::AdtDef<'tcx>, ty::AdtDef<'tcx>),
-                PrimitiveFound(Ty<'tcx>, ty::AdtDef<'tcx>),
-                PrimitiveExpected(ty::AdtDef<'tcx>, Ty<'tcx>),
+                Adts { expected: ty::AdtDef<'tcx>, found: ty::AdtDef<'tcx> },
+                PrimitiveFound { expected: ty::AdtDef<'tcx>, found: Ty<'tcx> },
+                PrimitiveExpected { expected: Ty<'tcx>, found: ty::AdtDef<'tcx> },
             }
 
-            let primitive_sym = |kind: &_| match kind {
-                ty::Bool => Some(sym::bool),
-                ty::Char => Some(sym::char),
-                ty::Float(f) => match f {
-                    ty::FloatTy::F32 => Some(sym::f32),
-                    ty::FloatTy::F64 => Some(sym::f64),
-                },
-                ty::Int(f) => match f {
-                    ty::IntTy::Isize => Some(sym::isize),
-                    ty::IntTy::I8 => Some(sym::i8),
-                    ty::IntTy::I16 => Some(sym::i16),
-                    ty::IntTy::I32 => Some(sym::i32),
-                    ty::IntTy::I64 => Some(sym::i64),
-                    ty::IntTy::I128 => Some(sym::i128),
-                },
-                ty::Uint(f) => match f {
-                    ty::UintTy::Usize => Some(sym::usize),
-                    ty::UintTy::U8 => Some(sym::u8),
-                    ty::UintTy::U16 => Some(sym::u16),
-                    ty::UintTy::U32 => Some(sym::u32),
-                    ty::UintTy::U64 => Some(sym::u64),
-                    ty::UintTy::U128 => Some(sym::u128),
-                },
-                _ => None,
-            };
-
-            let similarity = |e: ExpectedFound<Ty<'tcx>>| {
-                let (fk, ek) = (e.found.kind(), e.expected.kind());
-                match (fk, ek) {
-                    (
-                        ty::Adt(adt, _),
-                        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_),
-                    ) => {
-                        let path = self.tcx.def_path(adt.did()).data;
-                        let name = path.last().unwrap().data.get_opt_name();
-                        let prim_sym = primitive_sym(ek);
-
-                        if name == prim_sym {
-                            return Some(Similar::PrimitiveExpected(*adt, e.expected));
-                        }
-                        None
+            let similarity = |ExpectedFound { expected, found }: ExpectedFound<Ty<'tcx>>| {
+                if let ty::Adt(expected, _) = expected.kind() && let Some(primitive) = found.primitive_symbol() {
+                    let path = self.tcx.def_path(expected.did()).data;
+                    let name = path.last().unwrap().data.get_opt_name();
+                    if name == Some(primitive) {
+                        return Some(Similar::PrimitiveFound { expected: *expected, found });
                     }
-                    (
-                        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_),
-                        ty::Adt(adt, _),
-                    ) => {
-                        let path = self.tcx.def_path(adt.did()).data;
-                        let name = path.last().unwrap().data.get_opt_name();
-                        let prim_sym = primitive_sym(fk);
+                } else if let Some(primitive) = expected.primitive_symbol() && let ty::Adt(found, _) = found.kind() {
+                    let path = self.tcx.def_path(found.did()).data;
+                    let name = path.last().unwrap().data.get_opt_name();
+                    if name == Some(primitive) {
+                        return Some(Similar::PrimitiveExpected { expected, found: *found });
+                    }
+                } else if let ty::Adt(expected, _) = expected.kind() && let ty::Adt(found, _) = found.kind() {
+                    if !expected.did().is_local() && expected.did().krate == found.did().krate {
+                        // Most likely types from different versions of the same crate
+                        // are in play, in which case this message isn't so helpful.
+                        // A "perhaps two different versions..." error is already emitted for that.
+                        return None;
+                    }
+                    let f_path = self.tcx.def_path(found.did()).data;
+                    let e_path = self.tcx.def_path(expected.did()).data;
 
-                        if name == prim_sym {
-                            return Some(Similar::PrimitiveFound(e.expected, *adt));
-                        }
-                        None
+                    if let (Some(e_last), Some(f_last)) = (e_path.last(), f_path.last()) && e_last ==  f_last {
+                        return Some(Similar::Adts{expected: *expected, found: *found});
                     }
-                    (ty::Adt(f, _), ty::Adt(e, _)) => {
-                        if !f.did().is_local() && f.did().krate == e.did().krate {
-                            // Most likely types from different versions of the same crate
-                            // are in play, in which case this message isn't so helpful.
-                            // A "perhaps two different versions..." error is already emitted for that.
-                            return None;
-                        }
-                        let e_path = self.tcx.def_path(e.did()).data;
-                        let f_path = self.tcx.def_path(f.did()).data;
-                        if let (Some(e_last), Some(f_last)) = (e_path.last(), f_path.last()) && e_last ==  f_last {
-                            return Some(Similar::Adts(*f, *e));
-                        }
-                        None
-                    }
-                    _ => None,
                 }
+                None
             };
 
             match terr {
@@ -1759,8 +1716,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         };
 
                     let diagnose_adts =
-                        |found_adt: ty::AdtDef<'tcx>,
-                         expected_adt: ty::AdtDef<'tcx>,
+                        |expected_adt : ty::AdtDef<'tcx>,
+                         found_adt: ty::AdtDef<'tcx>,
                          diagnostic: &mut Diagnostic| {
                             let found_name = values.found.sort_string(self.tcx);
                             let expected_name = values.expected.sort_string(self.tcx);
@@ -1792,14 +1749,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         };
 
                     match s {
-                        Similar::Adts(found_adt, expected_adt) => {
-                            diagnose_adts(found_adt, expected_adt, diag)
+                        Similar::Adts{expected, found} => {
+                            diagnose_adts(expected, found, diag)
                         }
-                        Similar::PrimitiveFound(prim, e) => {
-                            diagnose_primitive(prim, values.expected, e.did(), diag)
+                        Similar::PrimitiveFound{expected, found: prim} => {
+                            diagnose_primitive(prim, values.expected, expected.did(), diag)
                         }
-                        Similar::PrimitiveExpected(f, prim) => {
-                            diagnose_primitive(prim, values.found, f.did(), diag)
+                        Similar::PrimitiveExpected{expected: prim, found} => {
+                            diagnose_primitive(prim, values.found, found.did(), diag)
                         }
                     }
                 }
