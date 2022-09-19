@@ -935,12 +935,25 @@ public:
   }
 
   void visitAtomicRMWInst(llvm::AtomicRMWInst &I) {
-    if (Mode == DerivativeMode::ForwardMode) {
-      IRBuilder<> BuilderZ(&I);
-      getForwardBuilder(BuilderZ);
-      switch (I.getOperation()) {
-      case AtomicRMWInst::FAdd:
-      case AtomicRMWInst::FSub: {
+
+    if (gutils->isConstantInstruction(&I) && gutils->isConstantValue(&I)) {
+      if (Mode == DerivativeMode::ReverseModeGradient ||
+          Mode == DerivativeMode::ForwardModeSplit) {
+        eraseIfUnused(I, /*erase*/ true, /*check*/ false);
+      } else {
+        eraseIfUnused(I);
+      }
+      return;
+    }
+
+    switch (I.getOperation()) {
+    case AtomicRMWInst::FAdd:
+    case AtomicRMWInst::FSub: {
+
+      if (Mode == DerivativeMode::ForwardMode ||
+          Mode == DerivativeMode::ForwardModeSplit) {
+        IRBuilder<> BuilderZ(&I);
+        getForwardBuilder(BuilderZ);
         auto rule = [&](Value *ptr, Value *dif) -> Value * {
           if (!gutils->isConstantInstruction(&I)) {
             assert(ptr);
@@ -981,32 +994,84 @@ public:
           setDiffe(&I, diff, BuilderZ);
         return;
       }
-      default:
-        break;
+      if (Mode == DerivativeMode::ReverseModePrimal) {
+        eraseIfUnused(I);
+        return;
       }
-    }
-    if (!gutils->isConstantInstruction(&I) || !gutils->isConstantValue(&I)) {
-      if (looseTypeAnalysis) {
-        auto &DL = gutils->newFunc->getParent()->getDataLayout();
-        auto valType = I.getValOperand()->getType();
-        auto storeSize = DL.getTypeSizeInBits(valType) / 8;
-        auto fp = TR.firstPointer(storeSize, I.getPointerOperand(),
-                                  /*errifnotfound*/ false,
-                                  /*pointerIntSame*/ true);
-        if (!fp.isKnown() && valType->isIntOrIntVectorTy()) {
-          goto noerror;
-        }
-      }
-      TR.dump();
-      llvm::errs() << "oldFunc: " << *gutils->newFunc << "\n";
-      llvm::errs() << "I: " << I << "\n";
-      assert(0 && "Active atomic inst not handled");
-    }
-  noerror:;
+      if ((Mode == DerivativeMode::ReverseModeCombined ||
+           Mode == DerivativeMode::ReverseModeGradient) &&
+          gutils->isConstantValue(&I)) {
+        if (!gutils->isConstantValue(I.getValOperand())) {
+          assert(!gutils->isConstantValue(I.getPointerOperand()));
+          IRBuilder<> Builder2(&I);
+          getReverseBuilder(Builder2);
+          Value *ip = gutils->invertPointerM(I.getPointerOperand(), Builder2);
+          auto order = I.getOrdering();
+          if (order == AtomicOrdering::Release)
+            order = AtomicOrdering::Monotonic;
+          else if (order == AtomicOrdering::AcquireRelease)
+            order = AtomicOrdering::Acquire;
 
-    if (Mode == DerivativeMode::ReverseModeGradient) {
-      eraseIfUnused(I, /*erase*/ true, /*check*/ false);
+          auto rule = [&](Value *ip) -> Value * {
+#if LLVM_VERSION_MAJOR > 7
+            LoadInst *dif1 =
+                Builder2.CreateLoad(I.getType(), ip, I.isVolatile());
+#else
+            LoadInst *dif1 = Builder2.CreateLoad(ip, I.isVolatile());
+#endif
+
+#if LLVM_VERSION_MAJOR >= 11
+            dif1->setAlignment(I.getAlign());
+#else
+            const DataLayout &DL = I.getModule()->getDataLayout();
+            auto tmpAlign = DL.getTypeStoreSize(I.getValOperand()->getType());
+#if LLVM_VERSION_MAJOR >= 10
+            dif1->setAlignment(MaybeAlign(tmpAlign.getFixedSize()));
+#else
+            dif1->setAlignment(tmpAlign);
+#endif
+#endif
+            dif1->setOrdering(order);
+            dif1->setSyncScopeID(I.getSyncScopeID());
+            return dif1;
+          };
+          Value *diff = applyChainRule(I.getType(), Builder2, rule, ip);
+
+          addToDiffe(I.getValOperand(), diff, Builder2,
+                     I.getValOperand()->getType()->getScalarType());
+        }
+        if (Mode == DerivativeMode::ReverseModeGradient) {
+          eraseIfUnused(I, /*erase*/ true, /*check*/ false);
+        } else
+          eraseIfUnused(I);
+        return;
+      }
+      break;
     }
+    default:
+      break;
+    }
+
+    if (looseTypeAnalysis) {
+      auto &DL = gutils->newFunc->getParent()->getDataLayout();
+      auto valType = I.getValOperand()->getType();
+      auto storeSize = DL.getTypeSizeInBits(valType) / 8;
+      auto fp = TR.firstPointer(storeSize, I.getPointerOperand(),
+                                /*errifnotfound*/ false,
+                                /*pointerIntSame*/ true);
+      if (!fp.isKnown() && valType->isIntOrIntVectorTy()) {
+        if (Mode == DerivativeMode::ReverseModeGradient ||
+            Mode == DerivativeMode::ReverseModeGradient) {
+          eraseIfUnused(I, /*erase*/ true, /*check*/ false);
+        } else
+          eraseIfUnused(I);
+        return;
+      }
+    }
+    TR.dump();
+    llvm::errs() << "oldFunc: " << *gutils->newFunc << "\n";
+    llvm::errs() << "I: " << I << "\n";
+    llvm_unreachable("Active atomic inst not yet handled");
   }
 
   void visitStoreInst(llvm::StoreInst &SI) {
