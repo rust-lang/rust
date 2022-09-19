@@ -110,6 +110,7 @@ config_data! {
         /// Extra arguments for `cargo check`.
         checkOnSave_extraArgs: Vec<String>               = "[]",
         /// Extra environment variables that will be set when running `cargo check`.
+        /// Extends `#rust-analyzer.cargo.extraEnv#`.
         checkOnSave_extraEnv: FxHashMap<String, String> = "{}",
         /// List of features to activate. Defaults to
         /// `#rust-analyzer.cargo.features#`.

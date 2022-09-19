@@ -103,6 +103,7 @@ Extra arguments for `cargo check`.
 +
 --
 Extra environment variables that will be set when running `cargo check`.
+Extends `#rust-analyzer.cargo.extraEnv#`.
 --
 [[rust-analyzer.checkOnSave.features]]rust-analyzer.checkOnSave.features (default: `null`)::
 +

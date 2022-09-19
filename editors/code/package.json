@@ -515,7 +515,7 @@
                     }
                 },
                 "rust-analyzer.checkOnSave.extraEnv": {
-                    "markdownDescription": "Extra environment variables that will be set when running `cargo check`.",
+                    "markdownDescription": "Extra environment variables that will be set when running `cargo check`.\nExtends `#rust-analyzer.cargo.extraEnv#`.",
                     "default": {},
                     "type": "object"
                 },
