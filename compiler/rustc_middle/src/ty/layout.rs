@@ -2767,6 +2767,8 @@ impl<'tcx> ty::Instance<'tcx> {
                 // (i.e. due to being inside a projection that got normalized, see
                 // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
                 // track of a polymorphization `ParamEnv` to allow normalizing later.
+                //
+                // We normalize the `fn_sig` again after substituting at a later point.
                 let mut sig = match *ty.kind() {
                     ty::FnDef(def_id, substs) => tcx
                         .bound_fn_sig(def_id)
