@@ -3,7 +3,6 @@
 #![feature(control_flow_enum)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(once_cell)]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
