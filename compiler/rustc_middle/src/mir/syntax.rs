@@ -82,9 +82,10 @@ pub enum MirPhase {
     ///    access to. This occurs in generator bodies. Such locals do not behave like other locals,
     ///    because they eg may be aliased in surprising ways. Runtime MIR has no such special locals -
     ///    all generator bodies are lowered and so all places that look like locals really are locals.
-    ///  - Const prop lints: The lint pass which reports eg `200_u8 + 200_u8` as an error is run as a
-    ///    part of analysis to runtime MIR lowering. This means that transformations which may supress
-    ///    such errors may not run on analysis MIR.
+    ///
+    /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a part
+    /// of analysis to runtime MIR lowering. To ensure lints are reported reliably, this means that
+    /// transformations which may supress such errors should not run on analysis MIR.
     Runtime(RuntimePhase),
 }
 
