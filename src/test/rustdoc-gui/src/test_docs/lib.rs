@@ -325,3 +325,15 @@ pub mod doc_block_table {
     }
 
 }
+
+pub struct NotableStructWithLongName<R>(R);
+
+impl<R: std::io::Read> NotableStructWithLongName<R> {
+    pub fn create_an_iterator_from_read(r: R) -> NotableStructWithLongName<R> { Self(r) }
+}
+
+impl<R: std::io::Read> std::iter::Iterator for NotableStructWithLongName<R> {
+    type Item = ();
+
+    fn next(&mut self) -> Option<Self::Item> { () }
+}
