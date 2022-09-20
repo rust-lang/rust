@@ -261,10 +261,10 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         // This allows us to avoid loading the dependencies of proc-macro crates: all of
         // the information we need to decode `Span`s is stored in the proc-macro crate.
         let (tag, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
-            // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
-            // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
-            // are relative to the source map information for the 'foreign' crate whose CrateNum
-            // we write into the metadata. This allows `imported_source_files` to binary
+            // To simplify deserialization, we 'rebase' this span onto the crate it originally came
+            // from (the crate that 'owns' the file it references. These rebased 'lo' and 'hi'
+            // values are relative to the source map information for the 'foreign' crate whose
+            // CrateNum we write into the metadata. This allows `imported_source_files` to binary
             // search through the 'foreign' crate's source map information, using the
             // deserialized 'lo' and 'hi' values directly.
             //
@@ -672,12 +672,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let exported_symbols_bytes = self.position() - i;
 
         // Encode the hygiene data,
-        // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The process
-        // of encoding other items (e.g. `optimized_mir`) may cause us to load
-        // data from the incremental cache. If this causes us to deserialize a `Span`,
-        // then we may load additional `SyntaxContext`s into the global `HygieneData`.
-        // Therefore, we need to encode the hygiene data last to ensure that we encode
-        // any `SyntaxContext`s that might be used.
+        // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The
+        // process of encoding other items (e.g. `optimized_mir`) may cause us to load data from
+        // the incremental cache. If this causes us to deserialize a `Span`, then we may load
+        // additional `SyntaxContext`s into the global `HygieneData`. Therefore, we need to encode
+        // the hygiene data last to ensure that we encode any `SyntaxContext`s that might be used.
         i = self.position();
         let (syntax_contexts, expn_data, expn_hashes) = self.encode_hygiene();
         let hygiene_bytes = self.position() - i;
