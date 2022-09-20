@@ -39,7 +39,7 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
 use either::Either;
 use hir_def::{
-    adt::{ReprKind, VariantData},
+    adt::{ReprData, VariantData},
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     generics::{TypeOrConstParamData, TypeParamProvenance},
@@ -874,7 +874,7 @@ impl Struct {
         Type::from_def(db, self.id)
     }
 
-    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprKind> {
+    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprData> {
         db.struct_data(self.id).repr.clone()
     }
 
@@ -951,6 +951,17 @@ impl Enum {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
+    }
+
+    /// The type of the enum variant bodies.
+    pub fn variant_body_ty(self, db: &dyn HirDatabase) -> Type {
+        Type::new_for_crate(
+            self.id.lookup(db.upcast()).container.krate(),
+            TyBuilder::builtin(match db.enum_data(self.id).variant_body_type() {
+                Either::Left(builtin) => hir_def::builtin_type::BuiltinType::Int(builtin),
+                Either::Right(builtin) => hir_def::builtin_type::BuiltinType::Uint(builtin),
+            }),
+        )
     }
 
     pub fn is_data_carrying(self, db: &dyn HirDatabase) -> bool {
@@ -1176,7 +1187,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.ret_type(db),
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
-            DefWithBody::Variant(it) => it.parent.ty(db),
+            DefWithBody::Variant(it) => it.parent.variant_body_ty(db),
         }
     }
 
@@ -2964,7 +2975,7 @@ impl Type {
 
         let adt = adt_id.into();
         match adt {
-            Adt::Struct(s) => matches!(s.repr(db), Some(ReprKind::Packed)),
+            Adt::Struct(s) => matches!(s.repr(db), Some(ReprData { packed: true, .. })),
             _ => false,
         }
     }

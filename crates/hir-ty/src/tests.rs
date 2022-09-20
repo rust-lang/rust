@@ -461,6 +461,18 @@ fn visit_module(
                     let body = db.body(def);
                     visit_body(db, &body, cb);
                 }
+                ModuleDefId::AdtId(hir_def::AdtId::EnumId(it)) => {
+                    db.enum_data(it)
+                        .variants
+                        .iter()
+                        .map(|(id, _)| hir_def::EnumVariantId { parent: it, local_id: id })
+                        .for_each(|it| {
+                            let def = it.into();
+                            cb(def);
+                            let body = db.body(def);
+                            visit_body(db, &body, cb);
+                        });
+                }
                 ModuleDefId::TraitId(it) => {
                     let trait_data = db.trait_data(it);
                     for &(_, item) in trait_data.items.iter() {

@@ -479,7 +479,6 @@ pub enum DefWithBodyId {
 
 impl_from!(FunctionId, ConstId, StaticId for DefWithBodyId);
 
-// FIXME: Rename EnumVariantId to VariantId so that the macro above can be used
 impl From<EnumVariantId> for DefWithBodyId {
     fn from(id: EnumVariantId) -> Self {
         DefWithBodyId::VariantId(id)

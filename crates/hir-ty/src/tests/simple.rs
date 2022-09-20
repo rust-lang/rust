@@ -1693,16 +1693,16 @@ fn infer_type_param() {
 fn infer_const() {
     check_infer(
         r#"
-        struct Foo;
-        impl Foo { const ASSOC_CONST: u32 = 0; }
-        const GLOBAL_CONST: u32 = 101;
-        fn test() {
-            const LOCAL_CONST: u32 = 99;
-            let x = LOCAL_CONST;
-            let z = GLOBAL_CONST;
-            let id = Foo::ASSOC_CONST;
-        }
-        "#,
+struct Foo;
+impl Foo { const ASSOC_CONST: u32 = 0; }
+const GLOBAL_CONST: u32 = 101;
+fn test() {
+    const LOCAL_CONST: u32 = 99;
+    let x = LOCAL_CONST;
+    let z = GLOBAL_CONST;
+    let id = Foo::ASSOC_CONST;
+}
+"#,
         expect![[r#"
             48..49 '0': u32
             79..82 '101': u32
@@ -1722,17 +1722,17 @@ fn infer_const() {
 fn infer_static() {
     check_infer(
         r#"
-        static GLOBAL_STATIC: u32 = 101;
-        static mut GLOBAL_STATIC_MUT: u32 = 101;
-        fn test() {
-            static LOCAL_STATIC: u32 = 99;
-            static mut LOCAL_STATIC_MUT: u32 = 99;
-            let x = LOCAL_STATIC;
-            let y = LOCAL_STATIC_MUT;
-            let z = GLOBAL_STATIC;
-            let w = GLOBAL_STATIC_MUT;
-        }
-        "#,
+static GLOBAL_STATIC: u32 = 101;
+static mut GLOBAL_STATIC_MUT: u32 = 101;
+fn test() {
+    static LOCAL_STATIC: u32 = 99;
+    static mut LOCAL_STATIC_MUT: u32 = 99;
+    let x = LOCAL_STATIC;
+    let y = LOCAL_STATIC_MUT;
+    let z = GLOBAL_STATIC;
+    let w = GLOBAL_STATIC_MUT;
+}
+"#,
         expect![[r#"
             28..31 '101': u32
             69..72 '101': u32
@@ -1747,6 +1747,41 @@ fn infer_static() {
             259..276 'GLOBAL...IC_MUT': u32
             117..119 '99': u32
             160..162 '99': u32
+        "#]],
+    );
+}
+
+#[test]
+fn infer_enum_variant() {
+    check_infer(
+        r#"
+enum Foo {
+    A = 15,
+    B = Foo::A as isize + 1
+}
+"#,
+        expect![[r#"
+            19..21 '15': isize
+            31..37 'Foo::A': Foo
+            31..46 'Foo::A as isize': isize
+            31..50 'Foo::A...ze + 1': isize
+            49..50 '1': isize
+        "#]],
+    );
+    check_infer(
+        r#"
+#[repr(u32)]
+enum Foo {
+    A = 15,
+    B = Foo::A as u32 + 1
+}
+"#,
+        expect![[r#"
+            32..34 '15': u32
+            44..50 'Foo::A': Foo
+            44..57 'Foo::A as u32': u32
+            44..61 'Foo::A...32 + 1': u32
+            60..61 '1': u32
         "#]],
     );
 }
