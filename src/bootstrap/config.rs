@@ -821,7 +821,14 @@ impl Config {
             .and_then(|output| if output.status.success() { Some(output) } else { None });
         if let Some(output) = output {
             let git_root = String::from_utf8(output.stdout).unwrap();
-            config.src = PathBuf::from(git_root.trim().to_owned())
+            let git_root = PathBuf::from(git_root.trim()).canonicalize().unwrap();
+            let s = git_root.to_str().unwrap();
+
+            // Bootstrap is quite bad at handling /? in front of paths
+            config.src = match s.strip_prefix("\\\\?\\") {
+                Some(p) => PathBuf::from(p),
+                None => PathBuf::from(git_root),
+            };
         } else {
             // We're building from a tarball, not git sources.
             // We don't support pre-downloaded bootstrap in this case.
