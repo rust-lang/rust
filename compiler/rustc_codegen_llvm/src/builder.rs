@@ -1,14 +1,13 @@
 use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
-use crate::llvm::{self, BasicBlock, False};
-use crate::llvm::{AtomicOrdering, AtomicRmwBinOp, SynchronizationScope};
+use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use cstr::cstr;
 use libc::{c_char, c_uint};
-use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, TypeKind};
+use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
@@ -1042,15 +1041,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         let weak = if weak { llvm::True } else { llvm::False };
         unsafe {
-            llvm::LLVMRustBuildAtomicCmpXchg(
+            let value = llvm::LLVMBuildAtomicCmpXchg(
                 self.llbuilder,
                 dst,
                 cmp,
                 src,
                 AtomicOrdering::from_generic(order),
                 AtomicOrdering::from_generic(failure_order),
-                weak,
-            )
+                llvm::False, // SingleThreaded
+            );
+            llvm::LLVMSetWeak(value, weak);
+            value
         }
     }
     fn atomic_rmw(
@@ -1067,7 +1068,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 dst,
                 src,
                 AtomicOrdering::from_generic(order),
-                False,
+                llvm::False, // SingleThreaded
             )
         }
     }
@@ -1075,13 +1076,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn atomic_fence(
         &mut self,
         order: rustc_codegen_ssa::common::AtomicOrdering,
-        scope: rustc_codegen_ssa::common::SynchronizationScope,
+        scope: SynchronizationScope,
     ) {
+        let single_threaded = match scope {
+            SynchronizationScope::SingleThread => llvm::True,
+            SynchronizationScope::CrossThread => llvm::False,
+        };
         unsafe {
-            llvm::LLVMRustBuildAtomicFence(
+            llvm::LLVMBuildFence(
                 self.llbuilder,
                 AtomicOrdering::from_generic(order),
-                SynchronizationScope::from_generic(scope),
+                single_threaded,
+                UNNAMED,
             );
         }
     }
