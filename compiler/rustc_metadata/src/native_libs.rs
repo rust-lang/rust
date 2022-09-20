@@ -33,28 +33,25 @@ pub fn find_native_static_library(
     search_paths: &[PathBuf],
     sess: &Session,
 ) -> PathBuf {
-    let verbatim = verbatim.unwrap_or(false);
-    // On Windows, static libraries sometimes show up as libfoo.a and other
-    // times show up as foo.lib
-    let oslibname = if verbatim {
-        name.to_string()
+    let formats = if verbatim.unwrap_or(false) {
+        vec![("".into(), "".into())]
     } else {
-        format!("{}{}{}", sess.target.staticlib_prefix, name, sess.target.staticlib_suffix)
+        let os = (sess.target.staticlib_prefix.clone(), sess.target.staticlib_suffix.clone());
+        // On Windows, static libraries sometimes show up as libfoo.a and other
+        // times show up as foo.lib
+        let unix = ("lib".into(), ".a".into());
+        if os == unix { vec![os] } else { vec![os, unix] }
     };
-    let unixlibname = format!("lib{}.a", name);
 
     for path in search_paths {
-        let test = path.join(&oslibname);
-        if test.exists() {
-            return test;
-        }
-        if oslibname != unixlibname {
-            let test = path.join(&unixlibname);
+        for (prefix, suffix) in &formats {
+            let test = path.join(format!("{}{}{}", prefix, name, suffix));
             if test.exists() {
                 return test;
             }
         }
     }
+
     sess.emit_fatal(MissingNativeLibrary { libname: name });
 }
 
