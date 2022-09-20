@@ -315,8 +315,30 @@ LL |         let _val: NonNull<i32> = mem::uninitialized();
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
 
+error: the type `(NonZeroU32, i32)` does not permit zero-initialization
+  --> $DIR/invalid_value.rs:91:39
+   |
+LL |         let _val: (NonZeroU32, i32) = mem::zeroed();
+   |                                       ^^^^^^^^^^^^^
+   |                                       |
+   |                                       this code causes undefined behavior when executed
+   |                                       help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: `std::num::NonZeroU32` must be non-null
+
+error: the type `(NonZeroU32, i32)` does not permit being left uninitialized
+  --> $DIR/invalid_value.rs:92:39
+   |
+LL |         let _val: (NonZeroU32, i32) = mem::uninitialized();
+   |                                       ^^^^^^^^^^^^^^^^^^^^
+   |                                       |
+   |                                       this code causes undefined behavior when executed
+   |                                       help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: `std::num::NonZeroU32` must be non-null
+
 error: the type `*const dyn Send` does not permit zero-initialization
-  --> $DIR/invalid_value.rs:91:37
+  --> $DIR/invalid_value.rs:94:37
    |
 LL |         let _val: *const dyn Send = mem::zeroed();
    |                                     ^^^^^^^^^^^^^
@@ -327,7 +349,7 @@ LL |         let _val: *const dyn Send = mem::zeroed();
    = note: the vtable of a wide raw pointer must be non-null
 
 error: the type `*const dyn Send` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:92:37
+  --> $DIR/invalid_value.rs:95:37
    |
 LL |         let _val: *const dyn Send = mem::uninitialized();
    |                                     ^^^^^^^^^^^^^^^^^^^^
@@ -338,7 +360,7 @@ LL |         let _val: *const dyn Send = mem::uninitialized();
    = note: the vtable of a wide raw pointer must be non-null
 
 error: the type `[fn(); 2]` does not permit zero-initialization
-  --> $DIR/invalid_value.rs:94:31
+  --> $DIR/invalid_value.rs:97:31
    |
 LL |         let _val: [fn(); 2] = mem::zeroed();
    |                               ^^^^^^^^^^^^^
@@ -349,7 +371,7 @@ LL |         let _val: [fn(); 2] = mem::zeroed();
    = note: function pointers must be non-null
 
 error: the type `[fn(); 2]` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:95:31
+  --> $DIR/invalid_value.rs:98:31
    |
 LL |         let _val: [fn(); 2] = mem::uninitialized();
    |                               ^^^^^^^^^^^^^^^^^^^^
@@ -360,7 +382,7 @@ LL |         let _val: [fn(); 2] = mem::uninitialized();
    = note: function pointers must be non-null
 
 error: the type `TwoUninhabited` does not permit zero-initialization
-  --> $DIR/invalid_value.rs:97:36
+  --> $DIR/invalid_value.rs:100:36
    |
 LL |         let _val: TwoUninhabited = mem::zeroed();
    |                                    ^^^^^^^^^^^^^
@@ -375,7 +397,7 @@ LL | enum TwoUninhabited {
    | ^^^^^^^^^^^^^^^^^^^
 
 error: the type `TwoUninhabited` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:98:36
+  --> $DIR/invalid_value.rs:101:36
    |
 LL |         let _val: TwoUninhabited = mem::uninitialized();
    |                                    ^^^^^^^^^^^^^^^^^^^^
@@ -390,7 +412,7 @@ LL | enum TwoUninhabited {
    | ^^^^^^^^^^^^^^^^^^^
 
 error: the type `OneFruitNonZero` does not permit zero-initialization
-  --> $DIR/invalid_value.rs:100:37
+  --> $DIR/invalid_value.rs:103:37
    |
 LL |         let _val: OneFruitNonZero = mem::zeroed();
    |                                     ^^^^^^^^^^^^^
@@ -405,7 +427,7 @@ LL |     Banana(NonZeroU32),
    |            ^^^^^^^^^^
 
 error: the type `OneFruitNonZero` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:101:37
+  --> $DIR/invalid_value.rs:104:37
    |
 LL |         let _val: OneFruitNonZero = mem::uninitialized();
    |                                     ^^^^^^^^^^^^^^^^^^^^
@@ -420,7 +442,7 @@ LL |     Banana(NonZeroU32),
    |            ^^^^^^^^^^
 
 error: the type `bool` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:105:26
+  --> $DIR/invalid_value.rs:108:26
    |
 LL |         let _val: bool = mem::uninitialized();
    |                          ^^^^^^^^^^^^^^^^^^^^
@@ -431,7 +453,7 @@ LL |         let _val: bool = mem::uninitialized();
    = note: booleans must be either `true` or `false`
 
 error: the type `Wrap<char>` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:108:32
+  --> $DIR/invalid_value.rs:111:32
    |
 LL |         let _val: Wrap<char> = mem::uninitialized();
    |                                ^^^^^^^^^^^^^^^^^^^^
@@ -446,7 +468,7 @@ LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
 
 error: the type `NonBig` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:111:28
+  --> $DIR/invalid_value.rs:114:28
    |
 LL |         let _val: NonBig = mem::uninitialized();
    |                            ^^^^^^^^^^^^^^^^^^^^
@@ -457,7 +479,7 @@ LL |         let _val: NonBig = mem::uninitialized();
    = note: `NonBig` must be initialized inside its custom valid range
 
 error: the type `Fruit` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:114:27
+  --> $DIR/invalid_value.rs:117:27
    |
 LL |         let _val: Fruit = mem::uninitialized();
    |                           ^^^^^^^^^^^^^^^^^^^^
@@ -472,7 +494,7 @@ LL | enum Fruit {
    | ^^^^^^^^^^
 
 error: the type `[bool; 2]` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:117:31
+  --> $DIR/invalid_value.rs:120:31
    |
 LL |         let _val: [bool; 2] = mem::uninitialized();
    |                               ^^^^^^^^^^^^^^^^^^^^
@@ -483,7 +505,7 @@ LL |         let _val: [bool; 2] = mem::uninitialized();
    = note: booleans must be either `true` or `false`
 
 error: the type `i32` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:120:25
+  --> $DIR/invalid_value.rs:123:25
    |
 LL |         let _val: i32 = mem::uninitialized();
    |                         ^^^^^^^^^^^^^^^^^^^^
@@ -494,7 +516,7 @@ LL |         let _val: i32 = mem::uninitialized();
    = note: integers must not be uninitialized
 
 error: the type `f32` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:123:25
+  --> $DIR/invalid_value.rs:126:25
    |
 LL |         let _val: f32 = mem::uninitialized();
    |                         ^^^^^^^^^^^^^^^^^^^^
@@ -505,7 +527,7 @@ LL |         let _val: f32 = mem::uninitialized();
    = note: floats must not be uninitialized
 
 error: the type `*const ()` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:126:31
+  --> $DIR/invalid_value.rs:129:31
    |
 LL |         let _val: *const () = mem::uninitialized();
    |                               ^^^^^^^^^^^^^^^^^^^^
@@ -516,7 +538,7 @@ LL |         let _val: *const () = mem::uninitialized();
    = note: raw pointers must not be uninitialized
 
 error: the type `*const [()]` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:129:33
+  --> $DIR/invalid_value.rs:132:33
    |
 LL |         let _val: *const [()] = mem::uninitialized();
    |                                 ^^^^^^^^^^^^^^^^^^^^
@@ -527,7 +549,7 @@ LL |         let _val: *const [()] = mem::uninitialized();
    = note: raw pointers must not be uninitialized
 
 error: the type `Result<i32, i32>` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:134:38
+  --> $DIR/invalid_value.rs:137:38
    |
 LL |         let _val: Result<i32, i32> = mem::uninitialized();
    |                                      ^^^^^^^^^^^^^^^^^^^^
@@ -542,7 +564,7 @@ LL | pub enum Result<T, E> {
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error: the type `&i32` does not permit zero-initialization
-  --> $DIR/invalid_value.rs:142:34
+  --> $DIR/invalid_value.rs:145:34
    |
 LL |         let _val: &'static i32 = mem::transmute(0usize);
    |                                  ^^^^^^^^^^^^^^^^^^^^^^
@@ -553,7 +575,7 @@ LL |         let _val: &'static i32 = mem::transmute(0usize);
    = note: references must be non-null
 
 error: the type `&[i32]` does not permit zero-initialization
-  --> $DIR/invalid_value.rs:143:36
+  --> $DIR/invalid_value.rs:146:36
    |
 LL |         let _val: &'static [i32] = mem::transmute((0usize, 0usize));
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -564,7 +586,7 @@ LL |         let _val: &'static [i32] = mem::transmute((0usize, 0usize));
    = note: references must be non-null
 
 error: the type `NonZeroU32` does not permit zero-initialization
-  --> $DIR/invalid_value.rs:144:32
+  --> $DIR/invalid_value.rs:147:32
    |
 LL |         let _val: NonZeroU32 = mem::transmute(0);
    |                                ^^^^^^^^^^^^^^^^^
@@ -575,7 +597,7 @@ LL |         let _val: NonZeroU32 = mem::transmute(0);
    = note: `std::num::NonZeroU32` must be non-null
 
 error: the type `NonNull<i32>` does not permit zero-initialization
-  --> $DIR/invalid_value.rs:147:34
+  --> $DIR/invalid_value.rs:150:34
    |
 LL |         let _val: NonNull<i32> = MaybeUninit::zeroed().assume_init();
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -586,7 +608,7 @@ LL |         let _val: NonNull<i32> = MaybeUninit::zeroed().assume_init();
    = note: `std::ptr::NonNull<i32>` must be non-null
 
 error: the type `NonNull<i32>` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:148:34
+  --> $DIR/invalid_value.rs:151:34
    |
 LL |         let _val: NonNull<i32> = MaybeUninit::uninit().assume_init();
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -597,7 +619,7 @@ LL |         let _val: NonNull<i32> = MaybeUninit::uninit().assume_init();
    = note: `std::ptr::NonNull<i32>` must be non-null
 
 error: the type `bool` does not permit being left uninitialized
-  --> $DIR/invalid_value.rs:149:26
+  --> $DIR/invalid_value.rs:152:26
    |
 LL |         let _val: bool = MaybeUninit::uninit().assume_init();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -607,5 +629,5 @@ LL |         let _val: bool = MaybeUninit::uninit().assume_init();
    |
    = note: booleans must be either `true` or `false`
 
-error: aborting due to 48 previous errors
+error: aborting due to 50 previous errors
 

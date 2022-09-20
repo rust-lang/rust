@@ -1392,7 +1392,7 @@ pub struct PointeeInfo {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InitKind {
     Zero,
-    Uninit,
+    UninitMitigated0x01Fill,
 }
 
 /// Trait that needs to be implemented by the higher-level type representation
@@ -1497,73 +1497,5 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
-    }
-
-    /// Determines if this type permits "raw" initialization by just transmuting some
-    /// memory into an instance of `T`.
-    ///
-    /// `init_kind` indicates if the memory is zero-initialized or left uninitialized.
-    ///
-    /// This code is intentionally conservative, and will not detect
-    /// * zero init of an enum whose 0 variant does not allow zero initialization
-    /// * making uninitialized types who have a full valid range (ints, floats, raw pointers)
-    /// * Any form of invalid value being made inside an array (unless the value is uninhabited)
-    ///
-    /// A strict form of these checks that uses const evaluation exists in
-    /// `rustc_const_eval::might_permit_raw_init`, and a tracking issue for making these checks
-    /// stricter is <https://github.com/rust-lang/rust/issues/66151>.
-    ///
-    /// FIXME: Once all the conservatism is removed from here, and the checks are ran by default,
-    /// we can use the const evaluation checks always instead.
-    pub fn might_permit_raw_init<C>(self, cx: &C, init_kind: InitKind) -> bool
-    where
-        Self: Copy,
-        Ty: TyAbiInterface<'a, C>,
-        C: HasDataLayout,
-    {
-        let scalar_allows_raw_init = move |s: Scalar| -> bool {
-            match init_kind {
-                InitKind::Zero => {
-                    // The range must contain 0.
-                    s.valid_range(cx).contains(0)
-                }
-                InitKind::Uninit => {
-                    // The range must include all values.
-                    s.is_always_valid(cx)
-                }
-            }
-        };
-
-        // Check the ABI.
-        let valid = match self.abi {
-            Abi::Uninhabited => false, // definitely UB
-            Abi::Scalar(s) => scalar_allows_raw_init(s),
-            Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
-            Abi::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
-            Abi::Aggregate { .. } => true, // Fields are checked below.
-        };
-        if !valid {
-            // This is definitely not okay.
-            return false;
-        }
-
-        // If we have not found an error yet, we need to recursively descend into fields.
-        match &self.fields {
-            FieldsShape::Primitive | FieldsShape::Union { .. } => {}
-            FieldsShape::Array { .. } => {
-                // FIXME(#66151): For now, we are conservative and do not check arrays by default.
-            }
-            FieldsShape::Arbitrary { offsets, .. } => {
-                for idx in 0..offsets.len() {
-                    if !self.field(cx, idx).might_permit_raw_init(cx, init_kind) {
-                        // We found a field that is unhappy with this kind of initialization.
-                        return false;
-                    }
-                }
-            }
-        }
-
-        // FIXME(#66151): For now, we are conservative and do not check `self.variants`.
-        true
     }
 }
