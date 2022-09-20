@@ -84,6 +84,9 @@ config_data! {
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
+        /// Extra environment variables that will be set when running cargo, rustc
+        /// or other commands within the workspace. Useful for setting RUSTFLAGS.
+        cargo_extraEnv: FxHashMap<String, String> = "{}",
         /// List of features to activate.
         ///
         /// Set this to `"all"` to pass `--all-features` to cargo.
@@ -105,6 +108,8 @@ config_data! {
         checkOnSave_enable: bool                         = "true",
         /// Extra arguments for `cargo check`.
         checkOnSave_extraArgs: Vec<String>               = "[]",
+        /// Extra environment variables that will be set when running `cargo check`.
+        checkOnSave_extraEnv: FxHashMap<String, String> = "{}",
         /// List of features to activate. Defaults to
         /// `#rust-analyzer.cargo.features#`.
         ///
@@ -219,7 +224,6 @@ config_data! {
         files_excludeDirs: Vec<PathBuf> = "[]",
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = "\"client\"",
-
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
         /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
@@ -263,6 +267,8 @@ config_data! {
         imports_group_enable: bool                           = "true",
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
         imports_merge_glob: bool           = "true",
+        /// Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
+        imports_prefer_no_std: bool                     = "false",
         /// The path structure for newly inserted paths to use.
         imports_prefix: ImportPrefixDef               = "\"plain\"",
 
@@ -307,6 +313,7 @@ config_data! {
         /// Join lines unwraps trivial blocks.
         joinLines_unwrapTrivialBlock: bool = "true",
 
+
         /// Whether to show `Debug` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_debug_enable: bool            = "true",
@@ -318,6 +325,8 @@ config_data! {
         /// Whether to show `Implementations` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_implementations_enable: bool  = "true",
+        /// Where to render annotations.
+        lens_location: AnnotationLocation = "\"above_name\"",
         /// Whether to show `References` lens for Struct, Enum, and Union.
         /// Only applies when `#rust-analyzer.lens.enable#` is set.
         lens_references_adt_enable: bool = "false",
@@ -358,6 +367,9 @@ config_data! {
         /// Internal config, path to proc-macro server executable (typically,
         /// this is rust-analyzer itself, but we override this in tests).
         procMacro_server: Option<PathBuf>          = "null",
+
+        /// Exclude imports from find-all-references.
+        references_excludeImports: bool = "false",
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = "null",
@@ -494,6 +506,25 @@ pub struct LensConfig {
     pub refs_adt: bool,   // for Struct, Enum, Union and Trait
     pub refs_trait: bool, // for Struct, Enum, Union and Trait
     pub enum_variant_refs: bool,
+
+    // annotations
+    pub location: AnnotationLocation,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AnnotationLocation {
+    AboveName,
+    AboveWholeItem,
+}
+
+impl From<AnnotationLocation> for ide::AnnotationLocation {
+    fn from(location: AnnotationLocation) -> Self {
+        match location {
+            AnnotationLocation::AboveName => ide::AnnotationLocation::AboveName,
+            AnnotationLocation::AboveWholeItem => ide::AnnotationLocation::AboveWholeItem,
+        }
+    }
 }
 
 impl LensConfig {
@@ -918,6 +949,7 @@ impl Config {
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
             },
             insert_use: self.insert_use_config(),
+            prefer_no_std: self.data.imports_prefer_no_std,
         }
     }
 
@@ -927,6 +959,16 @@ impl Config {
             warnings_as_info: self.data.diagnostics_warningsAsInfo.clone(),
             warnings_as_hint: self.data.diagnostics_warningsAsHint.clone(),
         }
+    }
+
+    pub fn extra_env(&self) -> &FxHashMap<String, String> {
+        &self.data.cargo_extraEnv
+    }
+
+    pub fn check_on_save_extra_env(&self) -> FxHashMap<String, String> {
+        let mut extra_env = self.data.cargo_extraEnv.clone();
+        extra_env.extend(self.data.checkOnSave_extraEnv.clone());
+        extra_env
     }
 
     pub fn lru_capacity(&self) -> Option<usize> {
@@ -998,6 +1040,7 @@ impl Config {
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
+            extra_env: self.data.cargo_extraEnv.clone(),
         }
     }
 
@@ -1023,7 +1066,11 @@ impl Config {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
-                FlycheckConfig::CustomCommand { command, args }
+                FlycheckConfig::CustomCommand {
+                    command,
+                    args,
+                    extra_env: self.check_on_save_extra_env(),
+                }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
                 command: self.data.checkOnSave_command.clone(),
@@ -1051,6 +1098,7 @@ impl Config {
                     CargoFeatures::Listed(it) => it,
                 },
                 extra_args: self.data.checkOnSave_extraArgs.clone(),
+                extra_env: self.check_on_save_extra_env(),
             },
         };
         Some(flycheck_config)
@@ -1133,6 +1181,7 @@ impl Config {
                 CallableCompletionDef::None => None,
             },
             insert_use: self.insert_use_config(),
+            prefer_no_std: self.data.imports_prefer_no_std,
             snippet_cap: SnippetCap::new(try_or_def!(
                 self.caps
                     .text_document
@@ -1147,6 +1196,10 @@ impl Config {
         }
     }
 
+    pub fn find_all_refs_exclude_imports(&self) -> bool {
+        self.data.references_excludeImports
+    }
+
     pub fn snippet_cap(&self) -> bool {
         self.experimental("snippetTextEdit")
     }
@@ -1156,6 +1209,7 @@ impl Config {
             snippet_cap: SnippetCap::new(self.experimental("snippetTextEdit")),
             allowed: None,
             insert_use: self.insert_use_config(),
+            prefer_no_std: self.data.imports_prefer_no_std,
         }
     }
 
@@ -1185,6 +1239,7 @@ impl Config {
             refs_trait: self.data.lens_enable && self.data.lens_references_trait_enable,
             enum_variant_refs: self.data.lens_enable
                 && self.data.lens_references_enumVariant_enable,
+            location: self.data.lens_location,
         }
     }
 
@@ -1919,6 +1974,14 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "Use the client (editor) to watch files for changes",
                 "Use server-side file watching",
+            ],
+        },
+        "AnnotationLocation" => set! {
+            "type": "string",
+            "enum": ["above_name", "above_whole_item"],
+            "enumDescriptions": [
+                "Render annotations above the name of the item.",
+                "Render annotations above the whole item, including documentation comments and attributes."
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),

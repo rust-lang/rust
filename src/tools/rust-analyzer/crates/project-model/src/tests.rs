@@ -10,8 +10,8 @@ use paths::{AbsPath, AbsPathBuf};
 use serde::de::DeserializeOwned;
 
 use crate::{
-    CargoWorkspace, CfgOverrides, ProjectJson, ProjectJsonData, ProjectWorkspace, Sysroot,
-    WorkspaceBuildScripts,
+    CargoConfig, CargoWorkspace, CfgOverrides, ProjectJson, ProjectJsonData, ProjectWorkspace,
+    Sysroot, WorkspaceBuildScripts,
 };
 
 fn load_cargo(file: &str) -> CrateGraph {
@@ -92,13 +92,17 @@ fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
 }
 
 fn to_crate_graph(project_workspace: ProjectWorkspace) -> CrateGraph {
-    project_workspace.to_crate_graph(&mut |_, _| Ok(Vec::new()), &mut {
-        let mut counter = 0;
-        move |_path| {
-            counter += 1;
-            Some(FileId(counter))
-        }
-    })
+    project_workspace.to_crate_graph(
+        &mut |_, _| Ok(Vec::new()),
+        &mut {
+            let mut counter = 0;
+            move |_path| {
+                counter += 1;
+                Some(FileId(counter))
+            }
+        },
+        &CargoConfig::default(),
+    )
 }
 
 fn check_crate_graph(crate_graph: CrateGraph, expect: Expect) {

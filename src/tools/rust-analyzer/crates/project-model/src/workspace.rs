@@ -156,11 +156,12 @@ impl ProjectWorkspace {
                 })?;
                 let project_location = project_json.parent().to_path_buf();
                 let project_json = ProjectJson::new(&project_location, data);
-                ProjectWorkspace::load_inline(project_json, config.target.as_deref())?
+                ProjectWorkspace::load_inline(project_json, config.target.as_deref(), config)?
             }
             ProjectManifest::CargoToml(cargo_toml) => {
                 let cargo_version = utf8_stdout({
                     let mut cmd = Command::new(toolchain::cargo());
+                    cmd.envs(&config.extra_env);
                     cmd.arg("--version");
                     cmd
                 })?;
@@ -186,7 +187,7 @@ impl ProjectWorkspace {
                 let sysroot = if config.no_sysroot {
                     None
                 } else {
-                    Some(Sysroot::discover(cargo_toml.parent()).with_context(|| {
+                    Some(Sysroot::discover(cargo_toml.parent(), config).with_context(|| {
                         format!(
                             "Failed to find sysroot for Cargo.toml file {}. Is rust-src installed?",
                             cargo_toml.display()
@@ -196,7 +197,7 @@ impl ProjectWorkspace {
 
                 let rustc_dir = match &config.rustc_source {
                     Some(RustcSource::Path(path)) => ManifestPath::try_from(path.clone()).ok(),
-                    Some(RustcSource::Discover) => Sysroot::discover_rustc(&cargo_toml),
+                    Some(RustcSource::Discover) => Sysroot::discover_rustc(&cargo_toml, config),
                     None => None,
                 };
 
@@ -216,7 +217,7 @@ impl ProjectWorkspace {
                     None => None,
                 };
 
-                let rustc_cfg = rustc_cfg::get(Some(&cargo_toml), config.target.as_deref());
+                let rustc_cfg = rustc_cfg::get(Some(&cargo_toml), config.target.as_deref(), config);
 
                 let cfg_overrides = config.cfg_overrides();
                 ProjectWorkspace::Cargo {
@@ -237,6 +238,7 @@ impl ProjectWorkspace {
     pub fn load_inline(
         project_json: ProjectJson,
         target: Option<&str>,
+        config: &CargoConfig,
     ) -> Result<ProjectWorkspace> {
         let sysroot = match (project_json.sysroot.clone(), project_json.sysroot_src.clone()) {
             (Some(sysroot), Some(sysroot_src)) => Some(Sysroot::load(sysroot, sysroot_src)?),
@@ -258,7 +260,7 @@ impl ProjectWorkspace {
             (None, None) => None,
         };
 
-        let rustc_cfg = rustc_cfg::get(None, target);
+        let rustc_cfg = rustc_cfg::get(None, target, config);
         Ok(ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg })
     }
 
@@ -268,8 +270,9 @@ impl ProjectWorkspace {
                 .first()
                 .and_then(|it| it.parent())
                 .ok_or_else(|| format_err!("No detached files to load"))?,
+            &CargoConfig::default(),
         )?;
-        let rustc_cfg = rustc_cfg::get(None, None);
+        let rustc_cfg = rustc_cfg::get(None, None, &CargoConfig::default());
         Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
     }
 
@@ -416,6 +419,7 @@ impl ProjectWorkspace {
         &self,
         load_proc_macro: &mut dyn FnMut(&str, &AbsPath) -> ProcMacroLoadResult,
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
+        config: &CargoConfig,
     ) -> CrateGraph {
         let _p = profile::span("ProjectWorkspace::to_crate_graph");
 
@@ -426,6 +430,7 @@ impl ProjectWorkspace {
                 load,
                 project,
                 sysroot,
+                config,
             ),
             ProjectWorkspace::Cargo {
                 cargo,
@@ -464,6 +469,7 @@ fn project_json_to_crate_graph(
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     project: &ProjectJson,
     sysroot: &Option<Sysroot>,
+    config: &CargoConfig,
 ) -> CrateGraph {
     let mut crate_graph = CrateGraph::default();
     let sysroot_deps = sysroot
@@ -489,9 +495,9 @@ fn project_json_to_crate_graph(
             };
 
             let target_cfgs = match krate.target.as_deref() {
-                Some(target) => {
-                    cfg_cache.entry(target).or_insert_with(|| rustc_cfg::get(None, Some(target)))
-                }
+                Some(target) => cfg_cache
+                    .entry(target)
+                    .or_insert_with(|| rustc_cfg::get(None, Some(target), config)),
                 None => &rustc_cfg,
             };
 

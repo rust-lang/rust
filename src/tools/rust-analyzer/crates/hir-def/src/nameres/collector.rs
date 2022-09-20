@@ -534,6 +534,7 @@ impl DefCollector<'_> {
             match per_ns.types {
                 Some((ModuleDefId::ModuleId(m), _)) => {
                     self.def_map.prelude = Some(m);
+                    break;
                 }
                 types => {
                     tracing::debug!(
