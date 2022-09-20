@@ -1540,6 +1540,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 }
                 diag.emit();
             }
+            FulfillmentErrorCode::CodeCycle(ref cycle) => {
+                self.report_overflow_error_cycle(cycle);
+            }
         }
     }
 
