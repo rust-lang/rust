@@ -1558,6 +1558,7 @@ declare_lint! {
     ///
     /// ```rust
     /// let mut x = 5;
+    /// drop(x);
     /// ```
     ///
     /// {{produces}}
