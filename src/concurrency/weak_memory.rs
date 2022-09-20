@@ -456,9 +456,9 @@ impl StoreElement {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
-    crate::MiriEvalContextExt<'mir, 'tcx>
+    crate::MiriInterpCxExt<'mir, 'tcx>
 {
     // If weak memory emulation is enabled, check if this atomic op imperfectly overlaps with a previous
     // atomic read or write. If it does, then we require it to be ordered (non-racy) with all previous atomic
@@ -502,7 +502,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
         if let (
             crate::AllocExtra { weak_memory: Some(alloc_buffers), .. },
-            crate::Evaluator { data_race: Some(global), threads, .. },
+            crate::MiriMachine { data_race: Some(global), threads, .. },
         ) = this.get_alloc_extra_mut(alloc_id)?
         {
             if atomic == AtomicRwOrd::SeqCst {
@@ -544,7 +544,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     validate,
                 )?;
                 if global.track_outdated_loads && recency == LoadRecency::Outdated {
-                    register_diagnostic(NonHaltingDiagnostic::WeakMemoryOutdatedLoad);
+                    this.emit_diagnostic(NonHaltingDiagnostic::WeakMemoryOutdatedLoad);
                 }
 
                 return Ok(loaded);
@@ -567,7 +567,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr)?;
         if let (
             crate::AllocExtra { weak_memory: Some(alloc_buffers), .. },
-            crate::Evaluator { data_race: Some(global), threads, .. },
+            crate::MiriMachine { data_race: Some(global), threads, .. },
         ) = this.get_alloc_extra_mut(alloc_id)?
         {
             if atomic == AtomicWriteOrd::SeqCst {

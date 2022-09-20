@@ -38,8 +38,8 @@ pub enum EmulateByNameResult<'mir, 'tcx> {
     NotSupported,
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Returns the minimum alignment for the target architecture for allocations of the given size.
     fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
         let this = self.eval_context_ref();
@@ -334,7 +334,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn emulate_allocator(
         &mut self,
         symbol: Symbol,
-        default: impl FnOnce(&mut MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx>,
+        default: impl FnOnce(&mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 

@@ -2,8 +2,8 @@ use crate::*;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::spec::abi::Abi;
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn pthread_create(
         &mut self,
         thread: &OpTy<'tcx, Provenance>,

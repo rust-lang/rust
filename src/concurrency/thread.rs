@@ -32,8 +32,9 @@ pub enum SchedulingAction {
 
 /// Timeout callbacks can be created by synchronization primitives to tell the
 /// scheduler that they should be called once some period of time passes.
-type TimeoutCallback<'mir, 'tcx> =
-    Box<dyn FnOnce(&mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>) -> InterpResult<'tcx> + 'tcx>;
+type TimeoutCallback<'mir, 'tcx> = Box<
+    dyn FnOnce(&mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx> + 'tcx,
+>;
 
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -253,7 +254,7 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
-    pub(crate) fn init(ecx: &mut MiriEvalContext<'mir, 'tcx>) {
+    pub(crate) fn init(ecx: &mut MiriInterpCx<'mir, 'tcx>) {
         if ecx.tcx.sess.target.os.as_ref() != "windows" {
             // The main thread can *not* be joined on except on windows.
             ecx.machine.threads.threads[ThreadId::new(0)].join_status = ThreadJoinStatus::Detached;
@@ -628,8 +629,8 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 }
 
 // Public interface to thread management.
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Get a thread-specific allocation id for the given thread-local static.
     /// If needed, allocate a new one.
     fn get_or_create_thread_local_alloc(

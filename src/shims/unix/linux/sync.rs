@@ -6,7 +6,7 @@ use std::time::SystemTime;
 /// Implementation of the SYS_futex syscall.
 /// `args` is the arguments *after* the syscall number.
 pub fn futex<'tcx>(
-    this: &mut MiriEvalContext<'_, 'tcx>,
+    this: &mut MiriInterpCx<'_, 'tcx>,
     args: &[OpTy<'tcx, Provenance>],
     dest: &PlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx> {

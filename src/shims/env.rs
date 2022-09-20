@@ -38,7 +38,7 @@ pub struct EnvVars<'tcx> {
 
 impl<'tcx> EnvVars<'tcx> {
     pub(crate) fn init<'mir>(
-        ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+        ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
         config: &MiriConfig,
     ) -> InterpResult<'tcx> {
         let target_os = ecx.tcx.sess.target.os.as_ref();
@@ -74,7 +74,7 @@ impl<'tcx> EnvVars<'tcx> {
     }
 
     pub(crate) fn cleanup<'mir>(
-        ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+        ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
     ) -> InterpResult<'tcx> {
         // Deallocate individual env vars.
         let env_vars = mem::take(&mut ecx.machine.env_vars.map);
@@ -92,7 +92,7 @@ impl<'tcx> EnvVars<'tcx> {
 fn alloc_env_var_as_c_str<'mir, 'tcx>(
     name: &OsStr,
     value: &OsStr,
-    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+    ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
 ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
@@ -103,7 +103,7 @@ fn alloc_env_var_as_c_str<'mir, 'tcx>(
 fn alloc_env_var_as_wide_str<'mir, 'tcx>(
     name: &OsStr,
     value: &OsStr,
-    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+    ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
 ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
@@ -111,8 +111,8 @@ fn alloc_env_var_as_wide_str<'mir, 'tcx>(
     ecx.alloc_os_str_as_wide_str(name_osstring.as_os_str(), MiriMemoryKind::Runtime.into())
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn getenv(
         &mut self,
         name_op: &OpTy<'tcx, Provenance>,

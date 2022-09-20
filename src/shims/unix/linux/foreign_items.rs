@@ -8,8 +8,8 @@ use shims::unix::linux::sync::futex;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn emulate_foreign_item_by_name(
         &mut self,
         link_name: Symbol,
@@ -167,7 +167,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
 // Shims the linux `getrandom` syscall.
 fn getrandom<'tcx>(
-    this: &mut MiriEvalContext<'_, 'tcx>,
+    this: &mut MiriInterpCx<'_, 'tcx>,
     ptr: &OpTy<'tcx, Provenance>,
     len: &OpTy<'tcx, Provenance>,
     flags: &OpTy<'tcx, Provenance>,

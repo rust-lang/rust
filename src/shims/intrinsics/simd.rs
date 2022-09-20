@@ -6,8 +6,8 @@ use rustc_target::abi::{Endian, HasDataLayout, Size};
 use crate::*;
 use helpers::check_arg_count;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Calls the simd intrinsic `intrinsic`; the `simd_` prefix has already been removed.
     fn emulate_simd_intrinsic(
         &mut self,

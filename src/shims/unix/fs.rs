@@ -304,8 +304,8 @@ impl FileHandler {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExtPrivate<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExtPrivate<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn macos_stat_write_buf(
         &mut self,
         metadata: FileMetadata,
@@ -478,8 +478,8 @@ fn maybe_sync_file(
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn open(&mut self, args: &[OpTy<'tcx, Provenance>]) -> InterpResult<'tcx, i32> {
         if args.len() < 2 {
             throw_ub_format!(
@@ -1892,7 +1892,7 @@ struct FileMetadata {
 
 impl FileMetadata {
     fn from_path<'tcx, 'mir>(
-        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        ecx: &mut MiriInterpCx<'mir, 'tcx>,
         path: &Path,
         follow_symlink: bool,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
@@ -1903,7 +1903,7 @@ impl FileMetadata {
     }
 
     fn from_fd<'tcx, 'mir>(
-        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        ecx: &mut MiriInterpCx<'mir, 'tcx>,
         fd: i32,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let option = ecx.machine.file_handler.handles.get(&fd);
@@ -1917,7 +1917,7 @@ impl FileMetadata {
     }
 
     fn from_meta<'tcx, 'mir>(
-        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        ecx: &mut MiriInterpCx<'mir, 'tcx>,
         metadata: Result<std::fs::Metadata, std::io::Error>,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let metadata = match metadata {

@@ -1,11 +1,9 @@
-use std::cell::RefCell;
 use std::fmt;
 use std::num::NonZeroU64;
 
 use log::trace;
 
-use rustc_middle::ty;
-use rustc_span::{source_map::DUMMY_SP, Span, SpanData, Symbol};
+use rustc_span::{source_map::DUMMY_SP, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 
 use crate::stacked_borrows::{diagnostics::TagHistory, AccessKind};
@@ -89,15 +87,15 @@ enum DiagLevel {
 /// Attempts to prune a stacktrace to omit the Rust runtime, and returns a bool indicating if any
 /// frames were pruned. If the stacktrace does not have any local frames, we conclude that it must
 /// be pointing to a problem in the Rust runtime itself, and do not prune it at all.
-fn prune_stacktrace<'mir, 'tcx>(
-    ecx: &InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+fn prune_stacktrace<'tcx>(
     mut stacktrace: Vec<FrameInfo<'tcx>>,
+    machine: &MiriMachine<'_, 'tcx>,
 ) -> (Vec<FrameInfo<'tcx>>, bool) {
-    match ecx.machine.backtrace_style {
+    match machine.backtrace_style {
         BacktraceStyle::Off => {
             // Remove all frames marked with `caller_location` -- that attribute indicates we
             // usually want to point at the caller, not them.
-            stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
+            stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(machine.tcx));
             // Retain one frame so that we can print a span for the error itself
             stacktrace.truncate(1);
             (stacktrace, false)
@@ -107,11 +105,12 @@ fn prune_stacktrace<'mir, 'tcx>(
             // Only prune frames if there is at least one local frame. This check ensures that if
             // we get a backtrace that never makes it to the user code because it has detected a
             // bug in the Rust runtime, we don't prune away every frame.
-            let has_local_frame = stacktrace.iter().any(|frame| ecx.machine.is_local(frame));
+            let has_local_frame = stacktrace.iter().any(|frame| machine.is_local(frame));
             if has_local_frame {
                 // Remove all frames marked with `caller_location` -- that attribute indicates we
                 // usually want to point at the caller, not them.
-                stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
+                stacktrace
+                    .retain(|frame| !frame.instance.def.requires_caller_location(machine.tcx));
 
                 // This is part of the logic that `std` uses to select the relevant part of a
                 // backtrace. But here, we only look for __rust_begin_short_backtrace, not
@@ -121,7 +120,7 @@ fn prune_stacktrace<'mir, 'tcx>(
                     .into_iter()
                     .take_while(|frame| {
                         let def_id = frame.instance.def_id();
-                        let path = ecx.tcx.tcx.def_path_str(def_id);
+                        let path = machine.tcx.def_path_str(def_id);
                         !path.contains("__rust_begin_short_backtrace")
                     })
                     .collect::<Vec<_>>();
@@ -132,7 +131,7 @@ fn prune_stacktrace<'mir, 'tcx>(
                 // This len check ensures that we don't somehow remove every frame, as doing so breaks
                 // the primary error message.
                 while stacktrace.len() > 1
-                    && stacktrace.last().map_or(false, |frame| !ecx.machine.is_local(frame))
+                    && stacktrace.last().map_or(false, |frame| !machine.is_local(frame))
                 {
                     stacktrace.pop();
                 }
@@ -146,7 +145,7 @@ fn prune_stacktrace<'mir, 'tcx>(
 
 /// Emit a custom diagnostic without going through the miri-engine machinery
 pub fn report_error<'tcx, 'mir>(
-    ecx: &InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+    ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
     e: InterpErrorInfo<'tcx>,
 ) -> Option<i64> {
     use InterpError::*;
@@ -256,17 +255,17 @@ pub fn report_error<'tcx, 'mir>(
     };
 
     let stacktrace = ecx.generate_stacktrace();
-    let (stacktrace, was_pruned) = prune_stacktrace(ecx, stacktrace);
+    let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);
     e.print_backtrace();
     msg.insert(0, e.to_string());
     report_msg(
-        ecx,
         DiagLevel::Error,
         &if let Some(title) = title { format!("{}: {}", title, msg[0]) } else { msg[0].clone() },
         msg,
         vec![],
         helps,
         &stacktrace,
+        &ecx.machine,
     );
 
     // Include a note like `std` does when we omit frames from a backtrace
@@ -306,17 +305,17 @@ pub fn report_error<'tcx, 'mir>(
 /// We want to present a multi-line span message for some errors. Diagnostics do not support this
 /// directly, so we pass the lines as a `Vec<String>` and display each line after the first with an
 /// additional `span_label` or `note` call.
-fn report_msg<'mir, 'tcx>(
-    ecx: &InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+fn report_msg<'tcx>(
     diag_level: DiagLevel,
     title: &str,
     span_msg: Vec<String>,
     notes: Vec<(Option<SpanData>, String)>,
     helps: Vec<(Option<SpanData>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
+    machine: &MiriMachine<'_, 'tcx>,
 ) {
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
-    let sess = ecx.tcx.sess;
+    let sess = machine.tcx.sess;
     let mut err = match diag_level {
         DiagLevel::Error => sess.struct_span_err(span, title).forget_guarantee(),
         DiagLevel::Warning => sess.struct_span_warn(span, title),
@@ -357,7 +356,7 @@ fn report_msg<'mir, 'tcx>(
     }
     // Add backtrace
     for (idx, frame_info) in stacktrace.iter().enumerate() {
-        let is_local = ecx.machine.is_local(frame_info);
+        let is_local = machine.is_local(frame_info);
         // No span for non-local frames and the first frame (which is the error site).
         if is_local && idx > 0 {
             err.span_note(frame_info.span, &frame_info.to_string());
@@ -369,164 +368,115 @@ fn report_msg<'mir, 'tcx>(
     err.emit();
 }
 
-thread_local! {
-    static DIAGNOSTICS: RefCell<Vec<NonHaltingDiagnostic>> = RefCell::new(Vec::new());
-}
+impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
+    pub fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
+        use NonHaltingDiagnostic::*;
 
-/// Schedule a diagnostic for emitting. This function works even if you have no `InterpCx` available.
-/// The diagnostic will be emitted after the current interpreter step is finished.
-pub fn register_diagnostic(e: NonHaltingDiagnostic) {
-    DIAGNOSTICS.with(|diagnostics| diagnostics.borrow_mut().push(e));
-}
+        let stacktrace =
+            MiriInterpCx::generate_stacktrace_from_stack(self.threads.active_thread_stack());
+        let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
-/// Remember enough about the topmost frame so that we can restore the stack
-/// after a step was taken.
-pub struct TopFrameInfo<'tcx> {
-    stack_size: usize,
-    instance: Option<ty::Instance<'tcx>>,
-    span: Span,
-}
+        let (title, diag_level) = match e {
+            RejectedIsolatedOp(_) => ("operation rejected by isolation", DiagLevel::Warning),
+            Int2Ptr { .. } => ("integer-to-pointer cast", DiagLevel::Warning),
+            CreatedPointerTag(..)
+            | PoppedPointerTag(..)
+            | CreatedCallId(..)
+            | CreatedAlloc(..)
+            | FreedAlloc(..)
+            | ProgressReport { .. }
+            | WeakMemoryOutdatedLoad => ("tracking was triggered", DiagLevel::Note),
+        };
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    fn preprocess_diagnostics(&self) -> TopFrameInfo<'tcx> {
-        // Ensure we have no lingering diagnostics.
-        DIAGNOSTICS.with(|diagnostics| assert!(diagnostics.borrow().is_empty()));
-
-        let this = self.eval_context_ref();
-        if this.active_thread_stack().is_empty() {
-            // Diagnostics can happen even with the empty stack (e.g. deallocation of thread-local statics).
-            return TopFrameInfo { stack_size: 0, instance: None, span: DUMMY_SP };
-        }
-        let frame = this.frame();
-
-        TopFrameInfo {
-            stack_size: this.active_thread_stack().len(),
-            instance: Some(frame.instance),
-            span: frame.current_span(),
-        }
-    }
-
-    /// Emit all diagnostics that were registed with `register_diagnostics`
-    fn process_diagnostics(&self, info: TopFrameInfo<'tcx>) {
-        let this = self.eval_context_ref();
-        DIAGNOSTICS.with(|diagnostics| {
-            let mut diagnostics = diagnostics.borrow_mut();
-            if diagnostics.is_empty() {
-                return;
-            }
-            // We need to fix up the stack trace, because the machine has already
-            // stepped to the next statement.
-            let mut stacktrace = this.generate_stacktrace();
-            // Remove newly pushed frames.
-            while stacktrace.len() > info.stack_size {
-                stacktrace.remove(0);
-            }
-            // Add popped frame back.
-            if stacktrace.len() < info.stack_size {
-                assert!(
-                    stacktrace.len() == info.stack_size - 1,
-                    "we should never pop more than one frame at once"
-                );
-                let frame_info = FrameInfo {
-                    instance: info.instance.unwrap(),
-                    span: info.span,
-                    lint_root: None,
-                };
-                stacktrace.insert(0, frame_info);
-            } else if let Some(instance) = info.instance {
-                // Adjust topmost frame.
-                stacktrace[0].span = info.span;
-                assert_eq!(
-                    stacktrace[0].instance, instance,
-                    "we should not pop and push a frame in one step"
-                );
-            }
-
-            let (stacktrace, _was_pruned) = prune_stacktrace(this, stacktrace);
-
-            // Show diagnostics.
-            for e in diagnostics.drain(..) {
-                use NonHaltingDiagnostic::*;
-
-                let (title, diag_level) = match e {
-                    RejectedIsolatedOp(_) =>
-                        ("operation rejected by isolation", DiagLevel::Warning),
-                    Int2Ptr { .. } => ("integer-to-pointer cast", DiagLevel::Warning),
-                    CreatedPointerTag(..)
-                    | PoppedPointerTag(..)
-                    | CreatedCallId(..)
-                    | CreatedAlloc(..)
-                    | FreedAlloc(..)
-                    | ProgressReport { .. }
-                    | WeakMemoryOutdatedLoad =>
-                        ("tracking was triggered", DiagLevel::Note),
-                };
-
-                let msg = match e {
-                    CreatedPointerTag(tag, None) =>
-                        format!("created tag {tag:?}"),
-                    CreatedPointerTag(tag, Some((alloc_id, range))) =>
-                        format!("created tag {tag:?} at {alloc_id:?}{range:?}"),
-                    PoppedPointerTag(item, tag) =>
-                        match tag {
-                            None =>
-                                format!(
-                                    "popped tracked tag for item {item:?} due to deallocation",
-                                ),
-                            Some((tag, access)) => {
-                                format!(
-                                    "popped tracked tag for item {item:?} due to {access:?} access for {tag:?}",
-                                )
-                            }
-                        },
-                    CreatedCallId(id) =>
-                        format!("function call with id {id}"),
-                    CreatedAlloc(AllocId(id), size, align, kind) =>
+        let msg = match e {
+            CreatedPointerTag(tag, None) => format!("created tag {tag:?}"),
+            CreatedPointerTag(tag, Some((alloc_id, range))) =>
+                format!("created tag {tag:?} at {alloc_id:?}{range:?}"),
+            PoppedPointerTag(item, tag) =>
+                match tag {
+                    None => format!("popped tracked tag for item {item:?} due to deallocation",),
+                    Some((tag, access)) => {
                         format!(
-                            "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
-                            size = size.bytes(),
-                            align = align.bytes(),
-                        ),
-                    FreedAlloc(AllocId(id)) =>
-                        format!("freed allocation with id {id}"),
-                    RejectedIsolatedOp(ref op) =>
-                        format!("{op} was made to return an error due to isolation"),
-                    ProgressReport { .. } =>
-                        format!("progress report: current operation being executed is here"),
-                    Int2Ptr { .. } =>
-                        format!("integer-to-pointer cast"),
-                    WeakMemoryOutdatedLoad =>
-                        format!("weak memory emulation: outdated value returned from load"),
-                };
-
-                let notes = match e {
-                    ProgressReport { block_count } => {
-                        // It is important that each progress report is slightly different, since
-                        // identical diagnostics are being deduplicated.
-                        vec![
-                            (None, format!("so far, {block_count} basic blocks have been executed")),
-                        ]
+                            "popped tracked tag for item {item:?} due to {access:?} access for {tag:?}",
+                        )
                     }
-                    _ => vec![],
-                };
+                },
+            CreatedCallId(id) => format!("function call with id {id}"),
+            CreatedAlloc(AllocId(id), size, align, kind) =>
+                format!(
+                    "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
+                    size = size.bytes(),
+                    align = align.bytes(),
+                ),
+            FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
+            RejectedIsolatedOp(ref op) =>
+                format!("{op} was made to return an error due to isolation"),
+            ProgressReport { .. } =>
+                format!("progress report: current operation being executed is here"),
+            Int2Ptr { .. } => format!("integer-to-pointer cast"),
+            WeakMemoryOutdatedLoad =>
+                format!("weak memory emulation: outdated value returned from load"),
+        };
 
-                let helps = match e {
-                    Int2Ptr { details: true } =>
-                        vec![
-                            (None, format!("This program is using integer-to-pointer casts or (equivalently) `ptr::from_exposed_addr`,")),
-                            (None, format!("which means that Miri might miss pointer bugs in this program.")),
-                            (None, format!("See https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation.")),
-                            (None, format!("To ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead.")),
-                            (None, format!("You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics.")),
-                            (None, format!("Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning.")),
-                        ],
-                    _ => vec![],
-                };
-
-                report_msg(this, diag_level, title, vec![msg], notes, helps, &stacktrace);
+        let notes = match e {
+            ProgressReport { block_count } => {
+                // It is important that each progress report is slightly different, since
+                // identical diagnostics are being deduplicated.
+                vec![(None, format!("so far, {block_count} basic blocks have been executed"))]
             }
-        });
+            _ => vec![],
+        };
+
+        let helps = match e {
+            Int2Ptr { details: true } =>
+                vec![
+                    (
+                        None,
+                        format!(
+                            "This program is using integer-to-pointer casts or (equivalently) `ptr::from_exposed_addr`,"
+                        ),
+                    ),
+                    (
+                        None,
+                        format!("which means that Miri might miss pointer bugs in this program."),
+                    ),
+                    (
+                        None,
+                        format!(
+                            "See https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation."
+                        ),
+                    ),
+                    (
+                        None,
+                        format!(
+                            "To ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead."
+                        ),
+                    ),
+                    (
+                        None,
+                        format!(
+                            "You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics."
+                        ),
+                    ),
+                    (
+                        None,
+                        format!(
+                            "Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning."
+                        ),
+                    ),
+                ],
+            _ => vec![],
+        };
+
+        report_msg(diag_level, title, vec![msg], notes, helps, &stacktrace, self);
+    }
+}
+
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+    fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
+        let this = self.eval_context_ref();
+        this.machine.emit_diagnostic(e);
     }
 
     /// We had a panic in Miri itself, try to print something useful.
@@ -538,13 +488,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let stacktrace = this.generate_stacktrace();
         report_msg(
-            this,
             DiagLevel::Note,
             "the place in the program where the ICE was triggered",
             vec![],
             vec![],
             vec![],
             &stacktrace,
+            &this.machine,
         );
     }
 }

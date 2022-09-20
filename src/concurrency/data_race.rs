@@ -438,8 +438,8 @@ impl MemoryCellClocks {
 }
 
 /// Evaluation context extensions.
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     /// Atomic variant of read_scalar_at_offset.
     fn read_scalar_at_offset_atomic(
         &self,
@@ -940,8 +940,8 @@ impl VClockAlloc {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> {}
-trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {}
+trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     /// Temporarily allow data-races to occur. This should only be used in
     /// one of these cases:
     /// - One of the appropriate `validate_atomic` functions will be called to
@@ -950,7 +950,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     /// cannot be accessed by the interpreted program.
     /// - Execution of the interpreted program execution has halted.
     #[inline]
-    fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriEvalContext<'mir, 'tcx>) -> R) -> R {
+    fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriInterpCx<'mir, 'tcx>) -> R) -> R {
         let this = self.eval_context_ref();
         if let Some(data_race) = &this.machine.data_race {
             let old = data_race.ongoing_action_data_race_free.replace(true);
@@ -969,7 +969,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     #[inline]
     fn allow_data_races_mut<R>(
         &mut self,
-        op: impl FnOnce(&mut MiriEvalContext<'mir, 'tcx>) -> R,
+        op: impl FnOnce(&mut MiriInterpCx<'mir, 'tcx>) -> R,
     ) -> R {
         let this = self.eval_context_mut();
         if let Some(data_race) = &this.machine.data_race {

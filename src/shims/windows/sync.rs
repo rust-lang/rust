@@ -4,7 +4,7 @@ use crate::*;
 // We use the first 4 bytes to store the RwLockId.
 
 fn srwlock_get_or_create_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     lock_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, RwLockId> {
     let value_place = ecx.deref_operand_and_offset(lock_op, 0, ecx.machine.layouts.u32)?;
@@ -30,8 +30,8 @@ fn srwlock_get_or_create_id<'mir, 'tcx: 'mir>(
     })
 }
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[allow(non_snake_case)]
     fn AcquireSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();

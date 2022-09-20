@@ -20,14 +20,14 @@ use crate::*;
 const PTHREAD_MUTEX_NORMAL_FLAG: i32 = 0x8000000;
 
 fn is_mutex_kind_default<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     kind: Scalar<Provenance>,
 ) -> InterpResult<'tcx, bool> {
     Ok(kind == ecx.eval_libc("PTHREAD_MUTEX_DEFAULT")?)
 }
 
 fn is_mutex_kind_normal<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     kind: Scalar<Provenance>,
 ) -> InterpResult<'tcx, bool> {
     let kind = kind.to_i32()?;
@@ -36,14 +36,14 @@ fn is_mutex_kind_normal<'mir, 'tcx: 'mir>(
 }
 
 fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
+    ecx: &MiriInterpCx<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset(attr_op, 0, ecx.machine.layouts.i32)
 }
 
 fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
     kind: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
@@ -60,7 +60,7 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
 // (the kind has to be at its offset for compatibility with static initializer macros)
 
 fn mutex_get_kind<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
+    ecx: &MiriInterpCx<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
@@ -73,7 +73,7 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
 }
 
 fn mutex_set_kind<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
     kind: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
@@ -88,14 +88,14 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
 }
 
 fn mutex_get_id<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
+    ecx: &MiriInterpCx<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset_atomic(mutex_op, 4, ecx.machine.layouts.u32, AtomicReadOrd::Relaxed)
 }
 
 fn mutex_set_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
     id: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
@@ -109,7 +109,7 @@ fn mutex_set_id<'mir, 'tcx: 'mir>(
 }
 
 fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, MutexId> {
     let value_place = ecx.deref_operand_and_offset(mutex_op, 4, ecx.machine.layouts.u32)?;
@@ -143,14 +143,14 @@ fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
 // bytes 4-7: rwlock id as u32 or 0 if id is not assigned yet.
 
 fn rwlock_get_id<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
+    ecx: &MiriInterpCx<'mir, 'tcx>,
     rwlock_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset_atomic(rwlock_op, 4, ecx.machine.layouts.u32, AtomicReadOrd::Relaxed)
 }
 
 fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     rwlock_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, RwLockId> {
     let value_place = ecx.deref_operand_and_offset(rwlock_op, 4, ecx.machine.layouts.u32)?;
@@ -183,14 +183,14 @@ fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
 // (e.g. CLOCK_REALTIME).
 
 fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
+    ecx: &MiriInterpCx<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset(attr_op, 0, ecx.machine.layouts.i32)
 }
 
 fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
     clock_id: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
@@ -212,14 +212,14 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
 // bytes 8-11: the clock id constant as i32
 
 fn cond_get_id<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
+    ecx: &MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset_atomic(cond_op, 4, ecx.machine.layouts.u32, AtomicReadOrd::Relaxed)
 }
 
 fn cond_set_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
     id: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
@@ -233,7 +233,7 @@ fn cond_set_id<'mir, 'tcx: 'mir>(
 }
 
 fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, CondvarId> {
     let value_place = ecx.deref_operand_and_offset(cond_op, 4, ecx.machine.layouts.u32)?;
@@ -260,14 +260,14 @@ fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
 }
 
 fn cond_get_clock_id<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
+    ecx: &MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset(cond_op, 8, ecx.machine.layouts.i32)
 }
 
 fn cond_set_clock_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
     clock_id: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
@@ -282,7 +282,7 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
 /// Try to reacquire the mutex associated with the condition variable after we
 /// were signaled.
 fn reacquire_cond_mutex<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     thread: ThreadId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
@@ -299,7 +299,7 @@ fn reacquire_cond_mutex<'mir, 'tcx: 'mir>(
 /// Reacquire the conditional variable and remove the timeout callback if any
 /// was registered.
 fn post_cond_signal<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     thread: ThreadId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
@@ -313,7 +313,7 @@ fn post_cond_signal<'mir, 'tcx: 'mir>(
 /// Release the mutex associated with the condition variable because we are
 /// entering the waiting state.
 fn release_cond_mutex_and_block<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriInterpCx<'mir, 'tcx>,
     active_thread: ThreadId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
@@ -328,8 +328,8 @@ fn release_cond_mutex_and_block<'mir, 'tcx: 'mir>(
     Ok(())
 }
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn pthread_mutexattr_init(
         &mut self,
         attr_op: &OpTy<'tcx, Provenance>,

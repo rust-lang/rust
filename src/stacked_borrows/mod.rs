@@ -178,11 +178,11 @@ impl GlobalStateInner {
         id
     }
 
-    pub fn new_frame(&mut self) -> FrameExtra {
+    pub fn new_frame(&mut self, machine: &MiriMachine<'_, '_>) -> FrameExtra {
         let call_id = self.next_call_id;
         trace!("new_frame: Assigning call ID {}", call_id);
         if self.tracked_call_ids.contains(&call_id) {
-            register_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
+            machine.emit_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
         }
         self.next_call_id = NonZeroU64::new(call_id.get() + 1).unwrap();
         FrameExtra { call_id, protected_tags: SmallVec::new() }
@@ -199,11 +199,11 @@ impl GlobalStateInner {
         }
     }
 
-    pub fn base_ptr_tag(&mut self, id: AllocId) -> SbTag {
+    pub fn base_ptr_tag(&mut self, id: AllocId, machine: &MiriMachine<'_, '_>) -> SbTag {
         self.base_ptr_tags.get(&id).copied().unwrap_or_else(|| {
             let tag = self.new_ptr();
             if self.tracked_pointer_tags.contains(&tag) {
-                register_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(tag.0, None));
+                machine.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(tag.0, None));
             }
             trace!("New allocation {:?} has base tag {:?}", id, tag);
             self.base_ptr_tags.try_insert(id, tag).unwrap();
@@ -572,9 +572,10 @@ impl Stacks {
             // not through a pointer). That is, whenever we directly write to a local, this will pop
             // everything else off the stack, invalidating all previous pointers,
             // and in particular, *all* raw pointers.
-            MemoryKind::Stack => (extra.base_ptr_tag(id), Permission::Unique),
+            MemoryKind::Stack =>
+                (extra.base_ptr_tag(id, current_span.machine()), Permission::Unique),
             // Everything else is shared by default.
-            _ => (extra.base_ptr_tag(id), Permission::SharedReadWrite),
+            _ => (extra.base_ptr_tag(id, current_span.machine()), Permission::SharedReadWrite),
         };
         Stacks::new(size, perm, base_tag, id, &mut current_span)
     }
@@ -651,10 +652,10 @@ impl Stacks {
 /// Retagging/reborrowing.  There is some policy in here, such as which permissions
 /// to grant for which references, and when to add protectors.
 impl<'mir: 'ecx, 'tcx: 'mir, 'ecx> EvalContextPrivExt<'mir, 'tcx, 'ecx>
-    for crate::MiriEvalContext<'mir, 'tcx>
+    for crate::MiriInterpCx<'mir, 'tcx>
 {
 }
-trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextExt<'mir, 'tcx> {
+trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Returns the `AllocId` the reborrow was done in, if some actual borrow stack manipulation
     /// happened.
     fn reborrow(
@@ -669,12 +670,12 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
         let this = self.eval_context_mut();
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
-        let log_creation = |this: &MiriEvalContext<'mir, 'tcx>,
+        let log_creation = |this: &MiriInterpCx<'mir, 'tcx>,
                             loc: Option<(AllocId, Size, ProvenanceExtra)>| // alloc_id, base_offset, orig_tag
          -> InterpResult<'tcx> {
             let global = this.machine.stacked_borrows.as_ref().unwrap().borrow();
             if global.tracked_pointer_tags.contains(&new_tag) {
-                register_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
+                this.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
                     new_tag.0,
                     loc.map(|(alloc_id, base_offset, _)| (alloc_id, alloc_range(base_offset, size))),
                 ));
@@ -688,7 +689,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
             let (_size, _align, alloc_kind) = this.get_alloc_info(alloc_id);
             match alloc_kind {
                 AllocKind::LiveData => {
-                    let current_span = &mut this.machine.current_span(*this.tcx);
+                    let current_span = &mut this.machine.current_span();
                     // This should have alloc_extra data, but `get_alloc_extra` can still fail
                     // if converting this alloc_id from a global to a local one
                     // uncovers a non-supported `extern static`.
@@ -805,7 +806,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
                     .expect("we should have Stacked Borrows data")
                     .borrow_mut();
                 // FIXME: can't share this with the current_span inside log_creation
-                let mut current_span = this.machine.current_span(*this.tcx);
+                let mut current_span = this.machine.current_span();
                 this.visit_freeze_sensitive(place, size, |mut range, frozen| {
                     // Adjust range.
                     range.start += base_offset;
@@ -843,7 +844,6 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
         // Here we can avoid `borrow()` calls because we have mutable references.
         // Note that this asserts that the allocation is mutable -- but since we are creating a
         // mutable pointer, that seems reasonable.
-        let tcx = *this.tcx;
         let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
         let mut stacked_borrows = alloc_extra
             .stacked_borrows
@@ -854,7 +854,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
         let range = alloc_range(base_offset, size);
         let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
         // FIXME: can't share this with the current_span inside log_creation
-        let current_span = &mut machine.current_span(tcx);
+        let current_span = &mut machine.current_span();
         let dcx = DiagnosticCxBuilder::retag(
             current_span,
             &machine.threads,
@@ -920,8 +920,8 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextEx
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn retag(&mut self, kind: RetagKind, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.stacked_borrows.as_mut().unwrap().get_mut().retag_fields;
@@ -957,7 +957,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // The actual visitor.
         struct RetagVisitor<'ecx, 'mir, 'tcx> {
-            ecx: &'ecx mut MiriEvalContext<'mir, 'tcx>,
+            ecx: &'ecx mut MiriInterpCx<'mir, 'tcx>,
             kind: RetagKind,
             retag_cause: RetagCause,
             retag_fields: bool,
@@ -977,13 +977,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(())
             }
         }
-        impl<'ecx, 'mir, 'tcx> MutValueVisitor<'mir, 'tcx, Evaluator<'mir, 'tcx>>
+        impl<'ecx, 'mir, 'tcx> MutValueVisitor<'mir, 'tcx, MiriMachine<'mir, 'tcx>>
             for RetagVisitor<'ecx, 'mir, 'tcx>
         {
             type V = PlaceTy<'tcx, Provenance>;
 
             #[inline(always)]
-            fn ecx(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
+            fn ecx(&mut self) -> &mut MiriInterpCx<'mir, 'tcx> {
                 self.ecx
             }
 

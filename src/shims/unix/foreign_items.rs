@@ -13,8 +13,8 @@ use shims::unix::fs::EvalContextExt as _;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn emulate_foreign_item_by_name(
         &mut self,
         link_name: Symbol,
@@ -228,7 +228,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // FIXME: Which of these are POSIX, and which are GNU/Linux?
                 // At least the names seem to all also exist on macOS.
-                let sysconfs: &[(&str, fn(&MiriEvalContext<'_, '_>) -> Scalar<Provenance>)] = &[
+                let sysconfs: &[(&str, fn(&MiriInterpCx<'_, '_>) -> Scalar<Provenance>)] = &[
                     ("_SC_PAGESIZE", |this| Scalar::from_int(PAGE_SIZE, this.pointer_size())),
                     ("_SC_NPROCESSORS_CONF", |this| Scalar::from_int(NUM_CPUS, this.pointer_size())),
                     ("_SC_NPROCESSORS_ONLN", |this| Scalar::from_int(NUM_CPUS, this.pointer_size())),

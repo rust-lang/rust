@@ -180,23 +180,19 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     entry_id: DefId,
     entry_type: EntryFnType,
     config: &MiriConfig,
-) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>, MPlaceTy<'tcx, Provenance>)> {
+) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>, MPlaceTy<'tcx, Provenance>)>
+{
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx = InterpCx::new(
         tcx,
         rustc_span::source_map::DUMMY_SP,
         param_env,
-        Evaluator::new(config, layout_cx),
+        MiriMachine::new(config, layout_cx),
     );
 
-    // Capture the current interpreter stack state (which should be empty) so that we can emit
-    // allocation-tracking and tag-tracking diagnostics for allocations which are part of the
-    // early runtime setup.
-    let info = ecx.preprocess_diagnostics();
-
     // Some parts of initialization require a full `InterpCx`.
-    Evaluator::late_init(&mut ecx, config)?;
+    MiriMachine::late_init(&mut ecx, config)?;
 
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
     let sentinel = ecx.try_resolve_path(&["core", "ascii", "escape_default"]);
@@ -324,10 +320,6 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
     }
 
-    // Emit any diagnostics related to the setup process for the runtime, so that when the
-    // interpreter loop starts there are no unprocessed diagnostics.
-    ecx.process_diagnostics(info);
-
     Ok((ecx, ret_place))
 }
 
@@ -356,7 +348,6 @@ pub fn eval_entry<'tcx>(
     let res: thread::Result<InterpResult<'_, i64>> = panic::catch_unwind(AssertUnwindSafe(|| {
         // Main loop.
         loop {
-            let info = ecx.preprocess_diagnostics();
             match ecx.schedule()? {
                 SchedulingAction::ExecuteStep => {
                     assert!(ecx.step()?, "a terminated thread was scheduled for execution");
@@ -374,7 +365,6 @@ pub fn eval_entry<'tcx>(
                     break;
                 }
             }
-            ecx.process_diagnostics(info);
         }
         let return_code = ecx.read_scalar(&ret_place.into())?.to_machine_isize(&ecx)?;
         Ok(return_code)
