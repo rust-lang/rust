@@ -28,7 +28,7 @@ pub(super) fn check_fn<'tcx>(
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(eid)) = item.kind {
         let body = cx.tcx.hir().body(eid);
-        check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.def_id);
+        check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.def_id.def_id);
     }
 }
 

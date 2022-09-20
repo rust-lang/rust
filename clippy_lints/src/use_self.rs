@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !is_from_proc_macro(cx, item); // expensive, should be last check
             then {
                 StackItem::Check {
-                    impl_id: item.def_id,
+                    impl_id: item.def_id.def_id,
                     in_body: 0,
                     types_to_skip: std::iter::once(self_ty.hir_id).collect(),
                 }

@@ -21,7 +21,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     let attr = cx.tcx.get_attr(item.def_id.to_def_id(), sym::must_use);
     if let hir::ItemKind::Fn(ref sig, _generics, ref body_id) = item.kind {
-        let is_public = cx.access_levels.is_exported(item.def_id);
+        let is_public = cx.access_levels.is_exported(item.def_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
@@ -31,7 +31,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
                 sig.decl,
                 cx.tcx.hir().body(*body_id),
                 item.span,
-                item.def_id,
+                item.def_id.def_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
                 "this function could have a `#[must_use]` attribute",
             );
@@ -41,19 +41,19 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
 
 pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
     if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
-        let is_public = cx.access_levels.is_exported(item.def_id);
+        let is_public = cx.access_levels.is_exported(item.def_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let attr = cx.tcx.get_attr(item.def_id.to_def_id(), sym::must_use);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
-        } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.def_id).is_none() {
+        } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.def_id.def_id).is_none() {
             check_must_use_candidate(
                 cx,
                 sig.decl,
                 cx.tcx.hir().body(*body_id),
                 item.span,
-                item.def_id,
+                item.def_id.def_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
                 "this method could have a `#[must_use]` attribute",
             );
@@ -63,7 +63,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
 
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, ref eid) = item.kind {
-        let is_public = cx.access_levels.is_exported(item.def_id);
+        let is_public = cx.access_levels.is_exported(item.def_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
 
         let attrs = cx.tcx.hir().attrs(item.hir_id());
@@ -78,7 +78,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
                     sig.decl,
                     body,
                     item.span,
-                    item.def_id,
+                    item.def_id.def_id,
                     item.span.with_hi(sig.decl.output.span().hi()),
                     "this method could have a `#[must_use]` attribute",
                 );
@@ -171,7 +171,7 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) 
         return false; // ignore `_` patterns
     }
     if cx.tcx.has_typeck_results(pat.hir_id.owner.to_def_id()) {
-        is_mutable_ty(cx, cx.tcx.typeck(pat.hir_id.owner).pat_ty(pat), pat.span, tys)
+        is_mutable_ty(cx, cx.tcx.typeck(pat.hir_id.owner.def_id).pat_ty(pat), pat.span, tys)
     } else {
         false
     }
@@ -218,7 +218,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                     if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
                         && is_mutable_ty(
                             self.cx,
-                            self.cx.tcx.typeck(arg.hir_id.owner).expr_ty(arg),
+                            self.cx.tcx.typeck(arg.hir_id.owner.def_id).expr_ty(arg),
                             arg.span,
                             &mut tys,
                         )
@@ -236,7 +236,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                     if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
                         && is_mutable_ty(
                             self.cx,
-                            self.cx.tcx.typeck(arg.hir_id.owner).expr_ty(arg),
+                            self.cx.tcx.typeck(arg.hir_id.owner.def_id).expr_ty(arg),
                             arg.span,
                             &mut tys,
                         )

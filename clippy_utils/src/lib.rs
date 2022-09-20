@@ -78,7 +78,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
@@ -212,7 +212,7 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
 /// }
 /// ```
 pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
-    let parent_id = cx.tcx.hir().get_parent_item(id);
+    let parent_id = cx.tcx.hir().get_parent_item(id).def_id;
     match cx.tcx.hir().get_by_def_id(parent_id) {
         Node::Item(&Item {
             kind: ItemKind::Const(..) | ItemKind::Static(..),
@@ -597,8 +597,8 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> 
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
     if_chain! {
-        if parent_impl != CRATE_DEF_ID;
-        if let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent_impl);
+        if parent_impl != hir::CRATE_OWNER_ID;
+        if let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent_impl.def_id);
         if let hir::ItemKind::Impl(impl_) = &item.kind;
         then {
             return impl_.of_trait.as_ref();
@@ -1104,7 +1104,7 @@ pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
-    let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
+    let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id).def_id;
     match cx.tcx.hir().find_by_def_id(parent_id) {
         Some(
             Node::Item(Item { ident, .. })
@@ -1648,7 +1648,7 @@ pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);
-        enclosing_node = map.local_def_id_to_hir_id(map.get_parent_item(enclosing_node));
+        enclosing_node = map.get_parent_item(enclosing_node).into();
     }
 
     false
