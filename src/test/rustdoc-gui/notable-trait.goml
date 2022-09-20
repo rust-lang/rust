@@ -1,0 +1,91 @@
+// This test checks the position of the `i` for the notable traits.
+goto: file://|DOC_PATH|/test_docs/struct.NotableStructWithLongName.html
+show-text: true
+// We start with a wide screen.
+size: (1100, 600)
+// Checking they have the same y position.
+compare-elements-position: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    ("y"),
+)
+// Checking they don't have the same x position.
+compare-elements-position-false: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    ("x"),
+)
+// The `i` should be *after* the type.
+assert-position: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    {"x": 692},
+)
+assert-position: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    {"x": 966},
+)
+
+
+// Now only the `i` should be on the next line.
+size: (1055, 600)
+compare-elements-position-false: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    ("y", "x"),
+)
+
+// Now both the `i` and the struct name should be on the next line.
+size: (980, 600)
+// Checking they have the same y position.
+compare-elements-position: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    ("y"),
+)
+// Checking they don't have the same x position.
+compare-elements-position-false: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    ("x"),
+)
+// The `i` should be *after* the type.
+assert-position: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    {"x": 245},
+)
+assert-position: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    {"x": 519},
+)
+
+// Checking on mobile now.
+size: (650, 600)
+// Checking they have the same y position.
+compare-elements-position: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    ("y"),
+)
+// Checking they don't have the same x position.
+compare-elements-position-false: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    ("x"),
+)
+// The `i` should be *after* the type.
+assert-position: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    {"x": 15},
+)
+assert-position: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    {"x": 289},
+)
+
+// Checking on very small mobile. The `i` should be on its own line.
+size: (410, 600)
+compare-elements-position-false: (
+    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    ("y", "x"),
+)
