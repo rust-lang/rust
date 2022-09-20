@@ -341,15 +341,15 @@ impl AllTypes {
     }
 
     fn print(self, f: &mut Buffer) {
-        fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, title: &str) {
+        fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, kind: ItemSection) {
             if !e.is_empty() {
                 let mut e: Vec<&ItemEntry> = e.iter().collect();
                 e.sort();
                 write!(
                     f,
-                    "<h3 id=\"{}\">{}</h3><ul class=\"all-items\">",
-                    title.replace(' ', "-"), // IDs cannot contain whitespaces.
-                    title
+                    "<h3 id=\"{id}\">{title}</h3><ul class=\"all-items\">",
+                    id = kind.id(),
+                    title = kind.name(),
                 );
 
                 for s in e.iter() {
@@ -367,20 +367,20 @@ impl AllTypes {
         );
         // Note: print_entries does not escape the title, because we know the current set of titles
         // doesn't require escaping.
-        print_entries(f, &self.structs, "Structs");
-        print_entries(f, &self.enums, "Enums");
-        print_entries(f, &self.unions, "Unions");
-        print_entries(f, &self.primitives, "Primitives");
-        print_entries(f, &self.traits, "Traits");
-        print_entries(f, &self.macros, "Macros");
-        print_entries(f, &self.attributes, "Attribute Macros");
-        print_entries(f, &self.derives, "Derive Macros");
-        print_entries(f, &self.functions, "Functions");
-        print_entries(f, &self.typedefs, "Typedefs");
-        print_entries(f, &self.trait_aliases, "Trait Aliases");
-        print_entries(f, &self.opaque_tys, "Opaque Types");
-        print_entries(f, &self.statics, "Statics");
-        print_entries(f, &self.constants, "Constants");
+        print_entries(f, &self.structs, ItemSection::Structs);
+        print_entries(f, &self.enums, ItemSection::Enums);
+        print_entries(f, &self.unions, ItemSection::Unions);
+        print_entries(f, &self.primitives, ItemSection::PrimitiveTypes);
+        print_entries(f, &self.traits, ItemSection::Traits);
+        print_entries(f, &self.macros, ItemSection::Macros);
+        print_entries(f, &self.attributes, ItemSection::AttributeMacros);
+        print_entries(f, &self.derives, ItemSection::DeriveMacros);
+        print_entries(f, &self.functions, ItemSection::Functions);
+        print_entries(f, &self.typedefs, ItemSection::TypeDefinitions);
+        print_entries(f, &self.trait_aliases, ItemSection::TraitAliases);
+        print_entries(f, &self.opaque_tys, ItemSection::OpaqueTypes);
+        print_entries(f, &self.statics, ItemSection::Statics);
+        print_entries(f, &self.constants, ItemSection::Constants);
     }
 }
 
