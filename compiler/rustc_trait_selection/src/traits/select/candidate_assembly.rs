@@ -362,7 +362,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
 
-        candidates.vec.extend(result.into_iter().map(ProjectionCandidate));
+        candidates
+            .vec
+            .extend(result.into_iter().map(|(idx, constness)| ProjectionCandidate(idx, constness)));
     }
 
     /// Given an obligation like `<SomeTrait for T>`, searches the obligations that the caller
