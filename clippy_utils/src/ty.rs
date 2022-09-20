@@ -172,11 +172,10 @@ pub fn implements_trait_with_env<'tcx>(
         return false;
     }
     let ty_params = tcx.mk_substs(ty_params.iter());
-    tcx.infer_ctxt().enter(|infcx| {
-        infcx
-            .type_implements_trait(trait_id, ty, ty_params, param_env)
-            .must_apply_modulo_regions()
-    })
+    let infcx = tcx.infer_ctxt().build();
+    infcx
+        .type_implements_trait(trait_id, ty, ty_params, param_env)
+        .must_apply_modulo_regions()
 }
 
 /// Checks whether this type implements `Drop`.
@@ -242,27 +241,26 @@ fn is_normalizable_helper<'tcx>(
     }
     // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
     cache.insert(ty, false);
-    let result = cx.tcx.infer_ctxt().enter(|infcx| {
-        let cause = rustc_middle::traits::ObligationCause::dummy();
-        if infcx.at(&cause, param_env).normalize(ty).is_ok() {
-            match ty.kind() {
-                ty::Adt(def, substs) => def.variants().iter().all(|variant| {
-                    variant
-                        .fields
-                        .iter()
-                        .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
-                }),
-                _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
-                    GenericArgKind::Type(inner_ty) if inner_ty != ty => {
-                        is_normalizable_helper(cx, param_env, inner_ty, cache)
-                    },
-                    _ => true, // if inner_ty == ty, we've already checked it
-                }),
-            }
-        } else {
-            false
+    let infcx = cx.tcx.infer_ctxt().build();
+    let cause = rustc_middle::traits::ObligationCause::dummy();
+    let result = if infcx.at(&cause, param_env).normalize(ty).is_ok() {
+        match ty.kind() {
+            ty::Adt(def, substs) => def.variants().iter().all(|variant| {
+                variant
+                    .fields
+                    .iter()
+                    .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
+            }),
+            _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
+                GenericArgKind::Type(inner_ty) if inner_ty != ty => {
+                    is_normalizable_helper(cx, param_env, inner_ty, cache)
+                },
+                _ => true, // if inner_ty == ty, we've already checked it
+            }),
         }
-    });
+    } else {
+        false
+    };
     cache.insert(ty, result);
     result
 }
