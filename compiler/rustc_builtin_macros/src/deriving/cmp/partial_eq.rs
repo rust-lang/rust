@@ -14,6 +14,7 @@ pub fn expand_deriving_partial_eq(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     fn cs_eq(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
         let base = true;
@@ -88,6 +89,7 @@ pub fn expand_deriving_partial_eq(
         supports_unions: false,
         methods,
         associated_types: Vec::new(),
+        is_const,
     };
     trait_def.expand(cx, mitem, item, push)
 }

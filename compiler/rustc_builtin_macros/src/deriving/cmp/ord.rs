@@ -13,6 +13,7 @@ pub fn expand_deriving_ord(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let inline = cx.meta_word(span, sym::inline);
     let attrs = thin_vec![cx.attribute(inline)];
@@ -33,6 +34,7 @@ pub fn expand_deriving_ord(
             combine_substructure: combine_substructure(Box::new(|a, b, c| cs_cmp(a, b, c))),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     trait_def.expand(cx, mitem, item, push)

@@ -319,6 +319,7 @@ pub enum InvocationKind {
     },
     Derive {
         path: ast::Path,
+        is_const: bool,
         item: Annotatable,
     },
 }
@@ -460,13 +461,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             derive_invocations.reserve(derives.len());
                             derives
                                 .into_iter()
-                                .map(|(path, item, _exts)| {
+                                .map(|(path, item, _exts, is_const)| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
                                     let expn_id = LocalExpnId::fresh_empty();
                                     derive_invocations.push((
                                         Invocation {
-                                            kind: InvocationKind::Derive { path, item },
+                                            kind: InvocationKind::Derive { path, item, is_const },
                                             fragment_kind,
                                             expansion_data: ExpansionData {
                                                 id: expn_id,
@@ -699,7 +700,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match validate_attr::parse_meta(&self.cx.sess.parse_sess, &attr) {
                         Ok(meta) => {
-                            let items = match expander.expand(self.cx, span, &meta, item) {
+                            let items = match expander.expand(self.cx, span, &meta, item, false) {
                                 ExpandResult::Ready(items) => items,
                                 ExpandResult::Retry(item) => {
                                     // Reassemble the original invocation for retrying.
@@ -731,19 +732,19 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Derive { path, item } => match ext {
+            InvocationKind::Derive { path, item, is_const } => match ext {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
                     if let SyntaxExtensionKind::Derive(..) = ext {
                         self.gate_proc_macro_input(&item);
                     }
                     let meta = ast::MetaItem { kind: MetaItemKind::Word, span, path };
-                    let items = match expander.expand(self.cx, span, &meta, item) {
+                    let items = match expander.expand(self.cx, span, &meta, item, is_const) {
                         ExpandResult::Ready(items) => items,
                         ExpandResult::Retry(item) => {
                             // Reassemble the original invocation for retrying.
                             return ExpandResult::Retry(Invocation {
-                                kind: InvocationKind::Derive { path: meta.path, item },
+                                kind: InvocationKind::Derive { path: meta.path, item, is_const },
                                 ..invoc
                             });
                         }

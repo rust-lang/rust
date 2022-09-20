@@ -12,6 +12,7 @@ pub fn expand_deriving_copy(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let trait_def = TraitDef {
         span,
@@ -21,6 +22,7 @@ pub fn expand_deriving_copy(
         supports_unions: true,
         methods: Vec::new(),
         associated_types: Vec::new(),
+        is_const,
     };
 
     trait_def.expand(cx, mitem, item, push);

@@ -1464,6 +1464,19 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Attribute macro used to apply derive macros for implementing traits
+    /// in a const context.
+    ///
+    /// See [the reference] for more info.
+    ///
+    /// [the reference]: ../../../reference/attributes/derive.html
+    #[unstable(feature = "derive_const", issue = "none")]
+    #[rustc_builtin_macro]
+    #[cfg(not(bootstrap))]
+    pub macro derive_const($item:item) {
+        /* compiler built-in */
+    }
+
     /// Attribute macro applied to a function to turn it into a unit test.
     ///
     /// See [the reference] for more info.

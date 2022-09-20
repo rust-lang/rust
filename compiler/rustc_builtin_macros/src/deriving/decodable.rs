@@ -16,6 +16,7 @@ pub fn expand_deriving_rustc_decodable(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let krate = sym::rustc_serialize;
     let typaram = sym::__D;
@@ -54,6 +55,7 @@ pub fn expand_deriving_rustc_decodable(
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     trait_def.expand(cx, mitem, item, push)

@@ -15,6 +15,7 @@ pub fn expand_deriving_eq(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let span = cx.with_def_site_ctxt(span);
     let inline = cx.meta_word(span, sym::inline);
@@ -41,6 +42,7 @@ pub fn expand_deriving_eq(
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     super::inject_impl_of_structural_trait(cx, span, item, path_std!(marker::StructuralEq), push);

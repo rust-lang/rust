@@ -614,6 +614,7 @@ symbols! {
         deref_mut,
         deref_target,
         derive,
+        derive_const,
         derive_default_enum,
         destruct,
         destructuring_assignment,

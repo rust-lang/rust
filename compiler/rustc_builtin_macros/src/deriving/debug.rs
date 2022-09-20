@@ -13,6 +13,7 @@ pub fn expand_deriving_debug(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     // &mut ::std::fmt::Formatter
     let fmtr = Ref(Box::new(Path(path_std!(fmt::Formatter))), ast::Mutability::Mut);
@@ -36,6 +37,7 @@ pub fn expand_deriving_debug(
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
     trait_def.expand(cx, mitem, item, push)
 }

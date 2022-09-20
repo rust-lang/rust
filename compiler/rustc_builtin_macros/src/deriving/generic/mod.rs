@@ -171,7 +171,7 @@ use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use std::cell::RefCell;
 use std::iter;
 use std::vec;
@@ -200,6 +200,8 @@ pub struct TraitDef<'a> {
     pub methods: Vec<MethodDef<'a>>,
 
     pub associated_types: Vec<(Ident, Ty)>,
+
+    pub is_const: bool,
 }
 
 pub struct MethodDef<'a> {
@@ -726,7 +728,7 @@ impl<'a> TraitDef<'a> {
                 unsafety: ast::Unsafe::No,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
-                constness: ast::Const::No,
+                constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
                 generics: trait_generics,
                 of_trait: opt_trait_ref,
                 self_ty: self_type,

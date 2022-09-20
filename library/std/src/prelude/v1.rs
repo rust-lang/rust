@@ -62,6 +62,10 @@ pub use core::prelude::v1::{RustcDecodable, RustcEncodable};
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 pub use core::prelude::v1::{bench, derive, global_allocator, test, test_case};
 
+#[unstable(feature = "derive_const", issue = "none")]
+#[cfg(not(bootstrap))]
+pub use core::prelude::v1::derive_const;
+
 // Do not `doc(no_inline)` either.
 #[unstable(
     feature = "cfg_accessible",

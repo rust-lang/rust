@@ -16,6 +16,7 @@ pub fn expand_deriving_default(
     mitem: &ast::MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
 
@@ -46,6 +47,7 @@ pub fn expand_deriving_default(
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
     trait_def.expand(cx, mitem, item, push)
 }
