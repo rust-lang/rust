@@ -459,6 +459,5 @@ fn make_token_stream(
             panic!("Unexpected last token {:?}", last_token)
         }
     }
-    assert!(stack.is_empty(), "Stack should be empty: final_buf={:?} stack={:?}", final_buf, stack);
     AttrTokenStream::new(final_buf.inner)
 }
