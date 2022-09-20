@@ -4,8 +4,9 @@ use super::diagnostics::{
     FloatLiteralRequiresIntegerPart, IfExpressionMissingCondition, IfExpressionMissingThenBlock,
     IfExpressionMissingThenBlockSub, InvalidBlockMacroSegment, InvalidComparisonOperator,
     InvalidComparisonOperatorSub, InvalidLogicalOperator, InvalidLogicalOperatorSub,
-    LeftArrowOperator, LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath,
-    MalformedLoopLabel, MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
+    InvalidShiftOperator, InvalidShiftOperatorSub, LeftArrowOperator,
+    LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
+    MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
     NotAsNegationOperator, OuterAttributeNotAllowedOnIfElse, RequireColonAfterLabeledExpression,
     SnapshotParser, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
 };
@@ -275,6 +276,35 @@ impl<'a> Parser<'a> {
                     span: sp,
                     invalid: "<=>".into(),
                     sub: InvalidComparisonOperatorSub::Spaceship(sp),
+                });
+                self.bump();
+            }
+
+            // Look for the arithmetic right shift operator (`>>>`) and recover.
+            if op.node == AssocOp::ShiftRight
+                && self.token.kind == token::Gt
+                && self.prev_token.span.hi() == self.token.span.lo()
+            {
+                let sp = op.span.to(self.token.span);
+                self.sess.emit_err(InvalidShiftOperator {
+                    span: sp,
+                    invalid: ">>>".into(),
+                    sub: InvalidShiftOperatorSub::ArithmeticRightShift(sp),
+                });
+                self.bump();
+            }
+
+            // Look for the arithmetic left shift operator (`<<<`) and recover.
+            // Yea nobody uses this but it's worth being thorough.
+            if op.node == AssocOp::ShiftLeft
+                && self.token.kind == token::Lt
+                && self.prev_token.span.hi() == self.token.span.lo()
+            {
+                let sp = op.span.to(self.token.span);
+                self.sess.emit_err(InvalidShiftOperator {
+                    span: sp,
+                    invalid: "<<<".into(),
+                    sub: InvalidShiftOperatorSub::ArithmeticLeftShift(sp),
                 });
                 self.bump();
             }

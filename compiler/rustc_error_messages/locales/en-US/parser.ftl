@@ -46,6 +46,10 @@ parser_invalid_comparison_operator = invalid comparison operator `{$invalid}`
     .use_instead = `{$invalid}` is not a valid comparison operator, use `{$correct}`
     .spaceship_operator_invalid = `<=>` is not a valid comparison operator, use `std::cmp::Ordering`
 
+parser_invalid_shift_operator = invalid shift operator `{$invalid}`
+    .arithmetic_left_shift_operator_invalid = `<<<` is not a valid left shift operator, consider shifting normally and fixing the sign as needed.
+    .arithmetic_right_shift_operator_invalid = `>>>` is not a valid right shift operator, consider casting to a signed integer and right shifting normally.
+
 parser_invalid_logical_operator = `{$incorrect}` is not a logical operator
     .note = unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
     .use_amp_amp_for_conjunction = use `&&` to perform logical conjunction

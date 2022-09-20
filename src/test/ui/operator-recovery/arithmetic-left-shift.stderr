@@ -1,0 +1,8 @@
+error: invalid shift operator `<<<`
+  --> $DIR/arithmetic-left-shift.rs:2:22
+   |
+LL |     println!("{}", 1 <<< 2);
+   |                      ^^^ `<<<` is not a valid left shift operator, consider shifting normally and fixing the sign as needed.
+
+error: aborting due to previous error
+
