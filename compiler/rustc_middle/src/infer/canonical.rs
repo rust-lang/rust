@@ -29,7 +29,7 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use smallvec::SmallVec;
 use std::iter;
-use std::ops::{ControlFlow, Index};
+use std::ops::Index;
 
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
@@ -50,12 +50,6 @@ impl<'tcx> ty::TypeFoldable<'tcx> for CanonicalVarInfos<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_canonical_var_infos(v))
-    }
-}
-
-impl<'tcx> ty::TypeVisitable<'tcx> for CanonicalVarInfos<'tcx> {
-    fn visit_with<V: ty::TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
 

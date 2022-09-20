@@ -8,12 +8,6 @@ impl<'tcx, R: Idx, C: Idx> TypeVisitable<'tcx> for BitMatrix<R, C> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|t| t.visit_with(visitor))
-    }
-}
-
 impl<'tcx> TypeVisitable<'tcx> for ConstantKind<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_mir_const(*self)
