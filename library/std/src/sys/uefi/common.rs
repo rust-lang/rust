@@ -479,15 +479,8 @@ pub(crate) fn get_runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServic
 
 // Create UCS-2 Vector from OsStr
 pub(crate) fn to_ffi_string(s: &OsStr) -> Vec<u16> {
-    let mut v: Vec<u16> = s
-        .encode_wide()
-        .map(|x| match x {
-            Ok(c) => c,
-            Err(_) => u16::from(crate::sys_common::ucs2::Ucs2Char::REPLACEMENT_CHARACTER),
-        })
-        .collect();
+    let mut v: Vec<u16> = s.encode_wide().collect();
     v.push(0);
-    v.shrink_to_fit();
     v
 }
 

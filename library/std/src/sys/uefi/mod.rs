@@ -24,6 +24,7 @@ pub mod io;
 pub mod locks;
 pub mod net;
 pub mod os;
+#[path = "../windows/os_str.rs"]
 pub mod os_str;
 pub mod path;
 pub mod pipe;

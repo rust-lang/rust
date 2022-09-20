@@ -5,7 +5,6 @@ use crate::io;
 use crate::path::{Path, PathBuf, Prefix};
 use crate::ptr::NonNull;
 use crate::sys::uefi::common;
-use crate::sys_common::ucs2;
 
 use r_efi::protocols::{device_path, device_path_from_text, device_path_to_text};
 
@@ -97,10 +96,16 @@ pub(crate) fn device_path_to_path(path: &mut device_path::Protocol) -> io::Resul
             Some(x) => x,
         };
 
-        let path: String = ucs2_iter
-            .map_while(|x| ucs2::Ucs2Char::from_u16(x.get()))
-            .map(|x| char::from(x))
-            .collect();
+        let mut path: String = String::new();
+        for w in ucs2_iter {
+            // The Returned u16 should be UCS-2 charcters. Thus it should be fine to directly
+            // convert to char instead of creating `crate::sys_common::wtf8::CodePoint` first
+            let c = char::from_u32(w.get() as u32).ok_or(io::const_io_error!(
+                io::ErrorKind::InvalidFilename,
+                "Invalid Device Path"
+            ))?;
+            path.push(c);
+        }
 
         let layout = unsafe {
             Layout::from_size_align_unchecked(crate::mem::size_of::<u16>() * path.len(), 8usize)

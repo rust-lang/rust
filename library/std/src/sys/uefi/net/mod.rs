@@ -1,7 +1,6 @@
 mod implementation;
 mod tcp;
 mod tcp4;
-mod tcp6;
 
 pub use implementation::*;
 

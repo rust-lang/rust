@@ -1,7 +1,7 @@
 use super::super::process::uefi_command_protocol;
 use super::common::{self, status_to_io_error};
 use crate::sys::pipe;
-use crate::sys_common::ucs2;
+use crate::sys_common::wtf8;
 use crate::{io, os::uefi, ptr::NonNull};
 use r_efi::protocols::{simple_text_input, simple_text_output};
 use r_efi::system::BootWaitForEvent;
@@ -11,6 +11,9 @@ pub struct Stdout(());
 pub struct Stderr(());
 
 const MAX_BUFFER_SIZE: usize = 8192;
+
+const CR: u16 = 0x000du16;
+const LF: u16 = 0x000au16;
 
 pub const STDIN_BUF_SIZE: usize = MAX_BUFFER_SIZE / 2 * 3;
 
@@ -53,16 +56,16 @@ impl Stdin {
     // Write a single Character to Stdout
     fn write_character(
         con_out: *mut simple_text_output::Protocol,
-        character: ucs2::Ucs2Char,
+        character: u16,
     ) -> io::Result<()> {
-        let mut buf: [u16; 2] = [character.into(), 0];
+        let mut buf: [u16; 2] = [character, 0];
         let r = unsafe { ((*con_out).output_string)(con_out, buf.as_mut_ptr()) };
 
         if r.is_error() {
             Err(status_to_io_error(r))
-        } else if character == ucs2::Ucs2Char::CR {
+        } else if character == CR {
             // Handle enter key
-            Self::write_character(con_out, ucs2::Ucs2Char::LF)
+            Self::write_character(con_out, LF)
         } else {
             Ok(())
         }
@@ -98,12 +101,11 @@ impl io::Read for Stdin {
             Stdin::fire_wait_event(con_in.as_ptr(), wait_for_event)?;
             Stdin::read_key_stroke(con_in.as_ptr())?
         };
-
-        let ch = ucs2::Ucs2Char::from_u16(ch)
-            .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Character Input"))?;
         Stdin::write_character(con_out.as_ptr(), ch)?;
 
-        let ch = char::from(ch);
+        // This should be fine since read_key_stroke returns UCS-2 Character
+        let ch = char::from_u32(ch as u32)
+            .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Input"))?;
         let bytes_read = ch.len_utf8();
 
         // Replace CR with LF
@@ -189,31 +191,32 @@ pub fn panic_output() -> Option<impl io::Write> {
 }
 
 fn utf8_to_ucs2(buf: &[u8], output: &mut [u16]) -> io::Result<usize> {
-    let iter = ucs2::EncodeUcs2::from_bytes(buf)
-        .map_err(|_| io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Output buffer"))?;
+    let buffer: &str = crate::str::from_utf8(buf).map_err(|_| {
+        io::const_io_error!(io::ErrorKind::InvalidData, "Buffer is not valid UTF-8")
+    })?;
+    let iter = wtf8::Wtf8::from_str(buffer).code_points();
     let mut count = 0;
     let mut bytes_read = 0;
 
     for ch in iter {
-        let c = match ch {
-            // This is safe since x is always a valid Ucs2Char
-            Ok(x) => ucs2::Ucs2Char::from_u16(x).unwrap(),
-            Err(_) => ucs2::Ucs2Char::REPLACEMENT_CHARACTER,
-        };
-
         // Convert LF to CRLF
-        if c == ucs2::Ucs2Char::LF {
-            output[count] = u16::from(ucs2::Ucs2Char::CR);
-            count += 1;
-
-            if count + 1 >= output.len() {
+        if ch == wtf8::CodePoint::from_u32(LF as u32).unwrap() {
+            // Will need 2 characters
+            if count + 2 >= output.len() {
                 break;
+            } else {
+                output[count] = CR;
+                output[count + 1] = LF;
+                count += 2;
+                // UTF-8 character read is only LF
+                bytes_read += 1;
             }
+        } else {
+            let c = ch.to_char_lossy();
+            bytes_read += c.len_utf8();
+            let t = c.encode_utf16(&mut output[count..]);
+            count += t.len();
         }
-
-        bytes_read += c.len_utf8();
-        output[count] = u16::from(c);
-        count += 1;
 
         if count + 1 >= output.len() {
             break;
