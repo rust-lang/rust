@@ -1219,6 +1219,40 @@ fn main() {
 }
 
 #[test]
+fn dyn_trait_method_priority() {
+    check_types(
+        r#"
+//- minicore: from
+trait Trait {
+    fn into(&self) -> usize { 0 }
+}
+
+fn foo(a: &dyn Trait) {
+    let _ = a.into();
+      //^usize
+}
+        "#,
+    );
+}
+
+#[test]
+fn trait_method_priority_for_placeholder_type() {
+    check_types(
+        r#"
+//- minicore: from
+trait Trait {
+    fn into(&self) -> usize { 0 }
+}
+
+fn foo<T: Trait>(a: &T) {
+    let _ = a.into();
+      //^usize
+}
+        "#,
+    );
+}
+
+#[test]
 fn autoderef_visibility_field() {
     check(
         r#"

@@ -74,7 +74,7 @@ use syntax::SourceFile;
 use crate::navigation_target::{ToNav, TryToNav};
 
 pub use crate::{
-    annotations::{Annotation, AnnotationConfig, AnnotationKind},
+    annotations::{Annotation, AnnotationConfig, AnnotationKind, AnnotationLocation},
     call_hierarchy::CallItem,
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
