@@ -7,8 +7,7 @@ use arrayvec::ArrayVec;
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
     db::DefDatabase, expr::ExprId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId,
-    FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, Lookup, TypeOrConstParamId,
-    VariantId,
+    FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
 
@@ -194,11 +193,7 @@ fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> 
             db.const_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
         }
         DefWithBodyId::VariantId(it) => {
-            let up_db: &dyn DefDatabase = db.upcast();
-            let loc = it.parent.lookup(up_db);
-            let item_tree = loc.id.item_tree(up_db);
-            let konst = &item_tree[loc.id.value];
-            konst.name.to_string()
+            db.enum_data(it.parent).variants[it.local_id].name.to_string()
         }
     });
     db.infer_query(def)

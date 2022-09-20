@@ -953,6 +953,17 @@ impl Enum {
         Type::from_def(db, self.id)
     }
 
+    /// The type of the enum variant bodies.
+    pub fn variant_body_ty(self, db: &dyn HirDatabase) -> Type {
+        Type::new_for_crate(
+            self.id.lookup(db.upcast()).container.krate(),
+            TyBuilder::builtin(match db.enum_data(self.id).variant_body_type() {
+                Either::Left(builtin) => hir_def::builtin_type::BuiltinType::Int(builtin),
+                Either::Right(builtin) => hir_def::builtin_type::BuiltinType::Uint(builtin),
+            }),
+        )
+    }
+
     pub fn is_data_carrying(self, db: &dyn HirDatabase) -> bool {
         self.variants(db).iter().any(|v| !matches!(v.kind(db), StructKind::Unit))
     }
@@ -1176,7 +1187,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.ret_type(db),
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
-            DefWithBody::Variant(it) => it.parent.ty(db),
+            DefWithBody::Variant(it) => it.parent.variant_body_ty(db),
         }
     }
 

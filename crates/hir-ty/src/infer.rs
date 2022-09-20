@@ -18,7 +18,6 @@ use std::sync::Arc;
 
 use chalk_ir::{cast::Cast, ConstValue, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use hir_def::{
-    adt::{ReprData, ReprKind},
     body::Body,
     builtin_type::BuiltinType,
     data::{ConstData, StaticData},
@@ -70,15 +69,10 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
         DefWithBodyId::FunctionId(f) => ctx.collect_fn(f),
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_data(s)),
         DefWithBodyId::VariantId(v) => {
-            ctx.return_ty = match db.enum_data(v.parent).repr {
-                Some(ReprData { kind: ReprKind::BuiltinInt { builtin, .. }, .. }) => {
-                    TyBuilder::builtin(match builtin {
-                        Either::Left(builtin) => BuiltinType::Int(builtin),
-                        Either::Right(builtin) => BuiltinType::Uint(builtin),
-                    })
-                }
-                _ => TyBuilder::builtin(BuiltinType::Uint(hir_def::builtin_type::BuiltinUint::U32)),
-            };
+            ctx.return_ty = TyBuilder::builtin(match db.enum_data(v.parent).variant_body_type() {
+                Either::Left(builtin) => BuiltinType::Int(builtin),
+                Either::Right(builtin) => BuiltinType::Uint(builtin),
+            });
         }
     }
 

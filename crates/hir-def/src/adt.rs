@@ -219,6 +219,13 @@ impl EnumData {
         let (id, _) = self.variants.iter().find(|(_id, data)| &data.name == name)?;
         Some(id)
     }
+
+    pub fn variant_body_type(&self) -> Either<BuiltinInt, BuiltinUint> {
+        match self.repr {
+            Some(ReprData { kind: ReprKind::BuiltinInt { builtin, .. }, .. }) => builtin,
+            _ => Either::Right(BuiltinUint::U32),
+        }
+    }
 }
 
 impl HasChildSource<LocalEnumVariantId> for EnumId {
