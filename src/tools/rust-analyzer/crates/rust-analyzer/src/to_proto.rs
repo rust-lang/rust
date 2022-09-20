@@ -83,10 +83,11 @@ pub(crate) fn structure_node_kind(kind: StructureNodeKind) -> lsp_types::SymbolK
 
 pub(crate) fn document_highlight_kind(
     category: ReferenceCategory,
-) -> lsp_types::DocumentHighlightKind {
+) -> Option<lsp_types::DocumentHighlightKind> {
     match category {
-        ReferenceCategory::Read => lsp_types::DocumentHighlightKind::READ,
-        ReferenceCategory::Write => lsp_types::DocumentHighlightKind::WRITE,
+        ReferenceCategory::Read => Some(lsp_types::DocumentHighlightKind::READ),
+        ReferenceCategory::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
+        ReferenceCategory::Import => None,
     }
 }
 

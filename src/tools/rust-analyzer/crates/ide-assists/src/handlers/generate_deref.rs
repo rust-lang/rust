@@ -58,7 +58,8 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
 
     let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
     let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
-    let trait_path = module.find_use_path(ctx.db(), ModuleDef::Trait(trait_))?;
+    let trait_path =
+        module.find_use_path(ctx.db(), ModuleDef::Trait(trait_), ctx.config.prefer_no_std)?;
 
     let field_type = field.ty()?;
     let field_name = field.name()?;
@@ -98,7 +99,8 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
 
     let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
     let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
-    let trait_path = module.find_use_path(ctx.db(), ModuleDef::Trait(trait_))?;
+    let trait_path =
+        module.find_use_path(ctx.db(), ModuleDef::Trait(trait_), ctx.config.prefer_no_std)?;
 
     let field_type = field.ty()?;
     let target = field.syntax().text_range();
