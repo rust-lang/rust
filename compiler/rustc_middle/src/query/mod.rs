@@ -1007,7 +1007,9 @@ rustc_queries! {
 
     /// Tries to destructure an `mir::ConstantKind` ADT or array into its variant index
     /// and its field values.
-    query try_destructure_mir_constant(key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>) -> Option<mir::DestructuredMirConstant<'tcx>> {
+    query try_destructure_mir_constant(
+        key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
+    ) -> Option<mir::DestructuredConstant<'tcx>> {
         desc { "destructuring mir constant"}
         remap_env_constness
     }
