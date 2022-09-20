@@ -135,7 +135,7 @@ declare_clippy_lint! {
     /// let x = String::new();
     /// let y: &str = &x;
     /// ```
-    #[clippy::version = "1.60.0"]
+    #[clippy::version = "1.64.0"]
     pub EXPLICIT_AUTO_DEREF,
     complexity,
     "dereferencing when the compiler would automatically dereference"
