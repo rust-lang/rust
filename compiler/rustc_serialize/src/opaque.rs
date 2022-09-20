@@ -193,7 +193,9 @@ impl FileEncoder {
         // shaves an instruction off those code paths (on x86 at least).
         assert!(capacity <= usize::MAX - max_leb128_len());
 
-        let file = File::create(path)?;
+        // Create the file for reading and writing, because some encoders do both
+        // (e.g. the metadata encoder when -Zmeta-stats is enabled)
+        let file = File::options().read(true).write(true).create(true).truncate(true).open(path)?;
 
         Ok(FileEncoder {
             buf: Box::new_uninit_slice(capacity),
