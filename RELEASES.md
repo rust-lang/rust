@@ -3,63 +3,33 @@ Version 1.64.0 (2022-09-22)
 
 Language
 --------
-- [make `const_err` show up in future breakage reports](https://github.com/rust-lang/rust/pull/97743/)
-- [allow unions with mutable references and tuples of allowed types](https://github.com/rust-lang/rust/pull/97995/)
+- [Unions with mutable references or tuples of allowed types are now allowed](https://github.com/rust-lang/rust/pull/97995/)
 - It is now considered valid to deallocate memory pointed to by a shared reference `&T` [if every byte in `T` is inside an `UnsafeCell`](https://github.com/rust-lang/rust/pull/98017/)
 - Unused tuple struct fields are now warned against in an allow-by-default lint, [`unused_tuple_struct_fields`](https://github.com/rust-lang/rust/pull/95977/), similar to the existing warning for unused struct fields. This lint will become warn-by-default in the future.
 
 Compiler
 --------
-- The minimum required versions for all `-linux-gnu` targets are now at least kernel 3.2 and glibc 2.17, for targets that previously supported older versions: [Increase the minimum linux-gnu versions](https://github.com/rust-lang/rust/pull/95026/)
-- [Keep unstable target features for asm feature checking](https://github.com/rust-lang/rust/pull/99155/)
 - [Add Nintendo Switch as tier 3 target](https://github.com/rust-lang/rust/pull/88991/)
   - Refer to Rust's [platform support page][platform-support-doc] for more
     information on Rust's tiered platform support.
-- [Only compile #[used] as llvm.compiler.used for ELF targets](https://github.com/rust-lang/rust/pull/93718/)
-- [sess: stabilize `-Zterminal-width` as `--diagnostic-width`](https://github.com/rust-lang/rust/pull/95635/)
-- [Fix repr(align) enum handling](https://github.com/rust-lang/rust/pull/96814/)
-- [Suggest defining variable as mutable on `&mut _` type mismatch in pats](https://github.com/rust-lang/rust/pull/98431/)
-- [Emit warning when named arguments are used positionally in format](https://github.com/rust-lang/rust/pull/98580/)
-- [Add support for link-flavor rust-lld for iOS, tvOS and watchOS](https://github.com/rust-lang/rust/pull/98771/)
-- [Do not mention private types from other crates as impl candidates](https://github.com/rust-lang/rust/pull/99091/)
+- [Only compile `#[used]` as llvm.compiler.used for ELF targets](https://github.com/rust-lang/rust/pull/93718/)
+- [Add the `--diagnostic-width` compiler flag to define the terminal width.](https://github.com/rust-lang/rust/pull/95635/)
+- [Add support for link-flavor `rust-lld` for iOS, tvOS and watchOS](https://github.com/rust-lang/rust/pull/98771/)
 
 Libraries
 ---------
-- [Implement network primitives with ideal Rust layout, not C system layout](https://github.com/rust-lang/rust/pull/78802/)
 - [Remove restrictions on compare-exchange memory ordering.](https://github.com/rust-lang/rust/pull/98383/)
 - You can now `write!` or `writeln!` into an `OsString`: [Implement `fmt::Write` for `OsString`](https://github.com/rust-lang/rust/pull/97915/)
-- [Enforce that layout size fits in isize in Layout](https://github.com/rust-lang/rust/pull/95295/)
 - [Make RwLockReadGuard covariant](https://github.com/rust-lang/rust/pull/96820/)
 - [Implement `FusedIterator` for `std::net::[Into]Incoming`](https://github.com/rust-lang/rust/pull/97300/)
 - [`impl<T: AsRawFd> AsRawFd for {Arc,Box}<T>`](https://github.com/rust-lang/rust/pull/97437/)
-- [ptr::copy and ptr::swap are doing untyped copies](https://github.com/rust-lang/rust/pull/97712/)
-- [Add assertion that `transmute_copy`'s U is not larger than T](https://github.com/rust-lang/rust/pull/98839/)
-- [A soundness bug in `BTreeMap` was fixed](https://github.com/rust-lang/rust/pull/99413/) that allowed data it was borrowing to be dropped before the container.
+- [`ptr::copy` and `ptr::swap` are doing untyped copies](https://github.com/rust-lang/rust/pull/97712/)
 - [Add cgroupv1 support to `available_parallelism`](https://github.com/rust-lang/rust/pull/97925/)
-- [mem::uninitialized: mitigate many incorrect uses of this function](https://github.com/rust-lang/rust/pull/99182/)
+- [Mitigate many incorrect uses of `mem::uninitialized`](https://github.com/rust-lang/rust/pull/99182/)
 
 Stabilized APIs
 ---------------
 
-- [`ffi::CStr`](https://doc.rust-lang.org/stable/std/ffi/struct.CStr.html)
-- [`ffi::CString`](https://doc.rust-lang.org/stable/std/ffi/struct.CString.html)
-- [`ffi::FromBytesWithNulError`](https://doc.rust-lang.org/stable/std/ffi/struct.FromBytesWithNulError.html)
-- [`ffi::FromVecWithNulError`](https://doc.rust-lang.org/stable/std/ffi/struct.FromVecWithNulError.html)
-- [`ffi::IntoStringError`](https://doc.rust-lang.org/stable/std/ffi/struct.IntoStringError.html)
-- [`ffi::NulError`](https://doc.rust-lang.org/stable/std/ffi/struct.NulError.html)
-- [`ffi::c_char`](https://doc.rust-lang.org/stable/std/ffi/type.c_char.html)
-- [`ffi::c_double`](https://doc.rust-lang.org/stable/std/ffi/type.c_double.html)
-- [`ffi::c_float`](https://doc.rust-lang.org/stable/std/ffi/type.c_float.html)
-- [`ffi::c_int`](https://doc.rust-lang.org/stable/std/ffi/type.c_int.html)
-- [`ffi::c_long`](https://doc.rust-lang.org/stable/std/ffi/type.c_long.html)
-- [`ffi::c_longlong`](https://doc.rust-lang.org/stable/std/ffi/type.c_longlong.html)
-- [`ffi::c_schar`](https://doc.rust-lang.org/stable/std/ffi/type.c_schar.html)
-- [`ffi::c_short`](https://doc.rust-lang.org/stable/std/ffi/type.c_short.html)
-- [`ffi::c_uchar`](https://doc.rust-lang.org/stable/std/ffi/type.c_uchar.html)
-- [`ffi::c_uint`](https://doc.rust-lang.org/stable/std/ffi/type.c_uint.html)
-- [`ffi::c_ulong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulong.html)
-- [`ffi::c_ulonglong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulonglong.html)
-- [`ffi::c_ushort`](https://doc.rust-lang.org/stable/std/ffi/type.c_ushort.html)
 - [`future::IntoFuture`](https://doc.rust-lang.org/stable/std/future/trait.IntoFuture.html)
 - [`future::poll_fn`](https://doc.rust-lang.org/stable/std/future/fn.poll_fn.html)
 - [`task::ready!`](https://doc.rust-lang.org/stable/std/task/macro.ready.html)
@@ -80,46 +50,65 @@ Stabilized APIs
 - [`os::windows::fs::FileTypeExt::is_symlink_dir`](https://doc.rust-lang.org/stable/std/os/windows/fs/trait.FileTypeExt.html#tymethod.is_symlink_dir)
 - [`os::windows::fs::FileTypeExt::is_symlink_file`](https://doc.rust-lang.org/stable/std/os/windows/fs/trait.FileTypeExt.html#tymethod.is_symlink_file)
 
+These types were previously stable in `std::ffi`, but are now also available in `core` and `alloc`:
+
+- [`core::ffi::CStr`](https://doc.rust-lang.org/stable/core/ffi/struct.CStr.html)
+- [`core::ffi::FromBytesWithNulError`](https://doc.rust-lang.org/stable/core/ffi/struct.FromBytesWithNulError.html)
+- [`alloc::ffi::CString`](https://doc.rust-lang.org/stable/alloc/ffi/struct.CString.html)
+- [`alloc::ffi::FromVecWithNulError`](https://doc.rust-lang.org/stable/alloc/ffi/struct.FromVecWithNulError.html)
+- [`alloc::ffi::IntoStringError`](https://doc.rust-lang.org/stable/alloc/ffi/struct.IntoStringError.html)
+- [`alloc::ffi::NulError`](https://doc.rust-lang.org/stable/alloc/ffi/struct.NulError.html)
+
+These types were previously stable in `std::os::raw`, but are now also available in `core::ffi` and `std::ffi`:
+
+- [`ffi::c_char`](https://doc.rust-lang.org/stable/std/ffi/type.c_char.html)
+- [`ffi::c_double`](https://doc.rust-lang.org/stable/std/ffi/type.c_double.html)
+- [`ffi::c_float`](https://doc.rust-lang.org/stable/std/ffi/type.c_float.html)
+- [`ffi::c_int`](https://doc.rust-lang.org/stable/std/ffi/type.c_int.html)
+- [`ffi::c_long`](https://doc.rust-lang.org/stable/std/ffi/type.c_long.html)
+- [`ffi::c_longlong`](https://doc.rust-lang.org/stable/std/ffi/type.c_longlong.html)
+- [`ffi::c_schar`](https://doc.rust-lang.org/stable/std/ffi/type.c_schar.html)
+- [`ffi::c_short`](https://doc.rust-lang.org/stable/std/ffi/type.c_short.html)
+- [`ffi::c_uchar`](https://doc.rust-lang.org/stable/std/ffi/type.c_uchar.html)
+- [`ffi::c_uint`](https://doc.rust-lang.org/stable/std/ffi/type.c_uint.html)
+- [`ffi::c_ulong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulong.html)
+- [`ffi::c_ulonglong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulonglong.html)
+- [`ffi::c_ushort`](https://doc.rust-lang.org/stable/std/ffi/type.c_ushort.html)
+
 These APIs are now usable in const contexts:
 
 - [`slice::from_raw_parts`](https://doc.rust-lang.org/stable/core/slice/fn.from_raw_parts.html)
 
 Cargo
 -----
-- Packages can now inherit settings from the workspace so that the settings
-  can be centralized in one place. See
+- [Packages can now inherit settings from the workspace so that the settings
+  can be centralized in one place.](https://github.com/rust-lang/cargo/pull/10859) See
   [`workspace.package`](https://doc.rust-lang.org/nightly/cargo/reference/workspaces.html#the-workspacepackage-table)
   and
   [`workspace.dependencies`](https://doc.rust-lang.org/nightly/cargo/reference/workspaces.html#the-workspacedependencies-table)
   for more details on how to define these common settings.
-  [#10859](https://github.com/rust-lang/cargo/pull/10859)
-- Cargo commands can now accept multiple `--target` flags to build for
-  multiple targets at once, and the
+- [Cargo commands can now accept multiple `--target` flags to build for
+  multiple targets at once](https://github.com/rust-lang/cargo/pull/10766), and the
   [`build.target`](https://doc.rust-lang.org/nightly/cargo/reference/config.html#buildtarget)
   config option may now take an array of multiple targets.
-  [#10766](https://github.com/rust-lang/cargo/pull/10766)
-- The `--jobs` argument can now take a negative number to count backwards from
-  the max CPUs.
-  [#10844](https://github.com/rust-lang/cargo/pull/10844)
-- `cargo add` will now update `Cargo.lock`.
-  [#10902](https://github.com/rust-lang/cargo/pull/10902)
-- Added the
+- [The `--jobs` argument can now take a negative number to count backwards from
+  the max CPUs.](https://github.com/rust-lang/cargo/pull/10844)
+- [`cargo add` will now update `Cargo.lock`.](https://github.com/rust-lang/cargo/pull/10902)
+- [Added](https://github.com/rust-lang/cargo/pull/10838) the
   [`--crate-type`](https://doc.rust-lang.org/nightly/cargo/commands/cargo-rustc.html#option-cargo-rustc---crate-type)
   flag to `cargo rustc` to override the crate type.
-  [#10838](https://github.com/rust-lang/cargo/pull/10838)
-- Significantly improved the performance fetching git dependencies from GitHub
-  when using a hash in the `rev` field.
-  [#10079](https://github.com/rust-lang/cargo/pull/10079)
+- [Significantly improved the performance fetching git dependencies from GitHub
+  when using a hash in the `rev` field.](https://github.com/rust-lang/cargo/pull/10079)
 
 Misc
 ----
-- [Let rust-analyzer ship on stable, non-preview](https://github.com/rust-lang/rust/pull/98640/)
+- [The `rust-analyzer` rustup component is now available on the stable channel.](https://github.com/rust-lang/rust/pull/98640/)
 
 Compatibility Notes
 -------------------
 - The minimum required versions for all `-linux-gnu` targets are now at least kernel 3.2 and glibc 2.17, for targets that previously supported older versions: [Increase the minimum linux-gnu versions](https://github.com/rust-lang/rust/pull/95026/)
-- [Implement network primitives with ideal Rust layout, not C system layout](https://github.com/rust-lang/rust/pull/78802/)
-- [Add assertion that `transmute_copy`'s U is not larger than T](https://github.com/rust-lang/rust/pull/98839/)
+- [Network primitives are now implemented with the ideal Rust layout, not the C system layout](https://github.com/rust-lang/rust/pull/78802/). This can cause problems when transmuting the types.
+- [Add assertion that `transmute_copy`'s `U` is not larger than `T`](https://github.com/rust-lang/rust/pull/98839/)
 - [A soundness bug in `BTreeMap` was fixed](https://github.com/rust-lang/rust/pull/99413/) that allowed data it was borrowing to be dropped before the container.
 - [The Drop behavior of C-like enums cast to ints has changed](https://github.com/rust-lang/rust/pull/96862/). These are already discouraged by a compiler warning.
 - [Relate late-bound closure lifetimes to parent fn in NLL](https://github.com/rust-lang/rust/pull/98835/)
