@@ -5,6 +5,7 @@
 // being reflected in the size.
 
 // ignore-emscripten (sizes don't match)
+// needs-unwind Size of Futures change on panic=abort
 // run-pass
 
 // edition:2018
