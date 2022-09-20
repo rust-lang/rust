@@ -4,11 +4,11 @@ use super::diagnostics::{
     FloatLiteralRequiresIntegerPart, IfExpressionMissingCondition, IfExpressionMissingThenBlock,
     IfExpressionMissingThenBlockSub, InvalidBlockMacroSegment, InvalidComparisonOperator,
     InvalidComparisonOperatorSub, InvalidLogicalOperator, InvalidLogicalOperatorSub,
-    InvalidShiftOperator, InvalidShiftOperatorSub, LeftArrowOperator,
-    LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
-    MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
-    NotAsNegationOperator, OuterAttributeNotAllowedOnIfElse, RequireColonAfterLabeledExpression,
-    SnapshotParser, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
+    InvalidShiftOperator, InvalidShiftOperatorSub, LeftArrowOperator, LifetimeInBorrowExpression,
+    MacroInvocationWithQualifiedPath, MalformedLoopLabel, MissingInInForLoop,
+    MissingInInForLoopSub, MissingSemicolonBeforeArray, NotAsNegationOperator,
+    OuterAttributeNotAllowedOnIfElse, RequireColonAfterLabeledExpression, SnapshotParser,
+    TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
 };
 use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
