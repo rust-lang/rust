@@ -141,10 +141,6 @@ h1, h2, h3, h4 {
 h1.fqn {
 	margin: 0;
 	padding: 0;
-	border-bottom-color: var(--headings-border-bottom-color);
-}
-h2, h3, h4 {
-	border-bottom-color: var(--headings-border-bottom-color);
 }
 .main-heading {
 	display: flex;
@@ -371,9 +367,6 @@ code, pre, a.test-arrow, .code-header {
 }
 pre {
 	padding: 14px;
-}
-.docblock.item-decl {
-	margin-left: 0;
 }
 .item-decl pre {
 	overflow-x: auto;
@@ -662,9 +655,6 @@ h2.location a {
 
 .docblock h5 { font-size: 1rem; }
 .docblock h6 { font-size: 0.875rem; }
-.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
-	border-bottom-color: var(--headings-border-bottom-color);
-}
 
 .docblock {
 	margin-left: 24px;

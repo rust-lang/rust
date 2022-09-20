@@ -207,11 +207,6 @@
                 "category": "rust-analyzer"
             },
             {
-                "command": "rust-analyzer.toggleInlayHints",
-                "title": "Toggle inlay hints",
-                "category": "rust-analyzer"
-            },
-            {
                 "command": "rust-analyzer.openDocs",
                 "title": "Open docs under cursor",
                 "category": "rust-analyzer"
@@ -442,6 +437,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.cargo.extraEnv": {
+                    "markdownDescription": "Extra environment variables that will be set when running cargo, rustc\nor other commands within the workspace. Useful for setting RUSTFLAGS.",
+                    "default": {},
+                    "type": "object"
+                },
                 "rust-analyzer.cargo.features": {
                     "markdownDescription": "List of features to activate.\n\nSet this to `\"all\"` to pass `--all-features` to cargo.",
                     "default": [],
@@ -513,6 +513,11 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "rust-analyzer.checkOnSave.extraEnv": {
+                    "markdownDescription": "Extra environment variables that will be set when running `cargo check`.",
+                    "default": {},
+                    "type": "object"
                 },
                 "rust-analyzer.checkOnSave.features": {
                     "markdownDescription": "List of features to activate. Defaults to\n`#rust-analyzer.cargo.features#`.\n\nSet to `\"all\"` to pass `--all-features` to Cargo.",
@@ -803,6 +808,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.imports.prefer.no.std": {
+                    "markdownDescription": "Prefer to unconditionally use imports of the core and alloc crate, over the std crate.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.imports.prefix": {
                     "markdownDescription": "The path structure for newly inserted paths to use.",
                     "default": "plain",
@@ -963,6 +973,19 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.lens.location": {
+                    "markdownDescription": "Where to render annotations.",
+                    "default": "above_name",
+                    "type": "string",
+                    "enum": [
+                        "above_name",
+                        "above_whole_item"
+                    ],
+                    "enumDescriptions": [
+                        "Render annotations above the name of the item.",
+                        "Render annotations above the whole item, including documentation comments and attributes."
+                    ]
+                },
                 "rust-analyzer.lens.references.adt.enable": {
                     "markdownDescription": "Whether to show `References` lens for Struct, Enum, and Union.\nOnly applies when `#rust-analyzer.lens.enable#` is set.",
                     "default": false,
@@ -1035,6 +1058,11 @@
                         "null",
                         "string"
                     ]
+                },
+                "rust-analyzer.references.excludeImports": {
+                    "markdownDescription": "Exclude imports from find-all-references.",
+                    "default": false,
+                    "type": "boolean"
                 },
                 "rust-analyzer.runnables.command": {
                     "markdownDescription": "Command to be executed instead of 'cargo' for runnables.",
@@ -1631,10 +1659,6 @@
                 },
                 {
                     "command": "rust-analyzer.serverVersion",
-                    "when": "inRustProject"
-                },
-                {
-                    "command": "rust-analyzer.toggleInlayHints",
                     "when": "inRustProject"
                 },
                 {

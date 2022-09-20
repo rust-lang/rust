@@ -211,7 +211,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_env: ty::ParamEnv<'tcx>,
         constant: mir::ConstantKind<'tcx>,
-    ) -> mir::DestructuredMirConstant<'tcx> {
+    ) -> mir::DestructuredConstant<'tcx> {
         self.try_destructure_mir_constant(param_env.and(constant)).unwrap()
     }
 }

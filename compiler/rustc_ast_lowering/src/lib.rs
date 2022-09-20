@@ -324,16 +324,10 @@ enum FnDeclKind {
 }
 
 impl FnDeclKind {
-    fn impl_trait_return_allowed(&self, tcx: TyCtxt<'_>) -> bool {
+    fn impl_trait_allowed(&self, tcx: TyCtxt<'_>) -> bool {
         match self {
             FnDeclKind::Fn | FnDeclKind::Inherent => true,
             FnDeclKind::Impl if tcx.features().return_position_impl_trait_in_trait => true,
-            _ => false,
-        }
-    }
-
-    fn impl_trait_in_trait_allowed(&self, tcx: TyCtxt<'_>) -> bool {
-        match self {
             FnDeclKind::Trait if tcx.features().return_position_impl_trait_in_trait => true,
             _ => false,
         }
@@ -1698,9 +1692,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }));
 
         let output = if let Some((ret_id, span)) = make_ret_async {
-            match kind {
-                FnDeclKind::Trait => {
-                    if !kind.impl_trait_in_trait_allowed(self.tcx) {
+            if !kind.impl_trait_allowed(self.tcx) {
+                match kind {
+                    FnDeclKind::Trait | FnDeclKind::Impl => {
                         self.tcx
                             .sess
                             .create_feature_err(
@@ -1709,51 +1703,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             )
                             .emit();
                     }
-                    self.lower_async_fn_ret_ty(
-                        &decl.output,
-                        fn_node_id.expect("`make_ret_async` but no `fn_def_id`"),
-                        ret_id,
-                        true,
-                    )
-                }
-                _ => {
-                    if !kind.impl_trait_return_allowed(self.tcx) {
-                        if kind == FnDeclKind::Impl {
-                            self.tcx
-                                .sess
-                                .create_feature_err(
-                                    TraitFnAsync { fn_span, span },
-                                    sym::return_position_impl_trait_in_trait,
-                                )
-                                .emit();
-                        } else {
-                            self.tcx.sess.emit_err(TraitFnAsync { fn_span, span });
-                        }
+                    _ => {
+                        self.tcx.sess.emit_err(TraitFnAsync { fn_span, span });
                     }
-                    self.lower_async_fn_ret_ty(
-                        &decl.output,
-                        fn_node_id.expect("`make_ret_async` but no `fn_def_id`"),
-                        ret_id,
-                        false,
-                    )
                 }
             }
+
+            self.lower_async_fn_ret_ty(
+                &decl.output,
+                fn_node_id.expect("`make_ret_async` but no `fn_def_id`"),
+                ret_id,
+                matches!(kind, FnDeclKind::Trait),
+            )
         } else {
             match decl.output {
                 FnRetTy::Ty(ref ty) => {
                     let mut context = match fn_node_id {
-                        Some(fn_node_id) if kind.impl_trait_return_allowed(self.tcx) => {
+                        Some(fn_node_id) if kind.impl_trait_allowed(self.tcx) => {
                             let fn_def_id = self.local_def_id(fn_node_id);
                             ImplTraitContext::ReturnPositionOpaqueTy {
                                 origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                                in_trait: false,
-                            }
-                        }
-                        Some(fn_node_id) if kind.impl_trait_in_trait_allowed(self.tcx) => {
-                            let fn_def_id = self.local_def_id(fn_node_id);
-                            ImplTraitContext::ReturnPositionOpaqueTy {
-                                origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                                in_trait: true,
+                                in_trait: matches!(kind, FnDeclKind::Trait),
                             }
                         }
                         _ => ImplTraitContext::Disallowed(match kind {

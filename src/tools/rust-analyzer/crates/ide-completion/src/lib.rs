@@ -234,7 +234,12 @@ pub fn resolve_completion_edits(
         );
         let import = items_with_name
             .filter_map(|candidate| {
-                current_module.find_use_path_prefixed(db, candidate, config.insert_use.prefix_kind)
+                current_module.find_use_path_prefixed(
+                    db,
+                    candidate,
+                    config.insert_use.prefix_kind,
+                    config.prefer_no_std,
+                )
             })
             .find(|mod_path| mod_path.to_string() == full_import_path);
         if let Some(import_path) = import {

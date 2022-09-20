@@ -43,10 +43,12 @@ impl WorkspaceBuildScripts {
         if let Some([program, args @ ..]) = config.run_build_script_command.as_deref() {
             let mut cmd = Command::new(program);
             cmd.args(args);
+            cmd.envs(&config.extra_env);
             return cmd;
         }
 
         let mut cmd = Command::new(toolchain::cargo());
+        cmd.envs(&config.extra_env);
 
         cmd.args(&["check", "--quiet", "--workspace", "--message-format=json"]);
 

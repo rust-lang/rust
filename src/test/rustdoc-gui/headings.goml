@@ -168,19 +168,19 @@ assert-css: (
 )
 assert-css: (
     ".top-doc .docblock h5",
-    {"color": "rgb(0, 0, 0)", "border-bottom": "0px none rgb(221, 221, 221)"},
+    {"color": "rgb(0, 0, 0)", "border-bottom-width": "0px"},
 )
 assert-css: (
     "#implementations-list .docblock h4",
-    {"color": "rgb(0, 0, 0)", "border-bottom": "0px none rgb(221, 221, 221)"},
+    {"color": "rgb(0, 0, 0)", "border-bottom-width": "0px"},
 )
 assert-css: (
     "#implementations-list .docblock h5",
-    {"color": "rgb(0, 0, 0)", "border-bottom": "0px none rgb(221, 221, 221)"},
+    {"color": "rgb(0, 0, 0)", "border-bottom-width": "0px"},
 )
 assert-css: (
     "#implementations-list .docblock h6",
-    {"color": "rgb(0, 0, 0)", "border-bottom": "0px none rgb(221, 221, 221)"},
+    {"color": "rgb(0, 0, 0)", "border-bottom-width": "0px"},
 )
 
 local-storage: {"rustdoc-theme": "dark"}
@@ -199,19 +199,19 @@ assert-css: (
 )
 assert-css: (
     ".top-doc .docblock h5",
-    {"color": "rgb(221, 221, 221)", "border-bottom": "0px none rgb(210, 210, 210)"},
+    {"color": "rgb(221, 221, 221)", "border-bottom-width": "0px"},
 )
 assert-css: (
     "#implementations-list .docblock h4",
-    {"color": "rgb(221, 221, 221)", "border-bottom": "0px none rgb(210, 210, 210)"},
+    {"color": "rgb(221, 221, 221)", "border-bottom-width": "0px"},
 )
 assert-css: (
     "#implementations-list .docblock h5",
-    {"color": "rgb(221, 221, 221)", "border-bottom": "0px none rgb(210, 210, 210)"},
+    {"color": "rgb(221, 221, 221)", "border-bottom-width": "0px"},
 )
 assert-css: (
     "#implementations-list .docblock h6",
-    {"color": "rgb(221, 221, 221)", "border-bottom": "0px none rgb(210, 210, 210)"},
+    {"color": "rgb(221, 221, 221)", "border-bottom-width": "0px"},
 )
 
 local-storage: {"rustdoc-theme": "ayu"}
@@ -230,19 +230,19 @@ assert-css: (
 )
 assert-css: (
     ".top-doc .docblock h5",
-    {"color": "rgb(197, 197, 197)", "border-bottom": "0px none rgb(92, 103, 115)"},
+    {"color": "rgb(197, 197, 197)", "border-bottom-width": "0px"},
 )
 assert-css: (
     "#implementations-list .docblock h4",
-    {"color": "rgb(255, 255, 255)", "border-bottom": "0px none rgb(92, 103, 115)"},
+    {"color": "rgb(255, 255, 255)", "border-bottom-width": "0px"},
 )
 assert-css: (
     "#implementations-list .docblock h5",
-    {"color": "rgb(197, 197, 197)", "border-bottom": "0px none rgb(92, 103, 115)"},
+    {"color": "rgb(197, 197, 197)", "border-bottom-width": "0px"},
 )
 assert-css: (
     "#implementations-list .docblock h6",
-    {"color": "rgb(197, 197, 197)", "border-bottom": "0px none rgb(92, 103, 115)"},
+    {"color": "rgb(197, 197, 197)", "border-bottom-width": "0px"},
 )
 
 local-storage: {"rustdoc-theme": "light"}
