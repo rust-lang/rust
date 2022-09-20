@@ -180,7 +180,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     entry_id: DefId,
     entry_type: EntryFnType,
     config: &MiriConfig,
-) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>, MPlaceTy<'tcx, Provenance>)> {
+) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>, MPlaceTy<'tcx, Provenance>)>
+{
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx = InterpCx::new(

@@ -109,7 +109,8 @@ fn prune_stacktrace<'tcx>(
             if has_local_frame {
                 // Remove all frames marked with `caller_location` -- that attribute indicates we
                 // usually want to point at the caller, not them.
-                stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(machine.tcx));
+                stacktrace
+                    .retain(|frame| !frame.instance.def.requires_caller_location(machine.tcx));
 
                 // This is part of the logic that `std` uses to select the relevant part of a
                 // backtrace. But here, we only look for __rust_begin_short_backtrace, not
@@ -371,12 +372,12 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
         use NonHaltingDiagnostic::*;
 
-        let stacktrace = MiriInterpCx::generate_stacktrace_from_stack(self.threads.active_thread_stack());
+        let stacktrace =
+            MiriInterpCx::generate_stacktrace_from_stack(self.threads.active_thread_stack());
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
         let (title, diag_level) = match e {
-            RejectedIsolatedOp(_) =>
-                ("operation rejected by isolation", DiagLevel::Warning),
+            RejectedIsolatedOp(_) => ("operation rejected by isolation", DiagLevel::Warning),
             Int2Ptr { .. } => ("integer-to-pointer cast", DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
@@ -384,43 +385,35 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             | CreatedAlloc(..)
             | FreedAlloc(..)
             | ProgressReport { .. }
-            | WeakMemoryOutdatedLoad =>
-                ("tracking was triggered", DiagLevel::Note),
+            | WeakMemoryOutdatedLoad => ("tracking was triggered", DiagLevel::Note),
         };
 
         let msg = match e {
-            CreatedPointerTag(tag, None) =>
-                format!("created tag {tag:?}"),
+            CreatedPointerTag(tag, None) => format!("created tag {tag:?}"),
             CreatedPointerTag(tag, Some((alloc_id, range))) =>
                 format!("created tag {tag:?} at {alloc_id:?}{range:?}"),
             PoppedPointerTag(item, tag) =>
                 match tag {
-                    None =>
-                        format!(
-                            "popped tracked tag for item {item:?} due to deallocation",
-                        ),
+                    None => format!("popped tracked tag for item {item:?} due to deallocation",),
                     Some((tag, access)) => {
                         format!(
                             "popped tracked tag for item {item:?} due to {access:?} access for {tag:?}",
                         )
                     }
                 },
-            CreatedCallId(id) =>
-                format!("function call with id {id}"),
+            CreatedCallId(id) => format!("function call with id {id}"),
             CreatedAlloc(AllocId(id), size, align, kind) =>
                 format!(
                     "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
                     size = size.bytes(),
                     align = align.bytes(),
                 ),
-            FreedAlloc(AllocId(id)) =>
-                format!("freed allocation with id {id}"),
+            FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
             RejectedIsolatedOp(ref op) =>
                 format!("{op} was made to return an error due to isolation"),
             ProgressReport { .. } =>
                 format!("progress report: current operation being executed is here"),
-            Int2Ptr { .. } =>
-                format!("integer-to-pointer cast"),
+            Int2Ptr { .. } => format!("integer-to-pointer cast"),
             WeakMemoryOutdatedLoad =>
                 format!("weak memory emulation: outdated value returned from load"),
         };
@@ -429,9 +422,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             ProgressReport { block_count } => {
                 // It is important that each progress report is slightly different, since
                 // identical diagnostics are being deduplicated.
-                vec![
-                    (None, format!("so far, {block_count} basic blocks have been executed")),
-                ]
+                vec![(None, format!("so far, {block_count} basic blocks have been executed"))]
             }
             _ => vec![],
         };
@@ -439,12 +430,40 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         let helps = match e {
             Int2Ptr { details: true } =>
                 vec![
-                    (None, format!("This program is using integer-to-pointer casts or (equivalently) `ptr::from_exposed_addr`,")),
-                    (None, format!("which means that Miri might miss pointer bugs in this program.")),
-                    (None, format!("See https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation.")),
-                    (None, format!("To ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead.")),
-                    (None, format!("You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics.")),
-                    (None, format!("Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning.")),
+                    (
+                        None,
+                        format!(
+                            "This program is using integer-to-pointer casts or (equivalently) `ptr::from_exposed_addr`,"
+                        ),
+                    ),
+                    (
+                        None,
+                        format!("which means that Miri might miss pointer bugs in this program."),
+                    ),
+                    (
+                        None,
+                        format!(
+                            "See https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation."
+                        ),
+                    ),
+                    (
+                        None,
+                        format!(
+                            "To ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead."
+                        ),
+                    ),
+                    (
+                        None,
+                        format!(
+                            "You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics."
+                        ),
+                    ),
+                    (
+                        None,
+                        format!(
+                            "Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning."
+                        ),
+                    ),
                 ],
             _ => vec![],
         };

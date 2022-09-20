@@ -322,10 +322,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// otherwise returns the value from the closure
     fn rwlock_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, RwLockId>
     where
-        F: FnOnce(
-            &mut MiriInterpCx<'mir, 'tcx>,
-            RwLockId,
-        ) -> InterpResult<'tcx, Option<RwLockId>>,
+        F: FnOnce(&mut MiriInterpCx<'mir, 'tcx>, RwLockId) -> InterpResult<'tcx, Option<RwLockId>>,
     {
         let this = self.eval_context_mut();
         let next_index = this.machine.threads.sync.rwlocks.next_index();

@@ -572,7 +572,8 @@ impl Stacks {
             // not through a pointer). That is, whenever we directly write to a local, this will pop
             // everything else off the stack, invalidating all previous pointers,
             // and in particular, *all* raw pointers.
-            MemoryKind::Stack => (extra.base_ptr_tag(id, current_span.machine()), Permission::Unique),
+            MemoryKind::Stack =>
+                (extra.base_ptr_tag(id, current_span.machine()), Permission::Unique),
             // Everything else is shared by default.
             _ => (extra.base_ptr_tag(id, current_span.machine()), Permission::SharedReadWrite),
         };

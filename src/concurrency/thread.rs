@@ -32,8 +32,9 @@ pub enum SchedulingAction {
 
 /// Timeout callbacks can be created by synchronization primitives to tell the
 /// scheduler that they should be called once some period of time passes.
-type TimeoutCallback<'mir, 'tcx> =
-    Box<dyn FnOnce(&mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx> + 'tcx>;
+type TimeoutCallback<'mir, 'tcx> = Box<
+    dyn FnOnce(&mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx> + 'tcx,
+>;
 
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
