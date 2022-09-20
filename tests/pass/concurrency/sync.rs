@@ -81,7 +81,9 @@ fn check_conditional_variables_timed_wait_notimeout() {
         cvar.notify_one();
     });
 
-    let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(1000)).unwrap();
+    // macOS runners are very unreliable.
+    let timeout = if cfg!(target_os = "macos") { 2000 } else { 500 };
+    let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(timeout)).unwrap();
     assert!(!timeout.timed_out());
     handle.join().unwrap();
 }

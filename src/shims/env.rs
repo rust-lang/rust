@@ -42,19 +42,12 @@ impl<'tcx> EnvVars<'tcx> {
         config: &MiriConfig,
     ) -> InterpResult<'tcx> {
         let target_os = ecx.tcx.sess.target.os.as_ref();
-        let mut excluded_env_vars = config.excluded_env_vars.clone();
-        if target_os == "windows" {
-            // HACK: Exclude `TERM` var to avoid terminfo trying to open the termcap file.
-            excluded_env_vars.push("TERM".to_owned());
-        }
 
         // Skip the loop entirely if we don't want to forward anything.
         if ecx.machine.communicate() || !config.forwarded_env_vars.is_empty() {
             for (name, value) in &config.env {
-                // Always forward what is in `forwarded_env_vars`; that list can take precedence over excluded_env_vars.
-                let forward = config.forwarded_env_vars.iter().any(|v| **v == *name)
-                    || (ecx.machine.communicate()
-                        && !excluded_env_vars.iter().any(|v| **v == *name));
+                let forward = ecx.machine.communicate()
+                    || config.forwarded_env_vars.iter().any(|v| **v == *name);
                 if forward {
                     let var_ptr = match target_os {
                         target if target_os_is_unix(target) =>

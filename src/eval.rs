@@ -74,7 +74,7 @@ pub enum BacktraceStyle {
 #[derive(Clone)]
 pub struct MiriConfig {
     /// The host environment snapshot to use as basis for what is provided to the interpreted program.
-    /// (This is still subject to isolation as well as `excluded_env_vars` and `forwarded_env_vars`.)
+    /// (This is still subject to isolation as well as `forwarded_env_vars`.)
     pub env: Vec<(OsString, OsString)>,
     /// Determine if validity checking is enabled.
     pub validate: bool,
@@ -88,8 +88,6 @@ pub struct MiriConfig {
     pub isolated_op: IsolatedOp,
     /// Determines if memory leaks should be ignored.
     pub ignore_leaks: bool,
-    /// Environment variables that should always be isolated from the host.
-    pub excluded_env_vars: Vec<String>,
     /// Environment variables that should always be forwarded from the host.
     pub forwarded_env_vars: Vec<String>,
     /// Command-line arguments passed to the interpreted program.
@@ -146,7 +144,6 @@ impl Default for MiriConfig {
             check_abi: true,
             isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),
             ignore_leaks: false,
-            excluded_env_vars: vec![],
             forwarded_env_vars: vec![],
             args: vec![],
             seed: None,
