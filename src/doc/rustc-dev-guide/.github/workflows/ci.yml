@@ -14,10 +14,10 @@ jobs:
     if: github.repository == 'rust-lang/rustc-dev-guide'
     runs-on: ubuntu-latest
     env:
-      MDBOOK_VERSION: 0.4.12
-      MDBOOK_LINKCHECK_VERSION: 0.7.2
-      MDBOOK_MERMAID_VERSION: 0.10.0
-      MDBOOK_TOC_VERSION: 0.6.1
+      MDBOOK_VERSION: 0.4.21
+      MDBOOK_LINKCHECK_VERSION: 0.7.6
+      MDBOOK_MERMAID_VERSION: 0.11.2
+      MDBOOK_TOC_VERSION: 0.9.0
       DEPLOY_DIR: book/html
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
     steps:
