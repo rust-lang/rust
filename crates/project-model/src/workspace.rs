@@ -21,8 +21,8 @@ use crate::{
     cfg_flag::CfgFlag,
     rustc_cfg,
     sysroot::SysrootCrate,
-    utf8_stdout, CargoConfig, CargoWorkspace, ManifestPath, ProjectJson, ProjectManifest, Sysroot,
-    TargetKind, WorkspaceBuildScripts,
+    utf8_stdout, CargoConfig, CargoWorkspace, ManifestPath, Package, ProjectJson, ProjectManifest,
+    Sysroot, TargetKind, WorkspaceBuildScripts,
 };
 
 /// A set of cfg-overrides per crate.
@@ -315,6 +315,13 @@ impl ProjectWorkspace {
     /// The return type contains the path and whether or not
     /// the root is a member of the current workspace
     pub fn to_roots(&self) -> Vec<PackageRoot> {
+        let mk_sysroot = |sysroot: Option<&Sysroot>| {
+            sysroot.map(|sysroot| PackageRoot {
+                is_local: false,
+                include: vec![sysroot.src_root().to_path_buf()],
+                exclude: Vec::new(),
+            })
+        };
         match self {
             ProjectWorkspace::Json { project, sysroot, rustc_cfg: _ } => project
                 .crates()
@@ -325,13 +332,7 @@ impl ProjectWorkspace {
                 })
                 .collect::<FxHashSet<_>>()
                 .into_iter()
-                .chain(sysroot.as_ref().into_iter().flat_map(|sysroot| {
-                    sysroot.crates().map(move |krate| PackageRoot {
-                        is_local: false,
-                        include: vec![sysroot[krate].root.parent().to_path_buf()],
-                        exclude: Vec::new(),
-                    })
-                }))
+                .chain(mk_sysroot(sysroot.as_ref()))
                 .collect::<Vec<_>>(),
             ProjectWorkspace::Cargo {
                 cargo,
@@ -380,11 +381,7 @@ impl ProjectWorkspace {
                         }
                         PackageRoot { is_local, include, exclude }
                     })
-                    .chain(sysroot.iter().map(|sysroot| PackageRoot {
-                        is_local: false,
-                        include: vec![sysroot.src_root().to_path_buf()],
-                        exclude: Vec::new(),
-                    }))
+                    .chain(mk_sysroot(sysroot.as_ref()))
                     .chain(rustc.iter().flat_map(|rustc| {
                         rustc.packages().map(move |krate| PackageRoot {
                             is_local: false,
@@ -401,11 +398,7 @@ impl ProjectWorkspace {
                     include: vec![detached_file.clone()],
                     exclude: Vec::new(),
                 })
-                .chain(sysroot.crates().map(|krate| PackageRoot {
-                    is_local: false,
-                    include: vec![sysroot[krate].root.parent().to_path_buf()],
-                    exclude: Vec::new(),
-                }))
+                .chain(mk_sysroot(Some(sysroot)))
                 .collect(),
         }
     }
@@ -639,6 +632,8 @@ fn cargo_to_crate_graph(
                     lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
                     pkg_to_lib_crate.insert(pkg, crate_id);
                 }
+                // Even crates that don't set proc-macro = true are allowed to depend on proc_macro
+                // (just none of the APIs work when called outside of a proc macro).
                 if let Some(proc_macro) = libproc_macro {
                     add_dep_with_prelude(
                         &mut crate_graph,
@@ -654,19 +649,19 @@ fn cargo_to_crate_graph(
         }
 
         // Set deps to the core, std and to the lib target of the current package
-        for (from, kind) in pkg_crates.get(&pkg).into_iter().flatten() {
+        for &(from, kind) in pkg_crates.get(&pkg).into_iter().flatten() {
             // Add sysroot deps first so that a lib target named `core` etc. can overwrite them.
-            public_deps.add(*from, &mut crate_graph);
+            public_deps.add(from, &mut crate_graph);
 
             if let Some((to, name)) = lib_tgt.clone() {
-                if to != *from && *kind != TargetKind::BuildScript {
+                if to != from && kind != TargetKind::BuildScript {
                     // (build script can not depend on its library target)
 
                     // For root projects with dashes in their name,
                     // cargo metadata does not do any normalization,
                     // so we do it ourselves currently
                     let name = CrateName::normalize_dashes(&name);
-                    add_dep(&mut crate_graph, *from, name, to);
+                    add_dep(&mut crate_graph, from, name, to);
                 }
             }
         }
@@ -678,17 +673,17 @@ fn cargo_to_crate_graph(
         for dep in cargo[pkg].dependencies.iter() {
             let name = CrateName::new(&dep.name).unwrap();
             if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
-                for (from, kind) in pkg_crates.get(&pkg).into_iter().flatten() {
-                    if dep.kind == DepKind::Build && *kind != TargetKind::BuildScript {
+                for &(from, kind) in pkg_crates.get(&pkg).into_iter().flatten() {
+                    if dep.kind == DepKind::Build && kind != TargetKind::BuildScript {
                         // Only build scripts may depend on build dependencies.
                         continue;
                     }
-                    if dep.kind != DepKind::Build && *kind == TargetKind::BuildScript {
+                    if dep.kind != DepKind::Build && kind == TargetKind::BuildScript {
                         // Build scripts may only depend on build dependencies.
                         continue;
                     }
 
-                    add_dep(&mut crate_graph, *from, name.clone(), to)
+                    add_dep(&mut crate_graph, from, name.clone(), to)
                 }
             }
         }
@@ -699,9 +694,9 @@ fn cargo_to_crate_graph(
         // and create dependencies on them for the crates which opt-in to that
         if let Some(rustc_workspace) = rustc {
             handle_rustc_crates(
+                &mut crate_graph,
                 rustc_workspace,
                 load,
-                &mut crate_graph,
                 &cfg_options,
                 override_cfg,
                 load_proc_macro,
@@ -761,16 +756,16 @@ fn detached_files_to_crate_graph(
 }
 
 fn handle_rustc_crates(
+    crate_graph: &mut CrateGraph,
     rustc_workspace: &CargoWorkspace,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
-    crate_graph: &mut CrateGraph,
     cfg_options: &CfgOptions,
     override_cfg: &CfgOverrides,
     load_proc_macro: &mut dyn FnMut(&str, &AbsPath) -> ProcMacroLoadResult,
-    pkg_to_lib_crate: &mut FxHashMap<la_arena::Idx<crate::PackageData>, CrateId>,
+    pkg_to_lib_crate: &mut FxHashMap<Package, CrateId>,
     public_deps: &SysrootPublicDeps,
     cargo: &CargoWorkspace,
-    pkg_crates: &FxHashMap<la_arena::Idx<crate::PackageData>, Vec<(CrateId, TargetKind)>>,
+    pkg_crates: &FxHashMap<Package, Vec<(CrateId, TargetKind)>>,
     build_scripts: &WorkspaceBuildScripts,
 ) {
     let mut rustc_pkg_crates = FxHashMap::default();
@@ -784,8 +779,8 @@ fn handle_rustc_crates(
         let mut queue = VecDeque::new();
         queue.push_back(root_pkg);
         while let Some(pkg) = queue.pop_front() {
-            // Don't duplicate packages if they are dependended on a diamond pattern
-            // N.B. if this line is omitted, we try to analyse over 4_800_000 crates
+            // Don't duplicate packages if they are dependent on a diamond pattern
+            // N.B. if this line is omitted, we try to analyze over 4_800_000 crates
             // which is not ideal
             if rustc_pkg_crates.contains_key(&pkg) {
                 continue;
