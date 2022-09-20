@@ -821,6 +821,7 @@ impl Config {
             .and_then(|output| if output.status.success() { Some(output) } else { None });
         if let Some(output) = output {
             let git_root = String::from_utf8(output.stdout).unwrap();
+            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes.
             let git_root = PathBuf::from(git_root.trim()).canonicalize().unwrap();
             let s = git_root.to_str().unwrap();
 
