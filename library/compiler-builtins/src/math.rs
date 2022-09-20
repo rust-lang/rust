@@ -118,8 +118,11 @@ no_mangle! {
     fn truncf(x: f32) -> f32;
 }
 
-// only for the thumb*-none-eabi* targets
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+// only for the thumb*-none-eabi* targets and riscv32*-none-elf targets that lack the floating point instruction set
+#[cfg(any(
+    all(target_arch = "arm", target_os = "none"),
+    all(target_arch = "riscv32", not(target_feature = "f"), target_os = "none")
+))]
 no_mangle! {
     fn fmin(x: f64, y: f64) -> f64;
     fn fminf(x: f32, y: f32) -> f32;
