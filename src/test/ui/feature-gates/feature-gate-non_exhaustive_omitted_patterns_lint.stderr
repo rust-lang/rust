@@ -10,7 +10,7 @@ LL | #![deny(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:7:1
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:6:1
    |
 LL | #![allow(non_exhaustive_omitted_patterns)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL | #![allow(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:17:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:5
    |
 LL |     #[allow(non_exhaustive_omitted_patterns)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL |     #[allow(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:17:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:5
    |
 LL |     #[allow(non_exhaustive_omitted_patterns)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     #[allow(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:33:9
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:29:9
    |
 LL |         #[warn(non_exhaustive_omitted_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL | #![deny(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:7:1
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:6:1
    |
 LL | #![allow(non_exhaustive_omitted_patterns)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL | #![allow(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:17:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:5
    |
 LL |     #[allow(non_exhaustive_omitted_patterns)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ LL |     #[allow(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:17:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:5
    |
 LL |     #[allow(non_exhaustive_omitted_patterns)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL |     #[allow(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:33:9
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:29:9
    |
 LL |         #[warn(non_exhaustive_omitted_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -100,13 +100,13 @@ LL |         #[warn(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 error[E0004]: non-exhaustive patterns: `Foo::C` not covered
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:24:11
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:20:11
    |
 LL |     match Foo::A {
    |           ^^^^^^ pattern `Foo::C` not covered
    |
 note: `Foo` defined here
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:14:15
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:12:15
    |
 LL |     enum Foo {
    |          ---
@@ -119,56 +119,6 @@ LL ~         Foo::B => {}
 LL +         Foo::C => todo!()
    |
 
-warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:3:1
-   |
-LL | #![deny(non_exhaustive_omitted_patterns)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the `non_exhaustive_omitted_patterns` lint is unstable
-   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
-   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
-
-warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:7:1
-   |
-LL | #![allow(non_exhaustive_omitted_patterns)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the `non_exhaustive_omitted_patterns` lint is unstable
-   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
-   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
-
-warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:17:5
-   |
-LL |     #[allow(non_exhaustive_omitted_patterns)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the `non_exhaustive_omitted_patterns` lint is unstable
-   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
-   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
-
-warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:17:5
-   |
-LL |     #[allow(non_exhaustive_omitted_patterns)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the `non_exhaustive_omitted_patterns` lint is unstable
-   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
-   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
-
-warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:33:9
-   |
-LL |         #[warn(non_exhaustive_omitted_patterns)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the `non_exhaustive_omitted_patterns` lint is unstable
-   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
-   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
-
-error: aborting due to previous error; 15 warnings emitted
+error: aborting due to previous error; 10 warnings emitted
 
 For more information about this error, try `rustc --explain E0004`.
