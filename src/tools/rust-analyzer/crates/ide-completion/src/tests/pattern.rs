@@ -714,3 +714,30 @@ impl Ty {
         "#]],
     );
 }
+
+#[test]
+fn through_alias() {
+    check_empty(
+        r#"
+enum Enum<T> {
+    Unit,
+    Tuple(T),
+}
+
+type EnumAlias<T> = Enum<T>;
+
+fn f(x: EnumAlias<u8>) {
+    match x {
+        EnumAlias::$0 => (),
+        _ => (),
+    }
+
+}
+
+"#,
+        expect![[r#"
+            bn Tuple(…) Tuple($1)$0
+            bn Unit     Unit$0
+        "#]],
+    );
+}

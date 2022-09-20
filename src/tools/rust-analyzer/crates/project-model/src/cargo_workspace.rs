@@ -2,6 +2,7 @@
 
 use std::iter;
 use std::path::PathBuf;
+use std::str::from_utf8;
 use std::{ops, process::Command};
 
 use anyhow::{Context, Result};
@@ -98,6 +99,8 @@ pub struct CargoConfig {
     pub wrap_rustc_in_build_scripts: bool,
 
     pub run_build_script_command: Option<Vec<String>>,
+
+    pub extra_env: FxHashMap<String, String>,
 }
 
 impl CargoConfig {
@@ -263,8 +266,8 @@ impl CargoWorkspace {
         let target = config
             .target
             .clone()
-            .or_else(|| cargo_config_build_target(cargo_toml))
-            .or_else(|| rustc_discover_host_triple(cargo_toml));
+            .or_else(|| cargo_config_build_target(cargo_toml, config))
+            .or_else(|| rustc_discover_host_triple(cargo_toml, config));
 
         let mut meta = MetadataCommand::new();
         meta.cargo_path(toolchain::cargo());
@@ -292,8 +295,27 @@ impl CargoWorkspace {
         // unclear whether cargo itself supports it.
         progress("metadata".to_string());
 
-        let meta =
-            meta.exec().with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))?;
+        fn exec_with_env(
+            command: &cargo_metadata::MetadataCommand,
+            extra_env: &FxHashMap<String, String>,
+        ) -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
+            let mut command = command.cargo_command();
+            command.envs(extra_env);
+            let output = command.output()?;
+            if !output.status.success() {
+                return Err(cargo_metadata::Error::CargoMetadata {
+                    stderr: String::from_utf8(output.stderr)?,
+                });
+            }
+            let stdout = from_utf8(&output.stdout)?
+                .lines()
+                .find(|line| line.starts_with('{'))
+                .ok_or(cargo_metadata::Error::NoJson)?;
+            cargo_metadata::MetadataCommand::parse(stdout)
+        }
+
+        let meta = exec_with_env(&meta, &config.extra_env)
+            .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))?;
 
         Ok(meta)
     }
@@ -463,8 +485,9 @@ impl CargoWorkspace {
     }
 }
 
-fn rustc_discover_host_triple(cargo_toml: &ManifestPath) -> Option<String> {
+fn rustc_discover_host_triple(cargo_toml: &ManifestPath, config: &CargoConfig) -> Option<String> {
     let mut rustc = Command::new(toolchain::rustc());
+    rustc.envs(&config.extra_env);
     rustc.current_dir(cargo_toml.parent()).arg("-vV");
     tracing::debug!("Discovering host platform by {:?}", rustc);
     match utf8_stdout(rustc) {
@@ -486,8 +509,9 @@ fn rustc_discover_host_triple(cargo_toml: &ManifestPath) -> Option<String> {
     }
 }
 
-fn cargo_config_build_target(cargo_toml: &ManifestPath) -> Option<String> {
+fn cargo_config_build_target(cargo_toml: &ManifestPath, config: &CargoConfig) -> Option<String> {
     let mut cargo_config = Command::new(toolchain::cargo());
+    cargo_config.envs(&config.extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())
         .args(&["-Z", "unstable-options", "config", "get", "build.target"])

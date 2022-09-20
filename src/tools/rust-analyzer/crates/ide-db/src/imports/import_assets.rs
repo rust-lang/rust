@@ -212,18 +212,20 @@ impl ImportAssets {
         &self,
         sema: &Semantics<'_, RootDatabase>,
         prefix_kind: PrefixKind,
+        prefer_no_std: bool,
     ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_imports");
-        self.search_for(sema, Some(prefix_kind))
+        self.search_for(sema, Some(prefix_kind), prefer_no_std)
     }
 
     /// This may return non-absolute paths if a part of the returned path is already imported into scope.
     pub fn search_for_relative_paths(
         &self,
         sema: &Semantics<'_, RootDatabase>,
+        prefer_no_std: bool,
     ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_relative_paths");
-        self.search_for(sema, None)
+        self.search_for(sema, None, prefer_no_std)
     }
 
     pub fn path_fuzzy_name_to_exact(&mut self, case_sensitive: bool) {
@@ -242,6 +244,7 @@ impl ImportAssets {
         &self,
         sema: &Semantics<'_, RootDatabase>,
         prefixed: Option<PrefixKind>,
+        prefer_no_std: bool,
     ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for");
 
@@ -252,6 +255,7 @@ impl ImportAssets {
                 item_for_path_search(sema.db, item)?,
                 &self.module_with_candidate,
                 prefixed,
+                prefer_no_std,
             )
         };
 
@@ -564,11 +568,12 @@ fn get_mod_path(
     item_to_search: ItemInNs,
     module_with_candidate: &Module,
     prefixed: Option<PrefixKind>,
+    prefer_no_std: bool,
 ) -> Option<ModPath> {
     if let Some(prefix_kind) = prefixed {
-        module_with_candidate.find_use_path_prefixed(db, item_to_search, prefix_kind)
+        module_with_candidate.find_use_path_prefixed(db, item_to_search, prefix_kind, prefer_no_std)
     } else {
-        module_with_candidate.find_use_path(db, item_to_search)
+        module_with_candidate.find_use_path(db, item_to_search, prefer_no_std)
     }
 }
 
