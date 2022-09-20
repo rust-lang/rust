@@ -288,14 +288,9 @@ environment variable. We first document the most relevant and most commonly used
   execution with a "permission denied" error being returned to the program.
   `warn` prints a full backtrace when that happens; `warn-nobacktrace` is less
   verbose. `hide` hides the warning entirely.
-* `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from the host so that it
-  cannot be accessed by the program. Can be used multiple times to exclude several variables. The
-  `TERM` environment variable is excluded by default in Windows to prevent the libtest harness from
-  accessing the file system. This has no effect unless `-Zmiri-disable-isolation` is also set.
 * `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
-  be used multiple times to forward several variables. This takes precedence over
-  `-Zmiri-env-exclude`: if a variable is both forwarded and exluced, it *will* get forwarded. This
-  means in particular `-Zmiri-env-forward=TERM` overwrites the default exclusion of `TERM`.
+  be used multiple times to forward several variables. Execution will still be deterministic if the
+  value of forwarded variables stays the same. Has no effect if `-Zmiri-disable-isolation` is set.
 * `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
   remaining threads to exist when the main thread exits.
 * `-Zmiri-permissive-provenance` disables the warning for integer-to-pointer casts and

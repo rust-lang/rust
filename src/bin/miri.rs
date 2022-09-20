@@ -441,8 +441,10 @@ fn main() {
                             "-Zmiri-seed should only contain valid hex digits [0-9a-fA-F] and must fit into a u64 (max 16 characters)"
                         ));
             miri_config.seed = Some(seed);
-        } else if let Some(param) = arg.strip_prefix("-Zmiri-env-exclude=") {
-            miri_config.excluded_env_vars.push(param.to_owned());
+        } else if let Some(_param) = arg.strip_prefix("-Zmiri-env-exclude=") {
+            show_error!(
+                "`-Zmiri-env-exclude` has been removed; unset env vars before starting Miri instead"
+            );
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-forward=") {
             miri_config.forwarded_env_vars.push(param.to_owned());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-pointer-tag=") {
