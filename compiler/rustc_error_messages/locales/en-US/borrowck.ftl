@@ -262,7 +262,11 @@ borrowck_lifetime_not_used_in_trait_type_alias =
     lifetime `{$r}` is part of concrete type but not used in parameter list of the `impl Trait` type alias
 
 borrowck_used_non_generic_for_generic =
-    used non-generic {$descr} `{$arg}` for generic parameter
+    used non-generic {$descr ->
+    [lifetime] lifetime
+    [type] type
+    *[constant] constant
+    } `{$arg}` for generic parameter
 
 borrowck_cannot_use_static_lifetime_here =
     cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type

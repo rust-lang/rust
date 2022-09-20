@@ -398,7 +398,7 @@ fn check_opaque_type_parameter_valid(
             tcx.sess.emit_err(OpaqueTypeNotDefine {
                 cause: OpaqueTyDefineErrCause::NonGenericUsed {
                     span: tcx.def_span(opaque_param.def_id),
-                    descr: opaque_param.kind.descr().to_string(),
+                    descr: &opaque_param.kind.descr(),
                     arg: arg.to_string(),
                 },
                 span,

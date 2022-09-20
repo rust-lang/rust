@@ -462,7 +462,7 @@ pub(crate) enum OpaqueTyDefineErrCause {
     NonGenericUsed {
         #[primary_span]
         span: Span,
-        descr: String,
+        descr: &'static str,
         arg: String,
     },
     #[label(borrowck::cannot_use_static_lifetime_here)]
