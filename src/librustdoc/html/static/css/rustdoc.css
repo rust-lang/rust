@@ -728,9 +728,6 @@ pre, .rustdoc.source .example-wrap {
 	padding: 0;
 }
 
-.content > .methods > .method {
-	position: relative;
-}
 /* Shift "where ..." part of method or fn definition down a line */
 .content .method .where,
 .content .fn .where,
