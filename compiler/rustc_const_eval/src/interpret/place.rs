@@ -890,8 +890,6 @@ mod size_asserts {
     static_assert_size!(MemPlaceMeta, 24);
     static_assert_size!(MemPlace, 40);
     static_assert_size!(MPlaceTy<'_>, 64);
-    #[cfg(not(bootstrap))]
     static_assert_size!(Place, 40);
-    #[cfg(not(bootstrap))]
     static_assert_size!(PlaceTy<'_>, 64);
 }

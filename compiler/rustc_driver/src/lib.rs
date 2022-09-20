@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]

@@ -1,5 +1,4 @@
 #![feature(allow_internal_unstable)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(never_type)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]

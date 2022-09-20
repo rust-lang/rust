@@ -5,7 +5,6 @@
 // Your performance intuition is useless. Run perf.
 
 use crate::cmp;
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt;
 use crate::mem::{self, ValidAlign};
@@ -463,7 +462,6 @@ pub type LayoutErr = LayoutError;
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LayoutError;
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 impl Error for LayoutError {}
 

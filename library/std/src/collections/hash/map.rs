@@ -9,7 +9,6 @@ use crate::borrow::Borrow;
 use crate::cell::Cell;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt::{self, Debug};
 #[allow(deprecated)]
@@ -2160,7 +2159,6 @@ impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "map_try_insert", issue = "82766")]
 impl<'a, K: fmt::Debug, V: fmt::Debug> Error for OccupiedError<'a, K, V> {
     #[allow(deprecated)]

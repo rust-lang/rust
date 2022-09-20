@@ -2764,7 +2764,6 @@ fn data_offset_align(align: usize) -> usize {
     layout.size() + layout.padding_needed_for(align)
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "arc_error", since = "1.52.0")]
 impl<T: core::error::Error + ?Sized> core::error::Error for Arc<T> {
     #[allow(deprecated, deprecated_in_future)]

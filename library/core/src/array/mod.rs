@@ -7,7 +7,6 @@
 use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
@@ -121,7 +120,6 @@ impl fmt::Display for TryFromSliceError {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "try_from", since = "1.34.0")]
 impl Error for TryFromSliceError {
     #[allow(deprecated)]

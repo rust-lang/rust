@@ -3046,7 +3046,6 @@ mod size_asserts {
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(ExprKind, 72);
-    #[cfg(not(bootstrap))]
     static_assert_size!(Fn, 184);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
