@@ -17,10 +17,10 @@ use crate::path::{self, PathBuf};
 use crate::ptr;
 use crate::slice;
 use crate::str;
+use crate::sync::{PoisonError, RwLock};
 use crate::sys::cvt;
 use crate::sys::fd;
 use crate::sys::memchr;
-use crate::sys_common::rwlock::{StaticRwLock, StaticRwLockReadGuard};
 use crate::vec;
 
 #[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
@@ -501,10 +501,10 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     ptr::addr_of_mut!(environ)
 }
 
-static ENV_LOCK: StaticRwLock = StaticRwLock::new();
+static ENV_LOCK: RwLock<()> = RwLock::new(());
 
-pub fn env_read_lock() -> StaticRwLockReadGuard {
-    ENV_LOCK.read()
+pub fn env_read_lock() -> impl Drop {
+    ENV_LOCK.read().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// Returns a vector of (variable, value) byte-vector pairs for all the
