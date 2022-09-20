@@ -11,6 +11,39 @@
 
 use core::num::{Saturating, Wrapping};
 
+pub fn association_with_structures_should_not_trigger_the_lint() {
+    enum Foo {
+        Bar = -2,
+    }
+
+    impl Trait for Foo {
+        const ASSOC: i32 = {
+            let _: [i32; 1 + 1];
+            fn foo() {}
+            1 + 1
+        };
+    }
+
+    struct Baz([i32; 1 + 1]);
+
+    trait Trait {
+        const ASSOC: i32 = 1 + 1;
+    }
+
+    type Alias = [i32; 1 + 1];
+
+    union Qux {
+        field: [i32; 1 + 1],
+    }
+
+    let _: [i32; 1 + 1] = [0, 0];
+
+    let _: [i32; 1 + 1] = {
+        let a: [i32; 1 + 1] = [0, 0];
+        a
+    };
+}
+
 pub fn hard_coded_allowed() {
     let _ = 1f32 + 1f32;
     let _ = 1f64 + 1f64;
@@ -33,7 +66,7 @@ pub fn hard_coded_allowed() {
 }
 
 #[rustfmt::skip]
-pub fn non_overflowing_const_ops() {
+pub fn const_ops_should_not_trigger_the_lint() {
     const _: i32 = { let mut n = 1; n += 1; n };
     let _ = const { let mut n = 1; n += 1; n };
 
@@ -45,9 +78,12 @@ pub fn non_overflowing_const_ops() {
 
     const _: i32 = 1 + 1;
     let _ = const { 1 + 1 };
+
+    const _: i32 = { let mut n = -1; n = -(-1); n = -n; n };
+    let _ = const { let mut n = -1; n = -(-1); n = -n; n };
 }
 
-pub fn non_overflowing_runtime_ops() {
+pub fn non_overflowing_runtime_ops_or_ops_already_handled_by_the_compiler() {
     let mut _n = i32::MAX;
 
     // Assign
@@ -70,9 +106,12 @@ pub fn non_overflowing_runtime_ops() {
     _n = _n * 1;
     _n = 1 * _n;
     _n = 23 + 85;
+
+    // Unary
+    _n = -1;
+    _n = -(-1);
 }
 
-#[rustfmt::skip]
 pub fn overflowing_runtime_ops() {
     let mut _n = i32::MAX;
 
@@ -92,6 +131,9 @@ pub fn overflowing_runtime_ops() {
     _n = _n % 0;
     _n = _n * 2;
     _n = 2 * _n;
+
+    // Unary
+    _n = -_n;
 }
 
 fn main() {}
