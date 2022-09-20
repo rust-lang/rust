@@ -400,27 +400,6 @@ impl AtomicOrdering {
     }
 }
 
-/// LLVMRustSynchronizationScope
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub enum SynchronizationScope {
-    SingleThread,
-    CrossThread,
-}
-
-impl SynchronizationScope {
-    pub fn from_generic(sc: rustc_codegen_ssa::common::SynchronizationScope) -> Self {
-        match sc {
-            rustc_codegen_ssa::common::SynchronizationScope::SingleThread => {
-                SynchronizationScope::SingleThread
-            }
-            rustc_codegen_ssa::common::SynchronizationScope::CrossThread => {
-                SynchronizationScope::CrossThread
-            }
-        }
-    }
-}
-
 /// LLVMRustFileType
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -1782,15 +1761,17 @@ extern "C" {
         Order: AtomicOrdering,
     ) -> &'a Value;
 
-    pub fn LLVMRustBuildAtomicCmpXchg<'a>(
+    pub fn LLVMBuildAtomicCmpXchg<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
         CMP: &'a Value,
         RHS: &'a Value,
         Order: AtomicOrdering,
         FailureOrder: AtomicOrdering,
-        Weak: Bool,
+        SingleThreaded: Bool,
     ) -> &'a Value;
+
+    pub fn LLVMSetWeak(CmpXchgInst: &Value, IsWeak: Bool);
 
     pub fn LLVMBuildAtomicRMW<'a>(
         B: &Builder<'a>,
@@ -1801,11 +1782,12 @@ extern "C" {
         SingleThreaded: Bool,
     ) -> &'a Value;
 
-    pub fn LLVMRustBuildAtomicFence(
-        B: &Builder<'_>,
+    pub fn LLVMBuildFence<'a>(
+        B: &Builder<'a>,
         Order: AtomicOrdering,
-        Scope: SynchronizationScope,
-    );
+        SingleThreaded: Bool,
+        Name: *const c_char,
+    ) -> &'a Value;
 
     /// Writes a module to the specified path. Returns 0 on success.
     pub fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
