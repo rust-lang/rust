@@ -116,7 +116,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     })
 }
 
-fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
     let node = tcx.hir().expect_owner(def_id);
     match node {
         hir::OwnerNode::Crate(_) => {}
@@ -148,7 +148,7 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 /// the types first.
 #[instrument(skip(tcx), level = "debug")]
 fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
-    let def_id = item.def_id;
+    let def_id = item.def_id.def_id;
 
     debug!(
         ?item.def_id,
@@ -175,7 +175,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         // for `T`
         hir::ItemKind::Impl(ref impl_) => {
             let is_auto = tcx
-                .impl_trait_ref(item.def_id)
+                .impl_trait_ref(def_id)
                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
@@ -211,13 +211,13 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
             }
         }
         hir::ItemKind::Fn(ref sig, ..) => {
-            check_item_fn(tcx, item.def_id, item.ident, item.span, sig.decl);
+            check_item_fn(tcx, def_id, item.ident, item.span, sig.decl);
         }
         hir::ItemKind::Static(ty, ..) => {
-            check_item_type(tcx, item.def_id, ty.span, false);
+            check_item_type(tcx, def_id, ty.span, false);
         }
         hir::ItemKind::Const(ty, ..) => {
-            check_item_type(tcx, item.def_id, ty.span, false);
+            check_item_type(tcx, def_id, ty.span, false);
         }
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, false, |wfcx| vec![wfcx.non_enum_variant(struct_def)]);
@@ -247,7 +247,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
 }
 
 fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) {
-    let def_id = item.def_id;
+    let def_id = item.def_id.def_id;
 
     debug!(
         ?item.def_id,
@@ -256,15 +256,15 @@ fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) {
 
     match item.kind {
         hir::ForeignItemKind::Fn(decl, ..) => {
-            check_item_fn(tcx, item.def_id, item.ident, item.span, decl)
+            check_item_fn(tcx, def_id, item.ident, item.span, decl)
         }
-        hir::ForeignItemKind::Static(ty, ..) => check_item_type(tcx, item.def_id, ty.span, true),
+        hir::ForeignItemKind::Static(ty, ..) => check_item_type(tcx, def_id, ty.span, true),
         hir::ForeignItemKind::Type => (),
     }
 }
 
 fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
-    let def_id = trait_item.def_id;
+    let def_id = trait_item.def_id.def_id;
 
     let (method_sig, span) = match trait_item.kind {
         hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
@@ -272,7 +272,7 @@ fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
         _ => (None, trait_item.span),
     };
     check_object_unsafe_self_trait_by_name(tcx, trait_item);
-    check_associated_item(tcx, trait_item.def_id, span, method_sig);
+    check_associated_item(tcx, def_id, span, method_sig);
 
     let encl_trait_def_id = tcx.local_parent(def_id);
     let encl_trait = tcx.hir().expect_item(encl_trait_def_id);
@@ -393,7 +393,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                             // We also assume that all of the function signature's parameter types
                             // are well formed.
                             &sig.inputs().iter().copied().collect(),
-                            gat_def_id,
+                            gat_def_id.def_id,
                             gat_generics,
                         )
                     }
@@ -416,7 +416,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                                 .copied()
                                 .collect::<Vec<_>>(),
                             &FxHashSet::default(),
-                            gat_def_id,
+                            gat_def_id.def_id,
                             gat_generics,
                         )
                     }
@@ -456,7 +456,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
     }
 
     for (gat_def_id, required_bounds) in required_bounds_by_item {
-        let gat_item_hir = tcx.hir().expect_trait_item(gat_def_id);
+        let gat_item_hir = tcx.hir().expect_trait_item(gat_def_id.def_id);
         debug!(?required_bounds);
         let param_env = tcx.param_env(gat_def_id);
         let gat_hir = gat_item_hir.hir_id();
@@ -786,7 +786,7 @@ fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
 /// When this is done, suggest using `Self` instead.
 fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
     let (trait_name, trait_def_id) =
-        match tcx.hir().get_by_def_id(tcx.hir().get_parent_item(item.hir_id())) {
+        match tcx.hir().get_by_def_id(tcx.hir().get_parent_item(item.hir_id()).def_id) {
             hir::Node::Item(item) => match item.kind {
                 hir::ItemKind::Trait(..) => (item.ident, item.def_id),
                 _ => return,
@@ -796,18 +796,18 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
     let mut trait_should_be_self = vec![];
     match &item.kind {
         hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))
-            if could_be_self(trait_def_id, ty) =>
+            if could_be_self(trait_def_id.def_id, ty) =>
         {
             trait_should_be_self.push(ty.span)
         }
         hir::TraitItemKind::Fn(sig, _) => {
             for ty in sig.decl.inputs {
-                if could_be_self(trait_def_id, ty) {
+                if could_be_self(trait_def_id.def_id, ty) {
                     trait_should_be_self.push(ty.span);
                 }
             }
             match sig.decl.output {
-                hir::FnRetTy::Return(ty) if could_be_self(trait_def_id, ty) => {
+                hir::FnRetTy::Return(ty) if could_be_self(trait_def_id.def_id, ty) => {
                     trait_should_be_self.push(ty.span);
                 }
                 _ => {}
@@ -836,8 +836,6 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
 }
 
 fn check_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>) {
-    let def_id = impl_item.def_id;
-
     let (method_sig, span) = match impl_item.kind {
         hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
         // Constrain binding and overflow error spans to `<Ty>` in `type foo = <Ty>`.
@@ -845,7 +843,7 @@ fn check_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>) {
         _ => (None, impl_item.span),
     };
 
-    check_associated_item(tcx, def_id, span, method_sig);
+    check_associated_item(tcx, impl_item.def_id.def_id, span, method_sig);
 }
 
 fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
@@ -1045,7 +1043,7 @@ fn check_type_defn<'tcx, F>(
 ) where
     F: FnMut(&WfCheckingCtxt<'_, 'tcx>) -> Vec<AdtVariant<'tcx>>,
 {
-    enter_wf_checking_ctxt(tcx, item.span, item.def_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, item.span, item.def_id.def_id, |wfcx| {
         let variants = lookup_fields(wfcx);
         let packed = tcx.adt_def(item.def_id).repr().packed();
 
@@ -1124,7 +1122,7 @@ fn check_type_defn<'tcx, F>(
             }
         }
 
-        check_where_clauses(wfcx, item.span, item.def_id);
+        check_where_clauses(wfcx, item.span, item.def_id.def_id);
     });
 }
 
@@ -1132,11 +1130,12 @@ fn check_type_defn<'tcx, F>(
 fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     debug!(?item.def_id);
 
-    let trait_def = tcx.trait_def(item.def_id);
+    let def_id = item.def_id.def_id;
+    let trait_def = tcx.trait_def(def_id);
     if trait_def.is_marker
         || matches!(trait_def.specialization_kind, TraitSpecializationKind::Marker)
     {
-        for associated_def_id in &*tcx.associated_item_def_ids(item.def_id) {
+        for associated_def_id in &*tcx.associated_item_def_ids(def_id) {
             struct_span_err!(
                 tcx.sess,
                 tcx.def_span(*associated_def_id),
@@ -1147,8 +1146,8 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
         }
     }
 
-    enter_wf_checking_ctxt(tcx, item.span, item.def_id, |wfcx| {
-        check_where_clauses(wfcx, item.span, item.def_id)
+    enter_wf_checking_ctxt(tcx, item.span, def_id, |wfcx| {
+        check_where_clauses(wfcx, item.span, def_id)
     });
 
     // Only check traits, don't check trait aliases
@@ -1242,7 +1241,7 @@ fn check_impl<'tcx>(
     ast_trait_ref: &Option<hir::TraitRef<'_>>,
     constness: hir::Constness,
 ) {
-    enter_wf_checking_ctxt(tcx, item.span, item.def_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, item.span, item.def_id.def_id, |wfcx| {
         match *ast_trait_ref {
             Some(ref ast_trait_ref) => {
                 // `#[rustc_reservation_impl]` impls are not real impls and
@@ -1273,18 +1272,18 @@ fn check_impl<'tcx>(
                 let self_ty = tcx.type_of(item.def_id);
                 let self_ty = wfcx.normalize(
                     item.span,
-                    Some(WellFormedLoc::Ty(item.hir_id().expect_owner())),
+                    Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     self_ty,
                 );
                 wfcx.register_wf_obligation(
                     ast_self_ty.span,
-                    Some(WellFormedLoc::Ty(item.hir_id().expect_owner())),
+                    Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     self_ty.into(),
                 );
             }
         }
 
-        check_where_clauses(wfcx, item.span, item.def_id);
+        check_where_clauses(wfcx, item.span, item.def_id.def_id);
     });
 }
 

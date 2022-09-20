@@ -3003,7 +3003,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Make sure that we are in the condition to suggest the blanket implementation.
     fn maybe_lint_blanket_trait_impl(&self, self_ty: &hir::Ty<'_>, diag: &mut Diagnostic) {
         let tcx = self.tcx();
-        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id);
+        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
         if let hir::Node::Item(hir::Item {
             kind:
                 hir::ItemKind::Impl(hir::Impl {

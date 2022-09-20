@@ -1217,14 +1217,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         // from name resolution point of view.
                         hir::ItemKind::ForeignMod { items, .. } => {
                             for foreign_item in items {
-                                yield foreign_item.id.def_id.local_def_index;
+                                yield foreign_item.id.def_id.def_id.local_def_index;
                             }
                         }
                         // Only encode named non-reexport children, reexports are encoded
                         // separately and unnamed items are not used by name resolution.
                         hir::ItemKind::ExternCrate(..) => continue,
                         _ if tcx.def_key(item_id.def_id.to_def_id()).get_opt_name().is_some() => {
-                            yield item_id.def_id.local_def_index;
+                            yield item_id.def_id.def_id.local_def_index;
                         }
                         _ => continue,
                     }
@@ -1446,7 +1446,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.macro_definition[def_id] <- &*macro_def.body);
             }
             hir::ItemKind::Mod(ref m) => {
-                return self.encode_info_for_mod(item.def_id, m);
+                return self.encode_info_for_mod(item.def_id.def_id, m);
             }
             hir::ItemKind::OpaqueTy(..) => {
                 self.encode_explicit_item_bounds(def_id);
@@ -1840,7 +1840,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         for id in tcx.hir().items() {
             if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
-                if let Some(trait_ref) = tcx.impl_trait_ref(id.def_id.to_def_id()) {
+                if let Some(trait_ref) = tcx.impl_trait_ref(id.def_id) {
                     let simplified_self_ty = fast_reject::simplify_type(
                         self.tcx,
                         trait_ref.self_ty(),
@@ -1850,7 +1850,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     fx_hash_map
                         .entry(trait_ref.def_id)
                         .or_default()
-                        .push((id.def_id.local_def_index, simplified_self_ty));
+                        .push((id.def_id.def_id.local_def_index, simplified_self_ty));
                 }
             }
         }

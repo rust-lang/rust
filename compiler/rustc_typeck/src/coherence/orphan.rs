@@ -42,7 +42,7 @@ fn do_orphan_check_impl<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let trait_def_id = trait_ref.def_id;
 
-    let item = tcx.hir().item(hir::ItemId { def_id });
+    let item = tcx.hir().expect_item(def_id);
     let hir::ItemKind::Impl(ref impl_) = item.kind else {
         bug!("{:?} is not an impl: {:?}", def_id, item);
     };

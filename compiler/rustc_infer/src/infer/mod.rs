@@ -16,6 +16,7 @@ use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::hir_id::OwnerId;
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
@@ -583,9 +584,9 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
     /// will initialize `in_progress_typeck_results` with fresh `TypeckResults`.
     /// Will also change the scope for opaque type defining use checks to the given owner.
-    pub fn with_fresh_in_progress_typeck_results(mut self, table_owner: LocalDefId) -> Self {
+    pub fn with_fresh_in_progress_typeck_results(mut self, table_owner: OwnerId) -> Self {
         self.fresh_typeck_results = Some(RefCell::new(ty::TypeckResults::new(table_owner)));
-        self.with_opaque_type_inference(DefiningAnchor::Bind(table_owner))
+        self.with_opaque_type_inference(DefiningAnchor::Bind(table_owner.def_id))
     }
 
     /// Whenever the `InferCtxt` should be able to handle defining uses of opaque types,

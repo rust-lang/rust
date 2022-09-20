@@ -1048,7 +1048,7 @@ impl<'tcx> LateContext<'tcx> {
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
                     if self.tcx.has_typeck_results(id.owner.to_def_id()) {
-                        Some(self.tcx.typeck(id.owner))
+                        Some(self.tcx.typeck(id.owner.def_id))
                     } else {
                         None
                     }

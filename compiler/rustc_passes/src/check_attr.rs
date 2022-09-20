@@ -11,9 +11,11 @@ use rustc_errors::{fluent, struct_span_err, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID};
+use rustc_hir::{
+    self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
+};
 use rustc_hir::{MethodKind, Target};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
@@ -35,7 +37,7 @@ pub(crate) fn target_from_impl_item<'tcx>(
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {
-            let parent_def_id = tcx.hir().get_parent_item(impl_item.hir_id());
+            let parent_def_id = tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
             let containing_item = tcx.hir().expect_item(parent_def_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
                 hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
@@ -640,7 +642,7 @@ impl CheckAttrVisitor<'_> {
         let span = meta.span();
         if let Some(location) = match target {
             Target::AssocTy => {
-                let parent_def_id = self.tcx.hir().get_parent_item(hir_id);
+                let parent_def_id = self.tcx.hir().get_parent_item(hir_id).def_id;
                 let containing_item = self.tcx.hir().expect_item(parent_def_id);
                 if Target::from_item(containing_item) == Target::Impl {
                     Some("type alias in implementation block")
@@ -649,7 +651,7 @@ impl CheckAttrVisitor<'_> {
                 }
             }
             Target::AssocConst => {
-                let parent_def_id = self.tcx.hir().get_parent_item(hir_id);
+                let parent_def_id = self.tcx.hir().get_parent_item(hir_id).def_id;
                 let containing_item = self.tcx.hir().expect_item(parent_def_id);
                 // We can't link to trait impl's consts.
                 let err = "associated constant in trait implementation block";
@@ -878,7 +880,7 @@ impl CheckAttrVisitor<'_> {
             self.tcx.struct_span_lint_hir(INVALID_DOC_ATTRIBUTES, hir_id, meta.span(), |lint| {
                 let mut err = lint.build(fluent::passes::attr_crate_level);
                 if attr.style == AttrStyle::Outer
-                    && self.tcx.hir().get_parent_item(hir_id) == CRATE_DEF_ID
+                    && self.tcx.hir().get_parent_item(hir_id) == CRATE_OWNER_ID
                 {
                     if let Ok(mut src) = self.tcx.sess.source_map().span_to_snippet(attr.span) {
                         src.insert(1, '!');

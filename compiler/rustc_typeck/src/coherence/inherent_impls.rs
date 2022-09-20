@@ -105,7 +105,7 @@ impl<'tcx> InherentCollect<'tcx> {
             }
 
             if let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsInfer) {
-                self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
+                self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id.def_id);
             } else {
                 bug!("unexpected self type: {:?}", self_ty);
             }
@@ -220,7 +220,9 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Ref(..)
             | ty::Never
             | ty::FnPtr(_)
-            | ty::Tuple(..) => self.check_primitive_impl(item.def_id, self_ty, items, ty.span),
+            | ty::Tuple(..) => {
+                self.check_primitive_impl(item.def_id.def_id, self_ty, items, ty.span)
+            }
             ty::Projection(..) | ty::Opaque(..) | ty::Param(_) => {
                 let mut err = struct_span_err!(
                     self.tcx.sess,

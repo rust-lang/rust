@@ -21,7 +21,7 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
         ExprUseVisitor::new(
             &mut delegate,
             &infcx,
-            expr.hir_id.owner,
+            expr.hir_id.owner.def_id,
             cx.param_env,
             cx.typeck_results(),
         )

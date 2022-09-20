@@ -704,7 +704,7 @@ fn walk_parents<'tcx>(
                 span,
                 ..
             }) if span.ctxt() == ctxt => {
-                let ty = cx.tcx.type_of(def_id);
+                let ty = cx.tcx.type_of(def_id.def_id);
                 Some(ty_auto_deref_stability(cx, ty, precedence).position_for_result(cx))
             },
 

@@ -42,7 +42,7 @@ pub(super) fn can_be_expressed_as_pointer_cast<'tcx>(
 /// messages. This function will panic if that occurs.
 fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> Option<CastKind> {
     let hir_id = e.hir_id;
-    let local_def_id = hir_id.owner;
+    let local_def_id = hir_id.owner.def_id;
 
     Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
         let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, hir_id);

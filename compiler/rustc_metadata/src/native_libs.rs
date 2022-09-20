@@ -382,7 +382,7 @@ impl<'tcx> Collector<'tcx> {
                             let link_ordinal_attr = self
                                 .tcx
                                 .hir()
-                                .attrs(self.tcx.hir().local_def_id_to_hir_id(child_item.id.def_id))
+                                .attrs(child_item.id.def_id.into())
                                 .iter()
                                 .find(|a| a.has_name(sym::link_ordinal))
                                 .unwrap();

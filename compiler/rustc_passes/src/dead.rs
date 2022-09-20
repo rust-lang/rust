@@ -317,7 +317,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 intravisit::walk_trait_item(self, trait_item);
             }
             Node::ImplItem(impl_item) => {
-                let item = self.tcx.local_parent(impl_item.def_id);
+                let item = self.tcx.local_parent(impl_item.def_id.def_id);
                 if self.tcx.impl_trait_ref(item).is_none() {
                     //// If it's a type whose items are live, then it's live, too.
                     //// This is done to handle the case where, for example, the static
@@ -374,7 +374,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             if has_repr_c || (f.is_positional() && has_repr_simd) {
                 return Some(def_id);
             }
-            if !tcx.visibility(f.hir_id.owner).is_public() {
+            if !tcx.visibility(f.hir_id.owner.def_id).is_public() {
                 return None;
             }
             if tcx.visibility(def_id).is_public() { Some(def_id) } else { None }
@@ -528,7 +528,7 @@ fn check_item<'tcx>(
 ) {
     let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, id.hir_id());
     if allow_dead_code {
-        worklist.push(id.def_id);
+        worklist.push(id.def_id.def_id);
     }
 
     match tcx.def_kind(id.def_id) {
@@ -554,7 +554,7 @@ fn check_item<'tcx>(
             let of_trait = tcx.impl_trait_ref(id.def_id);
 
             if of_trait.is_some() {
-                worklist.push(id.def_id);
+                worklist.push(id.def_id.def_id);
             }
 
             // get DefIds from another query
@@ -577,12 +577,12 @@ fn check_item<'tcx>(
             if let hir::ItemKind::Struct(ref variant_data, _) = item.kind
                 && let Some(ctor_hir_id) = variant_data.ctor_hir_id()
             {
-                struct_constructors.insert(tcx.hir().local_def_id(ctor_hir_id), item.def_id);
+                struct_constructors.insert(tcx.hir().local_def_id(ctor_hir_id), item.def_id.def_id);
             }
         }
         DefKind::GlobalAsm => {
             // global_asm! is always live.
-            worklist.push(id.def_id);
+            worklist.push(id.def_id.def_id);
         }
         _ => {}
     }
@@ -595,7 +595,7 @@ fn check_trait_item<'tcx>(tcx: TyCtxt<'tcx>, worklist: &mut Vec<LocalDefId>, id:
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
             && has_allow_dead_code_or_lang_attr(tcx, trait_item.hir_id())
         {
-            worklist.push(trait_item.def_id);
+            worklist.push(trait_item.def_id.def_id);
         }
     }
 }
@@ -608,7 +608,7 @@ fn check_foreign_item<'tcx>(
     if matches!(tcx.def_kind(id.def_id), DefKind::Static(_) | DefKind::Fn)
         && has_allow_dead_code_or_lang_attr(tcx, id.hir_id())
     {
-        worklist.push(id.def_id);
+        worklist.push(id.def_id.def_id);
     }
 }
 
@@ -871,13 +871,13 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
     let module_items = tcx.hir_module_items(module);
 
     for item in module_items.items() {
-        if !live_symbols.contains(&item.def_id) {
-            let parent = tcx.local_parent(item.def_id);
+        if !live_symbols.contains(&item.def_id.def_id) {
+            let parent = tcx.local_parent(item.def_id.def_id);
             if parent != module && !live_symbols.contains(&parent) {
                 // We already have diagnosed something.
                 continue;
             }
-            visitor.check_definition(item.def_id);
+            visitor.check_definition(item.def_id.def_id);
             continue;
         }
 
@@ -926,16 +926,21 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                 visitor.warn_dead_fields_and_variants(def_id, "read", dead_fields, is_positional)
             }
 
-            visitor.warn_dead_fields_and_variants(item.def_id, "constructed", dead_variants, false);
+            visitor.warn_dead_fields_and_variants(
+                item.def_id.def_id,
+                "constructed",
+                dead_variants,
+                false,
+            );
         }
     }
 
     for impl_item in module_items.impl_items() {
-        visitor.check_definition(impl_item.def_id);
+        visitor.check_definition(impl_item.def_id.def_id);
     }
 
     for foreign_item in module_items.foreign_items() {
-        visitor.check_definition(foreign_item.def_id);
+        visitor.check_definition(foreign_item.def_id.def_id);
     }
 
     // We do not warn trait items.

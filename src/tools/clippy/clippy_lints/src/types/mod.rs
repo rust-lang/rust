@@ -313,7 +313,7 @@ impl_lint_pass!(Types => [BOX_COLLECTION, VEC_BOX, OPTION_OPTION, LINKEDLIST, BO
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
         let is_in_trait_impl =
-            if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_def_id(cx.tcx.hir().get_parent_item(id)) {
+            if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_def_id(cx.tcx.hir().get_parent_item(id).def_id) {
                 matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
             } else {
                 false
@@ -333,7 +333,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let is_exported = cx.access_levels.is_exported(item.def_id);
+        let is_exported = cx.access_levels.is_exported(item.def_id.def_id);
 
         match item.kind {
             ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _) => self.check_ty(
@@ -353,7 +353,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         match item.kind {
             ImplItemKind::Const(ty, _) => {
                 let is_in_trait_impl = if let Some(hir::Node::Item(item)) =
-                    cx.tcx.hir().find_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()))
+                    cx.tcx.hir().find_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
                 {
                     matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
                 } else {
@@ -390,7 +390,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &TraitItem<'_>) {
-        let is_exported = cx.access_levels.is_exported(item.def_id);
+        let is_exported = cx.access_levels.is_exported(item.def_id.def_id);
 
         let context = CheckTyContext {
             is_exported,

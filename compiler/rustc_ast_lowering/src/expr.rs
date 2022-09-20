@@ -359,7 +359,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let node_id = self.next_node_id();
 
                 // Add a definition for the in-band const def.
-                self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
+                self.create_def(parent_def_id.def_id, node_id, DefPathData::AnonConst);
 
                 let anon_const = AnonConst { id: node_id, value: arg };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));

@@ -1246,7 +1246,7 @@ impl<'v> RootCollector<'_, 'v> {
                 }
             }
             DefKind::Fn => {
-                self.push_if_root(id.def_id);
+                self.push_if_root(id.def_id.def_id);
             }
             _ => {}
         }
@@ -1254,7 +1254,7 @@ impl<'v> RootCollector<'_, 'v> {
 
     fn process_impl_item(&mut self, id: hir::ImplItemId) {
         if matches!(self.tcx.def_kind(id.def_id), DefKind::AssocFn) {
-            self.push_if_root(id.def_id);
+            self.push_if_root(id.def_id.def_id);
         }
     }
 

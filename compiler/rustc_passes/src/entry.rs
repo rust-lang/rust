@@ -82,7 +82,7 @@ fn err_if_attr_found(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol, details: 
 }
 
 fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
-    let at_root = ctxt.tcx.opt_local_parent(id.def_id) == Some(CRATE_DEF_ID);
+    let at_root = ctxt.tcx.opt_local_parent(id.def_id.def_id) == Some(CRATE_DEF_ID);
 
     match entry_point_type(ctxt, id, at_root) {
         EntryPointType::None => {
@@ -99,7 +99,7 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
         }
         EntryPointType::RustcMainAttr => {
             if ctxt.attr_main_fn.is_none() {
-                ctxt.attr_main_fn = Some((id.def_id, ctxt.tcx.def_span(id.def_id.to_def_id())));
+                ctxt.attr_main_fn = Some((id.def_id.def_id, ctxt.tcx.def_span(id.def_id)));
             } else {
                 struct_span_err!(
                     ctxt.tcx.sess,
@@ -118,11 +118,11 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
         EntryPointType::Start => {
             err_if_attr_found(ctxt, id, sym::unix_sigpipe, "can only be used on `fn main()`");
             if ctxt.start_fn.is_none() {
-                ctxt.start_fn = Some((id.def_id, ctxt.tcx.def_span(id.def_id.to_def_id())));
+                ctxt.start_fn = Some((id.def_id.def_id, ctxt.tcx.def_span(id.def_id)));
             } else {
                 struct_span_err!(
                     ctxt.tcx.sess,
-                    ctxt.tcx.def_span(id.def_id.to_def_id()),
+                    ctxt.tcx.def_span(id.def_id),
                     E0138,
                     "multiple `start` functions"
                 )

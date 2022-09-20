@@ -606,7 +606,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 // Issue #11592: traits are always considered exported, even when private.
                 if cx.tcx.visibility(it.def_id)
                     == ty::Visibility::Restricted(
-                        cx.tcx.parent_module_from_def_id(it.def_id).to_def_id(),
+                        cx.tcx.parent_module_from_def_id(it.def_id.def_id).to_def_id(),
                     )
                 {
                     return;
@@ -627,13 +627,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
         let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, it.def_id, article, desc);
+        self.check_missing_docs_attrs(cx, it.def_id.def_id, article, desc);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, trait_item: &hir::TraitItem<'_>) {
         let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, trait_item.def_id, article, desc);
+        self.check_missing_docs_attrs(cx, trait_item.def_id.def_id, article, desc);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
@@ -661,12 +661,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         }
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
-        self.check_missing_docs_attrs(cx, impl_item.def_id, article, desc);
+        self.check_missing_docs_attrs(cx, impl_item.def_id.def_id, article, desc);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'_>) {
         let (article, desc) = cx.tcx.article_and_description(foreign_item.def_id.to_def_id());
-        self.check_missing_docs_attrs(cx, foreign_item.def_id, article, desc);
+        self.check_missing_docs_attrs(cx, foreign_item.def_id.def_id, article, desc);
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, sf: &hir::FieldDef<'_>) {
@@ -719,7 +719,7 @@ declare_lint_pass!(MissingCopyImplementations => [MISSING_COPY_IMPLEMENTATIONS])
 
 impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.access_levels.is_reachable(item.def_id) {
+        if !cx.access_levels.is_reachable(item.def_id.def_id) {
             return;
         }
         let (def, ty) = match item.kind {
@@ -809,7 +809,7 @@ impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.access_levels.is_reachable(item.def_id) {
+        if !cx.access_levels.is_reachable(item.def_id.def_id) {
             return;
         }
 
@@ -836,7 +836,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             debug!("{:?}", self.impling_types);
         }
 
-        if !self.impling_types.as_ref().unwrap().contains(&item.def_id) {
+        if !self.impling_types.as_ref().unwrap().contains(&item.def_id.def_id) {
             cx.struct_span_lint(MISSING_DEBUG_IMPLEMENTATIONS, item.span, |lint| {
                 lint.build(fluent::lint::builtin_missing_debug_impl)
                     .set_arg("debug", cx.tcx.def_path_str(debug))
@@ -1206,7 +1206,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
                                 Some(generics),
-                                cx.tcx.hir().get_generics(it.id.def_id).unwrap(),
+                                cx.tcx.hir().get_generics(it.id.def_id.def_id).unwrap(),
                                 it.span,
                             );
                         }
@@ -1389,11 +1389,11 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
         if let hir::ItemKind::Use(_, hir::UseKind::ListStem) = &item.kind {
             return;
         }
-        self.perform_lint(cx, "item", item.def_id, item.vis_span, true);
+        self.perform_lint(cx, "item", item.def_id.def_id, item.vis_span, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'tcx>) {
-        self.perform_lint(cx, "item", foreign_item.def_id, foreign_item.vis_span, true);
+        self.perform_lint(cx, "item", foreign_item.def_id.def_id, foreign_item.vis_span, true);
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
@@ -1404,7 +1404,7 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
         // Only lint inherent impl items.
         if cx.tcx.associated_item(impl_item.def_id).trait_item_def_id.is_none() {
-            self.perform_lint(cx, "item", impl_item.def_id, impl_item.vis_span, false);
+            self.perform_lint(cx, "item", impl_item.def_id.def_id, impl_item.vis_span, false);
         }
     }
 }
@@ -1841,7 +1841,7 @@ declare_lint! {
 }
 
 pub struct UnnameableTestItems {
-    boundary: Option<LocalDefId>, // Id of the item under which things are not nameable
+    boundary: Option<hir::OwnerId>, // Id of the item under which things are not nameable
     items_nameable: bool,
 }
 
@@ -2138,7 +2138,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         use rustc_middle::middle::resolve_lifetime::Region;
 
-        let def_id = item.def_id;
+        let def_id = item.def_id.def_id;
         if let hir::ItemKind::Struct(_, ref hir_generics)
         | hir::ItemKind::Enum(_, ref hir_generics)
         | hir::ItemKind::Union(_, ref hir_generics) = item.kind

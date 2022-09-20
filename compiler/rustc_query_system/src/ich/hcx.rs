@@ -41,7 +41,10 @@ pub struct StableHashingContext<'a> {
 pub(super) enum BodyResolver<'tcx> {
     Forbidden,
     Ignore,
-    Traverse { owner: LocalDefId, bodies: &'tcx SortedMap<hir::ItemLocalId, &'tcx hir::Body<'tcx>> },
+    Traverse {
+        owner: hir::OwnerId,
+        bodies: &'tcx SortedMap<hir::ItemLocalId, &'tcx hir::Body<'tcx>>,
+    },
 }
 
 impl<'a> StableHashingContext<'a> {
@@ -103,7 +106,7 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn with_hir_bodies(
         &mut self,
-        owner: LocalDefId,
+        owner: hir::OwnerId,
         bodies: &SortedMap<hir::ItemLocalId, &hir::Body<'_>>,
         f: impl FnOnce(&mut StableHashingContext<'_>),
     ) {

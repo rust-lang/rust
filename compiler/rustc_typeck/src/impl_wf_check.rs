@@ -58,10 +58,10 @@ fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let module = tcx.hir_module_items(module_def_id);
     for id in module.items() {
         if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
-            enforce_impl_params_are_constrained(tcx, id.def_id);
-            enforce_impl_items_are_distinct(tcx, id.def_id);
+            enforce_impl_params_are_constrained(tcx, id.def_id.def_id);
+            enforce_impl_items_are_distinct(tcx, id.def_id.def_id);
             if min_specialization {
-                check_min_specialization(tcx, id.def_id);
+                check_min_specialization(tcx, id.def_id.def_id);
             }
         }
     }

@@ -782,19 +782,19 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     let _indenter = indenter();
     match tcx.def_kind(id.def_id) {
         DefKind::Static(..) => {
-            tcx.ensure().typeck(id.def_id);
-            maybe_check_static_with_link_section(tcx, id.def_id);
-            check_static_inhabited(tcx, id.def_id);
+            tcx.ensure().typeck(id.def_id.def_id);
+            maybe_check_static_with_link_section(tcx, id.def_id.def_id);
+            check_static_inhabited(tcx, id.def_id.def_id);
         }
         DefKind::Const => {
-            tcx.ensure().typeck(id.def_id);
+            tcx.ensure().typeck(id.def_id.def_id);
         }
         DefKind::Enum => {
             let item = tcx.hir().item(id);
             let hir::ItemKind::Enum(ref enum_definition, _) = item.kind else {
                 return;
             };
-            check_enum(tcx, &enum_definition.variants, item.def_id);
+            check_enum(tcx, &enum_definition.variants, item.def_id.def_id);
         }
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl => {
@@ -807,7 +807,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                 check_impl_items_against_trait(
                     tcx,
                     it.span,
-                    it.def_id,
+                    it.def_id.def_id,
                     impl_trait_ref,
                     &impl_.items,
                 );
@@ -845,10 +845,10 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             }
         }
         DefKind::Struct => {
-            check_struct(tcx, id.def_id);
+            check_struct(tcx, id.def_id.def_id);
         }
         DefKind::Union => {
-            check_union(tcx, id.def_id);
+            check_union(tcx, id.def_id.def_id);
         }
         DefKind::OpaqueTy => {
             let item = tcx.hir().item(id);
@@ -861,7 +861,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             // See https://github.com/rust-lang/rust/issues/75100
             if !tcx.sess.opts.actually_rustdoc {
                 let substs = InternalSubsts::identity_for_item(tcx, item.def_id.to_def_id());
-                check_opaque(tcx, item.def_id, substs, &origin);
+                check_opaque(tcx, item.def_id.def_id, substs, &origin);
             }
         }
         DefKind::TyAlias => {
@@ -888,7 +888,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                 }
             } else {
                 for item in items {
-                    let def_id = item.id.def_id;
+                    let def_id = item.id.def_id.def_id;
                     let generics = tcx.generics_of(def_id);
                     let own_counts = generics.own_counts();
                     if generics.params.len() - own_counts.lifetimes != 0 {

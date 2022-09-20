@@ -1683,7 +1683,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     expected,
                     found,
                     can_suggest,
-                    fcx.tcx.hir().local_def_id_to_hir_id(fcx.tcx.hir().get_parent_item(id)),
+                    fcx.tcx.hir().get_parent_item(id).into(),
                 );
             }
             if !pointing_at_return_type {
@@ -1692,7 +1692,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         }
 
         let parent_id = fcx.tcx.hir().get_parent_item(id);
-        let parent_item = fcx.tcx.hir().get_by_def_id(parent_id);
+        let parent_item = fcx.tcx.hir().get_by_def_id(parent_id.def_id);
 
         if let (Some(expr), Some(_), Some((fn_decl, _, _))) =
             (expression, blk_id, fcx.get_node_fn_decl(parent_item))
@@ -1704,7 +1704,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 expected,
                 found,
                 id,
-                fcx.tcx.hir().local_def_id_to_hir_id(parent_id),
+                parent_id.into(),
             );
         }
 

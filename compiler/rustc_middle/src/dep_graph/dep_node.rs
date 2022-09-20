@@ -62,7 +62,7 @@ use crate::ty::TyCtxt;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::DefPathHash;
-use rustc_hir::HirId;
+use rustc_hir::{HirId, OwnerId};
 use rustc_query_system::dep_graph::FingerprintStyle;
 use rustc_span::symbol::Symbol;
 use std::hash::Hash;
@@ -352,6 +352,28 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
     #[inline(always)]
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
         dep_node.extract_def_id(tcx).map(|id| id.expect_local())
+    }
+}
+
+impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for OwnerId {
+    #[inline(always)]
+    fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::DefPathHash
+    }
+
+    #[inline(always)]
+    fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
+        self.to_def_id().to_fingerprint(tcx)
+    }
+
+    #[inline(always)]
+    fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
+        self.to_def_id().to_debug_str(tcx)
+    }
+
+    #[inline(always)]
+    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+        dep_node.extract_def_id(tcx).map(|id| OwnerId { def_id: id.expect_local() })
     }
 }
 

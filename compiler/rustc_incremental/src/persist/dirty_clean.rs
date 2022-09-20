@@ -149,19 +149,19 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         for id in crate_items.trait_items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         for id in crate_items.impl_items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         for id in crate_items.foreign_items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
