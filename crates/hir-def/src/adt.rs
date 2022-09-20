@@ -223,7 +223,7 @@ impl EnumData {
     pub fn variant_body_type(&self) -> Either<BuiltinInt, BuiltinUint> {
         match self.repr {
             Some(ReprData { kind: ReprKind::BuiltinInt { builtin, .. }, .. }) => builtin,
-            _ => Either::Right(BuiltinUint::U32),
+            _ => Either::Left(BuiltinInt::Isize),
         }
     }
 }
