@@ -487,16 +487,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
         match length {
             &hir::ArrayLen::Infer(_, span) => self.ct_infer(self.tcx.types.usize, None, span),
-            hir::ArrayLen::Body(anon_const) => self.to_const(anon_const),
+            hir::ArrayLen::Body(anon_const) => {
+                let const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
+                let span = self.tcx.hir().span(anon_const.hir_id);
+                let c = ty::Const::from_anon_const(self.tcx, const_def_id);
+                self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
+                self.normalize_associated_types_in(span, c)
+            }
         }
-    }
-
-    pub fn to_const(&self, ast_c: &hir::AnonConst) -> ty::Const<'tcx> {
-        let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
-        let span = self.tcx.hir().span(ast_c.hir_id);
-        let c = ty::Const::from_anon_const(self.tcx, const_def_id);
-        self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
-        self.normalize_associated_types_in(span, c)
     }
 
     pub fn const_arg_to_const(
