@@ -224,6 +224,7 @@ fn mk_pending(os: Vec<PredicateObligation<'_>>) -> Vec<PendingPredicateObligatio
 impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     type Obligation = PendingPredicateObligation<'tcx>;
     type Error = FulfillmentErrorCode<'tcx>;
+    type OUT = Outcome<Self::Obligation, Self::Error>;
 
     /// Identifies whether a predicate obligation needs processing.
     ///

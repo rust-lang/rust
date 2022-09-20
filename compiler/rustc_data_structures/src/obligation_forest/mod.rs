@@ -95,6 +95,10 @@ pub trait ForestObligation: Clone + Debug {
 pub trait ObligationProcessor {
     type Obligation: ForestObligation;
     type Error: Debug;
+    type OUT: OutcomeTrait<
+        Obligation = Self::Obligation,
+        Error = Error<Self::Obligation, Self::Error>,
+    >;
 
     fn needs_process_obligation(&self, obligation: &Self::Obligation) -> bool;
 

@@ -64,6 +64,7 @@ where
 {
     type Obligation = O;
     type Error = E;
+    type OUT = TestOutcome<O, E>;
 
     fn needs_process_obligation(&self, _obligation: &Self::Obligation) -> bool {
         true
