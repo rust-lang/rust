@@ -1066,32 +1066,32 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
         let source_info = terminator.source_info;
         self.source_info = Some(source_info);
         self.super_terminator(terminator, location);
+        // Do NOT early return in this function, it does some crucial fixup of the state at the end!
         match &mut terminator.kind {
             TerminatorKind::Assert { expected, ref mut cond, .. } => {
                 if let Some(ref value) = self.eval_operand(&cond) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
                     let expected = Scalar::from_bool(*expected);
-                    let Ok(value_const) = self.ecx.read_scalar(&value) else {
-                        // FIXME should be used use_ecx rather than a local match... but we have
-                        // quite a few of these read_scalar/read_immediate that need fixing.
-                        return
-                    };
-                    if expected != value_const {
-                        // Poison all places this operand references so that further code
-                        // doesn't use the invalid value
-                        match cond {
-                            Operand::Move(ref place) | Operand::Copy(ref place) => {
-                                Self::remove_const(&mut self.ecx, place.local);
+                    // FIXME should be used use_ecx rather than a local match... but we have
+                    // quite a few of these read_scalar/read_immediate that need fixing.
+                    if let Ok(value_const) = self.ecx.read_scalar(&value) {
+                        if expected != value_const {
+                            // Poison all places this operand references so that further code
+                            // doesn't use the invalid value
+                            match cond {
+                                Operand::Move(ref place) | Operand::Copy(ref place) => {
+                                    Self::remove_const(&mut self.ecx, place.local);
+                                }
+                                Operand::Constant(_) => {}
                             }
-                            Operand::Constant(_) => {}
-                        }
-                    } else {
-                        if self.should_const_prop(value) {
-                            *cond = self.operand_from_scalar(
-                                value_const,
-                                self.tcx.types.bool,
-                                source_info.span,
-                            );
+                        } else {
+                            if self.should_const_prop(value) {
+                                *cond = self.operand_from_scalar(
+                                    value_const,
+                                    self.tcx.types.bool,
+                                    source_info.span,
+                                );
+                            }
                         }
                     }
                 }
