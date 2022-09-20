@@ -234,54 +234,51 @@ fn do_normalize_predicates<'tcx>(
     // by wfcheck anyway, so I'm not sure we have to check
     // them here too, and we will remove this function when
     // we move over to lazy normalization *anyway*.
-    tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
-        let predicates = match fully_normalize(&infcx, cause, elaborated_env, predicates) {
-            Ok(predicates) => predicates,
-            Err(errors) => {
-                let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
-                return Err(reported);
-            }
-        };
+    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    let predicates = match fully_normalize(&infcx, cause, elaborated_env, predicates) {
+        Ok(predicates) => predicates,
+        Err(errors) => {
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+            return Err(reported);
+        }
+    };
 
-        debug!("do_normalize_predictes: normalized predicates = {:?}", predicates);
+    debug!("do_normalize_predictes: normalized predicates = {:?}", predicates);
 
-        // We can use the `elaborated_env` here; the region code only
-        // cares about declarations like `'a: 'b`.
-        let outlives_env = OutlivesEnvironment::new(elaborated_env);
+    // We can use the `elaborated_env` here; the region code only
+    // cares about declarations like `'a: 'b`.
+    let outlives_env = OutlivesEnvironment::new(elaborated_env);
 
-        // FIXME: It's very weird that we ignore region obligations but apparently
-        // still need to use `resolve_regions` as we need the resolved regions in
-        // the normalized predicates.
-        let errors = infcx.resolve_regions(&outlives_env);
-        if !errors.is_empty() {
-            tcx.sess.delay_span_bug(
+    // FIXME: It's very weird that we ignore region obligations but apparently
+    // still need to use `resolve_regions` as we need the resolved regions in
+    // the normalized predicates.
+    let errors = infcx.resolve_regions(&outlives_env);
+    if !errors.is_empty() {
+        tcx.sess.delay_span_bug(
+            span,
+            format!("failed region resolution while normalizing {elaborated_env:?}: {errors:?}"),
+        );
+    }
+
+    match infcx.fully_resolve(predicates) {
+        Ok(predicates) => Ok(predicates),
+        Err(fixup_err) => {
+            // If we encounter a fixup error, it means that some type
+            // variable wound up unconstrained. I actually don't know
+            // if this can happen, and I certainly don't expect it to
+            // happen often, but if it did happen it probably
+            // represents a legitimate failure due to some kind of
+            // unconstrained variable.
+            //
+            // @lcnr: Let's still ICE here for now. I want a test case
+            // for that.
+            span_bug!(
                 span,
-                format!(
-                    "failed region resolution while normalizing {elaborated_env:?}: {errors:?}"
-                ),
+                "inference variables in normalized parameter environment: {}",
+                fixup_err
             );
         }
-
-        match infcx.fully_resolve(predicates) {
-            Ok(predicates) => Ok(predicates),
-            Err(fixup_err) => {
-                // If we encounter a fixup error, it means that some type
-                // variable wound up unconstrained. I actually don't know
-                // if this can happen, and I certainly don't expect it to
-                // happen often, but if it did happen it probably
-                // represents a legitimate failure due to some kind of
-                // unconstrained variable.
-                //
-                // @lcnr: Let's still ICE here for now. I want a test case
-                // for that.
-                span_bug!(
-                    span,
-                    "inference variables in normalized parameter environment: {}",
-                    fixup_err
-                );
-            }
-        }
-    })
+    }
 }
 
 // FIXME: this is gonna need to be removed ...
@@ -473,21 +470,20 @@ pub fn impossible_predicates<'tcx>(
 ) -> bool {
     debug!("impossible_predicates(predicates={:?})", predicates);
 
-    let result = tcx.infer_ctxt().enter(|infcx| {
-        let param_env = ty::ParamEnv::reveal_all();
-        let ocx = ObligationCtxt::new(&infcx);
-        let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);
-        for predicate in predicates {
-            let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
-            ocx.register_obligation(obligation);
-        }
-        let errors = ocx.select_all_or_error();
+    let infcx = tcx.infer_ctxt().build();
+    let param_env = ty::ParamEnv::reveal_all();
+    let ocx = ObligationCtxt::new(&infcx);
+    let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);
+    for predicate in predicates {
+        let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
+        ocx.register_obligation(obligation);
+    }
+    let errors = ocx.select_all_or_error();
 
-        // Clean up after ourselves
-        let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+    // Clean up after ourselves
+    let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 
-        !errors.is_empty()
-    });
+    let result = !errors.is_empty();
     debug!("impossible_predicates = {:?}", result);
     result
 }
@@ -578,18 +574,16 @@ fn is_impossible_method<'tcx>(
         }
     });
 
-    tcx.infer_ctxt().ignoring_regions().enter(|ref infcx| {
-        for obligation in predicates_for_trait {
-            // Ignore overflow error, to be conservative.
-            if let Ok(result) = infcx.evaluate_obligation(&obligation)
-                && !result.may_apply()
-            {
-                return true;
-            }
+    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    for obligation in predicates_for_trait {
+        // Ignore overflow error, to be conservative.
+        if let Ok(result) = infcx.evaluate_obligation(&obligation)
+            && !result.may_apply()
+        {
+            return true;
         }
-
-        false
-    })
+    }
+    false
 }
 
 #[derive(Clone, Debug)]
@@ -952,10 +946,9 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
         }),
     );
 
-    let implsrc = tcx.infer_ctxt().enter(|infcx| {
-        let mut selcx = SelectionContext::new(&infcx);
-        selcx.select(&obligation).unwrap()
-    });
+    let infcx = tcx.infer_ctxt().build();
+    let mut selcx = SelectionContext::new(&infcx);
+    let implsrc = selcx.select(&obligation).unwrap();
 
     let Some(ImplSource::TraitUpcasting(implsrc_traitcasting)) = implsrc else {
         bug!();

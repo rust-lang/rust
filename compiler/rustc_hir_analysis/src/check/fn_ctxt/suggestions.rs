@@ -876,18 +876,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = self.normalize_associated_types_in(expr.span, ty);
             let ty = match self.tcx.asyncness(fn_id.owner) {
-                hir::IsAsync::Async => self
-                    .tcx
-                    .infer_ctxt()
-                    .enter(|infcx| {
-                        infcx.get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                hir::IsAsync::Async => {
+                    let infcx = self.tcx.infer_ctxt().build();
+                    infcx
+                        .get_impl_future_output_ty(ty)
+                        .unwrap_or_else(|| {
                             span_bug!(
                                 fn_decl.output.span(),
                                 "failed to get output type of async function"
                             )
                         })
-                    })
-                    .skip_binder(),
+                        .skip_binder()
+                }
                 hir::IsAsync::NotAsync => ty,
             };
             if self.can_coerce(found, ty) {

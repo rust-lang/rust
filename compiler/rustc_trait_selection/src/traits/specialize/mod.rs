@@ -149,13 +149,9 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
-    tcx.infer_ctxt().enter(|infcx| {
-        let impl1_trait_ref = match traits::fully_normalize(
-            &infcx,
-            ObligationCause::dummy(),
-            penv,
-            impl1_trait_ref,
-        ) {
+    let infcx = tcx.infer_ctxt().build();
+    let impl1_trait_ref =
+        match traits::fully_normalize(&infcx, ObligationCause::dummy(), penv, impl1_trait_ref) {
             Ok(impl1_trait_ref) => impl1_trait_ref,
             Err(_errors) => {
                 tcx.sess.delay_span_bug(
@@ -166,9 +162,8 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
             }
         };
 
-        // Attempt to prove that impl2 applies, given all of the above.
-        fulfill_implication(&infcx, penv, impl1_trait_ref, impl2_def_id).is_ok()
-    })
+    // Attempt to prove that impl2 applies, given all of the above.
+    fulfill_implication(&infcx, penv, impl1_trait_ref, impl2_def_id).is_ok()
 }
 
 /// Attempt to fulfill all obligations of `target_impl` after unification with

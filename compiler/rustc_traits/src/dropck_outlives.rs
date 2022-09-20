@@ -27,128 +27,120 @@ fn dropck_outlives<'tcx>(
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>, NoSolution> {
     debug!("dropck_outlives(goal={:#?})", canonical_goal);
 
-    tcx.infer_ctxt().enter_with_canonical(
-        DUMMY_SP,
-        &canonical_goal,
-        |ref infcx, goal, canonical_inference_vars| {
-            let tcx = infcx.tcx;
-            let ParamEnvAnd { param_env, value: for_ty } = goal;
+    let (ref infcx, goal, canonical_inference_vars) =
+        tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical_goal);
+    let tcx = infcx.tcx;
+    let ParamEnvAnd { param_env, value: for_ty } = goal;
 
-            let mut result = DropckOutlivesResult { kinds: vec![], overflows: vec![] };
+    let mut result = DropckOutlivesResult { kinds: vec![], overflows: vec![] };
 
-            // A stack of types left to process. Each round, we pop
-            // something from the stack and invoke
-            // `dtorck_constraint_for_ty`. This may produce new types that
-            // have to be pushed on the stack. This continues until we have explored
-            // all the reachable types from the type `for_ty`.
-            //
-            // Example: Imagine that we have the following code:
-            //
-            // ```rust
-            // struct A {
-            //     value: B,
-            //     children: Vec<A>,
-            // }
-            //
-            // struct B {
-            //     value: u32
-            // }
-            //
-            // fn f() {
-            //   let a: A = ...;
-            //   ..
-            // } // here, `a` is dropped
-            // ```
-            //
-            // at the point where `a` is dropped, we need to figure out
-            // which types inside of `a` contain region data that may be
-            // accessed by any destructors in `a`. We begin by pushing `A`
-            // onto the stack, as that is the type of `a`. We will then
-            // invoke `dtorck_constraint_for_ty` which will expand `A`
-            // into the types of its fields `(B, Vec<A>)`. These will get
-            // pushed onto the stack. Eventually, expanding `Vec<A>` will
-            // lead to us trying to push `A` a second time -- to prevent
-            // infinite recursion, we notice that `A` was already pushed
-            // once and stop.
-            let mut ty_stack = vec![(for_ty, 0)];
+    // A stack of types left to process. Each round, we pop
+    // something from the stack and invoke
+    // `dtorck_constraint_for_ty`. This may produce new types that
+    // have to be pushed on the stack. This continues until we have explored
+    // all the reachable types from the type `for_ty`.
+    //
+    // Example: Imagine that we have the following code:
+    //
+    // ```rust
+    // struct A {
+    //     value: B,
+    //     children: Vec<A>,
+    // }
+    //
+    // struct B {
+    //     value: u32
+    // }
+    //
+    // fn f() {
+    //   let a: A = ...;
+    //   ..
+    // } // here, `a` is dropped
+    // ```
+    //
+    // at the point where `a` is dropped, we need to figure out
+    // which types inside of `a` contain region data that may be
+    // accessed by any destructors in `a`. We begin by pushing `A`
+    // onto the stack, as that is the type of `a`. We will then
+    // invoke `dtorck_constraint_for_ty` which will expand `A`
+    // into the types of its fields `(B, Vec<A>)`. These will get
+    // pushed onto the stack. Eventually, expanding `Vec<A>` will
+    // lead to us trying to push `A` a second time -- to prevent
+    // infinite recursion, we notice that `A` was already pushed
+    // once and stop.
+    let mut ty_stack = vec![(for_ty, 0)];
 
-            // Set used to detect infinite recursion.
-            let mut ty_set = FxHashSet::default();
+    // Set used to detect infinite recursion.
+    let mut ty_set = FxHashSet::default();
 
-            let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
+    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
-            let cause = ObligationCause::dummy();
-            let mut constraints = DropckConstraint::empty();
-            while let Some((ty, depth)) = ty_stack.pop() {
-                debug!(
-                    "{} kinds, {} overflows, {} ty_stack",
-                    result.kinds.len(),
-                    result.overflows.len(),
-                    ty_stack.len()
-                );
-                dtorck_constraint_for_ty(tcx, DUMMY_SP, for_ty, depth, ty, &mut constraints)?;
+    let cause = ObligationCause::dummy();
+    let mut constraints = DropckConstraint::empty();
+    while let Some((ty, depth)) = ty_stack.pop() {
+        debug!(
+            "{} kinds, {} overflows, {} ty_stack",
+            result.kinds.len(),
+            result.overflows.len(),
+            ty_stack.len()
+        );
+        dtorck_constraint_for_ty(tcx, DUMMY_SP, for_ty, depth, ty, &mut constraints)?;
 
-                // "outlives" represent types/regions that may be touched
-                // by a destructor.
-                result.kinds.append(&mut constraints.outlives);
-                result.overflows.append(&mut constraints.overflows);
+        // "outlives" represent types/regions that may be touched
+        // by a destructor.
+        result.kinds.append(&mut constraints.outlives);
+        result.overflows.append(&mut constraints.overflows);
 
-                // If we have even one overflow, we should stop trying to evaluate further --
-                // chances are, the subsequent overflows for this evaluation won't provide useful
-                // information and will just decrease the speed at which we can emit these errors
-                // (since we'll be printing for just that much longer for the often enormous types
-                // that result here).
-                if !result.overflows.is_empty() {
-                    break;
-                }
+        // If we have even one overflow, we should stop trying to evaluate further --
+        // chances are, the subsequent overflows for this evaluation won't provide useful
+        // information and will just decrease the speed at which we can emit these errors
+        // (since we'll be printing for just that much longer for the often enormous types
+        // that result here).
+        if !result.overflows.is_empty() {
+            break;
+        }
 
-                // dtorck types are "types that will get dropped but which
-                // do not themselves define a destructor", more or less. We have
-                // to push them onto the stack to be expanded.
-                for ty in constraints.dtorck_types.drain(..) {
-                    match infcx.at(&cause, param_env).normalize(ty) {
-                        Ok(Normalized { value: ty, obligations }) => {
-                            fulfill_cx.register_predicate_obligations(infcx, obligations);
+        // dtorck types are "types that will get dropped but which
+        // do not themselves define a destructor", more or less. We have
+        // to push them onto the stack to be expanded.
+        for ty in constraints.dtorck_types.drain(..) {
+            match infcx.at(&cause, param_env).normalize(ty) {
+                Ok(Normalized { value: ty, obligations }) => {
+                    fulfill_cx.register_predicate_obligations(infcx, obligations);
 
-                            debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
+                    debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
 
-                            match ty.kind() {
-                                // All parameters live for the duration of the
-                                // function.
-                                ty::Param(..) => {}
+                    match ty.kind() {
+                        // All parameters live for the duration of the
+                        // function.
+                        ty::Param(..) => {}
 
-                                // A projection that we couldn't resolve - it
-                                // might have a destructor.
-                                ty::Projection(..) | ty::Opaque(..) => {
-                                    result.kinds.push(ty.into());
-                                }
-
-                                _ => {
-                                    if ty_set.insert(ty) {
-                                        ty_stack.push((ty, depth + 1));
-                                    }
-                                }
-                            }
+                        // A projection that we couldn't resolve - it
+                        // might have a destructor.
+                        ty::Projection(..) | ty::Opaque(..) => {
+                            result.kinds.push(ty.into());
                         }
 
-                        // We don't actually expect to fail to normalize.
-                        // That implies a WF error somewhere else.
-                        Err(NoSolution) => {
-                            return Err(NoSolution);
+                        _ => {
+                            if ty_set.insert(ty) {
+                                ty_stack.push((ty, depth + 1));
+                            }
                         }
                     }
                 }
+
+                // We don't actually expect to fail to normalize.
+                // That implies a WF error somewhere else.
+                Err(NoSolution) => {
+                    return Err(NoSolution);
+                }
             }
+        }
+    }
 
-            debug!("dropck_outlives: result = {:#?}", result);
+    debug!("dropck_outlives: result = {:#?}", result);
 
-            infcx.make_canonicalized_query_response(
-                canonical_inference_vars,
-                result,
-                &mut *fulfill_cx,
-            )
-        },
-    )
+    infcx.make_canonicalized_query_response(canonical_inference_vars, result, &mut *fulfill_cx)
 }
 
 /// Returns a set of constraints that needs to be satisfied in

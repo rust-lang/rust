@@ -129,7 +129,7 @@ impl<'tcx> InheritedBuilder<'tcx> {
         F: FnOnce(&Inherited<'tcx>) -> R,
     {
         let def_id = self.def_id;
-        self.infcx.enter(|infcx| f(&Inherited::new(infcx, def_id, self.typeck_results)))
+        f(&Inherited::new(self.infcx.build(), def_id, self.typeck_results))
     }
 }
 

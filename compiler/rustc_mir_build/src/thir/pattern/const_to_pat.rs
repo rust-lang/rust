@@ -28,10 +28,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         span: Span,
         mir_structural_match_violation: bool,
     ) -> Box<Pat<'tcx>> {
-        self.tcx.infer_ctxt().enter(|infcx| {
-            let mut convert = ConstToPat::new(self, id, span, infcx);
-            convert.to_pat(cv, mir_structural_match_violation)
-        })
+        let infcx = self.tcx.infer_ctxt().build();
+        let mut convert = ConstToPat::new(self, id, span, infcx);
+        convert.to_pat(cv, mir_structural_match_violation)
     }
 }
 

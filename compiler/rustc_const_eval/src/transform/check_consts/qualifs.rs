@@ -168,30 +168,28 @@ impl Qualif for NeedsNonConstDrop {
             }),
         );
 
-        cx.tcx.infer_ctxt().enter(|infcx| {
-            let mut selcx = SelectionContext::new(&infcx);
-            let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
-                // If we couldn't select a const destruct candidate, then it's bad
-                return true;
-            };
+        let infcx = cx.tcx.infer_ctxt().build();
+        let mut selcx = SelectionContext::new(&infcx);
+        let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
+            // If we couldn't select a const destruct candidate, then it's bad
+            return true;
+        };
 
-            if !matches!(
-                impl_src,
-                ImplSource::ConstDestruct(_)
-                    | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
-            ) {
-                // If our const destruct candidate is not ConstDestruct or implied by the param env,
-                // then it's bad
-                return true;
-            }
+        if !matches!(
+            impl_src,
+            ImplSource::ConstDestruct(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
+        ) {
+            // If our const destruct candidate is not ConstDestruct or implied by the param env,
+            // then it's bad
+            return true;
+        }
 
-            if impl_src.borrow_nested_obligations().is_empty() {
-                return false;
-            }
+        if impl_src.borrow_nested_obligations().is_empty() {
+            return false;
+        }
 
-            // If we had any errors, then it's bad
-            !traits::fully_solve_obligations(&infcx, impl_src.nested_obligations()).is_empty()
-        })
+        // If we had any errors, then it's bad
+        !traits::fully_solve_obligations(&infcx, impl_src.nested_obligations()).is_empty()
     }
 
     fn in_adt_inherently<'tcx>(

@@ -821,10 +821,9 @@ pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'
         };
 
         let fn_def_id = cx.tcx.hir().local_def_id(closure.hir_id);
-        cx.tcx.infer_ctxt().enter(|infcx| {
-            ExprUseVisitor::new(&mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results())
-                .consume_body(closure_body);
-        });
+        let infcx = cx.tcx.infer_ctxt().build();
+        ExprUseVisitor::new(&mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results())
+            .consume_body(closure_body);
 
         if !visitor.suggestion_start.is_empty() {
             return Some(DerefClosure {

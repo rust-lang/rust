@@ -602,30 +602,27 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// `V` and a substitution `S`. This substitution `S` maps from
     /// the bound values in `C` to their instantiated values in `V`
     /// (in other words, `S(C) = V`).
-    pub fn enter_with_canonical<T, R>(
+    pub fn build_with_canonical<T>(
         &mut self,
         span: Span,
         canonical: &Canonical<'tcx, T>,
-        f: impl FnOnce(InferCtxt<'tcx>, T, CanonicalVarValues<'tcx>) -> R,
-    ) -> R
+    ) -> (InferCtxt<'tcx>, T, CanonicalVarValues<'tcx>)
     where
         T: TypeFoldable<'tcx>,
     {
-        self.enter(|infcx| {
-            let (value, subst) =
-                infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
-            f(infcx, value, subst)
-        })
+        let infcx = self.build();
+        let (value, subst) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
+        (infcx, value, subst)
     }
 
-    pub fn enter<R>(&mut self, f: impl FnOnce(InferCtxt<'tcx>) -> R) -> R {
+    pub fn build(&mut self) -> InferCtxt<'tcx> {
         let InferCtxtBuilder {
             tcx,
             defining_use_anchor,
             considering_regions,
             ref normalize_fn_sig_for_diagnostic,
         } = *self;
-        f(InferCtxt {
+        InferCtxt {
             tcx,
             defining_use_anchor,
             considering_regions,
@@ -643,7 +640,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             normalize_fn_sig_for_diagnostic: normalize_fn_sig_for_diagnostic
                 .as_ref()
                 .map(|f| f.clone()),
-        })
+        }
     }
 }
 

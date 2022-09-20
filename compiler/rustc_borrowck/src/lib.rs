@@ -131,14 +131,11 @@ fn mir_borrowck<'tcx>(
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));
     let hir_owner = tcx.hir().local_def_id_to_hir_id(def.did).owner;
 
-    let opt_closure_req = tcx
-        .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id))
-        .enter(|infcx| {
-            let input_body: &Body<'_> = &input_body.borrow();
-            let promoted: &IndexVec<_, _> = &promoted.borrow();
-            do_mir_borrowck(&infcx, input_body, promoted, false).0
-        });
+    let infcx =
+        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)).build();
+    let input_body: &Body<'_> = &input_body.borrow();
+    let promoted: &IndexVec<_, _> = &promoted.borrow();
+    let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, false).0;
     debug!("mir_borrowck done");
 
     tcx.arena.alloc(opt_closure_req)

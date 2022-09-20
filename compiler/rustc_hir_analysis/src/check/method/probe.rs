@@ -472,69 +472,65 @@ fn method_autoderef_steps<'tcx>(
 ) -> MethodAutoderefStepsResult<'tcx> {
     debug!("method_autoderef_steps({:?})", goal);
 
-    tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &goal, |ref infcx, goal, inference_vars| {
-        let ParamEnvAnd { param_env, value: self_ty } = goal;
+    let (ref infcx, goal, inference_vars) = tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &goal);
+    let ParamEnvAnd { param_env, value: self_ty } = goal;
 
-        let mut autoderef =
-            Autoderef::new(infcx, param_env, hir::CRATE_HIR_ID, DUMMY_SP, self_ty, DUMMY_SP)
-                .include_raw_pointers()
-                .silence_errors();
-        let mut reached_raw_pointer = false;
-        let mut steps: Vec<_> = autoderef
-            .by_ref()
-            .map(|(ty, d)| {
-                let step = CandidateStep {
-                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
-                        inference_vars.clone(),
-                        ty,
-                    ),
-                    autoderefs: d,
-                    from_unsafe_deref: reached_raw_pointer,
-                    unsize: false,
-                };
-                if let ty::RawPtr(_) = ty.kind() {
-                    // all the subsequent steps will be from_unsafe_deref
-                    reached_raw_pointer = true;
-                }
-                step
-            })
-            .collect();
-
-        let final_ty = autoderef.final_ty(true);
-        let opt_bad_ty = match final_ty.kind() {
-            ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
-                reached_raw_pointer,
-                ty: infcx
-                    .make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
-            }),
-            ty::Array(elem_ty, _) => {
-                let dereferences = steps.len() - 1;
-
-                steps.push(CandidateStep {
-                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
-                        inference_vars,
-                        infcx.tcx.mk_slice(*elem_ty),
-                    ),
-                    autoderefs: dereferences,
-                    // this could be from an unsafe deref if we had
-                    // a *mut/const [T; N]
-                    from_unsafe_deref: reached_raw_pointer,
-                    unsize: true,
-                });
-
-                None
+    let mut autoderef =
+        Autoderef::new(infcx, param_env, hir::CRATE_HIR_ID, DUMMY_SP, self_ty, DUMMY_SP)
+            .include_raw_pointers()
+            .silence_errors();
+    let mut reached_raw_pointer = false;
+    let mut steps: Vec<_> = autoderef
+        .by_ref()
+        .map(|(ty, d)| {
+            let step = CandidateStep {
+                self_ty: infcx
+                    .make_query_response_ignoring_pending_obligations(inference_vars.clone(), ty),
+                autoderefs: d,
+                from_unsafe_deref: reached_raw_pointer,
+                unsize: false,
+            };
+            if let ty::RawPtr(_) = ty.kind() {
+                // all the subsequent steps will be from_unsafe_deref
+                reached_raw_pointer = true;
             }
-            _ => None,
-        };
+            step
+        })
+        .collect();
 
-        debug!("method_autoderef_steps: steps={:?} opt_bad_ty={:?}", steps, opt_bad_ty);
+    let final_ty = autoderef.final_ty(true);
+    let opt_bad_ty = match final_ty.kind() {
+        ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
+            reached_raw_pointer,
+            ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
+        }),
+        ty::Array(elem_ty, _) => {
+            let dereferences = steps.len() - 1;
 
-        MethodAutoderefStepsResult {
-            steps: tcx.arena.alloc_from_iter(steps),
-            opt_bad_ty: opt_bad_ty.map(|ty| &*tcx.arena.alloc(ty)),
-            reached_recursion_limit: autoderef.reached_recursion_limit(),
+            steps.push(CandidateStep {
+                self_ty: infcx.make_query_response_ignoring_pending_obligations(
+                    inference_vars,
+                    infcx.tcx.mk_slice(*elem_ty),
+                ),
+                autoderefs: dereferences,
+                // this could be from an unsafe deref if we had
+                // a *mut/const [T; N]
+                from_unsafe_deref: reached_raw_pointer,
+                unsize: true,
+            });
+
+            None
         }
-    })
+        _ => None,
+    };
+
+    debug!("method_autoderef_steps: steps={:?} opt_bad_ty={:?}", steps, opt_bad_ty);
+
+    MethodAutoderefStepsResult {
+        steps: tcx.arena.alloc_from_iter(steps),
+        opt_bad_ty: opt_bad_ty.map(|ty| &*tcx.arena.alloc(ty)),
+        reached_recursion_limit: autoderef.reached_recursion_limit(),
+    }
 }
 
 impl<'a, 'tcx> ProbeContext<'a, 'tcx> {

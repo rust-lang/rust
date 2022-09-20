@@ -151,21 +151,19 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 Some(ty_def) if cx.tcx.is_diagnostic_item(sym::String, ty_def.did()),
             );
 
-            let (suggest_display, suggest_debug) = cx.tcx.infer_ctxt().enter(|infcx| {
-                let display = is_str
-                    || cx.tcx.get_diagnostic_item(sym::Display).map(|t| {
-                        infcx
-                            .type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env)
-                            .may_apply()
-                    }) == Some(true);
-                let debug = !display
-                    && cx.tcx.get_diagnostic_item(sym::Debug).map(|t| {
-                        infcx
-                            .type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env)
-                            .may_apply()
-                    }) == Some(true);
-                (display, debug)
-            });
+            let infcx = cx.tcx.infer_ctxt().build();
+            let suggest_display = is_str
+                || cx.tcx.get_diagnostic_item(sym::Display).map(|t| {
+                    infcx
+                        .type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env)
+                        .may_apply()
+                }) == Some(true);
+            let suggest_debug = !suggest_display
+                && cx.tcx.get_diagnostic_item(sym::Debug).map(|t| {
+                    infcx
+                        .type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env)
+                        .may_apply()
+                }) == Some(true);
 
             let suggest_panic_any = !is_str && panic == sym::std_panic_macro;
 

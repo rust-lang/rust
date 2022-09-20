@@ -734,10 +734,9 @@ fn receiver_is_dispatchable<'tcx>(
         Obligation::new(ObligationCause::dummy(), param_env, predicate)
     };
 
-    tcx.infer_ctxt().enter(|ref infcx| {
-        // the receiver is dispatchable iff the obligation holds
-        infcx.predicate_must_hold_modulo_regions(&obligation)
-    })
+    let infcx = tcx.infer_ctxt().build();
+    // the receiver is dispatchable iff the obligation holds
+    infcx.predicate_must_hold_modulo_regions(&obligation)
 }
 
 fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(

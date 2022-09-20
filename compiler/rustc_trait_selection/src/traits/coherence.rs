@@ -100,11 +100,10 @@ where
         return no_overlap();
     }
 
-    let overlaps = tcx.infer_ctxt().enter(|infcx| {
-        let selcx = &mut SelectionContext::intercrate(&infcx);
-        overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some()
-    });
-
+    let infcx = tcx.infer_ctxt().build();
+    let selcx = &mut SelectionContext::intercrate(&infcx);
+    let overlaps =
+        overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some();
     if !overlaps {
         return no_overlap();
     }
@@ -112,13 +111,10 @@ where
     // In the case where we detect an error, run the check again, but
     // this time tracking intercrate ambiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
-    tcx.infer_ctxt().enter(|infcx| {
-        let selcx = &mut SelectionContext::intercrate(&infcx);
-        selcx.enable_tracking_intercrate_ambiguity_causes();
-        on_overlap(
-            overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap(),
-        )
-    })
+    let infcx = tcx.infer_ctxt().build();
+    let selcx = &mut SelectionContext::intercrate(&infcx);
+    selcx.enable_tracking_intercrate_ambiguity_causes();
+    on_overlap(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())
 }
 
 fn with_fresh_ty_vars<'cx, 'tcx>(
@@ -298,33 +294,32 @@ fn negative_impl<'cx, 'tcx>(
     let tcx = selcx.infcx().tcx;
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
-    tcx.infer_ctxt().enter(|infcx| {
-        // create a parameter environment corresponding to a (placeholder) instantiation of impl1
-        let impl_env = tcx.param_env(impl1_def_id);
-        let subject1 = match traits::fully_normalize(
-            &infcx,
-            ObligationCause::dummy(),
-            impl_env,
-            tcx.impl_subject(impl1_def_id),
-        ) {
-            Ok(s) => s,
-            Err(err) => {
-                tcx.sess.delay_span_bug(
-                    tcx.def_span(impl1_def_id),
-                    format!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
-                );
-                return false;
-            }
-        };
+    let infcx = tcx.infer_ctxt().build();
+    // create a parameter environment corresponding to a (placeholder) instantiation of impl1
+    let impl_env = tcx.param_env(impl1_def_id);
+    let subject1 = match traits::fully_normalize(
+        &infcx,
+        ObligationCause::dummy(),
+        impl_env,
+        tcx.impl_subject(impl1_def_id),
+    ) {
+        Ok(s) => s,
+        Err(err) => {
+            tcx.sess.delay_span_bug(
+                tcx.def_span(impl1_def_id),
+                format!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
+            );
+            return false;
+        }
+    };
 
-        // Attempt to prove that impl2 applies, given all of the above.
-        let selcx = &mut SelectionContext::new(&infcx);
-        let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
-        let (subject2, obligations) =
-            impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
+    // Attempt to prove that impl2 applies, given all of the above.
+    let selcx = &mut SelectionContext::new(&infcx);
+    let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
+    let (subject2, obligations) =
+        impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
 
-        !equate(&infcx, impl_env, subject1, subject2, obligations, impl1_def_id)
-    })
+    !equate(&infcx, impl_env, subject1, subject2, obligations, impl1_def_id)
 }
 
 fn equate<'tcx>(

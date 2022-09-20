@@ -1930,16 +1930,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         let normalize = |candidate| {
-            self.tcx.infer_ctxt().enter(|ref infcx| {
-                let normalized = infcx
-                    .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-                    .normalize(candidate)
-                    .ok();
-                match normalized {
-                    Some(normalized) => normalized.value,
-                    None => candidate,
-                }
-            })
+            let infcx = self.tcx.infer_ctxt().build();
+            infcx
+                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+                .normalize(candidate)
+                .map_or(candidate, |normalized| normalized.value)
         };
 
         // Sort impl candidates so that ordering is consistent for UI tests.

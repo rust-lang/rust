@@ -177,18 +177,10 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
         R: Debug + TypeFoldable<'tcx>,
         Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
     {
-        self.enter_with_canonical(
-            DUMMY_SP,
-            canonical_key,
-            |ref infcx, key, canonical_inference_vars| {
-                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-                let value = operation(infcx, &mut *fulfill_cx, key)?;
-                infcx.make_canonicalized_query_response(
-                    canonical_inference_vars,
-                    value,
-                    &mut *fulfill_cx,
-                )
-            },
-        )
+        let (ref infcx, key, canonical_inference_vars) =
+            self.build_with_canonical(DUMMY_SP, canonical_key);
+        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
+        let value = operation(infcx, &mut *fulfill_cx, key)?;
+        infcx.make_canonicalized_query_response(canonical_inference_vars, value, &mut *fulfill_cx)
     }
 }

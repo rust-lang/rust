@@ -1025,7 +1025,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
                         let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
                         let suggest = match self.infcx.tcx.get_diagnostic_item(sym::IntoIterator) {
-                            Some(def_id) => self.infcx.tcx.infer_ctxt().enter(|infcx| {
+                            Some(def_id) => {
+                                let infcx = self.infcx.tcx.infer_ctxt().build();
                                 type_known_to_meet_bound_modulo_regions(
                                     &infcx,
                                     self.param_env,
@@ -1036,7 +1037,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     def_id,
                                     DUMMY_SP,
                                 )
-                            }),
+                            }
                             _ => false,
                         };
                         if suggest {

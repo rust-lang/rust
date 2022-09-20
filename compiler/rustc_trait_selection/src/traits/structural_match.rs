@@ -265,9 +265,8 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
 
 pub fn provide(providers: &mut Providers) {
     providers.has_structural_eq_impls = |tcx, ty| {
-        tcx.infer_ctxt().enter(|infcx| {
-            let cause = ObligationCause::dummy();
-            type_marked_structural(&infcx, ty, cause)
-        })
+        let infcx = tcx.infer_ctxt().build();
+        let cause = ObligationCause::dummy();
+        type_marked_structural(&infcx, ty, cause)
     };
 }
