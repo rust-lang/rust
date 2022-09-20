@@ -1,8 +1,5 @@
 //! Print diagnostics to explain why values are borrowed.
 
-use std::collections::VecDeque;
-
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
@@ -359,19 +356,37 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let borrow_region_vid = borrow.region;
         debug!(?borrow_region_vid);
 
-        let region_sub = self.regioncx.find_sub_region_live_at(borrow_region_vid, location);
+        let mut region_sub = self.regioncx.find_sub_region_live_at(borrow_region_vid, location);
         debug!(?region_sub);
 
-        match find_use::find(body, regioncx, tcx, region_sub, location) {
+        let mut use_location = location;
+        let mut use_in_later_iteration_of_loop = false;
+
+        if region_sub == borrow_region_vid {
+            // When `region_sub` is the same as `borrow_region_vid` (the location where the borrow is
+            // issued is the same location that invalidates the reference), this is likely a loop iteration
+            // - in this case, try using the loop terminator location in `find_sub_region_live_at`.
+            if let Some(loop_terminator_location) =
+                regioncx.find_loop_terminator_location(borrow.region, body)
+            {
+                region_sub = self
+                    .regioncx
+                    .find_sub_region_live_at(borrow_region_vid, loop_terminator_location);
+                debug!("explain_why_borrow_contains_point: region_sub in loop={:?}", region_sub);
+                use_location = loop_terminator_location;
+                use_in_later_iteration_of_loop = true;
+            }
+        }
+
+        match find_use::find(body, regioncx, tcx, region_sub, use_location) {
             Some(Cause::LiveVar(local, location)) => {
                 let span = body.source_info(location).span;
                 let spans = self
                     .move_spans(Place::from(local).as_ref(), location)
                     .or_else(|| self.borrow_spans(span, location));
 
-                let borrow_location = location;
-                if self.is_use_in_later_iteration_of_loop(borrow_location, location) {
-                    let later_use = self.later_use_kind(borrow, spans, location);
+                if use_in_later_iteration_of_loop {
+                    let later_use = self.later_use_kind(borrow, spans, use_location);
                     BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1, later_use.2)
                 } else {
                     // Check if the location represents a `FakeRead`, and adapt the error
@@ -423,131 +438,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
         }
-    }
-
-    /// true if `borrow_location` can reach `use_location` by going through a loop and
-    /// `use_location` is also inside of that loop
-    fn is_use_in_later_iteration_of_loop(
-        &self,
-        borrow_location: Location,
-        use_location: Location,
-    ) -> bool {
-        let back_edge = self.reach_through_backedge(borrow_location, use_location);
-        back_edge.map_or(false, |back_edge| self.can_reach_head_of_loop(use_location, back_edge))
-    }
-
-    /// Returns the outmost back edge if `from` location can reach `to` location passing through
-    /// that back edge
-    fn reach_through_backedge(&self, from: Location, to: Location) -> Option<Location> {
-        let mut visited_locations = FxHashSet::default();
-        let mut pending_locations = VecDeque::new();
-        visited_locations.insert(from);
-        pending_locations.push_back(from);
-        debug!("reach_through_backedge: from={:?} to={:?}", from, to,);
-
-        let mut outmost_back_edge = None;
-        while let Some(location) = pending_locations.pop_front() {
-            debug!(
-                "reach_through_backedge: location={:?} outmost_back_edge={:?}
-                   pending_locations={:?} visited_locations={:?}",
-                location, outmost_back_edge, pending_locations, visited_locations
-            );
-
-            if location == to && outmost_back_edge.is_some() {
-                // We've managed to reach the use location
-                debug!("reach_through_backedge: found!");
-                return outmost_back_edge;
-            }
-
-            let block = &self.body.basic_blocks[location.block];
-
-            if location.statement_index < block.statements.len() {
-                let successor = location.successor_within_block();
-                if visited_locations.insert(successor) {
-                    pending_locations.push_back(successor);
-                }
-            } else {
-                pending_locations.extend(
-                    block
-                        .terminator()
-                        .successors()
-                        .map(|bb| Location { statement_index: 0, block: bb })
-                        .filter(|s| visited_locations.insert(*s))
-                        .map(|s| {
-                            if self.is_back_edge(location, s) {
-                                match outmost_back_edge {
-                                    None => {
-                                        outmost_back_edge = Some(location);
-                                    }
-
-                                    Some(back_edge)
-                                        if location.dominates(back_edge, &self.dominators) =>
-                                    {
-                                        outmost_back_edge = Some(location);
-                                    }
-
-                                    Some(_) => {}
-                                }
-                            }
-
-                            s
-                        }),
-                );
-            }
-        }
-
-        None
-    }
-
-    /// true if `from` location can reach `loop_head` location and `loop_head` dominates all the
-    /// intermediate nodes
-    fn can_reach_head_of_loop(&self, from: Location, loop_head: Location) -> bool {
-        self.find_loop_head_dfs(from, loop_head, &mut FxHashSet::default())
-    }
-
-    fn find_loop_head_dfs(
-        &self,
-        from: Location,
-        loop_head: Location,
-        visited_locations: &mut FxHashSet<Location>,
-    ) -> bool {
-        visited_locations.insert(from);
-
-        if from == loop_head {
-            return true;
-        }
-
-        if loop_head.dominates(from, &self.dominators) {
-            let block = &self.body.basic_blocks[from.block];
-
-            if from.statement_index < block.statements.len() {
-                let successor = from.successor_within_block();
-
-                if !visited_locations.contains(&successor)
-                    && self.find_loop_head_dfs(successor, loop_head, visited_locations)
-                {
-                    return true;
-                }
-            } else {
-                for bb in block.terminator().successors() {
-                    let successor = Location { statement_index: 0, block: bb };
-
-                    if !visited_locations.contains(&successor)
-                        && self.find_loop_head_dfs(successor, loop_head, visited_locations)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        false
-    }
-
-    /// True if an edge `source -> target` is a backedge -- in other words, if the target
-    /// dominates the source.
-    fn is_back_edge(&self, source: Location, target: Location) -> bool {
-        target.dominates(source, &self.dominators)
     }
 
     /// Determine how the borrow was later used.
