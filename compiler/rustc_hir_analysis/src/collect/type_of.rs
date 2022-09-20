@@ -788,20 +788,15 @@ fn find_opaque_ty_constraints_for_rpit(
             // the `concrete_opaque_types` table.
             tcx.ty_error()
         } else {
-            table
-                .concrete_opaque_types
-                .get(&def_id)
-                .copied()
-                .unwrap_or_else(|| {
-                    // We failed to resolve the opaque type or it
-                    // resolves to itself. We interpret this as the
-                    // no values of the hidden type ever being constructed,
-                    // so we can just make the hidden type be `!`.
-                    // For backwards compatibility reasons, we fall back to
-                    // `()` until we the diverging default is changed.
-                    Some(tcx.mk_diverging_default())
-                })
-                .expect("RPIT always have a hidden type from typeck")
+            table.concrete_opaque_types.get(&def_id).copied().unwrap_or_else(|| {
+                // We failed to resolve the opaque type or it
+                // resolves to itself. We interpret this as the
+                // no values of the hidden type ever being constructed,
+                // so we can just make the hidden type be `!`.
+                // For backwards compatibility reasons, we fall back to
+                // `()` until we the diverging default is changed.
+                tcx.mk_diverging_default()
+            })
         }
     })
 }
