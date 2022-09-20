@@ -81,6 +81,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                         }
                         ProjectionElem::Downcast(..)
                         | ProjectionElem::Subslice { .. }
+                        | ProjectionElem::OpaqueCast { .. }
                         | ProjectionElem::ConstantIndex { .. }
                         | ProjectionElem::Index(_) => {
                             cursor = cursor_base;

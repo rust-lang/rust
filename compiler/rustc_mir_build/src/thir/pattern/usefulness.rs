@@ -842,7 +842,15 @@ fn is_useful<'p, 'tcx>(
             }
         }
     } else {
-        let ty = v.head().ty();
+        let mut ty = v.head().ty();
+
+        // Opaque types can't get destructured/split, but the patterns can
+        // actually hint at hidden types, so we use the patterns' types instead.
+        if let ty::Opaque(..) = ty.kind() {
+            if let Some(row) = rows.first() {
+                ty = row.head().ty();
+            }
+        }
         let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
         debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
         let pcx = &PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };

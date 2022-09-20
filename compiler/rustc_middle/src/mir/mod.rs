@@ -1380,6 +1380,7 @@ impl<V, T> ProjectionElem<V, T> {
 
             Self::Field(_, _)
             | Self::Index(_)
+            | Self::OpaqueCast(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _) => false,
@@ -1574,7 +1575,9 @@ impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         for elem in self.projection.iter().rev() {
             match elem {
-                ProjectionElem::Downcast(_, _) | ProjectionElem::Field(_, _) => {
+                ProjectionElem::OpaqueCast(_)
+                | ProjectionElem::Downcast(_, _)
+                | ProjectionElem::Field(_, _) => {
                     write!(fmt, "(").unwrap();
                 }
                 ProjectionElem::Deref => {
@@ -1590,6 +1593,9 @@ impl Debug for Place<'_> {
 
         for elem in self.projection.iter() {
             match elem {
+                ProjectionElem::OpaqueCast(ty) => {
+                    write!(fmt, " as {})", ty)?;
+                }
                 ProjectionElem::Downcast(Some(name), _index) => {
                     write!(fmt, " as {})", name)?;
                 }
