@@ -1,6 +1,6 @@
 //! Defines hir-level representation of structs, enums and unions
 
-use std::sync::Arc;
+use std::{num::NonZeroU32, sync::Arc};
 
 use base_db::CrateId;
 use either::Either;
@@ -14,6 +14,7 @@ use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 
 use crate::{
     body::{CfgExpander, LowerCtx},
+    builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
     intern::Interned,
     item_tree::{AttrOwner, Field, Fields, ItemTree, ModItem, RawVisibilityId},
@@ -31,7 +32,7 @@ use cfg::CfgOptions;
 pub struct StructData {
     pub name: Name,
     pub variant_data: Arc<VariantData>,
-    pub repr: Option<ReprKind>,
+    pub repr: Option<ReprData>,
     pub visibility: RawVisibility,
 }
 
@@ -39,6 +40,7 @@ pub struct StructData {
 pub struct EnumData {
     pub name: Name,
     pub variants: Arena<EnumVariantData>,
+    pub repr: Option<ReprData>,
     pub visibility: RawVisibility,
 }
 
@@ -63,10 +65,19 @@ pub struct FieldData {
     pub visibility: RawVisibility,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq)]
 pub enum ReprKind {
-    Packed,
-    Other,
+    C,
+    BuiltinInt { builtin: Either<BuiltinInt, BuiltinUint>, is_c: bool },
+    Transparent,
+    Default,
+}
+
+#[derive(Copy, Debug, Clone, PartialEq, Eq)]
+pub struct ReprData {
+    pub kind: ReprKind,
+    pub packed: bool,
+    pub align: Option<NonZeroU32>,
 }
 
 fn repr_from_value(
@@ -74,21 +85,60 @@ fn repr_from_value(
     krate: CrateId,
     item_tree: &ItemTree,
     of: AttrOwner,
-) -> Option<ReprKind> {
+) -> Option<ReprData> {
     item_tree.attrs(db, krate, of).by_key("repr").tt_values().find_map(parse_repr_tt)
 }
 
-fn parse_repr_tt(tt: &Subtree) -> Option<ReprKind> {
+fn parse_repr_tt(tt: &Subtree) -> Option<ReprData> {
     match tt.delimiter {
         Some(Delimiter { kind: DelimiterKind::Parenthesis, .. }) => {}
         _ => return None,
     }
 
-    let mut it = tt.token_trees.iter();
-    match it.next()? {
-        TokenTree::Leaf(Leaf::Ident(ident)) if ident.text == "packed" => Some(ReprKind::Packed),
-        _ => Some(ReprKind::Other),
+    let mut data = ReprData { kind: ReprKind::Default, packed: false, align: None };
+
+    let mut tts = tt.token_trees.iter().peekable();
+    while let Some(tt) = tts.next() {
+        if let TokenTree::Leaf(Leaf::Ident(ident)) = tt {
+            match &*ident.text {
+                "packed" => {
+                    data.packed = true;
+                    if let Some(TokenTree::Subtree(_)) = tts.peek() {
+                        tts.next();
+                    }
+                }
+                "align" => {
+                    if let Some(TokenTree::Subtree(tt)) = tts.peek() {
+                        tts.next();
+                        if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
+                            if let Ok(align) = lit.text.parse() {
+                                data.align = Some(align);
+                            }
+                        }
+                    }
+                }
+                "C" => {
+                    if let ReprKind::BuiltinInt { is_c, .. } = &mut data.kind {
+                        *is_c = true;
+                    } else {
+                        data.kind = ReprKind::C;
+                    }
+                }
+                "transparent" => data.kind = ReprKind::Transparent,
+                repr => {
+                    let is_c = matches!(data.kind, ReprKind::C);
+                    if let Some(builtin) = BuiltinInt::from_suffix(repr)
+                        .map(Either::Left)
+                        .or_else(|| BuiltinUint::from_suffix(repr).map(Either::Right))
+                    {
+                        data.kind = ReprKind::BuiltinInt { builtin, is_c };
+                    }
+                }
+            }
+        }
     }
+
+    Some(data)
 }
 
 impl StructData {
@@ -108,6 +158,7 @@ impl StructData {
             visibility: item_tree[strukt.visibility].clone(),
         })
     }
+
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
@@ -133,6 +184,7 @@ impl EnumData {
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
         let cfg_options = db.crate_graph()[krate].cfg_options.clone();
+        let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
 
         let enum_ = &item_tree[loc.id.value];
         let mut variants = Arena::new();
@@ -158,6 +210,7 @@ impl EnumData {
         Arc::new(EnumData {
             name: enum_.name.clone(),
             variants,
+            repr,
             visibility: item_tree[enum_.visibility].clone(),
         })
     }

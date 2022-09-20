@@ -44,12 +44,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::lower::const_param_ty_query)]
     fn const_param_ty(&self, def: ConstParamId) -> Ty;
 
-    #[salsa::invoke(crate::consteval::const_eval_query)]
+    #[salsa::invoke(crate::consteval::const_eval_variant_query)]
     #[salsa::cycle(crate::consteval::const_eval_recover)]
     fn const_eval(&self, def: ConstId) -> Result<ComputedExpr, ConstEvalError>;
 
     #[salsa::invoke(crate::consteval::const_eval_query_variant)]
-    #[salsa::cycle(crate::consteval::const_eval_recover_variant)]
+    #[salsa::cycle(crate::consteval::const_eval_variant_recover)]
     fn const_eval_variant(&self, def: EnumVariantId) -> Result<ComputedExpr, ConstEvalError>;
 
     #[salsa::invoke(crate::lower::impl_trait_query)]

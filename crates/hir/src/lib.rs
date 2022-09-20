@@ -39,7 +39,7 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
 use either::Either;
 use hir_def::{
-    adt::{ReprKind, VariantData},
+    adt::{ReprData, VariantData},
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     generics::{TypeOrConstParamData, TypeParamProvenance},
@@ -874,7 +874,7 @@ impl Struct {
         Type::from_def(db, self.id)
     }
 
-    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprKind> {
+    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprData> {
         db.struct_data(self.id).repr.clone()
     }
 
@@ -2964,7 +2964,7 @@ impl Type {
 
         let adt = adt_id.into();
         match adt {
-            Adt::Struct(s) => matches!(s.repr(db), Some(ReprKind::Packed)),
+            Adt::Struct(s) => matches!(s.repr(db), Some(ReprData { packed: true, .. })),
             _ => false,
         }
     }
