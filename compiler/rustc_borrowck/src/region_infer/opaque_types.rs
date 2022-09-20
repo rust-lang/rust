@@ -16,7 +16,9 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::TraitEngineExt as _;
 
-use crate::session_diagnostics::ConstNotUsedTraitAlias;
+use crate::session_diagnostics::{
+    ConstNotUsedTraitAlias, OpaqueTyDefineErrCause, OpaqueTypeNotDefine, UnusedTypeParameter,
+};
 
 use super::RegionInferenceContext;
 
@@ -374,15 +376,12 @@ fn check_opaque_type_parameter_valid(
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
             GenericArgKind::Lifetime(lt) if lt.is_static() => {
-                tcx.sess
-                    .struct_span_err(span, "non-defining opaque type use in defining scope")
-                    .span_label(
-                        tcx.def_span(opaque_generics.param_at(i, tcx).def_id),
-                        "cannot use static lifetime; use a bound lifetime \
-                                    instead or remove the lifetime parameter from the \
-                                    opaque type",
-                    )
-                    .emit();
+                tcx.sess.emit_err(OpaqueTypeNotDefine {
+                    cause: OpaqueTyDefineErrCause::UsedStaticLifetime {
+                        span: tcx.def_span(opaque_generics.param_at(i, tcx).def_id),
+                    },
+                    span,
+                });
                 return false;
             }
             GenericArgKind::Lifetime(lt) => {
@@ -396,17 +395,14 @@ fn check_opaque_type_parameter_valid(
         } else {
             // Prevent `fn foo() -> Foo<u32>` from being defining.
             let opaque_param = opaque_generics.param_at(i, tcx);
-            tcx.sess
-                .struct_span_err(span, "non-defining opaque type use in defining scope")
-                .span_note(
-                    tcx.def_span(opaque_param.def_id),
-                    &format!(
-                        "used non-generic {} `{}` for generic parameter",
-                        opaque_param.kind.descr(),
-                        arg,
-                    ),
-                )
-                .emit();
+            tcx.sess.emit_err(OpaqueTypeNotDefine {
+                cause: OpaqueTyDefineErrCause::NonGenericUsed {
+                    span: tcx.def_span(opaque_param.def_id),
+                    descr: opaque_param.kind.descr().to_string(),
+                    arg: arg.to_string(),
+                },
+                span,
+            });
             return false;
         }
     }
@@ -418,6 +414,7 @@ fn check_opaque_type_parameter_valid(
                 .into_iter()
                 .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
                 .collect();
+            // FIXME(#100717) requires eager translation/list support
             tcx.sess
                 .struct_span_err(span, "non-defining opaque type use in defining scope")
                 .span_note(spans, &format!("{} used multiple times", descr))
@@ -515,18 +512,13 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 self.tcx.lifetimes.re_static
             }
             None => {
-                self.tcx
-                    .sess
-                    .struct_span_err(self.span, "non-defining opaque type use in defining scope")
-                    .span_label(
-                        self.span,
-                        format!(
-                            "lifetime `{}` is part of concrete type but not used in \
-                                 parameter list of the `impl Trait` type alias",
-                            r
-                        ),
-                    )
-                    .emit();
+                self.tcx.sess.emit_err(OpaqueTypeNotDefine {
+                    cause: OpaqueTyDefineErrCause::UnusedLifetime {
+                        span: self.span,
+                        r: r.to_string(),
+                    },
+                    span: self.span,
+                });
 
                 self.tcx().lifetimes.re_static
             }
@@ -598,17 +590,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(u) => panic!("type mapped to unexpected kind: {:?}", u),
                     None => {
                         debug!(?param, ?self.map);
-                        self.tcx
-                            .sess
-                            .struct_span_err(
-                                self.span,
-                                &format!(
-                                    "type parameter `{}` is part of concrete type but not \
-                                          used in parameter list for the `impl Trait` type alias",
-                                    ty
-                                ),
-                            )
-                            .emit();
+                        self.tcx.sess.emit_err(UnusedTypeParameter { ty, span: self.span });
 
                         self.tcx().ty_error()
                     }

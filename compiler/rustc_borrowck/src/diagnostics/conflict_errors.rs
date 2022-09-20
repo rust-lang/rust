@@ -180,10 +180,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let move_spans = self.move_spans(moved_place.as_ref(), move_out.source);
                 let move_span = move_spans.args_or_use();
 
-                let move_msg = if move_spans.for_closure() { " into closure" } else { "" };
+                let move_msg = if move_spans.for_closure() { "InClosure" } else { "" };
 
                 let loop_message = if location == move_out.source || move_site.traversed_back_edge {
-                    ", in previous iteration of loop"
+                    "InLoop"
                 } else {
                     ""
                 };

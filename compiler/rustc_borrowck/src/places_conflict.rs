@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::ArtificialField;
 use crate::Overlap;
 use crate::{AccessDepth, Deep, Shallow};

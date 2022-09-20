@@ -7,7 +7,7 @@ use rustc_middle::ty::RegionVid;
 use smallvec::SmallVec;
 use std::collections::BTreeMap;
 
-use crate::MirBorrowckCtxt;
+use crate::{session_diagnostics::OnLifetimeBound, MirBorrowckCtxt};
 
 use super::{ErrorConstraintInfo, RegionName, RegionNameSource};
 
@@ -171,9 +171,7 @@ impl OutlivesSuggestionBuilder {
         if let (Some(fr_name), Some(outlived_fr_name)) = (fr_name, outlived_fr_name)
             && !matches!(outlived_fr_name.source, RegionNameSource::Static)
         {
-            diag.help(&format!(
-                "consider adding the following bound: `{fr_name}: {outlived_fr_name}`",
-            ));
+            diag.subdiagnostic(OnLifetimeBound::Add { fr_name: &fr_name, outlived_fr_name: &outlived_fr_name });
         }
     }
 

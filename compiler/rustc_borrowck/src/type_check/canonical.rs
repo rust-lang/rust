@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use std::fmt;
 
 use rustc_infer::infer::canonical::Canonical;

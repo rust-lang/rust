@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 //! The entry point of the NLL borrow checker.
 
 use rustc_data_structures::vec_map::VecMap;
@@ -460,4 +462,8 @@ impl ToRegionVid for RegionVid {
 
 pub(crate) trait ConstraintDescription {
     fn description(&self) -> &'static str;
+}
+
+pub(crate) trait ConstraintDiagDescription {
+    fn arg_desc(&self) -> String;
 }

@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::location::{LocationIndex, LocationTable};
 use crate::BorrowIndex;
 use polonius_engine::AllFacts as PoloniusFacts;

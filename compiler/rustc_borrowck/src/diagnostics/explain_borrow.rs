@@ -16,6 +16,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
 
 use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
+use crate::session_diagnostics::{BorrowUsedHere, UsedLaterDropped};
 use crate::{
     borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
     WriteKind,
@@ -66,6 +67,12 @@ impl<'tcx> BorrowExplanation<'tcx> {
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
     ) {
+        let br_desc = match borrow_desc {
+            "first " => "first",
+            "immutable " => "immutable",
+            "mutable " => "mutable",
+            _ => "",
+        };
         match *self {
             BorrowExplanation::UsedLater(later_use_kind, var_or_use_span, path_span) => {
                 let message = match later_use_kind {
@@ -120,13 +127,12 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     // path_span is only present in the case of closure capture
                     assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
                     if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
-                        let path_label = "used here by closure";
+                        err.subdiagnostic(BorrowUsedHere::ByClosure { path_span });
                         let capture_kind_label = message;
                         err.span_label(
                             var_or_use_span,
                             format!("{}borrow later {}", borrow_desc, capture_kind_label),
                         );
-                        err.span_label(path_span, path_label);
                     }
                 }
             }
@@ -162,42 +168,28 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
                 match local_names[dropped_local] {
                     Some(local_name) if !local_decl.from_compiler_desugaring() => {
-                        let message = format!(
-                            "{B}borrow might be used here, when `{LOC}` is dropped \
-                             and runs the {DTOR} for {TYPE}",
-                            B = borrow_desc,
-                            LOC = local_name,
-                            TYPE = type_desc,
-                            DTOR = dtor_desc
-                        );
-                        err.span_label(body.source_info(drop_loc).span, message);
-
+                        err.subdiagnostic(UsedLaterDropped::UsedHere {
+                            borrow_desc: br_desc,
+                            local_name,
+                            type_desc: &type_desc,
+                            dtor_desc,
+                            span: body.source_info(drop_loc).span,
+                        });
                         if should_note_order {
-                            err.note(
-                                "values in a scope are dropped \
-                                 in the opposite order they are defined",
-                            );
+                            err.subdiagnostic(UsedLaterDropped::OppositeOrder);
                         }
                     }
                     _ => {
-                        err.span_label(
-                            local_decl.source_info.span,
-                            format!(
-                                "a temporary with access to the {B}borrow \
-                                 is created here ...",
-                                B = borrow_desc
-                            ),
-                        );
-                        let message = format!(
-                            "... and the {B}borrow might be used here, \
-                             when that temporary is dropped \
-                             and runs the {DTOR} for {TYPE}",
-                            B = borrow_desc,
-                            TYPE = type_desc,
-                            DTOR = dtor_desc
-                        );
-                        err.span_label(body.source_info(drop_loc).span, message);
-
+                        err.subdiagnostic(UsedLaterDropped::TemporaryCreatedHere {
+                            borrow_desc: br_desc,
+                            span: local_decl.source_info.span,
+                        });
+                        err.subdiagnostic(UsedLaterDropped::MightUsedHere {
+                            borrow_desc: br_desc,
+                            type_desc: &type_desc,
+                            dtor_desc,
+                            span: body.source_info(drop_loc).span,
+                        });
                         if let Some(info) = &local_decl.is_block_tail {
                             if info.tail_result_is_ignored {
                                 // #85581: If the first mutable borrow's scope contains
@@ -208,31 +200,16 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                     })
                                     .unwrap_or(false)
                                 {
-                                    err.span_suggestion_verbose(
-                                        info.span.shrink_to_hi(),
-                                        "consider adding semicolon after the expression so its \
-                                        temporaries are dropped sooner, before the local variables \
-                                        declared by the block are dropped",
-                                        ";",
-                                        Applicability::MaybeIncorrect,
-                                    );
+                                    err.subdiagnostic(UsedLaterDropped::AddSemicolon {
+                                        span: info.span.shrink_to_hi(),
+                                    });
                                 }
                             } else {
-                                err.note(
-                                    "the temporary is part of an expression at the end of a \
-                                     block;\nconsider forcing this temporary to be dropped sooner, \
-                                     before the block's local variables are dropped",
-                                );
-                                err.multipart_suggestion(
-                                    "for example, you could save the expression's value in a new \
-                                     local variable `x` and then make `x` be the expression at the \
-                                     end of the block",
-                                    vec![
-                                        (info.span.shrink_to_lo(), "let x = ".to_string()),
-                                        (info.span.shrink_to_hi(), "; x".to_string()),
-                                    ],
-                                    Applicability::MaybeIncorrect,
-                                );
+                                err.subdiagnostic(UsedLaterDropped::ManualDrop);
+                                err.subdiagnostic(UsedLaterDropped::MoveBlockEnd {
+                                    lo_span: info.span.shrink_to_lo(),
+                                    hi_span: info.span.shrink_to_hi(),
+                                });
                             };
                         }
                     }

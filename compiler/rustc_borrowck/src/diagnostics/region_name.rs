@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, DefIdTree, RegionVid, Ty};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+use crate::session_diagnostics::RegionNameLabels;
 use crate::{nll::ToRegionVid, universal_regions::DefiningTy, MirBorrowckCtxt};
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
@@ -133,48 +134,58 @@ impl RegionName {
                 RegionNameHighlight::MatchedAdtAndSegment(span),
                 _,
             ) => {
-                diag.span_label(*span, format!("let's call this `{self}`"));
+                diag.subdiagnostic(RegionNameLabels::NameRegion { span: *span, rg_name: self });
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::Occluded(
                 span,
                 type_name,
             )) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{self}` appears in the type {type_name}"),
-                );
+                diag.subdiagnostic(RegionNameLabels::LifetimeInType {
+                    span: *span,
+                    type_name: &type_name,
+                    rg_name: self,
+                });
             }
             RegionNameSource::AnonRegionFromOutput(
                 RegionNameHighlight::Occluded(span, type_name),
                 mir_description,
             ) => {
-                diag.span_label(
-                    *span,
-                    format!(
-                        "return type{mir_description} `{type_name}` contains a lifetime `{self}`"
-                    ),
-                );
+                diag.subdiagnostic(RegionNameLabels::LifetimeInReturned {
+                    span: *span,
+                    mir_description,
+                    type_name: &type_name,
+                    rg_name: self,
+                });
             }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{self}` appears in the type of `{upvar_name}`"),
-                );
+                diag.subdiagnostic(RegionNameLabels::LifetimeInTypeOf {
+                    span: *span,
+                    upvar_name: upvar_name.to_ident_string(),
+                    rg_name: self,
+                });
             }
             RegionNameSource::AnonRegionFromOutput(
                 RegionNameHighlight::CannotMatchHirTy(span, type_name),
                 mir_description,
             ) => {
-                diag.span_label(*span, format!("return type{mir_description} is {type_name}"));
+                diag.subdiagnostic(RegionNameLabels::ReturnTypeIsTpye {
+                    span: *span,
+                    mir_description,
+                    type_name: &type_name,
+                });
             }
             RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
-                diag.span_label(*span, format!("yield type is {type_name}"));
+                diag.subdiagnostic(RegionNameLabels::YieldTypeIsTpye {
+                    span: *span,
+                    type_name: &type_name,
+                });
             }
             RegionNameSource::AnonRegionFromImplSignature(span, location) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{self}` appears in the `impl`'s {location}"),
-                );
+                diag.subdiagnostic(RegionNameLabels::LifetimeInImpl {
+                    span: *span,
+                    rg_name: self,
+                    location: &location,
+                });
             }
             RegionNameSource::Static => {}
         }
@@ -704,8 +715,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 };
                 let mir_description = match hir.body(body).generator_kind {
                     Some(hir::GeneratorKind::Async(gen)) => match gen {
-                        hir::AsyncGeneratorKind::Block => " of async block",
-                        hir::AsyncGeneratorKind::Closure => " of async closure",
+                        hir::AsyncGeneratorKind::Block => "Block",
+                        hir::AsyncGeneratorKind::Closure => "Closure",
                         hir::AsyncGeneratorKind::Fn => {
                             let parent_item =
                                 hir.get_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
@@ -717,11 +728,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                             if let hir::FnRetTy::Return(ret) = output {
                                 hir_ty = Some(self.get_future_inner_return_ty(*ret));
                             }
-                            " of async function"
+                            "Fn"
                         }
                     },
-                    Some(hir::GeneratorKind::Gen) => " of generator",
-                    None => " of closure",
+                    Some(hir::GeneratorKind::Gen) => "Gen",
+                    None => "None",
                 };
                 (span, mir_description, hir_ty)
             }

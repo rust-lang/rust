@@ -20,6 +20,8 @@ use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
 
+use crate::session_diagnostics::{CaptureCausedBy, ClosureCannotAgain, NotImplCopy};
+
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
 
@@ -117,14 +119,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if let Some((span, hir_place)) =
                             self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
                         {
-                            diag.span_note(
-                                *span,
-                                &format!(
-                                    "closure cannot be invoked more than once because it moves the \
-                                    variable `{}` out of its environment",
-                                    ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
-                                ),
-                            );
+                            diag.subdiagnostic(ClosureCannotAgain::Invoke {
+                                place: ty::place_to_string_for_capture(self.infcx.tcx, hir_place),
+                                span: *span,
+                            });
                             return;
                         }
                     }
@@ -141,14 +139,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if let Some((span, hir_place)) =
                     self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
                 {
-                    diag.span_note(
-                        *span,
-                        &format!(
-                            "closure cannot be moved more than once as it is not `Copy` due to \
-                             moving the variable `{}` out of its environment",
-                            ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
-                        ),
-                    );
+                    diag.subdiagnostic(ClosureCannotAgain::Move {
+                        place: ty::place_to_string_for_capture(self.infcx.tcx, hir_place),
+                        span: *span,
+                    });
                 }
             }
         }
@@ -397,14 +391,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         span: Option<Span>,
         move_prefix: &str,
     ) {
-        let message = format!(
-            "{}move occurs because {} has type `{}`, which does not implement the `Copy` trait",
-            move_prefix, place_desc, ty,
-        );
         if let Some(span) = span {
-            err.span_label(span, message);
+            err.subdiagnostic(NotImplCopy::Label { span, place_desc, ty, move_prefix });
         } else {
-            err.note(&message);
+            err.subdiagnostic(NotImplCopy::Note { place_desc, ty, move_prefix });
         }
     }
 
@@ -987,37 +977,30 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 CallKind::FnCall { fn_trait_id, .. }
                     if Some(fn_trait_id) == self.infcx.tcx.lang_items().fn_once_trait() =>
                 {
-                    err.span_label(
-                        fn_call_span,
-                        &format!(
-                            "{} {}moved due to this call{}",
-                            place_name, partially_str, loop_message
-                        ),
-                    );
-                    err.span_note(
-                        var_span,
-                        "this value implements `FnOnce`, which causes it to be moved when called",
-                    );
+                    err.subdiagnostic(CaptureCausedBy::Call {
+                        place_name: &place_name,
+                        partially_str,
+                        loop_message,
+                        span: fn_call_span,
+                    });
+                    err.subdiagnostic(CaptureCausedBy::FnOnceVal { span: var_span });
                 }
                 CallKind::Operator { self_arg, .. } => {
                     let self_arg = self_arg.unwrap();
-                    err.span_label(
-                        fn_call_span,
-                        &format!(
-                            "{} {}moved due to usage in operator{}",
-                            place_name, partially_str, loop_message
-                        ),
-                    );
+                    err.subdiagnostic(CaptureCausedBy::OperatorUse {
+                        place_name: &place_name,
+                        partially_str,
+                        loop_message,
+                        span: fn_call_span,
+                    });
                     if self.fn_self_span_reported.insert(fn_span) {
-                        err.span_note(
+                        err.subdiagnostic(CaptureCausedBy::OperatorCall { span:
                             // Check whether the source is accessible
                             if self.infcx.tcx.sess.source_map().is_span_accessible(self_arg.span) {
                                 self_arg.span
                             } else {
                                 fn_call_span
-                            },
-                            "calling this operator moves the left-hand side",
-                        );
+                            }});
                     }
                 }
                 CallKind::Normal { self_arg, desugaring, is_option_or_result } => {
@@ -1052,13 +1035,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             );
                         }
 
-                        err.span_label(
-                            fn_call_span,
-                            &format!(
-                                "{} {}moved due to this implicit call to `.into_iter()`{}",
-                                place_name, partially_str, loop_message
-                            ),
-                        );
+                        err.subdiagnostic(CaptureCausedBy::ImplicitCall {
+                            place_name: &place_name,
+                            partially_str,
+                            loop_message,
+                            span: fn_call_span,
+                        });
                         // If the moved place was a `&mut` ref, then we can
                         // suggest to reborrow it where it was moved, so it
                         // will still be valid by the time we get to the usage.
@@ -1081,27 +1063,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                         }
                     } else {
-                        err.span_label(
-                            fn_call_span,
-                            &format!(
-                                "{} {}moved due to this method call{}",
-                                place_name, partially_str, loop_message
-                            ),
-                        );
+                        err.subdiagnostic(CaptureCausedBy::MethodCall {
+                            place_name: &place_name,
+                            partially_str,
+                            loop_message,
+                            span: fn_call_span,
+                        });
                     }
                     // Avoid pointing to the same function in multiple different
                     // error messages.
                     if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span) {
-                        err.span_note(
-                            self_arg.span,
-                            &format!("this function takes ownership of the receiver `self`, which moves {}", place_name)
-                        );
+                        err.subdiagnostic(CaptureCausedBy::FnTakeSelf {
+                            place_name: &place_name,
+                            span: self_arg.span,
+                        });
                     }
                     if is_option_or_result && maybe_reinitialized_locations_is_empty {
-                        err.span_label(
-                            var_span,
-                            "help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents",
-                        );
+                        err.subdiagnostic(CaptureCausedBy::ConsiderManualBorrow { span: var_span });
                     }
                 }
                 // Other desugarings takes &self, which cannot cause a move
@@ -1109,10 +1087,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         } else {
             if move_span != span || !loop_message.is_empty() {
-                err.span_label(
-                    move_span,
-                    format!("value {}moved{} here{}", partially_str, move_msg, loop_message),
-                );
+                err.subdiagnostic(CaptureCausedBy::ValueHere {
+                    move_msg,
+                    partially_str,
+                    loop_message,
+                    span: move_span,
+                });
             }
             // If the move error occurs due to a loop, don't show
             // another message for the same span

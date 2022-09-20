@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 //! This pass type-checks the MIR to ensure it is not broken.
 
 use std::rc::Rc;
