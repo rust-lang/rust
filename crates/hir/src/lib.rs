@@ -73,7 +73,7 @@ use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
 use stdx::{impl_from, never};
 use syntax::{
-    ast::{self, HasAttrs as _, HasDocComments, HasName},
+    ast::{self, Expr, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNodePtr, TextRange, T,
 };
 
@@ -952,11 +952,21 @@ impl Enum {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
     }
+
+    pub fn is_data_carrying(self, db: &dyn HirDatabase) -> bool {
+        self.variants(db).iter().any(|v| !matches!(v.kind(db), StructKind::Unit))
+    }
 }
 
 impl HasVisibility for Enum {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         db.enum_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
+impl From<&Variant> for DefWithBodyId {
+    fn from(&v: &Variant) -> Self {
+        DefWithBodyId::VariantId(v.into())
     }
 }
 
@@ -993,6 +1003,14 @@ impl Variant {
 
     pub(crate) fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
         db.enum_data(self.parent.id).variants[self.id].variant_data.clone()
+    }
+
+    pub fn value(self, db: &dyn HirDatabase) -> Option<Expr> {
+        self.source(db)?.value.expr()
+    }
+
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<ComputedExpr, ConstEvalError> {
+        db.const_eval_variant(self.into())
     }
 }
 
@@ -1129,6 +1147,7 @@ pub enum DefWithBody {
     Function(Function),
     Static(Static),
     Const(Const),
+    Variant(Variant),
 }
 impl_from!(Function, Const, Static for DefWithBody);
 
@@ -1138,6 +1157,7 @@ impl DefWithBody {
             DefWithBody::Const(c) => c.module(db),
             DefWithBody::Function(f) => f.module(db),
             DefWithBody::Static(s) => s.module(db),
+            DefWithBody::Variant(v) => v.module(db),
         }
     }
 
@@ -1146,6 +1166,7 @@ impl DefWithBody {
             DefWithBody::Function(f) => Some(f.name(db)),
             DefWithBody::Static(s) => Some(s.name(db)),
             DefWithBody::Const(c) => c.name(db),
+            DefWithBody::Variant(v) => Some(v.name(db)),
         }
     }
 
@@ -1155,6 +1176,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.ret_type(db),
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
+            DefWithBody::Variant(it) => it.parent.ty(db),
         }
     }
 
@@ -1163,6 +1185,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.id.into(),
             DefWithBody::Static(it) => it.id.into(),
             DefWithBody::Const(it) => it.id.into(),
+            DefWithBody::Variant(it) => it.into(),
         }
     }
 
@@ -1379,6 +1402,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.into(),
             DefWithBody::Static(it) => it.into(),
             DefWithBody::Const(it) => it.into(),
+            DefWithBody::Variant(it) => it.into(),
         };
         for diag in hir_ty::diagnostics::incorrect_case(db, krate, def.into()) {
             acc.push(diag.into())

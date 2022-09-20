@@ -27,7 +27,7 @@ use crate::{
     macro_id_to_def_id,
     nameres::DefMap,
     path::{ModPath, Path},
-    src::HasSource,
+    src::{HasChildSource, HasSource},
     AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, MacroId, ModuleId,
     UnresolvedMacro,
 };
@@ -323,6 +323,12 @@ impl Body {
                 let s = s.lookup(db);
                 let src = s.source(db);
                 (src.file_id, s.module(db), src.value.body())
+            }
+            DefWithBodyId::VariantId(v) => {
+                let e = v.parent.lookup(db);
+                let src = v.parent.child_source(db);
+                let variant = &src.value[v.local_id];
+                (src.file_id, e.container, variant.expr())
             }
         };
         let expander = Expander::new(db, file_id, module);

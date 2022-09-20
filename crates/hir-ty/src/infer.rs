@@ -67,6 +67,10 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
         DefWithBodyId::ConstId(c) => ctx.collect_const(&db.const_data(c)),
         DefWithBodyId::FunctionId(f) => ctx.collect_fn(f),
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_data(s)),
+        DefWithBodyId::VariantId(v) => {
+            // FIXME: This should return the `repr(...)` type of the enum
+            ctx.return_ty = TyBuilder::def_ty(db, v.parent.into()).fill_with_unknown().build()
+        }
     }
 
     ctx.infer_body();
