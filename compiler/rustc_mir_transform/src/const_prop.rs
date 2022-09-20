@@ -471,7 +471,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        self.ecx.mir_const_to_op(&c.literal, None).ok()
+        self.ecx.const_to_op(&c.literal, None).ok()
     }
 
     /// Returns the value, if any, of evaluating `place`.
