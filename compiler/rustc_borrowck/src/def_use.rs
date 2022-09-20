@@ -7,6 +7,10 @@ pub enum DefUse {
     Def,
     Use,
     Drop,
+    /// This is only created for a `DropAndReplace` terminator.
+    /// It needs special handling because represents a `Drop` immediately followed
+    /// by a `Def`, at the same MIR location.
+    DropAndDef,
 }
 
 pub fn categorize(context: PlaceContext) -> Option<DefUse> {
@@ -30,6 +34,8 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         // values that come before them.
         PlaceContext::NonUse(NonUseContext::StorageLive) |
         PlaceContext::NonUse(NonUseContext::StorageDead) => Some(DefUse::Def),
+
+        PlaceContext::MutatingUse(MutatingUseContext::DropAndReplace) => Some(DefUse::DropAndDef),
 
         ///////////////////////////////////////////////////////////////////////////
         // REGULAR USES

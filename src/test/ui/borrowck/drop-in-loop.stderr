@@ -1,0 +1,14 @@
+error[E0506]: cannot assign to `base` because it is borrowed
+  --> $DIR/drop-in-loop.rs:18:9
+   |
+LL |     let mut wrapper = WrapperWithDrop(&mut base);
+   |                                       --------- borrow of `base` occurs here
+LL |     loop {
+LL |         base = false;
+   |         ^^^^^^^^^^^^ assignment to borrowed `base` occurs here
+LL |         wrapper = WrapperWithDrop(&mut base);
+   |         ------- borrow might be used here, when `wrapper` is dropped and runs the `Drop` code for type `WrapperWithDrop`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0506`.

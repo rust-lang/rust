@@ -932,6 +932,7 @@ impl Visitor<'_> for CanConstProp {
             // whether they'd be fine right now.
             MutatingUse(MutatingUseContext::Yield)
             | MutatingUse(MutatingUseContext::Drop)
+            | MutatingUse(MutatingUseContext::DropAndReplace)
             | MutatingUse(MutatingUseContext::Retag)
             // These can't ever be propagated under any scheme, as we can't reason about indirect
             // mutation.

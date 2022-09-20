@@ -206,6 +206,13 @@ impl DefUse {
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => {
                 unreachable!("A projection could be a def or a use and must be handled separately")
             }
+
+            PlaceContext::MutatingUse(MutatingUseContext::DropAndReplace) => {
+                unreachable!(
+                    "DropAndReplace terminators should have been removed by drop elaboration: place {:?}",
+                    place
+                )
+            }
         }
     }
 }

@@ -211,6 +211,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
+                | MutatingUseContext::DropAndReplace
                 | MutatingUseContext::Deinit
                 | MutatingUseContext::SetDiscriminant
                 | MutatingUseContext::AsmOutput

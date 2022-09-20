@@ -121,6 +121,10 @@ impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
                 Some(DefUse::Def) => Some(DefUseResult::Def),
                 Some(DefUse::Use) => Some(DefUseResult::UseLive { local }),
                 Some(DefUse::Drop) => Some(DefUseResult::UseDrop { local }),
+                // This makes some diagnostics nicer - we want to indicate
+                // that a variable is being kept alive because it can be accessed
+                // by this drop.
+                Some(DefUse::DropAndDef) => Some(DefUseResult::UseDrop { local }),
                 None => None,
             };
         }

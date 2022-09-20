@@ -504,7 +504,7 @@ macro_rules! make_mir_visitor {
                     } => {
                         self.visit_place(
                             place,
-                            PlaceContext::MutatingUse(MutatingUseContext::Drop),
+                            PlaceContext::MutatingUse(MutatingUseContext::DropAndReplace),
                             location
                         );
                         self.visit_operand(value, location);
@@ -1267,6 +1267,8 @@ pub enum MutatingUseContext {
     Yield,
     /// Being dropped.
     Drop,
+    /// A `DropAndReplace` terminator
+    DropAndReplace,
     /// Mutable borrow.
     Borrow,
     /// AddressOf for *mut pointer.

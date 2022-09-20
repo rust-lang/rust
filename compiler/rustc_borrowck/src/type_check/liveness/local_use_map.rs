@@ -24,6 +24,9 @@ pub(crate) struct LocalUseMap {
     /// defined in `x = y` but not `y`; that first def is the head of
     /// a linked list that lets you enumerate all places the variable
     /// is assigned.
+    ///
+    /// Note that a Local can have *both* a definition and a drop
+    /// at the same point - this occurs with `DropAndReplace` terminators.
     first_def_at: IndexVec<Local, Option<AppearanceIndex>>,
 
     /// Head of a linked list of **uses** of each variable -- use in
@@ -35,6 +38,9 @@ pub(crate) struct LocalUseMap {
     /// Head of a linked list of **drops** of each variable -- these
     /// are a special category of uses corresponding to the drop that
     /// we add for each local variable.
+    ///
+    /// Note that a Local can have *both* a definition and a drop
+    /// at the same point - this occurs with `DropAndReplace` terminators.
     first_drop_at: IndexVec<Local, Option<AppearanceIndex>>,
 
     appearances: IndexVec<AppearanceIndex, Appearance>,
@@ -163,7 +169,19 @@ impl Visitor<'_> for LocalUseMapBuild<'_> {
                 Some(DefUse::Def) => self.insert_def(local, location),
                 Some(DefUse::Use) => self.insert_use(local, location),
                 Some(DefUse::Drop) => self.insert_drop(local, location),
-                _ => (),
+                // This counts as *both* a drop and a def.
+                //
+                // Treating it as a *drop* ensures that we consider the local to be
+                // "drop live" here, which keeps alive any data that the `Drop` impl
+                // could access.
+                //
+                // Treating it as a *def* ensures that we don't create an unnecessarily large "use live"
+                // set - we'll stop tracing backwards from a use when we hit this def.
+                Some(DefUse::DropAndDef) => {
+                    self.insert_drop(local, location);
+                    self.insert_def(local, location);
+                }
+                None => {}
             }
         }
     }
