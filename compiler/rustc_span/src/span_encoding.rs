@@ -149,6 +149,10 @@ impl Span {
             with_span_interner(|interner| interner.spans[index as usize].ctxt)
         }
     }
+
+    pub fn get_base_or_index(self) -> u32 {
+        self.base_or_index
+    }
 }
 
 #[derive(Default)]

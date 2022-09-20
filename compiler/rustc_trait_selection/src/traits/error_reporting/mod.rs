@@ -1661,6 +1661,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 err,
                 true,
                 false,
+                false,
             );
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit();

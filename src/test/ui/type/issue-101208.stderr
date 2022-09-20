@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-101208.rs:6:12
+   |
+LL |     if let E::One(var1, var2) = var {
+   |            ^^^^^^^^^^^^^^^^^^   --- this expression has type `fn(i32, i32) -> E {E::One}`
+   |            |
+   |            expected fn item, found enum `E`
+   |
+   = note: expected fn item `fn(i32, i32) -> E {E::One}`
+                 found enum `E`
+help: use parentheses to instantiate this tuple variant
+   |
+LL |     if let E::One(var1, var2) = var(_,_) {
+   |                                    +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

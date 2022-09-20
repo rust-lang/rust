@@ -64,8 +64,12 @@ use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, Mul
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::walk_block;
+use rustc_hir::intravisit::walk_expr;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::Node;
+use rustc_hir::HirId;
+use rustc_hir::{Expr, Node};
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
@@ -564,12 +568,56 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    fn note_enum_suggestion(
+        &self,
+        err: &mut Diagnostic,
+        span: Span,
+        body_id: HirId,
+        arg_size: usize,
+    ) {
+        let body_node = self.tcx.hir().get(body_id);
+        let hir::Node::Expr(&hir::Expr{kind:hir::ExprKind::Block(body_expr, ..), ..}) = body_node else {return ()};
+        struct FindExprVisitor<'tcx> {
+            target_id: u32,
+            size: usize,
+            terr: &'tcx mut Diagnostic,
+        }
+        impl<'tcx> Visitor<'tcx> for FindExprVisitor<'tcx> {
+            fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+                if expr.span.get_base_or_index() == self.target_id {
+                    let mut suggest_vec = vec![];
+                    let mut i = 0;
+                    suggest_vec.push((expr.span.shrink_to_hi(), "(".to_string()));
+                    while i < self.size {
+                        suggest_vec.push((expr.span.shrink_to_hi(), "_".to_string()));
+                        if i != self.size - 1 {
+                            suggest_vec.push((expr.span.shrink_to_hi(), ",".to_string()));
+                        }
+                        i = i + 1;
+                    }
+                    suggest_vec.push((expr.span.shrink_to_hi(), ")".to_string()));
+
+                    self.terr.multipart_suggestion(
+                        "use parentheses to instantiate this tuple variant",
+                        suggest_vec,
+                        Applicability::MachineApplicable,
+                    );
+                }
+                walk_expr(self, expr);
+            }
+        }
+        let mut visitor =
+            FindExprVisitor { target_id: span.get_base_or_index(), size: arg_size, terr: err };
+        walk_block(&mut visitor, body_expr);
+    }
+
     fn note_error_origin(
         &self,
         err: &mut Diagnostic,
         cause: &ObligationCause<'tcx>,
         exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
         terr: TypeError<'tcx>,
+        detect_enum_noparm: bool,
     ) {
         match *cause.code() {
             ObligationCauseCode::Pattern { origin_expr: true, span: Some(span), root_ty } => {
@@ -584,6 +632,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         err.span_label(span, format!("this is an iterator with items of type `{}`", substs.type_at(0)));
                     } else {
                         err.span_label(span, format!("this expression has type `{}`", ty));
+                        if detect_enum_noparm &&
+                        let ty::FnDef(def_id, substs) = ty.kind(){
+                            let sig = self.tcx.bound_fn_sig(*def_id).subst(self.tcx, substs);
+                            let sig = self.tcx.erase_late_bound_regions(sig);
+                            self.note_enum_suggestion(err, span, cause.body_id, sig.inputs().len());
+                        }
                     }
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
@@ -1432,6 +1486,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         terr: TypeError<'tcx>,
         swap_secondary_and_primary: bool,
         prefer_label: bool,
+        detect_enum_noparm: bool,
     ) {
         let span = cause.span();
 
@@ -1882,7 +1937,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // It reads better to have the error origin as the final
         // thing.
-        self.note_error_origin(diag, cause, exp_found, terr);
+        self.note_error_origin(diag, cause, exp_found, terr, detect_enum_noparm);
 
         debug!(?diag);
     }
@@ -2225,6 +2280,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let span = trace.cause.span();
         let failure_code = trace.cause.as_failure_code(terr);
+        let mut detect_enum_noparm = false;
         let mut diag = match failure_code {
             FailureCode::Error0038(did) => {
                 let violations = self.tcx.object_safety_violations(did);
@@ -2279,6 +2335,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 }
                             }
                         }
+                        (ty::FnDef(_, _), ty::Adt(adt_id, _)) if adt_id.is_enum()  => {
+                            detect_enum_noparm = true;
+                        }
                         _ => {}
                     }
                 }
@@ -2299,7 +2358,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 struct_span_err!(self.tcx.sess, span, E0644, "{}", failure_str)
             }
         };
-        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false, false);
+        self.note_type_err(
+            &mut diag,
+            &trace.cause,
+            None,
+            Some(trace.values),
+            terr,
+            false,
+            false,
+            detect_enum_noparm,
+        );
         diag
     }
 
