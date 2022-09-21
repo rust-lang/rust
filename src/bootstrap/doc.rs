@@ -11,7 +11,6 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
@@ -401,18 +400,6 @@ impl Step for Standalone {
     }
 }
 
-fn get_doc_max_version(builder: &Builder<'_>) -> String {
-    let reduce_by = match builder.config.channel.as_str() {
-        "dev" => 3,
-        "nightly" => 2,
-        "beta" => 1,
-        _ => 0,
-    };
-    let parts = builder.version.split(".").collect::<Vec<_>>();
-    let medium = t!(u32::from_str(parts[1]));
-    format!("{}.{}.{}", parts[0], medium - reduce_by, parts[2..].join("."))
-}
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
     pub stage: u32,
@@ -443,12 +430,9 @@ impl Step for Std {
         t!(fs::create_dir_all(&out));
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
 
-        let version = get_doc_max_version(&builder);
-
-        let content = t!(fs::read_to_string(builder.src.join("src/doc/version-switcher.js")));
-        t!(fs::write(
-            out.join("version-switcher.js"),
-            content.replace("/* VERSION TO BE REPLACED */", &version),
+        t!(fs::copy(
+            builder.src.join("src/doc/version-switcher.js"),
+            out.join("version-switcher.js")
         ));
 
         let index_page = builder.src.join("src/doc/index.md").into_os_string();

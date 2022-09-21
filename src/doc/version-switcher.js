@@ -1,4 +1,21 @@
-const CURRENT_VERSION = "/* VERSION TO BE REPLACED */";
+(function() {
+
+let CURRENT_VERSION = -1;
+
+function get_current_version() {
+    if (CURRENT_VERSION !== -1) {
+        return CURRENT_VERSION;
+    }
+    const now = Date.now();
+    // Month is 0-indexed.
+    // First release of Rust, 15 may 2015.
+    const first_release = new Date(2015, 4, 15);
+    const diff_time = Math.abs(now - first_release);
+    const nb_days = Math.ceil(diff_time / (1000 * 60 * 60 * 24));
+    const nb_weeks = nb_days / 7;
+    CURRENT_VERSION = Math.floor(nb_weeks / 6);
+    return CURRENT_VERSION;
+}
 
 function checkIfIsOldVersion() {
     if (["http:", "https:"].indexOf(window.location.protocol) === -1) {
@@ -159,12 +176,9 @@ function showSwitcher(isOldVersion) {
     version_picker.appendChild(createOption("beta", current_doc_version === "beta"));
     version_picker.appendChild(createOption("nightly", current_doc_version === "nightly"));
 
-    const version_parts = CURRENT_VERSION.split(".");
-    for (let major = parseInt(version_parts[0]); major >= 1; --major) {
-        for (let medium = parseInt(version_parts[1]); medium >= 0; --medium) {
-            const version = `${major}.${medium}.0`;
-            version_picker.appendChild(createOption(version, version === current_doc_version));
-        }
+    for (let medium = get_current_version(); medium >= 0; --medium) {
+        const version = `1.${medium}.0`;
+        version_picker.appendChild(createOption(version, version === current_doc_version));
     }
 
     version_picker.style.color = "#000";
@@ -208,3 +222,5 @@ function showSwitcher(isOldVersion) {
 }
 
 showSwitcher(checkIfIsOldVersion());
+
+}());
