@@ -45,9 +45,8 @@ struct TokenTreesReader<'a> {
 impl<'a> TokenTreesReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
     fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
+        self.token = self.string_reader.next_token().0;
         let mut buf = TokenStreamBuilder::default();
-
-        self.bump();
         loop {
             match self.token.kind {
                 token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
@@ -116,7 +115,7 @@ impl<'a> TokenTreesReader<'a> {
 
         // Parse the open delimiter.
         self.open_braces.push((delim, self.token.span));
-        self.bump();
+        self.token = self.string_reader.next_token().0;
 
         // Parse the token trees within the delimiters.
         // We stop at any delimiter so we can try to recover if the user
@@ -155,7 +154,7 @@ impl<'a> TokenTreesReader<'a> {
                     self.matching_delim_spans.push((open_brace, open_brace_span, close_brace_span));
                 }
                 // Parse the closing delimiter.
-                self.bump();
+                self.token = self.string_reader.next_token().0;
             }
             // Incorrect delimiter.
             token::CloseDelim(other) => {
@@ -202,7 +201,7 @@ impl<'a> TokenTreesReader<'a> {
                 //     bar(baz(
                 // }  // Incorrect delimiter but matches the earlier `{`
                 if !self.open_braces.iter().any(|&(b, _)| b == other) {
-                    self.bump();
+                    self.token = self.string_reader.next_token().0;
                 }
             }
             token::Eof => {
@@ -248,22 +247,15 @@ impl<'a> TokenTreesReader<'a> {
     fn parse_token_tree_other(&mut self) -> TokenTree {
         // `spacing` for the returned token is determined by the next token:
         // its kind and its `preceded_by_whitespace` status.
-        let tok = self.token.take();
-        let is_next_tok_preceded_by_whitespace = self.bump();
-        let spacing = if is_next_tok_preceded_by_whitespace || !self.token.is_op() {
+        let this_tok = self.token.take();
+        let (next_tok, is_next_tok_preceded_by_whitespace) = self.string_reader.next_token();
+        let this_spacing = if is_next_tok_preceded_by_whitespace || !next_tok.is_op() {
             Spacing::Alone
         } else {
             Spacing::Joint
         };
-        TokenTree::Token(tok, spacing)
-    }
-
-    // Set `self.token` to the next token. Returns a bool indicating if that
-    // token was preceded by whitespace.
-    fn bump(&mut self) -> bool {
-        let (token, spacing) = self.string_reader.next_token();
-        self.token = token;
-        spacing
+        self.token = next_tok;
+        TokenTree::Token(this_tok, this_spacing)
     }
 }
 
