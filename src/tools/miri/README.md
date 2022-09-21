@@ -324,10 +324,6 @@ environment variable. We first document the most relevant and most commonly used
   ensure alignment.  (The standard library `align_to` method works fine in both modes; under
   symbolic alignment it only fills the middle slice when the allocation guarantees sufficient
   alignment.)
-* `-Zmiri-tag-gc=<blocks>` configures how often the pointer tag garbage collector runs. The default
-  is to search for and remove unreachable tags once every `10,000` basic blocks. Setting this to
-  `0` disables the garbage collector, which causes some programs to have explosive memory usage
-  and/or super-linear runtime.
 
 The remaining flags are for advanced use only, and more likely to change or be removed.
 Some of these are **unsound**, which means they can lead
@@ -378,6 +374,10 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-retag-fields` changes Stacked Borrows retagging to recurse into fields.
   This means that references in fields of structs/enums/tuples/arrays/... are retagged,
   and in particular, they are protected when passed as function arguments.
+* `-Zmiri-tag-gc=<blocks>` configures how often the pointer tag garbage collector runs. The default
+  is to search for and remove unreachable tags once every `10000` basic blocks. Setting this to
+  `0` disables the garbage collector, which causes some programs to have explosive memory usage
+  and/or super-linear runtime.
 * `-Zmiri-track-alloc-id=<id1>,<id2>,...` shows a backtrace when the given allocations are
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs. Specifying this argument multiple times does not overwrite the previous
