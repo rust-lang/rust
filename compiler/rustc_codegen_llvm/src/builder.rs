@@ -3,6 +3,7 @@ use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
+use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
