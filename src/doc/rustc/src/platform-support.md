@@ -226,6 +226,7 @@ target | std | host | notes
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | ARM BE8 the default ARM big-endian architecture since [ARMv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
 `armv4t-none-eabi` | * |  | ARMv4T A32
 `armv4t-unknown-linux-gnueabi` | ? |  |
+[`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | ARMv5TE A32
 `armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
 `armv6-unknown-netbsd-eabihf` | ? |  |
@@ -292,6 +293,7 @@ target | std | host | notes
 `sparc64-unknown-netbsd` | ✓ | ✓ | NetBSD/sparc64
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
 `thumbv4t-none-eabi` | * |  | ARMv4T T32
+[`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | ARMv5TE T32
 `thumbv7a-pc-windows-msvc` | ? |  |
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7a Linux with NEON, MUSL
