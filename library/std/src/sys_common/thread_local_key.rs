@@ -53,7 +53,6 @@ mod tests;
 
 use crate::sync::atomic::{self, AtomicUsize, Ordering};
 use crate::sys::thread_local_key as imp;
-use crate::sys_common::mutex::StaticMutex;
 
 /// A type for TLS keys that are statically allocated.
 ///
@@ -151,44 +150,9 @@ impl StaticKey {
     }
 
     unsafe fn lazy_init(&self) -> usize {
-        // Currently the Windows implementation of TLS is pretty hairy, and
-        // it greatly simplifies creation if we just synchronize everything.
-        //
-        // Additionally a 0-index of a tls key hasn't been seen on windows, so
-        // we just simplify the whole branch.
-        if imp::requires_synchronized_create() {
-            // We never call `INIT_LOCK.init()`, so it is UB to attempt to
-            // acquire this mutex reentrantly!
-            static INIT_LOCK: StaticMutex = StaticMutex::new();
-            let _guard = INIT_LOCK.lock();
-            let mut key = self.key.load(Ordering::SeqCst);
-            if key == 0 {
-                key = imp::create(self.dtor) as usize;
-                self.key.store(key, Ordering::SeqCst);
-            }
-            rtassert!(key != 0);
-            return key;
-        }
-
-        // POSIX allows the key created here to be 0, but the compare_exchange
-        // below relies on using 0 as a sentinel value to check who won the
-        // race to set the shared TLS key. As far as I know, there is no
-        // guaranteed value that cannot be returned as a posix_key_create key,
-        // so there is no value we can initialize the inner key with to
-        // prove that it has not yet been set. As such, we'll continue using a
-        // value of 0, but with some gyrations to make sure we have a non-0
-        // value returned from the creation routine.
-        // FIXME: this is clearly a hack, and should be cleaned up.
-        let key1 = imp::create(self.dtor);
-        let key = if key1 != 0 {
-            key1
-        } else {
-            let key2 = imp::create(self.dtor);
-            imp::destroy(key1);
-            key2
-        };
-        rtassert!(key != 0);
-        match self.key.compare_exchange(0, key as usize, Ordering::SeqCst, Ordering::SeqCst) {
+        let key = imp::create(self.dtor);
+        debug_assert!(key != 0);
+        match self.key.compare_exchange(0, key as usize, Ordering::AcqRel, Ordering::Acquire) {
             // The CAS succeeded, so we've created the actual key
             Ok(_) => key as usize,
             // If someone beat us to the punch, use their key instead
@@ -232,8 +196,6 @@ impl Key {
 
 impl Drop for Key {
     fn drop(&mut self) {
-        // Right now Windows doesn't support TLS key destruction, but this also
-        // isn't used anywhere other than tests, so just leak the TLS key.
-        // unsafe { imp::destroy(self.key) }
+        unsafe { imp::destroy(self.key) }
     }
 }

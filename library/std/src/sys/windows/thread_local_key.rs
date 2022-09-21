@@ -1,7 +1,9 @@
-use crate::mem::ManuallyDrop;
+use crate::mem;
 use crate::ptr;
-use crate::sync::atomic::AtomicPtr;
-use crate::sync::atomic::Ordering::SeqCst;
+use crate::sync::atomic::{
+    compiler_fence, AtomicPtr, AtomicUsize,
+    Ordering::{Relaxed, Release},
+};
 use crate::sys::c;
 
 pub type Key = c::DWORD;
@@ -19,106 +21,93 @@ pub type Dtor = unsafe extern "C" fn(*mut u8);
 // somewhere to run arbitrary code on thread termination. With this in place
 // we'll be able to run anything we like, including all TLS destructors!
 //
-// To accomplish this feat, we perform a number of threads, all contained
-// within this module:
-//
-// * All TLS destructors are tracked by *us*, not the windows runtime. This
-//   means that we have a global list of destructors for each TLS key that
-//   we know about.
-// * When a thread exits, we run over the entire list and run dtors for all
-//   non-null keys. This attempts to match Unix semantics in this regard.
-//
-// This ends up having the overhead of using a global list, having some
-// locks here and there, and in general just adding some more code bloat. We
-// attempt to optimize runtime by forgetting keys that don't have
-// destructors, but this only gets us so far.
+// Since the maximum number of keys is 1088 [3] and key values are always lower
+// than 1088 [4], we can just use a static array to store the destructor functions
+// and use the TLS key as index. This avoids all synchronization problems
+// encountered with linked lists or other kinds of storage.
 //
 // For more details and nitty-gritty, see the code sections below!
 //
 // [1]: https://www.codeproject.com/Articles/8113/Thread-Local-Storage-The-C-Way
-// [2]: https://github.com/ChromiumWebApps/chromium/blob/master/base
-//                        /threading/thread_local_storage_win.cc#L42
+// [2]: https://github.com/ChromiumWebApps/chromium/blob/master/base/threading/thread_local_storage_win.cc#L42
+// [3]: https://learn.microsoft.com/en-us/windows/win32/procthread/thread-local-storage
+// [4]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-tlssetvalue
 
-// -------------------------------------------------------------------------
-// Native bindings
-//
-// This section is just raw bindings to the native functions that Windows
-// provides, There's a few extra calls to deal with destructors.
+static DTORS: [AtomicPtr<()>; 1088] = [const { AtomicPtr::new(ptr::null_mut()) }; 1088];
+// The highest key that has a destructor associated with it. Used as an
+// optimization so we don't need to iterate over the whole array when there
+// are only a few keys.
+static HIGHEST: AtomicUsize = AtomicUsize::new(0);
 
 #[inline]
 pub unsafe fn create(dtor: Option<Dtor>) -> Key {
     let key = c::TlsAlloc();
     assert!(key != c::TLS_OUT_OF_INDEXES);
-    if let Some(f) = dtor {
-        register_dtor(key, f);
+
+    if let Some(dtor) = dtor {
+        DTORS[key as usize].store(mem::transmute::<Dtor, *mut ()>(dtor), Relaxed);
+        HIGHEST.fetch_max(key as usize, Relaxed);
+        // If the destructors are run in a signal handler running after this
+        // code, we need to guarantee that the changes have been performed
+        // before the handler is triggered.
+        compiler_fence(Release);
     }
-    key
+
+    // Ensure that the key is always non-null. Since key values are below
+    // 1088, this cannot overflow.
+    key + 1
 }
 
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
-    let r = c::TlsSetValue(key, value as c::LPVOID);
+    let r = c::TlsSetValue(key - 1, value as c::LPVOID);
     debug_assert!(r != 0);
 }
 
 #[inline]
 pub unsafe fn get(key: Key) -> *mut u8 {
-    c::TlsGetValue(key) as *mut u8
+    c::TlsGetValue(key - 1) as *mut u8
 }
 
 #[inline]
-pub unsafe fn destroy(_key: Key) {
-    rtabort!("can't destroy tls keys on windows")
+pub unsafe fn destroy(key: Key) {
+    DTORS[(key - 1) as usize].store(ptr::null_mut(), Relaxed);
+    let r = c::TlsFree(key - 1);
+    // Use release ordering for the same reason as above.
+    compiler_fence(Release);
+    debug_assert!(r != 0);
 }
 
-#[inline]
-pub fn requires_synchronized_create() -> bool {
-    true
-}
+#[allow(dead_code)] // actually called below
+unsafe fn run_dtors() {
+    let mut iterations = 5;
+    while iterations != 0 {
+        let mut any_run = false;
+        // All keys have either been created by the current thread or must
+        // have been propagated through other means of synchronization, so
+        // we can just use relaxed ordering here and still observe all
+        // changes relevant to us.
+        let highest = HIGHEST.load(Relaxed);
+        for (index, dtor) in DTORS[..highest].iter().enumerate() {
+            let dtor = mem::transmute::<*mut (), Option<Dtor>>(dtor.load(Relaxed));
+            if let Some(dtor) = dtor {
+                let ptr = c::TlsGetValue(index as Key) as *mut u8;
+                if !ptr.is_null() {
+                    let r = c::TlsSetValue(index as Key, ptr::null_mut());
+                    debug_assert!(r != 0);
 
-// -------------------------------------------------------------------------
-// Dtor registration
-//
-// Windows has no native support for running destructors so we manage our own
-// list of destructors to keep track of how to destroy keys. We then install a
-// callback later to get invoked whenever a thread exits, running all
-// appropriate destructors.
-//
-// Currently unregistration from this list is not supported. A destructor can be
-// registered but cannot be unregistered. There's various simplifying reasons
-// for doing this, the big ones being:
-//
-// 1. Currently we don't even support deallocating TLS keys, so normal operation
-//    doesn't need to deallocate a destructor.
-// 2. There is no point in time where we know we can unregister a destructor
-//    because it could always be getting run by some remote thread.
-//
-// Typically processes have a statically known set of TLS keys which is pretty
-// small, and we'd want to keep this memory alive for the whole process anyway
-// really.
-//
-// Perhaps one day we can fold the `Box` here into a static allocation,
-// expanding the `StaticKey` structure to contain not only a slot for the TLS
-// key but also a slot for the destructor queue on windows. An optimization for
-// another day!
+                    (dtor)(ptr);
+                    any_run = true;
+                }
+            }
+        }
 
-static DTORS: AtomicPtr<Node> = AtomicPtr::new(ptr::null_mut());
-
-struct Node {
-    dtor: Dtor,
-    key: Key,
-    next: *mut Node,
-}
-
-unsafe fn register_dtor(key: Key, dtor: Dtor) {
-    let mut node = ManuallyDrop::new(Box::new(Node { key, dtor, next: ptr::null_mut() }));
-
-    let mut head = DTORS.load(SeqCst);
-    loop {
-        node.next = head;
-        match DTORS.compare_exchange(head, &mut **node, SeqCst, SeqCst) {
-            Ok(_) => return, // nothing to drop, we successfully added the node to the list
-            Err(cur) => head = cur,
+        iterations -= 1;
+        // If no destructors where run, no new keys have been initialized,
+        // so we are done. FIXME: Maybe use TLS to store the number of active
+        // keys per thread.
+        if !any_run {
+            return;
         }
     }
 }
@@ -153,16 +142,6 @@ unsafe fn register_dtor(key: Key, dtor: Dtor) {
 // this gets invoked for, but we're currently only interested on when a
 // thread or a process "detaches" (exits). The process part happens for the
 // last thread and the thread part happens for any normal thread.
-//
-// # Ok, what's up with running all these destructors?
-//
-// This will likely need to be improved over time, but this function
-// attempts a "poor man's" destructor callback system. Once we've got a list
-// of what to run, we iterate over all keys, check their values, and then run
-// destructors if the values turn out to be non null (setting them to null just
-// beforehand). We do this a few times in a loop to basically match Unix
-// semantics. If we don't reach a fixed point after a short while then we just
-// inevitably leak something most likely.
 //
 // # The article mentions weird stuff about "/INCLUDE"?
 //
@@ -212,27 +191,4 @@ unsafe extern "system" fn on_tls_callback(h: c::LPVOID, dwReason: c::DWORD, pv: 
     }
     #[cfg(not(target_env = "msvc"))]
     unsafe fn reference_tls_used() {}
-}
-
-#[allow(dead_code)] // actually called above
-unsafe fn run_dtors() {
-    let mut any_run = true;
-    for _ in 0..5 {
-        if !any_run {
-            break;
-        }
-        any_run = false;
-        let mut cur = DTORS.load(SeqCst);
-        while !cur.is_null() {
-            let ptr = c::TlsGetValue((*cur).key);
-
-            if !ptr.is_null() {
-                c::TlsSetValue((*cur).key, ptr::null_mut());
-                ((*cur).dtor)(ptr as *mut _);
-                any_run = true;
-            }
-
-            cur = (*cur).next;
-        }
-    }
 }

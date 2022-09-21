@@ -251,6 +251,7 @@
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
 #![feature(exhaustive_patterns)]
+#![feature(inline_const)]
 #![feature(intra_doc_pointers)]
 #![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(lang_items)]
