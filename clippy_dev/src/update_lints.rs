@@ -45,9 +45,8 @@ fn generate_lint_files(
     renamed_lints: &[RenamedLint],
 ) {
     let internal_lints = Lint::internal_lints(lints);
-    let usable_lints = Lint::usable_lints(lints);
-    let mut sorted_usable_lints = usable_lints.clone();
-    sorted_usable_lints.sort_by_key(|lint| lint.name.clone());
+    let mut usable_lints = Lint::usable_lints(lints);
+    usable_lints.sort_by_key(|lint| lint.name.clone());
 
     replace_region_in_file(
         update_mode,
