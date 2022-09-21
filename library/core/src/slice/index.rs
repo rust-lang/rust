@@ -139,6 +139,8 @@ mod private_slice_index {
     impl Sealed for ops::RangeToInclusive<usize> {}
     #[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
     impl Sealed for (ops::Bound<usize>, ops::Bound<usize>) {}
+
+    impl Sealed for ops::IndexRange {}
 }
 
 /// A helper trait used for indexing operations.
@@ -254,6 +256,79 @@ unsafe impl<T> const SliceIndex<[T]> for usize {
     fn index_mut(self, slice: &mut [T]) -> &mut T {
         // N.B., use intrinsic indexing
         &mut (*slice)[self]
+    }
+}
+
+/// Because `IndexRange` guarantees `start <= end`, fewer checks are needed here
+/// than there are for a general `Range<usize>` (which might be `100..3`).
+#[rustc_const_unstable(feature = "const_index_range_slice_index", issue = "none")]
+unsafe impl<T> const SliceIndex<[T]> for ops::IndexRange {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        if self.end() <= slice.len() {
+            // SAFETY: `self` is checked to be valid and in bounds above.
+            unsafe { Some(&*self.get_unchecked(slice)) }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        if self.end() <= slice.len() {
+            // SAFETY: `self` is checked to be valid and in bounds above.
+            unsafe { Some(&mut *self.get_unchecked_mut(slice)) }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        let end = self.end();
+        // SAFETY: the caller guarantees that `slice` is not dangling, so it
+        // cannot be longer than `isize::MAX`. They also guarantee that
+        // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
+        // so the call to `add` is safe.
+
+        unsafe {
+            assert_unsafe_precondition!([T](end: usize, slice: *const [T]) =>
+                end <= slice.len());
+            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start()), self.len())
+        }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        let end = self.end();
+        // SAFETY: see comments for `get_unchecked` above.
+        unsafe {
+            assert_unsafe_precondition!([T](end: usize, slice: *mut [T]) =>
+                end <= slice.len());
+            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start()), self.len())
+        }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        if self.end() <= slice.len() {
+            // SAFETY: `self` is checked to be valid and in bounds above.
+            unsafe { &*self.get_unchecked(slice) }
+        } else {
+            slice_end_index_len_fail(self.end(), slice.len())
+        }
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        if self.end() <= slice.len() {
+            // SAFETY: `self` is checked to be valid and in bounds above.
+            unsafe { &mut *self.get_unchecked_mut(slice) }
+        } else {
+            slice_end_index_len_fail(self.end(), slice.len())
+        }
     }
 }
 
