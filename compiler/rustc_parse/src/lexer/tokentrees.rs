@@ -4,7 +4,7 @@ use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::PResult;
+use rustc_errors::{PErr, PResult};
 use rustc_span::Span;
 
 impl<'a> StringReader<'a> {
@@ -48,220 +48,210 @@ impl<'a> TokenTreesReader<'a> {
         let mut buf = TokenStreamBuilder::default();
 
         self.bump();
-        while self.token != token::Eof {
-            buf.push(self.parse_token_tree()?);
+        loop {
+            match self.token.kind {
+                token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
+                token::CloseDelim(delim) => return Err(self.close_delim_err(delim)),
+                token::Eof => return Ok(buf.into_token_stream()),
+                _ => buf.push(self.parse_token_tree_other()),
+            }
         }
-
-        Ok(buf.into_token_stream())
     }
 
     // Parse a stream of tokens into a list of `TokenTree`s, up to a `CloseDelim`.
     fn parse_token_trees_until_close_delim(&mut self) -> TokenStream {
         let mut buf = TokenStreamBuilder::default();
         loop {
-            if let token::CloseDelim(..) = self.token.kind {
-                return buf.into_token_stream();
-            }
-
-            match self.parse_token_tree() {
-                Ok(tree) => buf.push(tree),
-                Err(mut e) => {
-                    e.emit();
+            match self.token.kind {
+                token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
+                token::CloseDelim(..) => return buf.into_token_stream(),
+                token::Eof => {
+                    let mut err = self.eof_err();
+                    err.emit();
                     return buf.into_token_stream();
                 }
+                _ => buf.push(self.parse_token_tree_other()),
             }
         }
     }
 
-    fn parse_token_tree(&mut self) -> PResult<'a, TokenTree> {
-        let sm = self.string_reader.sess.source_map();
+    fn eof_err(&mut self) -> PErr<'a> {
+        let msg = "this file contains an unclosed delimiter";
+        let mut err = self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
+        for &(_, sp) in &self.open_braces {
+            err.span_label(sp, "unclosed delimiter");
+            self.unmatched_braces.push(UnmatchedBrace {
+                expected_delim: Delimiter::Brace,
+                found_delim: None,
+                found_span: self.token.span,
+                unclosed_span: Some(sp),
+                candidate_span: None,
+            });
+        }
 
-        match self.token.kind {
-            token::Eof => {
-                let msg = "this file contains an unclosed delimiter";
-                let mut err =
-                    self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
-                for &(_, sp) in &self.open_braces {
-                    err.span_label(sp, "unclosed delimiter");
-                    self.unmatched_braces.push(UnmatchedBrace {
-                        expected_delim: Delimiter::Brace,
-                        found_delim: None,
-                        found_span: self.token.span,
-                        unclosed_span: Some(sp),
-                        candidate_span: None,
-                    });
-                }
-
-                if let Some((delim, _)) = self.open_braces.last() {
-                    if let Some((_, open_sp, close_sp)) =
-                        self.matching_delim_spans.iter().find(|(d, open_sp, close_sp)| {
-                            if let Some(close_padding) = sm.span_to_margin(*close_sp) {
-                                if let Some(open_padding) = sm.span_to_margin(*open_sp) {
-                                    return delim == d && close_padding != open_padding;
-                                }
-                            }
-                            false
-                        })
-                    // these are in reverse order as they get inserted on close, but
-                    {
-                        // we want the last open/first close
-                        err.span_label(*open_sp, "this delimiter might not be properly closed...");
-                        err.span_label(
-                            *close_sp,
-                            "...as it matches this but it has different indentation",
-                        );
-                    }
-                }
-                Err(err)
-            }
-            token::OpenDelim(delim) => {
-                // The span for beginning of the delimited section
-                let pre_span = self.token.span;
-
-                // Parse the open delimiter.
-                self.open_braces.push((delim, self.token.span));
-                self.bump();
-
-                // Parse the token trees within the delimiters.
-                // We stop at any delimiter so we can try to recover if the user
-                // uses an incorrect delimiter.
-                let tts = self.parse_token_trees_until_close_delim();
-
-                // Expand to cover the entire delimited token tree
-                let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
-
-                match self.token.kind {
-                    // Correct delimiter.
-                    token::CloseDelim(d) if d == delim => {
-                        let (open_brace, open_brace_span) = self.open_braces.pop().unwrap();
-                        let close_brace_span = self.token.span;
-
-                        if tts.is_empty() {
-                            let empty_block_span = open_brace_span.to(close_brace_span);
-                            if !sm.is_multiline(empty_block_span) {
-                                // Only track if the block is in the form of `{}`, otherwise it is
-                                // likely that it was written on purpose.
-                                self.last_delim_empty_block_spans.insert(delim, empty_block_span);
-                            }
-                        }
-
-                        //only add braces
-                        if let (Delimiter::Brace, Delimiter::Brace) = (open_brace, delim) {
-                            self.matching_block_spans.push((open_brace_span, close_brace_span));
-                        }
-
-                        if self.open_braces.is_empty() {
-                            // Clear up these spans to avoid suggesting them as we've found
-                            // properly matched delimiters so far for an entire block.
-                            self.matching_delim_spans.clear();
-                        } else {
-                            self.matching_delim_spans.push((
-                                open_brace,
-                                open_brace_span,
-                                close_brace_span,
-                            ));
-                        }
-                        // Parse the closing delimiter.
-                        self.bump();
-                    }
-                    // Incorrect delimiter.
-                    token::CloseDelim(other) => {
-                        let mut unclosed_delimiter = None;
-                        let mut candidate = None;
-
-                        if self.last_unclosed_found_span != Some(self.token.span) {
-                            // do not complain about the same unclosed delimiter multiple times
-                            self.last_unclosed_found_span = Some(self.token.span);
-                            // This is a conservative error: only report the last unclosed
-                            // delimiter. The previous unclosed delimiters could actually be
-                            // closed! The parser just hasn't gotten to them yet.
-                            if let Some(&(_, sp)) = self.open_braces.last() {
-                                unclosed_delimiter = Some(sp);
-                            };
-                            if let Some(current_padding) = sm.span_to_margin(self.token.span) {
-                                for (brace, brace_span) in &self.open_braces {
-                                    if let Some(padding) = sm.span_to_margin(*brace_span) {
-                                        // high likelihood of these two corresponding
-                                        if current_padding == padding && brace == &other {
-                                            candidate = Some(*brace_span);
-                                        }
-                                    }
-                                }
-                            }
-                            let (tok, _) = self.open_braces.pop().unwrap();
-                            self.unmatched_braces.push(UnmatchedBrace {
-                                expected_delim: tok,
-                                found_delim: Some(other),
-                                found_span: self.token.span,
-                                unclosed_span: unclosed_delimiter,
-                                candidate_span: candidate,
-                            });
-                        } else {
-                            self.open_braces.pop();
-                        }
-
-                        // If the incorrect delimiter matches an earlier opening
-                        // delimiter, then don't consume it (it can be used to
-                        // close the earlier one). Otherwise, consume it.
-                        // E.g., we try to recover from:
-                        // fn foo() {
-                        //     bar(baz(
-                        // }  // Incorrect delimiter but matches the earlier `{`
-                        if !self.open_braces.iter().any(|&(b, _)| b == other) {
-                            self.bump();
+        if let Some((delim, _)) = self.open_braces.last() {
+            if let Some((_, open_sp, close_sp)) =
+                self.matching_delim_spans.iter().find(|(d, open_sp, close_sp)| {
+                    let sm = self.string_reader.sess.source_map();
+                    if let Some(close_padding) = sm.span_to_margin(*close_sp) {
+                        if let Some(open_padding) = sm.span_to_margin(*open_sp) {
+                            return delim == d && close_padding != open_padding;
                         }
                     }
-                    token::Eof => {
-                        // Silently recover, the EOF token will be seen again
-                        // and an error emitted then. Thus we don't pop from
-                        // self.open_braces here.
-                    }
-                    _ => {}
-                }
-
-                Ok(TokenTree::Delimited(delim_span, delim, tts))
-            }
-            token::CloseDelim(delim) => {
-                // An unexpected closing delimiter (i.e., there is no
-                // matching opening delimiter).
-                let token_str = token_to_string(&self.token);
-                let msg = format!("unexpected closing delimiter: `{}`", token_str);
-                let mut err =
-                    self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, &msg);
-
-                // Braces are added at the end, so the last element is the biggest block
-                if let Some(parent) = self.matching_block_spans.last() {
-                    if let Some(span) = self.last_delim_empty_block_spans.remove(&delim) {
-                        // Check if the (empty block) is in the last properly closed block
-                        if (parent.0.to(parent.1)).contains(span) {
-                            err.span_label(
-                                span,
-                                "block is empty, you might have not meant to close it",
-                            );
-                        } else {
-                            err.span_label(parent.0, "this opening brace...");
-
-                            err.span_label(parent.1, "...matches this closing brace");
-                        }
-                    } else {
-                        err.span_label(parent.0, "this opening brace...");
-
-                        err.span_label(parent.1, "...matches this closing brace");
-                    }
-                }
-
-                err.span_label(self.token.span, "unexpected closing delimiter");
-                Err(err)
-            }
-            _ => {
-                let tok = self.token.take();
-                let mut spacing = self.bump();
-                if !self.token.is_op() {
-                    spacing = Spacing::Alone;
-                }
-                Ok(TokenTree::Token(tok, spacing))
+                    false
+                })
+            // these are in reverse order as they get inserted on close, but
+            {
+                // we want the last open/first close
+                err.span_label(*open_sp, "this delimiter might not be properly closed...");
+                err.span_label(*close_sp, "...as it matches this but it has different indentation");
             }
         }
+        err
+    }
+
+    fn parse_token_tree_open_delim(&mut self, delim: Delimiter) -> TokenTree {
+        // The span for beginning of the delimited section
+        let pre_span = self.token.span;
+
+        // Parse the open delimiter.
+        self.open_braces.push((delim, self.token.span));
+        self.bump();
+
+        // Parse the token trees within the delimiters.
+        // We stop at any delimiter so we can try to recover if the user
+        // uses an incorrect delimiter.
+        let tts = self.parse_token_trees_until_close_delim();
+
+        // Expand to cover the entire delimited token tree
+        let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
+
+        match self.token.kind {
+            // Correct delimiter.
+            token::CloseDelim(d) if d == delim => {
+                let (open_brace, open_brace_span) = self.open_braces.pop().unwrap();
+                let close_brace_span = self.token.span;
+
+                if tts.is_empty() {
+                    let empty_block_span = open_brace_span.to(close_brace_span);
+                    let sm = self.string_reader.sess.source_map();
+                    if !sm.is_multiline(empty_block_span) {
+                        // Only track if the block is in the form of `{}`, otherwise it is
+                        // likely that it was written on purpose.
+                        self.last_delim_empty_block_spans.insert(delim, empty_block_span);
+                    }
+                }
+
+                //only add braces
+                if let (Delimiter::Brace, Delimiter::Brace) = (open_brace, delim) {
+                    self.matching_block_spans.push((open_brace_span, close_brace_span));
+                }
+
+                if self.open_braces.is_empty() {
+                    // Clear up these spans to avoid suggesting them as we've found
+                    // properly matched delimiters so far for an entire block.
+                    self.matching_delim_spans.clear();
+                } else {
+                    self.matching_delim_spans.push((open_brace, open_brace_span, close_brace_span));
+                }
+                // Parse the closing delimiter.
+                self.bump();
+            }
+            // Incorrect delimiter.
+            token::CloseDelim(other) => {
+                let mut unclosed_delimiter = None;
+                let mut candidate = None;
+
+                if self.last_unclosed_found_span != Some(self.token.span) {
+                    // do not complain about the same unclosed delimiter multiple times
+                    self.last_unclosed_found_span = Some(self.token.span);
+                    // This is a conservative error: only report the last unclosed
+                    // delimiter. The previous unclosed delimiters could actually be
+                    // closed! The parser just hasn't gotten to them yet.
+                    if let Some(&(_, sp)) = self.open_braces.last() {
+                        unclosed_delimiter = Some(sp);
+                    };
+                    let sm = self.string_reader.sess.source_map();
+                    if let Some(current_padding) = sm.span_to_margin(self.token.span) {
+                        for (brace, brace_span) in &self.open_braces {
+                            if let Some(padding) = sm.span_to_margin(*brace_span) {
+                                // high likelihood of these two corresponding
+                                if current_padding == padding && brace == &other {
+                                    candidate = Some(*brace_span);
+                                }
+                            }
+                        }
+                    }
+                    let (tok, _) = self.open_braces.pop().unwrap();
+                    self.unmatched_braces.push(UnmatchedBrace {
+                        expected_delim: tok,
+                        found_delim: Some(other),
+                        found_span: self.token.span,
+                        unclosed_span: unclosed_delimiter,
+                        candidate_span: candidate,
+                    });
+                } else {
+                    self.open_braces.pop();
+                }
+
+                // If the incorrect delimiter matches an earlier opening
+                // delimiter, then don't consume it (it can be used to
+                // close the earlier one). Otherwise, consume it.
+                // E.g., we try to recover from:
+                // fn foo() {
+                //     bar(baz(
+                // }  // Incorrect delimiter but matches the earlier `{`
+                if !self.open_braces.iter().any(|&(b, _)| b == other) {
+                    self.bump();
+                }
+            }
+            token::Eof => {
+                // Silently recover, the EOF token will be seen again
+                // and an error emitted then. Thus we don't pop from
+                // self.open_braces here.
+            }
+            _ => {}
+        }
+
+        TokenTree::Delimited(delim_span, delim, tts)
+    }
+
+    fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'a> {
+        // An unexpected closing delimiter (i.e., there is no
+        // matching opening delimiter).
+        let token_str = token_to_string(&self.token);
+        let msg = format!("unexpected closing delimiter: `{}`", token_str);
+        let mut err =
+            self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, &msg);
+
+        // Braces are added at the end, so the last element is the biggest block
+        if let Some(parent) = self.matching_block_spans.last() {
+            if let Some(span) = self.last_delim_empty_block_spans.remove(&delim) {
+                // Check if the (empty block) is in the last properly closed block
+                if (parent.0.to(parent.1)).contains(span) {
+                    err.span_label(span, "block is empty, you might have not meant to close it");
+                } else {
+                    err.span_label(parent.0, "this opening brace...");
+                    err.span_label(parent.1, "...matches this closing brace");
+                }
+            } else {
+                err.span_label(parent.0, "this opening brace...");
+                err.span_label(parent.1, "...matches this closing brace");
+            }
+        }
+
+        err.span_label(self.token.span, "unexpected closing delimiter");
+        err
+    }
+
+    #[inline]
+    fn parse_token_tree_other(&mut self) -> TokenTree {
+        let tok = self.token.take();
+        let mut spacing = self.bump();
+        if !self.token.is_op() {
+            spacing = Spacing::Alone;
+        }
+        TokenTree::Token(tok, spacing)
     }
 
     fn bump(&mut self) -> Spacing {
