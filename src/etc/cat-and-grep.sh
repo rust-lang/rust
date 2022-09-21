@@ -26,7 +26,7 @@ Options:
     -i      Case insensitive search.
 '
 
-GREPPER=fgrep
+GREPPER=grep
 INVERT=0
 GREPFLAGS='q'
 while getopts ':vieh' OPTION; do
@@ -39,7 +39,7 @@ while getopts ':vieh' OPTION; do
             GREPFLAGS="i$GREPFLAGS"
             ;;
         e)
-            GREPPER=egrep
+            GREPFLAGS="E$GREPFLAGS"
             ;;
         h)
             echo "$USAGE"
@@ -50,6 +50,15 @@ while getopts ':vieh' OPTION; do
             ;;
     esac
 done
+
+# an utility function to check if a string contains a substring
+stringContain() { [ -z "$1" ] || { [ -z "${2##*$1*}" ] && [ -n "$2" ];};}
+
+if ! stringContain 'E' "$GREPFLAGS"
+then
+    # use F flag if there is not an E flag
+    GREPFLAGS="F$GREPFLAGS"
+fi
 
 shift $((OPTIND - 1))
 
