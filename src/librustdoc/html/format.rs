@@ -371,7 +371,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                     format!("<br><span class=\"where\">where{where_preds}</span>")
                 } else {
                     let mut clause = br_with_padding;
-                    clause.truncate(clause.len() - 5 * "&nbsp;".len());
+                    clause.truncate(clause.len() - 4 * "&nbsp;".len());
                     write!(clause, "<span class=\"where\">where{where_preds}</span>")?;
                     clause
                 }
