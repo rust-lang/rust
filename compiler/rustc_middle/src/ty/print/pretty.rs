@@ -2128,7 +2128,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             if let Some(name) = available_names.pop() {
                 name
             } else {
-                Symbol::intern(&format!("'t{}", index - num_available))
+                Symbol::intern(&format!("'z{}", index - num_available))
             }
         }
 
@@ -2161,7 +2161,8 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
         define_scoped_cx!(self);
 
-        let possible_names = vec![Symbol::intern("'t"), Symbol::intern("'s"), Symbol::intern("'r")];
+        let possible_names =
+            ('a'..='z').rev().map(|s| Symbol::intern(&format!("'{s}"))).collect::<Vec<_>>();
 
         let mut available_names = possible_names
             .into_iter()

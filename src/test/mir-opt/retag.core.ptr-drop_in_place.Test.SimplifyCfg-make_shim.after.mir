@@ -11,7 +11,7 @@ fn std::ptr::drop_in_place(_1: *mut Test) -> () {
         _3 = <Test as Drop>::drop(move _2) -> bb1; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'r> fn(&'r mut Test) {<Test as Drop>::drop}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a> fn(&'a mut Test) {<Test as Drop>::drop}, val: Value(<ZST>) }
     }
 
     bb1: {

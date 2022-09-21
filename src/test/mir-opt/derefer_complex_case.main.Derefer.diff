@@ -56,7 +56,7 @@
           _7 = <std::slice::Iter<'_, i32> as Iterator>::next(move _8) -> bb3; // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
                                            // mir::Constant
                                            // + span: $DIR/derefer_complex_case.rs:6:17: 6:26
-                                           // + literal: Const { ty: for<'r> fn(&'r mut std::slice::Iter<'_, i32>) -> Option<<std::slice::Iter<'_, i32> as Iterator>::Item> {<std::slice::Iter<'_, i32> as Iterator>::next}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: for<'a> fn(&'a mut std::slice::Iter<'_, i32>) -> Option<<std::slice::Iter<'_, i32> as Iterator>::Item> {<std::slice::Iter<'_, i32> as Iterator>::next}, val: Value(<ZST>) }
       }
   
       bb3: {

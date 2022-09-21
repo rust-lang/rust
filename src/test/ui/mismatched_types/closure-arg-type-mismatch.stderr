@@ -23,7 +23,7 @@ LL |     a.iter().map(|_: &(u16, u16)| 45);
    |              expected due to this
    |
    = note: expected closure signature `fn(&(u32, u32)) -> _`
-              found closure signature `for<'r> fn(&'r (u16, u16)) -> _`
+              found closure signature `for<'a> fn(&'a (u16, u16)) -> _`
 note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |

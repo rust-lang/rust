@@ -1,12 +1,12 @@
 - // MIR for `nrvo` before DestinationPropagation
 + // MIR for `nrvo` after DestinationPropagation
   
-  fn nrvo(_1: for<'r> fn(&'r mut [u8; 1024])) -> [u8; 1024] {
+  fn nrvo(_1: for<'a> fn(&'a mut [u8; 1024])) -> [u8; 1024] {
       debug init => _1;                    // in scope 0 at $DIR/simple.rs:+0:9: +0:13
       let mut _0: [u8; 1024];              // return place in scope 0 at $DIR/simple.rs:+0:39: +0:49
       let mut _2: [u8; 1024];              // in scope 0 at $DIR/simple.rs:+1:9: +1:16
       let _3: ();                          // in scope 0 at $DIR/simple.rs:+2:5: +2:19
-      let mut _4: for<'r> fn(&'r mut [u8; 1024]); // in scope 0 at $DIR/simple.rs:+2:5: +2:9
+      let mut _4: for<'a> fn(&'a mut [u8; 1024]); // in scope 0 at $DIR/simple.rs:+2:5: +2:9
       let mut _5: &mut [u8; 1024];         // in scope 0 at $DIR/simple.rs:+2:10: +2:18
       let mut _6: &mut [u8; 1024];         // in scope 0 at $DIR/simple.rs:+2:10: +2:18
       scope 1 {

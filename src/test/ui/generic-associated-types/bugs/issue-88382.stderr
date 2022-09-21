@@ -9,8 +9,8 @@ LL |     do_something(SomeImplementation(), test);
 LL | fn test<'a, I: Iterable>(_: &mut I::Iterator<'a>) {}
    | ------------------------------------------------- found signature defined here
    |
-   = note: expected function signature `for<'r> fn(&'r mut std::iter::Empty<usize>) -> _`
-              found function signature `for<'a, 'r> fn(&'r mut <_ as Iterable>::Iterator<'a>) -> _`
+   = note: expected function signature `for<'a> fn(&'a mut std::iter::Empty<usize>) -> _`
+              found function signature `for<'a, 'b> fn(&'b mut <_ as Iterable>::Iterator<'a>) -> _`
 note: required by a bound in `do_something`
   --> $DIR/issue-88382.rs:20:48
    |
