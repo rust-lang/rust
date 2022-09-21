@@ -40,6 +40,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(methods::GET_LAST_WITH_LEN),
     LintId::of(methods::INSPECT_FOR_EACH),
     LintId::of(methods::ITER_COUNT),
+    LintId::of(methods::ITER_KV_MAP),
     LintId::of(methods::MANUAL_FILTER_MAP),
     LintId::of(methods::MANUAL_FIND_MAP),
     LintId::of(methods::MANUAL_SPLIT_ONCE),

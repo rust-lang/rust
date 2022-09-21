@@ -90,6 +90,7 @@ We start by opening the test file created at `tests/ui/foo_functions.rs`.
 Update the file with some examples to get started:
 
 ```rust
+#![allow(unused)]
 #![warn(clippy::foo_functions)]
 
 // Impl methods

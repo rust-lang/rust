@@ -14,6 +14,7 @@ fn main() {
     // precedence
     i32::from(a);
     i32::from(!a);
+    i32::from(!a);
     i32::from(a || b);
     i32::from(cond(a, b));
     i32::from(x + y < 4);
@@ -21,7 +22,12 @@ fn main() {
     // if else if
     if a {
         123
-    } else {i32::from(b)};
+    } else { i32::from(b) };
+
+    // if else if inverted
+    if a {
+        123
+    } else { i32::from(!b) };
 
     // Shouldn't lint
 

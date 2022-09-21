@@ -1,5 +1,6 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{is_default_equivalent, peel_blocks};
+use rustc_errors::Applicability;
 use rustc_hir::{
     def::{DefKind, Res},
     Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
@@ -100,15 +101,28 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
                     ExprKind::Struct(_, fields, _) => fields.iter().all(|ef| is_default_equivalent(cx, ef.expr)),
                     _ => false,
                 };
+
                 if should_emit {
-                    let path_string = cx.tcx.def_path_str(adt_def.did());
-                    span_lint_and_help(
+                    let struct_span = cx.tcx.def_span(adt_def.did());
+                    span_lint_and_then(
                         cx,
                         DERIVABLE_IMPLS,
                         item.span,
                         "this `impl` can be derived",
-                        None,
-                        &format!("try annotating `{}` with `#[derive(Default)]`", path_string),
+                        |diag| {
+                            diag.span_suggestion_hidden(
+                                item.span,
+                                "remove the manual implementation...",
+                                String::new(),
+                                Applicability::MachineApplicable
+                            );
+                            diag.span_suggestion(
+                                struct_span.shrink_to_lo(),
+                                "...and instead derive it",
+                                "#[derive(Default)]\n".to_string(),
+                                Applicability::MachineApplicable
+                            );
+                        }
                     );
                 }
             }

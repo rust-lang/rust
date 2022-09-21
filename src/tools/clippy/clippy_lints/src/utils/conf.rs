@@ -476,7 +476,7 @@ pub fn format_error(error: Box<dyn Error>) -> String {
 
             let mut msg = String::from(prefix);
             for row in 0..rows {
-                write!(msg, "\n").unwrap();
+                writeln!(msg).unwrap();
                 for (column, column_width) in column_widths.iter().copied().enumerate() {
                     let index = column * rows + row;
                     let field = fields.get(index).copied().unwrap_or_default();

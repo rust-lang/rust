@@ -188,6 +188,7 @@ pub(crate) fn get_stabilization_version() -> String {
 fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {
     let mut contents = format!(
         indoc! {"
+            #![allow(unused)]
             #![warn(clippy::{})]
 
             fn main() {{

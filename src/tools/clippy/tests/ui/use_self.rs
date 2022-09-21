@@ -608,3 +608,12 @@ mod issue8845 {
         }
     }
 }
+
+mod issue6902 {
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    pub enum Foo {
+        Bar = 1,
+    }
+}

@@ -110,23 +110,28 @@ Just make sure to remove the dependencies again before finally making a pull req
 [IntelliJ_rust_homepage]: https://intellij-rust.github.io/
 
 ### Rust Analyzer
-As of [#6869][6869], [`rust-analyzer`][ra_homepage] can understand that Clippy uses compiler-internals
-using `extern crate` when `package.metadata.rust-analyzer.rustc_private` is set to `true` in Clippy's `Cargo.toml.`
-You will require a `nightly` toolchain with the `rustc-dev` component installed.
-Make sure that in the `rust-analyzer` configuration, you set
+For [`rust-analyzer`][ra_homepage] to work correctly make sure that in the `rust-analyzer` configuration you set
+
 ```json
 { "rust-analyzer.rustc.source": "discover" }
 ```
-and
-```json
-{ "rust-analyzer.updates.channel": "nightly" }
-```
+
 You should be able to see information on things like `Expr` or `EarlyContext` now if you hover them, also
 a lot more type hints.
-This will work with `rust-analyzer 2021-03-15` shipped in nightly `1.52.0-nightly (107896c32 2021-03-15)` or later.
+
+To have `rust-analyzer` also work in the `clippy_dev` and `lintcheck` crates, add the following configuration
+
+```json
+{
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+        "clippy_dev/Cargo.toml",
+        "lintcheck/Cargo.toml",
+    ]
+}
+```
 
 [ra_homepage]: https://rust-analyzer.github.io/
-[6869]: https://github.com/rust-lang/rust-clippy/pull/6869
 
 ## How Clippy works
 
