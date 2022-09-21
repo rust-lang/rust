@@ -97,11 +97,26 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
 
+    #[salsa::invoke(StructData::struct_data_with_diagnostics_query)]
+    fn struct_data_with_diagnostics(
+        &self,
+        id: StructId,
+    ) -> (Arc<StructData>, Arc<Vec<DefDiagnostic>>);
+
     #[salsa::invoke(StructData::union_data_query)]
     fn union_data(&self, id: UnionId) -> Arc<StructData>;
 
+    #[salsa::invoke(StructData::union_data_with_diagnostics_query)]
+    fn union_data_with_diagnostics(
+        &self,
+        id: UnionId,
+    ) -> (Arc<StructData>, Arc<Vec<DefDiagnostic>>);
+
     #[salsa::invoke(EnumData::enum_data_query)]
     fn enum_data(&self, e: EnumId) -> Arc<EnumData>;
+
+    #[salsa::invoke(EnumData::enum_data_with_diagnostics_query)]
+    fn enum_data_with_diagnostics(&self, e: EnumId) -> (Arc<EnumData>, Arc<Vec<DefDiagnostic>>);
 
     #[salsa::invoke(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;

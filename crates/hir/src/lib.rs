@@ -540,9 +540,27 @@ impl Module {
                     }
                     acc.extend(decl.diagnostics(db))
                 }
-                ModuleDef::Adt(Adt::Enum(e)) => {
-                    for v in e.variants(db) {
-                        acc.extend(ModuleDef::Variant(v).diagnostics(db));
+                ModuleDef::Adt(adt) => {
+                    match adt {
+                        Adt::Struct(s) => {
+                            for diag in db.struct_data_with_diagnostics(s.id).1.iter() {
+                                emit_def_diagnostic(db, acc, diag);
+                            }
+                        }
+                        Adt::Union(u) => {
+                            for diag in db.union_data_with_diagnostics(u.id).1.iter() {
+                                emit_def_diagnostic(db, acc, diag);
+                            }
+                        }
+                        Adt::Enum(e) => {
+                            for v in e.variants(db) {
+                                acc.extend(ModuleDef::Variant(v).diagnostics(db));
+                            }
+
+                            for diag in db.enum_data_with_diagnostics(e.id).1.iter() {
+                                emit_def_diagnostic(db, acc, diag);
+                            }
+                        }
                     }
                     acc.extend(decl.diagnostics(db))
                 }

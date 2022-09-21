@@ -142,12 +142,18 @@ trait Bar {
     }
 
     #[test]
-    fn inactive_fields() {
+    fn inactive_fields_and_variants() {
         check(
             r#"
 enum Foo {
   #[cfg(a)] Bar,
 //^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
+  Baz {
+    #[cfg(a)] baz: String,
+  //^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
+  },
+  Qux(#[cfg(a)] String),
+    //^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
 }
 
 struct Baz {

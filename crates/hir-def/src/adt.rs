@@ -6,7 +6,7 @@ use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     name::{AsName, Name},
-    InFile,
+    HirFileId, InFile,
 };
 use la_arena::{Arena, ArenaMap};
 use syntax::ast::{self, HasName, HasVisibility};
@@ -17,13 +17,15 @@ use crate::{
     builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
     intern::Interned,
-    item_tree::{AttrOwner, Field, Fields, ItemTree, ModItem, RawVisibilityId},
+    item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
+    nameres::diagnostics::DefDiagnostic,
     src::HasChildSource,
     src::HasSource,
     trace::Trace,
     type_ref::TypeRef,
     visibility::RawVisibility,
-    EnumId, LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StructId, UnionId, VariantId,
+    EnumId, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StructId, UnionId,
+    VariantId,
 };
 use cfg::CfgOptions;
 
@@ -143,6 +145,13 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprData> {
 
 impl StructData {
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
+        db.struct_data_with_diagnostics(id).0
+    }
+
+    pub(crate) fn struct_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        id: StructId,
+    ) -> (Arc<StructData>, Arc<Vec<DefDiagnostic>>) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -150,16 +159,35 @@ impl StructData {
         let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
 
         let strukt = &item_tree[loc.id.value];
-        let variant_data = lower_fields(db, krate, &item_tree, &cfg_options, &strukt.fields, None);
-        Arc::new(StructData {
-            name: strukt.name.clone(),
-            variant_data: Arc::new(variant_data),
-            repr,
-            visibility: item_tree[strukt.visibility].clone(),
-        })
+        let (variant_data, diagnostics) = lower_fields(
+            db,
+            krate,
+            loc.id.file_id(),
+            loc.container.local_id,
+            &item_tree,
+            &cfg_options,
+            &strukt.fields,
+            None,
+        );
+        (
+            Arc::new(StructData {
+                name: strukt.name.clone(),
+                variant_data: Arc::new(variant_data),
+                repr,
+                visibility: item_tree[strukt.visibility].clone(),
+            }),
+            Arc::new(diagnostics),
+        )
     }
 
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
+        db.union_data_with_diagnostics(id).0
+    }
+
+    pub(crate) fn union_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        id: UnionId,
+    ) -> (Arc<StructData>, Arc<Vec<DefDiagnostic>>) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -167,19 +195,37 @@ impl StructData {
         let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
 
         let union = &item_tree[loc.id.value];
-        let variant_data = lower_fields(db, krate, &item_tree, &cfg_options, &union.fields, None);
-
-        Arc::new(StructData {
-            name: union.name.clone(),
-            variant_data: Arc::new(variant_data),
-            repr,
-            visibility: item_tree[union.visibility].clone(),
-        })
+        let (variant_data, diagnostics) = lower_fields(
+            db,
+            krate,
+            loc.id.file_id(),
+            loc.container.local_id,
+            &item_tree,
+            &cfg_options,
+            &union.fields,
+            None,
+        );
+        (
+            Arc::new(StructData {
+                name: union.name.clone(),
+                variant_data: Arc::new(variant_data),
+                repr,
+                visibility: item_tree[union.visibility].clone(),
+            }),
+            Arc::new(diagnostics),
+        )
     }
 }
 
 impl EnumData {
     pub(crate) fn enum_data_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumData> {
+        db.enum_data_with_diagnostics(e).0
+    }
+
+    pub(crate) fn enum_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        e: EnumId,
+    ) -> (Arc<EnumData>, Arc<Vec<DefDiagnostic>>) {
         let loc = e.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -188,31 +234,46 @@ impl EnumData {
 
         let enum_ = &item_tree[loc.id.value];
         let mut variants = Arena::new();
+        let mut diagnostics = Vec::new();
         for tree_id in enum_.variants.clone() {
-            if item_tree.attrs(db, krate, tree_id.into()).is_cfg_enabled(&cfg_options) {
-                let var = &item_tree[tree_id];
-                let var_data = lower_fields(
+            let attrs = item_tree.attrs(db, krate, tree_id.into());
+            let var = &item_tree[tree_id];
+            if attrs.is_cfg_enabled(&cfg_options) {
+                let (var_data, field_diagnostics) = lower_fields(
                     db,
                     krate,
+                    loc.id.file_id(),
+                    loc.container.local_id,
                     &item_tree,
                     &cfg_options,
                     &var.fields,
                     Some(enum_.visibility),
                 );
+                diagnostics.extend(field_diagnostics);
 
                 variants.alloc(EnumVariantData {
                     name: var.name.clone(),
                     variant_data: Arc::new(var_data),
                 });
+            } else {
+                diagnostics.push(DefDiagnostic::unconfigured_code(
+                    loc.container.local_id,
+                    InFile::new(loc.id.file_id(), var.ast_id.upcast()),
+                    attrs.cfg().unwrap(),
+                    cfg_options.clone(),
+                ))
             }
         }
 
-        Arc::new(EnumData {
-            name: enum_.name.clone(),
-            variants,
-            repr,
-            visibility: item_tree[enum_.visibility].clone(),
-        })
+        (
+            Arc::new(EnumData {
+                name: enum_.name.clone(),
+                variants,
+                repr,
+                visibility: item_tree[enum_.visibility].clone(),
+            }),
+            Arc::new(diagnostics),
+        )
     }
 
     pub fn variant(&self, name: &Name) -> Option<LocalEnumVariantId> {
@@ -384,31 +445,64 @@ fn lower_struct(
 fn lower_fields(
     db: &dyn DefDatabase,
     krate: CrateId,
+    current_file_id: HirFileId,
+    container: LocalModuleId,
     item_tree: &ItemTree,
     cfg_options: &CfgOptions,
     fields: &Fields,
     override_visibility: Option<RawVisibilityId>,
-) -> VariantData {
+) -> (VariantData, Vec<DefDiagnostic>) {
+    let mut diagnostics = Vec::new();
     match fields {
         Fields::Record(flds) => {
             let mut arena = Arena::new();
             for field_id in flds.clone() {
-                if item_tree.attrs(db, krate, field_id.into()).is_cfg_enabled(cfg_options) {
-                    arena.alloc(lower_field(item_tree, &item_tree[field_id], override_visibility));
+                let attrs = item_tree.attrs(db, krate, field_id.into());
+                let field = &item_tree[field_id];
+                if attrs.is_cfg_enabled(cfg_options) {
+                    arena.alloc(lower_field(item_tree, field, override_visibility));
+                } else {
+                    diagnostics.push(DefDiagnostic::unconfigured_code(
+                        container,
+                        InFile::new(
+                            current_file_id,
+                            match field.ast_id {
+                                FieldAstId::Record(it) => it.upcast(),
+                                FieldAstId::Tuple(it) => it.upcast(),
+                            },
+                        ),
+                        attrs.cfg().unwrap(),
+                        cfg_options.clone(),
+                    ))
                 }
             }
-            VariantData::Record(arena)
+            (VariantData::Record(arena), diagnostics)
         }
         Fields::Tuple(flds) => {
             let mut arena = Arena::new();
             for field_id in flds.clone() {
-                if item_tree.attrs(db, krate, field_id.into()).is_cfg_enabled(cfg_options) {
-                    arena.alloc(lower_field(item_tree, &item_tree[field_id], override_visibility));
+                let attrs = item_tree.attrs(db, krate, field_id.into());
+                let field = &item_tree[field_id];
+                if attrs.is_cfg_enabled(cfg_options) {
+                    arena.alloc(lower_field(item_tree, field, override_visibility));
+                } else {
+                    diagnostics.push(DefDiagnostic::unconfigured_code(
+                        container,
+                        InFile::new(
+                            current_file_id,
+                            match field.ast_id {
+                                FieldAstId::Record(it) => it.upcast(),
+                                FieldAstId::Tuple(it) => it.upcast(),
+                            },
+                        ),
+                        attrs.cfg().unwrap(),
+                        cfg_options.clone(),
+                    ))
                 }
             }
-            VariantData::Tuple(arena)
+            (VariantData::Tuple(arena), diagnostics)
         }
-        Fields::Unit => VariantData::Unit,
+        Fields::Unit => (VariantData::Unit, diagnostics),
     }
 }
 
