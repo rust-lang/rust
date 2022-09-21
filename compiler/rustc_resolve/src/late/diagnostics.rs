@@ -130,6 +130,7 @@ pub(super) enum LifetimeElisionCandidate {
     Missing(MissingLifetime),
 }
 
+/// Only used for diagnostics.
 struct BaseError<'a> {
     msg: String,
     fallback_label: String,
@@ -313,7 +314,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
 
         self.suggest_type_ascription(&mut err, source, path, res, span, &base_error);
-        self.add_err_code_cases(&mut err, source, path, span);
+        self.err_code_special_cases(&mut err, source, path, span);
 
         (err, candidates)
     }
@@ -667,7 +668,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
 
-    fn add_err_code_cases(
+    fn err_code_special_cases(
         &mut self,
         err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
         source: PathSource<'_>,
