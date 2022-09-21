@@ -24,7 +24,7 @@ impl Alignment {
     /// but in an `Alignment` instead of a `usize.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
-    pub(crate) fn of<T>() -> Self {
+    pub const fn of<T>() -> Self {
         // SAFETY: rustc ensures that type alignment is always a power of two.
         unsafe { Alignment::new_unchecked(mem::align_of::<T>()) }
     }
@@ -53,6 +53,7 @@ impl Alignment {
     /// Equivalently, it must be `1 << exp` for some `exp` in `0..usize::BITS`.
     /// It must *not* be zero.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const unsafe fn new_unchecked(align: usize) -> Self {
         // SAFETY: Precondition passed to the caller.
@@ -65,6 +66,7 @@ impl Alignment {
 
     /// Returns the alignment as a [`NonZeroUsize`]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn as_usize(self) -> usize {
         self.0 as usize
