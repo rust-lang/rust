@@ -1,17 +1,12 @@
-error[E0277]: the trait bound `[closure@$DIR/issue-93647.rs:2:6: 2:8]: Fn<()>` is not satisfied
-  --> $DIR/issue-93647.rs:2:5
-   |
-LL |     (||1usize)()
-   |     ^^^^^^^^^^^^ expected an `Fn<()>` closure, found `[closure@$DIR/issue-93647.rs:2:6: 2:8]`
-   |
-   = help: the trait `~const Fn<()>` is not implemented for closure `[closure@$DIR/issue-93647.rs:2:6: 2:8]`
-note: the trait `Fn<()>` is implemented for `[closure@$DIR/issue-93647.rs:2:6: 2:8]`, but that implementation is not `const`
+error[E0015]: cannot call non-const closure in constants
   --> $DIR/issue-93647.rs:2:5
    |
 LL |     (||1usize)()
    |     ^^^^^^^^^^^^
-   = note: wrap the `[closure@$DIR/issue-93647.rs:2:6: 2:8]` in a closure with no arguments: `|| { /* code */ }`
+   |
+   = note: closures need an RFC before allowed to be called in constants
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0015`.

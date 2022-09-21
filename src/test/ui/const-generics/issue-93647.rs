@@ -1,6 +1,6 @@
 struct X<const N: usize = {
     (||1usize)()
-    //~^ ERROR the trait bound
+    //~^ ERROR cannot call non-const closure
 }>;
 
 fn main() {}

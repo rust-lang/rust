@@ -366,7 +366,7 @@ fn typeck_with_fallback<'tcx>(
 
     let typeck_results = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
-        let fcx = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
+        let mut fcx = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
                 <dyn AstConv<'_>>::ty_of_fn(&fcx, id, header.unsafety, header.abi, decl, None, None)
@@ -459,7 +459,11 @@ fn typeck_with_fallback<'tcx>(
 
         // Closure and generator analysis may run after fallback
         // because they don't constrain other type variables.
+        // Closure analysis only runs on closures. Therefore they only need to fulfill non-const predicates (as of now)
+        let prev_constness = fcx.param_env.constness();
+        fcx.param_env = fcx.param_env.without_const();
         fcx.closure_analyze(body);
+        fcx.param_env = fcx.param_env.with_constness(prev_constness);
         assert!(fcx.deferred_call_resolutions.borrow().is_empty());
         // Before the generator analysis, temporary scopes shall be marked to provide more
         // precise information on types to be captured.
