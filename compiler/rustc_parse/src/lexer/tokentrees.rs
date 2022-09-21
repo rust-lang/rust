@@ -246,16 +246,22 @@ impl<'a> TokenTreesReader<'a> {
 
     #[inline]
     fn parse_token_tree_other(&mut self) -> TokenTree {
+        // `spacing` for the returned token is determined by the next token:
+        // its kind and its `preceded_by_whitespace` status.
         let tok = self.token.take();
-        let mut spacing = self.bump();
-        if !self.token.is_op() {
-            spacing = Spacing::Alone;
-        }
+        let is_next_tok_preceded_by_whitespace = self.bump();
+        let spacing = if is_next_tok_preceded_by_whitespace || !self.token.is_op() {
+            Spacing::Alone
+        } else {
+            Spacing::Joint
+        };
         TokenTree::Token(tok, spacing)
     }
 
-    fn bump(&mut self) -> Spacing {
-        let (spacing, token) = self.string_reader.next_token();
+    // Set `self.token` to the next token. Returns a bool indicating if that
+    // token was preceded by whitespace.
+    fn bump(&mut self) -> bool {
+        let (token, spacing) = self.string_reader.next_token();
         self.token = token;
         spacing
     }

@@ -1,7 +1,7 @@
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{Spacing, TokenStream};
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_lexer::unescape::{self, Mode};
@@ -67,9 +67,10 @@ impl<'a> StringReader<'a> {
         self.override_span.unwrap_or_else(|| Span::with_root_ctxt(lo, hi))
     }
 
-    /// Returns the next token, and info about preceding whitespace, if any.
-    fn next_token(&mut self) -> (Spacing, Token) {
-        let mut spacing = Spacing::Joint;
+    /// Returns the next token, paired with a bool indicating if the token was
+    /// preceded by whitespace.
+    fn next_token(&mut self) -> (Token, bool) {
+        let mut preceded_by_whitespace = false;
 
         // Skip trivial (whitespace & comments) tokens
         loop {
@@ -78,7 +79,7 @@ impl<'a> StringReader<'a> {
 
             if text.is_empty() {
                 let span = self.mk_sp(self.pos, self.pos);
-                return (spacing, Token::new(token::Eof, span));
+                return (Token::new(token::Eof, span), preceded_by_whitespace);
             }
 
             let token = rustc_lexer::first_token(text);
@@ -91,9 +92,9 @@ impl<'a> StringReader<'a> {
             match self.cook_lexer_token(token.kind, start) {
                 Some(kind) => {
                     let span = self.mk_sp(start, self.pos);
-                    return (spacing, Token::new(kind, span));
+                    return (Token::new(kind, span), preceded_by_whitespace);
                 }
-                None => spacing = Spacing::Alone,
+                None => preceded_by_whitespace = true,
             }
         }
     }
