@@ -1,6 +1,7 @@
 #![warn(clippy::integer_arithmetic)]
 
 mod backtrace;
+#[cfg(unix)]
 pub mod ffi_support;
 pub mod foreign_items;
 pub mod intrinsics;
