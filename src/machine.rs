@@ -464,7 +464,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
             #[cfg(unix)]
             external_so_lib: config.external_so_file.as_ref().map(|lib_file_path| {
-                let target_triple = &layout_cx.tcx.sess.opts.target_triple.to_string();
+                let target_triple = layout_cx.tcx.sess.opts.target_triple.triple();
                 // Check if host target == the session target.
                 if env!("TARGET") != target_triple {
                     panic!(
