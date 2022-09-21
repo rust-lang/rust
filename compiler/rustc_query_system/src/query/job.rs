@@ -3,9 +3,11 @@ use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryStackFrame};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, Level};
+use rustc_errors::{
+    Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, Level,
+};
 use rustc_hir::def::DefKind;
-use rustc_session::{Session, SessionDiagnostic};
+use rustc_session::Session;
 use rustc_span::Span;
 
 use std::hash::Hash;

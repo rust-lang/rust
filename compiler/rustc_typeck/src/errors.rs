@@ -1,11 +1,11 @@
 //! Errors emitted by typeck.
+use rustc_errors::IntoDiagnostic;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler};
-use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
-use rustc_session::SessionDiagnostic;
 use rustc_span::{symbol::Ident, Span, Symbol};
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::field_multiply_specified_in_initializer, code = "E0062")]
 pub struct FieldMultiplySpecifiedInInitializer {
     #[primary_span]
@@ -16,7 +16,7 @@ pub struct FieldMultiplySpecifiedInInitializer {
     pub ident: Ident,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::unrecognized_atomic_operation, code = "E0092")]
 pub struct UnrecognizedAtomicOperation<'a> {
     #[primary_span]
@@ -25,7 +25,7 @@ pub struct UnrecognizedAtomicOperation<'a> {
     pub op: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::wrong_number_of_generic_arguments_to_intrinsic, code = "E0094")]
 pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
     #[primary_span]
@@ -36,7 +36,7 @@ pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
     pub descr: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::unrecognized_intrinsic_function, code = "E0093")]
 pub struct UnrecognizedIntrinsicFunction {
     #[primary_span]
@@ -45,7 +45,7 @@ pub struct UnrecognizedIntrinsicFunction {
     pub name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::lifetimes_or_bounds_mismatch_on_trait, code = "E0195")]
 pub struct LifetimesOrBoundsMismatchOnTrait {
     #[primary_span]
@@ -57,7 +57,7 @@ pub struct LifetimesOrBoundsMismatchOnTrait {
     pub ident: Ident,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::drop_impl_on_wrong_item, code = "E0120")]
 pub struct DropImplOnWrongItem {
     #[primary_span]
@@ -65,7 +65,7 @@ pub struct DropImplOnWrongItem {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::field_already_declared, code = "E0124")]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
@@ -76,7 +76,7 @@ pub struct FieldAlreadyDeclared {
     pub prev_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::copy_impl_on_type_with_dtor, code = "E0184")]
 pub struct CopyImplOnTypeWithDtor {
     #[primary_span]
@@ -84,14 +84,14 @@ pub struct CopyImplOnTypeWithDtor {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::multiple_relaxed_default_bounds, code = "E0203")]
 pub struct MultipleRelaxedDefaultBounds {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::copy_impl_on_non_adt, code = "E0206")]
 pub struct CopyImplOnNonAdt {
     #[primary_span]
@@ -99,7 +99,7 @@ pub struct CopyImplOnNonAdt {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::trait_object_declared_with_no_traits, code = "E0224")]
 pub struct TraitObjectDeclaredWithNoTraits {
     #[primary_span]
@@ -108,14 +108,14 @@ pub struct TraitObjectDeclaredWithNoTraits {
     pub trait_alias_span: Option<Span>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0227")]
 pub struct AmbiguousLifetimeBound {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::assoc_type_binding_not_allowed, code = "E0229")]
 pub struct AssocTypeBindingNotAllowed {
     #[primary_span]
@@ -123,14 +123,14 @@ pub struct AssocTypeBindingNotAllowed {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::functional_record_update_on_non_struct, code = "E0436")]
 pub struct FunctionalRecordUpdateOnNonStruct {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::typeof_reserved_keyword_used, code = "E0516")]
 pub struct TypeofReservedKeywordUsed<'tcx> {
     pub ty: Ty<'tcx>,
@@ -141,7 +141,7 @@ pub struct TypeofReservedKeywordUsed<'tcx> {
     pub opt_sugg: Option<(Span, Applicability)>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::return_stmt_outside_of_fn_body, code = "E0572")]
 pub struct ReturnStmtOutsideOfFnBody {
     #[primary_span]
@@ -152,14 +152,14 @@ pub struct ReturnStmtOutsideOfFnBody {
     pub encl_fn_span: Option<Span>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::yield_expr_outside_of_generator, code = "E0627")]
 pub struct YieldExprOutsideOfGenerator {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::struct_expr_non_exhaustive, code = "E0639")]
 pub struct StructExprNonExhaustive {
     #[primary_span]
@@ -167,14 +167,14 @@ pub struct StructExprNonExhaustive {
     pub what: &'static str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::method_call_on_unknown_type, code = "E0699")]
 pub struct MethodCallOnUnknownType {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::value_of_associated_struct_already_specified, code = "E0719")]
 pub struct ValueOfAssociatedStructAlreadySpecified {
     #[primary_span]
@@ -186,7 +186,7 @@ pub struct ValueOfAssociatedStructAlreadySpecified {
     pub def_path: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::address_of_temporary_taken, code = "E0745")]
 pub struct AddressOfTemporaryTaken {
     #[primary_span]
@@ -194,7 +194,7 @@ pub struct AddressOfTemporaryTaken {
     pub span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum AddReturnTypeSuggestion {
     #[suggestion(
         typeck::add_return_type_add,
@@ -217,7 +217,7 @@ pub enum AddReturnTypeSuggestion {
     },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum ExpectedReturnTypeLabel<'tcx> {
     #[label(typeck::expected_default_return_type)]
     Unit {
@@ -232,7 +232,7 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
     },
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::unconstrained_opaque_type)]
 #[note]
 pub struct UnconstrainedOpaqueType {
@@ -249,8 +249,8 @@ pub struct MissingTypeParams {
     pub empty_generic_args: bool,
 }
 
-// Manual implementation of `SessionDiagnostic` to be able to call `span_to_snippet`.
-impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
+// Manual implementation of `IntoDiagnostic` to be able to call `span_to_snippet`.
+impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = handler.struct_span_err_with_code(
             self.span,
@@ -306,7 +306,7 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::manual_implementation, code = "E0183")]
 #[help]
 pub struct ManualImplementation {
@@ -316,7 +316,7 @@ pub struct ManualImplementation {
     pub trait_name: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::substs_on_overridden_impl)]
 pub struct SubstsOnOverriddenImpl {
     #[primary_span]
@@ -339,7 +339,7 @@ pub struct ExternCrateNotIdiomatic {
     pub suggestion_code: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::expected_used_symbol)]
 pub struct ExpectedUsedSymbol {
     #[primary_span]

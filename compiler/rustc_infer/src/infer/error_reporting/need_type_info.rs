@@ -4,6 +4,7 @@ use crate::errors::{
 };
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
+use rustc_errors::IntoDiagnostic;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -18,7 +19,6 @@ use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{self, DefIdTree, InferConst};
 use rustc_middle::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeckResults};
-use rustc_session::SessionDiagnostic;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span};
 use std::borrow::Cow;

@@ -1,10 +1,10 @@
 //! Errors emitted by symbol_mangling.
 
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
-use rustc_macros::SessionDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(symbol_mangling::test_output)]
 pub struct TestOutput {
     #[primary_span]

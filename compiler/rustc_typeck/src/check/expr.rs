@@ -881,7 +881,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        // FIXME: Make this use SessionDiagnostic once error codes can be dynamically set.
+        // FIXME: Make this use Diagnostic once error codes can be dynamically set.
         let mut err = self.tcx.sess.struct_span_err_with_code(
             op_span,
             "invalid left-hand side of assignment",

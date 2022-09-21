@@ -1,8 +1,8 @@
 use rustc_errors::DiagnosticArgFromDisplay;
-use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(privacy::field_is_private, code = "E0451")]
 pub struct FieldIsPrivate {
     #[primary_span]
@@ -14,7 +14,7 @@ pub struct FieldIsPrivate {
     pub label: FieldIsPrivateLabel,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum FieldIsPrivateLabel {
     #[label(privacy::field_is_private_is_update_syntax_label)]
     IsUpdateSyntax {
@@ -29,7 +29,7 @@ pub enum FieldIsPrivateLabel {
     },
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(privacy::item_is_private)]
 pub struct ItemIsPrivate<'a> {
     #[primary_span]
@@ -39,7 +39,7 @@ pub struct ItemIsPrivate<'a> {
     pub descr: DiagnosticArgFromDisplay<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(privacy::unnamed_item_is_private)]
 pub struct UnnamedItemIsPrivate {
     #[primary_span]
@@ -48,7 +48,7 @@ pub struct UnnamedItemIsPrivate {
 }
 
 // Duplicate of `InPublicInterface` but with a different error code, shares the same slug.
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(privacy::in_public_interface, code = "E0445")]
 pub struct InPublicInterfaceTraits<'a> {
     #[primary_span]
@@ -62,7 +62,7 @@ pub struct InPublicInterfaceTraits<'a> {
 }
 
 // Duplicate of `InPublicInterfaceTraits` but with a different error code, shares the same slug.
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(privacy::in_public_interface, code = "E0446")]
 pub struct InPublicInterface<'a> {
     #[primary_span]
@@ -75,7 +75,7 @@ pub struct InPublicInterface<'a> {
     pub vis_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(privacy::report_effective_visibility)]
 pub struct ReportEffectiveVisibility {
     #[primary_span]

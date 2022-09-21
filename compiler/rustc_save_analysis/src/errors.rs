@@ -1,8 +1,8 @@
-use rustc_macros::SessionDiagnostic;
+use rustc_macros::Diagnostic;
 
 use std::path::Path;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(save_analysis::could_not_open)]
 pub(crate) struct CouldNotOpen<'a> {
     pub file_name: &'a Path,

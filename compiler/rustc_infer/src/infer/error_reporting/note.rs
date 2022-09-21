@@ -2,7 +2,7 @@ use crate::errors::RegionOriginNote;
 use crate::infer::error_reporting::note_and_explain_region;
 use crate::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_errors::{
-    fluent, struct_span_err, AddSubdiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    fluent, struct_span_err, AddToDiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
 };
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;

@@ -9,29 +9,29 @@ use syn::spanned::Spanned;
 use synstructure::Structure;
 
 /// The central struct for constructing the `into_diagnostic` method from an annotated struct.
-pub(crate) struct SessionDiagnosticDerive<'a> {
+pub(crate) struct DiagnosticDerive<'a> {
     structure: Structure<'a>,
-    sess: syn::Ident,
+    handler: syn::Ident,
     builder: DiagnosticDeriveBuilder,
 }
 
-impl<'a> SessionDiagnosticDerive<'a> {
-    pub(crate) fn new(diag: syn::Ident, sess: syn::Ident, structure: Structure<'a>) -> Self {
+impl<'a> DiagnosticDerive<'a> {
+    pub(crate) fn new(diag: syn::Ident, handler: syn::Ident, structure: Structure<'a>) -> Self {
         Self {
             builder: DiagnosticDeriveBuilder {
                 diag,
                 fields: build_field_mapping(&structure),
-                kind: DiagnosticDeriveKind::SessionDiagnostic,
+                kind: DiagnosticDeriveKind::Diagnostic,
                 code: None,
                 slug: None,
             },
-            sess,
+            handler,
             structure,
         }
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
-        let SessionDiagnosticDerive { mut structure, sess, mut builder } = self;
+        let DiagnosticDerive { mut structure, handler, mut builder } = self;
 
         let ast = structure.ast();
         let implementation = {
@@ -53,7 +53,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     }
                     Some(slug) => {
                         quote! {
-                            let mut #diag = #sess.struct_diagnostic(rustc_errors::fluent::#slug);
+                            let mut #diag = #handler.struct_diagnostic(rustc_errors::fluent::#slug);
                         }
                     }
                 };
@@ -72,7 +72,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
             } else {
                 span_err(
                     ast.span().unwrap(),
-                    "`#[derive(SessionDiagnostic)]` can only be used on structs",
+                    "`#[derive(Diagnostic)]` can only be used on structs",
                 )
                 .emit();
 
@@ -81,15 +81,15 @@ impl<'a> SessionDiagnosticDerive<'a> {
         };
 
         structure.gen_impl(quote! {
-            gen impl<'__session_diagnostic_sess, G>
-                    rustc_session::SessionDiagnostic<'__session_diagnostic_sess, G>
+            gen impl<'__diagnostic_handler_sess, G>
+                    rustc_errors::IntoDiagnostic<'__diagnostic_handler_sess, G>
                     for @Self
                 where G: rustc_errors::EmissionGuarantee
             {
                 fn into_diagnostic(
                     self,
-                    #sess: &'__session_diagnostic_sess rustc_errors::Handler
-                ) -> rustc_errors::DiagnosticBuilder<'__session_diagnostic_sess, G> {
+                    #handler: &'__diagnostic_handler_sess rustc_errors::Handler
+                ) -> rustc_errors::DiagnosticBuilder<'__diagnostic_handler_sess, G> {
                     use rustc_errors::IntoDiagnosticArg;
                     #implementation
                 }

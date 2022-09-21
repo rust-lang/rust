@@ -60,6 +60,7 @@ mod snippet;
 mod styled_buffer;
 pub mod translation;
 
+pub use diagnostic_builder::IntoDiagnostic;
 pub use snippet::Style;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a, ErrorGuaranteed>>;
@@ -370,7 +371,7 @@ impl fmt::Display for ExplicitBug {
 impl error::Error for ExplicitBug {}
 
 pub use diagnostic::{
-    AddSubdiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgFromDisplay,
+    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgFromDisplay,
     DiagnosticArgValue, DiagnosticId, DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
 pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, LintDiagnosticBuilder};
@@ -436,11 +437,11 @@ struct HandlerInner {
     /// have been converted.
     check_unstable_expect_diagnostics: bool,
 
-    /// Expected [`Diagnostic`]s store a [`LintExpectationId`] as part of
+    /// Expected [`Diagnostic`][diagnostic::Diagnostic]s store a [`LintExpectationId`] as part of
     /// the lint level. [`LintExpectationId`]s created early during the compilation
     /// (before `HirId`s have been defined) are not stable and can therefore not be
     /// stored on disk. This buffer stores these diagnostics until the ID has been
-    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`]s are the
+    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`][diagnostic::Diagnostic]s are the
     /// submitted for storage and added to the list of fulfilled expectations.
     unstable_expect_diagnostics: Vec<Diagnostic>,
 
@@ -1026,6 +1027,39 @@ impl Handler {
 
     pub fn emit_diagnostic(&self, diagnostic: &mut Diagnostic) -> Option<ErrorGuaranteed> {
         self.inner.borrow_mut().emit_diagnostic(diagnostic)
+    }
+
+    pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
+        self.create_err(err).emit()
+    }
+
+    pub fn create_err<'a>(
+        &'a self,
+        err: impl IntoDiagnostic<'a>,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        err.into_diagnostic(self)
+    }
+
+    pub fn create_warning<'a>(
+        &'a self,
+        warning: impl IntoDiagnostic<'a, ()>,
+    ) -> DiagnosticBuilder<'a, ()> {
+        warning.into_diagnostic(self)
+    }
+
+    pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
+        self.create_warning(warning).emit()
+    }
+
+    pub fn create_fatal<'a>(
+        &'a self,
+        fatal: impl IntoDiagnostic<'a, !>,
+    ) -> DiagnosticBuilder<'a, !> {
+        fatal.into_diagnostic(self)
+    }
+
+    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
+        self.create_fatal(fatal).emit()
     }
 
     fn emit_diag_at_span(

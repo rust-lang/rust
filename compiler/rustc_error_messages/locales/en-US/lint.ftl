@@ -51,7 +51,7 @@ lint_non_existant_doc_keyword = found non-existing keyword `{$keyword}` used in 
     .help = only existing keywords are allowed in core/std
 
 lint_diag_out_of_impl =
-    diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
+    diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
 
 lint_untranslatable_diag = diagnostics should be created using translatable messages
 

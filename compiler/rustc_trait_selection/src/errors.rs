@@ -1,10 +1,10 @@
-use rustc_errors::{fluent, ErrorGuaranteed, Handler};
-use rustc_macros::SessionDiagnostic;
+use rustc_errors::{fluent, ErrorGuaranteed, Handler, IntoDiagnostic};
+use rustc_macros::Diagnostic;
 use rustc_middle::ty::{PolyTraitRef, Ty, Unevaluated};
-use rustc_session::{Limit, SessionDiagnostic};
+use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(trait_selection::dump_vtable_entries)]
 pub struct DumpVTableEntries<'a> {
     #[primary_span]
@@ -13,7 +13,7 @@ pub struct DumpVTableEntries<'a> {
     pub entries: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(trait_selection::unable_to_construct_constant_value)]
 pub struct UnableToConstructConstantValue<'a> {
     #[primary_span]
@@ -21,7 +21,7 @@ pub struct UnableToConstructConstantValue<'a> {
     pub unevaluated: Unevaluated<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[help]
 #[diag(trait_selection::auto_deref_reached_recursion_limit, code = "E0055")]
 pub struct AutoDerefReachedRecursionLimit<'a> {
@@ -33,7 +33,7 @@ pub struct AutoDerefReachedRecursionLimit<'a> {
     pub crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(trait_selection::empty_on_clause_in_rustc_on_unimplemented, code = "E0232")]
 pub struct EmptyOnClauseInOnUnimplemented {
     #[primary_span]
@@ -41,7 +41,7 @@ pub struct EmptyOnClauseInOnUnimplemented {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(trait_selection::invalid_on_clause_in_rustc_on_unimplemented, code = "E0232")]
 pub struct InvalidOnClauseInOnUnimplemented {
     #[primary_span]
@@ -49,7 +49,7 @@ pub struct InvalidOnClauseInOnUnimplemented {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(trait_selection::no_value_in_rustc_on_unimplemented, code = "E0232")]
 #[note]
 pub struct NoValueInOnUnimplemented {
@@ -66,7 +66,7 @@ pub struct NegativePositiveConflict<'a> {
     pub positive_impl_span: Result<Span, Symbol>,
 }
 
-impl SessionDiagnostic<'_> for NegativePositiveConflict<'_> {
+impl IntoDiagnostic<'_> for NegativePositiveConflict<'_> {
     fn into_diagnostic(
         self,
         handler: &Handler,

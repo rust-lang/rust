@@ -127,7 +127,7 @@ decl_derive!([TypeFoldable, attributes(type_foldable)] => type_foldable::type_fo
 decl_derive!([TypeVisitable, attributes(type_visitable)] => type_visitable::type_visitable_derive);
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
-    [SessionDiagnostic, attributes(
+    [Diagnostic, attributes(
         // struct attributes
         diag,
         help,
@@ -161,7 +161,7 @@ decl_derive!(
         suggestion_verbose)] => diagnostics::lint_diagnostic_derive
 );
 decl_derive!(
-    [SessionSubdiagnostic, attributes(
+    [Subdiagnostic, attributes(
         // struct/variant attributes
         label,
         help,

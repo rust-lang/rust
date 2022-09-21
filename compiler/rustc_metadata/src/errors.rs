@@ -3,49 +3,49 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rustc_errors::{error_code, ErrorGuaranteed};
-use rustc_macros::SessionDiagnostic;
-use rustc_session::{config, SessionDiagnostic};
+use rustc_errors::{error_code, ErrorGuaranteed, IntoDiagnostic};
+use rustc_macros::Diagnostic;
+use rustc_session::config;
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use crate::locator::CrateFlavor;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::rlib_required)]
 pub struct RlibRequired {
     pub crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::lib_required)]
 pub struct LibRequired<'a> {
     pub crate_name: Symbol,
     pub kind: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::crate_dep_multiple)]
 #[help]
 pub struct CrateDepMultiple {
     pub crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::two_panic_runtimes)]
 pub struct TwoPanicRuntimes {
     pub prev_name: Symbol,
     pub cur_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::bad_panic_strategy)]
 pub struct BadPanicStrategy {
     pub runtime: Symbol,
     pub strategy: PanicStrategy,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::required_panic_strategy)]
 pub struct RequiredPanicStrategy {
     pub crate_name: Symbol,
@@ -53,7 +53,7 @@ pub struct RequiredPanicStrategy {
     pub desired_strategy: PanicStrategy,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::incompatible_panic_in_drop_strategy)]
 pub struct IncompatiblePanicInDropStrategy {
     pub crate_name: Symbol,
@@ -61,56 +61,56 @@ pub struct IncompatiblePanicInDropStrategy {
     pub desired_strategy: PanicStrategy,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::multiple_names_in_link)]
 pub struct MultipleNamesInLink {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::multiple_kinds_in_link)]
 pub struct MultipleKindsInLink {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::link_name_form)]
 pub struct LinkNameForm {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::link_kind_form)]
 pub struct LinkKindForm {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::link_modifiers_form)]
 pub struct LinkModifiersForm {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::link_cfg_form)]
 pub struct LinkCfgForm {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::wasm_import_form)]
 pub struct WasmImportForm {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::empty_link_name, code = "E0454")]
 pub struct EmptyLinkName {
     #[primary_span]
@@ -118,21 +118,21 @@ pub struct EmptyLinkName {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::link_framework_apple, code = "E0455")]
 pub struct LinkFrameworkApple {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::framework_only_windows, code = "E0455")]
 pub struct FrameworkOnlyWindows {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::unknown_link_kind, code = "E0458")]
 pub struct UnknownLinkKind<'a> {
     #[primary_span]
@@ -141,49 +141,49 @@ pub struct UnknownLinkKind<'a> {
     pub kind: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::multiple_link_modifiers)]
 pub struct MultipleLinkModifiers {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::multiple_cfgs)]
 pub struct MultipleCfgs {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::link_cfg_single_predicate)]
 pub struct LinkCfgSinglePredicate {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::multiple_wasm_import)]
 pub struct MultipleWasmImport {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::unexpected_link_arg)]
 pub struct UnexpectedLinkArg {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::invalid_link_modifier)]
 pub struct InvalidLinkModifier {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::multiple_modifiers)]
 pub struct MultipleModifiers<'a> {
     #[primary_span]
@@ -191,28 +191,28 @@ pub struct MultipleModifiers<'a> {
     pub modifier: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::bundle_needs_static)]
 pub struct BundleNeedsStatic {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::whole_archive_needs_static)]
 pub struct WholeArchiveNeedsStatic {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::as_needed_compatibility)]
 pub struct AsNeededCompatibility {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::unknown_link_modifier)]
 pub struct UnknownLinkModifier<'a> {
     #[primary_span]
@@ -220,14 +220,14 @@ pub struct UnknownLinkModifier<'a> {
     pub modifier: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::incompatible_wasm_link)]
 pub struct IncompatibleWasmLink {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::link_requires_name, code = "E0459")]
 pub struct LinkRequiresName {
     #[primary_span]
@@ -235,105 +235,105 @@ pub struct LinkRequiresName {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::raw_dylib_no_nul)]
 pub struct RawDylibNoNul {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::link_ordinal_raw_dylib)]
 pub struct LinkOrdinalRawDylib {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::lib_framework_apple)]
 pub struct LibFrameworkApple;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::empty_renaming_target)]
 pub struct EmptyRenamingTarget<'a> {
     pub lib_name: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::renaming_no_link)]
 pub struct RenamingNoLink<'a> {
     pub lib_name: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::multiple_renamings)]
 pub struct MultipleRenamings<'a> {
     pub lib_name: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::no_link_mod_override)]
 pub struct NoLinkModOverride {
     #[primary_span]
     pub span: Option<Span>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::unsupported_abi_i686)]
 pub struct UnsupportedAbiI686 {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::unsupported_abi)]
 pub struct UnsupportedAbi {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::fail_create_file_encoder)]
 pub struct FailCreateFileEncoder {
     pub err: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::fail_seek_file)]
 pub struct FailSeekFile {
     pub err: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::fail_write_file)]
 pub struct FailWriteFile {
     pub err: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::crate_not_panic_runtime)]
 pub struct CrateNotPanicRuntime {
     pub crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::no_panic_strategy)]
 pub struct NoPanicStrategy {
     pub crate_name: Symbol,
     pub strategy: PanicStrategy,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::profiler_builtins_needs_core)]
 pub struct ProfilerBuiltinsNeedsCore;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::not_profiler_runtime)]
 pub struct NotProfilerRuntime {
     pub crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::no_multiple_global_alloc)]
 pub struct NoMultipleGlobalAlloc {
     #[primary_span]
@@ -343,18 +343,18 @@ pub struct NoMultipleGlobalAlloc {
     pub span1: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::conflicting_global_alloc)]
 pub struct ConflictingGlobalAlloc {
     pub crate_name: Symbol,
     pub other_crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::global_alloc_required)]
 pub struct GlobalAllocRequired;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::no_transitive_needs_dep)]
 pub struct NoTransitiveNeedsDep<'a> {
     pub crate_name: Symbol,
@@ -362,39 +362,39 @@ pub struct NoTransitiveNeedsDep<'a> {
     pub deps_crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::failed_write_error)]
 pub struct FailedWriteError {
     pub filename: PathBuf,
     pub err: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::missing_native_library)]
 pub struct MissingNativeLibrary<'a> {
     pub libname: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::failed_create_tempdir)]
 pub struct FailedCreateTempdir {
     pub err: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::failed_create_file)]
 pub struct FailedCreateFile<'a> {
     pub filename: &'a Path,
     pub err: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::failed_create_encoded_metadata)]
 pub struct FailedCreateEncodedMetadata {
     pub err: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::non_ascii_name)]
 pub struct NonAsciiName {
     #[primary_span]
@@ -402,7 +402,7 @@ pub struct NonAsciiName {
     pub crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::extern_location_not_exist)]
 pub struct ExternLocationNotExist<'a> {
     #[primary_span]
@@ -411,7 +411,7 @@ pub struct ExternLocationNotExist<'a> {
     pub location: &'a Path,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::extern_location_not_file)]
 pub struct ExternLocationNotFile<'a> {
     #[primary_span]
@@ -427,7 +427,7 @@ pub(crate) struct MultipleCandidates {
     pub candidates: Vec<PathBuf>,
 }
 
-impl SessionDiagnostic<'_> for MultipleCandidates {
+impl IntoDiagnostic<'_> for MultipleCandidates {
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
@@ -444,7 +444,7 @@ impl SessionDiagnostic<'_> for MultipleCandidates {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::multiple_matching_crates, code = "E0464")]
 #[note]
 pub struct MultipleMatchingCrates {
@@ -454,7 +454,7 @@ pub struct MultipleMatchingCrates {
     pub candidates: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::symbol_conflicts_current, code = "E0519")]
 pub struct SymbolConflictsCurrent {
     #[primary_span]
@@ -462,7 +462,7 @@ pub struct SymbolConflictsCurrent {
     pub crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::symbol_conflicts_others, code = "E0523")]
 pub struct SymbolConflictsOthers {
     #[primary_span]
@@ -470,7 +470,7 @@ pub struct SymbolConflictsOthers {
     pub crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::stable_crate_id_collision)]
 pub struct StableCrateIdCollision {
     #[primary_span]
@@ -479,7 +479,7 @@ pub struct StableCrateIdCollision {
     pub crate_name1: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::dl_error)]
 pub struct DlError {
     #[primary_span]
@@ -487,7 +487,7 @@ pub struct DlError {
     pub err: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::newer_crate_version, code = "E0460")]
 #[note]
 #[note(metadata::found_crate_versions)]
@@ -499,7 +499,7 @@ pub struct NewerCrateVersion {
     pub found_crates: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::no_crate_with_triple, code = "E0461")]
 #[note(metadata::found_crate_versions)]
 pub struct NoCrateWithTriple<'a> {
@@ -511,7 +511,7 @@ pub struct NoCrateWithTriple<'a> {
     pub found_crates: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::found_staticlib, code = "E0462")]
 #[note(metadata::found_crate_versions)]
 #[help]
@@ -523,7 +523,7 @@ pub struct FoundStaticlib {
     pub found_crates: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::incompatible_rustc, code = "E0514")]
 #[note(metadata::found_crate_versions)]
 #[help]
@@ -543,7 +543,7 @@ pub struct InvalidMetadataFiles {
     pub crate_rejections: Vec<String>,
 }
 
-impl SessionDiagnostic<'_> for InvalidMetadataFiles {
+impl IntoDiagnostic<'_> for InvalidMetadataFiles {
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
@@ -571,7 +571,7 @@ pub struct CannotFindCrate {
     pub locator_triple: TargetTriple,
 }
 
-impl SessionDiagnostic<'_> for CannotFindCrate {
+impl IntoDiagnostic<'_> for CannotFindCrate {
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
@@ -617,7 +617,7 @@ impl SessionDiagnostic<'_> for CannotFindCrate {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::no_dylib_plugin, code = "E0457")]
 pub struct NoDylibPlugin {
     #[primary_span]
@@ -625,7 +625,7 @@ pub struct NoDylibPlugin {
     pub crate_name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::crate_location_unknown_type)]
 pub struct CrateLocationUnknownType<'a> {
     #[primary_span]
@@ -633,7 +633,7 @@ pub struct CrateLocationUnknownType<'a> {
     pub path: &'a Path,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::lib_filename_form)]
 pub struct LibFilenameForm<'a> {
     #[primary_span]
@@ -642,28 +642,28 @@ pub struct LibFilenameForm<'a> {
     pub dll_suffix: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::multiple_import_name_type)]
 pub struct MultipleImportNameType {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::import_name_type_form)]
 pub struct ImportNameTypeForm {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::import_name_type_x86)]
 pub struct ImportNameTypeX86 {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::unknown_import_name_type)]
 pub struct UnknownImportNameType<'a> {
     #[primary_span]
@@ -671,7 +671,7 @@ pub struct UnknownImportNameType<'a> {
     pub import_name_type: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(metadata::import_name_type_raw)]
 pub struct ImportNameTypeRaw {
     #[primary_span]
