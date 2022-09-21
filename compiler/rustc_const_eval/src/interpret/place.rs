@@ -280,7 +280,7 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
 
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn assert_mem_place(self) -> MPlaceTy<'tcx, Prov> {
+    pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Prov> {
         self.try_as_mplace().unwrap()
     }
 }
