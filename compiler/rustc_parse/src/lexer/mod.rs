@@ -70,7 +70,6 @@ impl<'a> StringReader<'a> {
             && let Some(shebang_len) = rustc_lexer::strip_shebang(self.src)
         {
             self.pos = self.pos + BytePos::from_usize(shebang_len);
-            spacing = Spacing::Alone;
         }
 
         // Skip trivial (whitespace & comments) tokens
