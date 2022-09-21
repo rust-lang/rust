@@ -2401,7 +2401,7 @@ impl Path {
         self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
     }
 
-    /// Extracts the extension of [`self.file_name`], if possible.
+    /// Extracts the extension (without the leading dot) of [`self.file_name`], if possible.
     ///
     /// The extension is:
     ///
