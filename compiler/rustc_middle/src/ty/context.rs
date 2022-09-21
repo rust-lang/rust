@@ -515,6 +515,8 @@ pub struct TypeckResults<'tcx> {
     /// MIR construction and hence is not serialized to metadata.
     fru_field_types: ItemLocalMap<Vec<Ty<'tcx>>>,
 
+    base_expr_backup: ItemLocalMap<(Ty<'tcx>, Ty<'tcx>)>,
+
     /// For every coercion cast we add the HIR node ID of the cast
     /// expression to this set.
     coercion_casts: ItemLocalSet,
@@ -599,6 +601,7 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_kind_origins: Default::default(),
             liberated_fn_sigs: Default::default(),
             fru_field_types: Default::default(),
+            base_expr_backup: Default::default(),
             coercion_casts: Default::default(),
             used_trait_imports: Lrc::new(Default::default()),
             tainted_by_errors: None,
@@ -835,6 +838,14 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn fru_field_types_mut(&mut self) -> LocalTableInContextMut<'_, Vec<Ty<'tcx>>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.fru_field_types }
+    }
+
+    pub fn base_expr_backup(&self) -> LocalTableInContext<'_, (Ty<'tcx>, Ty<'tcx>)> {
+        LocalTableInContext { hir_owner: self.hir_owner, data: &self.base_expr_backup }
+    }
+
+    pub fn base_expr_backup_mut(&mut self) -> LocalTableInContextMut<'_, (Ty<'tcx>, Ty<'tcx>)> {
+        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.base_expr_backup }
     }
 
     pub fn is_coercion_cast(&self, hir_id: hir::HirId) -> bool {

@@ -218,6 +218,17 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         self.trace(expected, actual).glb(expected, actual)
     }
 
+    pub fn base_struct<T>(
+        self,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: ToTrace<'tcx>,
+    {
+        self.trace(expected, actual).base_struct(expected, actual)
+    }
+
     /// Sets the "trace" values that will be used for
     /// error-reporting, but doesn't actually perform any operation
     /// yet (this is useful when you want to set the trace using
@@ -254,6 +265,21 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
             let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
             fields
                 .sub(a_is_expected)
+                .relate(a, b)
+                .map(move |_| InferOk { value: (), obligations: fields.obligations })
+        })
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    pub fn base_struct<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
+        where
+            T: Relate<'tcx>,
+    {
+        let Trace { at, trace, a_is_expected } = self;
+        at.infcx.commit_if_ok(|_| {
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            fields
+                .base_struct(a_is_expected)
                 .relate(a, b)
                 .map(move |_| InferOk { value: (), obligations: fields.obligations })
         })

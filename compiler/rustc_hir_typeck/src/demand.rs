@@ -174,6 +174,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (expected, Some(err))
     }
 
+    #[instrument(skip(self), level = "debug")]
+    pub fn demand_base_struct(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+        match self.at(cause, self.param_env).base_struct(expected, actual) {
+            Ok(InferOk { obligations, value: () }) => {
+                self.register_predicates(obligations);
+                None
+            }
+            Err(e) => Some(self.report_mismatched_types(&cause, expected, actual, e)),
+        }
+    }
+
     fn annotate_expected_due_to_let_ty(
         &self,
         err: &mut Diagnostic,

@@ -39,7 +39,6 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
-use rustc_middle::ty::error::TypeError::FieldMisMatch;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TypeVisitable};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -1677,8 +1676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 fru_ty,
                                                 FieldMisMatch(variant.name, ident.name),
                                             )
-                                            .emit();
-                                    }
+                                            .emit();                                    }
                                 }
                             }
                             self.resolve_vars_if_possible(fru_ty)
@@ -1705,9 +1703,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let fresh_base_ty = self.tcx.mk_adt(*adt, fresh_substs);
                     self.check_expr_has_type_or_error(
                         base_expr,
-                        self.resolve_vars_if_possible(fresh_base_ty),
+                        fresh_base_ty,
                         |_| {},
                     );
+                    self.typeck_results.borrow_mut().base_expr_backup_mut().insert(base_expr.hir_id, (fresh_base_ty, adt_ty));
                     fru_tys
                 } else {
                     // Check the base_expr, regardless of a bad expected adt_ty, so we can get

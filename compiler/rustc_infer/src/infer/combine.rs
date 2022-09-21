@@ -40,6 +40,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
+use crate::infer::base_struct::BaseStruct;
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'tcx> {
@@ -298,6 +299,10 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
 
     pub fn sub<'a>(&'a mut self, a_is_expected: bool) -> Sub<'a, 'infcx, 'tcx> {
         Sub::new(self, a_is_expected)
+    }
+
+    pub fn base_struct<'a>(&'a mut self, a_is_expected: bool) -> BaseStruct<'a, 'infcx, 'tcx> {
+        BaseStruct::new(Sub::new(self, a_is_expected))
     }
 
     pub fn lub<'a>(&'a mut self, a_is_expected: bool) -> Lub<'a, 'infcx, 'tcx> {

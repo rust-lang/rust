@@ -156,18 +156,29 @@ pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
 
     let mut cached_ty = None;
     let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
-        let variance = variances[i];
-        let variance_info = if variance == ty::Invariant {
-            let ty =
-                *cached_ty.get_or_insert_with(|| tcx.bound_type_of(ty_def_id).subst(tcx, a_subst));
-            ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
-        } else {
-            ty::VarianceDiagInfo::default()
-        };
-        relation.relate_with_variance(variance, variance_info, a, b)
+        let cached_ty =
+            *cached_ty.get_or_insert_with(|| tcx.bound_type_of(ty_def_id).subst(tcx, a_subst));
+        relate_generic_arg(relation, variances, cached_ty, a, b, i)
     });
 
     tcx.mk_substs(params)
+}
+
+pub fn relate_generic_arg<'tcx, R: TypeRelation<'tcx>>(
+    relation: &mut R,
+    variances: &[ty::Variance],
+    ty: Ty<'tcx>,
+    a: GenericArg<'tcx>,
+    b: GenericArg<'tcx>,
+    index: usize,
+) -> RelateResult<'tcx, GenericArg<'tcx>> {
+    let variance = variances[index];
+    let variance_info = if variance == ty::Invariant {
+        ty::VarianceDiagInfo::Invariant { ty, param_index: index.try_into().unwrap() }
+    } else {
+        ty::VarianceDiagInfo::default()
+    };
+    relation.relate_with_variance(variance, variance_info, a, b)
 }
 
 impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {

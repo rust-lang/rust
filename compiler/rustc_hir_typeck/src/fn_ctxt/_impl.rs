@@ -605,6 +605,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(in super::super) fn resolve_base_expr(&self) {
+        for (_, (base_ty, adt_ty)) in self.typeck_results.borrow().base_expr_backup().iter() {
+            let base_ty = self.resolve_vars_if_possible(*base_ty);
+            if base_ty.has_infer_types() {
+                if let Some(mut err) =
+                    self.demand_base_struct(&self.misc(DUMMY_SP), *adt_ty, base_ty)
+                {
+                    err.emit();
+                }
+            }
+        }
+    }
+
     #[instrument(skip(self), level = "debug")]
     pub(in super::super) fn select_all_obligations_or_error(&self) {
         let mut errors = self.fulfillment_cx.borrow_mut().select_all_or_error(&self);
