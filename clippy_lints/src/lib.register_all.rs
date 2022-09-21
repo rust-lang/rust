@@ -21,6 +21,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(booleans::NONMINIMAL_BOOL),
     LintId::of(booleans::OVERLY_COMPLEX_BOOL_EXPR),
     LintId::of(borrow_deref_ref::BORROW_DEREF_REF),
+    LintId::of(box_default::BOX_DEFAULT),
     LintId::of(casts::CAST_ABS_TO_UNSIGNED),
     LintId::of(casts::CAST_ENUM_CONSTRUCTOR),
     LintId::of(casts::CAST_ENUM_TRUNCATION),

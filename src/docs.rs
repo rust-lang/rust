@@ -48,6 +48,7 @@ docs! {
     "borrow_interior_mutable_const",
     "borrowed_box",
     "box_collection",
+    "box_default",
     "boxed_local",
     "branches_sharing_code",
     "builtin_type_shadow",
