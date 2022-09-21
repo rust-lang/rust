@@ -1,6 +1,6 @@
 // ignore-tidy-linelength
 // Test various things that we do not want to promote.
-#![allow(unconditional_panic, const_err)]
+#![allow(unconditional_panic)]
 
 use std::cell::Cell;
 

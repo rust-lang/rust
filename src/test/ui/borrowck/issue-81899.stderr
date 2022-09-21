@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-81899.rs:12:5
+  --> $DIR/issue-81899.rs:11:5
    |
 LL | const _CONST: &[u8] = &f(&[], |_| {});
    |                        -------------- inside `_CONST` at $DIR/issue-81899.rs:4:24
@@ -7,32 +7,17 @@ LL | const _CONST: &[u8] = &f(&[], |_| {});
 LL |     panic!()
    |     ^^^^^^^^
    |     |
-   |     the evaluated program panicked at 'explicit panic', $DIR/issue-81899.rs:12:5
+   |     the evaluated program panicked at 'explicit panic', $DIR/issue-81899.rs:11:5
    |     inside `f::<[closure@$DIR/issue-81899.rs:4:31: 4:34]>` at $SRC_DIR/std/src/panic.rs:LL:COL
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/issue-81899.rs:4:23
    |
 LL | const _CONST: &[u8] = &f(&[], |_| {});
-   | -------------------   ^^^^^^^^^^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
+   |                       ^^^^^^^^^^^^^^^ referenced constant has errors
 
 error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
-Future incompatibility report: Future breakage diagnostic:
-error: any use of this value will cause an error
-  --> $DIR/issue-81899.rs:4:23
-   |
-LL | const _CONST: &[u8] = &f(&[], |_| {});
-   | -------------------   ^^^^^^^^^^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-

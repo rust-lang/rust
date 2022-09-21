@@ -1,5 +1,5 @@
 error: untyped pointers are not allowed in constant
-  --> $DIR/raw-ptr-const.rs:7:1
+  --> $DIR/raw-ptr-const.rs:5:1
    |
 LL | const CONST_RAW: *const Vec<i32> = &Vec::new() as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,6 +1,5 @@
 // run-pass
 // compile-flags: -O
-#![allow(const_err)]
 
 // Make sure arithmetic unary/binary ops actually return the right result, even when overflowing.
 // We have to put them in `const fn` and turn on optimizations to avoid overflow checks.

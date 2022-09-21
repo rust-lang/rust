@@ -1,5 +1,5 @@
 error[E0493]: destructor of `(T, u32)` cannot be evaluated at compile-time
-  --> $DIR/feature-gate-unleash_the_miri_inside_of_you.rs:11:20
+  --> $DIR/feature-gate-unleash_the_miri_inside_of_you.rs:9:20
    |
 LL |     const F: u32 = (U::X, 42).1;
    |                    ^^^^^^^^^^ - value is dropped here

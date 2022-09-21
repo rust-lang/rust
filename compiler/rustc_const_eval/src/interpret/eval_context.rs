@@ -258,6 +258,9 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             {
                 write!(f, "inside closure")?;
             } else {
+                // Note: this triggers a `good_path_bug` state, which means that if we ever get here
+                // we must emit a diagnostic. We should never display a `FrameInfo` unless we
+                // actually want to emit a warning or error to the user.
                 write!(f, "inside `{}`", self.instance)?;
             }
             if !self.span.is_dummy() {

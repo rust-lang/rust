@@ -18,55 +18,24 @@ error[E0080]: evaluation of constant value failed
 LL |     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: alloc3 has size $WORD, so pointer to 1000 bytes starting at offset 0 is out-of-bounds
 
-error: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/ptr_comparisons.rs:57:27
    |
 LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
-   | --------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
-   = note: `#[deny(const_err)]` on by default
 
-error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:62:27
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ptr_comparisons.rs:61:27
    |
 LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
-   | --------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
-Future incompatibility report: Future breakage diagnostic:
-error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:57:27
-   |
-LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
-   | --------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = help: this code performed an operation that depends on the underlying bytes representing a pointer
-   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
-   = note: `#[deny(const_err)]` on by default
-
-Future breakage diagnostic:
-error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:62:27
-   |
-LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
-   | --------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = help: this code performed an operation that depends on the underlying bytes representing a pointer
-   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
-   = note: `#[deny(const_err)]` on by default
-

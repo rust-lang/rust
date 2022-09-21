@@ -8,7 +8,7 @@ LL |     panic!("{:?}", 0);
    = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const formatting macro in constant functions
-  --> $DIR/format.rs:11:22
+  --> $DIR/format.rs:9:22
    |
 LL |     println!("{:?}", 0);
    |                      ^
@@ -17,7 +17,7 @@ LL |     println!("{:?}", 0);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `Arguments::<'a>::new_v1` is not yet stable as a const fn
-  --> $DIR/format.rs:11:5
+  --> $DIR/format.rs:9:5
    |
 LL |     println!("{:?}", 0);
    |     ^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     println!("{:?}", 0);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const fn `_print` in constant functions
-  --> $DIR/format.rs:11:5
+  --> $DIR/format.rs:9:5
    |
 LL |     println!("{:?}", 0);
    |     ^^^^^^^^^^^^^^^^^^^
@@ -34,91 +34,35 @@ LL |     println!("{:?}", 0);
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: erroneous constant used
+error[E0080]: erroneous constant used
   --> $DIR/format.rs:2:12
    |
 LL |     panic!("{:?}", 0);
    |            ^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
 
-error: erroneous constant used
+error[E0080]: erroneous constant used
   --> $DIR/format.rs:2:20
    |
 LL |     panic!("{:?}", 0);
    |                    ^ referenced constant has errors
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: erroneous constant used
-  --> $DIR/format.rs:11:14
+error[E0080]: erroneous constant used
+  --> $DIR/format.rs:9:14
    |
 LL |     println!("{:?}", 0);
    |              ^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error: erroneous constant used
-  --> $DIR/format.rs:11:22
+error[E0080]: erroneous constant used
+  --> $DIR/format.rs:9:22
    |
 LL |     println!("{:?}", 0);
    |                      ^ referenced constant has errors
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 8 previous errors
 
-For more information about this error, try `rustc --explain E0015`.
-Future incompatibility report: Future breakage diagnostic:
-error: erroneous constant used
-  --> $DIR/format.rs:2:12
-   |
-LL |     panic!("{:?}", 0);
-   |            ^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-
-Future breakage diagnostic:
-error: erroneous constant used
-  --> $DIR/format.rs:2:20
-   |
-LL |     panic!("{:?}", 0);
-   |                    ^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-   = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-Future breakage diagnostic:
-error: erroneous constant used
-  --> $DIR/format.rs:11:14
-   |
-LL |     println!("{:?}", 0);
-   |              ^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-
-Future breakage diagnostic:
-error: erroneous constant used
-  --> $DIR/format.rs:11:22
-   |
-LL |     println!("{:?}", 0);
-   |                      ^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-
+Some errors have detailed explanations: E0015, E0080.
+For more information about an error, try `rustc --explain E0015`.

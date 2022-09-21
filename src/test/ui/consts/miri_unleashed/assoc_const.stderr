@@ -1,22 +1,4 @@
-error[E0080]: erroneous constant used
-  --> $DIR/assoc_const.rs:31:13
-   |
-LL |     let y = <String as Bar<Vec<u32>, String>>::F;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
-
-warning: skipping const checks
-   |
-help: skipping check that does not even have a feature gate
-  --> $DIR/assoc_const.rs:14:20
-   |
-LL |     const F: u32 = (U::X, 42).1;
-   |                    ^^^^^^^^^^
-
-error: aborting due to previous error; 1 warning emitted
-
-For more information about this error, try `rustc --explain E0080`.
-Future incompatibility report: Future breakage diagnostic:
-warning: any use of this value will cause an error
+error[E0080]: evaluation of `<std::string::String as Bar<std::vec::Vec<u32>, std::string::String>>::F` failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
 LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
@@ -25,18 +7,26 @@ LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
    | calling non-const function `<Vec<u32> as Drop>::drop`
    | inside `std::ptr::drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    | inside `std::ptr::drop_in_place::<(Vec<u32>, u32)> - shim(Some((Vec<u32>, u32)))` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   | inside `<String as Bar<Vec<u32>, String>>::F` at $DIR/assoc_const.rs:14:31
    |
-  ::: $DIR/assoc_const.rs:14:5
+  ::: $DIR/assoc_const.rs:12:31
    |
 LL |     const F: u32 = (U::X, 42).1;
-   |     ------------
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-note: the lint level is defined here
-  --> $DIR/assoc_const.rs:4:10
-   |
-LL | #![allow(const_err)]
-   |          ^^^^^^^^^
+   |                               - inside `<String as Bar<Vec<u32>, String>>::F` at $DIR/assoc_const.rs:12:31
 
+error[E0080]: erroneous constant used
+  --> $DIR/assoc_const.rs:29:13
+   |
+LL |     let y = <String as Bar<Vec<u32>, String>>::F;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/assoc_const.rs:12:20
+   |
+LL |     const F: u32 = (U::X, 42).1;
+   |                    ^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

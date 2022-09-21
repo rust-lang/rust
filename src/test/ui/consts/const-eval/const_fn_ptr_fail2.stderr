@@ -1,19 +1,31 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_fn_ptr_fail2.rs:19:16
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
    |
-LL |     assert_eq!(Y, 4);
-   |                ^ referenced constant has errors
+LL |     x(y)
+   |     ^^^^
+   |     |
+   |     calling non-const function `double`
+   |     inside `bar` at $DIR/const_fn_ptr_fail2.rs:9:5
+...
+LL | const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
+   |                  --------- inside `Y` at $DIR/const_fn_ptr_fail2.rs:14:18
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_fn_ptr_fail2.rs:21:16
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
    |
-LL |     assert_eq!(Z, 4);
-   |                ^ referenced constant has errors
+LL |     x(y)
+   |     ^^^^
+   |     |
+   |     calling non-const function `double`
+   |     inside `bar` at $DIR/const_fn_ptr_fail2.rs:9:5
+...
+LL | const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
+   |                  -------------- inside `Z` at $DIR/const_fn_ptr_fail2.rs:15:18
 
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_fn_ptr_fail2.rs:12:5
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
    |
 LL |     x(y)
    |     ^^^^
@@ -21,79 +33,3 @@ LL |     x(y)
 error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.
-Future incompatibility report: Future breakage diagnostic:
-warning: any use of this value will cause an error
-  --> $DIR/const_fn_ptr_fail2.rs:12:5
-   |
-LL |     x(y)
-   |     ^^^^
-   |     |
-   |     calling non-const function `double`
-   |     inside `bar` at $DIR/const_fn_ptr_fail2.rs:12:5
-   |     inside `Y` at $DIR/const_fn_ptr_fail2.rs:15:18
-...
-LL | const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
-   | --------------
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-note: the lint level is defined here
-  --> $DIR/const_fn_ptr_fail2.rs:4:10
-   |
-LL | #![allow(const_err)]
-   |          ^^^^^^^^^
-
-Future breakage diagnostic:
-warning: any use of this value will cause an error
-  --> $DIR/const_fn_ptr_fail2.rs:12:5
-   |
-LL |     x(y)
-   |     ^^^^
-   |     |
-   |     calling non-const function `double`
-   |     inside `bar` at $DIR/const_fn_ptr_fail2.rs:12:5
-   |     inside `Z` at $DIR/const_fn_ptr_fail2.rs:16:18
-...
-LL | const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
-   | --------------
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-note: the lint level is defined here
-  --> $DIR/const_fn_ptr_fail2.rs:4:10
-   |
-LL | #![allow(const_err)]
-   |          ^^^^^^^^^
-
-Future breakage diagnostic:
-warning: erroneous constant used
-  --> $DIR/const_fn_ptr_fail2.rs:19:5
-   |
-LL |     assert_eq!(Y, 4);
-   |     ^^^^^^^^^^^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-note: the lint level is defined here
-  --> $DIR/const_fn_ptr_fail2.rs:4:10
-   |
-LL | #![allow(const_err)]
-   |          ^^^^^^^^^
-   = note: this warning originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-Future breakage diagnostic:
-warning: erroneous constant used
-  --> $DIR/const_fn_ptr_fail2.rs:21:5
-   |
-LL |     assert_eq!(Z, 4);
-   |     ^^^^^^^^^^^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-note: the lint level is defined here
-  --> $DIR/const_fn_ptr_fail2.rs:4:10
-   |
-LL | #![allow(const_err)]
-   |          ^^^^^^^^^
-   = note: this warning originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
-

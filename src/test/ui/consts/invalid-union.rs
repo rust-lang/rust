@@ -40,5 +40,4 @@ const C: S = {
 
 fn main() { //~ ERROR it is undefined behavior to use this value
     let _: &'static _ = &C; //~ ERROR erroneous constant used
-    //~^ WARN this was previously accepted
 }

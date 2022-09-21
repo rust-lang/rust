@@ -1,21 +1,17 @@
-error: any use of this value will cause an error
+error[E0080]: evaluation of `<A<()> as Foo<()>>::BAR` failed
   --> $DIR/issue-50814-2.rs:14:24
    |
 LL |     const BAR: usize = [5, 6, 7][T::BOO];
-   |     ----------------   ^^^^^^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 42
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
+   |                        ^^^^^^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 42
 
 error[E0080]: evaluation of `foo::<()>` failed
-  --> $DIR/issue-50814-2.rs:19:6
+  --> $DIR/issue-50814-2.rs:18:6
    |
 LL |     &<A<T> as Foo<T>>::BAR
    |      ^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
 note: the above error was encountered while instantiating `fn foo::<()>`
-  --> $DIR/issue-50814-2.rs:31:22
+  --> $DIR/issue-50814-2.rs:30:22
    |
 LL |     println!("{:x}", foo::<()>() as *const usize as usize);
    |                      ^^^^^^^^^^^
@@ -23,14 +19,3 @@ LL |     println!("{:x}", foo::<()>() as *const usize as usize);
 error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
-Future incompatibility report: Future breakage diagnostic:
-error: any use of this value will cause an error
-  --> $DIR/issue-50814-2.rs:14:24
-   |
-LL |     const BAR: usize = [5, 6, 7][T::BOO];
-   |     ----------------   ^^^^^^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 42
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-

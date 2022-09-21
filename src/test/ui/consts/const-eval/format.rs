@@ -3,8 +3,6 @@ const fn failure() {
     //~^ ERROR cannot call non-const formatting macro in constant functions
     //~| ERROR erroneous constant used
     //~| ERROR erroneous constant used
-    //~| WARN this was previously accepted by the compiler
-    //~| WARN this was previously accepted by the compiler
 }
 
 const fn print() {
@@ -14,8 +12,6 @@ const fn print() {
     //~| ERROR cannot call non-const fn `_print` in constant functions
     //~| ERROR erroneous constant used
     //~| ERROR erroneous constant used
-    //~| WARN this was previously accepted by the compiler
-    //~| WARN this was previously accepted by the compiler
 }
 
 fn main() {}

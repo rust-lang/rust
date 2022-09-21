@@ -16,9 +16,9 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    self, AssertKind, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, Location, Operand,
-    Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator,
-    TerminatorKind, UnOp, RETURN_PLACE,
+    AssertKind, BinOp, Body, Constant, Local, LocalDecl, Location, Operand, Place, Rvalue,
+    SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
+    UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::InternalSubsts;
@@ -286,7 +286,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
+    fn eval_constant(
+        &mut self,
+        c: &Constant<'tcx>,
+        _source_info: SourceInfo,
+    ) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.needs_subst() {
             return None;
@@ -297,28 +301,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
                 let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
-                if let Some(lint_root) = self.lint_root(source_info) {
-                    let lint_only = match c.literal {
-                        ConstantKind::Ty(ct) => ct.needs_subst(),
-                        ConstantKind::Unevaluated(
-                            mir::UnevaluatedConst { def: _, substs: _, promoted: Some(_) },
-                            _,
-                        ) => {
-                            // Promoteds must lint and not error as the user didn't ask for them
-                            true
-                        }
-                        ConstantKind::Unevaluated(..) | ConstantKind::Val(..) => c.needs_subst(),
-                    };
-                    if lint_only {
-                        // Out of backwards compatibility we cannot report hard errors in unused
-                        // generic functions using associated constants of the generic parameters.
-                        err.report_as_lint(tcx, "erroneous constant used", lint_root, Some(c.span));
-                    } else {
-                        err.report_as_error(tcx, "erroneous constant used");
-                    }
-                } else {
-                    err.report_as_error(tcx, "erroneous constant used");
-                }
+                err.report_as_error(tcx, "erroneous constant used");
                 None
             }
         }
