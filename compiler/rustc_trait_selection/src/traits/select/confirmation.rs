@@ -638,7 +638,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             output_ty,
             &mut nested,
         );
-        if !output_ty.is_trivially_sized(self.tcx()) {
+        if self_ty.is_fn_ptr() && !output_ty.is_trivially_sized(self.tcx()) {
             let tr = ty::Binder::dummy(ty::TraitRef::new(
                 self.tcx().require_lang_item(LangItem::Sized, None),
                 self.tcx().mk_substs_trait(output_ty, &[]),
