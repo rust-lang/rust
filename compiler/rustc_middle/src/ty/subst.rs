@@ -348,7 +348,7 @@ impl<'tcx> InternalSubsts<'tcx> {
         substs.reserve(defs.params.len());
         for param in &defs.params {
             let kind = mk_kind(param, substs);
-            assert_eq!(param.index as usize, substs.len());
+            assert_eq!(param.index as usize, substs.len(), "{substs:#?}, {defs:#?}");
             substs.push(kind);
         }
     }
