@@ -18,7 +18,7 @@ measureme = "10.0.0"
 rayon-core = { version = "0.4.0", package = "rustc-rayon-core", optional = true }
 rayon = { version = "0.4.0", package = "rustc-rayon", optional = true }
 rustc_graphviz = { path = "../rustc_graphviz" }
-rustc-hash = "1.1.0"
+rustc-hash = { git = "https://github.com/scottmcm/rustc-hash.git", branch = "skip-length-prefixes" }
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }

@@ -529,7 +529,7 @@ dependencies = [
  "chalk-derive",
  "chalk-ir",
  "chalk-solve",
- "rustc-hash",
+ "rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tracing",
 ]
 
@@ -556,7 +556,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "petgraph",
- "rustc-hash",
+ "rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
@@ -1295,7 +1295,7 @@ dependencies = [
  "fluent-syntax",
  "intl-memoizer",
  "intl_pluralrules",
- "rustc-hash",
+ "rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "self_cell",
  "smallvec",
  "unic-langid",
@@ -2174,7 +2174,7 @@ dependencies = [
  "memmap2",
  "parking_lot 0.11.2",
  "perf-event-open-sys",
- "rustc-hash",
+ "rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallvec",
 ]
 
@@ -2657,7 +2657,7 @@ checksum = "c4e8e505342045d397d0b6674dcb82d6faf5cf40484d30eeb88fc82ef14e903f"
 dependencies = [
  "datafrog",
  "log",
- "rustc-hash",
+ "rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3030,6 +3030,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
+name = "rustc-hash"
+version = "1.1.0"
+source = "git+https://github.com/scottmcm/rustc-hash.git?branch=skip-length-prefixes#f1b8cc06f492324ba32ae2e7935d0a5ce970160b"
+
+[[package]]
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
@@ -3362,7 +3367,7 @@ dependencies = [
  "measureme",
  "memmap2",
  "parking_lot 0.11.2",
- "rustc-hash",
+ "rustc-hash 1.1.0 (git+https://github.com/scottmcm/rustc-hash.git?branch=skip-length-prefixes)",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_graphviz",
@@ -5022,7 +5027,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d3364c5e96cb2ad1603037ab253ddd34d7fb72a58bdddf4b7350760fc69a46"
 dependencies = [
- "rustc-hash",
+ "rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
