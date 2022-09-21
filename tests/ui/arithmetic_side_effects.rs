@@ -2,11 +2,12 @@
     clippy::assign_op_pattern,
     clippy::erasing_op,
     clippy::identity_op,
+    clippy::op_ref,
     clippy::unnecessary_owned_empty_strings,
     arithmetic_overflow,
     unconditional_panic
 )]
-#![feature(inline_const, saturating_int_impl)]
+#![feature(const_mut_refs, inline_const, saturating_int_impl)]
 #![warn(clippy::arithmetic_side_effects)]
 
 use core::num::{Saturating, Wrapping};
@@ -79,33 +80,50 @@ pub fn const_ops_should_not_trigger_the_lint() {
     const _: i32 = 1 + 1;
     let _ = const { 1 + 1 };
 
-    const _: i32 = { let mut n = -1; n = -(-1); n = -n; n };
-    let _ = const { let mut n = -1; n = -(-1); n = -n; n };
+    const _: i32 = { let mut n = 1; n = -1; n = -(-1); n = -n; n };
+    let _ = const { let mut n = 1; n = -1; n = -(-1); n = -n; n };
 }
 
-pub fn non_overflowing_runtime_ops_or_ops_already_handled_by_the_compiler() {
+pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_trigger_the_lint() {
     let mut _n = i32::MAX;
 
     // Assign
     _n += 0;
+    _n += &0;
     _n -= 0;
+    _n -= &0;
     _n /= 99;
+    _n /= &99;
     _n %= 99;
+    _n %= &99;
     _n *= 0;
+    _n *= &0;
     _n *= 1;
+    _n *= &1;
 
     // Binary
     _n = _n + 0;
+    _n = _n + &0;
     _n = 0 + _n;
+    _n = &0 + _n;
     _n = _n - 0;
+    _n = _n - &0;
     _n = 0 - _n;
+    _n = &0 - _n;
     _n = _n / 99;
+    _n = _n / &99;
     _n = _n % 99;
+    _n = _n % &99;
     _n = _n * 0;
+    _n = _n * &0;
     _n = 0 * _n;
+    _n = &0 * _n;
     _n = _n * 1;
+    _n = _n * &1;
     _n = 1 * _n;
+    _n = &1 * _n;
     _n = 23 + 85;
+    _n = &23 + &85;
 
     // Unary
     _n = -1;
@@ -117,23 +135,37 @@ pub fn overflowing_runtime_ops() {
 
     // Assign
     _n += 1;
+    _n += &1;
     _n -= 1;
+    _n -= &1;
     _n /= 0;
+    _n /= &0;
     _n %= 0;
+    _n %= &0;
     _n *= 2;
+    _n *= &2;
 
     // Binary
     _n = _n + 1;
+    _n = _n + &1;
     _n = 1 + _n;
+    _n = &1 + _n;
     _n = _n - 1;
+    _n = _n - &1;
     _n = 1 - _n;
+    _n = &1 - _n;
     _n = _n / 0;
+    _n = _n / &0;
     _n = _n % 0;
+    _n = _n % &0;
     _n = _n * 2;
+    _n = _n * &2;
     _n = 2 * _n;
+    _n = &2 * _n;
 
     // Unary
     _n = -_n;
+    _n = -&_n;
 }
 
 fn main() {}
