@@ -1,0 +1,8 @@
+error: invalid shift operator `>>>`
+  --> $DIR/logical-right-shift.rs:2:22
+   |
+LL |     println!("{}", 1 >>> 2);
+   |                      ^^^ `>>>` is not a valid right shift operator, consider casting to an unsigned integer and right shifting normally.
+
+error: aborting due to previous error
+

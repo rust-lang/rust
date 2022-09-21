@@ -280,7 +280,7 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
 
-            // Look for the arithmetic right shift operator (`>>>`) and recover.
+            // Look for the logical right shift operator (`>>>`) and recover.
             if op.node == AssocOp::ShiftRight
                 && self.token.kind == token::Gt
                 && self.prev_token.span.hi() == self.token.span.lo()
@@ -289,12 +289,12 @@ impl<'a> Parser<'a> {
                 self.sess.emit_err(InvalidShiftOperator {
                     span: sp,
                     invalid: ">>>".into(),
-                    sub: InvalidShiftOperatorSub::ArithmeticRightShift(sp),
+                    sub: InvalidShiftOperatorSub::LogicalRightShift(sp),
                 });
                 self.bump();
             }
 
-            // Look for the arithmetic left shift operator (`<<<`) and recover.
+            // Look for the logical left shift operator (`<<<`) and recover.
             // Yea nobody uses this but it's worth being thorough.
             if op.node == AssocOp::ShiftLeft
                 && self.token.kind == token::Lt
@@ -304,7 +304,7 @@ impl<'a> Parser<'a> {
                 self.sess.emit_err(InvalidShiftOperator {
                     span: sp,
                     invalid: "<<<".into(),
-                    sub: InvalidShiftOperatorSub::ArithmeticLeftShift(sp),
+                    sub: InvalidShiftOperatorSub::LogicalLeftShift(sp),
                 });
                 self.bump();
             }

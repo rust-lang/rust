@@ -401,10 +401,10 @@ pub(crate) struct InvalidShiftOperator {
 
 #[derive(SessionSubdiagnostic)]
 pub(crate) enum InvalidShiftOperatorSub {
-    #[label(parser::arithmetic_left_shift_operator_invalid)]
-    ArithmeticLeftShift(#[primary_span] Span),
-    #[label(parser::arithmetic_right_shift_operator_invalid)]
-    ArithmeticRightShift(#[primary_span] Span),
+    #[label(parser::logical_left_shift_operator_invalid)]
+    LogicalLeftShift(#[primary_span] Span),
+    #[label(parser::logical_right_shift_operator_invalid)]
+    LogicalRightShift(#[primary_span] Span),
 }
 
 #[derive(SessionDiagnostic)]
