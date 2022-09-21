@@ -400,6 +400,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) basic_block_count: u64,
 
     /// Handle of the optional shared object file for external functions.
+    #[cfg(unix)]
     pub external_so_lib: Option<(libloading::Library, std::path::PathBuf)>,
 
     /// Run a garbage collector for SbTags every N basic blocks.
@@ -410,7 +411,6 @@ pub struct MiriMachine<'mir, 'tcx> {
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
-        let target_triple = &layout_cx.tcx.sess.opts.target_triple.to_string();
         let local_crates = helpers::get_local_crates(layout_cx.tcx);
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
@@ -462,7 +462,9 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             report_progress: config.report_progress,
             basic_block_count: 0,
             clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
+            #[cfg(unix)]
             external_so_lib: config.external_so_file.as_ref().map(|lib_file_path| {
+                let target_triple = &layout_cx.tcx.sess.opts.target_triple.to_string();
                 // Check if host target == the session target.
                 if env!("TARGET") != target_triple {
                     panic!(

@@ -360,7 +360,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   file descriptors will be mixed up.
   This is **work in progress**; currently, only integer arguments and return values are
   supported (and no, pointer/integer casts to work around this limitation will not work;
-  they will fail horribly).
+  they will fail horribly). It also only works on unix hosts for now.
   Follow [the discussion on supporting other types](https://github.com/rust-lang/miri/issues/2365). 
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
