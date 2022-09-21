@@ -28,6 +28,7 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
+use rustc_middle::util::common::to_readable_str;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
@@ -261,10 +262,10 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         // This allows us to avoid loading the dependencies of proc-macro crates: all of
         // the information we need to decode `Span`s is stored in the proc-macro crate.
         let (tag, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
-            // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
-            // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
-            // are relative to the source map information for the 'foreign' crate whose CrateNum
-            // we write into the metadata. This allows `imported_source_files` to binary
+            // To simplify deserialization, we 'rebase' this span onto the crate it originally came
+            // from (the crate that 'owns' the file it references. These rebased 'lo' and 'hi'
+            // values are relative to the source map information for the 'foreign' crate whose
+            // CrateNum we write into the metadata. This allows `imported_source_files` to binary
             // search through the 'foreign' crate's source map information, using the
             // deserialized 'lo' and 'hi' values directly.
             //
@@ -554,78 +555,56 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
         let tcx = self.tcx;
-        let mut i = 0;
-        let preamble_bytes = self.position() - i;
+        let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
 
-        // Encode the crate deps
-        i = self.position();
-        let crate_deps = self.encode_crate_deps();
-        let dylib_dependency_formats = self.encode_dylib_dependency_formats();
-        let dep_bytes = self.position() - i;
+        macro_rules! stat {
+            ($label:literal, $f:expr) => {{
+                let orig_pos = self.position();
+                let res = $f();
+                stats.push(($label, self.position() - orig_pos));
+                res
+            }};
+        }
 
-        // Encode the lib features.
-        i = self.position();
-        let lib_features = self.encode_lib_features();
-        let lib_feature_bytes = self.position() - i;
+        // We have already encoded some things. Get their combined size from the current position.
+        stats.push(("preamble", self.position()));
 
-        // Encode the stability implications.
-        i = self.position();
-        let stability_implications = self.encode_stability_implications();
-        let stability_implications_bytes = self.position() - i;
+        let (crate_deps, dylib_dependency_formats) =
+            stat!("dep", || (self.encode_crate_deps(), self.encode_dylib_dependency_formats()));
 
-        // Encode the language items.
-        i = self.position();
-        let lang_items = self.encode_lang_items();
-        let lang_items_missing = self.encode_lang_items_missing();
-        let lang_item_bytes = self.position() - i;
+        let lib_features = stat!("lib-features", || self.encode_lib_features());
 
-        // Encode the diagnostic items.
-        i = self.position();
-        let diagnostic_items = self.encode_diagnostic_items();
-        let diagnostic_item_bytes = self.position() - i;
+        let stability_implications =
+            stat!("stability-implications", || self.encode_stability_implications());
 
-        // Encode the native libraries used
-        i = self.position();
-        let native_libraries = self.encode_native_libraries();
-        let native_lib_bytes = self.position() - i;
+        let (lang_items, lang_items_missing) = stat!("lang-items", || {
+            (self.encode_lang_items(), self.encode_lang_items_missing())
+        });
 
-        i = self.position();
-        let foreign_modules = self.encode_foreign_modules();
-        let foreign_modules_bytes = self.position() - i;
+        let diagnostic_items = stat!("diagnostic-items", || self.encode_diagnostic_items());
 
-        // Encode DefPathTable
-        i = self.position();
-        self.encode_def_path_table();
-        let def_path_table_bytes = self.position() - i;
+        let native_libraries = stat!("native-libs", || self.encode_native_libraries());
+
+        let foreign_modules = stat!("foreign-modules", || self.encode_foreign_modules());
+
+        _ = stat!("def-path-table", || self.encode_def_path_table());
 
         // Encode the def IDs of traits, for rustdoc and diagnostics.
-        i = self.position();
-        let traits = self.encode_traits();
-        let traits_bytes = self.position() - i;
+        let traits = stat!("traits", || self.encode_traits());
 
         // Encode the def IDs of impls, for coherence checking.
-        i = self.position();
-        let impls = self.encode_impls();
-        let impls_bytes = self.position() - i;
+        let impls = stat!("impls", || self.encode_impls());
 
-        i = self.position();
-        let incoherent_impls = self.encode_incoherent_impls();
-        let incoherent_impls_bytes = self.position() - i;
+        let incoherent_impls = stat!("incoherent-impls", || self.encode_incoherent_impls());
 
-        // Encode MIR.
-        i = self.position();
-        self.encode_mir();
-        let mir_bytes = self.position() - i;
+        _ = stat!("mir", || self.encode_mir());
 
-        // Encode the items.
-        i = self.position();
-        self.encode_def_ids();
-        self.encode_info_for_items();
-        let item_bytes = self.position() - i;
+        _ = stat!("items", || {
+            self.encode_def_ids();
+            self.encode_info_for_items();
+        });
 
-        // Encode the allocation index
-        i = self.position();
-        let interpret_alloc_index = {
+        let interpret_alloc_index = stat!("interpret-alloc-index", || {
             let mut interpret_alloc_index = Vec::new();
             let mut n = 0;
             trace!("beginning to encode alloc ids");
@@ -646,126 +625,90 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 n = new_n;
             }
             self.lazy_array(interpret_alloc_index)
-        };
-        let interpret_alloc_index_bytes = self.position() - i;
+        });
 
-        // Encode the proc macro data. This affects 'tables',
-        // so we need to do this before we encode the tables.
-        // This overwrites def_keys, so it must happen after encode_def_path_table.
-        i = self.position();
-        let proc_macro_data = self.encode_proc_macros();
-        let proc_macro_data_bytes = self.position() - i;
+        // Encode the proc macro data. This affects `tables`, so we need to do this before we
+        // encode the tables. This overwrites def_keys, so it must happen after
+        // encode_def_path_table.
+        let proc_macro_data = stat!("proc-macro-data", || self.encode_proc_macros());
 
-        i = self.position();
-        let tables = self.tables.encode(&mut self.opaque);
-        let tables_bytes = self.position() - i;
+        let tables = stat!("tables", || self.tables.encode(&mut self.opaque));
 
-        i = self.position();
-        let debugger_visualizers = self.encode_debugger_visualizers();
-        let debugger_visualizers_bytes = self.position() - i;
+        let debugger_visualizers =
+            stat!("debugger-visualizers", || self.encode_debugger_visualizers());
 
         // Encode exported symbols info. This is prefetched in `encode_metadata` so we encode
         // this as late as possible to give the prefetching as much time as possible to complete.
-        i = self.position();
-        let exported_symbols = tcx.exported_symbols(LOCAL_CRATE);
-        let exported_symbols = self.encode_exported_symbols(&exported_symbols);
-        let exported_symbols_bytes = self.position() - i;
-
-        // Encode the hygiene data,
-        // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The process
-        // of encoding other items (e.g. `optimized_mir`) may cause us to load
-        // data from the incremental cache. If this causes us to deserialize a `Span`,
-        // then we may load additional `SyntaxContext`s into the global `HygieneData`.
-        // Therefore, we need to encode the hygiene data last to ensure that we encode
-        // any `SyntaxContext`s that might be used.
-        i = self.position();
-        let (syntax_contexts, expn_data, expn_hashes) = self.encode_hygiene();
-        let hygiene_bytes = self.position() - i;
-
-        i = self.position();
-        let def_path_hash_map = self.encode_def_path_hash_map();
-        let def_path_hash_map_bytes = self.position() - i;
-
-        // Encode source_map. This needs to be done last,
-        // since encoding `Span`s tells us which `SourceFiles` we actually
-        // need to encode.
-        i = self.position();
-        let source_map = self.encode_source_map();
-        let source_map_bytes = self.position() - i;
-
-        i = self.position();
-        let attrs = tcx.hir().krate_attrs();
-        let has_default_lib_allocator = tcx.sess.contains_name(&attrs, sym::default_lib_allocator);
-        let root = self.lazy(CrateRoot {
-            name: tcx.crate_name(LOCAL_CRATE),
-            extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
-            triple: tcx.sess.opts.target_triple.clone(),
-            hash: tcx.crate_hash(LOCAL_CRATE),
-            stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
-            required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
-            panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
-            edition: tcx.sess.edition(),
-            has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
-            has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-            has_default_lib_allocator,
-            proc_macro_data,
-            debugger_visualizers,
-            compiler_builtins: tcx.sess.contains_name(&attrs, sym::compiler_builtins),
-            needs_allocator: tcx.sess.contains_name(&attrs, sym::needs_allocator),
-            needs_panic_runtime: tcx.sess.contains_name(&attrs, sym::needs_panic_runtime),
-            no_builtins: tcx.sess.contains_name(&attrs, sym::no_builtins),
-            panic_runtime: tcx.sess.contains_name(&attrs, sym::panic_runtime),
-            profiler_runtime: tcx.sess.contains_name(&attrs, sym::profiler_runtime),
-            symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
-
-            crate_deps,
-            dylib_dependency_formats,
-            lib_features,
-            stability_implications,
-            lang_items,
-            diagnostic_items,
-            lang_items_missing,
-            native_libraries,
-            foreign_modules,
-            source_map,
-            traits,
-            impls,
-            incoherent_impls,
-            exported_symbols,
-            interpret_alloc_index,
-            tables,
-            syntax_contexts,
-            expn_data,
-            expn_hashes,
-            def_path_hash_map,
+        let exported_symbols = stat!("exported-symbols", || {
+            self.encode_exported_symbols(&tcx.exported_symbols(LOCAL_CRATE))
         });
-        let final_bytes = self.position() - i;
+
+        // Encode the hygiene data.
+        // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The
+        // process of encoding other items (e.g. `optimized_mir`) may cause us to load data from
+        // the incremental cache. If this causes us to deserialize a `Span`, then we may load
+        // additional `SyntaxContext`s into the global `HygieneData`. Therefore, we need to encode
+        // the hygiene data last to ensure that we encode any `SyntaxContext`s that might be used.
+        let (syntax_contexts, expn_data, expn_hashes) = stat!("hygiene", || self.encode_hygiene());
+
+        let def_path_hash_map = stat!("def-path-hash-map", || self.encode_def_path_hash_map());
+
+        // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
+        // `SourceFiles` we actually need to encode.
+        let source_map = stat!("source-map", || self.encode_source_map());
+
+        let root = stat!("final", || {
+            let attrs = tcx.hir().krate_attrs();
+            self.lazy(CrateRoot {
+                name: tcx.crate_name(LOCAL_CRATE),
+                extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
+                triple: tcx.sess.opts.target_triple.clone(),
+                hash: tcx.crate_hash(LOCAL_CRATE),
+                stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
+                required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
+                panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
+                edition: tcx.sess.edition(),
+                has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
+                has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
+                has_default_lib_allocator: tcx
+                    .sess
+                    .contains_name(&attrs, sym::default_lib_allocator),
+                proc_macro_data,
+                debugger_visualizers,
+                compiler_builtins: tcx.sess.contains_name(&attrs, sym::compiler_builtins),
+                needs_allocator: tcx.sess.contains_name(&attrs, sym::needs_allocator),
+                needs_panic_runtime: tcx.sess.contains_name(&attrs, sym::needs_panic_runtime),
+                no_builtins: tcx.sess.contains_name(&attrs, sym::no_builtins),
+                panic_runtime: tcx.sess.contains_name(&attrs, sym::panic_runtime),
+                profiler_runtime: tcx.sess.contains_name(&attrs, sym::profiler_runtime),
+                symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
+
+                crate_deps,
+                dylib_dependency_formats,
+                lib_features,
+                stability_implications,
+                lang_items,
+                diagnostic_items,
+                lang_items_missing,
+                native_libraries,
+                foreign_modules,
+                source_map,
+                traits,
+                impls,
+                incoherent_impls,
+                exported_symbols,
+                interpret_alloc_index,
+                tables,
+                syntax_contexts,
+                expn_data,
+                expn_hashes,
+                def_path_hash_map,
+            })
+        });
 
         let total_bytes = self.position();
 
-        let computed_total_bytes = preamble_bytes
-            + dep_bytes
-            + lib_feature_bytes
-            + stability_implications_bytes
-            + lang_item_bytes
-            + diagnostic_item_bytes
-            + native_lib_bytes
-            + foreign_modules_bytes
-            + def_path_table_bytes
-            + traits_bytes
-            + impls_bytes
-            + incoherent_impls_bytes
-            + mir_bytes
-            + item_bytes
-            + interpret_alloc_index_bytes
-            + proc_macro_data_bytes
-            + tables_bytes
-            + debugger_visualizers_bytes
-            + exported_symbols_bytes
-            + hygiene_bytes
-            + def_path_hash_map_bytes
-            + source_map_bytes
-            + final_bytes;
+        let computed_total_bytes: usize = stats.iter().map(|(_, size)| size).sum();
         assert_eq!(total_bytes, computed_total_bytes);
 
         if tcx.sess.meta_stats() {
@@ -783,42 +726,38 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             assert_eq!(self.opaque.file().stream_position().unwrap(), pos_before_rewind);
 
-            let perc = |bytes| (bytes * 100) as f64 / total_bytes as f64;
-            let p = |label, bytes| {
-                eprintln!("{:>21}: {:>8} bytes ({:4.1}%)", label, bytes, perc(bytes));
-            };
+            stats.sort_by_key(|&(_, usize)| usize);
 
-            eprintln!("");
+            let prefix = "meta-stats";
+            let perc = |bytes| (bytes * 100) as f64 / total_bytes as f64;
+
+            eprintln!("{} METADATA STATS", prefix);
+            eprintln!("{} {:<23}{:>10}", prefix, "Section", "Size");
             eprintln!(
-                "{} metadata bytes, of which {} bytes ({:.1}%) are zero",
-                total_bytes,
-                zero_bytes,
+                "{} ----------------------------------------------------------------",
+                prefix
+            );
+            for (label, size) in stats {
+                eprintln!(
+                    "{} {:<23}{:>10} ({:4.1}%)",
+                    prefix,
+                    label,
+                    to_readable_str(size),
+                    perc(size)
+                );
+            }
+            eprintln!(
+                "{} ----------------------------------------------------------------",
+                prefix
+            );
+            eprintln!(
+                "{} {:<23}{:>10} (of which {:.1}% are zero bytes)",
+                prefix,
+                "Total",
+                to_readable_str(total_bytes),
                 perc(zero_bytes)
             );
-            p("preamble", preamble_bytes);
-            p("dep", dep_bytes);
-            p("lib feature", lib_feature_bytes);
-            p("stability_implications", stability_implications_bytes);
-            p("lang item", lang_item_bytes);
-            p("diagnostic item", diagnostic_item_bytes);
-            p("native lib", native_lib_bytes);
-            p("foreign modules", foreign_modules_bytes);
-            p("def-path table", def_path_table_bytes);
-            p("traits", traits_bytes);
-            p("impls", impls_bytes);
-            p("incoherent_impls", incoherent_impls_bytes);
-            p("mir", mir_bytes);
-            p("item", item_bytes);
-            p("interpret_alloc_index", interpret_alloc_index_bytes);
-            p("proc-macro-data", proc_macro_data_bytes);
-            p("tables", tables_bytes);
-            p("debugger visualizers", debugger_visualizers_bytes);
-            p("exported symbols", exported_symbols_bytes);
-            p("hygiene", hygiene_bytes);
-            p("def-path hashes", def_path_hash_map_bytes);
-            p("source_map", source_map_bytes);
-            p("final", final_bytes);
-            eprintln!("");
+            eprintln!("{}", prefix);
         }
 
         root
