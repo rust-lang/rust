@@ -618,7 +618,36 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )
         .map_bound(|(trait_ref, _)| trait_ref);
 
-        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+
+        // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
+        let cause = obligation.derived_cause(BuiltinDerivedObligation);
+        // The binder on the Fn obligation is "less" important than the one on
+        // the signature, as evidenced by how we treat it during projection.
+        // The safe thing to do here is to liberate it, though, which should
+        // have no worse effect than skipping the binder here.
+        let liberated_fn_ty = self.infcx.replace_bound_vars_with_placeholders(obligation.self_ty());
+        let output_ty = self
+            .infcx
+            .replace_bound_vars_with_placeholders(liberated_fn_ty.fn_sig(self.tcx()).output());
+        let output_ty = normalize_with_depth_to(
+            self,
+            obligation.param_env,
+            cause.clone(),
+            obligation.recursion_depth,
+            output_ty,
+            &mut nested,
+        );
+        let tr = ty::Binder::dummy(ty::TraitRef::new(
+            self.tcx().require_lang_item(LangItem::Sized, None),
+            self.tcx().mk_substs_trait(output_ty, &[]),
+        ));
+        nested.push(Obligation::new(
+            cause,
+            obligation.param_env,
+            tr.to_poly_trait_predicate().to_predicate(self.tcx()),
+        ));
+
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested })
     }
 
