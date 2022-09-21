@@ -74,7 +74,9 @@
 pub trait Fn<Args>: FnMut<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
-    extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output
+    where
+        Self::Output: Sized;
 }
 
 /// The version of the call operator that takes a mutable receiver.
@@ -161,7 +163,9 @@ pub trait Fn<Args>: FnMut<Args> {
 pub trait FnMut<Args>: FnOnce<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
-    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output
+    where
+        Self::Output: Sized;
 }
 
 /// The version of the call operator that takes a by-value receiver.
@@ -241,11 +245,13 @@ pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     #[lang = "fn_once_output"]
     #[stable(feature = "fn_once_output", since = "1.12.0")]
-    type Output;
+    type Output: ?Sized;
 
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
-    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output
+    where
+        Self::Output: Sized;
 }
 
 mod impls {
@@ -255,7 +261,10 @@ mod impls {
     where
         F: ~const Fn<A>,
     {
-        extern "rust-call" fn call(&self, args: A) -> F::Output {
+        extern "rust-call" fn call(&self, args: A) -> F::Output
+        where
+            F::Output: Sized,
+        {
             (**self).call(args)
         }
     }
@@ -266,7 +275,10 @@ mod impls {
     where
         F: ~const Fn<A>,
     {
-        extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+        extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output
+        where
+            F::Output: Sized,
+        {
             (**self).call(args)
         }
     }
@@ -279,7 +291,10 @@ mod impls {
     {
         type Output = F::Output;
 
-        extern "rust-call" fn call_once(self, args: A) -> F::Output {
+        extern "rust-call" fn call_once(self, args: A) -> F::Output
+        where
+            F::Output: Sized,
+        {
             (*self).call(args)
         }
     }
@@ -290,7 +305,10 @@ mod impls {
     where
         F: ~const FnMut<A>,
     {
-        extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+        extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output
+        where
+            F::Output: Sized,
+        {
             (*self).call_mut(args)
         }
     }
@@ -302,7 +320,10 @@ mod impls {
         F: ~const FnMut<A>,
     {
         type Output = F::Output;
-        extern "rust-call" fn call_once(self, args: A) -> F::Output {
+        extern "rust-call" fn call_once(self, args: A) -> F::Output
+        where
+            F::Output: Sized,
+        {
             (*self).call_mut(args)
         }
     }

@@ -1936,21 +1936,30 @@ impl<I: FusedIterator + ?Sized, A: Allocator> FusedIterator for Box<I, A> {}
 impl<Args, F: FnOnce<Args> + ?Sized, A: Allocator> FnOnce<Args> for Box<F, A> {
     type Output = <F as FnOnce<Args>>::Output;
 
-    extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output
+    where
+        <F as FnOnce<Args>>::Output: Sized,
+    {
         <F as FnOnce<Args>>::call_once(*self, args)
     }
 }
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<Args, F: FnMut<Args> + ?Sized, A: Allocator> FnMut<Args> for Box<F, A> {
-    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output
+    where
+        <F as FnOnce<Args>>::Output: Sized,
+    {
         <F as FnMut<Args>>::call_mut(self, args)
     }
 }
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<Args, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
-    extern "rust-call" fn call(&self, args: Args) -> Self::Output {
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output
+    where
+        <F as FnOnce<Args>>::Output: Sized,
+    {
         <F as Fn<Args>>::call(self, args)
     }
 }
