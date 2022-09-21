@@ -31,6 +31,13 @@ pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_copy_modulo_regions(cx.tcx.at(DUMMY_SP), cx.param_env)
 }
 
+/// This checks whether a given type is known to implement Debug.
+pub fn has_debug_impl<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    cx.tcx
+        .get_diagnostic_item(sym::Debug)
+        .map_or(false, |debug| implements_trait(cx, ty, debug, &[]))
+}
+
 /// Checks whether a type can be partially moved.
 pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     if has_drop(cx, ty) || is_copy(cx, ty) {

@@ -36,6 +36,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::invalid_ref", "invalid_value"),
     ("clippy::mem_discriminant_non_enum", "enum_intrinsics_non_enums"),
     ("clippy::panic_params", "non_fmt_panics"),
+    ("clippy::positional_named_format_parameters", "named_arguments_used_positionally"),
     ("clippy::temporary_cstring_as_ptr", "temporary_cstring_as_ptr"),
     ("clippy::unknown_clippy_lints", "unknown_lints"),
     ("clippy::unused_label", "unused_labels"),

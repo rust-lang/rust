@@ -36,6 +36,8 @@ fn main() {
         writeln!(std::io::stderr(), "with {} {}", 2, value).unwrap();
         writeln!(std::io::stderr(), "with {value}").unwrap();
         writeln!(std::io::stderr(), "macro arg {}", one!()).unwrap();
+        let width = 2;
+        writeln!(std::io::stderr(), "{:w$}", value, w = width).unwrap();
     }
     // these should not warn, different destination
     {
