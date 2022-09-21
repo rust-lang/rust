@@ -44,10 +44,14 @@ pub(crate) fn unwrap_tuple(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         _ => return None,
     };
 
-    stdx::always!(
-        tuple_pat.fields().count() == tuple_init.fields().count(),
-        "Length of tuples in pattern and initializer do not match"
-    );
+    if tuple_pat.fields().count() != tuple_init.fields().count() {
+        return None;
+    }
+    if let Some(tys) = &tuple_ty {
+        if tuple_pat.fields().count() != tys.fields().count() {
+            return None;
+        }
+    }
 
     let parent = let_kw.parent()?;
 
@@ -61,11 +65,6 @@ pub(crate) fn unwrap_tuple(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             // If there is an ascribed type, insert that type for each declaration,
             // otherwise, omit that type.
             if let Some(tys) = tuple_ty {
-                stdx::always!(
-                    tuple_pat.fields().count() == tys.fields().count(),
-                    "Length of tuples in patterns and type do not match"
-                );
-
                 let mut zipped_decls = String::new();
                 for (pat, ty, expr) in
                     itertools::izip!(tuple_pat.fields(), tys.fields(), tuple_init.fields())
