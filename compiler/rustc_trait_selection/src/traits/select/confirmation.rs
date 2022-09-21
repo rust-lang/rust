@@ -609,40 +609,35 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder; it is reintroduced below.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         let sig = self_ty.fn_sig(self.tcx());
-        let trait_ref = closure_trait_ref_and_return_type(
+        let trait_ref_and_output = closure_trait_ref_and_return_type(
             self.tcx(),
             obligation.predicate.def_id(),
             self_ty,
             sig,
             util::TupleArgumentsFlag::Yes,
-        )
-        .map_bound(|(trait_ref, _)| trait_ref);
+        );
+        let Normalized { value: trait_ref_and_output, obligations: mut nested } =
+            normalize_with_depth(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth,
+                trait_ref_and_output,
+            );
 
-        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        let confirm_nested =
+            self.confirm_poly_trait_refs(obligation, trait_ref_and_output.map_bound(|(tr, _)| tr))?;
+        nested.extend(confirm_nested);
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
-        // The binder on the Fn obligation is "less" important than the one on
-        // the signature, as evidenced by how we treat it during projection.
-        // The safe thing to do here is to liberate it, though, which should
-        // have no worse effect than skipping the binder here.
-        let liberated_fn_ty = self.infcx.replace_bound_vars_with_placeholders(obligation.self_ty());
-        let output_ty = self
-            .infcx
-            .replace_bound_vars_with_placeholders(liberated_fn_ty.fn_sig(self.tcx()).output());
-        let output_ty = normalize_with_depth_to(
-            self,
-            obligation.param_env,
-            cause.clone(),
-            obligation.recursion_depth,
-            output_ty,
-            &mut nested,
-        );
-        if !output_ty.is_trivially_sized(self.tcx()) {
-            let tr = ty::Binder::dummy(ty::TraitRef::new(
-                self.tcx().require_lang_item(LangItem::Sized, None),
-                self.tcx().mk_substs_trait(output_ty, &[]),
-            ));
+        if !trait_ref_and_output.skip_binder().1.is_trivially_sized(self.tcx()) {
+            let tr = trait_ref_and_output.map_bound(|(_, output_ty)| {
+                ty::TraitRef::new(
+                    self.tcx().require_lang_item(LangItem::Sized, None),
+                    self.tcx().mk_substs_trait(output_ty, &[]),
+                )
+            });
             nested.push(Obligation::new(
                 cause,
                 obligation.param_env,
@@ -772,14 +767,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let obligation_trait_ref = obligation.predicate.to_poly_trait_ref();
         // Normalize the obligation and expected trait refs together, because why not
-        let Normalized { obligations: nested, value: (obligation_trait_ref, expected_trait_ref) } =
+        let Normalized { obligations: nested, value: obligation_trait_ref } =
             ensure_sufficient_stack(|| {
                 normalize_with_depth(
                     self,
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    (obligation_trait_ref, expected_trait_ref),
+                    obligation_trait_ref,
                 )
             });
 
