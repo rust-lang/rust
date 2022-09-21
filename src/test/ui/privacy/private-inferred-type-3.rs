@@ -6,7 +6,7 @@
 // error-pattern:type `fn() {<u8 as ext::PrivTrait>::method}` is private
 // error-pattern:type `fn(u8) -> ext::PrivTupleStruct {ext::PrivTupleStruct}` is private
 // error-pattern:type `fn(u8) -> PubTupleStruct {PubTupleStruct}` is private
-// error-pattern:type `for<'r> fn(&'r Pub<u8>) {Pub::<u8>::priv_method}` is private
+// error-pattern:type `for<'a> fn(&'a Pub<u8>) {Pub::<u8>::priv_method}` is private
 
 #![feature(decl_macro)]
 

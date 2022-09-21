@@ -7,7 +7,7 @@ LL |     f
    |     ^ one type is more general than the other
    |
    = note: expected fn pointer `for<'r> fn(Cell<(&'r i32, &'r i32)>)`
-              found fn pointer `for<'s> fn(Cell<(&'r i32, &'s i32)>)`
+              found fn pointer `for<'a> fn(Cell<(&'r i32, &'a i32)>)`
 
 error: aborting due to previous error
 

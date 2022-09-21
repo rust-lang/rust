@@ -4,7 +4,7 @@ error[E0277]: expected a `FnOnce<(&i32,)>` closure, found `i32`
 LL |     f::<dyn for<'x> X<'x, F = i32>>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an `FnOnce<(&i32,)>` closure, found `i32`
    |
-   = help: the trait `for<'r> FnOnce<(&'r i32,)>` is not implemented for `i32`
+   = help: the trait `for<'a> FnOnce<(&'a i32,)>` is not implemented for `i32`
 note: required by a bound in `f`
   --> $DIR/check-trait-object-bounds-2.rs:8:9
    |

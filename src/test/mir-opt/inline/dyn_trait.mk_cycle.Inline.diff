@@ -12,7 +12,7 @@
           _0 = <dyn Cache<V = V> as Cache>::store_nocache(move _2) -> bb1; // scope 0 at $DIR/dyn-trait.rs:+1:5: +1:22
                                            // mir::Constant
                                            // + span: $DIR/dyn-trait.rs:21:7: 21:20
-                                           // + literal: Const { ty: for<'r> fn(&'r dyn Cache<V = V>) {<dyn Cache<V = V> as Cache>::store_nocache}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: for<'a> fn(&'a dyn Cache<V = V>) {<dyn Cache<V = V> as Cache>::store_nocache}, val: Value(<ZST>) }
       }
   
       bb1: {
