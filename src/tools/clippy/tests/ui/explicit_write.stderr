@@ -72,5 +72,11 @@ error: use of `writeln!(stderr(), ...).unwrap()`
 LL |         writeln!(std::io::stderr(), "macro arg {}", one!()).unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprintln!("macro arg {}", one!())`
 
-error: aborting due to 12 previous errors
+error: use of `writeln!(stderr(), ...).unwrap()`
+  --> $DIR/explicit_write.rs:40:9
+   |
+LL |         writeln!(std::io::stderr(), "{:w$}", value, w = width).unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprintln!("{:w$}", value, w = width)`
+
+error: aborting due to 13 previous errors
 

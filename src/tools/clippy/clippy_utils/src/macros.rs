@@ -7,8 +7,8 @@ use crate::visitors::expr_visitor_no_bodies;
 use arrayvec::ArrayVec;
 use itertools::{izip, Either, Itertools};
 use rustc_ast::ast::LitKind;
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
+use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::{self as hir, Expr, ExprField, ExprKind, HirId, Node, QPath};
 use rustc_lexer::unescape::unescape_literal;
 use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
 use rustc_lint::LateContext;
@@ -485,64 +485,49 @@ struct ParamPosition {
     precision: Option<usize>,
 }
 
-/// Parses the `fmt` arg of `Arguments::new_v1_formatted(pieces, args, fmt, _)`
-fn parse_rt_fmt<'tcx>(fmt_arg: &'tcx Expr<'tcx>) -> Option<impl Iterator<Item = ParamPosition> + 'tcx> {
-    fn parse_count(expr: &Expr<'_>) -> Option<usize> {
-        // ::core::fmt::rt::v1::Count::Param(1usize),
-        if let ExprKind::Call(ctor, [val]) = expr.kind
-            && let ExprKind::Path(QPath::Resolved(_, path)) = ctor.kind
-            && path.segments.last()?.ident.name == sym::Param
-            && let ExprKind::Lit(lit) = &val.kind
-            && let LitKind::Int(pos, _) = lit.node
-        {
-            Some(pos as usize)
-        } else {
-            None
+impl<'tcx> Visitor<'tcx> for ParamPosition {
+    fn visit_expr_field(&mut self, field: &'tcx ExprField<'tcx>) {
+        fn parse_count(expr: &Expr<'_>) -> Option<usize> {
+            // ::core::fmt::rt::v1::Count::Param(1usize),
+            if let ExprKind::Call(ctor, [val]) = expr.kind
+                && let ExprKind::Path(QPath::Resolved(_, path)) = ctor.kind
+                && path.segments.last()?.ident.name == sym::Param
+                && let ExprKind::Lit(lit) = &val.kind
+                && let LitKind::Int(pos, _) = lit.node
+            {
+                Some(pos as usize)
+            } else {
+                None
+            }
+        }
+
+        match field.ident.name {
+            sym::position => {
+                if let ExprKind::Lit(lit) = &field.expr.kind
+                    && let LitKind::Int(pos, _) = lit.node
+                {
+                    self.value = pos as usize;
+                }
+            },
+            sym::precision => {
+                self.precision = parse_count(field.expr);
+            },
+            sym::width => {
+                self.width = parse_count(field.expr);
+            },
+            _ => walk_expr(self, field.expr),
         }
     }
+}
 
+/// Parses the `fmt` arg of `Arguments::new_v1_formatted(pieces, args, fmt, _)`
+fn parse_rt_fmt<'tcx>(fmt_arg: &'tcx Expr<'tcx>) -> Option<impl Iterator<Item = ParamPosition> + 'tcx> {
     if let ExprKind::AddrOf(.., array) = fmt_arg.kind
         && let ExprKind::Array(specs) = array.kind
     {
         Some(specs.iter().map(|spec| {
             let mut position = ParamPosition::default();
-
-            // ::core::fmt::rt::v1::Argument {
-            //     position: 0usize,
-            //     format: ::core::fmt::rt::v1::FormatSpec {
-            //         ..
-            //         precision: ::core::fmt::rt::v1::Count::Implied,
-            //         width: ::core::fmt::rt::v1::Count::Implied,
-            //     },
-            // }
-
-            // TODO: this can be made much nicer next sync with `Visitor::visit_expr_field`
-            if let ExprKind::Struct(_, fields, _) = spec.kind {
-                for field in fields {
-                    match (field.ident.name, &field.expr.kind) {
-                        (sym::position, ExprKind::Lit(lit)) => {
-                            if let LitKind::Int(pos, _) = lit.node {
-                                position.value = pos as usize;
-                            }
-                        },
-                        (sym::format, &ExprKind::Struct(_, spec_fields, _)) => {
-                            for spec_field in spec_fields {
-                                match spec_field.ident.name {
-                                    sym::precision => {
-                                        position.precision = parse_count(spec_field.expr);
-                                    },
-                                    sym::width => {
-                                        position.width = parse_count(spec_field.expr);
-                                    },
-                                    _ => {},
-                                }
-                            }
-                        },
-                        _ => {},
-                    }
-                }
-            }
-
+            position.visit_expr(spec);
             position
         }))
     } else {
@@ -711,9 +696,14 @@ impl<'tcx> FormatSpec<'tcx> {
         })
     }
 
-    /// Returns true if this format spec would change the contents of a string when formatted
-    pub fn has_string_formatting(&self) -> bool {
-        self.r#trait != sym::Display || !self.width.is_implied() || !self.precision.is_implied()
+    /// Returns true if this format spec is unchanged from the default. e.g. returns true for `{}`,
+    /// `{foo}` and `{2}`, but false for `{:?}`, `{foo:5}` and `{3:.5}`
+    pub fn is_default(&self) -> bool {
+        self.r#trait == sym::Display
+            && self.width.is_implied()
+            && self.precision.is_implied()
+            && self.align == Alignment::AlignUnknown
+            && self.flags == 0
     }
 }
 

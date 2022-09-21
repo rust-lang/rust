@@ -42,25 +42,28 @@ impl ArithmeticSideEffects {
         }
     }
 
-    /// Checks assign operators (+=, -=, *=, /=) of integers in a non-constant environment that
-    /// won't overflow.
-    fn has_valid_assign_op(op: &Spanned<hir::BinOpKind>, rhs: &hir::Expr<'_>, rhs_refs: Ty<'_>) -> bool {
-        if !Self::is_literal_integer(rhs, rhs_refs) {
-            return false;
+    /// Assuming that `expr` is a literal integer, checks operators (+=, -=, *, /) in a
+    /// non-constant environment that won't overflow.
+    fn has_valid_op(op: &Spanned<hir::BinOpKind>, expr: &hir::Expr<'_>) -> bool {
+        if let hir::BinOpKind::Add | hir::BinOpKind::Sub = op.node
+            && let hir::ExprKind::Lit(ref lit) = expr.kind
+            && let ast::LitKind::Int(0, _) = lit.node
+        {
+            return true;
         }
-        if let hir::BinOpKind::Div | hir::BinOpKind::Mul = op.node
-            && let hir::ExprKind::Lit(ref lit) = rhs.kind
-            && let ast::LitKind::Int(1, _) = lit.node
+        if let hir::BinOpKind::Div | hir::BinOpKind::Rem = op.node
+            && let hir::ExprKind::Lit(ref lit) = expr.kind
+            && !matches!(lit.node, ast::LitKind::Int(0, _))
+        {
+            return true;
+        }
+        if let hir::BinOpKind::Mul = op.node
+            && let hir::ExprKind::Lit(ref lit) = expr.kind
+            && let ast::LitKind::Int(0 | 1, _) = lit.node
         {
             return true;
         }
         false
-    }
-
-    /// Checks "raw" binary operators (+, -, *, /) of integers in a non-constant environment
-    /// already handled by the CTFE.
-    fn has_valid_bin_op(lhs: &hir::Expr<'_>, lhs_refs: Ty<'_>, rhs: &hir::Expr<'_>, rhs_refs: Ty<'_>) -> bool {
-        Self::is_literal_integer(lhs, lhs_refs) && Self::is_literal_integer(rhs, rhs_refs)
     }
 
     /// Checks if the given `expr` has any of the inner `allowed` elements.
@@ -83,7 +86,8 @@ impl ArithmeticSideEffects {
     }
 
     fn issue_lint(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        span_lint(cx, ARITHMETIC_SIDE_EFFECTS, expr.span, "arithmetic detected");
+        let msg = "arithmetic operation that can potentially result in unexpected side-effects";
+        span_lint(cx, ARITHMETIC_SIDE_EFFECTS, expr.span, msg);
         self.expr_span = Some(expr.span);
     }
 
@@ -115,13 +119,18 @@ impl ArithmeticSideEffects {
         if self.is_allowed_ty(cx, lhs) || self.is_allowed_ty(cx, rhs) {
             return;
         }
-        let lhs_refs = cx.typeck_results().expr_ty(lhs).peel_refs();
-        let rhs_refs = cx.typeck_results().expr_ty(rhs).peel_refs();
-        let has_valid_assign_op = Self::has_valid_assign_op(op, rhs, rhs_refs);
-        if has_valid_assign_op || Self::has_valid_bin_op(lhs, lhs_refs, rhs, rhs_refs) {
-            return;
+        let has_valid_op = match (
+            Self::is_literal_integer(lhs, cx.typeck_results().expr_ty(lhs).peel_refs()),
+            Self::is_literal_integer(rhs, cx.typeck_results().expr_ty(rhs).peel_refs()),
+        ) {
+            (true, true) => true,
+            (true, false) => Self::has_valid_op(op, lhs),
+            (false, true) => Self::has_valid_op(op, rhs),
+            (false, false) => false,
+        };
+        if !has_valid_op {
+            self.issue_lint(cx, expr);
         }
-        self.issue_lint(cx, expr);
     }
 }
 

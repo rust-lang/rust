@@ -101,12 +101,12 @@ struct Struct2 {
 #[derive(Copy, Clone)]
 enum CopyableLargeEnum {
     A(bool),
-    B([u128; 4000]),
+    B([u64; 8000]),
 }
 
 enum ManuallyCopyLargeEnum {
     A(bool),
-    B([u128; 4000]),
+    B([u64; 8000]),
 }
 
 impl Clone for ManuallyCopyLargeEnum {

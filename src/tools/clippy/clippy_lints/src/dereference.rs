@@ -297,13 +297,10 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                         if !is_lint_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
                             && position.lint_explicit_deref() =>
                     {
+                        let ty_changed_count = usize::from(!deref_method_same_type(expr_ty, typeck.expr_ty(sub_expr)));
                         self.state = Some((
                             State::DerefMethod {
-                                ty_changed_count: if deref_method_same_type(expr_ty, typeck.expr_ty(sub_expr)) {
-                                    0
-                                } else {
-                                    1
-                                },
+                                ty_changed_count,
                                 is_final_ufcs: matches!(expr.kind, ExprKind::Call(..)),
                                 target_mut,
                             },

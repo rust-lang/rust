@@ -12,6 +12,12 @@ enum E {
     T(u32),
 }
 
+pub static DOESNOTLINT: [u8; 512_001] = [0; 512_001];
+pub static DOESNOTLINT2: [u8; 512_001] = {
+    let x = 0;
+    [x; 512_001]
+};
+
 fn main() {
     let bad = (
         [0u32; 20_000_000],
