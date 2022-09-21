@@ -71,7 +71,7 @@ pub mod resolve;
 mod sub;
 pub mod type_variable;
 mod undo_log;
-mod base_struct;
+pub mod base_struct;
 
 #[must_use]
 #[derive(Debug)]

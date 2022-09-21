@@ -164,6 +164,7 @@ pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
     tcx.mk_substs(params)
 }
 
+#[inline]
 pub fn relate_generic_arg<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     variances: &[ty::Variance],

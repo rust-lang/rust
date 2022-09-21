@@ -1,4 +1,9 @@
 use crate::FnCtxt;
+use rustc_infer::infer::base_struct::base_struct;
+use rustc_infer::infer::InferOk;
+use rustc_middle::middle::stability::EvalResult;
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::ObligationCause;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -181,7 +186,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        match self.at(cause, self.param_env).base_struct(expected, actual) {
+        let at = self.at(cause, self.param_env);
+        match base_struct(at, expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
                 None
