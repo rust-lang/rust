@@ -2055,7 +2055,7 @@ pub enum ConstantKind<'tcx> {
     Ty(ty::Const<'tcx>),
 
     /// An unevaluated mir constant which is not part of the type system.
-    Unevaluated(Unevaluated<'tcx, Option<Promoted>>, Ty<'tcx>),
+    Unevaluated(Unevaluated<'tcx>, Ty<'tcx>),
 
     /// This constant cannot go back into the type system, as it represents
     /// something the type system cannot handle (e.g. pointers).
@@ -2442,10 +2442,10 @@ impl<'tcx> ConstantKind<'tcx> {
 /// An unevaluated (potentially generic) constant used in MIR.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable)]
-pub struct Unevaluated<'tcx, P = Option<Promoted>> {
+pub struct Unevaluated<'tcx> {
     pub def: ty::WithOptConstParam<DefId>,
     pub substs: SubstsRef<'tcx>,
-    pub promoted: P,
+    pub promoted: Option<Promoted>,
 }
 
 impl<'tcx> Unevaluated<'tcx> {
@@ -2457,9 +2457,9 @@ impl<'tcx> Unevaluated<'tcx> {
     }
 }
 
-impl<'tcx, P: Default> Unevaluated<'tcx, P> {
+impl<'tcx> Unevaluated<'tcx> {
     #[inline]
-    pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx, P> {
+    pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx> {
         Unevaluated { def, substs, promoted: Default::default() }
     }
 }
