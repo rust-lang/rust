@@ -417,3 +417,12 @@ mod issue_9351 {
         predicates_are_satisfied(id("abc".to_string()));
     }
 }
+
+mod issue_9504 {
+    #![allow(dead_code)]
+
+    async fn foo<S: AsRef<str>>(_: S) {}
+    async fn bar() {
+        foo(std::path::PathBuf::new().to_string_lossy().to_string()).await;
+    }
+}
