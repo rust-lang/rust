@@ -38,10 +38,16 @@ pub struct UnmatchedBrace {
 
 pub(crate) fn parse_token_trees<'a>(
     sess: &'a ParseSess,
-    src: &'a str,
-    start_pos: BytePos,
+    mut src: &'a str,
+    mut start_pos: BytePos,
     override_span: Option<Span>,
 ) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
+    // Skip `#!`, if present.
+    if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
+        src = &src[shebang_len..];
+        start_pos = start_pos + BytePos::from_usize(shebang_len);
+    }
+
     StringReader { sess, start_pos, pos: start_pos, src, override_span }.into_token_trees()
 }
 
@@ -64,13 +70,6 @@ impl<'a> StringReader<'a> {
     /// Returns the next token, and info about preceding whitespace, if any.
     fn next_token(&mut self) -> (Spacing, Token) {
         let mut spacing = Spacing::Joint;
-
-        // Skip `#!` at the start of the file
-        if self.pos == self.start_pos
-            && let Some(shebang_len) = rustc_lexer::strip_shebang(self.src)
-        {
-            self.pos = self.pos + BytePos::from_usize(shebang_len);
-        }
 
         // Skip trivial (whitespace & comments) tokens
         loop {
