@@ -638,15 +638,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             output_ty,
             &mut nested,
         );
-        let tr = ty::Binder::dummy(ty::TraitRef::new(
-            self.tcx().require_lang_item(LangItem::Sized, None),
-            self.tcx().mk_substs_trait(output_ty, &[]),
-        ));
-        nested.push(Obligation::new(
-            cause,
-            obligation.param_env,
-            tr.to_poly_trait_predicate().to_predicate(self.tcx()),
-        ));
+        if !output_ty.is_trivially_sized(self.tcx()) {
+            let tr = ty::Binder::dummy(ty::TraitRef::new(
+                self.tcx().require_lang_item(LangItem::Sized, None),
+                self.tcx().mk_substs_trait(output_ty, &[]),
+            ));
+            nested.push(Obligation::new(
+                cause,
+                obligation.param_env,
+                tr.to_poly_trait_predicate().to_predicate(self.tcx()),
+            ));
+        }
 
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested })
     }
