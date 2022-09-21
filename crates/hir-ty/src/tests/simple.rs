@@ -1944,8 +1944,8 @@ fn test() {
             70..71 'v': i64
             78..80 '{}': ()
             91..362 '{     ...   } }': ()
-            101..106 'mut g': {generator}
-            109..218 '|r| { ...     }': {generator}
+            101..106 'mut g': |usize| yields i64 -> &str
+            109..218 '|r| { ...     }': |usize| yields i64 -> &str
             110..111 'r': usize
             113..218 '{     ...     }': &str
             127..128 'a': usize
@@ -1959,11 +1959,11 @@ fn test() {
             187..188 '2': i64
             198..212 '"return value"': &str
             225..360 'match ...     }': ()
-            231..239 'Pin::new': fn new<&mut {generator}>(&mut {generator}) -> Pin<&mut {generator}>
-            231..247 'Pin::n...mut g)': Pin<&mut {generator}>
+            231..239 'Pin::new': fn new<&mut |usize| yields i64 -> &str>(&mut |usize| yields i64 -> &str) -> Pin<&mut |usize| yields i64 -> &str>
+            231..247 'Pin::n...mut g)': Pin<&mut |usize| yields i64 -> &str>
             231..262 'Pin::n...usize)': GeneratorState<i64, &str>
-            240..246 '&mut g': &mut {generator}
-            245..246 'g': {generator}
+            240..246 '&mut g': &mut |usize| yields i64 -> &str
+            245..246 'g': |usize| yields i64 -> &str
             255..261 '0usize': usize
             273..299 'Genera...ded(y)': GeneratorState<i64, &str>
             297..298 'y': i64

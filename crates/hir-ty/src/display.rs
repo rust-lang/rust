@@ -20,6 +20,7 @@ use hir_def::{
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
 use itertools::Itertools;
+use smallvec::SmallVec;
 use syntax::SmolStr;
 
 use crate::{
@@ -221,6 +222,7 @@ pub enum DisplaySourceCodeError {
     PathNotFound,
     UnknownType,
     Closure,
+    Generator,
 }
 
 pub enum HirDisplayError {
@@ -782,7 +784,34 @@ impl HirDisplay for Ty {
                 write!(f, "{{unknown}}")?;
             }
             TyKind::InferenceVar(..) => write!(f, "_")?,
-            TyKind::Generator(..) => write!(f, "{{generator}}")?,
+            TyKind::Generator(_, subst) => {
+                if f.display_target.is_source_code() {
+                    return Err(HirDisplayError::DisplaySourceCodeError(
+                        DisplaySourceCodeError::Generator,
+                    ));
+                }
+
+                let subst = subst.as_slice(Interner);
+                let a: Option<SmallVec<[&Ty; 3]>> = subst
+                    .get(subst.len() - 3..)
+                    .map(|args| args.iter().map(|arg| arg.ty(Interner)).collect())
+                    .flatten();
+
+                if let Some([resume_ty, yield_ty, ret_ty]) = a.as_deref() {
+                    write!(f, "|")?;
+                    resume_ty.hir_fmt(f)?;
+                    write!(f, "|")?;
+
+                    write!(f, " yields ")?;
+                    yield_ty.hir_fmt(f)?;
+
+                    write!(f, " -> ")?;
+                    ret_ty.hir_fmt(f)?;
+                } else {
+                    // This *should* be unreachable, but fallback just in case.
+                    write!(f, "{{generator}}")?;
+                }
+            }
             TyKind::GeneratorWitness(..) => write!(f, "{{generator witness}}")?,
         }
         Ok(())
