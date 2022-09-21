@@ -1,0 +1,53 @@
+#!/bin/bash
+set -e
+# Manages a rustup toolchain called "miri".
+#
+# All commands set "miri" as the override toolchain for the current directory,
+# and make the `rust-version` file match that toolchain.
+#
+# USAGE:
+#
+# ./rustup-toolchain: Update "miri" toolchain to match `rust-version` (the known-good version for this commit).
+#
+# ./rustup-toolchain HEAD: Update "miri" toolchain and `rust-version` file to latest rustc HEAD.
+#
+# ./rustup-toolchain $COMMIT: Update "miri" toolchain and `rust-version` file to match that commit.
+#
+# Any extra parameters are passed to `rustup-toolchain-install-master`.
+
+# Make sure rustup-toolchain-install-master is installed.
+if ! which rustup-toolchain-install-master >/dev/null; then
+    echo "Please install rustup-toolchain-install-master by running 'cargo install rustup-toolchain-install-master'"
+    exit 1
+fi
+
+# Determine new commit.
+if [[ "$1" == "" ]]; then
+    NEW_COMMIT=$(cat rust-version)
+elif [[ "$1" == "HEAD" ]]; then
+    NEW_COMMIT=$(git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1)
+else
+    NEW_COMMIT="$1"
+fi
+echo "$NEW_COMMIT" > rust-version
+shift || true # don't fail if shifting fails
+
+# Check if we already are at that commit.
+CUR_COMMIT=$(rustc +miri --version -v 2>/dev/null | grep "^commit-hash: " | cut -d " " -f 2)
+if [[ "$CUR_COMMIT" == "$NEW_COMMIT" ]]; then
+    echo "miri toolchain is already at commit $CUR_COMMIT."
+    rustup override set miri
+    exit 0
+fi
+
+# Install and setup new toolchain.
+rustup toolchain uninstall miri
+rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy "$@" -- "$NEW_COMMIT"
+rustup override set miri
+
+# Cleanup.
+cargo clean
+
+# Call 'cargo metadata' on the sources in case that changes the lockfile
+# (which fails under some setups when it is done from inside vscode).
+cargo metadata --format-version 1 --manifest-path "$(rustc --print sysroot)/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml" >/dev/null

@@ -1,0 +1,12 @@
+error: deadlock: the evaluated program deadlocked
+  --> $DIR/libc_pthread_rwlock_read_write_deadlock_single_thread.rs:LL:CC
+   |
+LL |         libc::pthread_rwlock_wrlock(rw.get());
+   |                                             ^ the evaluated program deadlocked
+   |
+   = note: inside `main` at $DIR/libc_pthread_rwlock_read_write_deadlock_single_thread.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

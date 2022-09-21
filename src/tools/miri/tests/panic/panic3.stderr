@@ -1,0 +1,2 @@
+thread 'main' panicked at 'panicking from libcore', $DIR/panic3.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -1,0 +1,39 @@
+error: any use of this value will cause an error
+  --> $DIR/erroneous_const2.rs:LL:CC
+   |
+LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
+   | --------------    ^^^^^ attempt to compute `5_u32 - 6_u32`, which would overflow
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/erroneous_const2.rs:LL:CC
+   |
+LL |     println!("{}", FOO);
+   |                    ^^^ referenced constant has errors
+
+error: erroneous constant used
+  --> $DIR/erroneous_const2.rs:LL:CC
+   |
+LL |     println!("{}", FOO);
+   |                    ^^^ referenced constant has errors
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: post-monomorphization error: referenced constant has errors
+  --> $DIR/erroneous_const2.rs:LL:CC
+   |
+LL |     println!("{}", FOO);
+   |                    ^^^ referenced constant has errors
+   |
+   = note: inside `main` at $DIR/erroneous_const2.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

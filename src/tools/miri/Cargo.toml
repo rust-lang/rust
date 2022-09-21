@@ -1,0 +1,61 @@
+[package]
+authors = ["Miri Team"]
+description = "An experimental interpreter for Rust MIR (core driver)."
+license = "MIT OR Apache-2.0"
+name = "miri"
+repository = "https://github.com/rust-lang/miri"
+version = "0.1.0"
+default-run = "miri"
+edition = "2021"
+
+[lib]
+test = true # we have unit tests
+doctest = false # but no doc tests
+
+[[bin]]
+name = "miri"
+test = false # we have no unit tests
+doctest = false # and no doc tests
+
+[dependencies]
+getrandom = { version = "0.2", features = ["std"] }
+env_logger = "0.9"
+log = "0.4"
+shell-escape = "0.1.4"
+rand = "0.8"
+smallvec = "1.7"
+
+# A noop dependency that changes in the Rust repository, it's a bit of a hack.
+# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
+# for more information.
+rustc-workspace-hack = "1.0.0"
+measureme = "10.0.0"
+
+[target."cfg(unix)".dependencies]
+libc = "0.2"
+libffi = "3.0.0"
+libloading = "0.7"
+
+[dev-dependencies]
+colored = "2"
+ui_test = "0.3.1"
+# Features chosen to match those required by env_logger, to avoid rebuilds
+regex = { version = "1.5.5", default-features = false, features = ["perf", "std"] }
+lazy_static = "1.4.0"
+
+[package.metadata.rust-analyzer]
+# This crate uses #[feature(rustc_private)].
+# See https://github.com/rust-analyzer/rust-analyzer/pull/7891
+rustc_private = true
+
+[[test]]
+name = "compiletest"
+harness = false
+
+[features]
+default = ["stack-cache"]
+stack-cache = []
+
+# Be aware that this file is inside a workspace when used via the
+# submodule in the rustc repo. That means there are many cargo features
+# we cannot use, such as profiles.

@@ -1,0 +1,4 @@
+error: miri can only run programs that have a main function
+
+error: aborting due to previous error
+
