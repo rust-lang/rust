@@ -40,8 +40,8 @@ terms of files and offsets, and **not** in terms of Rust concepts like structs,
 traits, etc. The "typed" API with Rust specific types is slightly lower in the
 stack, we'll talk about it later.
 
-[`AnalysisHost`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L265-L284
-[`Analysis`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L291-L478
+[`AnalysisHost`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L265-L284
+[`Analysis`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L291-L478
 
 The reason for this separation of `Analysis` and `AnalysisHost` is that we want to apply
 changes "uniquely", but we might also want to fork an `Analysis` and send it to
