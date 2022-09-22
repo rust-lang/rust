@@ -233,10 +233,17 @@ impl<'tcx> TlsData<'tcx> {
             data.remove(&thread_id);
         }
     }
+}
 
-    pub fn iter(&self, mut visitor: impl FnMut(&Scalar<Provenance>)) {
-        for scalar in self.keys.values().flat_map(|v| v.data.values()) {
-            visitor(scalar);
+impl VisitMachineValues for TlsData<'_> {
+    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+        let TlsData { keys, macos_thread_dtors, next_key: _, dtors_running: _ } = self;
+
+        for scalar in keys.values().flat_map(|v| v.data.values()) {
+            visit(&Operand::Immediate(Immediate::Scalar(*scalar)));
+        }
+        for (_, scalar) in macos_thread_dtors.values() {
+            visit(&Operand::Immediate(Immediate::Scalar(*scalar)));
         }
     }
 }
