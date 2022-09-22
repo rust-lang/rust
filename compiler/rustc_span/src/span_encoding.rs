@@ -28,12 +28,17 @@ use rustc_data_structures::fx::FxIndexSet;
 /// Inline (compressed) format:
 /// - `span.base_or_index == span_data.lo`
 /// - `span.len_or_tag == len == span_data.hi - span_data.lo` (must be `<= MAX_LEN`)
-/// - `span.ctxt == span_data.ctxt` (must be `<= MAX_CTXT`)
+/// - `span.ctxt_or_tag == span_data.ctxt` (must be `<= MAX_CTXT`)
+///
+/// Interned format with inline `SyntaxContext`:
+/// - `span.base_or_index == index` (indexes into the interner table)
+/// - `span.len_or_tag == LEN_TAG` (high bit set, all other bits are zero)
+/// - `span.ctxt_or_tag == span_data.ctxt` (must be `<= MAX_CTXT`)
 ///
 /// Interned format:
 /// - `span.base_or_index == index` (indexes into the interner table)
 /// - `span.len_or_tag == LEN_TAG` (high bit set, all other bits are zero)
-/// - `span.ctxt == 0`
+/// - `span.ctxt_or_tag == CTXT_TAG`
 ///
 /// The inline form uses 0 for the tag value (rather than 1) so that we don't
 /// need to mask out the tag bit when getting the length, and so that the
@@ -50,10 +55,10 @@ use rustc_data_structures::fx::FxIndexSet;
 ///   at 3 or 4, and then it drops off quickly from 8 onwards. 15 bits is enough
 ///   for 99.99%+ of cases, but larger values (sometimes 20+ bits) might occur
 ///   dozens of times in a typical crate.
-/// - `ctxt` is 16 bits in `Span` and 32 bits in `SpanData`, which means that
+/// - `ctxt_or_tag` is 16 bits in `Span` and 32 bits in `SpanData`, which means that
 ///   large `ctxt` values will cause interning. The number of bits needed for
 ///   `ctxt` values depend partly on the crate size and partly on the form of
-///   the code. No crates in `rustc-perf` need more than 15 bits for `ctxt`,
+///   the code. No crates in `rustc-perf` need more than 15 bits for `ctxt_or_tag`,
 ///   but larger crates might need more than 16 bits.
 ///
 /// In order to reliably use parented spans in incremental compilation,
@@ -65,15 +70,16 @@ use rustc_data_structures::fx::FxIndexSet;
 pub struct Span {
     base_or_index: u32,
     len_or_tag: u16,
-    ctxt_or_zero: u16,
+    ctxt_or_tag: u16,
 }
 
 const LEN_TAG: u16 = 0b1000_0000_0000_0000;
 const MAX_LEN: u32 = 0b0111_1111_1111_1111;
-const MAX_CTXT: u32 = 0b1111_1111_1111_1111;
+const CTXT_TAG: u32 = 0b1111_1111_1111_1111;
+const MAX_CTXT: u32 = CTXT_TAG - 1;
 
 /// Dummy span, both position and length are zero, syntax context is zero as well.
-pub const DUMMY_SP: Span = Span { base_or_index: 0, len_or_tag: 0, ctxt_or_zero: 0 };
+pub const DUMMY_SP: Span = Span { base_or_index: 0, len_or_tag: 0, ctxt_or_tag: 0 };
 
 impl Span {
     #[inline]
@@ -91,12 +97,13 @@ impl Span {
 
         if len <= MAX_LEN && ctxt2 <= MAX_CTXT && parent.is_none() {
             // Inline format.
-            Span { base_or_index: base, len_or_tag: len as u16, ctxt_or_zero: ctxt2 as u16 }
+            Span { base_or_index: base, len_or_tag: len as u16, ctxt_or_tag: ctxt2 as u16 }
         } else {
             // Interned format.
             let index =
                 with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }));
-            Span { base_or_index: index, len_or_tag: LEN_TAG, ctxt_or_zero: 0 }
+            let ctxt_or_tag = if ctxt2 <= MAX_CTXT { ctxt2 } else { CTXT_TAG } as u16;
+            Span { base_or_index: index, len_or_tag: LEN_TAG, ctxt_or_tag }
         }
     }
 
@@ -119,14 +126,27 @@ impl Span {
             SpanData {
                 lo: BytePos(self.base_or_index),
                 hi: BytePos(self.base_or_index + self.len_or_tag as u32),
-                ctxt: SyntaxContext::from_u32(self.ctxt_or_zero as u32),
+                ctxt: SyntaxContext::from_u32(self.ctxt_or_tag as u32),
                 parent: None,
             }
         } else {
             // Interned format.
-            debug_assert!(self.ctxt_or_zero == 0);
             let index = self.base_or_index;
             with_span_interner(|interner| interner.spans[index as usize])
+        }
+    }
+
+    /// This function is used as a fast path when decoding the full `SpanData` is not necessary.
+    #[inline]
+    pub fn ctxt(self) -> SyntaxContext {
+        let ctxt_or_tag = self.ctxt_or_tag as u32;
+        if ctxt_or_tag <= MAX_CTXT {
+            // Inline format or interned format with inline ctxt.
+            SyntaxContext::from_u32(ctxt_or_tag)
+        } else {
+            // Interned format.
+            let index = self.base_or_index;
+            with_span_interner(|interner| interner.spans[index as usize].ctxt)
         }
     }
 }
