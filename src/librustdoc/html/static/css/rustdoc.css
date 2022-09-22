@@ -522,10 +522,6 @@ img {
 	width: 100px;
 }
 
-.location:empty {
-	border: none;
-}
-
 .block ul, .block li {
 	padding: 0;
 	margin: 0;
