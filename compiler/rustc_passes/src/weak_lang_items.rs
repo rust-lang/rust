@@ -1,14 +1,15 @@
 //! Validity checking for weak lang items
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
 use rustc_hir::lang_items::{self, LangItem};
 use rustc_hir::weak_lang_items::WEAK_ITEMS_REFS;
 use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::errors::{MissingAllocErrorHandler, MissingLangItem, MissingPanicHandler};
+use crate::errors::{
+    MissingAllocErrorHandler, MissingLangItem, MissingPanicHandler, UnknownExternLangItem,
+};
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
 /// language items required by this crate, but not defined yet.
@@ -33,14 +34,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
                 }
             } else {
                 let span = tcx.def_span(id.def_id);
-                struct_span_err!(
-                    tcx.sess,
-                    span,
-                    E0264,
-                    "unknown external lang item: `{}`",
-                    lang_item
-                )
-                .emit();
+                tcx.sess.emit_err(UnknownExternLangItem { span, lang_item });
             }
         }
     }

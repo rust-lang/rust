@@ -679,6 +679,14 @@ pub struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes::unknown_external_lang_item, code = "E0264")]
+pub struct UnknownExternLangItem {
+    #[primary_span]
+    pub span: Span,
+    pub lang_item: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes::missing_panic_handler)]
 pub struct MissingPanicHandler;
 
@@ -743,11 +751,4 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
         }
         diag
     }
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes::deprecated_annotation_has_no_effect)]
-pub struct DeprecatedAnnotationHasNoEffect {
-    #[suggestion(applicability = "machine-applicable", code = "")]
-    pub span: Span,
 }
