@@ -35,8 +35,8 @@ pub(crate) fn target_from_impl_item<'tcx>(
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {
-            let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id());
-            let containing_item = tcx.hir().expect_item(parent_hir_id);
+            let parent_def_id = tcx.hir().get_parent_item(impl_item.hir_id());
+            let containing_item = tcx.hir().expect_item(parent_def_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
                 hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
                 _ => bug!("parent of an ImplItem must be an Impl"),
@@ -640,8 +640,8 @@ impl CheckAttrVisitor<'_> {
         let span = meta.span();
         if let Some(location) = match target {
             Target::AssocTy => {
-                let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
-                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
+                let parent_def_id = self.tcx.hir().get_parent_item(hir_id);
+                let containing_item = self.tcx.hir().expect_item(parent_def_id);
                 if Target::from_item(containing_item) == Target::Impl {
                     Some("type alias in implementation block")
                 } else {
@@ -649,8 +649,8 @@ impl CheckAttrVisitor<'_> {
                 }
             }
             Target::AssocConst => {
-                let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
-                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
+                let parent_def_id = self.tcx.hir().get_parent_item(hir_id);
+                let containing_item = self.tcx.hir().expect_item(parent_def_id);
                 // We can't link to trait impl's consts.
                 let err = "associated constant in trait implementation block";
                 match containing_item.kind {
