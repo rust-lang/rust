@@ -1,6 +1,7 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
+use crate::errors;
 use rustc_attr::{
     self as attr, rust_version_symbol, ConstStability, Stability, StabilityLevel, Unstable,
     UnstableReason, VERSION_PLACEHOLDER,
@@ -122,16 +123,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
             if kind == AnnotationKind::Prohibited || kind == AnnotationKind::DeprecationProhibited {
                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                self.tcx.struct_span_lint_hir(USELESS_DEPRECATED, hir_id, *span, |lint| {
-                    lint.build("this `#[deprecated]` annotation has no effect")
-                        .span_suggestion_short(
-                            *span,
-                            "remove the unnecessary deprecation attribute",
-                            "",
-                            rustc_errors::Applicability::MachineApplicable,
-                        )
-                        .emit();
-                });
+                self.tcx.emit_spanned_lint(
+                    USELESS_DEPRECATED,
+                    hir_id,
+                    *span,
+                    errors::DeprecatedAnnotationHasNoEffect { span: *span },
+                );
             }
 
             // `Deprecation` is just two pointers, no need to intern it

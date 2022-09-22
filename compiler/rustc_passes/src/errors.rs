@@ -658,3 +658,10 @@ pub struct CollapseDebuginfo {
     #[label]
     pub defn_span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(passes::deprecated_annotation_has_no_effect)]
+pub struct DeprecatedAnnotationHasNoEffect {
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub span: Span,
+}
