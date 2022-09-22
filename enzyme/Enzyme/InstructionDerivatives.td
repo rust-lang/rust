@@ -135,6 +135,10 @@ def : CallPattern<(Op $x),
                   [(FDiv (DiffeRet<"">), (Intrinsic<"sqrt", [(TypeOf<""> $x)]> (FSub (ConstantFP<"1.0"> $x), (FMul $x, $x)))  )]                  
                   >;
 def : CallPattern<(Op $x),
+                  ["acos", "acosf", "acosl"],
+                  [(FNeg (FDiv (DiffeRet<"">), (Intrinsic<"sqrt", [(TypeOf<""> $x)]> (FSub (ConstantFP<"1.0"> $x), (FMul $x, $x)))  ))]                  
+                  >;
+def : CallPattern<(Op $x),
                   ["log1p", "log1pf", "log1pl"],
                   [(FDiv (DiffeRet<"">), (FAdd (ConstantFP<"1.0"> $x), $x))]
                   >;
