@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind;
             if assoc_item.fn_has_self_parameter;
             if let ImplItemKind::Fn(.., body_id) = &impl_item.kind;
-            if !cx.access_levels.is_exported(impl_item.def_id.def_id) || !self.avoid_breaking_exported_api;
+            if !cx.effective_visibilities.is_exported(impl_item.def_id.def_id) || !self.avoid_breaking_exported_api;
             let body = cx.tcx.hir().body(*body_id);
             if let [self_param, ..] = body.params;
             if !is_local_used(cx, body, self_param.pat.hir_id);

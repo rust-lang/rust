@@ -563,7 +563,7 @@ impl MissingDoc {
         // It's an option so the crate root can also use this function (it doesn't
         // have a `NodeId`).
         if def_id != CRATE_DEF_ID {
-            if !cx.access_levels.is_exported(def_id) {
+            if !cx.effective_visibilities.is_exported(def_id) {
                 return;
             }
         }
@@ -721,7 +721,7 @@ declare_lint_pass!(MissingCopyImplementations => [MISSING_COPY_IMPLEMENTATIONS])
 
 impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.access_levels.is_reachable(item.def_id.def_id) {
+        if !cx.effective_visibilities.is_reachable(item.def_id.def_id) {
             return;
         }
         let (def, ty) = match item.kind {
@@ -814,7 +814,7 @@ impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.access_levels.is_reachable(item.def_id.def_id) {
+        if !cx.effective_visibilities.is_reachable(item.def_id.def_id) {
             return;
         }
 
@@ -1385,7 +1385,8 @@ impl UnreachablePub {
         exportable: bool,
     ) {
         let mut applicability = Applicability::MachineApplicable;
-        if cx.tcx.visibility(def_id).is_public() && !cx.access_levels.is_reachable(def_id) {
+        if cx.tcx.visibility(def_id).is_public() && !cx.effective_visibilities.is_reachable(def_id)
+        {
             if vis_span.from_expansion() {
                 applicability = Applicability::MaybeIncorrect;
             }

@@ -23,7 +23,7 @@ pub(crate) fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) ->
     {
         let mut stripper = Stripper {
             retained: &mut retained,
-            access_levels: &cx.cache.access_levels,
+            effective_visibilities: &cx.cache.effective_visibilities,
             update_retained: true,
             is_json_output,
         };

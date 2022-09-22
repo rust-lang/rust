@@ -57,7 +57,7 @@ macro_rules! access_from {
     ($save_ctxt:expr, $id:expr) => {
         Access {
             public: $save_ctxt.tcx.visibility($id).is_public(),
-            reachable: $save_ctxt.access_levels.is_reachable($id),
+            reachable: $save_ctxt.effective_visibilities.is_reachable($id),
         }
     };
 }
