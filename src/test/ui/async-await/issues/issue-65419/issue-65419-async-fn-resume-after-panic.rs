@@ -6,7 +6,6 @@
 // error-pattern: thread 'main' panicked at '`async fn` resumed after panicking'
 // edition:2018
 // ignore-wasm no panic or subprocess support
-// ignore-emscripten no panic or subprocess support
 
 #![feature(generators, generator_trait)]
 

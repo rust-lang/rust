@@ -1,6 +1,5 @@
 // run-pass
 // needs-unwind
-// ignore-wasm32-bare compiled with panic=abort by default
 
 // See `mir_drop_order.rs` for more information
 
