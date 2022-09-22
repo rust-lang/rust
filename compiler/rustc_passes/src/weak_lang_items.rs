@@ -8,7 +8,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
 use crate::errors::{
-    MissingAllocErrorHandler, MissingLangItem, MissingPanicHandler, UnknownExternLangItem,
+    AllocFuncRequired, MissingAllocErrorHandler, MissingLangItem, MissingPanicHandler,
+    UnknownExternLangItem,
 };
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
@@ -70,7 +71,8 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
                 tcx.sess.emit_err(MissingPanicHandler);
             } else if item == LangItem::Oom {
                 if !tcx.features().default_alloc_error_handler {
-                    tcx.sess.emit_err(MissingAllocErrorHandler);
+                    tcx.sess.emit_err(AllocFuncRequired);
+                    tcx.sess.emit_note(MissingAllocErrorHandler);
                 }
             } else {
                 tcx.sess.emit_err(MissingLangItem { name: *name });

@@ -691,8 +691,11 @@ pub struct UnknownExternLangItem {
 pub struct MissingPanicHandler;
 
 #[derive(Diagnostic)]
+#[diag(passes::alloc_func_required)]
+pub struct AllocFuncRequired;
+
+#[derive(Diagnostic)]
 #[diag(passes::missing_alloc_error_handler)]
-#[note]
 pub struct MissingAllocErrorHandler;
 
 #[derive(Diagnostic)]
