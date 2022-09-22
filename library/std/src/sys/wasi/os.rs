@@ -2,13 +2,14 @@
 
 use crate::any::Any;
 use crate::error::Error as StdError;
-use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::os::wasi::prelude::*;
 use crate::path::{self, PathBuf};
 use crate::str;
+use crate::sys::common::small_c_string::{run_path_with_cstr, run_with_cstr};
 use crate::sys::memchr;
 use crate::sys::unsupported;
 use crate::vec;
@@ -77,13 +78,10 @@ pub fn getcwd() -> io::Result<PathBuf> {
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
-    let p: &OsStr = p.as_ref();
-    let p = CString::new(p.as_bytes())?;
-    unsafe {
-        match libc::chdir(p.as_ptr()) == (0 as libc::c_int) {
-            true => Ok(()),
-            false => Err(io::Error::last_os_error()),
-        }
+    let result = run_path_with_cstr(p, |p| unsafe { Ok(libc::chdir(p.as_ptr())) })?;
+    match result == (0 as libc::c_int) {
+        true => Ok(()),
+        false => Err(io::Error::last_os_error()),
     }
 }
 
@@ -176,35 +174,32 @@ pub fn env() -> Env {
 }
 
 pub fn getenv(k: &OsStr) -> Option<OsString> {
-    let k = CString::new(k.as_bytes()).ok()?;
-    unsafe {
+    let s = run_with_cstr(k.as_bytes(), |k| unsafe {
         let _guard = env_lock();
-        let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
-        if s.is_null() {
-            None
-        } else {
-            Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
-        }
+        Ok(libc::getenv(k.as_ptr()) as *const libc::c_char)
+    })
+    .ok()?;
+    if s.is_null() {
+        None
+    } else {
+        Some(OsStringExt::from_vec(unsafe { CStr::from_ptr(s) }.to_bytes().to_vec()))
     }
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
-    let k = CString::new(k.as_bytes())?;
-    let v = CString::new(v.as_bytes())?;
-
-    unsafe {
-        let _guard = env_lock();
-        cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
-    }
+    run_with_cstr(k.as_bytes(), |k| {
+        run_with_cstr(v.as_bytes(), |v| unsafe {
+            let _guard = env_lock();
+            cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
+        })
+    })
 }
 
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
-    let nbuf = CString::new(n.as_bytes())?;
-
-    unsafe {
+    run_with_cstr(n.as_bytes(), |nbuf| unsafe {
         let _guard = env_lock();
         cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
-    }
+    })
 }
 
 pub fn temp_dir() -> PathBuf {
