@@ -173,7 +173,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 span,
                 span_label: match res {
                     Res::Def(kind, def_id) if kind == DefKind::TyParam => {
-                        self.def_span(def_id).map(|span| (span, "found this type pararmeter"))
+                        self.def_span(def_id).map(|span| (span, "found this type parameter"))
                     }
                     _ => None,
                 },
