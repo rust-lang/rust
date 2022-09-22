@@ -4,9 +4,9 @@ use rustc_errors::{
     MultiSpan, SubdiagnosticMessage,
 };
 use rustc_hir as hir;
-use rustc_hir::{FnRetTy, Ty};
+use rustc_hir::FnRetTy;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::{Region, TyCtxt};
+use rustc_middle::ty::{Region, Ty, TyCtxt};
 use rustc_span::symbol::kw;
 use rustc_span::Symbol;
 use rustc_span::{symbol::Ident, BytePos, Span};
@@ -522,7 +522,7 @@ pub struct MismatchedStaticLifetime<'a> {
     pub implicit_static_lifetimes: Vec<ImplicitStaticLifetimeSubdiag>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(infer::explicit_lifetime_required, code = "E0621")]
 pub struct ExplicitLifetimeRequired<'a> {
     #[primary_span]
@@ -542,7 +542,7 @@ pub struct ExplicitLifetimeRequired<'a> {
     pub new_ty: Ty<'a>,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum ActualImplExplNotes {
     // Field names have to be different across all variants
     #[note(infer::actual_impl_expl_1)]
@@ -565,7 +565,7 @@ pub enum ActualImplExplNotes {
     },
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(infer::trait_placeholder_mismatch)]
 pub struct TraitPlaceholderMismatch {
     #[primary_span]
@@ -587,7 +587,7 @@ pub struct ConsiderBorrowingParamHelp {
     pub spans: Vec<Span>,
 }
 
-impl AddSubdiagnostic for ConsiderBorrowingParamHelp {
+impl AddToDiagnostic for ConsiderBorrowingParamHelp {
     fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
@@ -597,11 +597,11 @@ impl AddSubdiagnostic for ConsiderBorrowingParamHelp {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[help(infer::tid_rel_help)]
 pub struct RelationshipHelp;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(infer::trait_impl_diff)]
 pub struct TraitImplDiff {
     #[primary_span]
@@ -626,7 +626,7 @@ pub struct DynTraitConstraintSuggestion {
     pub ident: Ident,
 }
 
-impl AddSubdiagnostic for DynTraitConstraintSuggestion {
+impl AddToDiagnostic for DynTraitConstraintSuggestion {
     fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
         let mut multi_span: MultiSpan = vec![self.span].into();
         multi_span.push_span_label(self.span, fluent::infer::dtcs_has_lifetime_req_label);
@@ -641,7 +641,7 @@ impl AddSubdiagnostic for DynTraitConstraintSuggestion {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(infer::but_calling_introduces, code = "E0772")]
 pub struct ButCallingIntroduces {
     #[label(infer::label1)]
@@ -667,7 +667,7 @@ pub struct ReqIntroducedLocations {
     pub add_label: bool,
 }
 
-impl AddSubdiagnostic for ReqIntroducedLocations {
+impl AddToDiagnostic for ReqIntroducedLocations {
     fn add_to_diagnostic(mut self, diag: &mut rustc_errors::Diagnostic) {
         for sp in self.spans {
             self.span.push_span_label(sp, fluent::infer::ril_introduced_here);
@@ -685,7 +685,7 @@ pub struct MoreTargeted {
     pub ident: Symbol,
 }
 
-impl AddSubdiagnostic for MoreTargeted {
+impl AddToDiagnostic for MoreTargeted {
     fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
         diag.code(rustc_errors::error_code!(E0772));
         diag.set_primary_message(fluent::infer::more_targeted);
@@ -693,7 +693,7 @@ impl AddSubdiagnostic for MoreTargeted {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(infer::but_needs_to_satisfy, code = "E0759")]
 pub struct ButNeedsToSatisfy {
     #[primary_span]

@@ -9,7 +9,7 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{AddSubdiagnostic, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{AddToDiagnostic, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
