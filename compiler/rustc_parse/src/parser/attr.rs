@@ -4,7 +4,6 @@ use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
-use rustc_ast_pretty::pprust;
 use rustc_errors::{error_code, fluent, Diagnostic, IntoDiagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use std::convert::TryInto;
@@ -414,8 +413,7 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(),
         }
 
-        let token = pprust::token_to_string(&self.token).to_string();
-        Err(InvalidMetaItem { span: self.token.span, token }
+        Err(InvalidMetaItem { span: self.token.span, token: self.token.clone() }
             .into_diagnostic(&self.sess.span_diagnostic))
     }
 }

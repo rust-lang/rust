@@ -326,7 +326,7 @@ impl<'a> Parser<'a> {
 
         let err = ExpectedIdentifier {
             span: self.token.span,
-            token_descr: super::token_descr_struct(&self.token),
+            token: self.token.clone(),
             suggest_raw,
             suggest_remove_comma,
         };
@@ -426,7 +426,7 @@ impl<'a> Parser<'a> {
                 //   let y = 42;
                 self.sess.emit_err(ExpectedSemi {
                     span: self.token.span,
-                    token_descr: super::token_descr_struct(&self.token),
+                    token: self.token.clone(),
                     unexpected_token_label: None,
                     sugg: ExpectedSemiSugg::ChangeToSemi(self.token.span),
                 });
@@ -451,7 +451,7 @@ impl<'a> Parser<'a> {
                 let span = self.prev_token.span.shrink_to_hi();
                 self.sess.emit_err(ExpectedSemi {
                     span,
-                    token_descr: super::token_descr_struct(&self.token),
+                    token: self.token.clone(),
                     unexpected_token_label: Some(self.token.span),
                     sugg: ExpectedSemiSugg::AddSemi(span),
                 });

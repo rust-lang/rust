@@ -1,3 +1,4 @@
+use rustc_ast::token::Token;
 use rustc_ast::Path;
 use rustc_errors::{fluent, AddToDiagnostic, Applicability, EmissionGuarantee, IntoDiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -5,7 +6,7 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
-use crate::parser::{TokenDescription, TokenDescriptionKind};
+use crate::parser::TokenDescription;
 
 #[derive(Diagnostic)]
 #[diag(parser::maybe_report_ambiguous_plus)]
@@ -572,7 +573,7 @@ pub(crate) struct FoundExprWouldBeStmt {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub token: String,
+    pub token: Token,
     #[subdiagnostic]
     pub suggestion: ExprParenthesesNeeded,
 }
@@ -871,7 +872,7 @@ pub(crate) struct SuffixedLiteralInAttribute {
 pub(crate) struct InvalidMetaItem {
     #[primary_span]
     pub span: Span,
-    pub token: String,
+    pub token: Token,
 }
 
 #[derive(Subdiagnostic)]
@@ -908,14 +909,14 @@ pub(crate) enum ExpectedIdentifierFound {
 }
 
 impl ExpectedIdentifierFound {
-    pub fn new(token_descr_kind: Option<TokenDescriptionKind>, span: Span) -> Self {
-        (match token_descr_kind {
-            Some(TokenDescriptionKind::ReservedIdentifier) => {
+    pub fn new(token_descr: Option<TokenDescription>, span: Span) -> Self {
+        (match token_descr {
+            Some(TokenDescription::ReservedIdentifier) => {
                 ExpectedIdentifierFound::ReservedIdentifier
             }
-            Some(TokenDescriptionKind::Keyword) => ExpectedIdentifierFound::Keyword,
-            Some(TokenDescriptionKind::ReservedKeyword) => ExpectedIdentifierFound::ReservedKeyword,
-            Some(TokenDescriptionKind::DocComment) => ExpectedIdentifierFound::DocComment,
+            Some(TokenDescription::Keyword) => ExpectedIdentifierFound::Keyword,
+            Some(TokenDescription::ReservedKeyword) => ExpectedIdentifierFound::ReservedKeyword,
+            Some(TokenDescription::DocComment) => ExpectedIdentifierFound::DocComment,
             None => ExpectedIdentifierFound::Other,
         })(span)
     }
@@ -923,7 +924,7 @@ impl ExpectedIdentifierFound {
 
 pub(crate) struct ExpectedIdentifier {
     pub span: Span,
-    pub token_descr: TokenDescription,
+    pub token: Token,
     pub suggest_raw: Option<SuggEscapeToUseAsIdentifier>,
     pub suggest_remove_comma: Option<SuggRemoveComma>,
 }
@@ -933,29 +934,31 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
         self,
         handler: &'a rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'a, G> {
-        let mut diag = handler.struct_diagnostic(match self.token_descr.kind {
-            Some(TokenDescriptionKind::ReservedIdentifier) => {
+        let token_descr = super::parser::TokenDescription::from_token(&self.token);
+
+        let mut diag = handler.struct_diagnostic(match token_descr {
+            Some(TokenDescription::ReservedIdentifier) => {
                 fluent::parser::expected_identifier_found_reserved_identifier_str
             }
-            Some(TokenDescriptionKind::Keyword) => {
+            Some(TokenDescription::Keyword) => {
                 fluent::parser::expected_identifier_found_keyword_str
             }
-            Some(TokenDescriptionKind::ReservedKeyword) => {
+            Some(TokenDescription::ReservedKeyword) => {
                 fluent::parser::expected_identifier_found_reserved_keyword_str
             }
-            Some(TokenDescriptionKind::DocComment) => {
+            Some(TokenDescription::DocComment) => {
                 fluent::parser::expected_identifier_found_doc_comment_str
             }
             None => fluent::parser::expected_identifier_found_str,
         });
         diag.set_span(self.span);
-        diag.set_arg("token_str", self.token_descr.name);
+        diag.set_arg("token", self.token);
 
         if let Some(sugg) = self.suggest_raw {
             sugg.add_to_diagnostic(&mut diag);
         }
 
-        ExpectedIdentifierFound::new(self.token_descr.kind, self.span).add_to_diagnostic(&mut diag);
+        ExpectedIdentifierFound::new(token_descr, self.span).add_to_diagnostic(&mut diag);
 
         if let Some(sugg) = self.suggest_remove_comma {
             sugg.add_to_diagnostic(&mut diag);
@@ -967,7 +970,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
 
 pub(crate) struct ExpectedSemi {
     pub span: Span,
-    pub token_descr: TokenDescription,
+    pub token: Token,
 
     pub unexpected_token_label: Option<Span>,
     pub sugg: ExpectedSemiSugg,
@@ -978,21 +981,23 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
         self,
         handler: &'a rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'a, G> {
-        let mut diag = handler.struct_diagnostic(match self.token_descr.kind {
-            Some(TokenDescriptionKind::ReservedIdentifier) => {
+        let token_descr = super::parser::TokenDescription::from_token(&self.token);
+
+        let mut diag = handler.struct_diagnostic(match token_descr {
+            Some(TokenDescription::ReservedIdentifier) => {
                 fluent::parser::expected_semi_found_reserved_identifier_str
             }
-            Some(TokenDescriptionKind::Keyword) => fluent::parser::expected_semi_found_keyword_str,
-            Some(TokenDescriptionKind::ReservedKeyword) => {
+            Some(TokenDescription::Keyword) => fluent::parser::expected_semi_found_keyword_str,
+            Some(TokenDescription::ReservedKeyword) => {
                 fluent::parser::expected_semi_found_reserved_keyword_str
             }
-            Some(TokenDescriptionKind::DocComment) => {
+            Some(TokenDescription::DocComment) => {
                 fluent::parser::expected_semi_found_doc_comment_str
             }
             None => fluent::parser::expected_semi_found_str,
         });
         diag.set_span(self.span);
-        diag.set_arg("token_str", self.token_descr.name);
+        diag.set_arg("token", self.token);
 
         if let Some(unexpected_token_label) = self.unexpected_token_label {
             diag.span_label(unexpected_token_label, fluent::parser::label_unexpected_token);

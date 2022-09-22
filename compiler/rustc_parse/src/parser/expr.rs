@@ -430,8 +430,7 @@ impl<'a> Parser<'a> {
     fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
         self.sess.emit_err(FoundExprWouldBeStmt {
             span: self.token.span,
-            // FIXME(#100717)
-            token: pprust::token_to_string(&self.token).to_string(),
+            token: self.token.clone(),
             suggestion: ExprParenthesesNeeded::surrounding(lhs.span),
         });
     }

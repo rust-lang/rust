@@ -183,6 +183,18 @@ impl IntoDiagnosticArg for ast::Path {
     }
 }
 
+impl IntoDiagnosticArg for ast::token::Token {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(pprust::token_to_string(&self))
+    }
+}
+
+impl IntoDiagnosticArg for ast::token::TokenKind {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(pprust::token_kind_to_string(&self))
+    }
+}
+
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
 #[cfg_attr(bootstrap, rustc_diagnostic_item = "AddSubdiagnostic")]

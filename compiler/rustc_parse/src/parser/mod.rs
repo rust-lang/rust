@@ -411,40 +411,33 @@ pub enum FollowedByType {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum TokenDescriptionKind {
+pub enum TokenDescription {
     ReservedIdentifier,
     Keyword,
     ReservedKeyword,
     DocComment,
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct TokenDescription {
-    pub kind: Option<TokenDescriptionKind>,
-    pub name: String,
-}
-
-pub(super) fn token_descr_struct(token: &Token) -> TokenDescription {
-    let kind = match token.kind {
-        _ if token.is_special_ident() => Some(TokenDescriptionKind::ReservedIdentifier),
-        _ if token.is_used_keyword() => Some(TokenDescriptionKind::Keyword),
-        _ if token.is_unused_keyword() => Some(TokenDescriptionKind::ReservedKeyword),
-        token::DocComment(..) => Some(TokenDescriptionKind::DocComment),
-        _ => None,
-    };
-    let name = pprust::token_to_string(token).to_string();
-
-    TokenDescription { kind, name }
+impl TokenDescription {
+    pub fn from_token(token: &Token) -> Option<Self> {
+        match token.kind {
+            _ if token.is_special_ident() => Some(TokenDescription::ReservedIdentifier),
+            _ if token.is_used_keyword() => Some(TokenDescription::Keyword),
+            _ if token.is_unused_keyword() => Some(TokenDescription::ReservedKeyword),
+            token::DocComment(..) => Some(TokenDescription::DocComment),
+            _ => None,
+        }
+    }
 }
 
 pub(super) fn token_descr(token: &Token) -> String {
-    let TokenDescription { kind, name } = token_descr_struct(token);
+    let name = pprust::token_to_string(token).to_string();
 
-    let kind = kind.map(|kind| match kind {
-        TokenDescriptionKind::ReservedIdentifier => "reserved identifier",
-        TokenDescriptionKind::Keyword => "keyword",
-        TokenDescriptionKind::ReservedKeyword => "reserved keyword",
-        TokenDescriptionKind::DocComment => "doc comment",
+    let kind = TokenDescription::from_token(token).map(|kind| match kind {
+        TokenDescription::ReservedIdentifier => "reserved identifier",
+        TokenDescription::Keyword => "keyword",
+        TokenDescription::ReservedKeyword => "reserved keyword",
+        TokenDescription::DocComment => "doc comment",
     });
 
     if let Some(kind) = kind { format!("{} `{}`", kind, name) } else { format!("`{}`", name) }
