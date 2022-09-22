@@ -577,13 +577,9 @@ h2.location a {
 }
 
 .rustdoc .example-wrap {
-	display: inline-flex;
+	display: flex;
 	margin-bottom: 10px;
-}
-
-.example-wrap {
 	position: relative;
-	width: 100%;
 }
 
 .example-wrap > pre.line-number {

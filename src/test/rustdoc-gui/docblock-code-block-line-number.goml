@@ -20,3 +20,20 @@ assert-css: ("pre.line-number", {
 })
 // The first code block has two lines so let's check its `<pre>` elements lists both of them.
 assert-text: ("pre.line-number", "1\n2")
+
+// Now, try changing the setting dynamically. We'll turn it off, using the settings menu,
+// and make sure it goes away.
+
+// First, open the settings menu.
+click: "#settings-menu"
+wait-for: "#settings"
+assert-css: ("#settings", {"display": "block"})
+
+// Then, click the toggle button.
+click: "input#line-numbers + .slider"
+wait-for: 100 // wait-for-false does not exist
+assert-false: "pre.line-number"
+
+// Finally, turn it on again.
+click: "input#line-numbers + .slider"
+wait-for: "pre.line-number"
