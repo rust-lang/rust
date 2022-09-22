@@ -2059,6 +2059,7 @@ impl Step for RustDev {
             "llvm-dwp",
             "llvm-nm",
             "llvm-dwarfdump",
+            "llvm-dis",
         ] {
             tarball.add_file(src_bindir.join(exe(bin, target)), "bin", 0o755);
         }
