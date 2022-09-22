@@ -3258,7 +3258,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
             // if this impl block implements a trait, lint in trait definition instead
-            if !implements_trait && cx.access_levels.is_exported(impl_item.def_id.def_id) {
+            if !implements_trait && cx.effective_visibilities.is_exported(impl_item.def_id.def_id) {
                 // check missing trait implementations
                 for method_config in &TRAIT_METHODS {
                     if name == method_config.method_name
@@ -3292,7 +3292,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
             if sig.decl.implicit_self.has_implicit_self()
                     && !(self.avoid_breaking_exported_api
-                    && cx.access_levels.is_exported(impl_item.def_id.def_id))
+                    && cx.effective_visibilities.is_exported(impl_item.def_id.def_id))
                     && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir().body(id)).next()
                     && let Some(first_arg_ty) = first_arg_ty_opt
                 {
