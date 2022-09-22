@@ -226,13 +226,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
-        SelectionContext {
-            infcx,
-            freshener: infcx.freshener_keep_static(),
-            intercrate: true,
-            intercrate_ambiguity_causes: None,
-            query_mode: TraitQueryMode::Standard,
-        }
+        SelectionContext { intercrate: true, ..SelectionContext::new(infcx) }
     }
 
     pub fn with_query_mode(
@@ -240,13 +234,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         query_mode: TraitQueryMode,
     ) -> SelectionContext<'cx, 'tcx> {
         debug!(?query_mode, "with_query_mode");
-        SelectionContext {
-            infcx,
-            freshener: infcx.freshener_keep_static(),
-            intercrate: false,
-            intercrate_ambiguity_causes: None,
-            query_mode,
-        }
+        SelectionContext { query_mode, ..SelectionContext::new(infcx) }
     }
 
     /// Enables tracking of intercrate ambiguity causes. See

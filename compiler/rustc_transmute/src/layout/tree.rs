@@ -404,7 +404,7 @@ pub(crate) mod rustc {
                 .unwrap();
                 trace!(?discr_layout, "computed discriminant layout");
                 variant_layout = variant_layout.extend(discr_layout).unwrap().0;
-                tree = tree.then(Self::from_disr(discr, tcx, layout_summary.discriminant_size));
+                tree = tree.then(Self::from_discr(discr, tcx, layout_summary.discriminant_size));
             }
 
             // Next come fields.
@@ -444,11 +444,21 @@ pub(crate) mod rustc {
             Ok(tree)
         }
 
-        pub fn from_disr(discr: Discr<'tcx>, tcx: TyCtxt<'tcx>, size: usize) -> Self {
-            // FIXME(@jswrenn): I'm certain this is missing needed endian nuance.
-            let bytes = discr.val.to_ne_bytes();
-            let bytes = &bytes[..size];
-            Self::Seq(bytes.into_iter().copied().map(|b| Self::from_bits(b)).collect())
+        pub fn from_discr(discr: Discr<'tcx>, tcx: TyCtxt<'tcx>, size: usize) -> Self {
+            use rustc_target::abi::Endian;
+
+            let bytes: [u8; 16];
+            let bytes = match tcx.data_layout.endian {
+                Endian::Little => {
+                    bytes = discr.val.to_le_bytes();
+                    &bytes[..size]
+                }
+                Endian::Big => {
+                    bytes = discr.val.to_be_bytes();
+                    &bytes[bytes.len() - size..]
+                }
+            };
+            Self::Seq(bytes.iter().map(|&b| Self::from_bits(b)).collect())
         }
     }
 

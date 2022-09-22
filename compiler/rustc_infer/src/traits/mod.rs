@@ -113,6 +113,8 @@ pub struct FulfillmentError<'tcx> {
 
 #[derive(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
+    /// Inherently impossible to fulfill; this trait is implemented if and only if it is already implemented.
+    CodeCycle(Vec<Obligation<'tcx, ty::Predicate<'tcx>>>),
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate

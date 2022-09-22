@@ -1,5 +1,7 @@
 #![crate_name = "foo"]
 
+use std::io::Lines;
+
 pub trait MyTrait { fn dummy(&self) { } }
 
 // @has foo/struct.Alpha.html '//pre' "pub struct Alpha<A>(_)where A: MyTrait"
@@ -29,6 +31,16 @@ where
 // @snapshot SWhere_TraitWhere_item-decl - '//div[@class="item-decl"]'
 pub trait TraitWhere {
     type Item<'a> where Self: 'a;
+
+    fn func(self)
+    where
+        Self: Sized
+    {}
+
+    fn lines(self) -> Lines<Self>
+    where
+        Self: Sized,
+    { todo!() }
 }
 
 // @has foo/struct.Echo.html '//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
