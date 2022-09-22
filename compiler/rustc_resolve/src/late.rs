@@ -789,9 +789,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         let previous_value = self.diagnostic_metadata.current_function;
         match fn_kind {
             // Bail if the function is foreign, and thus cannot validly have
-            // a body, or if there's no body for some other reason.
-            FnKind::Fn(FnCtxt::Foreign, _, sig, _, generics, _)
-            | FnKind::Fn(_, _, sig, _, generics, None) => {
+            // a body.
+            FnKind::Fn(FnCtxt::Foreign, _, sig, _, generics, _) => {
                 self.visit_fn_header(&sig.header);
                 self.visit_generics(generics);
                 self.with_lifetime_rib(

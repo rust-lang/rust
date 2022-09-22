@@ -1,9 +1,9 @@
-error[E0412]: cannot find type `b` in this scope
+error[E0573]: expected type, found local variable `b`
   --> $DIR/issue-69401-trait-fn-no-body-ty-local.rs:4:53
    |
 LL |     fn fn_with_type_named_same_as_local_in_param(b: b);
-   |                                                     ^ not found in this scope
+   |                                                     ^ not a type
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0573`.
