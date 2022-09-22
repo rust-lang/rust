@@ -30,7 +30,8 @@ impl AsFd for Stdin {
     }
 }
 
-impl<'a> AsFd for StdinLock<'a> {
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StdinLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         unsafe { BorrowedFd::borrow_raw(0) }
@@ -72,7 +73,8 @@ impl AsFd for Stdout {
     }
 }
 
-impl<'a> AsFd for StdoutLock<'a> {
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StdoutLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         unsafe { BorrowedFd::borrow_raw(1) }
@@ -117,7 +119,8 @@ impl AsFd for Stderr {
     }
 }
 
-impl<'a> AsFd for StderrLock<'a> {
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StderrLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         unsafe { BorrowedFd::borrow_raw(2) }
