@@ -851,7 +851,7 @@ tool_doc!(
     in_tree = true
 );
 tool_doc!(Clippy, "clippy", "src/tools/clippy", ["clippy_utils"], in_tree = true);
-tool_doc!(Miri, "miri", "src/tools/miri", ["miri"], in_tree = true);
+tool_doc!(Miri, "miri", "src/tools/miri", ["miri"], in_tree = false);
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
