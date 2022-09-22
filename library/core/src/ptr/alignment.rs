@@ -9,7 +9,7 @@ use crate::{cmp, fmt, hash, mem, num};
 /// Note that particularly large alignments, while representable in this type,
 /// are likely not to be supported by actual allocators and linkers.
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct Alignment(AlignmentEnum);
 
@@ -17,7 +17,26 @@ pub struct Alignment(AlignmentEnum);
 const _: () = assert!(mem::size_of::<Alignment>() == mem::size_of::<usize>());
 const _: () = assert!(mem::align_of::<Alignment>() == mem::align_of::<usize>());
 
+fn _alignment_can_be_structurally_matched(a: Alignment) -> bool {
+    matches!(a, Alignment::MIN)
+}
+
 impl Alignment {
+    /// The smallest possible alignment, 1.
+    ///
+    /// All addresses are always aligned at least this much.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_alignment_type)]
+    /// use std::ptr::Alignment;
+    ///
+    /// assert_eq!(Alignment::MIN.as_usize(), 1);
+    /// ```
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    pub const MIN: Self = Self(AlignmentEnum::_Align1Shl0);
+
     /// Returns the alignment for a type.
     ///
     /// This provides the same numerical value as [`mem::align_of`],
@@ -128,17 +147,6 @@ impl TryFrom<usize> for Alignment {
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl cmp::Eq for Alignment {}
-
-#[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl cmp::PartialEq for Alignment {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.as_nonzero() == other.as_nonzero()
-    }
-}
-
-#[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl cmp::Ord for Alignment {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
@@ -169,7 +177,7 @@ type AlignmentEnum = AlignmentEnum32;
 #[cfg(target_pointer_width = "64")]
 type AlignmentEnum = AlignmentEnum64;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(u16)]
 enum AlignmentEnum16 {
     _Align1Shl0 = 1 << 0,
@@ -190,7 +198,7 @@ enum AlignmentEnum16 {
     _Align1Shl15 = 1 << 15,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(u32)]
 enum AlignmentEnum32 {
     _Align1Shl0 = 1 << 0,
@@ -227,7 +235,7 @@ enum AlignmentEnum32 {
     _Align1Shl31 = 1 << 31,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(u64)]
 enum AlignmentEnum64 {
     _Align1Shl0 = 1 << 0,
