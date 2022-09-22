@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_errors::{
     fluent, AddToDiagnostic, Diagnostic, ErrorGuaranteed, Handler, IntoDiagnostic,
     SubdiagnosticMessage,
@@ -38,7 +40,7 @@ impl AddToDiagnostic for OverruledAttributeSub {
             OverruledAttributeSub::NodeSource { span, reason } => {
                 diag.span_label(span, fluent::lint_node_source);
                 if let Some(rationale) = reason {
-                    #[allow(rustc::diagnostic_outside_of_impl)]
+                    #[allow(rustc::untranslatable_diagnostic)]
                     diag.note(rationale.as_str());
                 }
             }
