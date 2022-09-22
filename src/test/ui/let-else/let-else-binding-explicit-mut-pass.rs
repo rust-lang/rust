@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(let_else)]
+
 
 fn main() {
     let Some(n) = &mut &mut Some(5i32) else { return; };

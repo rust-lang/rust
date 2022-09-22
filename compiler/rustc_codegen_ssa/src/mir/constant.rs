@@ -25,26 +25,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant: &mir::Constant<'tcx>,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
         let ct = self.monomorphize(constant.literal);
-        let ct = match ct {
-            mir::ConstantKind::Ty(ct) => ct,
+        let uv = match ct {
+            mir::ConstantKind::Ty(ct) => match ct.kind() {
+                ty::ConstKind::Unevaluated(uv) => uv.expand(),
+                ty::ConstKind::Value(val) => {
+                    return Ok(self.cx.tcx().valtree_to_const_val((ct.ty(), val)));
+                }
+                err => span_bug!(
+                    constant.span,
+                    "encountered bad ConstKind after monomorphizing: {:?}",
+                    err
+                ),
+            },
+            mir::ConstantKind::Unevaluated(uv, _) => uv,
             mir::ConstantKind::Val(val, _) => return Ok(val),
         };
-        match ct.kind() {
-            ty::ConstKind::Unevaluated(ct) => self
-                .cx
-                .tcx()
-                .const_eval_resolve(ty::ParamEnv::reveal_all(), ct, None)
-                .map_err(|err| {
-                    self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
-                    err
-                }),
-            ty::ConstKind::Value(val) => Ok(self.cx.tcx().valtree_to_const_val((ct.ty(), val))),
-            err => span_bug!(
-                constant.span,
-                "encountered bad ConstKind after monomorphizing: {:?}",
-                err
-            ),
-        }
+
+        self.cx.tcx().const_eval_resolve(ty::ParamEnv::reveal_all(), uv, None).map_err(|err| {
+            self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
+            err
+        })
     }
 
     /// process constant containing SIMD shuffle indices

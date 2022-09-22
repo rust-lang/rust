@@ -11,6 +11,7 @@ use rustc_macros::HashStable;
 use rustc_target::abi::Size;
 
 use super::ScalarInt;
+
 /// An unevaluated, potentially generic, constant.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable)]
@@ -50,7 +51,7 @@ impl<'tcx, P: Default> Unevaluated<'tcx, P> {
 
 /// Represents a constant in Rust.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
-#[derive(Hash, HashStable)]
+#[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum ConstKind<'tcx> {
     /// A const generic parameter.
     Param(ty::ParamConst),
@@ -66,7 +67,7 @@ pub enum ConstKind<'tcx> {
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
     /// variants when the code is monomorphic enough for that.
-    Unevaluated(Unevaluated<'tcx>),
+    Unevaluated(Unevaluated<'tcx, ()>),
 
     /// Used to hold computed value.
     Value(ty::ValTree<'tcx>),
@@ -77,7 +78,7 @@ pub enum ConstKind<'tcx> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstKind<'_>, 40);
+static_assert_size!(ConstKind<'_>, 32);
 
 impl<'tcx> ConstKind<'tcx> {
     #[inline]
@@ -184,6 +185,8 @@ impl<'tcx> ConstKind<'tcx> {
         if let ConstKind::Unevaluated(unevaluated) = self {
             use crate::mir::interpret::ErrorHandled;
 
+            assert_eq!(unevaluated.promoted, ());
+
             // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
             // also does later, but we want to do it before checking for
             // inference variables.
@@ -204,7 +207,7 @@ impl<'tcx> ConstKind<'tcx> {
                 tcx.param_env(unevaluated.def.did).and(ty::Unevaluated {
                     def: unevaluated.def,
                     substs: InternalSubsts::identity_for_item(tcx, unevaluated.def.did),
-                    promoted: unevaluated.promoted,
+                    promoted: (),
                 })
             } else {
                 param_env_and
@@ -228,7 +231,7 @@ impl<'tcx> ConstKind<'tcx> {
                     }
                 }
                 EvalMode::Mir => {
-                    match tcx.const_eval_resolve(param_env, unevaluated, None) {
+                    match tcx.const_eval_resolve(param_env, unevaluated.expand(), None) {
                         // NOTE(eddyb) `val` contains no lifetimes/types/consts,
                         // and we use the original type, so nothing from `substs`
                         // (which may be identity substs, see above),

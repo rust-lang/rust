@@ -468,7 +468,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // RFC 2632
     gated!(
         const_trait, Normal, template!(Word), WarnFollowing, const_trait_impl,
-        "`const` is a temporary placeholder for marking a trait that is suitable for `const` \
+        "`const_trait` is a temporary placeholder for marking a trait that is suitable for `const` \
         `impls` and all default bodies as `const`, which may be removed or renamed in the \
         future."
     ),
@@ -762,7 +762,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Testing:
     // ==========================================================================
 
-    rustc_attr!(TEST, rustc_access_level, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_effective_visibility, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_outlives, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_capture_analysis, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word), WarnFollowing),

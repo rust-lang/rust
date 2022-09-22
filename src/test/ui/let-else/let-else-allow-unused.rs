@@ -1,6 +1,6 @@
 // issue #89807
 
-#![feature(let_else)]
+
 
 #[deny(unused_variables)]
 

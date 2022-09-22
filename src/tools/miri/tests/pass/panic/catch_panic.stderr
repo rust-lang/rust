@@ -1,0 +1,26 @@
+thread 'main' panicked at 'Hello from panic: std', $DIR/catch_panic.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+Caught panic message (&str): Hello from panic: std
+thread 'main' panicked at 'Hello from panic: 1', $DIR/catch_panic.rs:LL:CC
+Caught panic message (String): Hello from panic: 1
+thread 'main' panicked at 'Hello from panic: 2', $DIR/catch_panic.rs:LL:CC
+Caught panic message (String): Hello from panic: 2
+thread 'main' panicked at 'Box<dyn Any>', $DIR/catch_panic.rs:LL:CC
+Failed to get caught panic message.
+thread 'main' panicked at 'Hello from panic: core', $DIR/catch_panic.rs:LL:CC
+Caught panic message (&str): Hello from panic: core
+thread 'main' panicked at 'Hello from panic: 5', $DIR/catch_panic.rs:LL:CC
+Caught panic message (String): Hello from panic: 5
+thread 'main' panicked at 'Hello from panic: 6', $DIR/catch_panic.rs:LL:CC
+Caught panic message (String): Hello from panic: 6
+thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 4', $DIR/catch_panic.rs:LL:CC
+Caught panic message (String): index out of bounds: the len is 3 but the index is 4
+thread 'main' panicked at 'attempt to divide by zero', $DIR/catch_panic.rs:LL:CC
+Caught panic message (&str): attempt to divide by zero
+thread 'main' panicked at 'align_offset: align is not a power-of-two', RUSTLIB/core/src/ptr/const_ptr.rs:LL:CC
+Caught panic message (&str): align_offset: align is not a power-of-two
+thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:LL:CC
+Caught panic message (&str): assertion failed: false
+thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:LL:CC
+Caught panic message (&str): assertion failed: false
+Success!

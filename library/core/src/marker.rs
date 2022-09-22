@@ -81,6 +81,7 @@ impl<T: ?Sized> !Send for *mut T {}
 /// ```
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
+#[doc(alias = "?", alias = "?Sized")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
 #[rustc_on_unimplemented(

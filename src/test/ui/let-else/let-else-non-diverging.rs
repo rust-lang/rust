@@ -1,5 +1,3 @@
-#![feature(let_else)]
-
 fn main() {
     let Some(x) = Some(1) else { //~ ERROR does not diverge
         Some(2)

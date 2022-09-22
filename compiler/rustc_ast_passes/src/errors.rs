@@ -1,12 +1,12 @@
 //! Errors emitted by ast_passes.
 
-use rustc_errors::{fluent, AddSubdiagnostic, Applicability, Diagnostic};
-use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
+use rustc_errors::{fluent, AddToDiagnostic, Applicability, Diagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 use crate::ast_validation::ForbiddenLetReason;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_let)]
 #[note]
 pub struct ForbiddenLet {
@@ -16,7 +16,7 @@ pub struct ForbiddenLet {
     pub(crate) reason: ForbiddenLetReason,
 }
 
-impl AddSubdiagnostic for ForbiddenLetReason {
+impl AddToDiagnostic for ForbiddenLetReason {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         match self {
             Self::GenericForbidden => {}
@@ -30,7 +30,7 @@ impl AddSubdiagnostic for ForbiddenLetReason {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_let_stable)]
 #[note]
 pub struct ForbiddenLetStable {
@@ -38,21 +38,21 @@ pub struct ForbiddenLetStable {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_assoc_constraint)]
 pub struct ForbiddenAssocConstraint {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::keyword_lifetime)]
 pub struct KeywordLifetime {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::invalid_label)]
 pub struct InvalidLabel {
     #[primary_span]
@@ -60,7 +60,7 @@ pub struct InvalidLabel {
     pub name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::invalid_visibility, code = "E0449")]
 pub struct InvalidVisibility {
     #[primary_span]
@@ -71,7 +71,7 @@ pub struct InvalidVisibility {
     pub note: Option<InvalidVisibilityNote>,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum InvalidVisibilityNote {
     #[note(ast_passes::individual_impl_items)]
     IndividualImplItems,
@@ -79,7 +79,7 @@ pub enum InvalidVisibilityNote {
     IndividualForeignItems,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::trait_fn_const, code = "E0379")]
 pub struct TraitFnConst {
     #[primary_span]
@@ -87,21 +87,21 @@ pub struct TraitFnConst {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_lifetime_bound)]
 pub struct ForbiddenLifetimeBound {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_non_lifetime_param)]
 pub struct ForbiddenNonLifetimeParam {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::fn_param_too_many)]
 pub struct FnParamTooMany {
     #[primary_span]
@@ -109,21 +109,21 @@ pub struct FnParamTooMany {
     pub max_num_args: usize,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::fn_param_c_var_args_only)]
 pub struct FnParamCVarArgsOnly {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::fn_param_c_var_args_not_last)]
 pub struct FnParamCVarArgsNotLast {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::fn_param_doc_comment)]
 pub struct FnParamDocComment {
     #[primary_span]
@@ -131,14 +131,14 @@ pub struct FnParamDocComment {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::fn_param_forbidden_attr)]
 pub struct FnParamForbiddenAttr {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::fn_param_forbidden_self)]
 #[note]
 pub struct FnParamForbiddenSelf {
@@ -147,7 +147,7 @@ pub struct FnParamForbiddenSelf {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_default)]
 pub struct ForbiddenDefault {
     #[primary_span]
@@ -156,7 +156,7 @@ pub struct ForbiddenDefault {
     pub def_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::assoc_const_without_body)]
 pub struct AssocConstWithoutBody {
     #[primary_span]
@@ -165,7 +165,7 @@ pub struct AssocConstWithoutBody {
     pub replace_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::assoc_fn_without_body)]
 pub struct AssocFnWithoutBody {
     #[primary_span]
@@ -174,7 +174,7 @@ pub struct AssocFnWithoutBody {
     pub replace_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::assoc_type_without_body)]
 pub struct AssocTypeWithoutBody {
     #[primary_span]
@@ -183,7 +183,7 @@ pub struct AssocTypeWithoutBody {
     pub replace_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::const_without_body)]
 pub struct ConstWithoutBody {
     #[primary_span]
@@ -192,7 +192,7 @@ pub struct ConstWithoutBody {
     pub replace_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::static_without_body)]
 pub struct StaticWithoutBody {
     #[primary_span]
@@ -201,7 +201,7 @@ pub struct StaticWithoutBody {
     pub replace_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::ty_alias_without_body)]
 pub struct TyAliasWithoutBody {
     #[primary_span]
@@ -210,7 +210,7 @@ pub struct TyAliasWithoutBody {
     pub replace_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::fn_without_body)]
 pub struct FnWithoutBody {
     #[primary_span]
@@ -227,7 +227,7 @@ pub struct ExternBlockSuggestion {
     pub abi: Option<Symbol>,
 }
 
-impl AddSubdiagnostic for ExternBlockSuggestion {
+impl AddToDiagnostic for ExternBlockSuggestion {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         let start_suggestion = if let Some(abi) = self.abi {
             format!("extern \"{}\" {{", abi)

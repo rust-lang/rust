@@ -5,7 +5,7 @@ use crate::infer::{GenericKind, VerifyBound};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::{GenericArg, Subst};
+use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, EarlyBinder, OutlivesPredicate, Ty, TyCtxt};
 
 use smallvec::smallvec;

@@ -372,7 +372,7 @@ declare_tool_lint! {
 declare_tool_lint! {
     pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
     Allow,
-    "prevent creation of diagnostics outside of `SessionDiagnostic`/`AddSubdiagnostic` impls",
+    "prevent creation of diagnostics outside of `IntoDiagnostic`/`AddToDiagnostic` impls",
     report_in_external_macro: true
 }
 
@@ -404,7 +404,7 @@ impl LateLintPass<'_> for Diagnostics {
                 let Impl { of_trait: Some(of_trait), .. } = impl_ &&
                 let Some(def_id) = of_trait.trait_def_id() &&
                 let Some(name) = cx.tcx.get_diagnostic_name(def_id) &&
-                matches!(name, sym::SessionDiagnostic | sym::AddSubdiagnostic | sym::DecorateLint)
+                matches!(name, sym::IntoDiagnostic | sym::AddToDiagnostic | sym::DecorateLint)
             {
                 found_impl = true;
                 break;

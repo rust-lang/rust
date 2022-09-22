@@ -593,7 +593,7 @@ pub fn compile_declarative_macro(
     (mk_syn_ext(expander), rule_spans)
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum ExplainDocComment {
     #[label(expand::explain_doc_comment_inner)]
     Inner {

@@ -533,7 +533,7 @@ impl Span {
         other.resolved_at(*self)
     }
 
-    /// Compares to spans to see if they're equal.
+    /// Compares two spans to see if they're equal.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn eq(&self, other: &Span) -> bool {
         self.0 == other.0

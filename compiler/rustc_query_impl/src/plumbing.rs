@@ -19,8 +19,10 @@ use rustc_query_system::query::{
     force_query, QueryConfig, QueryContext, QueryDescription, QueryJobId, QueryMap,
     QuerySideEffects, QueryStackFrame,
 };
-use rustc_query_system::Value;
+use rustc_query_system::{LayoutOfDepth, QueryOverflow, Value};
 use rustc_serialize::Decodable;
+use rustc_session::Limit;
+use rustc_span::def_id::LOCAL_CRATE;
 use std::any::Any;
 use std::num::NonZeroU64;
 use thin_vec::ThinVec;
@@ -109,7 +111,7 @@ impl QueryContext for QueryCtxt<'_> {
         // when accessing the `ImplicitCtxt`.
         tls::with_related_context(**self, move |current_icx| {
             if depth_limit && !self.recursion_limit().value_within_limit(current_icx.query_depth) {
-                self.depth_limit_error();
+                self.depth_limit_error(token);
             }
 
             // Update the `ImplicitCtxt` to point to our new query job.
@@ -126,6 +128,29 @@ impl QueryContext for QueryCtxt<'_> {
                 rustc_data_structures::stack::ensure_sufficient_stack(compute)
             })
         })
+    }
+
+    fn depth_limit_error(&self, job: QueryJobId) {
+        let mut span = None;
+        let mut layout_of_depth = None;
+        if let Some(map) = self.try_collect_active_jobs() {
+            if let Some((info, depth)) = job.try_find_layout_root(map) {
+                span = Some(info.job.span);
+                layout_of_depth = Some(LayoutOfDepth { desc: info.query.description, depth });
+            }
+        }
+
+        let suggested_limit = match self.recursion_limit() {
+            Limit(0) => Limit(2),
+            limit => limit * 2,
+        };
+
+        self.sess.emit_fatal(QueryOverflow {
+            span,
+            layout_of_depth,
+            suggested_limit,
+            crate_name: self.crate_name(LOCAL_CRATE),
+        });
     }
 }
 
@@ -151,19 +176,31 @@ impl<'tcx> QueryCtxt<'tcx> {
         encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx>,
         query_result_index: &mut on_disk_cache::EncodedDepNodeIndex,
     ) {
+        macro_rules! expand_if_cached {
+            ([] $encode:expr) => {};
+            ([(cache) $($rest:tt)*] $encode:expr) => {
+                $encode
+            };
+            ([$other:tt $($modifiers:tt)*] $encode:expr) => {
+                expand_if_cached!([$($modifiers)*] $encode)
+            };
+        }
+
         macro_rules! encode_queries {
-            ($($query:ident,)*) => {
+            (
+            $($(#[$attr:meta])*
+                [$($modifiers:tt)*] fn $query:ident($($K:tt)*) -> $V:ty,)*) => {
                 $(
-                    on_disk_cache::encode_query_results::<_, super::queries::$query<'_>>(
+                    expand_if_cached!([$($modifiers)*] on_disk_cache::encode_query_results::<_, super::queries::$query<'_>>(
                         self,
                         encoder,
                         query_result_index
-                    );
+                    ));
                 )*
             }
         }
 
-        rustc_cached_queries!(encode_queries!);
+        rustc_query_append!(encode_queries!);
     }
 
     pub fn try_print_query_stack(

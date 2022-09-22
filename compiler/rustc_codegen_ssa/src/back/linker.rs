@@ -439,7 +439,10 @@ impl<'a> Linker for GccLinker<'a> {
             }
         }
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}{}", if verbatim { ":" } else { "" }, lib));
+        self.cmd.arg(format!(
+            "-l{}{lib}",
+            if verbatim && self.sess.target.linker_is_gnu { ":" } else { "" },
+        ));
         if !as_needed {
             if self.sess.target.is_like_osx {
                 // See above FIXME comment
@@ -450,7 +453,10 @@ impl<'a> Linker for GccLinker<'a> {
     }
     fn link_staticlib(&mut self, lib: &str, verbatim: bool) {
         self.hint_static();
-        self.cmd.arg(format!("-l{}{}", if verbatim { ":" } else { "" }, lib));
+        self.cmd.arg(format!(
+            "-l{}{lib}",
+            if verbatim && self.sess.target.linker_is_gnu { ":" } else { "" },
+        ));
     }
     fn link_rlib(&mut self, lib: &Path) {
         self.hint_static();
@@ -504,10 +510,10 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         let target = &self.sess.target;
         if !target.is_like_osx {
-            self.linker_arg("--whole-archive").cmd.arg(format!(
-                "-l{}{}",
-                if verbatim { ":" } else { "" },
-                lib
+            self.linker_arg("--whole-archive");
+            self.cmd.arg(format!(
+                "-l{}{lib}",
+                if verbatim && self.sess.target.linker_is_gnu { ":" } else { "" },
             ));
             self.linker_arg("--no-whole-archive");
         } else {

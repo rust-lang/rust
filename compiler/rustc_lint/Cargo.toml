@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 tracing = "0.1"
-unicode-security = "0.0.5"
+unicode-security = "0.1.0"
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_attr = { path = "../rustc_attr" }

@@ -37,7 +37,7 @@ use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_span::symbol::sym;
@@ -462,15 +462,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
                     match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
-                        Some(Ok(InferOk { mut obligations, .. })) => {
+                        Ok(Ok(InferOk { mut obligations, .. })) => {
                             self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
                             self.evaluate_predicates_recursively(
                                 previous_stack,
                                 obligations.into_iter(),
                             )
                         }
-                        Some(Err(_)) => Ok(EvaluatedToErr),
-                        None => Ok(EvaluatedToAmbig),
+                        Ok(Err(_)) => Ok(EvaluatedToErr),
+                        Err(..) => Ok(EvaluatedToAmbig),
                     }
                 }
 
@@ -478,15 +478,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
                     match self.infcx.coerce_predicate(&obligation.cause, obligation.param_env, p) {
-                        Some(Ok(InferOk { mut obligations, .. })) => {
+                        Ok(Ok(InferOk { mut obligations, .. })) => {
                             self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
                             self.evaluate_predicates_recursively(
                                 previous_stack,
                                 obligations.into_iter(),
                             )
                         }
-                        Some(Err(_)) => Ok(EvaluatedToErr),
-                        None => Ok(EvaluatedToAmbig),
+                        Ok(Err(_)) => Ok(EvaluatedToErr),
+                        Err(..) => Ok(EvaluatedToAmbig),
                     }
                 }
 
@@ -699,11 +699,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.kind(), c2.kind())
                         {
-                            if self.infcx.try_unify_abstract_consts(
-                                a.shrink(),
-                                b.shrink(),
-                                obligation.param_env,
-                            ) {
+                            if self.infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
                                 return Ok(EvaluatedToOk);
                             }
                         }
@@ -1196,6 +1192,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ImplCandidate(def_id) if tcx.constness(def_id) == hir::Constness::Const => {}
                     // const param
                     ParamCandidate(trait_pred) if trait_pred.is_const_if_const() => {}
+                    // const projection
+                    ProjectionCandidate(_, ty::BoundConstness::ConstIfConst) => {}
                     // auto trait impl
                     AutoImplCandidate(..) => {}
                     // generator, this will raise error in other places
@@ -1403,7 +1401,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> smallvec::SmallVec<[usize; 2]> {
+    ) -> smallvec::SmallVec<[(usize, ty::BoundConstness); 2]> {
         let poly_trait_predicate = self.infcx().resolve_vars_if_possible(obligation.predicate);
         let placeholder_trait_predicate =
             self.infcx().replace_bound_vars_with_placeholders(poly_trait_predicate);
@@ -1451,7 +1449,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             _ => false,
                         }
                     }) {
-                        return Some(idx);
+                        return Some((idx, pred.constness));
                     }
                 }
                 None
@@ -1687,9 +1685,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..)
                 | ObjectCandidate(_)
-                | ProjectionCandidate(_),
+                | ProjectionCandidate(..),
             ) => !is_global(cand),
-            (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref cand)) => {
+            (ObjectCandidate(_) | ProjectionCandidate(..), ParamCandidate(ref cand)) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
                 is_global(cand)
@@ -1711,20 +1709,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 is_global(cand) && other.evaluation.must_apply_modulo_regions()
             }
 
-            (ProjectionCandidate(i), ProjectionCandidate(j))
+            (ProjectionCandidate(i, _), ProjectionCandidate(j, _))
             | (ObjectCandidate(i), ObjectCandidate(j)) => {
                 // Arbitrarily pick the lower numbered candidate for backwards
                 // compatibility reasons. Don't let this affect inference.
                 i < j && !needs_infer
             }
-            (ObjectCandidate(_), ProjectionCandidate(_))
-            | (ProjectionCandidate(_), ObjectCandidate(_)) => {
+            (ObjectCandidate(_), ProjectionCandidate(..))
+            | (ProjectionCandidate(..), ObjectCandidate(_)) => {
                 bug!("Have both object and projection candidate")
             }
 
             // Arbitrarily give projection and object candidates priority.
             (
-                ObjectCandidate(_) | ProjectionCandidate(_),
+                ObjectCandidate(_) | ProjectionCandidate(..),
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
@@ -1746,7 +1744,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..),
-                ObjectCandidate(_) | ProjectionCandidate(_),
+                ObjectCandidate(_) | ProjectionCandidate(..),
             ) => false,
 
             (&ImplCandidate(other_def), &ImplCandidate(victim_def)) => {

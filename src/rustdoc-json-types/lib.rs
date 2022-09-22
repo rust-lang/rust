@@ -542,12 +542,12 @@ pub enum Term {
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "kind", content = "inner")]
 pub enum Type {
-    /// Structs, enums, and traits
+    /// Structs, enums, and unions
     ResolvedPath(Path),
     DynTrait(DynTrait),
     /// Parameterized types
     Generic(String),
-    /// Fixed-size numeric types (plus int/usize/float), char, arrays, slices, and tuples
+    /// Built in numberic (i*, u*, f*) types, bool, and char
     Primitive(String),
     /// `extern "ABI" fn`
     FunctionPointer(Box<FunctionPointer>),

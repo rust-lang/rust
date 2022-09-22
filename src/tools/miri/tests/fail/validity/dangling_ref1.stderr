@@ -1,0 +1,15 @@
+error: Undefined Behavior: constructing invalid value: encountered a dangling reference (address 0x10 is unallocated)
+  --> $DIR/dangling_ref1.rs:LL:CC
+   |
+LL |     let _x: &i32 = unsafe { mem::transmute(16usize) };
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (address 0x10 is unallocated)
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/dangling_ref1.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

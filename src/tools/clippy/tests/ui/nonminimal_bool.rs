@@ -57,3 +57,9 @@ fn check_expect() {
     #[expect(clippy::nonminimal_bool)]
     let _ = !!a;
 }
+
+fn issue9428() {
+    if matches!(true, true) && true {
+        println!("foo");
+    }
+}

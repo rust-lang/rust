@@ -732,9 +732,19 @@ class RustBuild(object):
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
 
+        # Export Stage0 snapshot compiler related env variables
+        build_section = "target.{}".format(self.build)
+        host_triple_sanitized = self.build.replace("-", "_")
+        var_data = {
+            "CC": "cc", "CXX": "cxx", "LD": "linker", "AR": "ar", "RANLIB": "ranlib"
+        }
+        for var_name, toml_key in var_data.items():
+            toml_val = self.get_toml(toml_key, build_section)
+            if toml_val != None:
+                env["{}_{}".format(var_name, host_triple_sanitized)] = toml_val
+
         # preserve existing RUSTFLAGS
         env.setdefault("RUSTFLAGS", "")
-        build_section = "target.{}".format(self.build)
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
             target_features += ["+crt-static"]
@@ -742,9 +752,6 @@ class RustBuild(object):
             target_features += ["-crt-static"]
         if target_features:
             env["RUSTFLAGS"] += " -C target-feature=" + (",".join(target_features))
-        target_linker = self.get_toml("linker", build_section)
-        if target_linker is not None:
-            env["RUSTFLAGS"] += " -C linker=" + target_linker
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
         env["RUSTFLAGS"] += " -Wsemicolon_in_expressions_from_macros"
         if self.get_toml("deny-warnings", "rust") != "false":
@@ -771,7 +778,8 @@ class RustBuild(object):
         elif color == "never":
             args.append("--color=never")
 
-        run(args, env=env, verbose=self.verbose)
+        # Run this from the source directory so cargo finds .cargo/config
+        run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
 
     def build_triple(self):
         """Build triple as in LLVM

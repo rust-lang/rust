@@ -1,9 +1,9 @@
-error: `#[derive(SessionDiagnostic)]` can only be used on structs
+error: `#[derive(Diagnostic)]` can only be used on structs
   --> $DIR/diagnostic-derive.rs:39:1
    |
 LL | / #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 LL | |
-LL | | enum SessionDiagnosticOnEnum {
+LL | | enum DiagnosticOnEnum {
 LL | |     Foo,
 LL | |     Bar,
 LL | | }
@@ -214,22 +214,22 @@ LL |     #[suggestion(typeck::suggestion, code = "{name}")]
 error: invalid format string: expected `'}'` but string was terminated
   --> $DIR/diagnostic-derive.rs:171:16
    |
-LL | #[derive(SessionDiagnostic)]
+LL | #[derive(Diagnostic)]
    |           -    ^ expected `'}'` in format string
    |           |
    |           because of this opening brace
    |
    = note: if you intended to print `{`, you can escape it using `{{`
-   = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid format string: unmatched `}` found
   --> $DIR/diagnostic-derive.rs:181:15
    |
-LL | #[derive(SessionDiagnostic)]
+LL | #[derive(Diagnostic)]
    |               ^ unmatched `}` in format string
    |
    = note: if you intended to print `}`, you can escape it using `}}`
-   = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
   --> $DIR/diagnostic-derive.rs:201:5
@@ -448,8 +448,8 @@ LL | #[diag(nonsense, code = "E0123")]
 error[E0277]: the trait bound `Hello: IntoDiagnosticArg` is not satisfied
   --> $DIR/diagnostic-derive.rs:331:10
    |
-LL | #[derive(SessionDiagnostic)]
-   |          ^^^^^^^^^^^^^^^^^ the trait `IntoDiagnosticArg` is not implemented for `Hello`
+LL | #[derive(Diagnostic)]
+   |          ^^^^^^^^^^ the trait `IntoDiagnosticArg` is not implemented for `Hello`
    |
    = help: normalized in stderr
 note: required by a bound in `DiagnosticBuilder::<'a, G>::set_arg`
@@ -457,7 +457,7 @@ note: required by a bound in `DiagnosticBuilder::<'a, G>::set_arg`
    |
 LL |         arg: impl IntoDiagnosticArg,
    |                   ^^^^^^^^^^^^^^^^^ required by this bound in `DiagnosticBuilder::<'a, G>::set_arg`
-   = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 55 previous errors
 

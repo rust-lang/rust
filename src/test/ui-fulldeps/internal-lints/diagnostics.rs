@@ -12,55 +12,55 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    AddSubdiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, fluent
+    AddToDiagnostic, IntoDiagnostic, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, Handler, fluent
 };
-use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
-use rustc_session::SessionDiagnostic;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(parser::expect_path)]
-struct DeriveSessionDiagnostic {
+struct DeriveDiagnostic {
     #[primary_span]
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[note(parser::add_paren)]
 struct Note {
     #[primary_span]
     span: Span,
 }
 
-pub struct UntranslatableInSessionDiagnostic;
+pub struct UntranslatableInIntoDiagnostic;
 
-impl<'a> SessionDiagnostic<'a, ErrorGuaranteed> for UntranslatableInSessionDiagnostic {
+impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for UntranslatableInIntoDiagnostic {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         handler.struct_err("untranslatable diagnostic")
         //~^ ERROR diagnostics should be created using translatable messages
     }
 }
 
-pub struct TranslatableInSessionDiagnostic;
+pub struct TranslatableInIntoDiagnostic;
 
-impl<'a> SessionDiagnostic<'a, ErrorGuaranteed> for TranslatableInSessionDiagnostic {
+impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for TranslatableInIntoDiagnostic {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         handler.struct_err(fluent::parser::expect_path)
     }
 }
 
-pub struct UntranslatableInAddSubdiagnostic;
+pub struct UntranslatableInAddToDiagnostic;
 
-impl AddSubdiagnostic for UntranslatableInAddSubdiagnostic {
+impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         diag.note("untranslatable diagnostic");
         //~^ ERROR diagnostics should be created using translatable messages
     }
 }
 
-pub struct TranslatableInAddSubdiagnostic;
+pub struct TranslatableInAddToDiagnostic;
 
-impl AddSubdiagnostic for TranslatableInAddSubdiagnostic {
+impl AddToDiagnostic for TranslatableInAddToDiagnostic {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         diag.note(fluent::typeck::note);
     }
@@ -68,10 +68,10 @@ impl AddSubdiagnostic for TranslatableInAddSubdiagnostic {
 
 pub fn make_diagnostics<'a>(handler: &'a Handler) {
     let _diag = handler.struct_err(fluent::parser::expect_path);
-    //~^ ERROR diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
+    //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
 
     let _diag = handler.struct_err("untranslatable diagnostic");
-    //~^ ERROR diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
+    //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
     //~^^ ERROR diagnostics should be created using translatable messages
 }
 

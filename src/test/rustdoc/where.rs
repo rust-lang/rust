@@ -20,13 +20,13 @@ impl<D> Delta<D> where D: MyTrait {
 pub struct Echo<E>(E);
 
 // @has 'foo/struct.Simd.html'
-// @snapshot SWhere_Simd_item-decl - '//div[@class="docblock item-decl"]'
+// @snapshot SWhere_Simd_item-decl - '//div[@class="item-decl"]'
 pub struct Simd<T>([T; 1])
 where
     T: MyTrait;
 
 // @has 'foo/trait.TraitWhere.html'
-// @snapshot SWhere_TraitWhere_item-decl - '//div[@class="docblock item-decl"]'
+// @snapshot SWhere_TraitWhere_item-decl - '//div[@class="item-decl"]'
 pub trait TraitWhere {
     type Item<'a> where Self: 'a;
 }

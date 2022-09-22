@@ -121,7 +121,7 @@ fn array_casts() -> () {
         _14 = &_15;                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_14);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_18);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _35 = const array_casts::promoted[0]; // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _35 = const _;                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // + literal: Const { ty: &usize, val: Unevaluated(array_casts, [], Some(promoted[0])) }

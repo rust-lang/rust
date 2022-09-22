@@ -1,5 +1,5 @@
 error: conditional `else if` is not supported for `let...else`
-  --> $DIR/let-else-if.rs:4:33
+  --> $DIR/let-else-if.rs:2:33
    |
 LL |     let Some(_) = Some(()) else if true {
    |                                 ^^ expected `{`

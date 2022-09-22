@@ -12,7 +12,7 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(never_type)]
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]

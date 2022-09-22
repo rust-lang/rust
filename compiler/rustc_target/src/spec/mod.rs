@@ -1120,6 +1120,8 @@ supported_targets! {
     ("mipsel-unknown-none", mipsel_unknown_none),
     ("thumbv4t-none-eabi", thumbv4t_none_eabi),
     ("armv4t-none-eabi", armv4t_none_eabi),
+    ("thumbv5te-none-eabi", thumbv5te_none_eabi),
+    ("armv5te-none-eabi", armv5te_none_eabi),
 
     ("aarch64_be-unknown-linux-gnu", aarch64_be_unknown_linux_gnu),
     ("aarch64-unknown-linux-gnu_ilp32", aarch64_unknown_linux_gnu_ilp32),
@@ -1352,6 +1354,8 @@ pub struct TargetOptions {
     pub abi_return_struct_as_int: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
     /// in particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
+    /// Also indiates whether to use Apple-specific ABI changes, such as extending function
+    /// parameters to 32-bits.
     pub is_like_osx: bool,
     /// Whether the target toolchain is like Solaris's.
     /// Only useful for compiling against Illumos/Solaris,

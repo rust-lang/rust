@@ -139,10 +139,8 @@ fn main() {
         // Cargo doesn't pass RUSTFLAGS to proc_macros:
         // https://github.com/rust-lang/cargo/issues/4423
         // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
-        // We also declare that the flag is expected, which is mainly needed for
-        // later stages so that they don't warn about #[cfg(bootstrap)],
-        // but enabling it for stage 0 too lets any warnings, if they occur,
-        // occur more early on, e.g. about #[cfg(bootstrap = "foo")].
+        // We also declare that the flag is expected, which we need to do to not
+        // get warnings about it being unexpected.
         if stage == "0" {
             cmd.arg("--cfg=bootstrap");
         }

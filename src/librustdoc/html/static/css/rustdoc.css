@@ -141,10 +141,6 @@ h1, h2, h3, h4 {
 h1.fqn {
 	margin: 0;
 	padding: 0;
-	border-bottom-color: var(--headings-border-bottom-color);
-}
-h2, h3, h4 {
-	border-bottom-color: var(--headings-border-bottom-color);
 }
 .main-heading {
 	display: flex;
@@ -207,7 +203,6 @@ a.source,
 .out-of-band,
 span.since,
 details.rustdoc-toggle > summary::before,
-.content ul.crate a.crate,
 a.srclink,
 #help-button > button,
 details.rustdoc-toggle.top-doc > summary,
@@ -218,11 +213,10 @@ details.rustdoc-toggle.non-exhaustive > summary::before,
 .more-examples-toggle summary, .more-examples-toggle .hide-more,
 .example-links a,
 /* This selector is for the items listed in the "all items" page. */
-#main-content > ul.docblock > li > a {
+ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
-h1, h2, h3, h4,
 a#toggle-all-docs,
 a.anchor,
 .small-section-header a,
@@ -240,6 +234,49 @@ pre.rust a,
 .content .fn .where,
 .content .where.fmt-newline {
 	color: var(--main-color);
+}
+
+.content span.enum, .content a.enum,
+.content span.struct, .content a.struct,
+.content span.union, .content a.union,
+.content span.primitive, .content a.primitive,
+.content span.type, .content a.type,
+.content span.foreigntype, .content a.foreigntype {
+	color: var(--type-link-color);
+}
+
+.content span.trait, .content a.trait,
+.content span.traitalias, .content a.traitalias {
+	color: var(--trait-link-color);
+}
+
+.content span.associatedtype, .content a.associatedtype,
+.content span.constant, .content a.constant,
+.content span.static, .content a.static {
+	color: var(--assoc-item-link-color);
+}
+
+.content span.fn, .content a.fn,
+.content .fnname {
+	color: var(--function-link-color);
+}
+
+.content span.attr, .content a.attr,
+.content span.derive, .content a.derive,
+.content span.macro, .content a.macro {
+	color: var(--macro-link-color);
+}
+
+.content span.mod, .content a.mod, .block a.current.mod {
+	color: var(--mod-link-color);
+}
+
+.content span.keyword, .content a.keyword {
+	color: var(--keyword-link-color);
+}
+
+a {
+	color: var(--link-color);
 }
 
 ol, ul {
@@ -331,9 +368,6 @@ code, pre, a.test-arrow, .code-header {
 pre {
 	padding: 14px;
 }
-.docblock.item-decl {
-	margin-left: 0;
-}
 .item-decl pre {
 	overflow-x: auto;
 }
@@ -347,9 +381,7 @@ img {
 }
 
 .source .content {
-	max-width: none;
 	overflow: visible;
-	margin-left: 0px;
 }
 
 .sub-container {
@@ -494,13 +526,6 @@ img {
 	border: none;
 }
 
-.location a:first-of-type {
-	font-weight: 500;
-}
-
-.block {
-	padding: 0;
-}
 .block ul, .block li {
 	padding: 0;
 	margin: 0;
@@ -630,9 +655,6 @@ h2.location a {
 
 .docblock h5 { font-size: 1rem; }
 .docblock h6 { font-size: 0.875rem; }
-.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
-	border-bottom-color: var(--headings-border-bottom-color);
-}
 
 .docblock {
 	margin-left: 24px;
@@ -706,10 +728,6 @@ pre, .rustdoc.source .example-wrap {
 	padding: 0;
 }
 
-.content > .methods > .method {
-	font-size: 1rem;
-	position: relative;
-}
 /* Shift "where ..." part of method or fn definition down a line */
 .content .method .where,
 .content .fn .where,
@@ -792,6 +810,7 @@ h2.small-section-header > .anchor {
 	content: '§';
 }
 
+.all-items a:hover,
 .docblock a:not(.srclink):not(.test-arrow):not(.scrape-help):hover,
 .docblock-short a:not(.srclink):not(.test-arrow):not(.scrape-help):hover, .item-info a {
 	text-decoration: underline;
@@ -1069,6 +1088,12 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	margin-right: 0.3rem;
 }
 
+/* This is to prevent the `.stab` elements to overflow the .docblock elements. */
+.docblock .stab {
+	padding: 0 0.125em;
+	margin-bottom: 0;
+}
+
 /* Black one-pixel outline around emoji shapes */
 .emoji {
 	text-shadow:
@@ -1117,10 +1142,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	/* Override header settings otherwise it's too bold */
 	font-weight: normal;
 	font-size: 1rem;
-}
-
-td.summary-column {
-	width: 100%;
 }
 
 .summary {
@@ -1521,15 +1542,8 @@ kbd {
 	cursor: default;
 }
 
-#main-content > ul {
-	padding-left: 10px;
-}
-#main-content > ul > li {
+ul.all-items > li {
 	list-style: none;
-}
-
-.non-exhaustive {
-	margin-bottom: 1em;
 }
 
 details.dir-entry {
@@ -1864,12 +1878,6 @@ in storage.js plus the media query with (min-width: 701px)
 
 	.anchor {
 		display: none !important;
-	}
-
-	.notable-traits {
-		position: absolute;
-		left: -22px;
-		top: 24px;
 	}
 
 	#titles > button > div.count {

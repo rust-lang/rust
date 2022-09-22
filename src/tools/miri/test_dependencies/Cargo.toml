@@ -1,0 +1,21 @@
+[package]
+authors = ["Miri Team"]
+description = "dependencies that unit tests can have"
+license = "MIT OR Apache-2.0"
+name = "miri-test-deps"
+repository = "https://github.com/rust-lang/miri"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# all dependencies (and their transitive ones) listed here can be used in `tests/`.
+tokio = { version = "1.0", features = ["full"] }
+libc = "0.2"
+page_size = "0.4.1"
+num_cpus = "1.10.1"
+
+getrandom_1 = { package = "getrandom", version = "0.1" }
+getrandom_2 = { package = "getrandom", version = "0.2" }
+rand = { version = "0.8", features = ["small_rng"] }
+
+[workspace]

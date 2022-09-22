@@ -64,6 +64,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "rust-demangler-path", "path to rust-demangler to use in tests", "PATH")
         .reqopt("", "python", "path to python to use for doc tests", "PATH")
         .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
+        .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
         .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
         .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
@@ -226,6 +227,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         rust_demangler_path: matches.opt_str("rust-demangler-path").map(PathBuf::from),
         python: matches.opt_str("python").unwrap(),
         jsondocck_path: matches.opt_str("jsondocck-path"),
+        jsondoclint_path: matches.opt_str("jsondoclint-path"),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),

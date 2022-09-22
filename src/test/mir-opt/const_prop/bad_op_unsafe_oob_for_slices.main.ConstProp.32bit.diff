@@ -25,7 +25,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:9: +1:10
           StorageLive(_2);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
           StorageLive(_3);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
-          _9 = const main::promoted[0];    // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
+          _9 = const _;                    // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
                                            // mir::Constant
                                            // + span: $DIR/bad_op_unsafe_oob_for_slices.rs:5:25: 5:35
                                            // + literal: Const { ty: &[i32; 3], val: Unevaluated(main, [], Some(promoted[0])) }

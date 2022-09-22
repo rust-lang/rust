@@ -9,7 +9,7 @@ use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, Item, ItemKind, 
 use rustc_lint::LateContext;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, FloatTy, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
@@ -501,8 +501,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                         BinOpKind::Mul => l.checked_mul(r).map(zext),
                         BinOpKind::Div if r != 0 => l.checked_div(r).map(zext),
                         BinOpKind::Rem if r != 0 => l.checked_rem(r).map(zext),
-                        BinOpKind::Shr => l.checked_shr(r.try_into().expect("invalid shift")).map(zext),
-                        BinOpKind::Shl => l.checked_shl(r.try_into().expect("invalid shift")).map(zext),
+                        BinOpKind::Shr => l.checked_shr(r.try_into().ok()?).map(zext),
+                        BinOpKind::Shl => l.checked_shl(r.try_into().ok()?).map(zext),
                         BinOpKind::BitXor => Some(zext(l ^ r)),
                         BinOpKind::BitOr => Some(zext(l | r)),
                         BinOpKind::BitAnd => Some(zext(l & r)),
@@ -521,8 +521,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     BinOpKind::Mul => l.checked_mul(r).map(Constant::Int),
                     BinOpKind::Div => l.checked_div(r).map(Constant::Int),
                     BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
-                    BinOpKind::Shr => l.checked_shr(r.try_into().expect("shift too large")).map(Constant::Int),
-                    BinOpKind::Shl => l.checked_shl(r.try_into().expect("shift too large")).map(Constant::Int),
+                    BinOpKind::Shr => l.checked_shr(r.try_into().ok()?).map(Constant::Int),
+                    BinOpKind::Shl => l.checked_shl(r.try_into().ok()?).map(Constant::Int),
                     BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
                     BinOpKind::BitOr => Some(Constant::Int(l | r)),
                     BinOpKind::BitAnd => Some(Constant::Int(l & r)),

@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, Subst, ToPredicate, Ty};
+use rustc_middle::ty::{self, ToPredicate, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{

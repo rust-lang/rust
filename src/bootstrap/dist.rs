@@ -35,18 +35,6 @@ pub fn tmpdir(builder: &Builder<'_>) -> PathBuf {
     builder.out.join("tmp/dist")
 }
 
-fn missing_tool(tool_name: &str, skip: bool) {
-    if skip {
-        println!("Unable to build {}, skipping dist", tool_name)
-    } else {
-        let help = "note: not all tools are available on all nightlies\nhelp: see https://forge.rust-lang.org/infra/toolstate.html for more information";
-        panic!(
-            "Unable to build submodule tool {} (use `missing-tools = true` to ignore this failure)\n{}",
-            tool_name, help
-        )
-    }
-}
-
 fn should_build_extended_tool(builder: &Builder<'_>, tool: &str) -> bool {
     if !builder.config.extended {
         return false;
@@ -83,6 +71,45 @@ impl Step for Docs {
         tarball.set_product_name("Rust Documentation");
         tarball.add_bulk_dir(&builder.doc_out(host), dest);
         tarball.add_file(&builder.src.join("src/doc/robots.txt"), dest, 0o644);
+        Some(tarball.generate())
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct JsonDocs {
+    pub host: TargetSelection,
+}
+
+impl Step for JsonDocs {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let default = run.builder.config.docs;
+        run.alias("rust-json-docs").default_condition(default)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(JsonDocs { host: run.target });
+    }
+
+    /// Builds the `rust-json-docs` installer component.
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        // This prevents JSON docs from being built for "dist" or "install"
+        // on the stable/beta channels. The JSON format is not stable yet and
+        // should not be included in stable/beta toolchains.
+        if !builder.build.unstable_features() {
+            return None;
+        }
+
+        let host = self.host;
+        builder.ensure(crate::doc::JsonStd { stage: builder.top_stage, target: host });
+
+        let dest = "share/doc/rust/json";
+
+        let mut tarball = Tarball::new(builder, "rust-json-docs", &host.triple);
+        tarball.set_product_name("Rust Documentation In JSON Format");
+        tarball.add_bulk_dir(&builder.json_doc_out(host), dest);
         Some(tarball.generate())
     }
 }
@@ -1170,18 +1197,9 @@ impl Step for Miri {
         let compiler = self.compiler;
         let target = self.target;
 
-        let miri = builder
-            .ensure(tool::Miri { compiler, target, extra_features: Vec::new() })
-            .or_else(|| {
-                missing_tool("miri", builder.build.config.missing_tools);
-                None
-            })?;
-        let cargomiri = builder
-            .ensure(tool::CargoMiri { compiler, target, extra_features: Vec::new() })
-            .or_else(|| {
-                missing_tool("cargo miri", builder.build.config.missing_tools);
-                None
-            })?;
+        let miri = builder.ensure(tool::Miri { compiler, target, extra_features: Vec::new() })?;
+        let cargomiri =
+            builder.ensure(tool::CargoMiri { compiler, target, extra_features: Vec::new() })?;
 
         let mut tarball = Tarball::new(builder, "miri", &target.triple);
         tarball.set_overlay(OverlayKind::Miri);
@@ -1412,7 +1430,7 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
-            for tool in &["rust-demangler", "rust-analyzer", "miri", "rustfmt"] {
+            for tool in &["rust-demangler", "rust-analyzer", "rustfmt"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
@@ -1452,7 +1470,8 @@ impl Step for Extended {
             prepare("rust-std");
             prepare("rust-analysis");
             prepare("clippy");
-            for tool in &["rust-docs", "rust-demangler", "rust-analyzer", "miri"] {
+            prepare("miri");
+            for tool in &["rust-docs", "rust-demangler", "rust-analyzer"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1511,7 +1530,8 @@ impl Step for Extended {
             prepare("rust-docs");
             prepare("rust-std");
             prepare("clippy");
-            for tool in &["rust-demangler", "rust-analyzer", "miri"] {
+            prepare("miri");
+            for tool in &["rust-demangler", "rust-analyzer"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1650,25 +1670,23 @@ impl Step for Extended {
                         .arg(etc.join("msi/remove-duplicates.xsl")),
                 );
             }
-            if built_tools.contains("miri") {
-                builder.run(
-                    Command::new(&heat)
-                        .current_dir(&exe)
-                        .arg("dir")
-                        .arg("miri")
-                        .args(&heat_flags)
-                        .arg("-cg")
-                        .arg("MiriGroup")
-                        .arg("-dr")
-                        .arg("Miri")
-                        .arg("-var")
-                        .arg("var.MiriDir")
-                        .arg("-out")
-                        .arg(exe.join("MiriGroup.wxs"))
-                        .arg("-t")
-                        .arg(etc.join("msi/remove-duplicates.xsl")),
-                );
-            }
+            builder.run(
+                Command::new(&heat)
+                    .current_dir(&exe)
+                    .arg("dir")
+                    .arg("miri")
+                    .args(&heat_flags)
+                    .arg("-cg")
+                    .arg("MiriGroup")
+                    .arg("-dr")
+                    .arg("Miri")
+                    .arg("-var")
+                    .arg("var.MiriDir")
+                    .arg("-out")
+                    .arg(exe.join("MiriGroup.wxs"))
+                    .arg("-t")
+                    .arg(etc.join("msi/remove-duplicates.xsl")),
+            );
             builder.run(
                 Command::new(&heat)
                     .current_dir(&exe)
@@ -1716,6 +1734,7 @@ impl Step for Extended {
                     .arg("-dStdDir=rust-std")
                     .arg("-dAnalysisDir=rust-analysis")
                     .arg("-dClippyDir=clippy")
+                    .arg("-dMiriDir=miri")
                     .arg("-arch")
                     .arg(&arch)
                     .arg("-out")
@@ -1728,9 +1747,6 @@ impl Step for Extended {
                 }
                 if built_tools.contains("rust-analyzer") {
                     cmd.arg("-dRustAnalyzerDir=rust-analyzer");
-                }
-                if built_tools.contains("miri") {
-                    cmd.arg("-dMiriDir=miri");
                 }
                 if target.ends_with("windows-gnu") {
                     cmd.arg("-dGccDir=rust-mingw");
@@ -1745,14 +1761,12 @@ impl Step for Extended {
             candle("CargoGroup.wxs".as_ref());
             candle("StdGroup.wxs".as_ref());
             candle("ClippyGroup.wxs".as_ref());
+            candle("MiriGroup.wxs".as_ref());
             if built_tools.contains("rust-demangler") {
                 candle("RustDemanglerGroup.wxs".as_ref());
             }
             if built_tools.contains("rust-analyzer") {
                 candle("RustAnalyzerGroup.wxs".as_ref());
-            }
-            if built_tools.contains("miri") {
-                candle("MiriGroup.wxs".as_ref());
             }
             candle("AnalysisGroup.wxs".as_ref());
 
@@ -1783,6 +1797,7 @@ impl Step for Extended {
                 .arg("StdGroup.wixobj")
                 .arg("AnalysisGroup.wixobj")
                 .arg("ClippyGroup.wixobj")
+                .arg("MiriGroup.wixobj")
                 .current_dir(&exe);
 
             if built_tools.contains("rust-analyzer") {
@@ -1790,9 +1805,6 @@ impl Step for Extended {
             }
             if built_tools.contains("rust-demangler") {
                 cmd.arg("RustDemanglerGroup.wixobj");
-            }
-            if built_tools.contains("miri") {
-                cmd.arg("MiriGroup.wixobj");
             }
 
             if target.ends_with("windows-gnu") {

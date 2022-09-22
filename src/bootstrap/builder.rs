@@ -708,6 +708,7 @@ impl<'a> Builder<'a> {
             Kind::Dist => describe!(
                 dist::Docs,
                 dist::RustcDocs,
+                dist::JsonDocs,
                 dist::Mingw,
                 dist::Rustc,
                 dist::Std,
@@ -1325,6 +1326,9 @@ impl<'a> Builder<'a> {
     ) -> Cargo {
         let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
+        // Run cargo from the source root so it can find .cargo/config.
+        // This matters when using vendoring and the working directory is outside the repository.
+        cargo.current_dir(&self.src);
 
         // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
         // so we need to explicitly clear out if they've been updated.
@@ -1940,25 +1944,26 @@ impl<'a> Builder<'a> {
                     _ => s.display().to_string(),
                 }
             };
+            let triple_underscored = target.triple.replace("-", "_");
             let cc = ccacheify(&self.cc(target));
-            cargo.env(format!("CC_{}", target.triple), &cc);
+            cargo.env(format!("CC_{}", triple_underscored), &cc);
 
             let cflags = self.cflags(target, GitRepo::Rustc, CLang::C).join(" ");
-            cargo.env(format!("CFLAGS_{}", target.triple), &cflags);
+            cargo.env(format!("CFLAGS_{}", triple_underscored), &cflags);
 
             if let Some(ar) = self.ar(target) {
                 let ranlib = format!("{} s", ar.display());
                 cargo
-                    .env(format!("AR_{}", target.triple), ar)
-                    .env(format!("RANLIB_{}", target.triple), ranlib);
+                    .env(format!("AR_{}", triple_underscored), ar)
+                    .env(format!("RANLIB_{}", triple_underscored), ranlib);
             }
 
             if let Ok(cxx) = self.cxx(target) {
                 let cxx = ccacheify(&cxx);
                 let cxxflags = self.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
                 cargo
-                    .env(format!("CXX_{}", target.triple), &cxx)
-                    .env(format!("CXXFLAGS_{}", target.triple), cxxflags);
+                    .env(format!("CXX_{}", triple_underscored), &cxx)
+                    .env(format!("CXXFLAGS_{}", triple_underscored), cxxflags);
             }
         }
 

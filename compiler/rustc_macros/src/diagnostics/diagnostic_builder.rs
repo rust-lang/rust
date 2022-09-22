@@ -21,12 +21,12 @@ use synstructure::{BindingInfo, Structure};
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub(crate) enum DiagnosticDeriveKind {
-    SessionDiagnostic,
+    Diagnostic,
     LintDiagnostic,
 }
 
 /// Tracks persistent information required for building up individual calls to diagnostic methods
-/// for generated diagnostic derives - both `SessionDiagnostic` for fatal/errors/warnings and
+/// for generated diagnostic derives - both `Diagnostic` for fatal/errors/warnings and
 /// `LintDiagnostic` for lints.
 pub(crate) struct DiagnosticDeriveBuilder {
     /// The identifier to use for the generated `DiagnosticBuilder` instance.
@@ -333,7 +333,7 @@ impl DiagnosticDeriveBuilder {
             }
             "primary_span" => {
                 match self.kind {
-                    DiagnosticDeriveKind::SessionDiagnostic => {
+                    DiagnosticDeriveKind::Diagnostic => {
                         report_error_if_not_applied_to_span(attr, &info)?;
 
                         Ok(quote! {

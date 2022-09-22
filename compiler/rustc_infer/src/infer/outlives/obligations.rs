@@ -394,6 +394,7 @@ where
         if approx_env_bounds.is_empty() && trait_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
+            let constraint = origin.to_constraint_category();
             for k in projection_ty.substs {
                 match k.unpack() {
                     GenericArgKind::Lifetime(lt) => {
@@ -401,16 +402,11 @@ where
                             origin.clone(),
                             region,
                             lt,
-                            origin.to_constraint_category(),
+                            constraint,
                         );
                     }
                     GenericArgKind::Type(ty) => {
-                        self.type_must_outlive(
-                            origin.clone(),
-                            ty,
-                            region,
-                            origin.to_constraint_category(),
-                        );
+                        self.type_must_outlive(origin.clone(), ty, region, constraint);
                     }
                     GenericArgKind::Const(_) => {
                         // Const parameters don't impose constraints.

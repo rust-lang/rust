@@ -190,6 +190,8 @@ declare_features! (
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
     /// Allows `'a: { break 'a; }`.
     (accepted, label_break_value, "CURRENT_RUSTC_VERSION", Some(48594), None),
+    /// Allows `let...else` statements.
+    (accepted, let_else, "CURRENT_RUSTC_VERSION", Some(87335), None),
     /// Allows `break {expr}` with a value inside `loop`s.
     (accepted, loop_break_value, "1.19.0", Some(37339), None),
     /// Allows use of `?` as the Kleene "at most one" operator in macros.

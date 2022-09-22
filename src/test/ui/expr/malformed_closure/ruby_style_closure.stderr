@@ -14,7 +14,7 @@ LL |       let p = Some(45).and_then({
 LL | |
 LL | |         |x| println!("doubling {}", x);
 LL | |         Some(x * 2)
-   | |         -----------
+   | |         ----------- this tail expression is of type `std::option::Option<_>`
 LL | |
 LL | |     });
    | |_____^ expected an `FnOnce<({integer},)>` closure, found `Option<_>`

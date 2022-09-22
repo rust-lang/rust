@@ -1,0 +1,26 @@
+error: unsupported operation: `open` not available when isolation is enabled
+  --> RUSTLIB/std/src/sys/PLATFORM/fs.rs:LL:CC
+   |
+LL |         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `open` not available when isolation is enabled
+   |
+   = help: pass the flag `-Zmiri-disable-isolation` to disable isolation;
+   = help: or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/sys/PLATFORM/fs.rs:LL:CC
+   = note: inside `std::sys::PLATFORM::cvt_r::<i32, [closure@std::sys::PLATFORM::fs::File::open_c::{closure#0}]>` at RUSTLIB/std/src/sys/PLATFORM/mod.rs:LL:CC
+   = note: inside `std::sys::PLATFORM::fs::File::open_c` at RUSTLIB/std/src/sys/PLATFORM/fs.rs:LL:CC
+   = note: inside `std::sys::PLATFORM::fs::File::open` at RUSTLIB/std/src/sys/PLATFORM/fs.rs:LL:CC
+   = note: inside `std::fs::OpenOptions::_open` at RUSTLIB/std/src/fs.rs:LL:CC
+   = note: inside `std::fs::OpenOptions::open::<&std::path::Path>` at RUSTLIB/std/src/fs.rs:LL:CC
+   = note: inside `std::fs::File::open::<&str>` at RUSTLIB/std/src/fs.rs:LL:CC
+note: inside `main` at $DIR/isolated_file.rs:LL:CC
+  --> $DIR/isolated_file.rs:LL:CC
+   |
+LL |     let _file = std::fs::File::open("file.txt").unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

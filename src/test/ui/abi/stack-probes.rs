@@ -10,6 +10,7 @@
 // ignore-wasm
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-fuchsia no exception handler registered for segfault
 
 use std::env;
 use std::mem::MaybeUninit;

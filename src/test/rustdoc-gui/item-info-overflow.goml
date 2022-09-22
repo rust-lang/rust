@@ -3,7 +3,7 @@ goto: file://|DOC_PATH|/lib2/struct.LongItemInfo.html
 // We set a fixed size so there is no chance of "random" resize.
 size: (1200, 870)
 // Logically, the "item-decl" and the "item-info" should have the same scroll width.
-compare-elements-property: (".docblock.item-decl", ".item-info", ["scrollWidth"])
+compare-elements-property: (".item-decl", ".item-info", ["scrollWidth"])
 assert-property: (".item-info", {"scrollWidth": "890"})
 // Just to be sure we're comparing the correct "item-info":
 assert-text: (

@@ -553,6 +553,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
+    #[instrument(skip(self, f), level = "debug")]
     pub(crate) fn in_scope<F, R>(
         &mut self,
         region_scope: (region::Scope, SourceInfo),
@@ -562,7 +563,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     where
         F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>,
     {
-        debug!("in_scope(region_scope={:?})", region_scope);
         let source_scope = self.source_scope;
         let tcx = self.tcx;
         if let LintLevel::Explicit(current_hir_id) = lint_level {
@@ -589,7 +589,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(region_scope, block));
         self.source_scope = source_scope;
-        debug!("in_scope: exiting region_scope={:?} block={:?}", region_scope, block);
+        debug!(?block);
         block.and(rv)
     }
 

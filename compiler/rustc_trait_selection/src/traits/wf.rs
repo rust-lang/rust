@@ -392,7 +392,8 @@ impl<'tcx> WfPredicates<'tcx> {
         //     `i32: Clone`
         //     `i32: Copy`
         // ]
-        let obligations = self.nominal_obligations(data.item_def_id, data.substs);
+        // Projection types do not require const predicates.
+        let obligations = self.nominal_obligations_without_const(data.item_def_id, data.substs);
         self.out.extend(obligations);
 
         let tcx = self.tcx();
@@ -456,7 +457,7 @@ impl<'tcx> WfPredicates<'tcx> {
                             self.out.extend(obligations);
 
                             let predicate =
-                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv.shrink()))
+                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv))
                                     .to_predicate(self.tcx());
                             let cause = self.cause(traits::WellFormed(None));
                             self.out.push(traits::Obligation::with_depth(

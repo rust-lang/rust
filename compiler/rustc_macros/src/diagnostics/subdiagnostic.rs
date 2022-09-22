@@ -98,19 +98,19 @@ impl quote::IdentFragment for SubdiagnosticKind {
 }
 
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
-pub(crate) struct SessionSubdiagnosticDerive<'a> {
+pub(crate) struct SubdiagnosticDerive<'a> {
     structure: Structure<'a>,
     diag: syn::Ident,
 }
 
-impl<'a> SessionSubdiagnosticDerive<'a> {
+impl<'a> SubdiagnosticDerive<'a> {
     pub(crate) fn new(structure: Structure<'a>) -> Self {
         let diag = format_ident!("diag");
         Self { structure, diag }
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
-        let SessionSubdiagnosticDerive { mut structure, diag } = self;
+        let SubdiagnosticDerive { mut structure, diag } = self;
         let implementation = {
             let ast = structure.ast();
             let span = ast.span().unwrap();
@@ -119,7 +119,7 @@ impl<'a> SessionSubdiagnosticDerive<'a> {
                 syn::Data::Union(..) => {
                     span_err(
                         span,
-                        "`#[derive(SessionSubdiagnostic)]` can only be used on structs and enums",
+                        "`#[derive(Subdiagnostic)]` can only be used on structs and enums",
                     );
                 }
             }
@@ -146,7 +146,7 @@ impl<'a> SessionSubdiagnosticDerive<'a> {
                     }
                 }
 
-                let mut builder = SessionSubdiagnosticDeriveBuilder {
+                let mut builder = SubdiagnosticDeriveBuilder {
                     diag: &diag,
                     variant,
                     span,
@@ -166,7 +166,7 @@ impl<'a> SessionSubdiagnosticDerive<'a> {
         };
 
         let ret = structure.gen_impl(quote! {
-            gen impl rustc_errors::AddSubdiagnostic for @Self {
+            gen impl rustc_errors::AddToDiagnostic for @Self {
                 fn add_to_diagnostic(self, #diag: &mut rustc_errors::Diagnostic) {
                     use rustc_errors::{Applicability, IntoDiagnosticArg};
                     #implementation
@@ -178,10 +178,10 @@ impl<'a> SessionSubdiagnosticDerive<'a> {
 }
 
 /// Tracks persistent information required for building up the call to add to the diagnostic
-/// for the final generated method. This is a separate struct to `SessionSubdiagnosticDerive`
+/// for the final generated method. This is a separate struct to `SubdiagnosticDerive`
 /// only to be able to destructure and split `self.builder` and the `self.structure` up to avoid a
 /// double mut borrow later on.
-struct SessionSubdiagnosticDeriveBuilder<'a> {
+struct SubdiagnosticDeriveBuilder<'a> {
     /// The identifier to use for the generated `DiagnosticBuilder` instance.
     diag: &'a syn::Ident,
 
@@ -205,7 +205,7 @@ struct SessionSubdiagnosticDeriveBuilder<'a> {
     has_suggestion_parts: bool,
 }
 
-impl<'a> HasFieldMap for SessionSubdiagnosticDeriveBuilder<'a> {
+impl<'a> HasFieldMap for SubdiagnosticDeriveBuilder<'a> {
     fn get_field_binding(&self, field: &String) -> Option<&TokenStream> {
         self.fields.get(field)
     }
@@ -241,7 +241,7 @@ impl<'a> FromIterator<&'a SubdiagnosticKind> for KindsStatistics {
     }
 }
 
-impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
+impl<'a> SubdiagnosticDeriveBuilder<'a> {
     fn identify_kind(&mut self) -> Result<Vec<(SubdiagnosticKind, Path)>, DiagnosticDeriveError> {
         let mut kind_slugs = vec![];
 

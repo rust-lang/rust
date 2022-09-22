@@ -15,7 +15,6 @@ use crate::mir::{
 use crate::thir::Thir;
 use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
-use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
     ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, ExistentialPredicate, FloatTy,
@@ -24,6 +23,7 @@ use crate::ty::{
     RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
     Visibility,
 };
+use crate::ty::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef, UserSubsts};
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -53,6 +53,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{CrateType, OutputFilenames};
 use rustc_session::cstore::CrateStoreDyn;
+use rustc_session::errors::TargetDataLayoutErrorsWrapper;
 use rustc_session::lint::Lint;
 use rustc_session::Limit;
 use rustc_session::Session;
@@ -1245,7 +1246,7 @@ impl<'tcx> TyCtxt<'tcx> {
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
-            s.emit_fatal(err);
+            s.emit_fatal(TargetDataLayoutErrorsWrapper(err));
         });
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(
@@ -1820,7 +1821,9 @@ nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariable
 // This is the impl for `&'a InternalSubsts<'a>`.
 nop_list_lift! {substs; GenericArg<'a> => GenericArg<'tcx>}
 
-CloneLiftImpls! { for<'tcx> { Constness, traits::WellFormedLoc, } }
+CloneLiftImpls! { for<'tcx> {
+    Constness, traits::WellFormedLoc, ImplPolarity, crate::mir::ReturnConstraint,
+} }
 
 pub mod tls {
     use super::{ptr_eq, GlobalCtxt, TyCtxt};

@@ -33,28 +33,25 @@ pub fn find_native_static_library(
     search_paths: &[PathBuf],
     sess: &Session,
 ) -> PathBuf {
-    let verbatim = verbatim.unwrap_or(false);
-    // On Windows, static libraries sometimes show up as libfoo.a and other
-    // times show up as foo.lib
-    let oslibname = if verbatim {
-        name.to_string()
+    let formats = if verbatim.unwrap_or(false) {
+        vec![("".into(), "".into())]
     } else {
-        format!("{}{}{}", sess.target.staticlib_prefix, name, sess.target.staticlib_suffix)
+        let os = (sess.target.staticlib_prefix.clone(), sess.target.staticlib_suffix.clone());
+        // On Windows, static libraries sometimes show up as libfoo.a and other
+        // times show up as foo.lib
+        let unix = ("lib".into(), ".a".into());
+        if os == unix { vec![os] } else { vec![os, unix] }
     };
-    let unixlibname = format!("lib{}.a", name);
 
     for path in search_paths {
-        let test = path.join(&oslibname);
-        if test.exists() {
-            return test;
-        }
-        if oslibname != unixlibname {
-            let test = path.join(&unixlibname);
+        for (prefix, suffix) in &formats {
+            let test = path.join(format!("{}{}{}", prefix, name, suffix));
             if test.exists() {
                 return test;
             }
         }
     }
+
     sess.emit_fatal(MissingNativeLibrary { libname: name });
 }
 
@@ -560,14 +557,13 @@ impl<'tcx> Collector<'tcx> {
             }
         };
 
-        let import_name_type = self
-            .tcx
-            .codegen_fn_attrs(item.id.def_id)
+        let codegen_fn_attrs = self.tcx.codegen_fn_attrs(item.id.def_id);
+        let import_name_type = codegen_fn_attrs
             .link_ordinal
             .map_or(import_name_type, |ord| Some(PeImportNameType::Ordinal(ord)));
 
         DllImport {
-            name: item.ident.name,
+            name: codegen_fn_attrs.link_name.unwrap_or(item.ident.name),
             import_name_type,
             calling_convention,
             span: item.span,

@@ -1,7 +1,7 @@
 #![feature(assert_matches)]
 #![feature(core_intrinsics)]
 #![feature(hash_raw_entry)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(min_specialization)]
 #![feature(extern_types)]
 #![allow(rustc::potential_query_instability)]
@@ -23,4 +23,6 @@ pub mod query;
 mod values;
 
 pub use error::HandleCycleError;
+pub use error::LayoutOfDepth;
+pub use error::QueryOverflow;
 pub use values::Value;

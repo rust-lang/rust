@@ -25,7 +25,7 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -852,12 +852,14 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             tcx.ensure().type_of(trait_item_id.def_id);
         }
 
-        hir::TraitItemKind::Const(..) => {
+        hir::TraitItemKind::Const(hir_ty, _) => {
             tcx.ensure().type_of(trait_item_id.def_id);
             // Account for `const C: _;`.
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
-            placeholder_type_error(tcx, None, visitor.0, false, None, "constant");
+            if !tcx.sess.diagnostic().has_stashed_diagnostic(hir_ty.span, StashKey::ItemNoType) {
+                placeholder_type_error(tcx, None, visitor.0, false, None, "constant");
+            }
         }
 
         hir::TraitItemKind::Type(_, Some(_)) => {
@@ -1604,6 +1606,13 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         _ => None,
     };
 
+    enum Defaults {
+        Allowed,
+        // See #36887
+        FutureCompatDisallowed,
+        Deny,
+    }
+
     let no_generics = hir::Generics::empty();
     let ast_generics = node.generics().unwrap_or(&no_generics);
     let (opt_self, allow_defaults) = match node {
@@ -1625,17 +1634,26 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         },
                     });
 
-                    (opt_self, true)
+                    (opt_self, Defaults::Allowed)
                 }
                 ItemKind::TyAlias(..)
                 | ItemKind::Enum(..)
                 | ItemKind::Struct(..)
                 | ItemKind::OpaqueTy(..)
-                | ItemKind::Union(..) => (None, true),
-                _ => (None, false),
+                | ItemKind::Union(..) => (None, Defaults::Allowed),
+                _ => (None, Defaults::FutureCompatDisallowed),
             }
         }
-        _ => (None, false),
+
+        // GATs
+        Node::TraitItem(item) if matches!(item.kind, TraitItemKind::Type(..)) => {
+            (None, Defaults::Deny)
+        }
+        Node::ImplItem(item) if matches!(item.kind, ImplItemKind::TyAlias(..)) => {
+            (None, Defaults::Deny)
+        }
+
+        _ => (None, Defaults::FutureCompatDisallowed),
     };
 
     let has_self = opt_self.is_some();
@@ -1668,23 +1686,30 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     let type_start = own_start - has_self as u32 + params.len() as u32;
     let mut i = 0;
 
+    const TYPE_DEFAULT_NOT_ALLOWED: &'static str = "defaults for type parameters are only allowed in \
+    `struct`, `enum`, `type`, or `trait` definitions";
+
     params.extend(ast_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamKind::Lifetime { .. } => None,
         GenericParamKind::Type { ref default, synthetic, .. } => {
-            if !allow_defaults && default.is_some() {
-                if !tcx.features().default_type_parameter_fallback {
-                    tcx.struct_span_lint_hir(
-                        lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
-                        param.hir_id,
-                        param.span,
-                        |lint| {
-                            lint.build(
-                                "defaults for type parameters are only allowed in \
-                                 `struct`, `enum`, `type`, or `trait` definitions",
-                            )
-                            .emit();
-                        },
-                    );
+            if default.is_some() {
+                match allow_defaults {
+                    Defaults::Allowed => {}
+                    Defaults::FutureCompatDisallowed
+                        if tcx.features().default_type_parameter_fallback => {}
+                    Defaults::FutureCompatDisallowed => {
+                        tcx.struct_span_lint_hir(
+                            lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                            param.hir_id,
+                            param.span,
+                            |lint| {
+                                lint.build(TYPE_DEFAULT_NOT_ALLOWED).emit();
+                            },
+                        );
+                    }
+                    Defaults::Deny => {
+                        tcx.sess.span_err(param.span, TYPE_DEFAULT_NOT_ALLOWED);
+                    }
                 }
             }
 
@@ -1701,7 +1726,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             Some(param_def)
         }
         GenericParamKind::Const { default, .. } => {
-            if !allow_defaults && default.is_some() {
+            if !matches!(allow_defaults, Defaults::Allowed) && default.is_some() {
                 tcx.sess.span_err(
                     param.span,
                     "defaults for const parameters are only allowed in \
@@ -2368,10 +2393,10 @@ fn const_evaluatable_predicates_of<'tcx>(
             let def_id = self.tcx.hir().local_def_id(c.hir_id);
             let ct = ty::Const::from_anon_const(self.tcx, def_id);
             if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
-                assert_eq!(uv.promoted, None);
+                assert_eq!(uv.promoted, ());
                 let span = self.tcx.hir().span(c.hir_id);
                 self.preds.insert((
-                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv.shrink()))
+                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv))
                         .to_predicate(self.tcx),
                     span,
                 ));
@@ -3129,6 +3154,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                         E0535,
                         "invalid argument"
                     )
+                    .help("valid inline arguments are `always` and `never`")
                     .emit();
 
                     InlineAttr::None

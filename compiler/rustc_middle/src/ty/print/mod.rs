@@ -1,4 +1,4 @@
-use crate::ty::subst::{GenericArg, Subst};
+use crate::ty::GenericArg;
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;

@@ -376,6 +376,7 @@ bootstrap_tool!(
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
     LintDocs, "src/tools/lint-docs", "lint-docs";
     JsonDocCk, "src/tools/jsondocck", "jsondocck";
+    JsonDocLint, "src/tools/jsondoclint", "jsondoclint";
     HtmlChecker, "src/tools/html-checker", "html-checker";
     BumpStage0, "src/tools/bump-stage0", "bump-stage0";
     ReplaceVersionPlaceholder, "src/tools/replace-version-placeholder", "replace-version-placeholder";
@@ -745,14 +746,18 @@ impl Step for RustAnalyzerProcMacroSrv {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/rust-analyzer").default_condition(
-            builder.config.extended
-                && builder
-                    .config
-                    .tools
-                    .as_ref()
-                    .map_or(true, |tools| tools.iter().any(|tool| tool == "rust-analyzer")),
-        )
+
+        // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
+        run.path("src/tools/rust-analyzer")
+            .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
+            .default_condition(
+                builder.config.extended
+                    && builder.config.tools.as_ref().map_or(true, |tools| {
+                        tools.iter().any(|tool| {
+                            tool == "rust-analyzer" || tool == "rust-analyzer-proc-macro-srv"
+                        })
+                    }),
+            )
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -763,7 +768,7 @@ impl Step for RustAnalyzerProcMacroSrv {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
-        builder.ensure(ToolBuild {
+        let path = builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
             tool: "rust-analyzer-proc-macro-srv",
@@ -772,7 +777,15 @@ impl Step for RustAnalyzerProcMacroSrv {
             extra_features: vec!["proc-macro-srv/sysroot-abi".to_owned()],
             is_optional_tool: false,
             source_type: SourceType::InTree,
-        })
+        })?;
+
+        // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
+        // so that r-a can use it.
+        let libexec_path = builder.sysroot(self.compiler).join("libexec");
+        t!(fs::create_dir_all(&libexec_path));
+        builder.copy(&path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
+
+        Some(path)
     }
 }
 
@@ -855,8 +868,8 @@ tool_extended!((self, builder),
     Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true, in_tree=true, {};
     CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
     Clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
-    Miri, "src/tools/miri", "miri", stable=false, {};
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, {};
+    Miri, "src/tools/miri", "miri", stable=false, in_tree=true, {};
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, in_tree=true, {};
     Rls, "src/tools/rls", "rls", stable=true, {};
     // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
     // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,

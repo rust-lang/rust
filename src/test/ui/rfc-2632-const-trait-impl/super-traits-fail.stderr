@@ -1,16 +1,16 @@
 error[E0277]: the trait bound `S: ~const Foo` is not satisfied
-  --> $DIR/super-traits-fail.rs:13:12
+  --> $DIR/super-traits-fail.rs:15:12
    |
 LL | impl const Bar for S {}
    |            ^^^ the trait `~const Foo` is not implemented for `S`
    |
 note: the trait `Foo` is implemented for `S`, but that implementation is not `const`
-  --> $DIR/super-traits-fail.rs:13:12
+  --> $DIR/super-traits-fail.rs:15:12
    |
 LL | impl const Bar for S {}
    |            ^^^
 note: required by a bound in `Bar`
-  --> $DIR/super-traits-fail.rs:6:12
+  --> $DIR/super-traits-fail.rs:8:12
    |
 LL | trait Bar: ~const Foo {}
    |            ^^^^^^^^^^ required by this bound in `Bar`

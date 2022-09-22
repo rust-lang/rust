@@ -20,14 +20,12 @@ use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::subst::{
-    self, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts,
-};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, ToPolyTraitRef,
     ToPredicate, Ty, UserType,
 };
+use rustc_middle::ty::{GenericArgKind, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
@@ -489,16 +487,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
         match length {
             &hir::ArrayLen::Infer(_, span) => self.ct_infer(self.tcx.types.usize, None, span),
-            hir::ArrayLen::Body(anon_const) => self.to_const(anon_const),
+            hir::ArrayLen::Body(anon_const) => {
+                let const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
+                let span = self.tcx.hir().span(anon_const.hir_id);
+                let c = ty::Const::from_anon_const(self.tcx, const_def_id);
+                self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
+                self.normalize_associated_types_in(span, c)
+            }
         }
-    }
-
-    pub fn to_const(&self, ast_c: &hir::AnonConst) -> ty::Const<'tcx> {
-        let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
-        let span = self.tcx.hir().span(ast_c.hir_id);
-        let c = ty::Const::from_anon_const(self.tcx, const_def_id);
-        self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
-        self.normalize_associated_types_in(span, c)
     }
 
     pub fn const_arg_to_const(
@@ -559,7 +555,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Registers an obligation for checking later, during regionck, that `arg` is well-formed.
     pub fn register_wf_obligation(
         &self,
-        arg: subst::GenericArg<'tcx>,
+        arg: ty::GenericArg<'tcx>,
         span: Span,
         code: traits::ObligationCauseCode<'tcx>,
     ) {
@@ -1271,7 +1267,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &mut self,
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'_>,
-            ) -> subst::GenericArg<'tcx> {
+            ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
                         <dyn AstConv<'_>>::ast_region_to_region(self.fcx, lt, Some(param)).into()
@@ -1295,10 +1291,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             fn inferred_kind(
                 &mut self,
-                substs: Option<&[subst::GenericArg<'tcx>]>,
+                substs: Option<&[ty::GenericArg<'tcx>]>,
                 param: &ty::GenericParamDef,
                 infer_args: bool,
-            ) -> subst::GenericArg<'tcx> {
+            ) -> ty::GenericArg<'tcx> {
                 let tcx = self.fcx.tcx();
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
@@ -1410,7 +1406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    #[instrument(level = "debug", skip(self, code, span, def_id, substs))]
+    #[instrument(level = "debug", skip(self, code, span, substs))]
     fn add_required_obligations_with_code(
         &self,
         span: Span,
@@ -1418,15 +1414,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         code: impl Fn(usize, Span) -> ObligationCauseCode<'tcx>,
     ) {
+        let param_env = self.param_env;
+
+        let remap = match self.tcx.def_kind(def_id) {
+            // Associated consts have `Self: ~const Trait` bounds that should be satisfiable when
+            // `Self: Trait` is satisfied because it does not matter whether the impl is `const`.
+            // Therefore we have to remap the param env here to be non-const.
+            hir::def::DefKind::AssocConst => true,
+            hir::def::DefKind::AssocFn
+                if self.tcx.def_kind(self.tcx.parent(def_id)) == hir::def::DefKind::Trait =>
+            {
+                // N.B.: All callsites to this function involve checking a path expression.
+                //
+                // When instantiating a trait method as a function item, it does not actually matter whether
+                // the trait is `const` or not, or whether `where T: ~const Tr` needs to be satisfied as
+                // `const`. If we were to introduce instantiating trait methods as `const fn`s, we would
+                // check that after this, either via a bound `where F: ~const FnOnce` or when coercing to a
+                // `const fn` pointer.
+                //
+                // FIXME(fee1-dead) FIXME(const_trait_impl): update this doc when trait methods can satisfy
+                // `~const FnOnce` or can be coerced to `const fn` pointer.
+                true
+            }
+            _ => false,
+        };
         let (bounds, _) = self.instantiate_bounds(span, def_id, &substs);
 
-        for obligation in traits::predicates_for_generics(
+        for mut obligation in traits::predicates_for_generics(
             |idx, predicate_span| {
                 traits::ObligationCause::new(span, self.body_id, code(idx, predicate_span))
             },
-            self.param_env,
+            param_env,
             bounds,
         ) {
+            if remap {
+                obligation = obligation.without_const(self.tcx);
+            }
             self.register_predicate(obligation);
         }
     }

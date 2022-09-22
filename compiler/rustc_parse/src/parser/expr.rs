@@ -6,8 +6,9 @@ use super::diagnostics::{
     InvalidComparisonOperatorSub, InvalidLogicalOperator, InvalidLogicalOperatorSub,
     LeftArrowOperator, LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath,
     MalformedLoopLabel, MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
-    NotAsNegationOperator, OuterAttributeNotAllowedOnIfElse, RequireColonAfterLabeledExpression,
-    SnapshotParser, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
+    NotAsNegationOperator, NotAsNegationOperatorSub, OuterAttributeNotAllowedOnIfElse,
+    RequireColonAfterLabeledExpression, SnapshotParser, TildeAsUnaryOperator,
+    UnexpectedTokenAfterLabel,
 };
 use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
@@ -35,10 +36,10 @@ use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast::{ClosureBinder, StmtKind};
 use rustc_ast_pretty::pprust;
+use rustc_errors::IntoDiagnostic;
 use rustc_errors::{Applicability, Diagnostic, PResult};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_session::SessionDiagnostic;
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
@@ -660,12 +661,23 @@ impl<'a> Parser<'a> {
     fn recover_not_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
         // Emit the error...
         let negated_token = self.look_ahead(1, |t| t.clone());
+
+        let sub_diag = if negated_token.is_numeric_lit() {
+            NotAsNegationOperatorSub::SuggestNotBitwise
+        } else if negated_token.is_bool_lit() {
+            NotAsNegationOperatorSub::SuggestNotLogical
+        } else {
+            NotAsNegationOperatorSub::SuggestNotDefault
+        };
+
         self.sess.emit_err(NotAsNegationOperator {
             negated: negated_token.span,
             negated_desc: super::token_descr(&negated_token),
             // Span the `not` plus trailing whitespace to avoid
             // trailing whitespace after the `!` in our suggestion
-            not: self.sess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),
+            sub: sub_diag(
+                self.sess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),
+            ),
         });
 
         // ...and recover!

@@ -1592,6 +1592,37 @@ fn apply<T, U, F>(f: F, x: T) -> U where F: FnOnce(T) -> U {
 }
 
 #[test]
+fn doctest_move_format_string_arg() {
+    check_doc_test(
+        "move_format_string_arg",
+        r#####"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
+}
+
+fn main() {
+    print!("{x + 1}$0");
+}
+"#####,
+        r#####"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
+}
+
+fn main() {
+    print!("{}"$0, x + 1);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_move_from_mod_rs() {
     check_doc_test(
         "move_from_mod_rs",

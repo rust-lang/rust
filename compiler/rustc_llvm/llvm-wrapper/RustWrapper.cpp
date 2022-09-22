@@ -406,45 +406,6 @@ extern "C" LLVMValueRef LLVMRustBuildAtomicStore(LLVMBuilderRef B,
   return wrap(SI);
 }
 
-// FIXME: Use the C-API LLVMBuildAtomicCmpXchg and LLVMSetWeak
-// once we raise our minimum support to LLVM 10.
-extern "C" LLVMValueRef
-LLVMRustBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Target,
-                           LLVMValueRef Old, LLVMValueRef Source,
-                           LLVMAtomicOrdering Order,
-                           LLVMAtomicOrdering FailureOrder, LLVMBool Weak) {
-  // Rust probably knows the alignment of the target value and should be able to
-  // specify something more precise than MaybeAlign here. See also
-  // https://reviews.llvm.org/D97224 which may be a useful reference.
-  AtomicCmpXchgInst *ACXI = unwrap(B)->CreateAtomicCmpXchg(
-      unwrap(Target), unwrap(Old), unwrap(Source), llvm::MaybeAlign(), fromRust(Order),
-      fromRust(FailureOrder));
-  ACXI->setWeak(Weak);
-  return wrap(ACXI);
-}
-
-enum class LLVMRustSynchronizationScope {
-  SingleThread,
-  CrossThread,
-};
-
-static SyncScope::ID fromRust(LLVMRustSynchronizationScope Scope) {
-  switch (Scope) {
-  case LLVMRustSynchronizationScope::SingleThread:
-    return SyncScope::SingleThread;
-  case LLVMRustSynchronizationScope::CrossThread:
-    return SyncScope::System;
-  default:
-    report_fatal_error("bad SynchronizationScope.");
-  }
-}
-
-extern "C" LLVMValueRef
-LLVMRustBuildAtomicFence(LLVMBuilderRef B, LLVMAtomicOrdering Order,
-                         LLVMRustSynchronizationScope Scope) {
-  return wrap(unwrap(B)->CreateFence(fromRust(Order), fromRust(Scope)));
-}
-
 enum class LLVMRustAsmDialect {
   Att,
   Intel,

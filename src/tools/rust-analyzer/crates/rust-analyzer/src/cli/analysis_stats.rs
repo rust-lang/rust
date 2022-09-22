@@ -80,7 +80,8 @@ impl flags::AnalysisStats {
             Some(build_scripts_sw.elapsed())
         };
 
-        let (host, vfs, _proc_macro) = load_workspace(workspace, &load_cargo_config)?;
+        let (host, vfs, _proc_macro) =
+            load_workspace(workspace, &cargo_config, &load_cargo_config)?;
         let db = host.raw_database();
         eprint!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
         eprint!(" (metadata {}", metadata_time);

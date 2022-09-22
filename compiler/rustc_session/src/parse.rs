@@ -6,14 +6,13 @@ use crate::errors::{FeatureDiagnosticForIssue, FeatureDiagnosticHelp, FeatureGat
 use crate::lint::{
     builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId,
 };
-use crate::SessionDiagnostic;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
     fallback_fluent_bundle, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
-    DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, MultiSpan, StashKey,
+    DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, IntoDiagnostic, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -345,34 +344,34 @@ impl ParseSess {
 
     pub fn create_err<'a>(
         &'a self,
-        err: impl SessionDiagnostic<'a>,
+        err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         err.into_diagnostic(&self.span_diagnostic)
     }
 
-    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
+    pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
         self.create_err(err).emit()
     }
 
     pub fn create_warning<'a>(
         &'a self,
-        warning: impl SessionDiagnostic<'a, ()>,
+        warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
         warning.into_diagnostic(&self.span_diagnostic)
     }
 
-    pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
+    pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
         self.create_warning(warning).emit()
     }
 
     pub fn create_fatal<'a>(
         &'a self,
-        fatal: impl SessionDiagnostic<'a, !>,
+        fatal: impl IntoDiagnostic<'a, !>,
     ) -> DiagnosticBuilder<'a, !> {
         fatal.into_diagnostic(&self.span_diagnostic)
     }
 
-    pub fn emit_fatal<'a>(&'a self, fatal: impl SessionDiagnostic<'a, !>) -> ! {
+    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
         self.create_fatal(fatal).emit()
     }
 

@@ -1,0 +1,10 @@
+Thread 1 starting, will block on mutex
+Thread 1 reported it has started
+thread '<unnamed>' panicked at 'panic in thread 2', $DIR/concurrent-panic.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+Thread 2 blocking on thread 1
+Thread 2 reported it has started
+Unlocking mutex
+thread '<unnamed>' panicked at 'panic in thread 1', $DIR/concurrent-panic.rs:LL:CC
+Thread 1 has exited
+Thread 2 has exited

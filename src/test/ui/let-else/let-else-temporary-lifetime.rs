@@ -1,5 +1,5 @@
 // run-pass
-#![feature(let_else)]
+// compile-flags: -Zvalidate-mir
 
 use std::fmt::Display;
 use std::rc::Rc;

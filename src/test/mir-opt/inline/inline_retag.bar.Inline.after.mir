@@ -32,7 +32,7 @@ fn bar() -> bool {
         _2 = _1;                         // scope 1 at $DIR/inline-retag.rs:+2:5: +2:6
         StorageLive(_3);                 // scope 1 at $DIR/inline-retag.rs:+2:7: +2:9
         StorageLive(_4);                 // scope 1 at $DIR/inline-retag.rs:+2:7: +2:9
-        _10 = const bar::promoted[1];    // scope 1 at $DIR/inline-retag.rs:+2:7: +2:9
+        _10 = const _;                   // scope 1 at $DIR/inline-retag.rs:+2:7: +2:9
                                          // mir::Constant
                                          // + span: $DIR/inline-retag.rs:12:7: 12:9
                                          // + literal: Const { ty: &i32, val: Unevaluated(bar, [], Some(promoted[1])) }
@@ -43,7 +43,7 @@ fn bar() -> bool {
         Retag(_3);                       // scope 1 at $DIR/inline-retag.rs:+2:7: +2:9
         StorageLive(_6);                 // scope 1 at $DIR/inline-retag.rs:+2:11: +2:14
         StorageLive(_7);                 // scope 1 at $DIR/inline-retag.rs:+2:11: +2:14
-        _9 = const bar::promoted[0];     // scope 1 at $DIR/inline-retag.rs:+2:11: +2:14
+        _9 = const _;                    // scope 1 at $DIR/inline-retag.rs:+2:11: +2:14
                                          // mir::Constant
                                          // + span: $DIR/inline-retag.rs:12:11: 12:14
                                          // + literal: Const { ty: &i32, val: Unevaluated(bar, [], Some(promoted[0])) }

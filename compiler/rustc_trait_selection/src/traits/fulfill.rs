@@ -427,16 +427,14 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         obligation.param_env,
                         Binder::dummy(subtype),
                     ) {
-                        None => {
+                        Err((a, b)) => {
                             // None means that both are unresolved.
-                            pending_obligation.stalled_on = vec![
-                                TyOrConstInferVar::maybe_from_ty(subtype.a).unwrap(),
-                                TyOrConstInferVar::maybe_from_ty(subtype.b).unwrap(),
-                            ];
+                            pending_obligation.stalled_on =
+                                vec![TyOrConstInferVar::Ty(a), TyOrConstInferVar::Ty(b)];
                             ProcessResult::Unchanged
                         }
-                        Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
-                        Some(Err(err)) => {
+                        Ok(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                        Ok(Err(err)) => {
                             let expected_found =
                                 ExpectedFound::new(subtype.a_is_expected, subtype.a, subtype.b);
                             ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
@@ -453,16 +451,14 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         obligation.param_env,
                         Binder::dummy(coerce),
                     ) {
-                        None => {
+                        Err((a, b)) => {
                             // None means that both are unresolved.
-                            pending_obligation.stalled_on = vec![
-                                TyOrConstInferVar::maybe_from_ty(coerce.a).unwrap(),
-                                TyOrConstInferVar::maybe_from_ty(coerce.b).unwrap(),
-                            ];
+                            pending_obligation.stalled_on =
+                                vec![TyOrConstInferVar::Ty(a), TyOrConstInferVar::Ty(b)];
                             ProcessResult::Unchanged
                         }
-                        Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
-                        Some(Err(err)) => {
+                        Ok(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                        Ok(Err(err)) => {
                             let expected_found = ExpectedFound::new(false, coerce.a, coerce.b);
                             ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
                                 expected_found,
@@ -509,11 +505,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.kind(), c2.kind())
                         {
-                            if infcx.try_unify_abstract_consts(
-                                a.shrink(),
-                                b.shrink(),
-                                obligation.param_env,
-                            ) {
+                            if infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
                                 return ProcessResult::Changed(vec![]);
                             }
                         }

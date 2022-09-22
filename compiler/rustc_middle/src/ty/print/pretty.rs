@@ -1,9 +1,9 @@
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
-use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{
     self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, TermKind, Ty, TyCtxt, TypeFoldable,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
 };
+use crate::ty::{GenericArg, GenericArgKind};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sso::SsoHashSet;
@@ -1201,15 +1201,9 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         match ct.kind() {
-            ty::ConstKind::Unevaluated(ty::Unevaluated {
-                def,
-                substs,
-                promoted: Some(promoted),
-            }) => {
-                p!(print_value_path(def.did, substs));
-                p!(write("::{:?}", promoted));
-            }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted: None }) => {
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
+                assert_eq!(promoted, ());
+
                 match self.tcx().def_kind(def.did) {
                     DefKind::Static(..) | DefKind::Const | DefKind::AssocConst => {
                         p!(print_value_path(def.did, substs))

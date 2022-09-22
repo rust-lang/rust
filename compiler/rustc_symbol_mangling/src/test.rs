@@ -4,7 +4,7 @@
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use crate::errors::{AltInvalidTraitItem, InvalidDefPath, InvalidSymbolName, InvalidTraitItem};
+use crate::errors::{Kind, TestOutput};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{subst::InternalSubsts, Instance, TyCtxt};
@@ -60,26 +60,30 @@ impl SymbolNamesTest<'_> {
                 tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def_id)),
             );
             let mangled = tcx.symbol_name(instance);
-            tcx.sess.emit_err(InvalidSymbolName {
+            tcx.sess.emit_err(TestOutput {
                 span: attr.span,
-                mangled_formatted: format!("{mangled}"),
+                kind: Kind::SymbolName,
+                content: format!("{mangled}"),
             });
             if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
-                tcx.sess.emit_err(InvalidTraitItem {
+                tcx.sess.emit_err(TestOutput {
                     span: attr.span,
-                    demangling_formatted: format!("{demangling}"),
+                    kind: Kind::Demangling,
+                    content: format!("{demangling}"),
                 });
-                tcx.sess.emit_err(AltInvalidTraitItem {
+                tcx.sess.emit_err(TestOutput {
                     span: attr.span,
-                    alt_demangling_formatted: format!("{:#}", demangling),
+                    kind: Kind::DemanglingAlt,
+                    content: format!("{:#}", demangling),
                 });
             }
         }
 
         for attr in tcx.get_attrs(def_id.to_def_id(), DEF_PATH) {
-            tcx.sess.emit_err(InvalidDefPath {
+            tcx.sess.emit_err(TestOutput {
                 span: attr.span,
-                def_path: with_no_trimmed_paths!(tcx.def_path_str(def_id.to_def_id())),
+                kind: Kind::DefPath,
+                content: with_no_trimmed_paths!(tcx.def_path_str(def_id.to_def_id())),
             });
         }
     }

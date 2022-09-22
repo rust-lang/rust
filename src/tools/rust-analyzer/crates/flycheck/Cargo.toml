@@ -13,6 +13,7 @@ doctest = false
 crossbeam-channel = "0.5.5"
 tracing = "0.1.35"
 cargo_metadata = "0.15.0"
+rustc-hash = "1.1.0"
 serde = { version = "1.0.137", features = ["derive"] }
 serde_json = "1.0.81"
 jod-thread = "0.1.2"

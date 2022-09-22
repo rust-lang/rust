@@ -38,7 +38,7 @@
 +         StorageLive(_8);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
 +         _8 = &mut (*_7);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
 +         StorageLive(_9);                 // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         _9 = const alloc::raw_vec::RawVec::<u32>::NEW; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         _9 = const _;                    // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
                                            // mir::Constant
 -                                          // + span: $DIR/inline-into-box-place.rs:8:33: 8:41
 -                                          // + user_ty: UserType(1)

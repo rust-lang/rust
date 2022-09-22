@@ -69,8 +69,8 @@ use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::{
-    self, error::TypeError, Binder, List, Region, Subst, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable,
+    self, error::TypeError, Binder, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable,
 };
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
@@ -2765,7 +2765,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
     where
         T: relate::Relate<'tcx>,
     {
-        Ok(ty::Binder::dummy(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn consts(

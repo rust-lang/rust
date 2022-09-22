@@ -533,6 +533,7 @@ impl HirDisplay for Ty {
                             f.db.upcast(),
                             ItemInNs::Types((*def_id).into()),
                             module_id,
+                            false,
                         ) {
                             write!(f, "{}", path)?;
                         } else {

@@ -770,7 +770,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 ty::ConstKind::Unevaluated(ct) => {
                     debug!(?ct);
                     let param_env = ty::ParamEnv::reveal_all();
-                    match self.tcx.const_eval_resolve(param_env, ct, None) {
+                    match self.tcx.const_eval_resolve(param_env, ct.expand(), None) {
                         // The `monomorphize` call should have evaluated that constant already.
                         Ok(val) => val,
                         Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
@@ -783,44 +783,22 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 }
                 _ => return,
             },
-        };
-        collect_const_value(self.tcx, val, self.output);
-        self.visit_ty(literal.ty(), TyContext::Location(location));
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    fn visit_const(&mut self, constant: ty::Const<'tcx>, location: Location) {
-        debug!("visiting const {:?} @ {:?}", constant, location);
-
-        let substituted_constant = self.monomorphize(constant);
-        let param_env = ty::ParamEnv::reveal_all();
-
-        match substituted_constant.kind() {
-            ty::ConstKind::Value(val) => {
-                let const_val = self.tcx.valtree_to_const_val((constant.ty(), val));
-                collect_const_value(self.tcx, const_val, self.output)
-            }
-            ty::ConstKind::Unevaluated(unevaluated) => {
-                match self.tcx.const_eval_resolve(param_env, unevaluated, None) {
+            mir::ConstantKind::Unevaluated(uv, _) => {
+                let param_env = ty::ParamEnv::reveal_all();
+                match self.tcx.const_eval_resolve(param_env, uv, None) {
                     // The `monomorphize` call should have evaluated that constant already.
-                    Ok(val) => span_bug!(
-                        self.body.source_info(location).span,
-                        "collection encountered the unevaluated constant {} which evaluated to {:?}",
-                        substituted_constant,
-                        val
-                    ),
-                    Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => {}
+                    Ok(val) => val,
+                    Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
                     Err(ErrorHandled::TooGeneric) => span_bug!(
                         self.body.source_info(location).span,
-                        "collection encountered polymorphic constant: {}",
-                        substituted_constant
+                        "collection encountered polymorphic constant: {:?}",
+                        literal
                     ),
                 }
             }
-            _ => {}
-        }
-
-        self.super_const(constant);
+        };
+        collect_const_value(self.tcx, val, self.output);
+        MirVisitor::visit_ty(self, literal.ty(), TyContext::Location(location));
     }
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {

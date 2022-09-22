@@ -21,10 +21,8 @@ use rustc_middle::mir::{
     TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{
-    self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitable,
-};
+use rustc_middle::ty::InternalSubsts;
+use rustc_middle::ty::{self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
@@ -294,25 +292,22 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        match self.ecx.mir_const_to_op(&c.literal, None) {
+        match self.ecx.const_to_op(&c.literal, None) {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
                 let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal {
-                        ConstantKind::Ty(ct) => match ct.kind() {
+                        ConstantKind::Ty(ct) => ct.needs_subst(),
+                        ConstantKind::Unevaluated(
+                            ty::Unevaluated { def: _, substs: _, promoted: Some(_) },
+                            _,
+                        ) => {
                             // Promoteds must lint and not error as the user didn't ask for them
-                            ConstKind::Unevaluated(ty::Unevaluated {
-                                def: _,
-                                substs: _,
-                                promoted: Some(_),
-                            }) => true,
-                            // Out of backwards compatibility we cannot report hard errors in unused
-                            // generic functions using associated constants of the generic parameters.
-                            _ => c.literal.needs_subst(),
-                        },
-                        ConstantKind::Val(_, ty) => ty.needs_subst(),
+                            true
+                        }
+                        ConstantKind::Unevaluated(..) | ConstantKind::Val(..) => c.needs_subst(),
                     };
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused

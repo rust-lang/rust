@@ -464,12 +464,14 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             let val = match literal {
                 ConstantKind::Ty(ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
-                    ty::ConstKind::Unevaluated(uv) => format!(
-                        "Unevaluated({}, {:?}, {:?})",
-                        self.tcx.def_path_str(uv.def.did),
-                        uv.substs,
-                        uv.promoted,
-                    ),
+                    ty::ConstKind::Unevaluated(uv) => {
+                        format!(
+                            "Unevaluated({}, {:?}, {:?})",
+                            self.tcx.def_path_str(uv.def.did),
+                            uv.substs,
+                            uv.promoted,
+                        )
+                    }
                     ty::ConstKind::Value(val) => format!("Value({})", fmt_valtree(&val)),
                     ty::ConstKind::Error(_) => "Error".to_string(),
                     // These variants shouldn't exist in the MIR.
@@ -477,6 +479,14 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     | ty::ConstKind::Infer(_)
                     | ty::ConstKind::Bound(..) => bug!("unexpected MIR constant: {:?}", literal),
                 },
+                ConstantKind::Unevaluated(uv, _) => {
+                    format!(
+                        "Unevaluated({}, {:?}, {:?})",
+                        self.tcx.def_path_str(uv.def.did),
+                        uv.substs,
+                        uv.promoted,
+                    )
+                }
                 // To keep the diffs small, we render this like we render `ty::Const::Value`.
                 //
                 // This changes once `ty::Const::Value` is represented using valtrees.
@@ -696,9 +706,9 @@ pub fn write_allocations<'tcx>(
     struct CollectAllocIds(BTreeSet<AllocId>);
 
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
-        fn visit_constant(&mut self, c: &Constant<'tcx>, loc: Location) {
+        fn visit_constant(&mut self, c: &Constant<'tcx>, _: Location) {
             match c.literal {
-                ConstantKind::Ty(c) => self.visit_const(c, loc),
+                ConstantKind::Ty(_) | ConstantKind::Unevaluated(..) => {}
                 ConstantKind::Val(val, _) => {
                     self.0.extend(alloc_ids_from_const_val(val));
                 }

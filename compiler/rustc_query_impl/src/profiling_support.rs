@@ -307,16 +307,16 @@ pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
 
     macro_rules! alloc_once {
         (
-            $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($K:ty) -> $V:ty,)*
-        ) => {
-            $({
+        $($(#[$attr:meta])*
+            [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+            $(
                 alloc_self_profile_query_strings_for_query_cache(
                     tcx,
                     stringify!($name),
                     &tcx.query_caches.$name,
                     &mut string_cache,
                 );
-            })*
+            )+
         }
     }
 

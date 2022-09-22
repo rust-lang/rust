@@ -1,0 +1,15 @@
+error: Undefined Behavior: Data race detected between Atomic Store on thread `<unnamed>` and Read on thread `<unnamed>` at ALLOC
+  --> $DIR/atomic_write_na_read_race2.rs:LL:CC
+   |
+LL |             (&*c.0).store(32, Ordering::SeqCst);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between Atomic Store on thread `<unnamed>` and Read on thread `<unnamed>` at ALLOC
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside closure at $DIR/atomic_write_na_read_race2.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

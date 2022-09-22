@@ -21,3 +21,8 @@ __declspec(dllexport) void extern_fn_with_long_name() {
     printf("extern_fn_with_long_name; got the rename\n");
     fflush(stdout);
 }
+
+__declspec(dllexport) void extern_fn_4() {
+    printf("extern_fn_4\n");
+    fflush(stdout);
+}

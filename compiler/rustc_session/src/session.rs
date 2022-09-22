@@ -28,7 +28,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    EmissionGuarantee, ErrorGuaranteed, FluentBundle, Handler, LazyFallbackBundle, MultiSpan,
+    ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -221,15 +221,6 @@ pub struct PerfStats {
     pub normalize_generic_arg_after_erasing_regions: AtomicUsize,
     /// Number of times this query is invoked.
     pub normalize_projection_ty: AtomicUsize,
-}
-
-/// Trait implemented by error types. This should not be implemented manually. Instead, use
-/// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
-#[rustc_diagnostic_item = "SessionDiagnostic"]
-pub trait SessionDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
-    /// Write out as a diagnostic out of `Handler`.
-    #[must_use]
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, T>;
 }
 
 impl Session {
@@ -514,13 +505,13 @@ impl Session {
     }
     pub fn create_err<'a>(
         &'a self,
-        err: impl SessionDiagnostic<'a>,
+        err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.parse_sess.create_err(err)
     }
     pub fn create_feature_err<'a>(
         &'a self,
-        err: impl SessionDiagnostic<'a>,
+        err: impl IntoDiagnostic<'a>,
         feature: Symbol,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = self.parse_sess.create_err(err);
@@ -530,25 +521,25 @@ impl Session {
         add_feature_diagnostics(&mut err, &self.parse_sess, feature);
         err
     }
-    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
+    pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
         self.parse_sess.emit_err(err)
     }
     pub fn create_warning<'a>(
         &'a self,
-        err: impl SessionDiagnostic<'a, ()>,
+        err: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
         self.parse_sess.create_warning(err)
     }
-    pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
+    pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
         self.parse_sess.emit_warning(warning)
     }
     pub fn create_fatal<'a>(
         &'a self,
-        fatal: impl SessionDiagnostic<'a, !>,
+        fatal: impl IntoDiagnostic<'a, !>,
     ) -> DiagnosticBuilder<'a, !> {
         self.parse_sess.create_fatal(fatal)
     }
-    pub fn emit_fatal<'a>(&'a self, fatal: impl SessionDiagnostic<'a, !>) -> ! {
+    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
         self.parse_sess.emit_fatal(fatal)
     }
     #[inline]

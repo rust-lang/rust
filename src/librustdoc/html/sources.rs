@@ -288,11 +288,14 @@ pub(crate) fn print_src(
         }
     }
     line_numbers.write_str("</pre>");
+    let current_href = &context
+        .href_from_span(clean::Span::new(file_span), false)
+        .expect("only local crates should have sources emitted");
     highlight::render_source_with_highlighting(
         s,
         buf,
         line_numbers,
-        highlight::HrefContext { context, file_span, root_path },
+        highlight::HrefContext { context, file_span, root_path, current_href },
         decoration_info,
     );
 }

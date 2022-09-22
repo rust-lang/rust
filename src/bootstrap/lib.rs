@@ -201,6 +201,8 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
     (Some(Mode::Std), "no_global_oom_handling", None),
+    (Some(Mode::Std), "no_rc", None),
+    (Some(Mode::Std), "no_sync", None),
     (Some(Mode::Std), "freebsd12", None),
     (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
@@ -540,13 +542,8 @@ impl Build {
 
         // Make sure we update these before gathering metadata so we don't get an error about missing
         // Cargo.toml files.
-        let rust_submodules = [
-            "src/tools/rust-installer",
-            "src/tools/cargo",
-            "src/tools/miri",
-            "library/backtrace",
-            "library/stdarch",
-        ];
+        let rust_submodules =
+            ["src/tools/rust-installer", "src/tools/cargo", "library/backtrace", "library/stdarch"];
         for s in rust_submodules {
             build.update_submodule(Path::new(s));
         }
@@ -823,6 +820,11 @@ impl Build {
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(&*target.triple).join("doc")
+    }
+
+    /// Output directory for all JSON-formatted documentation for a target
+    fn json_doc_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("json-doc")
     }
 
     fn test_out(&self, target: TargetSelection) -> PathBuf {
@@ -1305,10 +1307,6 @@ impl Build {
     /// Returns the value of `package_vers` above for Rust itself.
     fn rust_package_vers(&self) -> String {
         self.package_vers(&self.version)
-    }
-
-    fn llvm_link_tools_dynamically(&self, target: TargetSelection) -> bool {
-        target.contains("linux-gnu") || target.contains("apple-darwin")
     }
 
     /// Returns the `version` string associated with this compiler for Rust

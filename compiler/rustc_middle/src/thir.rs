@@ -853,9 +853,9 @@ mod size_asserts {
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
     #[cfg(not(bootstrap))]
-    static_assert_size!(Pat<'_>, 64);
+    static_assert_size!(Pat<'_>, 72);
     #[cfg(not(bootstrap))]
-    static_assert_size!(PatKind<'_>, 48);
+    static_assert_size!(PatKind<'_>, 56);
     #[cfg(not(bootstrap))]
     static_assert_size!(Stmt<'_>, 48);
     #[cfg(not(bootstrap))]

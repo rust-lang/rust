@@ -1,7 +1,7 @@
 //! A pass that checks to make sure private fields and methods aren't used
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
-
+use crate::ty::Visibility;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
@@ -27,26 +27,107 @@ pub enum AccessLevel {
     Public,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Default)]
+pub struct EffectiveVisibility {
+    public: Option<Visibility>,
+    exported: Option<Visibility>,
+    reachable: Option<Visibility>,
+    reachable_from_impl_trait: Option<Visibility>,
+}
+
+impl EffectiveVisibility {
+    pub fn get(&self, tag: AccessLevel) -> Option<&Visibility> {
+        match tag {
+            AccessLevel::Public => &self.public,
+            AccessLevel::Exported => &self.exported,
+            AccessLevel::Reachable => &self.reachable,
+            AccessLevel::ReachableFromImplTrait => &self.reachable_from_impl_trait,
+        }
+        .as_ref()
+    }
+
+    fn get_mut(&mut self, tag: AccessLevel) -> &mut Option<Visibility> {
+        match tag {
+            AccessLevel::Public => &mut self.public,
+            AccessLevel::Exported => &mut self.exported,
+            AccessLevel::Reachable => &mut self.reachable,
+            AccessLevel::ReachableFromImplTrait => &mut self.reachable_from_impl_trait,
+        }
+    }
+
+    pub fn is_public_at_level(&self, tag: AccessLevel) -> bool {
+        self.get(tag).map_or(false, |vis| vis.is_public())
+    }
+}
+
 /// Holds a map of accessibility levels for reachable HIR nodes.
 #[derive(Debug, Clone)]
 pub struct AccessLevels<Id = LocalDefId> {
-    pub map: FxHashMap<Id, AccessLevel>,
+    map: FxHashMap<Id, EffectiveVisibility>,
 }
 
-impl<Id: Hash + Eq> AccessLevels<Id> {
+impl<Id: Hash + Eq + Copy> AccessLevels<Id> {
+    pub fn is_public_at_level(&self, id: Id, tag: AccessLevel) -> bool {
+        self.get_effective_vis(id)
+            .map_or(false, |effective_vis| effective_vis.is_public_at_level(tag))
+    }
+
     /// See `AccessLevel::Reachable`.
     pub fn is_reachable(&self, id: Id) -> bool {
-        self.map.get(&id) >= Some(&AccessLevel::Reachable)
+        self.is_public_at_level(id, AccessLevel::Reachable)
     }
 
     /// See `AccessLevel::Exported`.
     pub fn is_exported(&self, id: Id) -> bool {
-        self.map.get(&id) >= Some(&AccessLevel::Exported)
+        self.is_public_at_level(id, AccessLevel::Exported)
     }
 
     /// See `AccessLevel::Public`.
     pub fn is_public(&self, id: Id) -> bool {
-        self.map.get(&id) >= Some(&AccessLevel::Public)
+        self.is_public_at_level(id, AccessLevel::Public)
+    }
+
+    pub fn get_access_level(&self, id: Id) -> Option<AccessLevel> {
+        self.get_effective_vis(id).and_then(|effective_vis| {
+            for level in [
+                AccessLevel::Public,
+                AccessLevel::Exported,
+                AccessLevel::Reachable,
+                AccessLevel::ReachableFromImplTrait,
+            ] {
+                if effective_vis.is_public_at_level(level) {
+                    return Some(level);
+                }
+            }
+            None
+        })
+    }
+
+    pub fn set_access_level(&mut self, id: Id, tag: AccessLevel) {
+        let mut effective_vis = self.get_effective_vis(id).copied().unwrap_or_default();
+        for level in [
+            AccessLevel::Public,
+            AccessLevel::Exported,
+            AccessLevel::Reachable,
+            AccessLevel::ReachableFromImplTrait,
+        ] {
+            if level <= tag {
+                *effective_vis.get_mut(level) = Some(Visibility::Public);
+            }
+        }
+        self.map.insert(id, effective_vis);
+    }
+
+    pub fn get_effective_vis(&self, id: Id) -> Option<&EffectiveVisibility> {
+        self.map.get(&id)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&Id, &EffectiveVisibility)> {
+        self.map.iter()
+    }
+
+    pub fn map_id<OutId: Hash + Eq + Copy>(&self, f: impl Fn(Id) -> OutId) -> AccessLevels<OutId> {
+        AccessLevels { map: self.map.iter().map(|(k, v)| (f(*k), *v)).collect() }
     }
 }
 

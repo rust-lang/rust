@@ -164,7 +164,8 @@ rustc_queries! {
     query collect_trait_impl_trait_tys(key: DefId)
         -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>
     {
-        desc { "better description please" }
+        desc { "compare an impl and trait method signature, inferring any hidden `impl Trait` types in the process" }
+        cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
@@ -1006,7 +1007,9 @@ rustc_queries! {
 
     /// Tries to destructure an `mir::ConstantKind` ADT or array into its variant index
     /// and its field values.
-    query try_destructure_mir_constant(key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>) -> Option<mir::DestructuredMirConstant<'tcx>> {
+    query try_destructure_mir_constant(
+        key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
+    ) -> Option<mir::DestructuredConstant<'tcx>> {
         desc { "destructuring mir constant"}
         remap_env_constness
     }

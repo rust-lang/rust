@@ -3,7 +3,7 @@
 // We attempt to `let Bar::Present(_) = foo else { ... }` where foo is meant to Deref/DerefMut to
 // Bar. This fails, you must add a type annotation like `let _: &mut Bar = _ else { ... }`
 
-#![feature(let_else)]
+
 use std::ops::{Deref, DerefMut};
 
 struct Foo(Bar);

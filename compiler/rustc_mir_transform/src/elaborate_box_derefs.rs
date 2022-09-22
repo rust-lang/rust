@@ -8,7 +8,6 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{Ty, TyCtxt};
 
 /// Constructs the types used when accessing a Box's pointer

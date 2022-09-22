@@ -1,0 +1,2 @@
+thread 'main' panicked at 'attempt to shift right with overflow', $DIR/overflowing-rsh-2.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

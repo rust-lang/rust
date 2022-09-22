@@ -204,20 +204,10 @@ use self::Ordering::*;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "==")]
 #[doc(alias = "!=")]
-#[cfg_attr(
-    bootstrap,
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} == {Rhs}`"
-    )
-)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} == {Rhs}`",
-        append_const_msg,
-    )
+#[rustc_on_unimplemented(
+    message = "can't compare `{Self}` with `{Rhs}`",
+    label = "no implementation for `{Self} == {Rhs}`",
+    append_const_msg
 )]
 #[const_trait]
 #[rustc_diagnostic_item = "PartialEq"]
@@ -1076,20 +1066,10 @@ impl const PartialOrd for Ordering {
 #[doc(alias = "<")]
 #[doc(alias = "<=")]
 #[doc(alias = ">=")]
-#[cfg_attr(
-    bootstrap,
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
-    )
-)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
-        append_const_msg,
-    )
+#[rustc_on_unimplemented(
+    message = "can't compare `{Self}` with `{Rhs}`",
+    label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
+    append_const_msg
 )]
 #[const_trait]
 #[rustc_diagnostic_item = "PartialOrd"]

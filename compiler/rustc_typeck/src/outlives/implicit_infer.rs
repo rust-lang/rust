@@ -1,8 +1,8 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::Span;
 
 use super::explicit::ExplicitPredicatesMap;

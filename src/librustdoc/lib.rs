@@ -9,7 +9,7 @@
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(let_chains)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(test)]
 #![feature(never_type)]
 #![feature(once_cell)]

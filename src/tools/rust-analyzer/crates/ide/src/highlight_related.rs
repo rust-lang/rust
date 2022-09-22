@@ -377,6 +377,7 @@ mod tests {
                         match it {
                             ReferenceCategory::Read => "read",
                             ReferenceCategory::Write => "write",
+                            ReferenceCategory::Import => "import",
                         }
                         .to_string()
                     }),
@@ -423,12 +424,12 @@ struct Foo;
         check(
             r#"
 use crate$0;
-  //^^^^^
+  //^^^^^ import
 use self;
-  //^^^^
+  //^^^^ import
 mod __ {
     use super;
-      //^^^^^
+      //^^^^^ import
 }
 "#,
         );
@@ -436,7 +437,7 @@ mod __ {
             r#"
 //- /main.rs crate:main deps:lib
 use lib$0;
-  //^^^
+  //^^^ import
 //- /lib.rs crate:lib
 "#,
         );
@@ -450,7 +451,7 @@ use lib$0;
 mod foo;
 //- /foo.rs
 use self$0;
- // ^^^^
+ // ^^^^ import
 "#,
         );
     }

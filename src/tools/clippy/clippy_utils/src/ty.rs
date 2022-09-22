@@ -12,7 +12,7 @@ use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{
     self, AdtDef, Binder, BoundRegion, DefIdTree, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, ProjectionTy,
     Region, RegionKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
@@ -29,6 +29,13 @@ use crate::{match_def_path, path_res, paths};
 // Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_copy_modulo_regions(cx.tcx.at(DUMMY_SP), cx.param_env)
+}
+
+/// This checks whether a given type is known to implement Debug.
+pub fn has_debug_impl<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    cx.tcx
+        .get_diagnostic_item(sym::Debug)
+        .map_or(false, |debug| implements_trait(cx, ty, debug, &[]))
 }
 
 /// Checks whether a type can be partially moved.

@@ -35,7 +35,7 @@ pub enum DiagnosticArgValue<'source> {
     Number(usize),
 }
 
-/// Converts a value of a type into a `DiagnosticArg` (typically a field of a `SessionDiagnostic`
+/// Converts a value of a type into a `DiagnosticArg` (typically a field of an `IntoDiagnostic`
 /// struct). Implemented as a custom trait rather than `From` so that it is implemented on the type
 /// being converted rather than on `DiagnosticArgValue`, which enables types from other `rustc_*`
 /// crates to implement this.
@@ -176,9 +176,10 @@ impl IntoDiagnosticArg for hir::ConstContext {
 }
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
-/// `#[derive(SessionSubdiagnostic)]` -- see [rustc_macros::SessionSubdiagnostic].
-#[rustc_diagnostic_item = "AddSubdiagnostic"]
-pub trait AddSubdiagnostic {
+/// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
+#[cfg_attr(bootstrap, rustc_diagnostic_item = "AddSubdiagnostic")]
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "AddToDiagnostic")]
+pub trait AddToDiagnostic {
     /// Add a subdiagnostic to an existing diagnostic.
     fn add_to_diagnostic(self, diag: &mut Diagnostic);
 }
@@ -891,9 +892,9 @@ impl Diagnostic {
         self
     }
 
-    /// Add a subdiagnostic from a type that implements `SessionSubdiagnostic` - see
-    /// [rustc_macros::SessionSubdiagnostic].
-    pub fn subdiagnostic(&mut self, subdiagnostic: impl AddSubdiagnostic) -> &mut Self {
+    /// Add a subdiagnostic from a type that implements `Subdiagnostic` - see
+    /// [rustc_macros::Subdiagnostic].
+    pub fn subdiagnostic(&mut self, subdiagnostic: impl AddToDiagnostic) -> &mut Self {
         subdiagnostic.add_to_diagnostic(self);
         self
     }

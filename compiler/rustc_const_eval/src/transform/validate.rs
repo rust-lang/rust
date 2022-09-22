@@ -13,7 +13,6 @@ use rustc_middle::mir::{
     TerminatorKind, UnOp, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
