@@ -3032,7 +3032,7 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 [[package]]
 name = "rustc-hash"
 version = "1.1.0"
-source = "git+https://github.com/scottmcm/rustc-hash.git?branch=skip-length-prefixes#f1b8cc06f492324ba32ae2e7935d0a5ce970160b"
+source = "git+https://github.com/scottmcm/rustc-hash.git?branch=skip-length-prefixes#aefce516c205499d5d546433febb2c9a4736caba"
 
 [[package]]
 name = "rustc-main"
