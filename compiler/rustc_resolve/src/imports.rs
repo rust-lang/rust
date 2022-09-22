@@ -2,7 +2,7 @@
 
 use crate::diagnostics::Suggestion;
 use crate::Determinacy::{self, *};
-use crate::Namespace::{MacroNS, TypeNS};
+use crate::Namespace::{self, *};
 use crate::{module_to_string, names_to_string};
 use crate::{AmbiguityKind, BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
@@ -370,6 +370,31 @@ impl<'a> Resolver<'a> {
             import.used.set(true);
             self.used_imports.insert(import.id);
         }
+    }
+
+    /// Take primary and additional node IDs from an import and select one that corresponds to the
+    /// given namespace. The logic must match the corresponding logic from `fn lower_use_tree` that
+    /// assigns resolutons to IDs.
+    pub(crate) fn import_id_for_ns(&self, import: &Import<'_>, ns: Namespace) -> NodeId {
+        if let ImportKind::Single { additional_ids: (id1, id2), .. } = import.kind {
+            if let Some(resolutions) = self.import_res_map.get(&import.id) {
+                assert!(resolutions[ns].is_some(), "incorrectly finalized import");
+                return match ns {
+                    TypeNS => import.id,
+                    ValueNS => match resolutions.type_ns {
+                        Some(_) => id1,
+                        None => import.id,
+                    },
+                    MacroNS => match (resolutions.type_ns, resolutions.value_ns) {
+                        (Some(_), Some(_)) => id2,
+                        (Some(_), None) | (None, Some(_)) => id1,
+                        (None, None) => import.id,
+                    },
+                };
+            }
+        }
+
+        import.id
     }
 }
 
