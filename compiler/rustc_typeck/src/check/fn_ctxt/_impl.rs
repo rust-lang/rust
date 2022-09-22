@@ -1406,7 +1406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    #[instrument(level = "debug", skip(self, code, span, def_id, substs))]
+    #[instrument(level = "debug", skip(self, code, span, substs))]
     fn add_required_obligations_with_code(
         &self,
         span: Span,
@@ -1414,15 +1414,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         code: impl Fn(usize, Span) -> ObligationCauseCode<'tcx>,
     ) {
+        let param_env = self.param_env;
+
+        let remap = match self.tcx.def_kind(def_id) {
+            // Associated consts have `Self: ~const Trait` bounds that should be satisfiable when
+            // `Self: Trait` is satisfied because it does not matter whether the impl is `const`.
+            // Therefore we have to remap the param env here to be non-const.
+            hir::def::DefKind::AssocConst => true,
+            hir::def::DefKind::AssocFn
+                if self.tcx.def_kind(self.tcx.parent(def_id)) == hir::def::DefKind::Trait =>
+            {
+                // N.B.: All callsites to this function involve checking a path expression.
+                //
+                // When instantiating a trait method as a function item, it does not actually matter whether
+                // the trait is `const` or not, or whether `where T: ~const Tr` needs to be satisfied as
+                // `const`. If we were to introduce instantiating trait methods as `const fn`s, we would
+                // check that after this, either via a bound `where F: ~const FnOnce` or when coercing to a
+                // `const fn` pointer.
+                //
+                // FIXME(fee1-dead) FIXME(const_trait_impl): update this doc when trait methods can satisfy
+                // `~const FnOnce` or can be coerced to `const fn` pointer.
+                true
+            }
+            _ => false,
+        };
         let (bounds, _) = self.instantiate_bounds(span, def_id, &substs);
 
-        for obligation in traits::predicates_for_generics(
+        for mut obligation in traits::predicates_for_generics(
             |idx, predicate_span| {
                 traits::ObligationCause::new(span, self.body_id, code(idx, predicate_span))
             },
-            self.param_env,
+            param_env,
             bounds,
         ) {
+            if remap {
+                obligation = obligation.without_const(self.tcx);
+            }
             self.register_predicate(obligation);
         }
     }

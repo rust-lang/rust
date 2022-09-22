@@ -129,7 +129,7 @@ pub fn predicates_for_generics<'tcx>(
         move |(idx, (predicate, span))| Obligation {
             cause: cause(idx, span),
             recursion_depth: 0,
-            param_env: param_env,
+            param_env,
             predicate,
         },
     )

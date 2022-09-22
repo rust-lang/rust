@@ -7,13 +7,13 @@ LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
    = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
    = help: add `#![feature(const_for)]` to the crate attributes to enable
 
-error[E0277]: cannot add `()` to `{integer}`
+error[E0277]: cannot add `()` to `{integer}` in const contexts
   --> $DIR/issue-50582.rs:2:18
    |
 LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
    |                  ^ no implementation for `{integer} + ()`
    |
-   = help: the trait `Add<()>` is not implemented for `{integer}`
+   = help: the trait `~const Add<()>` is not implemented for `{integer}`
    = help: the following other types implement trait `Add<Rhs>`:
              <&'a f32 as Add<f32>>
              <&'a f64 as Add<f64>>

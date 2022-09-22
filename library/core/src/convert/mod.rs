@@ -155,6 +155,7 @@ pub const fn identity<T>(x: T) -> T {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "AsRef")]
+#[const_trait]
 pub trait AsRef<T: ?Sized> {
     /// Converts this type into a shared reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -197,6 +198,7 @@ pub trait AsRef<T: ?Sized> {
 /// [`Box<T>`]: ../../std/boxed/struct.Box.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "AsMut")]
+#[const_trait]
 pub trait AsMut<T: ?Sized> {
     /// Converts this type into a mutable reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -273,6 +275,7 @@ pub trait AsMut<T: ?Sized> {
 /// [`Vec`]: ../../std/vec/struct.Vec.html
 #[rustc_diagnostic_item = "Into"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
     #[must_use]
@@ -368,6 +371,7 @@ pub trait Into<T>: Sized {
     all(_Self = "&str", T = "std::string::String"),
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
+#[const_trait]
 pub trait From<T>: Sized {
     /// Converts to this type from the input type.
     #[lang = "from"]
@@ -392,6 +396,7 @@ pub trait From<T>: Sized {
 /// [`Into`], see there for details.
 #[rustc_diagnostic_item = "TryInto"]
 #[stable(feature = "try_from", since = "1.34.0")]
+#[const_trait]
 pub trait TryInto<T>: Sized {
     /// The type returned in the event of a conversion error.
     #[stable(feature = "try_from", since = "1.34.0")]
@@ -468,6 +473,7 @@ pub trait TryInto<T>: Sized {
 /// [`try_from`]: TryFrom::try_from
 #[rustc_diagnostic_item = "TryFrom"]
 #[stable(feature = "try_from", since = "1.34.0")]
+#[const_trait]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
     #[stable(feature = "try_from", since = "1.34.0")]

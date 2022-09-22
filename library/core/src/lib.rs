@@ -141,6 +141,7 @@
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_swap)]
 #![feature(const_trait_impl)]
+#![feature(const_try)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_default_impls)]
