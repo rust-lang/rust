@@ -629,7 +629,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                 bu.substs,
             )?;
             return Ok(tcx.mk_const(ty::ConstS {
-                kind: ty::ConstKind::Unevaluated(ty::Unevaluated { def: au.def, substs }),
+                kind: ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def: au.def, substs }),
                 ty: a.ty(),
             }));
         }

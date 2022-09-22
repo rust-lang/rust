@@ -1,6 +1,6 @@
 use rustc_errors::{fluent, ErrorGuaranteed, Handler, IntoDiagnostic};
 use rustc_macros::Diagnostic;
-use rustc_middle::ty::{PolyTraitRef, Ty, Unevaluated};
+use rustc_middle::ty::{self, PolyTraitRef, Ty};
 use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
 
@@ -18,7 +18,7 @@ pub struct DumpVTableEntries<'a> {
 pub struct UnableToConstructConstantValue<'a> {
     #[primary_span]
     pub span: Span,
-    pub unevaluated: Unevaluated<'a>,
+    pub unevaluated: ty::UnevaluatedConst<'a>,
 }
 
 #[derive(Diagnostic)]

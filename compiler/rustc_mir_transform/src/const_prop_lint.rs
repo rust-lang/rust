@@ -301,7 +301,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let lint_only = match c.literal {
                         ConstantKind::Ty(ct) => ct.needs_subst(),
                         ConstantKind::Unevaluated(
-                            mir::Unevaluated { def: _, substs: _, promoted: Some(_) },
+                            mir::UnevaluatedConst { def: _, substs: _, promoted: Some(_) },
                             _,
                         ) => {
                             // Promoteds must lint and not error as the user didn't ask for them

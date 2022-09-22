@@ -128,11 +128,17 @@ pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
         c.super_fold_with(self)
     }
 
-    fn fold_ty_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ty::Unevaluated<'tcx> {
+    fn fold_ty_unevaluated(
+        &mut self,
+        uv: ty::UnevaluatedConst<'tcx>,
+    ) -> ty::UnevaluatedConst<'tcx> {
         uv.super_fold_with(self)
     }
 
-    fn fold_mir_unevaluated(&mut self, uv: mir::Unevaluated<'tcx>) -> mir::Unevaluated<'tcx> {
+    fn fold_mir_unevaluated(
+        &mut self,
+        uv: mir::UnevaluatedConst<'tcx>,
+    ) -> mir::UnevaluatedConst<'tcx> {
         uv.super_fold_with(self)
     }
 
@@ -178,15 +184,15 @@ pub trait FallibleTypeFolder<'tcx>: Sized {
 
     fn try_fold_ty_unevaluated(
         &mut self,
-        c: ty::Unevaluated<'tcx>,
-    ) -> Result<ty::Unevaluated<'tcx>, Self::Error> {
+        c: ty::UnevaluatedConst<'tcx>,
+    ) -> Result<ty::UnevaluatedConst<'tcx>, Self::Error> {
         c.try_super_fold_with(self)
     }
 
     fn try_fold_mir_unevaluated(
         &mut self,
-        c: mir::Unevaluated<'tcx>,
-    ) -> Result<mir::Unevaluated<'tcx>, Self::Error> {
+        c: mir::UnevaluatedConst<'tcx>,
+    ) -> Result<mir::UnevaluatedConst<'tcx>, Self::Error> {
         c.try_super_fold_with(self)
     }
 
@@ -238,15 +244,15 @@ where
 
     fn try_fold_ty_unevaluated(
         &mut self,
-        c: ty::Unevaluated<'tcx>,
-    ) -> Result<ty::Unevaluated<'tcx>, !> {
+        c: ty::UnevaluatedConst<'tcx>,
+    ) -> Result<ty::UnevaluatedConst<'tcx>, !> {
         Ok(self.fold_ty_unevaluated(c))
     }
 
     fn try_fold_mir_unevaluated(
         &mut self,
-        c: mir::Unevaluated<'tcx>,
-    ) -> Result<mir::Unevaluated<'tcx>, !> {
+        c: mir::UnevaluatedConst<'tcx>,
+    ) -> Result<mir::UnevaluatedConst<'tcx>, !> {
         Ok(self.fold_mir_unevaluated(c))
     }
 

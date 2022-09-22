@@ -2055,7 +2055,7 @@ pub enum ConstantKind<'tcx> {
     Ty(ty::Const<'tcx>),
 
     /// An unevaluated mir constant which is not part of the type system.
-    Unevaluated(Unevaluated<'tcx>, Ty<'tcx>),
+    Unevaluated(UnevaluatedConst<'tcx>, Ty<'tcx>),
 
     /// This constant cannot go back into the type system, as it represents
     /// something the type system cannot handle (e.g. pointers).
@@ -2315,7 +2315,7 @@ impl<'tcx> ConstantKind<'tcx> {
             ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
                 .substs;
 
-        let uneval = Unevaluated {
+        let uneval = UnevaluatedConst {
             def: ty::WithOptConstParam::unknown(def_id).to_global(),
             substs,
             promoted: None,
@@ -2403,7 +2403,7 @@ impl<'tcx> ConstantKind<'tcx> {
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
         let span = tcx.hir().span(hir_id);
-        let uneval = Unevaluated::new(def.to_global(), substs);
+        let uneval = UnevaluatedConst::new(def.to_global(), substs);
         debug!(?span, ?param_env);
 
         match tcx.const_eval_resolve(param_env, uneval, Some(span)) {
@@ -2416,7 +2416,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 // Error was handled in `const_eval_resolve`. Here we just create a
                 // new unevaluated const and error hard later in codegen
                 Self::Unevaluated(
-                    Unevaluated {
+                    UnevaluatedConst {
                         def: def.to_global(),
                         substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                         promoted: None,
@@ -2442,25 +2442,28 @@ impl<'tcx> ConstantKind<'tcx> {
 /// An unevaluated (potentially generic) constant used in MIR.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable)]
-pub struct Unevaluated<'tcx> {
+pub struct UnevaluatedConst<'tcx> {
     pub def: ty::WithOptConstParam<DefId>,
     pub substs: SubstsRef<'tcx>,
     pub promoted: Option<Promoted>,
 }
 
-impl<'tcx> Unevaluated<'tcx> {
+impl<'tcx> UnevaluatedConst<'tcx> {
     // FIXME: probably should get rid of this method. It's also wrong to
     // shrink and then later expand a promoted.
     #[inline]
-    pub fn shrink(self) -> ty::Unevaluated<'tcx> {
-        ty::Unevaluated { def: self.def, substs: self.substs }
+    pub fn shrink(self) -> ty::UnevaluatedConst<'tcx> {
+        ty::UnevaluatedConst { def: self.def, substs: self.substs }
     }
 }
 
-impl<'tcx> Unevaluated<'tcx> {
+impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx> {
-        Unevaluated { def, substs, promoted: Default::default() }
+    pub fn new(
+        def: ty::WithOptConstParam<DefId>,
+        substs: SubstsRef<'tcx>,
+    ) -> UnevaluatedConst<'tcx> {
+        UnevaluatedConst { def, substs, promoted: Default::default() }
     }
 }
 

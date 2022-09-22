@@ -9,13 +9,13 @@ impl<'tcx, R: Idx, C: Idx> TypeVisitable<'tcx> for BitMatrix<R, C> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for mir::Unevaluated<'tcx> {
+impl<'tcx> TypeVisitable<'tcx> for mir::UnevaluatedConst<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_mir_unevaluated(*self)
     }
 }
 
-impl<'tcx> TypeSuperVisitable<'tcx> for mir::Unevaluated<'tcx> {
+impl<'tcx> TypeSuperVisitable<'tcx> for mir::UnevaluatedConst<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.substs.visit_with(visitor)
     }

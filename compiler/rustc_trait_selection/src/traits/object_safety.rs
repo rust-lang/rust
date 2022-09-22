@@ -840,7 +840,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
 
         fn visit_ty_unevaluated(
             &mut self,
-            uv: ty::Unevaluated<'tcx>,
+            uv: ty::UnevaluatedConst<'tcx>,
         ) -> ControlFlow<Self::BreakTy> {
             // Constants can only influence object safety if they reference `Self`.
             // This is only possible for unevaluated constants, so we walk these here.

@@ -15,28 +15,31 @@ use super::ScalarInt;
 /// An unevaluated (potentially generic) constant used in the type-system.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable)]
-pub struct Unevaluated<'tcx> {
+pub struct UnevaluatedConst<'tcx> {
     pub def: ty::WithOptConstParam<DefId>,
     pub substs: SubstsRef<'tcx>,
 }
 
-impl rustc_errors::IntoDiagnosticArg for Unevaluated<'_> {
+impl rustc_errors::IntoDiagnosticArg for UnevaluatedConst<'_> {
     fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
         format!("{:?}", self).into_diagnostic_arg()
     }
 }
 
-impl<'tcx> Unevaluated<'tcx> {
+impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn expand(self) -> mir::Unevaluated<'tcx> {
-        mir::Unevaluated { def: self.def, substs: self.substs, promoted: None }
+    pub fn expand(self) -> mir::UnevaluatedConst<'tcx> {
+        mir::UnevaluatedConst { def: self.def, substs: self.substs, promoted: None }
     }
 }
 
-impl<'tcx> Unevaluated<'tcx> {
+impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx> {
-        Unevaluated { def, substs }
+    pub fn new(
+        def: ty::WithOptConstParam<DefId>,
+        substs: SubstsRef<'tcx>,
+    ) -> UnevaluatedConst<'tcx> {
+        UnevaluatedConst { def, substs }
     }
 }
 
@@ -58,7 +61,7 @@ pub enum ConstKind<'tcx> {
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
     /// variants when the code is monomorphic enough for that.
-    Unevaluated(Unevaluated<'tcx>),
+    Unevaluated(UnevaluatedConst<'tcx>),
 
     /// Used to hold computed value.
     Value(ty::ValTree<'tcx>),
@@ -193,7 +196,7 @@ impl<'tcx> ConstKind<'tcx> {
             // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
             // we can call `infcx.const_eval_resolve` which handles inference variables.
             let param_env_and = if param_env_and.needs_infer() {
-                tcx.param_env(unevaluated.def.did).and(ty::Unevaluated {
+                tcx.param_env(unevaluated.def.did).and(ty::UnevaluatedConst {
                     def: unevaluated.def,
                     substs: InternalSubsts::identity_for_item(tcx, unevaluated.def.did),
                 })

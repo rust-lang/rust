@@ -51,18 +51,18 @@ impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for mir::Unevaluated<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for mir::UnevaluatedConst<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_mir_unevaluated(self)
     }
 }
 
-impl<'tcx> TypeSuperFoldable<'tcx> for mir::Unevaluated<'tcx> {
+impl<'tcx> TypeSuperFoldable<'tcx> for mir::UnevaluatedConst<'tcx> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(mir::Unevaluated {
+        Ok(mir::UnevaluatedConst {
             def: self.def,
             substs: self.substs.try_fold_with(folder)?,
             promoted: self.promoted,

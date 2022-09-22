@@ -258,7 +258,8 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node.ty)))
             }
             &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
-                let uneval = ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);
+                let uneval =
+                    ty::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
 
                 let constant = self
                     .tcx

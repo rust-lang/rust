@@ -300,7 +300,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 self.unused_parameters.clear(param.index);
                 ControlFlow::CONTINUE
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs })
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs })
                 if matches!(self.tcx.def_kind(def.did), DefKind::AnonConst) =>
             {
                 self.visit_child_body(def.did, substs);
@@ -317,7 +317,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 
         match constant {
             ConstantKind::Ty(ct) => ct.visit_with(self),
-            ConstantKind::Unevaluated(mir::Unevaluated { def, substs: _, promoted: Some(p) }, _)
+            ConstantKind::Unevaluated(mir::UnevaluatedConst { def, substs: _, promoted: Some(p) }, _)
                 // Avoid considering `T` unused when constants are of the form:
                 //   `<Self as Foo<T>>::foo::promoted[p]`
                 if self.def_id == def.did && !self.tcx.generics_of(def.did).has_self =>

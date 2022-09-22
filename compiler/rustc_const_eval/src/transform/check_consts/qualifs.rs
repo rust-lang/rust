@@ -357,7 +357,7 @@ where
         ConstantKind::Val(..) => None,
     };
 
-    if let Some(mir::Unevaluated { def, substs: _, promoted }) = uneval {
+    if let Some(mir::UnevaluatedConst { def, substs: _, promoted }) = uneval {
         // Use qualifs of the type for the promoted. Promoteds in MIR body should be possible
         // only for `NeedsNonConstDrop` with precise drop checking. This is the only const
         // check performed after the promotion. Verify that with an assertion.
@@ -365,6 +365,7 @@ where
 
         // Don't peek inside trait associated constants.
         if promoted.is_none() && cx.tcx.trait_of_item(def.did).is_none() {
+            assert_eq!(def.const_param_did, None, "expected associated const: {def:?}");
             let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def.did);
 
             if !Q::in_qualifs(&qualifs) {

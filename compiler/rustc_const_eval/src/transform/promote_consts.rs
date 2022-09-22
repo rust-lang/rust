@@ -841,7 +841,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
                 let substs = tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def.did));
-                let uneval = mir::Unevaluated { def, substs, promoted: Some(promoted_id) };
+                let uneval = mir::UnevaluatedConst { def, substs, promoted: Some(promoted_id) };
 
                 Operand::Constant(Box::new(Constant {
                     span,

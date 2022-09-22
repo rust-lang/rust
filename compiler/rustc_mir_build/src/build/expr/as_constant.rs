@@ -67,7 +67,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                 });
 
-                let uneval = mir::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);
+                let uneval =
+                    mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
                 let literal = ConstantKind::Unevaluated(uneval, ty);
 
                 Constant { user_ty, span, literal }
@@ -80,7 +81,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Constant { user_ty: None, span, literal }
             }
             ExprKind::ConstBlock { did: def_id, substs } => {
-                let uneval = mir::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);
+                let uneval =
+                    mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
                 let literal = ConstantKind::Unevaluated(uneval, ty);
 
                 Constant { user_ty: None, span, literal }

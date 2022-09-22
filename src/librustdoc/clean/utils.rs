@@ -234,7 +234,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
 pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
-        ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _ }) => {
+        ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs: _ }) => {
             let s = if let Some(def) = def.as_local() {
                 print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(def.did))
             } else {

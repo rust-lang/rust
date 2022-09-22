@@ -109,7 +109,7 @@ pub(crate) fn codegen_constant<'tcx>(
 ) -> CValue<'tcx> {
     let (const_val, ty) = match fx.monomorphize(constant.literal) {
         ConstantKind::Ty(const_) => unreachable!("{:?}", const_),
-        ConstantKind::Unevaluated(mir::Unevaluated { def, substs, promoted }, ty)
+        ConstantKind::Unevaluated(mir::UnevaluatedConst { def, substs, promoted }, ty)
             if fx.tcx.is_static(def.did) =>
         {
             assert!(substs.is_empty());
