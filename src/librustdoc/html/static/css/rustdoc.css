@@ -1078,10 +1078,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	font-size: 0.875rem;
 	font-weight: normal;
 }
-.stab p {
-	display: inline;
-	margin: 0;
-}
 
 .stab .emoji {
 	font-size: 1.25rem;
