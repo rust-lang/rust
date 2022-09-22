@@ -411,7 +411,7 @@ img {
 
 .sidebar {
 	font-size: 0.875rem;
-	width: 250px;
+	width: 200px;
 	min-width: 200px;
 	overflow-y: scroll;
 	position: sticky;
