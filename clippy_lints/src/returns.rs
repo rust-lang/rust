@@ -9,7 +9,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -182,8 +182,10 @@ fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>, 
                 StmtKind::Semi(semi_expr) => {
                     let mut semi_spans_and_this_one = semi_spans;
                     // we only want the span containing the semicolon so we can remove it later. From `entry.rs:382`
-                    semi_spans_and_this_one.push(stmt.span.trim_start(semi_expr.span).unwrap_or(DUMMY_SP));
-                    check_final_expr(cx, semi_expr, semi_spans_and_this_one, RetReplacement::Empty);
+                    if let Some(semicolon_span) = stmt.span.trim_start(semi_expr.span) {
+                        semi_spans_and_this_one.push(semicolon_span);
+                        check_final_expr(cx, semi_expr, semi_spans_and_this_one, RetReplacement::Empty);
+                    }
                 },
                 _ => (),
             }
