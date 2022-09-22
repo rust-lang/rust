@@ -749,7 +749,6 @@ pre, .rustdoc.source .example-wrap {
 }
 
 .content .item-info {
-	position: relative;
 	margin-left: 24px;
 }
 
