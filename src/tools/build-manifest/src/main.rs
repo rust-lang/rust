@@ -184,7 +184,7 @@ static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"
 
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
-static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview"];
+static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rust-docs-json-preview"];
 
 macro_rules! t {
     ($e:expr) => {
@@ -294,6 +294,7 @@ impl Builder {
         package!("rust-mingw", MINGW);
         package!("rust-std", TARGETS);
         self.package("rust-docs", &mut manifest.pkg, HOSTS, DOCS_FALLBACK);
+        self.package("rust-docs-json-preview", &mut manifest.pkg, HOSTS, DOCS_FALLBACK);
         package!("rust-src", &["*"]);
         package!("rls-preview", HOSTS);
         package!("rust-analyzer-preview", HOSTS);
@@ -379,6 +380,7 @@ impl Builder {
         rename("rustfmt", "rustfmt-preview");
         rename("clippy", "clippy-preview");
         rename("miri", "miri-preview");
+        rename("rust-docs-json", "rust-docs-json-preview");
         rename("rust-analyzer", "rust-analyzer-preview");
     }
 
@@ -435,6 +437,7 @@ impl Builder {
             host_component("rustfmt-preview"),
             host_component("llvm-tools-preview"),
             host_component("rust-analysis"),
+            host_component("rust-docs-json"),
         ]);
 
         extensions.extend(
