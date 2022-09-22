@@ -1,0 +1,38 @@
+error: Undefined Behavior: deallocating while item [Unique for <TAG>] is protected by call ID
+  --> RUSTLIB/alloc/src/alloc.rs:LL:CC
+   |
+LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ deallocating while item [Unique for <TAG>] is protected by call ID
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+   = note: BACKTRACE:
+   = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::box_free::<i32, std::alloc::Global>` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
+note: inside closure at $DIR/deallocate_against_protector1.rs:LL:CC
+  --> $DIR/deallocate_against_protector1.rs:LL:CC
+   |
+LL |         drop(unsafe { Box::from_raw(raw) });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: inside `<[closure@$DIR/deallocate_against_protector1.rs:LL:CC] as std::ops::FnOnce<(&mut i32,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
+note: inside `inner` at $DIR/deallocate_against_protector1.rs:LL:CC
+  --> $DIR/deallocate_against_protector1.rs:LL:CC
+   |
+LL |     f(x)
+   |     ^^^^
+note: inside `main` at $DIR/deallocate_against_protector1.rs:LL:CC
+  --> $DIR/deallocate_against_protector1.rs:LL:CC
+   |
+LL | /     inner(Box::leak(Box::new(0)), |x| {
+LL | |         let raw = x as *mut _;
+LL | |         drop(unsafe { Box::from_raw(raw) });
+LL | |     });
+   | |______^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

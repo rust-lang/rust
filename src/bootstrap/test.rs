@@ -484,116 +484,103 @@ impl Step for Miri {
         // Except if we are at stage 2, the bootstrap loop is complete and we can stick with our current stage.
         let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
 
-        let miri =
-            builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
-        let cargo_miri = builder.ensure(tool::CargoMiri {
-            compiler,
-            target: self.host,
-            extra_features: Vec::new(),
-        });
+        let miri = builder
+            .ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() })
+            .expect("in-tree tool");
+        let _cargo_miri = builder
+            .ensure(tool::CargoMiri { compiler, target: self.host, extra_features: Vec::new() })
+            .expect("in-tree tool");
         // The stdlib we need might be at a different stage. And just asking for the
         // sysroot does not seem to populate it, so we do that first.
         builder.ensure(compile::Std::new(compiler_std, host));
         let sysroot = builder.sysroot(compiler_std);
-        if let (Some(miri), Some(_cargo_miri)) = (miri, cargo_miri) {
-            let mut cargo =
-                builder.cargo(compiler, Mode::ToolRustc, SourceType::Submodule, host, "install");
-            cargo.arg("xargo");
-            // Configure `cargo install` path. cargo adds a `bin/`.
-            cargo.env("CARGO_INSTALL_ROOT", &builder.out);
+        let mut cargo =
+            builder.cargo(compiler, Mode::ToolRustc, SourceType::Submodule, host, "install");
+        cargo.arg("xargo");
+        // Configure `cargo install` path. cargo adds a `bin/`.
+        cargo.env("CARGO_INSTALL_ROOT", &builder.out);
 
-            let mut cargo = Command::from(cargo);
-            if !try_run(builder, &mut cargo) {
-                return;
-            }
-
-            // # Run `cargo miri setup`.
-            let mut cargo = tool::prepare_tool_cargo(
-                builder,
-                compiler,
-                Mode::ToolRustc,
-                host,
-                "run",
-                "src/tools/miri/cargo-miri",
-                SourceType::Submodule,
-                &[],
-            );
-            cargo.add_rustc_lib_path(builder, compiler);
-            cargo.arg("--").arg("miri").arg("setup");
-
-            // Tell `cargo miri setup` where to find the sources.
-            cargo.env("XARGO_RUST_SRC", builder.src.join("library"));
-            // Tell it where to find Miri.
-            cargo.env("MIRI", &miri);
-            // Debug things.
-            cargo.env("RUST_BACKTRACE", "1");
-            // Let cargo-miri know where xargo ended up.
-            cargo.env("XARGO_CHECK", builder.out.join("bin").join("xargo-check"));
-
-            let mut cargo = Command::from(cargo);
-            if !try_run(builder, &mut cargo) {
-                return;
-            }
-
-            // # Determine where Miri put its sysroot.
-            // To this end, we run `cargo miri setup --print-sysroot` and capture the output.
-            // (We do this separately from the above so that when the setup actually
-            // happens we get some output.)
-            // We re-use the `cargo` from above.
-            cargo.arg("--print-sysroot");
-
-            // FIXME: Is there a way in which we can re-use the usual `run` helpers?
-            let miri_sysroot = if builder.config.dry_run {
-                String::new()
-            } else {
-                builder.verbose(&format!("running: {:?}", cargo));
-                let out = cargo
-                    .output()
-                    .expect("We already ran `cargo miri setup` before and that worked");
-                assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
-                // Output is "<sysroot>\n".
-                let stdout = String::from_utf8(out.stdout)
-                    .expect("`cargo miri setup` stdout is not valid UTF-8");
-                let sysroot = stdout.trim_end();
-                builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {:?}", sysroot));
-                sysroot.to_owned()
-            };
-
-            // # Run `cargo test`.
-            let mut cargo = tool::prepare_tool_cargo(
-                builder,
-                compiler,
-                Mode::ToolRustc,
-                host,
-                "test",
-                "src/tools/miri",
-                SourceType::Submodule,
-                &[],
-            );
-            cargo.add_rustc_lib_path(builder, compiler);
-
-            // miri tests need to know about the stage sysroot
-            cargo.env("MIRI_SYSROOT", miri_sysroot);
-            cargo.env("MIRI_HOST_SYSROOT", sysroot);
-            cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-            cargo.env("MIRI", miri);
-            // propagate --bless
-            if builder.config.cmd.bless() {
-                cargo.env("MIRI_BLESS", "Gesundheit");
-            }
-
-            cargo.arg("--").args(builder.config.cmd.test_args());
-
-            let mut cargo = Command::from(cargo);
-            if !try_run(builder, &mut cargo) {
-                return;
-            }
-
-            // # Done!
-            builder.save_toolstate("miri", ToolState::TestPass);
-        } else {
-            eprintln!("failed to test miri: could not build");
+        let mut cargo = Command::from(cargo);
+        if !try_run(builder, &mut cargo) {
+            return;
         }
+
+        // # Run `cargo miri setup`.
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            host,
+            "run",
+            "src/tools/miri/cargo-miri",
+            SourceType::Submodule,
+            &[],
+        );
+        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.arg("--").arg("miri").arg("setup");
+
+        // Tell `cargo miri setup` where to find the sources.
+        cargo.env("XARGO_RUST_SRC", builder.src.join("library"));
+        // Tell it where to find Miri.
+        cargo.env("MIRI", &miri);
+        // Debug things.
+        cargo.env("RUST_BACKTRACE", "1");
+        // Let cargo-miri know where xargo ended up.
+        cargo.env("XARGO_CHECK", builder.out.join("bin").join("xargo-check"));
+
+        let mut cargo = Command::from(cargo);
+        builder.run(&mut cargo);
+
+        // # Determine where Miri put its sysroot.
+        // To this end, we run `cargo miri setup --print-sysroot` and capture the output.
+        // (We do this separately from the above so that when the setup actually
+        // happens we get some output.)
+        // We re-use the `cargo` from above.
+        cargo.arg("--print-sysroot");
+
+        // FIXME: Is there a way in which we can re-use the usual `run` helpers?
+        let miri_sysroot = if builder.config.dry_run {
+            String::new()
+        } else {
+            builder.verbose(&format!("running: {:?}", cargo));
+            let out =
+                cargo.output().expect("We already ran `cargo miri setup` before and that worked");
+            assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
+            // Output is "<sysroot>\n".
+            let stdout = String::from_utf8(out.stdout)
+                .expect("`cargo miri setup` stdout is not valid UTF-8");
+            let sysroot = stdout.trim_end();
+            builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {:?}", sysroot));
+            sysroot.to_owned()
+        };
+
+        // # Run `cargo test`.
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            host,
+            "test",
+            "src/tools/miri",
+            SourceType::Submodule,
+            &[],
+        );
+        cargo.add_rustc_lib_path(builder, compiler);
+
+        // miri tests need to know about the stage sysroot
+        cargo.env("MIRI_SYSROOT", miri_sysroot);
+        cargo.env("MIRI_HOST_SYSROOT", sysroot);
+        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
+        cargo.env("MIRI", miri);
+        // propagate --bless
+        if builder.config.cmd.bless() {
+            cargo.env("MIRI_BLESS", "Gesundheit");
+        }
+
+        cargo.arg("--").args(builder.config.cmd.test_args());
+
+        let mut cargo = Command::from(cargo);
+        builder.run(&mut cargo);
     }
 }
 

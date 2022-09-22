@@ -868,8 +868,8 @@ tool_extended!((self, builder),
     Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true, in_tree=true, {};
     CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
     Clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
-    Miri, "src/tools/miri", "miri", stable=false, {};
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, {};
+    Miri, "src/tools/miri", "miri", stable=false, in_tree=true, {};
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, in_tree=true, {};
     Rls, "src/tools/rls", "rls", stable=true, {};
     // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
     // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,

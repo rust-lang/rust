@@ -1,0 +1,19 @@
+error: unsupported operation: can't call foreign function: epoll_create1
+  --> CARGO_REGISTRY/.../epoll.rs:LL:CC
+   |
+LL |         syscall!(epoll_create1(flag)).map(|ep| Selector {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't call foreign function: epoll_create1
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+   = note: BACKTRACE:
+note: inside `main` at $DIR/tokio_mvp.rs:LL:CC
+  --> $DIR/tokio_mvp.rs:LL:CC
+   |
+LL | #[tokio::main]
+   | ^^^^^^^^^^^^^^
+   = note: this error originates in the macro `syscall` which comes from the expansion of the attribute macro `tokio::main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

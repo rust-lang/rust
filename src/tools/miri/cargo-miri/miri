@@ -1,0 +1,4 @@
+#!/bin/sh
+# RA invokes `./miri cargo ...` for each workspace, so we need to forward that to the main `miri`
+# script. See <https://github.com/rust-analyzer/rust-analyzer/issues/10793>.
+exec "$(dirname "$0")"/../miri "$@"

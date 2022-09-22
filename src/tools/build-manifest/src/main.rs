@@ -11,9 +11,9 @@ mod versions;
 use crate::checksum::Checksums;
 use crate::manifest::{Component, Manifest, Package, Rename, Target};
 use crate::versions::{PkgType, Versions};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::env;
-use std::fs::{self, File};
+use std::fs;
 use std::path::{Path, PathBuf};
 
 static HOSTS: &[&str] = &[
@@ -239,7 +239,6 @@ fn main() {
 
 impl Builder {
     fn build(&mut self) {
-        self.check_toolstate();
         let manifest = self.build_manifest();
 
         let channel = self.versions.channel().to_string();
@@ -259,29 +258,6 @@ impl Builder {
         }
 
         t!(self.checksums.store_cache());
-    }
-
-    /// If a tool does not pass its tests on *any* of Linux and Windows, don't ship
-    /// it on *all* targets, because tools like Miri can "cross-run" programs for
-    /// different targets, for example, run a program for `x86_64-pc-windows-msvc`
-    /// on `x86_64-unknown-linux-gnu`.
-    /// Right now, we do this only for Miri.
-    fn check_toolstate(&mut self) {
-        for file in &["toolstates-linux.json", "toolstates-windows.json"] {
-            let toolstates: Option<HashMap<String, String>> = File::open(self.input.join(file))
-                .ok()
-                .and_then(|f| serde_json::from_reader(&f).ok());
-            let toolstates = toolstates.unwrap_or_else(|| {
-                println!("WARNING: `{}` missing/malformed; assuming all tools failed", file);
-                HashMap::default() // Use empty map if anything went wrong.
-            });
-            // Mark some tools as missing based on toolstate.
-            if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
-                println!("Miri tests are not passing, removing component");
-                self.versions.disable_version(&PkgType::Miri);
-                break;
-            }
-        }
     }
 
     fn build_manifest(&mut self) -> Manifest {

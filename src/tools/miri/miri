@@ -1,0 +1,236 @@
+#!/bin/bash
+set -e
+USAGE=$(cat <<"EOF"
+  COMMANDS
+
+./miri install <flags>:
+Installs the miri driver and cargo-miri. <flags> are passed to `cargo
+install`. Sets up the rpath such that the installed binary should work in any
+working directory. However, the rustup toolchain when invoking `cargo miri`
+needs to be the same one used for `./miri install`.
+
+./miri build <flags>:
+Just build miri. <flags> are passed to `cargo build`.
+
+./miri check <flags>:
+Just check miri. <flags> are passed to `cargo check`.
+
+./miri test <flags>:
+Build miri, set up a sysroot and then run the test suite. <flags> are passed
+to the final `cargo test` invocation.
+
+./miri run <flags>:
+Build miri, set up a sysroot and then run the driver with the given <flags>.
+(Also respects MIRIFLAGS environment variable.)
+
+./miri fmt <flags>:
+Format all sources and tests. <flags> are passed to `rustfmt`.
+
+./miri clippy <flags>:
+Runs clippy on all sources. <flags> are passed to `cargo clippy`.
+
+./miri cargo <flags>:
+Runs just `cargo <flags>` with the Miri-specific environment variables.
+Mainly meant to be invoked by rust-analyzer.
+
+./miri many-seeds <command>:
+Runs <command> over and over again with different seeds for Miri. The MIRIFLAGS
+variable is set to its original value appended with ` -Zmiri-seed=$SEED` for
+many different seeds.
+
+./miri bench <benches>:
+Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
+<benches> can explicitly list the benchmarks to run; by default, all of them are run.
+
+  ENVIRONMENT VARIABLES
+
+MIRI_SYSROOT:
+If already set, the "sysroot setup" step is skipped.
+
+CARGO_EXTRA_FLAGS:
+Pass extra flags to all cargo invocations. (Ignored by `./miri cargo`.)
+EOF
+)
+
+## We need to know where we are.
+# macOS does not have a useful readlink/realpath so we have to use Python instead...
+MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
+
+## Run the auto-things.
+if [ -z "$MIRI_AUTO_OPS" ]; then
+    export MIRI_AUTO_OPS=42
+
+    # Run this first, so that the toolchain doesn't change after
+    # other code has run.
+    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-toolchain" ] ; then
+        (cd "$MIRIDIR" && ./rustup-toolchain)
+    fi
+
+    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-fmt" ] ; then
+        $0 fmt
+    fi
+
+    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-clippy" ] ; then
+        $0 clippy -- -D warnings
+    fi
+fi
+
+## Determine command and toolchain.
+COMMAND="$1"
+[ $# -gt 0 ] && shift
+# Doing this *after* auto-toolchain logic above, since that might change the toolchain.
+TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
+
+## Handle some commands early, since they should *not* alter the environment.
+case "$COMMAND" in
+many-seeds)
+    for SEED in $({ echo obase=16; seq 0 255; } | bc); do
+        echo "Trying seed: $SEED"
+        MIRIFLAGS="$MIRIFLAGS -Zmiri-seed=$SEED" $@ || { echo "Failing seed: $SEED"; break; }
+    done
+    exit 0
+    ;;
+bench)
+    # Make sure we have an up-to-date Miri installed
+    "$0" install
+    # Run the requested benchmarks
+    if [ -z "${1+exists}" ]; then
+        BENCHES=( $(ls "$MIRIDIR/bench-cargo-miri" ) )
+    else
+        BENCHES=("$@")
+    fi
+    for BENCH in "${BENCHES[@]}"; do
+        hyperfine -w 1 -m 5 --shell=none "cargo +$TOOLCHAIN miri run --manifest-path $MIRIDIR/bench-cargo-miri/$BENCH/Cargo.toml"
+    done
+    exit 0
+    ;;
+esac
+
+## Prepare the environment
+# Determine some toolchain properties
+# export the target so its available in miri
+TARGET=$(rustc +$TOOLCHAIN --version --verbose | grep "^host:" | cut -d ' ' -f 2)
+SYSROOT=$(rustc +$TOOLCHAIN --print sysroot)
+LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
+if ! test -d "$LIBDIR"; then
+    echo "Something went wrong determining the library dir."
+    echo "I got $LIBDIR but that does not exist."
+    echo "Please report a bug at https://github.com/rust-lang/miri/issues."
+    exit 2
+fi
+
+# Prepare flags for cargo and rustc.
+CARGO="cargo +$TOOLCHAIN"
+# Share target dir between `miri` and `cargo-miri`.
+if [ -z "$CARGO_TARGET_DIR" ]; then
+    export CARGO_TARGET_DIR="$MIRIDIR/target"
+fi
+# We configure dev builds to not be unusably slow.
+if [ -z "$CARGO_PROFILE_DEV_OPT_LEVEL" ]; then
+    export CARGO_PROFILE_DEV_OPT_LEVEL=2
+fi
+# Enable rustc-specific lints (ignored without `-Zunstable-options`).
+export RUSTFLAGS="-Zunstable-options -Wrustc::internal $RUSTFLAGS"
+# We set the rpath so that Miri finds the private rustc libraries it needs.
+export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR $RUSTFLAGS"
+
+## Helper functions
+
+# Build a sysroot and set MIRI_SYSROOT to use it. Arguments are passed to `cargo miri setup`.
+build_sysroot() {
+    if ! MIRI_SYSROOT="$($CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -q -- miri setup --print-sysroot "$@")"; then
+        echo "'cargo miri setup' failed"
+        exit 1
+    fi
+    export MIRI_SYSROOT
+}
+
+# Prepare and set MIRI_SYSROOT. Respects `MIRI_TEST_TARGET` and takes into account
+# locally built vs. distributed rustc.
+find_sysroot() {
+    if [ -n "$MIRI_SYSROOT" ]; then
+        # Sysroot already set, use that.
+        return 0
+    fi
+    # We need to build a sysroot.
+    if [ -n "$MIRI_TEST_TARGET" ]; then
+        build_sysroot --target "$MIRI_TEST_TARGET"
+    else
+        build_sysroot
+    fi
+}
+
+## Main
+
+# Run command.
+case "$COMMAND" in
+install)
+    # "--locked" to respect the Cargo.lock file if it exists.
+    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR" --force --locked "$@"
+    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR"/cargo-miri --force --locked "$@"
+    ;;
+check)
+    # Check, and let caller control flags.
+    $CARGO check $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml --all-targets "$@"
+    $CARGO check $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
+    ;;
+build)
+    # Build, and let caller control flags.
+    $CARGO build $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
+    $CARGO build $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
+    ;;
+test|bless)
+    # First build and get a sysroot.
+    $CARGO build $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
+    find_sysroot
+    if [ "$COMMAND" = "bless" ]; then
+        export MIRI_BLESS="Gesundheit"
+    fi
+    # Then test, and let caller control flags.
+    # Only in root project as `cargo-miri` has no tests.
+    $CARGO test $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
+    ;;
+run)
+    # Scan for "--target" to overwrite the "MIRI_TEST_TARGET" env var so
+    # that we set the MIRI_SYSROOT up the right way.
+    FOUND_TARGET_OPT=0
+    for ARG in "$@"; do
+        if [ "$LAST_ARG" = "--target" ]; then
+            # Found it!
+            export MIRI_TEST_TARGET="$ARG"
+            FOUND_TARGET_OPT=1
+            break
+        fi
+        LAST_ARG="$ARG"
+    done
+    if [ "$FOUND_TARGET_OPT" = "0" ] && [ -n "$MIRI_TEST_TARGET" ]; then
+        # Make sure Miri actually uses this target.
+        MIRIFLAGS="$MIRIFLAGS --target $MIRI_TEST_TARGET"
+    fi
+    # First build and get a sysroot.
+    $CARGO build $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
+    find_sysroot
+    # Then run the actual command.
+    exec $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- $MIRIFLAGS "$@"
+    ;;
+fmt)
+    find "$MIRIDIR" -not \( -name target -prune \) -name '*.rs' \
+        | xargs rustfmt +$TOOLCHAIN --edition=2021 --config-path "$MIRIDIR/rustfmt.toml" "$@"
+    ;;
+clippy)
+    $CARGO clippy $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml --all-targets "$@"
+    $CARGO clippy $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
+    ;;
+cargo)
+    # We carefully kept the working dir intact, so this will run cargo *on the workspace in the
+    # current working dir*, not on the main Miri workspace. That is exactly what RA needs.
+    $CARGO "$@"
+    ;;
+*)
+    if [ -n "$COMMAND" ]; then
+      echo "Unknown command: $COMMAND"
+      echo
+    fi
+    echo "$USAGE"
+    exit 1
+esac

@@ -77,7 +77,6 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
 // though, as otherwise we will be unable to file an issue if they start
 // failing.
 static NIGHTLY_TOOLS: &[(&str, &str)] = &[
-    ("miri", "src/tools/miri"),
     ("embedded-book", "src/doc/embedded-book"),
     // ("rustc-dev-guide", "src/doc/rustc-dev-guide"),
 ];
