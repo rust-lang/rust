@@ -335,5 +335,21 @@ LL |         return 0;
    |
    = help: remove `return`
 
-error: aborting due to 42 previous errors
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:266:13
+   |
+LL |             return *(x as *const isize);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:268:13
+   |
+LL |             return !*(x as *const isize);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `return`
+
+error: aborting due to 44 previous errors
 

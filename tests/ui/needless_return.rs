@@ -260,4 +260,14 @@ fn issue9192() -> i32 {
     };
 }
 
+fn issue9503(x: usize) -> isize {
+    unsafe {
+        if x > 12 {
+            return *(x as *const isize);
+        } else {
+            return !*(x as *const isize);
+        };
+    };
+}
+
 fn main() {}
