@@ -1088,6 +1088,12 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	margin-right: 0.3rem;
 }
 
+/* This is to prevent the `.stab` elements to overflow the .docblock elements. */
+.docblock .stab {
+	padding: 0 0.125em;
+	margin-bottom: 0;
+}
+
 /* Black one-pixel outline around emoji shapes */
 .emoji {
 	text-shadow:
