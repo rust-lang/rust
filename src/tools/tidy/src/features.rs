@@ -9,6 +9,7 @@
 //! * All unstable lang features have tests to ensure they are actually unstable.
 //! * Language features in a group are sorted by feature name.
 
+use crate::walk::{filter_dirs, walk, walk_many};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
@@ -92,14 +93,14 @@ pub fn check(
     let lib_features = get_and_check_lib_features(lib_path, bad, &features);
     assert!(!lib_features.is_empty());
 
-    super::walk_many(
+    walk_many(
         &[
             &src_path.join("test/ui"),
             &src_path.join("test/ui-fulldeps"),
             &src_path.join("test/rustdoc-ui"),
             &src_path.join("test/rustdoc"),
         ],
-        &mut |path| super::filter_dirs(path),
+        &mut filter_dirs,
         &mut |entry, contents| {
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();
@@ -466,9 +467,9 @@ fn map_lib_features(
     base_src_path: &Path,
     mf: &mut dyn FnMut(Result<(&str, Feature), &str>, &Path, usize),
 ) {
-    super::walk(
+    walk(
         base_src_path,
-        &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
+        &mut |path| filter_dirs(path) || path.ends_with("src/test"),
         &mut |entry, contents| {
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();

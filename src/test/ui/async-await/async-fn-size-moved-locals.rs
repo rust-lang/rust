@@ -8,6 +8,7 @@
 // See issue #59123 for a full explanation.
 
 // ignore-emscripten (sizes don't match)
+// needs-unwind Size of Futures change on panic=abort
 // run-pass
 
 // edition:2018

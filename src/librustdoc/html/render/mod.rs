@@ -290,19 +290,66 @@ impl AllTypes {
             };
         }
     }
-}
 
-impl AllTypes {
+    fn item_sections(&self) -> FxHashSet<ItemSection> {
+        let mut sections = FxHashSet::default();
+
+        if !self.structs.is_empty() {
+            sections.insert(ItemSection::Structs);
+        }
+        if !self.enums.is_empty() {
+            sections.insert(ItemSection::Enums);
+        }
+        if !self.unions.is_empty() {
+            sections.insert(ItemSection::Unions);
+        }
+        if !self.primitives.is_empty() {
+            sections.insert(ItemSection::PrimitiveTypes);
+        }
+        if !self.traits.is_empty() {
+            sections.insert(ItemSection::Traits);
+        }
+        if !self.macros.is_empty() {
+            sections.insert(ItemSection::Macros);
+        }
+        if !self.functions.is_empty() {
+            sections.insert(ItemSection::Functions);
+        }
+        if !self.typedefs.is_empty() {
+            sections.insert(ItemSection::TypeDefinitions);
+        }
+        if !self.opaque_tys.is_empty() {
+            sections.insert(ItemSection::OpaqueTypes);
+        }
+        if !self.statics.is_empty() {
+            sections.insert(ItemSection::Statics);
+        }
+        if !self.constants.is_empty() {
+            sections.insert(ItemSection::Constants);
+        }
+        if !self.attributes.is_empty() {
+            sections.insert(ItemSection::AttributeMacros);
+        }
+        if !self.derives.is_empty() {
+            sections.insert(ItemSection::DeriveMacros);
+        }
+        if !self.trait_aliases.is_empty() {
+            sections.insert(ItemSection::TraitAliases);
+        }
+
+        sections
+    }
+
     fn print(self, f: &mut Buffer) {
-        fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, title: &str) {
+        fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, kind: ItemSection) {
             if !e.is_empty() {
                 let mut e: Vec<&ItemEntry> = e.iter().collect();
                 e.sort();
                 write!(
                     f,
-                    "<h3 id=\"{}\">{}</h3><ul class=\"all-items\">",
-                    title.replace(' ', "-"), // IDs cannot contain whitespaces.
-                    title
+                    "<h3 id=\"{id}\">{title}</h3><ul class=\"all-items\">",
+                    id = kind.id(),
+                    title = kind.name(),
                 );
 
                 for s in e.iter() {
@@ -320,20 +367,20 @@ impl AllTypes {
         );
         // Note: print_entries does not escape the title, because we know the current set of titles
         // doesn't require escaping.
-        print_entries(f, &self.structs, "Structs");
-        print_entries(f, &self.enums, "Enums");
-        print_entries(f, &self.unions, "Unions");
-        print_entries(f, &self.primitives, "Primitives");
-        print_entries(f, &self.traits, "Traits");
-        print_entries(f, &self.macros, "Macros");
-        print_entries(f, &self.attributes, "Attribute Macros");
-        print_entries(f, &self.derives, "Derive Macros");
-        print_entries(f, &self.functions, "Functions");
-        print_entries(f, &self.typedefs, "Typedefs");
-        print_entries(f, &self.trait_aliases, "Trait Aliases");
-        print_entries(f, &self.opaque_tys, "Opaque Types");
-        print_entries(f, &self.statics, "Statics");
-        print_entries(f, &self.constants, "Constants");
+        print_entries(f, &self.structs, ItemSection::Structs);
+        print_entries(f, &self.enums, ItemSection::Enums);
+        print_entries(f, &self.unions, ItemSection::Unions);
+        print_entries(f, &self.primitives, ItemSection::PrimitiveTypes);
+        print_entries(f, &self.traits, ItemSection::Traits);
+        print_entries(f, &self.macros, ItemSection::Macros);
+        print_entries(f, &self.attributes, ItemSection::AttributeMacros);
+        print_entries(f, &self.derives, ItemSection::DeriveMacros);
+        print_entries(f, &self.functions, ItemSection::Functions);
+        print_entries(f, &self.typedefs, ItemSection::TypeDefinitions);
+        print_entries(f, &self.trait_aliases, ItemSection::TraitAliases);
+        print_entries(f, &self.opaque_tys, ItemSection::OpaqueTypes);
+        print_entries(f, &self.statics, ItemSection::Statics);
+        print_entries(f, &self.constants, ItemSection::Constants);
     }
 }
 
@@ -2468,7 +2515,7 @@ fn sidebar_enum(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, e: &clean:
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-enum ItemSection {
+pub(crate) enum ItemSection {
     Reexports,
     PrimitiveTypes,
     Modules,
@@ -2620,25 +2667,11 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
     }
 }
 
-fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
+pub(crate) fn sidebar_module_like(buf: &mut Buffer, item_sections_in_use: FxHashSet<ItemSection>) {
     use std::fmt::Write as _;
 
     let mut sidebar = String::new();
 
-    let item_sections_in_use: FxHashSet<_> = items
-        .iter()
-        .filter(|it| {
-            !it.is_stripped()
-                && it
-                    .name
-                    .or_else(|| {
-                        if let clean::ImportItem(ref i) = *it.kind &&
-                            let clean::ImportKind::Simple(s) = i.kind { Some(s) } else { None }
-                    })
-                    .is_some()
-        })
-        .map(|it| item_ty_to_section(it.type_()))
-        .collect();
     for &sec in ItemSection::ALL.iter().filter(|sec| item_sections_in_use.contains(sec)) {
         let _ = write!(sidebar, "<li><a href=\"#{}\">{}</a></li>", sec.id(), sec.name());
     }
@@ -2654,6 +2687,25 @@ fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
             sidebar
         );
     }
+}
+
+fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
+    let item_sections_in_use: FxHashSet<_> = items
+        .iter()
+        .filter(|it| {
+            !it.is_stripped()
+                && it
+                    .name
+                    .or_else(|| {
+                        if let clean::ImportItem(ref i) = *it.kind &&
+                            let clean::ImportKind::Simple(s) = i.kind { Some(s) } else { None }
+                    })
+                    .is_some()
+        })
+        .map(|it| item_ty_to_section(it.type_()))
+        .collect();
+
+    sidebar_module_like(buf, item_sections_in_use);
 }
 
 fn sidebar_foreign_type(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {

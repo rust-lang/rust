@@ -17,8 +17,8 @@ use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
-    collect_spans_and_sources, print_sidebar, scrape_examples_help, AllTypes, LinkFromSrc, NameDoc,
-    StylePath, BASIC_KEYWORDS,
+    collect_spans_and_sources, print_sidebar, scrape_examples_help, sidebar_module_like, AllTypes,
+    LinkFromSrc, NameDoc, StylePath, BASIC_KEYWORDS,
 };
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
@@ -597,16 +597,24 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             keywords: BASIC_KEYWORDS,
             resource_suffix: &shared.resource_suffix,
         };
-        let sidebar = if shared.cache.crate_version.is_some() {
-            format!("<h2 class=\"location\">Crate {}</h2>", crate_name)
-        } else {
-            String::new()
-        };
         let all = shared.all.replace(AllTypes::new());
+        let mut sidebar = Buffer::html();
+        if shared.cache.crate_version.is_some() {
+            write!(sidebar, "<h2 class=\"location\">Crate {}</h2>", crate_name)
+        };
+
+        let mut items = Buffer::html();
+        sidebar_module_like(&mut items, all.item_sections());
+        if !items.is_empty() {
+            sidebar.push_str("<div class=\"sidebar-elems\">");
+            sidebar.push_buffer(items);
+            sidebar.push_str("</div>");
+        }
+
         let v = layout::render(
             &shared.layout,
             &page,
-            sidebar,
+            sidebar.into_inner(),
             |buf: &mut Buffer| all.print(buf),
             &shared.style_files,
         );

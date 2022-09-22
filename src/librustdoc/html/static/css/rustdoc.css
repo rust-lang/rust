@@ -728,10 +728,6 @@ pre, .rustdoc.source .example-wrap {
 	padding: 0;
 }
 
-.content > .methods > .method {
-	font-size: 1rem;
-	position: relative;
-}
 /* Shift "where ..." part of method or fn definition down a line */
 .content .method .where,
 .content .fn .where,
@@ -1090,6 +1086,12 @@ so that we can apply CSS-filters to change the arrow color in themes */
 .stab .emoji {
 	font-size: 1.25rem;
 	margin-right: 0.3rem;
+}
+
+/* This is to prevent the `.stab` elements to overflow the .docblock elements. */
+.docblock .stab {
+	padding: 0 0.125em;
+	margin-bottom: 0;
 }
 
 /* Black one-pixel outline around emoji shapes */

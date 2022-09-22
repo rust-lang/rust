@@ -16,6 +16,7 @@
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
 
+use crate::walk::{filter_dirs, walk};
 use regex::Regex;
 use std::path::Path;
 
@@ -218,13 +219,13 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
 
 pub fn check(path: &Path, bad: &mut bool) {
     fn skip(path: &Path) -> bool {
-        super::filter_dirs(path) || skip_markdown_path(path)
+        filter_dirs(path) || skip_markdown_path(path)
     }
     let problematic_consts_strings: Vec<String> = (PROBLEMATIC_CONSTS.iter().map(u32::to_string))
         .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:x}", v)))
         .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:X}", v)))
         .collect();
-    super::walk(path, &mut skip, &mut |entry, contents| {
+    walk(path, &mut skip, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md", ".css", ".ftl"];
