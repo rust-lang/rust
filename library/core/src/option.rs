@@ -504,11 +504,13 @@
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::marker::Destruct;
+use crate::mem::ManuallyDrop;
 use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
     convert, hint, mem,
     ops::{self, ControlFlow, Deref, DerefMut},
+    ptr,
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
@@ -891,6 +893,14 @@ impl<T> Option<T> {
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const unsafe fn unwrap_unchecked(self) -> T {
         debug_assert!(self.is_some());
+        // Make things easier for the optimizer when niches are involved
+        if const { mem::size_of::<T>() == mem::size_of::<Self>() } {
+            // SAFETY: Size equality implies niches are involved. And with niches
+            // transmutes are ok because they don't change bits, only make use of invalid values
+            unsafe {
+                return ptr::read(&ManuallyDrop::new(self) as *const _ as *const T);
+            }
+        }
         match self {
             Some(val) => val,
             // SAFETY: the safety contract must be upheld by the caller.

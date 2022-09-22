@@ -491,8 +491,9 @@
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::marker::Destruct;
+use crate::mem::ManuallyDrop;
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
-use crate::{convert, fmt, hint};
+use crate::{convert, fmt, hint, mem, ptr};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -1524,6 +1525,14 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     pub unsafe fn unwrap_unchecked(self) -> T {
         debug_assert!(self.is_ok());
+        // Make things easier for the optimizer when niches are involved
+        if const { mem::size_of::<T>() == mem::size_of::<Self>() } {
+            // SAFETY: Size equality implies niches are involved. And with niches
+            // transmutes are ok because they don't change bits, only make use of invalid values
+            unsafe {
+                return ptr::read(&ManuallyDrop::new(self) as *const _ as *const T);
+            }
+        }
         match self {
             Ok(t) => t,
             // SAFETY: the safety contract must be upheld by the caller.
@@ -1556,6 +1565,14 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     pub unsafe fn unwrap_err_unchecked(self) -> E {
         debug_assert!(self.is_err());
+        // Make things easier for the optimizer when niches are involved
+        if const { mem::size_of::<E>() == mem::size_of::<Self>() } {
+            // SAFETY: Size equality implies niches are involved. And with niches
+            // transmutes are ok because they don't change bits, only make use of invalid values
+            unsafe {
+                return ptr::read(&ManuallyDrop::new(self) as *const _ as *const E);
+            }
+        }
         match self {
             // SAFETY: the safety contract must be upheld by the caller.
             Ok(_) => unsafe { hint::unreachable_unchecked() },
