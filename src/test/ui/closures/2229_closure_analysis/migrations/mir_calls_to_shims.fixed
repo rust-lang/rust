@@ -3,7 +3,6 @@
 
 #![deny(rust_2021_incompatible_closure_captures)]
 //~^ NOTE: the lint level is defined here
-// ignore-wasm32-bare compiled with panic=abort by default
 #![feature(fn_traits)]
 #![feature(never_type)]
 
