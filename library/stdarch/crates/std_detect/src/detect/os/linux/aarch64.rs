@@ -23,58 +23,62 @@ pub(crate) fn detect_features() -> cache::Initializer {
 /// The names match those used for cpuinfo.
 ///
 /// [hwcap]: https://github.com/torvalds/linux/blob/master/arch/arm64/include/uapi/asm/hwcap.h
+#[derive(Debug, Default, PartialEq)]
 struct AtHwcap {
-    fp: bool,    // 0
-    asimd: bool, // 1
-    // evtstrm: bool, // 2 No LLVM support
-    aes: bool,     // 3
-    pmull: bool,   // 4
-    sha1: bool,    // 5
-    sha2: bool,    // 6
-    crc32: bool,   // 7
-    atomics: bool, // 8
-    fphp: bool,    // 9
-    asimdhp: bool, // 10
-    // cpuid: bool, // 11 No LLVM support
-    asimdrdm: bool, // 12
-    jscvt: bool,    // 13
-    fcma: bool,     // 14
-    lrcpc: bool,    // 15
-    dcpop: bool,    // 16
-    sha3: bool,     // 17
-    sm3: bool,      // 18
-    sm4: bool,      // 19
-    asimddp: bool,  // 20
-    sha512: bool,   // 21
-    sve: bool,      // 22
-    fhm: bool,      // 23
-    dit: bool,      // 24
-    uscat: bool,    // 25
-    ilrcpc: bool,   // 26
-    flagm: bool,    // 27
-    ssbs: bool,     // 28
-    sb: bool,       // 29
-    paca: bool,     // 30
-    pacg: bool,     // 31
-    dcpodp: bool,   // 32
-    sve2: bool,     // 33
-    sveaes: bool,   // 34
-    // svepmull: bool, // 35 No LLVM support
-    svebitperm: bool, // 36
-    svesha3: bool,    // 37
-    svesm4: bool,     // 38
-    // flagm2: bool, // 39 No LLVM support
-    frint: bool, // 40
-    // svei8mm: bool, // 41 See i8mm feature
-    svef32mm: bool, // 42
-    svef64mm: bool, // 43
-    // svebf16: bool, // 44 See bf16 feature
-    i8mm: bool, // 45
-    bf16: bool, // 46
-    // dgh: bool, // 47 No LLVM support
-    rng: bool, // 48
-    bti: bool, // 49
-    mte: bool, // 50
+    // AT_HWCAP
+    fp: bool,
+    asimd: bool,
+    // evtstrm: No LLVM support.
+    aes: bool,
+    pmull: bool,
+    sha1: bool,
+    sha2: bool,
+    crc32: bool,
+    atomics: bool,
+    fphp: bool,
+    asimdhp: bool,
+    // cpuid: No LLVM support.
+    asimdrdm: bool,
+    jscvt: bool,
+    fcma: bool,
+    lrcpc: bool,
+    dcpop: bool,
+    sha3: bool,
+    sm3: bool,
+    sm4: bool,
+    asimddp: bool,
+    sha512: bool,
+    sve: bool,
+    fhm: bool,
+    dit: bool,
+    uscat: bool,
+    ilrcpc: bool,
+    flagm: bool,
+    ssbs: bool,
+    sb: bool,
+    paca: bool,
+    pacg: bool,
+
+    // AT_HWCAP2
+    dcpodp: bool,
+    sve2: bool,
+    sveaes: bool,
+    // svepmull: No LLVM support.
+    svebitperm: bool,
+    svesha3: bool,
+    svesm4: bool,
+    // flagm2: No LLVM support.
+    frint: bool,
+    // svei8mm: See i8mm feature.
+    svef32mm: bool,
+    svef64mm: bool,
+    // svebf16: See bf16 feature.
+    i8mm: bool,
+    bf16: bool,
+    // dgh: No LLVM support.
+    rng: bool,
+    bti: bool,
+    mte: bool,
 }
 
 impl From<auxvec::AuxVec> for AtHwcap {
@@ -113,25 +117,25 @@ impl From<auxvec::AuxVec> for AtHwcap {
             sb: bit::test(auxv.hwcap, 29),
             paca: bit::test(auxv.hwcap, 30),
             pacg: bit::test(auxv.hwcap, 31),
-            dcpodp: bit::test(auxv.hwcap, 32),
-            sve2: bit::test(auxv.hwcap, 33),
-            sveaes: bit::test(auxv.hwcap, 34),
-            // svepmull: bit::test(auxv.hwcap, 35),
-            svebitperm: bit::test(auxv.hwcap, 36),
-            svesha3: bit::test(auxv.hwcap, 37),
-            svesm4: bit::test(auxv.hwcap, 38),
-            // flagm2: bit::test(auxv.hwcap, 39),
-            frint: bit::test(auxv.hwcap, 40),
-            // svei8mm: bit::test(auxv.hwcap, 41),
-            svef32mm: bit::test(auxv.hwcap, 42),
-            svef64mm: bit::test(auxv.hwcap, 43),
-            // svebf16: bit::test(auxv.hwcap, 44),
-            i8mm: bit::test(auxv.hwcap, 45),
-            bf16: bit::test(auxv.hwcap, 46),
-            // dgh: bit::test(auxv.hwcap, 47),
-            rng: bit::test(auxv.hwcap, 48),
-            bti: bit::test(auxv.hwcap, 49),
-            mte: bit::test(auxv.hwcap, 50),
+            dcpodp: bit::test(auxv.hwcap2, 0),
+            sve2: bit::test(auxv.hwcap2, 1),
+            sveaes: bit::test(auxv.hwcap2, 2),
+            // svepmull: bit::test(auxv.hwcap2, 3),
+            svebitperm: bit::test(auxv.hwcap2, 4),
+            svesha3: bit::test(auxv.hwcap2, 5),
+            svesm4: bit::test(auxv.hwcap2, 6),
+            // flagm2: bit::test(auxv.hwcap2, 7),
+            frint: bit::test(auxv.hwcap2, 8),
+            // svei8mm: bit::test(auxv.hwcap2, 9),
+            svef32mm: bit::test(auxv.hwcap2, 10),
+            svef64mm: bit::test(auxv.hwcap2, 11),
+            // svebf16: bit::test(auxv.hwcap2, 12),
+            i8mm: bit::test(auxv.hwcap2, 13),
+            bf16: bit::test(auxv.hwcap2, 14),
+            // dgh: bit::test(auxv.hwcap2, 15),
+            rng: bit::test(auxv.hwcap2, 16),
+            bti: bit::test(auxv.hwcap2, 17),
+            mte: bit::test(auxv.hwcap2, 18),
         }
     }
 }
@@ -286,5 +290,88 @@ impl AtHwcap {
             enable_feature(Feature::sve2_bitperm, self.svebitperm && self.sve2);
         }
         value
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(feature = "std_detect_file_io")]
+    mod auxv_from_file {
+        use super::auxvec::auxv_from_file;
+        use super::*;
+        // The baseline hwcaps used in the (artificial) auxv test files.
+        fn baseline_hwcaps() -> AtHwcap {
+            AtHwcap {
+                fp: true,
+                asimd: true,
+                aes: true,
+                pmull: true,
+                sha1: true,
+                sha2: true,
+                crc32: true,
+                atomics: true,
+                fphp: true,
+                asimdhp: true,
+                asimdrdm: true,
+                lrcpc: true,
+                dcpop: true,
+                asimddp: true,
+                ssbs: true,
+                ..AtHwcap::default()
+            }
+        }
+
+        #[test]
+        fn linux_empty_hwcap2_aarch64() {
+            let file = concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/detect/test_data/linux-empty-hwcap2-aarch64.auxv"
+            );
+            println!("file: {}", file);
+            let v = auxv_from_file(file).unwrap();
+            println!("HWCAP : 0x{:0x}", v.hwcap);
+            println!("HWCAP2: 0x{:0x}", v.hwcap2);
+            assert_eq!(AtHwcap::from(v), baseline_hwcaps());
+        }
+        #[test]
+        fn linux_no_hwcap2_aarch64() {
+            let file = concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/detect/test_data/linux-no-hwcap2-aarch64.auxv"
+            );
+            println!("file: {}", file);
+            let v = auxv_from_file(file).unwrap();
+            println!("HWCAP : 0x{:0x}", v.hwcap);
+            println!("HWCAP2: 0x{:0x}", v.hwcap2);
+            assert_eq!(AtHwcap::from(v), baseline_hwcaps());
+        }
+        #[test]
+        fn linux_hwcap2_aarch64() {
+            let file = concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/detect/test_data/linux-hwcap2-aarch64.auxv"
+            );
+            println!("file: {}", file);
+            let v = auxv_from_file(file).unwrap();
+            println!("HWCAP : 0x{:0x}", v.hwcap);
+            println!("HWCAP2: 0x{:0x}", v.hwcap2);
+            assert_eq!(
+                AtHwcap::from(v),
+                AtHwcap {
+                    // Some other HWCAP bits.
+                    paca: true,
+                    pacg: true,
+                    // HWCAP2-only bits.
+                    dcpodp: true,
+                    frint: true,
+                    rng: true,
+                    bti: true,
+                    mte: true,
+                    ..baseline_hwcaps()
+                }
+            );
+        }
     }
 }

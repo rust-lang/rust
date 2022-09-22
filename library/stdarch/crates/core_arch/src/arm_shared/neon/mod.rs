@@ -12461,30 +12461,30 @@ mod tests {
     }
     #[simd_test(enable = "neon,i8mm")]
     unsafe fn test_vmmlaq_s32() {
-        let a: i32x4 = i32x4::new(1, 3, 4, 9);
-        let b: i8x16 = i8x16::new(1, 21, 31, 14, 5, 6, 17, 8, 9, 13, 15, 12, 13, 19, 20, 16);
-        let c: i8x16 = i8x16::new(12, 22, 3, 4, 5, 56, 7, 8, 91, 10, 11, 15, 13, 14, 17, 16);
-        let e: i32x4 = i32x4::new(1, 2, 3, 4);
+        let a = i32x4::new(1, 3, 4, -0x10000);
+        let b = i8x16::new(1, 21, 31, 14, 5, 6, -128, 8, 9, 13, 15, 12, 13, -1, 20, 16);
+        let c = i8x16::new(12, 22, 3, 4, -1, 56, 7, 8, 91, 10, -128, 15, 13, 14, 17, 16);
+        let e = i32x4::new(123, -5353, 690, -65576);
         let r: i32x4 = transmute(vmmlaq_s32(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon,i8mm")]
     unsafe fn test_vmmlaq_u32() {
-        let a: u32x4 = u32x4::new(1, 3, 4, 9);
-        let b: i8x16 = i8x16::new(1, 21, 31, 14, 5, 6, 17, 8, 9, 13, 15, 12, 13, 19, 20, 16);
-        let c: i8x16 = i8x16::new(12, 22, 3, 4, 5, 56, 7, 8, 91, 10, 11, 15, 13, 14, 17, 16);
-        let e: u32x4 = u32x4::new(1, 2, 3, 4);
+        let a = u32x4::new(1, 3, 4, 0xffff0000);
+        let b = u8x16::new(1, 21, 31, 14, 5, 6, 128, 8, 9, 13, 15, 12, 13, 255, 20, 16);
+        let c = u8x16::new(12, 22, 3, 4, 255, 56, 7, 8, 91, 10, 128, 15, 13, 14, 17, 16);
+        let e = u32x4::new(3195, 6935, 18354, 4294909144);
         let r: u32x4 = transmute(vmmlaq_u32(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon,i8mm")]
     unsafe fn test_vusmmlaq_s32() {
-        let a: i32x4 = i32x4::new(1, 3, 4, 9);
-        let b: i8x16 = i8x16::new(1, 21, 31, 14, 5, 6, 17, 8, 9, 13, 15, 12, 13, 19, 20, 16);
-        let c: i8x16 = i8x16::new(12, 22, 3, 4, 5, 56, 7, 8, 91, 10, 11, 15, 13, 14, 17, 16);
-        let e: i32x4 = i32x4::new(1, 2, 3, 4);
+        let a = i32x4::new(1, 3, 4, -0x10000);
+        let b = u8x16::new(1, 21, 31, 14, 5, 6, 128, 8, 9, 13, 15, 12, 13, 255, 20, 16);
+        let c = i8x16::new(12, 22, 3, 4, -1, 56, 7, 8, 91, 10, -128, 15, 13, 14, 17, 16);
+        let e = i32x4::new(1915, -1001, 15026, -61992);
         let r: i32x4 = transmute(vusmmlaq_s32(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
