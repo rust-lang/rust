@@ -4,8 +4,8 @@ error: empty `loop {}` wastes CPU cycles
 LL |     loop {}
    |     ^^^^^^^
    |
-   = note: `-D clippy::empty-loop` implied by `-D warnings`
    = help: you should either use `panic!()` or add a call pausing or sleeping the thread to the loop body
+   = note: `-D clippy::empty-loop` implied by `-D warnings`
 
 error: empty `loop {}` wastes CPU cycles
   --> $DIR/empty_loop_no_std.rs:25:5

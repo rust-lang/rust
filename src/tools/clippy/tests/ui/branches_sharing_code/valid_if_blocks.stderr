@@ -6,11 +6,6 @@ LL |       if false {
 LL | |     } else {
    | |_____^
    |
-note: the lint level is defined here
-  --> $DIR/valid_if_blocks.rs:2:9
-   |
-LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: same as this
   --> $DIR/valid_if_blocks.rs:105:12
    |
@@ -18,6 +13,11 @@ LL |       } else {
    |  ____________^
 LL | |     }
    | |_____^
+note: the lint level is defined here
+  --> $DIR/valid_if_blocks.rs:2:9
+   |
+LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `if` has identical blocks
   --> $DIR/valid_if_blocks.rs:115:15

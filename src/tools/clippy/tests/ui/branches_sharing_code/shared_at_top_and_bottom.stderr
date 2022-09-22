@@ -7,17 +7,17 @@ LL | |         let _overlap_start = t * 2;
 LL | |         let _overlap_end = 2 * t;
    | |_________________________________^
    |
-note: the lint level is defined here
-  --> $DIR/shared_at_top_and_bottom.rs:2:36
-   |
-LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: this code is shared at the end
   --> $DIR/shared_at_top_and_bottom.rs:28:5
    |
 LL | /         let _u = 9;
 LL | |     }
    | |_____^
+note: the lint level is defined here
+  --> $DIR/shared_at_top_and_bottom.rs:2:36
+   |
+LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider moving these statements before the if
    |
 LL ~     let t = 7;

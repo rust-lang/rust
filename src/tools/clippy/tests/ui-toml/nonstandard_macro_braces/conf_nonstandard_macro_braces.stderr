@@ -4,12 +4,12 @@ error: use of irregular braces for `vec!` macro
 LL |     let _ = vec! {1, 2, 3};
    |             ^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::nonstandard-macro-braces` implied by `-D warnings`
 help: consider writing `vec![1, 2, 3]`
   --> $DIR/conf_nonstandard_macro_braces.rs:43:13
    |
 LL |     let _ = vec! {1, 2, 3};
    |             ^^^^^^^^^^^^^^
+   = note: `-D clippy::nonstandard-macro-braces` implied by `-D warnings`
 
 error: use of irregular braces for `format!` macro
   --> $DIR/conf_nonstandard_macro_braces.rs:44:13

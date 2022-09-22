@@ -103,11 +103,6 @@ LL | |         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
 LL | |     } else {
    | |_____^
    |
-note: the lint level is defined here
-  --> $DIR/shared_at_top.rs:2:9
-   |
-LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: same as this
   --> $DIR/shared_at_top.rs:98:12
    |
@@ -116,6 +111,11 @@ LL |       } else {
 LL | |         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
 LL | |     }
    | |_____^
+note: the lint level is defined here
+  --> $DIR/shared_at_top.rs:2:9
+   |
+LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

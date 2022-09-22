@@ -4,8 +4,8 @@ error: more than 1 bools in function parameters
 LL | fn g(_: bool, _: bool) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::fn-params-excessive-bools` implied by `-D warnings`
    = help: consider refactoring bools into two-variant enums
+   = note: `-D clippy::fn-params-excessive-bools` implied by `-D warnings`
 
 error: aborting due to previous error
 

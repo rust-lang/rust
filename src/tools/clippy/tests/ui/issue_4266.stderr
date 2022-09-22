@@ -18,8 +18,8 @@ error: methods called `new` usually take no `self`
 LL |     pub async fn new(&mut self) -> Self {
    |                      ^^^^^^^^^
    |
-   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
    = help: consider choosing a less ambiguous name
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
 
 error: aborting due to 3 previous errors
 

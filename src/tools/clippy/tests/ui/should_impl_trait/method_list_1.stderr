@@ -6,8 +6,8 @@ LL | |         unimplemented!()
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
    = help: consider implementing the trait `std::ops::Add` or choosing a less ambiguous method name
+   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
 
 error: method `as_mut` can be confused for the standard trait method `std::convert::AsMut::as_mut`
   --> $DIR/method_list_1.rs:29:5

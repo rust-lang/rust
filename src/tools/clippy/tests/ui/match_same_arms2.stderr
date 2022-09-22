@@ -10,7 +10,6 @@ LL | |             a
 LL | |         },
    | |_________^ help: try removing the arm
    |
-   = note: `-D clippy::match-same-arms` implied by `-D warnings`
    = help: or try changing either arm body
 note: `_` wildcard arm here
   --> $DIR/match_same_arms2.rs:20:9
@@ -23,6 +22,7 @@ LL | |             let mut a = 42 + [23].len() as i32;
 LL | |             a
 LL | |         },
    | |_________^
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
 
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms2.rs:34:9

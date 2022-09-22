@@ -7,12 +7,12 @@ LL | |     result.unwrap()
 LL | | }
    | |_^
    |
-   = note: `-D clippy::missing-panics-doc` implied by `-D warnings`
 note: first possible panic found here
   --> $DIR/missing_panics_doc.rs:8:5
    |
 LL |     result.unwrap()
    |     ^^^^^^^^^^^^^^^
+   = note: `-D clippy::missing-panics-doc` implied by `-D warnings`
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:12:1
