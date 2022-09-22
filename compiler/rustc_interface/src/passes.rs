@@ -927,7 +927,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     sess.time("misc_checking_3", || {
         parallel!(
             {
-                tcx.ensure().privacy_access_levels(());
+                tcx.ensure().effective_visibilities(());
 
                 parallel!(
                     {

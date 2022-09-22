@@ -1,6 +1,6 @@
 //! A collection of utility functions for the `strip_*` passes.
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use std::mem;
 
 use crate::clean::{self, Item, ItemId, ItemIdSet};
@@ -9,7 +9,7 @@ use crate::formats::cache::Cache;
 
 pub(crate) struct Stripper<'a> {
     pub(crate) retained: &'a mut ItemIdSet,
-    pub(crate) access_levels: &'a AccessLevels<DefId>,
+    pub(crate) effective_visibilities: &'a EffectiveVisibilities<DefId>,
     pub(crate) update_retained: bool,
     pub(crate) is_json_output: bool,
 }
@@ -20,13 +20,13 @@ pub(crate) struct Stripper<'a> {
 #[inline]
 fn is_item_reachable(
     is_json_output: bool,
-    access_levels: &AccessLevels<DefId>,
+    effective_visibilities: &EffectiveVisibilities<DefId>,
     item_id: ItemId,
 ) -> bool {
     if is_json_output {
-        access_levels.is_reachable(item_id.expect_def_id())
+        effective_visibilities.is_reachable(item_id.expect_def_id())
     } else {
-        access_levels.is_exported(item_id.expect_def_id())
+        effective_visibilities.is_exported(item_id.expect_def_id())
     }
 }
 
@@ -64,7 +64,7 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::ForeignTypeItem => {
                 let item_id = i.item_id;
                 if item_id.is_local()
-                    && !is_item_reachable(self.is_json_output, self.access_levels, item_id)
+                    && !is_item_reachable(self.is_json_output, self.effective_visibilities, item_id)
                 {
                     debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
                     return None;
@@ -168,7 +168,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
                         item_id.is_local()
                             && !is_item_reachable(
                                 self.is_json_output,
-                                &self.cache.access_levels,
+                                &self.cache.effective_visibilities,
                                 item_id,
                             )
                     })

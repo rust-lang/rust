@@ -26,7 +26,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_hir_pretty::{enum_def_to_string, fn_to_string, ty_to_string};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::{self, print::with_no_trimmed_paths, DefIdTree, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, Input, OutputType};
@@ -54,7 +54,7 @@ use rls_data::{
 pub struct SaveContext<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    access_levels: &'tcx AccessLevels,
+    effective_visibilities: &'tcx EffectiveVisibilities,
     span_utils: SpanUtils<'tcx>,
     config: Config,
     impl_counter: Cell<u32>,
@@ -968,16 +968,16 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             info!("Dumping crate {}", cratename);
 
             // Privacy checking must be done outside of type inference; use a
-            // fallback in case the access levels couldn't have been correctly computed.
-            let access_levels = match tcx.sess.compile_status() {
-                Ok(..) => tcx.privacy_access_levels(()),
-                Err(..) => tcx.arena.alloc(AccessLevels::default()),
+            // fallback in case effective visibilities couldn't have been correctly computed.
+            let effective_visibilities = match tcx.sess.compile_status() {
+                Ok(..) => tcx.effective_visibilities(()),
+                Err(..) => tcx.arena.alloc(EffectiveVisibilities::default()),
             };
 
             let save_ctxt = SaveContext {
                 tcx,
                 maybe_typeck_results: None,
-                access_levels: &access_levels,
+                effective_visibilities: &effective_visibilities,
                 span_utils: SpanUtils::new(&tcx.sess),
                 config: find_config(config),
                 impl_counter: Cell::new(0),

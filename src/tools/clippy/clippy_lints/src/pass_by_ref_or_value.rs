@@ -139,7 +139,7 @@ impl<'tcx> PassByRefOrValue {
     }
 
     fn check_poly_fn(&mut self, cx: &LateContext<'tcx>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
-        if self.avoid_breaking_exported_api && cx.access_levels.is_exported(def_id) {
+        if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
             return;
         }
 

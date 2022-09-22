@@ -20,7 +20,7 @@ use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability::{AllowUnstable, DeprecationEntry, Index};
 use rustc_middle::ty::{query::Providers, TyCtxt};
 use rustc_session::lint;
@@ -516,13 +516,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
 struct MissingStabilityAnnotations<'tcx> {
     tcx: TyCtxt<'tcx>,
-    access_levels: &'tcx AccessLevels,
+    effective_visibilities: &'tcx EffectiveVisibilities,
 }
 
 impl<'tcx> MissingStabilityAnnotations<'tcx> {
     fn check_missing_stability(&self, def_id: LocalDefId, span: Span) {
         let stab = self.tcx.stability().local_stability(def_id);
-        if !self.tcx.sess.opts.test && stab.is_none() && self.access_levels.is_reachable(def_id) {
+        if !self.tcx.sess.opts.test
+            && stab.is_none()
+            && self.effective_visibilities.is_reachable(def_id)
+        {
             let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
             self.tcx.sess.emit_err(MissingStabilityAttr { span, descr });
         }
@@ -540,7 +543,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             .lookup_stability(def_id)
             .map_or(false, |stability| stability.level.is_stable());
         let missing_const_stability_attribute = self.tcx.lookup_const_stability(def_id).is_none();
-        let is_reachable = self.access_levels.is_reachable(def_id);
+        let is_reachable = self.effective_visibilities.is_reachable(def_id);
 
         if is_const && is_stable && missing_const_stability_attribute && is_reachable {
             let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
@@ -919,8 +922,8 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let is_staged_api =
         tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api;
     if is_staged_api {
-        let access_levels = &tcx.privacy_access_levels(());
-        let mut missing = MissingStabilityAnnotations { tcx, access_levels };
+        let effective_visibilities = &tcx.effective_visibilities(());
+        let mut missing = MissingStabilityAnnotations { tcx, effective_visibilities };
         missing.check_missing_stability(CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID));
         tcx.hir().walk_toplevel_module(&mut missing);
         tcx.hir().visit_all_item_likes_in_crate(&mut missing);

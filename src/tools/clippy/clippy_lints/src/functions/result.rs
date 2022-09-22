@@ -36,7 +36,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, l
     if let hir::ItemKind::Fn(ref sig, _generics, _) = item.kind
         && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.def_id.def_id, item.span)
     {
-        if cx.access_levels.is_exported(item.def_id.def_id) {
+        if cx.effective_visibilities.is_exported(item.def_id.def_id) {
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
             check_result_unit_err(cx, err_ty, fn_header_span);
         }
@@ -50,7 +50,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::ImplItem
         && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.def_id.def_id, item.span)
         && trait_ref_of_method(cx, item.def_id.def_id).is_none()
     {
-        if cx.access_levels.is_exported(item.def_id.def_id) {
+        if cx.effective_visibilities.is_exported(item.def_id.def_id) {
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
             check_result_unit_err(cx, err_ty, fn_header_span);
         }
@@ -62,7 +62,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::TraitIt
     if let hir::TraitItemKind::Fn(ref sig, _) = item.kind {
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.def_id.def_id, item.span) {
-            if cx.access_levels.is_exported(item.def_id.def_id) {
+            if cx.effective_visibilities.is_exported(item.def_id.def_id) {
                 check_result_unit_err(cx, err_ty, fn_header_span);
             }
             check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold);
