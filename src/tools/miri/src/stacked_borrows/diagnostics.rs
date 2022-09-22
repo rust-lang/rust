@@ -66,13 +66,20 @@ enum InvalidationCause {
 
 impl Invalidation {
     fn generate_diagnostic(&self) -> (String, SpanData) {
-        (
+        let message = if let InvalidationCause::Retag(_, RetagCause::FnEntry) = self.cause {
+            // For a FnEntry retag, our Span points at the caller.
+            // See `DiagnosticCx::log_invalidation`.
+            format!(
+                "{:?} was later invalidated at offsets {:?} by a {} inside this call",
+                self.tag, self.range, self.cause
+            )
+        } else {
             format!(
                 "{:?} was later invalidated at offsets {:?} by a {}",
                 self.tag, self.range, self.cause
-            ),
-            self.span.data(),
-        )
+            )
+        };
+        (message, self.span.data())
     }
 }
 
@@ -82,7 +89,7 @@ impl fmt::Display for InvalidationCause {
             InvalidationCause::Access(kind) => write!(f, "{}", kind),
             InvalidationCause::Retag(perm, kind) =>
                 if *kind == RetagCause::FnEntry {
-                    write!(f, "{:?} FnEntry retag inside this call", perm)
+                    write!(f, "{:?} FnEntry retag", perm)
                 } else {
                     write!(f, "{:?} retag", perm)
                 },
