@@ -917,7 +917,7 @@ pub trait LintContext: Sized {
     fn lint(
         &self,
         lint: &'static Lint,
-        msg: DiagnosticMessage,
+        msg: impl Into<DiagnosticMessage>,
         decorate: impl for<'a, 'b> FnOnce(
             &'b mut DiagnosticBuilder<'a, ()>,
         ) -> &'b mut DiagnosticBuilder<'a, ()>,
