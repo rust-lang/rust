@@ -1862,11 +1862,11 @@ impl CheckAttrVisitor<'_> {
 
         match std::fs::File::open(&file) {
             Ok(_) => true,
-            Err(err) => {
+            Err(error) => {
                 self.tcx.sess.emit_err(DebugVisualizerUnreadable {
                     span: meta_item.span,
                     file: &file,
-                    error: err,
+                    error,
                 });
                 false
             }

@@ -35,8 +35,8 @@ impl<'tcx> LanguageItemCollector<'tcx> {
 
     fn check_for_lang(&mut self, actual_target: Target, hir_id: HirId) {
         let attrs = self.tcx.hir().attrs(hir_id);
-        if let Some((value, span)) = extract(&attrs) {
-            match ITEM_REFS.get(&value).cloned() {
+        if let Some((name, span)) = extract(&attrs) {
+            match ITEM_REFS.get(&name).cloned() {
                 // Known lang item with attribute on correct target.
                 Some((item_index, expected_target)) if actual_target == expected_target => {
                     self.collect_item_extended(item_index, hir_id, span);
@@ -45,14 +45,14 @@ impl<'tcx> LanguageItemCollector<'tcx> {
                 Some((_, expected_target)) => {
                     self.tcx.sess.emit_err(LangItemOnIncorrectTarget {
                         span,
-                        name: value,
+                        name,
                         expected_target,
                         actual_target,
                     });
                 }
                 // Unknown lang item.
                 _ => {
-                    self.tcx.sess.emit_err(UnknownLangItem { span, name: value });
+                    self.tcx.sess.emit_err(UnknownLangItem { span, name });
                 }
             }
         }
