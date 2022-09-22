@@ -6,7 +6,7 @@ LL |     foo(cell, |cell_a, cell_x| {
    |
    = note: defining type: case1::{closure#0} with closure substs [
                i32,
-               for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('r) }) u32>)),
+               for<'a> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('a) }) u32>)),
                (),
            ]
 
@@ -36,7 +36,7 @@ LL |     foo(cell, |cell_a, cell_x| {
    |
    = note: defining type: case2::{closure#0} with closure substs [
                i32,
-               for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('r) }) u32>)),
+               for<'a> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('a) }) u32>)),
                (),
            ]
    = note: number of external vids: 2

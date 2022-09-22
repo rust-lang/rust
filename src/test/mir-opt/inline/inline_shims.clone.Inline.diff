@@ -14,7 +14,7 @@
 -         _0 = <fn(A, B) as Clone>::clone(move _2) -> bb1; // scope 0 at $DIR/inline-shims.rs:+1:5: +1:14
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-shims.rs:6:7: 6:12
--                                          // + literal: Const { ty: for<'r> fn(&'r fn(A, B)) -> fn(A, B) {<fn(A, B) as Clone>::clone}, val: Value(<ZST>) }
+-                                          // + literal: Const { ty: for<'a> fn(&'a fn(A, B)) -> fn(A, B) {<fn(A, B) as Clone>::clone}, val: Value(<ZST>) }
 -     }
 - 
 -     bb1: {
