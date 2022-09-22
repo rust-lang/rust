@@ -83,7 +83,7 @@ assert-position: (
 )
 
 // Checking on very small mobile. The `i` should be on its own line.
-size: (410, 600)
+size: (365, 600)
 compare-elements-position-false: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
