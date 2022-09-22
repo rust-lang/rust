@@ -1,6 +1,7 @@
 //! Checks that all error codes have at least one test to prevent having error
 //! codes that are silently not thrown by the compiler anymore.
 
+use crate::walk::{filter_dirs, walk};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs::read_to_string;
@@ -217,7 +218,7 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     println!("Checking which error codes lack tests...");
 
     for path in paths {
-        super::walk(path, &mut super::filter_dirs, &mut |entry, contents| {
+        walk(path, &mut filter_dirs, &mut |entry, contents| {
             let file_name = entry.file_name();
             let entry_path = entry.path();
 
