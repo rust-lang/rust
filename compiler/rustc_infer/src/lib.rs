@@ -20,6 +20,7 @@
 #![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(let_chains)]
 #![cfg_attr(bootstrap, feature(let_else))]
+#![feature(if_let_guard)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(try_blocks)]

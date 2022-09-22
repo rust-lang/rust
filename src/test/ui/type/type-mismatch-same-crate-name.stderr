@@ -6,6 +6,17 @@ LL |         a::try_foo(foo2);
    |         |
    |         arguments to this function are incorrect
    |
+   = note: struct `main::a::Foo` and struct `main::a::Foo` have similar names, but are actually distinct types
+note: struct `main::a::Foo` is defined in crate `crate_a2`
+  --> $DIR/auxiliary/crate_a2.rs:1:1
+   |
+LL | pub struct Foo;
+   | ^^^^^^^^^^^^^^
+note: struct `main::a::Foo` is defined in crate `crate_a1`
+  --> $DIR/auxiliary/crate_a1.rs:1:1
+   |
+LL | pub struct Foo;
+   | ^^^^^^^^^^^^^^
    = note: perhaps two different versions of crate `crate_a1` are being used?
 note: function defined here
   --> $DIR/auxiliary/crate_a1.rs:10:8
