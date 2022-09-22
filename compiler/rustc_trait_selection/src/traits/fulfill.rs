@@ -25,10 +25,9 @@ use super::Unimplemented;
 use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
-use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::project::PolyProjectionObligation;
 use crate::traits::project::ProjectionCacheKeyExt as _;
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     /// Note that we include both the `ParamEnv` and the `Predicate`,
@@ -224,6 +223,7 @@ fn mk_pending(os: Vec<PredicateObligation<'_>>) -> Vec<PendingPredicateObligatio
 impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     type Obligation = PendingPredicateObligation<'tcx>;
     type Error = FulfillmentErrorCode<'tcx>;
+    type OUT = Outcome<Self::Obligation, Self::Error>;
 
     /// Identifies whether a predicate obligation needs processing.
     ///
@@ -594,14 +594,16 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         &mut self,
         cycle: I,
         _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>,
-    ) where
+    ) -> Result<(), FulfillmentErrorCode<'tcx>>
+    where
         I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
     {
         if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
             debug!("process_child_obligations: coinductive match");
+            Ok(())
         } else {
             let cycle: Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
-            self.selcx.infcx().report_overflow_error_cycle(&cycle);
+            Err(FulfillmentErrorCode::CodeCycle(cycle))
         }
     }
 }
