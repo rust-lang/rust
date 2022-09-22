@@ -4,8 +4,8 @@ error: found a count of bytes instead of a count of elements of `T`
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE) };
    |                                                              ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::size-of-in-element-count` implied by `-D warnings`
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+   = note: `-D clippy::size-of-in-element-count` implied by `-D warnings`
 
 error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/expressions.rs:18:62

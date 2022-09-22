@@ -4,9 +4,9 @@ error: `format!` in `println!` args
 LL |     println!("error: {}", format!("something failed at {}", Location::caller()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::format-in-format-args` implied by `-D warnings`
    = help: combine the `format!(..)` arguments with the outer `println!(..)` call
    = help: or consider changing `format!` to `format_args!`
+   = note: `-D clippy::format-in-format-args` implied by `-D warnings`
 
 error: `format!` in `println!` args
   --> $DIR/format_args_unfixable.rs:28:5

@@ -6,8 +6,8 @@ LL | #[cfg(linux)]
    |       |
    |       help: try: `target_os = "linux"`
    |
-   = note: `-D clippy::mismatched-target-os` implied by `-D warnings`
    = help: did you mean `unix`?
+   = note: `-D clippy::mismatched-target-os` implied by `-D warnings`
 
 error: operating system used in target family position
   --> $DIR/mismatched_target_os_unix.rs:9:1

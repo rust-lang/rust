@@ -4,8 +4,8 @@ error: integer division
 LL |     let n = 1 / 2;
    |             ^^^^^
    |
-   = note: `-D clippy::integer-division` implied by `-D warnings`
    = help: division of integers may cause loss of precision. consider using floats
+   = note: `-D clippy::integer-division` implied by `-D warnings`
 
 error: integer division
   --> $DIR/integer_division.rs:6:13

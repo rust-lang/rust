@@ -4,8 +4,8 @@ error: map with zero-sized value type
 LL | const CONST_NOT_OK: Option<HashMap<String, ()>> = None;
    |                            ^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::zero-sized-map-values` implied by `-D warnings`
    = help: consider using a set instead
+   = note: `-D clippy::zero-sized-map-values` implied by `-D warnings`
 
 error: map with zero-sized value type
   --> $DIR/zero_sized_hashmap_values.rs:8:30

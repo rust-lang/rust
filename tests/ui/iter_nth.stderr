@@ -4,8 +4,8 @@ error: called `.iter().nth()` on a Vec
 LL |         let bad_vec = some_vec.iter().nth(3);
    |                       ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::iter-nth` implied by `-D warnings`
    = help: calling `.get()` is both faster and more readable
+   = note: `-D clippy::iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice
   --> $DIR/iter_nth.rs:34:26

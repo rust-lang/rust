@@ -4,12 +4,12 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 LL |     forget(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::forget-ref` implied by `-D warnings`
 note: argument has type `&SomeStruct`
   --> $DIR/forget_ref.rs:11:12
    |
 LL |     forget(&SomeStruct);
    |            ^^^^^^^^^^^
+   = note: `-D clippy::forget-ref` implied by `-D warnings`
 
 error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing
   --> $DIR/forget_ref.rs:14:5

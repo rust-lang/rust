@@ -4,13 +4,13 @@ error: this match arm has an identical body to the `_` wildcard arm
 LL |         Abc::A => 0,
    |         ^^^^^^^^^^^ help: try removing the arm
    |
-   = note: `-D clippy::match-same-arms` implied by `-D warnings`
    = help: or try changing either arm body
 note: `_` wildcard arm here
   --> $DIR/match_same_arms.rs:13:9
    |
 LL |         _ => 0, //~ ERROR match arms have same body
    |         ^^^^^^
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
 
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms.rs:17:9

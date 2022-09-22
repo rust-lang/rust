@@ -4,8 +4,8 @@ error: constant division of `0.0` with `0.0` will always result in NaN
 LL |     let nan = 0.0 / 0.0;
    |               ^^^^^^^^^
    |
-   = note: `-D clippy::zero-divided-by-zero` implied by `-D warnings`
    = help: consider using `f64::NAN` if you would like a constant representing NaN
+   = note: `-D clippy::zero-divided-by-zero` implied by `-D warnings`
 
 error: constant division of `0.0` with `0.0` will always result in NaN
   --> $DIR/zero_div_zero.rs:5:19
