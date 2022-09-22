@@ -26,7 +26,7 @@ fn main() -> () {
     let _19: &&[u8];                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _20: &&[u8; 4];              // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let _21: &&[u8; 4];                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _22: std::option::Option<std::fmt::Arguments>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _22: std::option::Option<std::fmt::Arguments<'_>>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let _23: ();                         // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _24: (&&[u8], &&[u8; 4]);    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _25: &&[u8];                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -46,7 +46,7 @@ fn main() -> () {
     let _40: &&[u8];                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _41: &&[u8; 4];              // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let _42: &&[u8; 4];                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _43: std::option::Option<std::fmt::Arguments>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _43: std::option::Option<std::fmt::Arguments<'_>>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     scope 1 {
         debug left_val => _8;            // in scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         debug right_val => _9;           // in scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -128,7 +128,7 @@ fn main() -> () {
         _21 = &(*_9);                    // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _20 = &(*_21);                   // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_22);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _22 = Option::<Arguments>::None; // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _22 = Option::<Arguments<'_>>::None; // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _16 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _17, move _18, move _20, move _22) -> bb19; // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -237,7 +237,7 @@ fn main() -> () {
         _42 = &(*_30);                   // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _41 = &(*_42);                   // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_43);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _43 = Option::<Arguments>::None; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _43 = Option::<Arguments<'_>>::None; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _37 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _38, move _39, move _41, move _43) -> bb19; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
