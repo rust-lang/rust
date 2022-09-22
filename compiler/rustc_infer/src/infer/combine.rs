@@ -147,11 +147,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
                 ty::ConstKind::Infer(InferConst::Var(a_vid)),
                 ty::ConstKind::Infer(InferConst::Var(b_vid)),
             ) => {
-                self.inner
-                    .borrow_mut()
-                    .const_unification_table()
-                    .unify_var_var(a_vid, b_vid)
-                    .map_err(|e| const_unification_error(a_is_expected, e))?;
+                self.inner.borrow_mut().const_unification_table().union(a_vid, b_vid);
                 return Ok(a);
             }
 
@@ -246,21 +242,17 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
         let value = ConstInferUnifier { infcx: self, span, param_env, for_universe, target_vid }
             .relate(ct, ct)?;
 
-        self.inner
-            .borrow_mut()
-            .const_unification_table()
-            .unify_var_value(
-                target_vid,
-                ConstVarValue {
-                    origin: ConstVariableOrigin {
-                        kind: ConstVariableOriginKind::ConstInference,
-                        span: DUMMY_SP,
-                    },
-                    val: ConstVariableValue::Known { value },
+        self.inner.borrow_mut().const_unification_table().union_value(
+            target_vid,
+            ConstVarValue {
+                origin: ConstVariableOrigin {
+                    kind: ConstVariableOriginKind::ConstInference,
+                    span: DUMMY_SP,
                 },
-            )
-            .map(|()| value)
-            .map_err(|e| const_unification_error(vid_is_expected, e))
+                val: ConstVariableValue::Known { value },
+            },
+        );
+        Ok(value)
     }
 
     fn unify_integral_variable(
@@ -766,13 +758,6 @@ pub trait ConstEquateRelation<'tcx>: TypeRelation<'tcx> {
     ///
     /// If they aren't equal then the relation doesn't hold.
     fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
-}
-
-pub fn const_unification_error<'tcx>(
-    a_is_expected: bool,
-    (a, b): (ty::Const<'tcx>, ty::Const<'tcx>),
-) -> TypeError<'tcx> {
-    TypeError::ConstMismatch(ExpectedFound::new(a_is_expected, a, b))
 }
 
 fn int_unification_error<'tcx>(
