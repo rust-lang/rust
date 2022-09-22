@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// let mut vec = vec![0, 1, 2];
     /// vec.retain(|x| x % 2 == 0);
     /// ```
-    #[clippy::version = "1.63.0"]
+    #[clippy::version = "1.64.0"]
     pub MANUAL_RETAIN,
     perf,
     "`retain()` is simpler and the same functionalitys"
