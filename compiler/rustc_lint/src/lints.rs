@@ -1,6 +1,6 @@
-use rustc_errors::{fluent, AddSubdiagnostic, Applicability, DecorateLint, EmissionGuarantee};
+use rustc_errors::{fluent, AddToDiagnostic, Applicability, DecorateLint, EmissionGuarantee};
 use rustc_hir::def_id::DefId;
-use rustc_macros::{LintDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{Predicate, Ty, TyCtxt};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -16,7 +16,7 @@ pub struct ArrayIntoIterDiag<'a> {
     pub sub: Option<ArrayIntoIterDiagSub>,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum ArrayIntoIterDiagSub {
     #[suggestion(remove_into_iter_suggestion, code = "", applicability = "maybe-incorrect")]
     RemoveIntoIter {
@@ -129,7 +129,7 @@ pub struct NonCamelCaseType<'a> {
     pub sub: NonCamelCaseTypeSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum NonCamelCaseTypeSub {
     #[label(label)]
     Label {
@@ -162,8 +162,14 @@ pub enum NonSnakeCaseDiagSub {
     SuggestionAndNote { span: Span },
 }
 
-impl AddSubdiagnostic for NonSnakeCaseDiagSub {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+impl AddToDiagnostic for NonSnakeCaseDiagSub {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
         match self {
             NonSnakeCaseDiagSub::Label { span } => {
                 diag.span_label(span, fluent::label);
@@ -209,7 +215,7 @@ pub struct NonUpperCaseGlobal<'a> {
     pub sub: NonUpperCaseGlobalSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum NonUpperCaseGlobalSub {
     #[label(label)]
     Label {
@@ -307,8 +313,14 @@ pub enum OverflowingBinHexSign {
     Negative,
 }
 
-impl AddSubdiagnostic for OverflowingBinHexSign {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+impl AddToDiagnostic for OverflowingBinHexSign {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
         match self {
             OverflowingBinHexSign::Positive => {
                 diag.note(fluent::positive_note);
@@ -321,7 +333,7 @@ impl AddSubdiagnostic for OverflowingBinHexSign {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum OverflowingBinHexSub<'a> {
     #[suggestion(
         suggestion,
@@ -493,7 +505,7 @@ pub struct PathStatementDrop {
     pub sub: PathStatementDropSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum PathStatementDropSub {
     #[suggestion(suggestion, code = "drop({snippet});", applicability = "machine-applicable")]
     Suggestion {
