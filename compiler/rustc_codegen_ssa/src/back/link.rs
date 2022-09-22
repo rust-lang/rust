@@ -1090,11 +1090,12 @@ fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut d
     // both executables and dynamic shared objects. Everywhere else the runtimes
     // are currently distributed as static libraries which should be linked to
     // executables only.
-    let needs_runtime = match crate_type {
-        CrateType::Executable => true,
-        CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => sess.target.is_like_osx,
-        CrateType::Rlib | CrateType::Staticlib => false,
-    };
+    let needs_runtime = !sess.target.is_like_android
+        && match crate_type {
+            CrateType::Executable => true,
+            CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => sess.target.is_like_osx,
+            CrateType::Rlib | CrateType::Staticlib => false,
+        };
 
     if !needs_runtime {
         return;
