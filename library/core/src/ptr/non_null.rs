@@ -367,13 +367,14 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_stable(feature = "const_nonnull_as_ref", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline(always)]
     pub const unsafe fn as_ref<'a>(&self) -> &'a T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
-        unsafe { &*self.as_ptr() }
+        // `cast_const` avoids a mutable raw pointer deref.
+        unsafe { &*self.as_ptr().cast_const() }
     }
 
     /// Returns a unique reference to the value. If the value may be uninitialized, [`as_uninit_mut`]
