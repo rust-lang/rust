@@ -13,7 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, Node, QPath};
+use rustc_hir::{Expr, ExprKind, Node, QPath};
 use rustc_infer::infer::{
     type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
     RegionVariableOrigin,
@@ -397,6 +397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     custom_span_label = true;
                 }
                 if static_candidates.len() == 1 {
+                    let mut has_unsuggestable_args = false;
                     let ty_str = if let Some(CandidateSource::Impl(impl_did)) =
                     static_candidates.get(0)
                     {
@@ -412,6 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .into_iter()
                                     .map(|arg| {
                                         if !arg.is_suggestable(tcx, true) {
+                                            has_unsuggestable_args = true;
                                             match arg.unpack() {
                                             GenericArgKind::Lifetime(_) => self
                                                 .next_region_var(RegionVariableOrigin::MiscVariable(
@@ -450,12 +452,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         self.ty_to_value_string(actual.peel_refs())
                     };
-                    if let SelfSource::MethodCall(expr) = source {
+                    if let SelfSource::MethodCall(_) = source {
+                        let first_arg = if let Some(CandidateSource::Impl(impl_did)) = static_sources.get(0) &&
+                            let Some(assoc) = self.associated_value(*impl_did, item_name) {
+                            let sig = self.tcx.fn_sig(assoc.def_id);
+                            if let Some(first) = sig.inputs().skip_binder().get(0) {
+                                if first.peel_refs() == rcvr_ty.peel_refs() {
+                                    None
+                                } else {
+                                    Some(if first.is_region_ptr() {
+                                        if first.is_mutable_ptr() { "&mut " } else { "&" }
+                                    } else {
+                                        ""
+                                    })
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+                        let mut applicability = Applicability::MachineApplicable;
+                        let args = if let Some((receiver, args)) = args {
+                            // The first arg is the same kind as the receiver
+                            let it = if first_arg.is_some() {
+                                Box::new(std::iter::once(receiver).chain(args.iter()))
+                                    as Box<dyn Iterator<Item = &Expr<'_>>>
+                            } else {
+                                // There is no `Self` kind to infer the arguments from
+                                if has_unsuggestable_args {
+                                    applicability = Applicability::HasPlaceholders;
+                                }
+                                Box::new(args.iter()) as _
+                            };
+                            format!(
+                                "({}{})",
+                                first_arg.unwrap_or(""),
+                                it.map(|arg| tcx
+                                    .sess
+                                    .source_map()
+                                    .span_to_snippet(arg.span)
+                                    .unwrap_or_else(|_| {
+                                        applicability = Applicability::HasPlaceholders;
+                                        "_".to_owned()
+                                    }))
+                                .collect::<Vec<_>>()
+                                .join(", "),
+                            )
+                        } else {
+                            applicability = Applicability::HasPlaceholders;
+                            "(...)".to_owned()
+                        };
                         err.span_suggestion(
-                            expr.span.to(span),
+                            sugg_span,
                             "use associated function syntax instead",
-                            format!("{}::{}", ty_str, item_name),
-                            Applicability::MachineApplicable,
+                            format!("{}::{}{}", ty_str, item_name, args),
+                            applicability,
                         );
                     } else {
                         err.help(&format!("try with `{}::{}`", ty_str, item_name,));
