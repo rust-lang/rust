@@ -32,8 +32,8 @@ mod abi_sysroot;
 include!(concat!(env!("OUT_DIR"), "/rustc_version.rs"));
 
 // Used by `test/utils.rs`
-#[cfg(test)]
-pub(crate) use abi_1_63::TokenStream as TestTokenStream;
+#[cfg(all(test, feature = "sysroot-abi"))]
+pub(crate) use abi_sysroot::TokenStream as TestTokenStream;
 
 use super::dylib::LoadProcMacroDylibError;
 pub(crate) use abi_1_58::Abi as Abi_1_58;
@@ -143,4 +143,11 @@ impl Abi {
             Self::AbiSysroot(abi) => abi.list_macros(),
         }
     }
+}
+
+#[test]
+fn test_version_check() {
+    let path = paths::AbsPathBuf::assert(crate::proc_macro_test_dylib_path());
+    let info = proc_macro_api::read_dylib_info(&path).unwrap();
+    assert!(info.version.1 >= 50);
 }
