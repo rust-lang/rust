@@ -4,8 +4,8 @@ pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use crate::config::{self, CrateType, InstrumentCoverage, OptLevel, OutputType, SwitchWithOptPath};
 use crate::errors::{
     CannotEnableCrtStaticLinux, CannotMixAndMatchSanitizers, LinkerPluginToWindowsNotSupported,
-    NotCircumventFeature, ProfileSampleUseFileDoesNotExist, ProfileUseFileDoesNotExist,
-    SanitizerCfiEnabled, SanitizerNotSupported, SanitizersNotSupported,
+    NotCircumventFeature, OptimisationFuelExhausted, ProfileSampleUseFileDoesNotExist,
+    ProfileUseFileDoesNotExist, SanitizerCfiEnabled, SanitizerNotSupported, SanitizersNotSupported,
     SplitDebugInfoUnstablePlatform, StackProtectorNotSupportedForTarget,
     TargetRequiresUnwindTables, UnstableVirtualFunctionElimination, UnsupportedDwarfVersion,
 };
@@ -28,7 +28,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle, MultiSpan,
+    ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle, MultiSpan, Noted,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -500,6 +500,8 @@ impl Session {
         self.diagnostic().span_err_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         self.diagnostic().err(msg)
     }
@@ -532,6 +534,15 @@ impl Session {
     }
     pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
         self.parse_sess.emit_warning(warning)
+    }
+    pub fn create_note<'a>(
+        &'a self,
+        note: impl IntoDiagnostic<'a, Noted>,
+    ) -> DiagnosticBuilder<'a, Noted> {
+        self.parse_sess.create_note(note)
+    }
+    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, Noted>) -> Noted {
+        self.parse_sess.emit_note(note)
     }
     pub fn create_fatal<'a>(
         &'a self,
@@ -576,11 +587,15 @@ impl Session {
             Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         }
     }
+
+    #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().span_warn(sp, msg)
     }
+
+    #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_warn_with_code<S: Into<MultiSpan>>(
@@ -591,6 +606,10 @@ impl Session {
     ) {
         self.diagnostic().span_warn_with_code(sp, msg, code)
     }
+
+    #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().warn(msg)
     }
@@ -621,9 +640,15 @@ impl Session {
         self.diagnostic().delay_good_path_bug(msg)
     }
 
+    #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn note_without_error(&self, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().note_without_error(msg)
     }
+    #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_note_without_error<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -631,6 +656,8 @@ impl Session {
     ) {
         self.diagnostic().span_note_without_error(sp, msg)
     }
+
+    #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_note_without_error(
@@ -860,7 +887,7 @@ impl Session {
                         // We only call `msg` in case we can actually emit warnings.
                         // Otherwise, this could cause a `delay_good_path_bug` to
                         // trigger (issue #79546).
-                        self.warn(&format!("optimization-fuel-exhausted: {}", msg()));
+                        self.emit_warning(OptimisationFuelExhausted { msg: msg() });
                     }
                     fuel.out_of_fuel = true;
                 } else if fuel.remaining > 0 {

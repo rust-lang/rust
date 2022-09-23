@@ -1,5 +1,7 @@
 use rustc_macros::Diagnostic;
+use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
+use rustc_target::spec::TargetTriple;
 
 use std::io;
 use std::path::Path;
@@ -87,3 +89,22 @@ pub struct FailedWritingFile<'a> {
     pub path: &'a Path,
     pub error: io::Error,
 }
+
+#[derive(Diagnostic)]
+#[diag(interface::unsupported_crate_type_for_target)]
+pub struct UnsupportedCrateTypeForTarget<'a> {
+    pub crate_type: CrateType,
+    pub target_triple: &'a TargetTriple,
+}
+
+#[derive(Diagnostic)]
+#[diag(interface::multiple_output_types_adaption)]
+pub struct MultipleOutputTypesAdaption;
+
+#[derive(Diagnostic)]
+#[diag(interface::ignoring_extra_filename)]
+pub struct IgnoringExtraFilename;
+
+#[derive(Diagnostic)]
+#[diag(interface::ignoring_out_dir)]
+pub struct IgnoringOutDir;

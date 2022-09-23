@@ -108,7 +108,7 @@ use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
 use crate::collector::{self, MonoItemCollectionMode};
-use crate::errors::{SymbolAlreadyDefined, UnknownPartitionStrategy};
+use crate::errors::{SymbolAlreadyDefined, UnknownCguCollectionMode, UnknownPartitionStrategy};
 
 pub struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -345,18 +345,13 @@ fn collect_and_partition_mono_items<'tcx>(
 ) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
     let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
-            let mode_string = s.to_lowercase();
-            let mode_string = mode_string.trim();
-            if mode_string == "eager" {
+            let mode = s.to_lowercase();
+            let mode = mode.trim();
+            if mode == "eager" {
                 MonoItemCollectionMode::Eager
             } else {
-                if mode_string != "lazy" {
-                    let message = format!(
-                        "Unknown codegen-item collection mode '{}'. \
-                                           Falling back to 'lazy' mode.",
-                        mode_string
-                    );
-                    tcx.sess.warn(&message);
+                if mode != "lazy" {
+                    tcx.sess.emit_warning(UnknownCguCollectionMode { mode });
                 }
 
                 MonoItemCollectionMode::Lazy
