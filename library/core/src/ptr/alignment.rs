@@ -9,7 +9,7 @@ use crate::{cmp, fmt, hash, mem, num};
 /// Note that particularly large alignments, while representable in this type,
 /// are likely not to be supported by actual allocators and linkers.
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq)]
 #[repr(transparent)]
 pub struct Alignment(AlignmentEnum);
 
@@ -167,16 +167,25 @@ impl From<Alignment> for usize {
     }
 }
 
-#[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl cmp::Ord for Alignment {
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
+impl const cmp::PartialEq for Alignment {
     #[inline]
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.as_nonzero().cmp(&other.as_nonzero())
+    fn eq(&self, other: &Self) -> bool {
+        self.as_nonzero().get() == other.as_nonzero().get()
     }
 }
 
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
+impl const cmp::Ord for Alignment {
+    #[inline]
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.as_nonzero().get().cmp(&other.as_nonzero().get())
+    }
+}
+
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "87864")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl cmp::PartialOrd for Alignment {
+impl const cmp::PartialOrd for Alignment {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
