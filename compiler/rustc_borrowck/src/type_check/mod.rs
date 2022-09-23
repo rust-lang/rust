@@ -587,6 +587,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         // modify their locations.
         let all_facts = &mut None;
         let mut constraints = Default::default();
+        let mut type_tests = Default::default();
         let mut closure_bounds = Default::default();
         let mut liveness_constraints =
             LivenessValues::new(Rc::new(RegionValueElements::new(&promoted_body)));
@@ -598,6 +599,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 &mut this.cx.borrowck_context.constraints.outlives_constraints,
                 &mut constraints,
             );
+            mem::swap(&mut this.cx.borrowck_context.constraints.type_tests, &mut type_tests);
             mem::swap(
                 &mut this.cx.borrowck_context.constraints.closure_bounds_mapping,
                 &mut closure_bounds,
@@ -622,6 +624,13 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         swap_constraints(self);
 
         let locations = location.to_locations();
+
+        // Use location of promoted const in collected constraints
+        for type_test in type_tests.iter() {
+            let mut type_test = type_test.clone();
+            type_test.locations = locations;
+            self.cx.borrowck_context.constraints.type_tests.push(type_test)
+        }
         for constraint in constraints.outlives().iter() {
             let mut constraint = constraint.clone();
             constraint.locations = locations;
