@@ -399,3 +399,24 @@ passes_duplicate_diagnostic_item_in_crate =
 passes_diagnostic_item_first_defined =
     the diagnostic item is first defined here
     .note = the diagnostic item is first defined in crate `{$orig_crate_name}`.
+
+passes_abi =
+    abi: {$abi}
+
+passes_align =
+    align: {$align}
+
+passes_size =
+    size: {$size}
+
+passes_homogeneous_aggregate =
+    homogeneous_aggregate: {$homogeneous_aggregate}
+
+passes_layout_of =
+    layout_of({$normalized_ty}) = {$ty_layout}
+
+passes_unrecognized_field =
+    unrecognized field name `{$name}`
+
+passes_layout =
+    layout error: {$layout_error}

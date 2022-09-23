@@ -775,3 +775,60 @@ pub struct DuplicateDiagnosticItemInCrate {
     pub crate_name: Symbol,
     pub name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes::abi)]
+pub struct Abi {
+    #[primary_span]
+    pub span: Span,
+    pub abi: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::align)]
+pub struct Align {
+    #[primary_span]
+    pub span: Span,
+    pub align: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::size)]
+pub struct Size {
+    #[primary_span]
+    pub span: Span,
+    pub size: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::homogeneous_aggregate)]
+pub struct HomogeneousAggregate {
+    #[primary_span]
+    pub span: Span,
+    pub homogeneous_aggregate: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::layout_of)]
+pub struct LayoutOf {
+    #[primary_span]
+    pub span: Span,
+    pub normalized_ty: String,
+    pub ty_layout: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::unrecognized_field)]
+pub struct UnrecognizedField {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::layout)]
+pub struct Layout {
+    #[primary_span]
+    pub span: Span,
+    pub layout_error: String,
+}
