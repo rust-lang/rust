@@ -17,6 +17,7 @@ pub(crate) struct ConstFnOnceClosure<CapturedData, Function> {
     data: CapturedData,
     func: Function,
 }
+
 impl<CapturedData, Function> ConstFnOnceClosure<CapturedData, Function> {
     /// Function for creating a new closure.
     ///
@@ -36,6 +37,7 @@ impl<CapturedData, Function> ConstFnOnceClosure<CapturedData, Function> {
         Self { data, func }
     }
 }
+
 impl<CapturedData, ClosureArguments, Function> const FnOnce<ClosureArguments>
     for ConstFnOnceClosure<CapturedData, Function>
 where
@@ -48,6 +50,7 @@ where
         (self.func)(self.data, args)
     }
 }
+
 /// Struct representing a closure with mutably borrowed data.
 ///
 /// Example:
@@ -68,6 +71,7 @@ pub(crate) struct ConstFnMutClosure<'a, CapturedData: ?Sized, Function> {
     data: &'a mut CapturedData,
     func: Function,
 }
+
 impl<'a, CapturedData: ?Sized, Function> ConstFnMutClosure<'a, CapturedData, Function> {
     /// Function for creating a new closure.
     ///
@@ -85,6 +89,7 @@ impl<'a, CapturedData: ?Sized, Function> ConstFnMutClosure<'a, CapturedData, Fun
         Self { data, func }
     }
 }
+
 impl<'a, CapturedData: ?Sized, ClosureArguments, Function, ClosureReturnValue> const
     FnOnce<ClosureArguments> for ConstFnMutClosure<'a, CapturedData, Function>
 where
@@ -97,6 +102,7 @@ where
         self.call_mut(args)
     }
 }
+
 impl<'a, CapturedData: ?Sized, ClosureArguments, Function, ClosureReturnValue> const
     FnMut<ClosureArguments> for ConstFnMutClosure<'a, CapturedData, Function>
 where
@@ -126,6 +132,7 @@ pub(crate) struct ConstFnClosure<'a, CapturedData: ?Sized, Function> {
     data: &'a CapturedData,
     func: Function,
 }
+
 impl<'a, CapturedData: ?Sized, Function> ConstFnClosure<'a, CapturedData, Function> {
     /// Function for creating a new closure.
     ///
@@ -144,6 +151,7 @@ impl<'a, CapturedData: ?Sized, Function> ConstFnClosure<'a, CapturedData, Functi
         Self { data, func }
     }
 }
+
 impl<'a, CapturedData: ?Sized, Function, ClosureArguments, ClosureReturnValue> const
     FnOnce<ClosureArguments> for ConstFnClosure<'a, CapturedData, Function>
 where
@@ -155,6 +163,7 @@ where
         self.call_mut(args)
     }
 }
+
 impl<'a, CapturedData: ?Sized, Function, ClosureArguments, ClosureReturnValue> const
     FnMut<ClosureArguments> for ConstFnClosure<'a, CapturedData, Function>
 where
@@ -164,6 +173,7 @@ where
         self.call(args)
     }
 }
+
 impl<
     'a,
     CapturedData: ?Sized,
