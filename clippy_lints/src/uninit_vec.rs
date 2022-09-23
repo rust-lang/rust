@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
 use clippy_utils::ty::{is_type_diagnostic_item, is_uninit_value_valid_for_ty};
 use clippy_utils::{is_lint_allowed, path_to_local_id, peel_hir_expr_while, SpanlessEq};
+use rustc_ast::ast::LitKind;
 use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, PathSegment, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -211,14 +212,27 @@ fn extract_set_len_self<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Opt
         }
     });
     match expr.kind {
-        ExprKind::MethodCall(path, self_expr, [_], _) => {
+        ExprKind::MethodCall(path, self_expr, [arg], _) => {
             let self_type = cx.typeck_results().expr_ty(self_expr).peel_refs();
-            if is_type_diagnostic_item(cx, self_type, sym::Vec) && path.ident.name.as_str() == "set_len" {
+            if is_type_diagnostic_item(cx, self_type, sym::Vec)
+                && path.ident.name.as_str() == "set_len"
+                && !is_literal_zero(arg)
+            {
                 Some((self_expr, expr.span))
             } else {
                 None
             }
         },
         _ => None,
+    }
+}
+
+fn is_literal_zero(arg: &Expr<'_>) -> bool {
+    if let ExprKind::Lit(lit) = &arg.kind
+        && let LitKind::Int(0, _) = lit.node
+    {
+        true
+    } else {
+        false
     }
 }
