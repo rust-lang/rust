@@ -384,7 +384,7 @@ impl SourceToDefCtx<'_, '_> {
         } else {
             let it = ast::Variant::cast(container.value)?;
             let def = self.enum_variant_to_def(InFile::new(container.file_id, it))?;
-            VariantId::from(def).into()
+            DefWithBodyId::from(def).into()
         };
         Some(cont)
     }
