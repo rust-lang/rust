@@ -6,7 +6,7 @@ LL |     foo(post, x)
    |
 help: consider adding an explicit lifetime bound...
    |
-LL | ) -> &'t impl Trait + 't {
+LL | ) -> &'x impl Trait + 't {
    |                     ++++
 
 error: aborting due to previous error

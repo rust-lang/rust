@@ -4,10 +4,10 @@ struct Foo;
 
 impl Trait for Foo {}
 
-fn foo<'t, P>(
+fn foo<'x, P>(
     post: P,
-    x: &'t Foo,
-) -> &'t impl Trait {
+    x: &'x Foo,
+) -> &'x impl Trait {
     //~^ HELP: consider adding an explicit lifetime bound...
     x
 }
