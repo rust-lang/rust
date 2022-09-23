@@ -19,7 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
@@ -2205,6 +2205,35 @@ impl<'tcx> Ty<'tcx> {
             ty::Bound(..) | ty::Placeholder(..) => {
                 bug!("`is_trivially_pure_clone_copy` applied to unexpected type: {:?}", self);
             }
+        }
+    }
+
+    // If `self` is a primitive, return its [`Symbol`].
+    pub fn primitive_symbol(self) -> Option<Symbol> {
+        match self.kind() {
+            ty::Bool => Some(sym::bool),
+            ty::Char => Some(sym::char),
+            ty::Float(f) => match f {
+                ty::FloatTy::F32 => Some(sym::f32),
+                ty::FloatTy::F64 => Some(sym::f64),
+            },
+            ty::Int(f) => match f {
+                ty::IntTy::Isize => Some(sym::isize),
+                ty::IntTy::I8 => Some(sym::i8),
+                ty::IntTy::I16 => Some(sym::i16),
+                ty::IntTy::I32 => Some(sym::i32),
+                ty::IntTy::I64 => Some(sym::i64),
+                ty::IntTy::I128 => Some(sym::i128),
+            },
+            ty::Uint(f) => match f {
+                ty::UintTy::Usize => Some(sym::usize),
+                ty::UintTy::U8 => Some(sym::u8),
+                ty::UintTy::U16 => Some(sym::u16),
+                ty::UintTy::U32 => Some(sym::u32),
+                ty::UintTy::U64 => Some(sym::u64),
+                ty::UintTy::U128 => Some(sym::u128),
+            },
+            _ => None,
         }
     }
 }

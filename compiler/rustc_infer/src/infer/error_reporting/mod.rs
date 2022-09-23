@@ -51,6 +51,7 @@ use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePa
 
 use crate::infer;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
+use crate::infer::ExpectedFound;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -1653,8 +1654,114 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ),
                 Mismatch::Fixed(s) => (s.into(), s.into(), None),
             };
-            match (&terr, expected == found) {
-                (TypeError::Sorts(values), extra) => {
+
+            enum Similar<'tcx> {
+                Adts { expected: ty::AdtDef<'tcx>, found: ty::AdtDef<'tcx> },
+                PrimitiveFound { expected: ty::AdtDef<'tcx>, found: Ty<'tcx> },
+                PrimitiveExpected { expected: Ty<'tcx>, found: ty::AdtDef<'tcx> },
+            }
+
+            let similarity = |ExpectedFound { expected, found }: ExpectedFound<Ty<'tcx>>| {
+                if let ty::Adt(expected, _) = expected.kind() && let Some(primitive) = found.primitive_symbol() {
+                    let path = self.tcx.def_path(expected.did()).data;
+                    let name = path.last().unwrap().data.get_opt_name();
+                    if name == Some(primitive) {
+                        return Some(Similar::PrimitiveFound { expected: *expected, found });
+                    }
+                } else if let Some(primitive) = expected.primitive_symbol() && let ty::Adt(found, _) = found.kind() {
+                    let path = self.tcx.def_path(found.did()).data;
+                    let name = path.last().unwrap().data.get_opt_name();
+                    if name == Some(primitive) {
+                        return Some(Similar::PrimitiveExpected { expected, found: *found });
+                    }
+                } else if let ty::Adt(expected, _) = expected.kind() && let ty::Adt(found, _) = found.kind() {
+                    if !expected.did().is_local() && expected.did().krate == found.did().krate {
+                        // Most likely types from different versions of the same crate
+                        // are in play, in which case this message isn't so helpful.
+                        // A "perhaps two different versions..." error is already emitted for that.
+                        return None;
+                    }
+                    let f_path = self.tcx.def_path(found.did()).data;
+                    let e_path = self.tcx.def_path(expected.did()).data;
+
+                    if let (Some(e_last), Some(f_last)) = (e_path.last(), f_path.last()) && e_last ==  f_last {
+                        return Some(Similar::Adts{expected: *expected, found: *found});
+                    }
+                }
+                None
+            };
+
+            match terr {
+                // If two types mismatch but have similar names, mention that specifically.
+                TypeError::Sorts(values) if let Some(s) = similarity(values) => {
+                    let diagnose_primitive =
+                        |prim: Ty<'tcx>,
+                         shadow: Ty<'tcx>,
+                         defid: DefId,
+                         diagnostic: &mut Diagnostic| {
+                            let name = shadow.sort_string(self.tcx);
+                            diagnostic.note(format!(
+                            "{prim} and {name} have similar names, but are actually distinct types"
+                        ));
+                            diagnostic
+                                .note(format!("{prim} is a primitive defined by the language"));
+                            let def_span = self.tcx.def_span(defid);
+                            let msg = if defid.is_local() {
+                                format!("{name} is defined in the current crate")
+                            } else {
+                                let crate_name = self.tcx.crate_name(defid.krate);
+                                format!("{name} is defined in crate `{crate_name}")
+                            };
+                            diagnostic.span_note(def_span, msg);
+                        };
+
+                    let diagnose_adts =
+                        |expected_adt : ty::AdtDef<'tcx>,
+                         found_adt: ty::AdtDef<'tcx>,
+                         diagnostic: &mut Diagnostic| {
+                            let found_name = values.found.sort_string(self.tcx);
+                            let expected_name = values.expected.sort_string(self.tcx);
+
+                            let found_defid = found_adt.did();
+                            let expected_defid = expected_adt.did();
+
+                            diagnostic.note(format!("{found_name} and {expected_name} have similar names, but are actually distinct types"));
+                            for (defid, name) in
+                                [(found_defid, found_name), (expected_defid, expected_name)]
+                            {
+                                let def_span = self.tcx.def_span(defid);
+
+                                let msg = if found_defid.is_local() && expected_defid.is_local() {
+                                    let module = self
+                                        .tcx
+                                        .parent_module_from_def_id(defid.expect_local())
+                                        .to_def_id();
+                                    let module_name = self.tcx.def_path(module).to_string_no_crate_verbose();
+                                    format!("{name} is defined in module `crate{module_name}` of the current crate")
+                                } else if defid.is_local() {
+                                    format!("{name} is defined in the current crate")
+                                } else {
+                                    let crate_name = self.tcx.crate_name(defid.krate);
+                                    format!("{name} is defined in crate `{crate_name}`")
+                                };
+                                diagnostic.span_note(def_span, msg);
+                            }
+                        };
+
+                    match s {
+                        Similar::Adts{expected, found} => {
+                            diagnose_adts(expected, found, diag)
+                        }
+                        Similar::PrimitiveFound{expected, found: prim} => {
+                            diagnose_primitive(prim, values.expected, expected.did(), diag)
+                        }
+                        Similar::PrimitiveExpected{expected: prim, found} => {
+                            diagnose_primitive(prim, values.found, found.did(), diag)
+                        }
+                    }
+                }
+                TypeError::Sorts(values) => {
+                    let extra = expected == found;
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Opaque(def_id, _)) => {
                             let sm = self.tcx.sess.source_map();
@@ -1707,10 +1814,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                (TypeError::ObjectUnsafeCoercion(_), _) => {
+                TypeError::ObjectUnsafeCoercion(_) => {
                     diag.note_unsuccessful_coercion(found, expected);
                 }
-                (_, _) => {
+                _ => {
                     debug!(
                         "note_type_err: exp_found={:?}, expected={:?} found={:?}",
                         exp_found, expected, found
