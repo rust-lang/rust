@@ -291,6 +291,9 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
 }
 
 /// The machine itself.
+///
+/// If you add anything here that stores machine values, remember to update
+/// `visit_all_machine_values`!
 pub struct MiriMachine<'mir, 'tcx> {
     // We carry a copy of the global `TyCtxt` for convenience, so methods taking just `&Evaluator` have `tcx` access.
     pub tcx: TyCtxt<'tcx>,
@@ -583,6 +586,17 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub(crate) fn is_local(&self, frame: &FrameInfo<'_>) -> bool {
         let def_id = frame.instance.def_id();
         def_id.is_local() || self.local_crates.contains(&def_id.krate)
+    }
+}
+
+impl VisitMachineValues for MiriMachine<'_, '_> {
+    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+        // FIXME: visit the missing fields: env vars, weak mem, the MemPlace fields in the machine,
+        // DirHandler, extern_statics, the Stacked Borrows base pointers; maybe more.
+        let MiriMachine { threads, tls, .. } = self;
+
+        threads.visit_machine_values(visit);
+        tls.visit_machine_values(visit);
     }
 }
 
