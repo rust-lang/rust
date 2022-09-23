@@ -1133,9 +1133,13 @@ pub struct ProjectionTy<'tcx> {
 
 impl<'tcx> ProjectionTy<'tcx> {
     pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
-        let parent = tcx.parent(self.item_def_id);
-        assert_eq!(tcx.def_kind(parent), DefKind::Trait);
-        parent
+        match tcx.def_kind(self.item_def_id) {
+            DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.item_def_id),
+            DefKind::ImplTraitPlaceholder => {
+                tcx.parent(tcx.impl_trait_in_trait_parent(self.item_def_id))
+            }
+            kind => bug!("unexpected DefKind in ProjectionTy: {kind:?}"),
+        }
     }
 
     /// Extracts the underlying trait reference and own substs from this projection.
