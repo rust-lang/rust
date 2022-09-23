@@ -10,6 +10,7 @@
 #![feature(is_some_with)]
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
+#![cfg_attr(bootstrap, feature(let_else))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
