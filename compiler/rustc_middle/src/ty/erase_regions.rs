@@ -30,6 +30,24 @@ impl<'tcx> TyCtxt<'tcx> {
         debug!("erase_regions = {:?}", value1);
         value1
     }
+
+    pub fn erase_regions_keep_static<T>(self, value: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        if value.has_free_regions() {
+            self.fold_regions(value, |r, _| match r.kind() {
+                ty::ReLateBound(_, _) | ty::ReStatic => r,
+                ty::ReEarlyBound(_)
+                | ty::ReFree(_)
+                | ty::ReVar(_)
+                | ty::RePlaceholder(_)
+                | ty::ReErased => self.lifetimes.re_erased,
+            })
+        } else {
+            value
+        }
+    }
 }
 
 struct RegionEraserVisitor<'tcx> {

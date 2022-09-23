@@ -5,6 +5,11 @@
 //! candidates. See the [rustc dev guide] for more details.
 //!
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
+use crate::traits;
+use crate::traits::coherence::Conflict;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::{util, SelectionResult};
+use crate::traits::{Ambiguous, ErrorReporting, Overflow, Unimplemented};
 use hir::LangItem;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -14,12 +19,6 @@ use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
 use rustc_target::spec::abi::Abi;
-
-use crate::traits;
-use crate::traits::coherence::Conflict;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{util, SelectionResult};
-use crate::traits::{Ambiguous, ErrorReporting, Overflow, Unimplemented};
 
 use super::BuiltinImplConditions;
 use super::IntercrateAmbiguityCause;
@@ -41,13 +40,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // separately rather than using `stack.fresh_trait_ref` --
         // this is because we want the unbound variables to be
         // replaced with fresh types starting from index 0.
-        let cache_fresh_trait_pred = self.infcx.freshen(stack.obligation.predicate);
-        debug!(?cache_fresh_trait_pred);
+        let cache_entry =
+            self.canonicalize_for_cache(stack.obligation.param_env, stack.obligation.predicate);
         debug_assert!(!stack.obligation.predicate.has_escaping_bound_vars());
 
-        if let Some(c) =
-            self.check_candidate_cache(stack.obligation.param_env, cache_fresh_trait_pred)
-        {
+        if let Some(c) = self.check_candidate_cache(cache_entry) {
             debug!("CACHE HIT");
             return c;
         }
@@ -62,12 +59,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.in_task(|this| this.candidate_from_obligation_no_cache(stack));
 
         debug!("CACHE MISS");
-        self.insert_candidate_cache(
-            stack.obligation.param_env,
-            cache_fresh_trait_pred,
-            dep_node,
-            candidate.clone(),
-        );
+        self.insert_candidate_cache(cache_entry, dep_node, candidate.clone());
         candidate
     }
 

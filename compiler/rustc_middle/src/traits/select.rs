@@ -5,10 +5,9 @@
 use self::EvaluationResult::*;
 
 use super::{SelectionError, SelectionResult};
-use rustc_errors::ErrorGuaranteed;
-
+use crate::traits::Canonical;
 use crate::ty;
-
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_query_system::cache::Cache;
 
@@ -16,14 +15,14 @@ pub type SelectionCache<'tcx> = Cache<
     // This cache does not use `ParamEnvAnd` in its keys because `ParamEnv::and` can replace
     // caller bounds with an empty list if the `TraitPredicate` looks global, which may happen
     // after erasing lifetimes from the predicate.
-    (ty::ParamEnv<'tcx>, ty::TraitPredicate<'tcx>),
+    (ty::ParamEnv<'tcx>, Canonical<'tcx, ty::PolyTraitPredicate<'tcx>>),
     SelectionResult<'tcx, SelectionCandidate<'tcx>>,
 >;
 
 pub type EvaluationCache<'tcx> = Cache<
     // See above: this cache does not use `ParamEnvAnd` in its keys due to sometimes incorrectly
     // caching with the wrong `ParamEnv`.
-    (ty::ParamEnv<'tcx>, ty::PolyTraitPredicate<'tcx>),
+    (ty::ParamEnv<'tcx>, Canonical<'tcx, ty::PolyTraitPredicate<'tcx>>),
     EvaluationResult,
 >;
 

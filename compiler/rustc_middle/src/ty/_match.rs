@@ -1,17 +1,15 @@
 use crate::ty::error::TypeError;
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use crate::ty::{self, InferConst, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 
-/// A type "A" *matches* "B" if the fresh types in B could be
-/// substituted with values so as to make it equal to A. Matching is
-/// intended to be used only on freshened types, and it basically
-/// indicates if the non-freshened versions of A and B could have been
-/// unified.
+/// A type "A" *matches* "B" if the inference variables in B could be
+/// substituted with values so as to make it equal to A.
+/// Matching  basically indicates whether A would contain B.
 ///
 /// It is only an approximation. If it yields false, unification would
 /// definitely fail, but a true result doesn't mean unification would
 /// succeed. This is because we don't track the "side-constraints" on
-/// type variables, nor do we track if the same freshened type appears
+/// type variables, nor do we track if the same inference variable appears
 /// more than once. To some extent these approximations could be
 /// fixed, given effort.
 ///
@@ -69,16 +67,9 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         }
 
         match (a.kind(), b.kind()) {
-            (
-                _,
-                &ty::Infer(ty::FreshTy(_))
-                | &ty::Infer(ty::FreshIntTy(_))
-                | &ty::Infer(ty::FreshFloatTy(_)),
-            ) => Ok(a),
+            (_, &ty::Infer(_)) => Ok(a),
 
-            (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
-                Err(TypeError::Sorts(relate::expected_found(self, a, b)))
-            }
+            (&ty::Infer(_), _) => Err(TypeError::Sorts(relate::expected_found(self, a, b))),
 
             (&ty::Error(_), _) | (_, &ty::Error(_)) => Ok(self.tcx().ty_error()),
 
@@ -97,11 +88,11 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         }
 
         match (a.kind(), b.kind()) {
-            (_, ty::ConstKind::Infer(InferConst::Fresh(_))) => {
+            (_, ty::ConstKind::Infer(_)) => {
                 return Ok(a);
             }
 
-            (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
+            (ty::ConstKind::Infer(_), _) => {
                 return Err(TypeError::ConstMismatch(relate::expected_found(self, a, b)));
             }
 
