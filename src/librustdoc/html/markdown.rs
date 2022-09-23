@@ -111,14 +111,9 @@ pub(crate) struct MarkdownWithToc<'a>(
     pub(crate) Edition,
     pub(crate) &'a Option<Playground>,
 );
-/// A tuple struct like `Markdown` that renders the markdown escaping HTML tags.
-pub(crate) struct MarkdownHtml<'a>(
-    pub(crate) &'a str,
-    pub(crate) &'a mut IdMap,
-    pub(crate) ErrorCodes,
-    pub(crate) Edition,
-    pub(crate) &'a Option<Playground>,
-);
+/// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
+/// and includes no paragraph tags.
+pub(crate) struct MarkdownItemInfo<'a>(pub(crate) &'a str, pub(crate) &'a mut IdMap);
 /// A tuple struct like `Markdown` that renders only the first paragraph.
 pub(crate) struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
@@ -1072,9 +1067,9 @@ impl MarkdownWithToc<'_> {
     }
 }
 
-impl MarkdownHtml<'_> {
+impl MarkdownItemInfo<'_> {
     pub(crate) fn into_string(self) -> String {
-        let MarkdownHtml(md, ids, codes, edition, playground) = self;
+        let MarkdownItemInfo(md, ids) = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1093,7 +1088,9 @@ impl MarkdownHtml<'_> {
         let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
         let p = Footnotes::new(p);
         let p = TableWrapper::new(p.map(|(ev, _)| ev));
-        let p = CodeBlocks::new(p, codes, edition, playground);
+        let p = p.filter(|event| {
+            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(Tag::Paragraph))
+        });
         html::push_html(&mut s, p);
 
         s
