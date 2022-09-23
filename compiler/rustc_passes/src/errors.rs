@@ -755,3 +755,23 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(passes::duplicate_diagnostic_item)]
+pub struct DuplicateDiagnosticItem {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::duplicate_diagnostic_item_in_crate)]
+pub struct DuplicateDiagnosticItemInCrate {
+    #[note(passes::diagnostic_item_first_defined)]
+    pub span: Option<Span>,
+    pub orig_crate_name: Symbol,
+    #[note]
+    pub have_orig_crate_name: Option<()>,
+    pub crate_name: Symbol,
+    pub name: Symbol,
+}

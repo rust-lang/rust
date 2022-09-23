@@ -357,7 +357,7 @@ passes_collapse_debuginfo =
 passes_deprecated_annotation_has_no_effect =
     this `#[deprecated]` annotation has no effect
     .suggestion = remove the unnecessary deprecation attribute
-    
+
 passes_unknown_external_lang_item =
     unknown external lang item: `{$lang_item}`
 
@@ -389,3 +389,13 @@ passes_local_duplicate_lang_item =
 passes_invalid_attr_at_crate_level =
     `{$name}` attribute cannot be used at crate level
     .suggestion = perhaps you meant to use an outer attribute
+
+passes_duplicate_diagnostic_item =
+    duplicate diagnostic item found: `{$name}`.
+
+passes_duplicate_diagnostic_item_in_crate =
+    duplicate diagnostic item in crate `{$crate_name}`: `{$name}`.
+
+passes_diagnostic_item_first_defined =
+    the diagnostic item is first defined here
+    .note = the diagnostic item is first defined in crate `{$orig_crate_name}`.
