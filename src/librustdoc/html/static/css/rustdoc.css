@@ -1922,10 +1922,6 @@ in storage.js plus the media query with (min-width: 701px)
 		border-bottom: 1px solid;
 	}
 
-	#source-sidebar {
-		z-index: 11;
-	}
-
 	#main-content > .line-numbers {
 		margin-top: 0;
 	}
