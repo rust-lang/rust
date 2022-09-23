@@ -13,7 +13,7 @@ fn foo<'x, P>(
     x
 }
 
-pub fn bar<'t, T>(
+pub fn bar<'t, T: 't>(
     //~^ HELP: consider adding an explicit lifetime bound...
     post: T,
     x: &'t Foo,

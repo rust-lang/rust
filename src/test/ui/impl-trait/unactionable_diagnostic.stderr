@@ -1,13 +1,13 @@
-error[E0309]: the opaque type `foo<T>::{opaque#0}` may not live long enough
-  --> $DIR/unactionable_diagnostic.rs:19:5
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/unactionable_diagnostic.rs:21:5
    |
 LL |     foo(post, x)
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |
-LL | ) -> &'x impl Trait + 't {
-   |                     ++++
+LL | pub fn bar<'t, T: 't>(
+   |                 ++++
 
 error: aborting due to previous error
 

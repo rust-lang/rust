@@ -336,6 +336,7 @@ where
             GenericKind::Opaque(def_id, substs),
             def_id,
             substs,
+            true,
             |ty| match *ty.kind() {
                 ty::Opaque(def_id, substs) => (def_id, substs),
                 _ => bug!("expected only projection types from env, not {:?}", ty),
@@ -356,6 +357,7 @@ where
             GenericKind::Projection(projection_ty),
             projection_ty.item_def_id,
             projection_ty.substs,
+            false,
             |ty| match ty.kind() {
                 ty::Projection(projection_ty) => (projection_ty.item_def_id, projection_ty.substs),
                 _ => bug!("expected only projection types from env, not {:?}", ty),
@@ -371,6 +373,7 @@ where
         generic: GenericKind<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
+        is_opaque: bool,
         filter: impl Fn(Ty<'tcx>) -> (DefId, SubstsRef<'tcx>),
     ) {
         // An optimization for a common case with opaque types.
@@ -437,7 +440,7 @@ where
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
         let needs_infer = substs.needs_infer();
-        if approx_env_bounds.is_empty() && trait_bounds.is_empty() && needs_infer {
+        if approx_env_bounds.is_empty() && trait_bounds.is_empty() && (needs_infer || is_opaque) {
             debug!("no declared bounds");
 
             self.substs_must_outlive(substs, origin, region);
