@@ -4,12 +4,12 @@ error: unresolved link to `NonExistentStruct`
 LL | /// This [test][NonExistentStruct<i32>] thing!
    |                 ^^^^^^^^^^^^^^^^^^^^^^ no item named `NonExistentStruct` in scope
    |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 note: the lint level is defined here
   --> $DIR/html-as-generics-intra-doc.rs:2:9
    |
 LL | #![deny(rustdoc::broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unresolved link to `NonExistentStruct2`
   --> $DIR/html-as-generics-intra-doc.rs:17:11

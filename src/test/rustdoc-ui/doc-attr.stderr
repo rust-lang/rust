@@ -4,14 +4,14 @@ error: unknown `doc` attribute `as_ptr`
 LL | #[doc(as_ptr)]
    |       ^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
 note: the lint level is defined here
   --> $DIR/doc-attr.rs:2:9
    |
 LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(invalid_doc_attributes)]` implied by `#[deny(warnings)]`
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
 
 error: invalid `doc` attribute
   --> $DIR/doc-attr.rs:12:7
