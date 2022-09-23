@@ -126,6 +126,7 @@ impl<B, C> const ops::FromResidual for ControlFlow<B, C> {
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl<B, C> const ops::Residual<C> for ControlFlow<B, convert::Infallible> {
     type TryType = ControlFlow<B, C>;
 }

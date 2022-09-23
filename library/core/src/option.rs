@@ -2321,7 +2321,8 @@ impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-impl<T> ops::Residual<T> for Option<convert::Infallible> {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<T> const ops::Residual<T> for Option<convert::Infallible> {
     type TryType = Option<T>;
 }
 
