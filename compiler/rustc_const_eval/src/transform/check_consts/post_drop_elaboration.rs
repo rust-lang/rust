@@ -1,6 +1,6 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::{symbol::sym, Span};
 
 use super::check::Qualifs;
@@ -58,9 +58,9 @@ impl<'mir, 'tcx> std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
     }
 }
 
-impl CheckLiveDrops<'_, '_> {
-    fn check_live_drop(&self, span: Span) {
-        ops::LiveDrop { dropped_at: None }.build_error(self.ccx, span).emit();
+impl<'tcx> CheckLiveDrops<'_, 'tcx> {
+    fn check_live_drop(&self, span: Span, dropped_ty: Ty<'tcx>) {
+        ops::LiveDrop { dropped_at: None, dropped_ty }.build_error(self.ccx, span).emit();
     }
 }
 
@@ -90,7 +90,7 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
                 }
 
                 if dropped_place.is_indirect() {
-                    self.check_live_drop(terminator.source_info.span);
+                    self.check_live_drop(terminator.source_info.span, dropped_ty);
                     return;
                 }
 
@@ -101,7 +101,7 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
                 if self.qualifs.needs_non_const_drop(self.ccx, dropped_place.local, location) {
                     // Use the span where the dropped local was declared for the error.
                     let span = self.body.local_decls[dropped_place.local].source_info.span;
-                    self.check_live_drop(span);
+                    self.check_live_drop(span, dropped_ty);
                 }
             }
 

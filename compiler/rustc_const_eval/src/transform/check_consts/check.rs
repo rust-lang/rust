@@ -1009,7 +1009,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 if needs_non_const_drop {
                     self.check_op_spanned(
-                        ops::LiveDrop { dropped_at: Some(terminator.source_info.span) },
+                        ops::LiveDrop {
+                            dropped_at: Some(terminator.source_info.span),
+                            dropped_ty: ty_of_dropped_place,
+                        },
                         err_span,
                     );
                 }
