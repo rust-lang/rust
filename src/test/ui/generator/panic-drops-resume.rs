@@ -2,8 +2,6 @@
 
 // run-pass
 // needs-unwind
-// ignore-wasm       no unwind support
-// ignore-emscripten no unwind support
 
 #![feature(generators, generator_trait)]
 
