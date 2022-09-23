@@ -17,6 +17,12 @@ use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice;
 
+// This is used in a bunch of intra-doc links.
+// FIXME: For some reason, `#[cfg(doc)]` wasn't sufficient, resulting in
+// failures in linkchecker even though rustdoc built the docs just fine.
+#[allow(unused_imports)]
+use core::mem;
+
 use crate::alloc::{Allocator, Global};
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
