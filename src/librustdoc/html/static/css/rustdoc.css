@@ -1416,7 +1416,6 @@ pre.rust {
 }
 #source-sidebar {
 	width: 100%;
-	z-index: 1;
 	overflow: auto;
 }
 #source-sidebar > .title {
