@@ -4,7 +4,6 @@
 // aux-build:panic-runtime-abort.rs
 // aux-build:wants-panic-runtime-abort.rs
 // aux-build:panic-runtime-lang-items.rs
-// ignore-wasm32-bare compiled with panic=abort by default
 
 #![no_std]
 #![no_main]
