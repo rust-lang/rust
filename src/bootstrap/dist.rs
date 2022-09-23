@@ -1430,7 +1430,7 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
-            for tool in &["rust-demangler", "rust-analyzer", "rustfmt"] {
+            for tool in &["rust-demangler"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
@@ -1471,7 +1471,8 @@ impl Step for Extended {
             prepare("rust-analysis");
             prepare("clippy");
             prepare("miri");
-            for tool in &["rust-docs", "rust-demangler", "rust-analyzer"] {
+            prepare("rust-analyzer");
+            for tool in &["rust-docs", "rust-demangler"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1531,7 +1532,8 @@ impl Step for Extended {
             prepare("rust-std");
             prepare("clippy");
             prepare("miri");
-            for tool in &["rust-demangler", "rust-analyzer"] {
+            prepare("rust-analyzer");
+            for tool in &["rust-demangler"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1615,25 +1617,23 @@ impl Step for Extended {
                     .arg("-out")
                     .arg(exe.join("StdGroup.wxs")),
             );
-            if built_tools.contains("rust-analyzer") {
-                builder.run(
-                    Command::new(&heat)
-                        .current_dir(&exe)
-                        .arg("dir")
-                        .arg("rust-analyzer")
-                        .args(&heat_flags)
-                        .arg("-cg")
-                        .arg("RustAnalyzerGroup")
-                        .arg("-dr")
-                        .arg("RustAnalyzer")
-                        .arg("-var")
-                        .arg("var.RustAnalyzerDir")
-                        .arg("-out")
-                        .arg(exe.join("RustAnalyzerGroup.wxs"))
-                        .arg("-t")
-                        .arg(etc.join("msi/remove-duplicates.xsl")),
-                );
-            }
+            builder.run(
+                Command::new(&heat)
+                    .current_dir(&exe)
+                    .arg("dir")
+                    .arg("rust-analyzer")
+                    .args(&heat_flags)
+                    .arg("-cg")
+                    .arg("RustAnalyzerGroup")
+                    .arg("-dr")
+                    .arg("RustAnalyzer")
+                    .arg("-var")
+                    .arg("var.RustAnalyzerDir")
+                    .arg("-out")
+                    .arg(exe.join("RustAnalyzerGroup.wxs"))
+                    .arg("-t")
+                    .arg(etc.join("msi/remove-duplicates.xsl")),
+            );
             builder.run(
                 Command::new(&heat)
                     .current_dir(&exe)
