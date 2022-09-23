@@ -43,6 +43,7 @@ static TEST: AtomicUsize = AtomicUsize::new(0);
 #[derive(Copy, Clone)]
 struct Config {
     verbose: bool,
+    sequential: bool,
     bind: SocketAddr,
 }
 
@@ -50,6 +51,7 @@ impl Config {
     pub fn default() -> Config {
         Config {
             verbose: false,
+            sequential: false,
             bind: if cfg!(target_os = "android") || cfg!(windows) {
                 ([0, 0, 0, 0], 12345).into()
             } else {
@@ -70,6 +72,7 @@ impl Config {
                     next_is_bind = false;
                 }
                 "--bind" => next_is_bind = true,
+                "--sequential" => config.sequential = true,
                 "--verbose" | "-v" => config.verbose = true,
                 arg => panic!("unknown argument: {}", arg),
             }
@@ -125,7 +128,12 @@ fn main() {
             let lock = lock.clone();
             let work = work.clone();
             let tmp = tmp.clone();
-            thread::spawn(move || handle_run(socket, &work, &tmp, &lock, config));
+            let f = move || handle_run(socket, &work, &tmp, &lock, config);
+            if config.sequential {
+                f();
+            } else {
+                thread::spawn(f);
+            }
         } else {
             panic!("unknown command {:?}", buf);
         }
