@@ -23,9 +23,11 @@ pub fn assert_sigpipe_handler(expected_handler: SignalHandler) {
             SignalHandler::Ignore => libc::SIG_IGN,
             SignalHandler::Default => libc::SIG_DFL,
         };
-        assert_eq!(prev, expected);
+        assert_eq!(prev, expected, "expected sigpipe value matches actual value");
 
         // Unlikely to matter, but restore the old value anyway
-        unsafe { libc::signal(libc::SIGPIPE, prev); };
+        unsafe {
+            libc::signal(libc::SIGPIPE, prev);
+        };
     }
 }
