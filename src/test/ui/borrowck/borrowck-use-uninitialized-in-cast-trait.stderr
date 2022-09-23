@@ -5,6 +5,11 @@ LL |     let x: &i32;
    |         - binding declared here but left uninitialized
 LL |     let y = x as *const dyn Foo;
    |             ^ `*x` used here but it isn't initialized
+   |
+help: use `=` to assign some value to `x`
+   |
+LL |     let x: &i32 = something;
+   |         ~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

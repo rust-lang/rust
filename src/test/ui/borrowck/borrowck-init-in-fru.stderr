@@ -5,6 +5,11 @@ LL |     let mut origin: Point;
    |         ---------- binding declared here but left uninitialized
 LL |     origin = Point { x: 10, ..origin };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ `origin.y` used here but it isn't initialized
+   |
+help: use `=` to assign some value to `origin`
+   |
+LL |     let mut origin: Point = something;
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

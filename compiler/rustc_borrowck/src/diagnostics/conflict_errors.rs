@@ -16,6 +16,7 @@ use rustc_middle::mir::{
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
+//use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::LocalDefId;
@@ -336,6 +337,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let inits = &self.move_data.init_path_map[mpi];
         let move_path = &self.move_data.move_paths[mpi];
         let decl_span = self.body.local_decls[move_path.place.local].source_info.span;
+
         let mut spans = vec![];
         for init_idx in inits {
             let init = &self.move_data.inits[*init_idx];
@@ -369,6 +371,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
         visitor.visit_body(&body);
 
+        let mut show_assign_sugg = false;
         let isnt_initialized = if let InitializationRequiringAction::PartialAssignment
         | InitializationRequiringAction::Assignment = desired_action
         {
@@ -396,6 +399,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .count()
             == 0
         {
+            show_assign_sugg = true;
             "isn't initialized"
         } else {
             "is possibly-uninitialized"
@@ -446,8 +450,67 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
         }
+
         err.span_label(decl_span, "binding declared here but left uninitialized");
+        if show_assign_sugg {
+            self.suggest_assign_rvalue(&mut err, moved_place, &name, decl_span);
+        }
         err
+    }
+
+    fn suggest_assign_rvalue(
+        &self,
+        err: &mut Diagnostic,
+        moved_place: PlaceRef<'tcx>,
+        name: &str,
+        decl_span: Span,
+    ) {
+        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
+        debug!("ty: {:?}, kind: {:?}", ty, ty.kind());
+
+        let initilize_msg = match ty.kind() {
+            ty::Array(_, n) => format!("[val; {}]", n),
+            ty::Int(_) | ty::Uint(_) => format!("0"),
+            ty::Float(_) => format!("0.0"),
+            ty::Bool => format!("false"),
+            ty::Never | ty::Error(_) => "".to_string(),
+            ty::Adt(def, _substs) => {
+                if format!("{:?}", def).starts_with("std::vec::Vec") {
+                    format!("vec![]")
+                } else if let Some(default_trait) = self.infcx.tcx.get_diagnostic_item(sym::Default) &&
+                    self.infcx.tcx.infer_ctxt().enter(|infcx| {
+                        infcx.type_implements_trait(default_trait, ty, ty::List::empty(), self.param_env).may_apply()
+                    }) {
+                    format!("Default::default()")
+                } else {
+                    format!("something")
+                }
+            },
+            _ => format!("something"),
+        };
+
+        if initilize_msg.is_empty() {
+            return;
+        }
+
+        let sugg_span = self
+            .infcx
+            .tcx
+            .sess
+            .source_map()
+            .span_extend_while(decl_span, |c| c != '\n')
+            .unwrap_or(decl_span);
+        let mut prefix = self.infcx.tcx.sess.source_map().span_to_snippet(sugg_span).unwrap();
+        // remove last char if eq ';'
+        if prefix.ends_with(';') {
+            prefix.pop();
+        }
+        err.span_suggestion_verbose(
+            sugg_span,
+            format!("use `=` to assign some value to {}", name),
+            format!("{} = {};", prefix, initilize_msg),
+            Applicability::MaybeIncorrect,
+        );
     }
 
     fn suggest_borrow_fn_like(

@@ -24,6 +24,11 @@ LL |     let a: [String; 1];
 LL |
 LL |     a[0] = String::new();
    |     ^^^^ `a` used here but it isn't initialized
+   |
+help: use `=` to assign some value to `a`
+   |
+LL |     let a: [String; 1] = [val; 1];
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/drop-elaboration-after-borrowck-error.rs:18:9
