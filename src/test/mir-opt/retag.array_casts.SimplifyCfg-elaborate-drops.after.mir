@@ -29,7 +29,7 @@ fn array_casts() -> () {
     let _31: &usize;                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _32: &usize;                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let _33: &usize;                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _34: std::option::Option<std::fmt::Arguments>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _34: std::option::Option<std::fmt::Arguments<'_>>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     scope 1 {
         debug x => _1;                   // in scope 1 at $DIR/retag.rs:+1:9: +1:14
         let _2: *mut usize;              // in scope 1 at $DIR/retag.rs:+2:9: +2:10
