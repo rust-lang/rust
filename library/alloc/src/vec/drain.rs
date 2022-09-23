@@ -1,7 +1,7 @@
 use crate::alloc::{Allocator, Global};
 use core::fmt;
 use core::iter::{FusedIterator, TrustedLen};
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 
@@ -202,7 +202,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
 
         let mut vec = self.vec;
 
-        if mem::size_of::<T>() == 0 {
+        if T::IS_ZST {
             // ZSTs have no identity, so we don't need to move them around, we only need to drop the correct amount.
             // this can be achieved by manipulating the Vec length instead of moving values out from `iter`.
             unsafe {

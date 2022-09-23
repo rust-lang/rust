@@ -135,7 +135,7 @@
 //! vec.truncate(write_idx);
 //! ```
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self};
 
 use super::{InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
@@ -154,7 +154,7 @@ where
     default fn from_iter(mut iterator: I) -> Self {
         // See "Layout constraints" section in the module documentation. We rely on const
         // optimization here since these conditions currently cannot be expressed as trait bounds
-        if mem::size_of::<T>() == 0
+        if T::IS_ZST
             || mem::size_of::<T>()
                 != mem::size_of::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>()
             || mem::align_of::<T>()

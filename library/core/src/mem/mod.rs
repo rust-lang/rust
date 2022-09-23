@@ -1178,3 +1178,18 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 pub const fn variant_count<T>() -> usize {
     intrinsics::variant_count::<T>()
 }
+
+/// This is here only to simplify all the ZST checks we need in the library.
+/// It's not on a stabilization track right now.
+#[doc(hidden)]
+#[unstable(feature = "sized_type_properties", issue = "none")]
+pub trait SizedTypeProperties: Sized {
+    /// `true` if this type requires no storage.
+    /// `false` if its [size](size_of) is greater than zero.
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const IS_ZST: bool = size_of::<Self>() == 0;
+}
+#[doc(hidden)]
+#[unstable(feature = "sized_type_properties", issue = "none")]
+impl<T> SizedTypeProperties for T {}

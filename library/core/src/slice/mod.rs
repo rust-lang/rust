@@ -9,7 +9,7 @@
 use crate::cmp::Ordering::{self, Greater, Less};
 use crate::intrinsics::{assert_unsafe_precondition, exact_div};
 use crate::marker::Copy;
-use crate::mem;
+use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ops::{Bound, FnMut, OneSidedRange, Range, RangeBounds};
 use crate::option::Option;
@@ -3459,7 +3459,7 @@ impl<T> [T] {
     #[must_use]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
+        if U::IS_ZST || T::IS_ZST {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &[], &[]);
         }
@@ -3520,7 +3520,7 @@ impl<T> [T] {
     #[must_use]
     pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
         // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
+        if U::IS_ZST || T::IS_ZST {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &mut [], &mut []);
         }
@@ -4066,7 +4066,7 @@ impl<T, const N: usize> [[T; N]] {
     /// ```
     #[unstable(feature = "slice_flatten", issue = "95629")]
     pub fn flatten(&self) -> &[T] {
-        let len = if crate::mem::size_of::<T>() == 0 {
+        let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
         } else {
             // SAFETY: `self.len() * N` cannot overflow because `self` is
@@ -4104,7 +4104,7 @@ impl<T, const N: usize> [[T; N]] {
     /// ```
     #[unstable(feature = "slice_flatten", issue = "95629")]
     pub fn flatten_mut(&mut self) -> &mut [T] {
-        let len = if crate::mem::size_of::<T>() == 0 {
+        let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
         } else {
             // SAFETY: `self.len() * N` cannot overflow because `self` is
