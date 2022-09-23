@@ -1,22 +1,20 @@
 #![deny(unused_must_use)]
 
-use super::error::throw_invalid_nested_attr;
-use super::utils::{SpannedOption, SubdiagnosticKind};
 use crate::diagnostics::error::{
-    invalid_nested_attr, span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
+    invalid_nested_attr, span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err,
+    DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    report_error_if_not_applied_to_span, report_type_error, type_is_unit, type_matches_path,
-    FieldInfo, FieldInnerTy, HasFieldMap, SetOnce,
+    bind_style_of_field, build_field_mapping, report_error_if_not_applied_to_span,
+    report_type_error, should_generate_set_arg, type_is_unit, type_matches_path, FieldInfo,
+    FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
-use std::collections::HashMap;
 use syn::{
-    parse_quote, spanned::Spanned, Attribute, Field, Meta, MetaList, MetaNameValue, NestedMeta,
-    Path, Type,
+    parse_quote, spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type,
 };
-use synstructure::{BindingInfo, Structure};
+use synstructure::{BindingInfo, Structure, VariantInfo};
 
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -25,19 +23,30 @@ pub(crate) enum DiagnosticDeriveKind {
     LintDiagnostic,
 }
 
-/// Tracks persistent information required for building up individual calls to diagnostic methods
-/// for generated diagnostic derives - both `Diagnostic` for fatal/errors/warnings and
-/// `LintDiagnostic` for lints.
+/// Tracks persistent information required for the entire type when building up individual calls to
+/// diagnostic methods for generated diagnostic derives - both `Diagnostic` for
+/// fatal/errors/warnings and `LintDiagnostic` for lints.
 pub(crate) struct DiagnosticDeriveBuilder {
     /// The identifier to use for the generated `DiagnosticBuilder` instance.
     pub diag: syn::Ident,
+    /// Kind of diagnostic that should be derived.
+    pub kind: DiagnosticDeriveKind,
+}
+
+/// Tracks persistent information required for a specific variant when building up individual calls
+/// to diagnostic methods for generated diagnostic derives - both `Diagnostic` for
+/// fatal/errors/warnings and `LintDiagnostic` for lints.
+pub(crate) struct DiagnosticDeriveVariantBuilder<'parent> {
+    /// The parent builder for the entire type.
+    pub parent: &'parent DiagnosticDeriveBuilder,
+
+    /// Span of the struct or the enum variant.
+    pub span: proc_macro::Span,
 
     /// Store a map of field name to its corresponding field. This is built on construction of the
     /// derive builder.
-    pub fields: HashMap<String, TokenStream>,
+    pub field_map: FieldMap,
 
-    /// Kind of diagnostic that should be derived.
-    pub kind: DiagnosticDeriveKind,
     /// Slug is a mandatory part of the struct attribute as corresponds to the Fluent message that
     /// has the actual diagnostic message.
     pub slug: SpannedOption<Path>,
@@ -46,15 +55,82 @@ pub(crate) struct DiagnosticDeriveBuilder {
     pub code: SpannedOption<()>,
 }
 
-impl HasFieldMap for DiagnosticDeriveBuilder {
+impl<'a> HasFieldMap for DiagnosticDeriveVariantBuilder<'a> {
     fn get_field_binding(&self, field: &String) -> Option<&TokenStream> {
-        self.fields.get(field)
+        self.field_map.get(field)
     }
 }
 
 impl DiagnosticDeriveBuilder {
-    pub fn preamble<'s>(&mut self, structure: &Structure<'s>) -> TokenStream {
+    /// Call `f` for the struct or for each variant of the enum, returning a `TokenStream` with the
+    /// tokens from `f` wrapped in an `match` expression. Emits errors for use of derive on unions
+    /// or attributes on the type itself when input is an enum.
+    pub fn each_variant<'s, F>(&mut self, structure: &mut Structure<'s>, f: F) -> TokenStream
+    where
+        F: for<'a, 'v> Fn(DiagnosticDeriveVariantBuilder<'a>, &VariantInfo<'v>) -> TokenStream,
+    {
         let ast = structure.ast();
+        let span = ast.span().unwrap();
+        match ast.data {
+            syn::Data::Struct(..) | syn::Data::Enum(..) => (),
+            syn::Data::Union(..) => {
+                span_err(span, "diagnostic derives can only be used on structs and enums");
+            }
+        }
+
+        if matches!(ast.data, syn::Data::Enum(..)) {
+            for attr in &ast.attrs {
+                span_err(
+                    attr.span().unwrap(),
+                    "unsupported type attribute for diagnostic derive enum",
+                )
+                .emit();
+            }
+        }
+
+        for variant in structure.variants_mut() {
+            // First, change the binding style of each field based on the code that will be
+            // generated for the field - e.g. `set_arg` calls needs by-move bindings, whereas
+            // `set_primary_span` only needs by-ref.
+            variant.bind_with(|bi| bind_style_of_field(bi.ast()).0);
+
+            // Then, perform a stable sort on bindings which generates code for by-ref bindings
+            // before code generated for by-move bindings. Any code generated for the by-ref
+            // bindings which creates a reference to the by-move fields will happen before the
+            // by-move bindings move those fields and make them inaccessible.
+            variant.bindings_mut().sort_by_cached_key(|bi| bind_style_of_field(bi.ast()));
+        }
+
+        let variants = structure.each_variant(|variant| {
+            let span = match structure.ast().data {
+                syn::Data::Struct(..) => span,
+                // There isn't a good way to get the span of the variant, so the variant's
+                // name will need to do.
+                _ => variant.ast().ident.span().unwrap(),
+            };
+            let builder = DiagnosticDeriveVariantBuilder {
+                parent: &self,
+                span,
+                field_map: build_field_mapping(variant),
+                slug: None,
+                code: None,
+            };
+            f(builder, variant)
+        });
+
+        quote! {
+            match self {
+                #variants
+            }
+        }
+    }
+}
+
+impl<'a> DiagnosticDeriveVariantBuilder<'a> {
+    /// Generates calls to `code` and similar functions based on the attributes on the type or
+    /// variant.
+    pub fn preamble<'s>(&mut self, variant: &VariantInfo<'s>) -> TokenStream {
+        let ast = variant.ast();
         let attrs = &ast.attrs;
         let preamble = attrs.iter().map(|attr| {
             self.generate_structure_code_for_attr(attr).unwrap_or_else(|v| v.to_compile_error())
@@ -65,68 +141,24 @@ impl DiagnosticDeriveBuilder {
         }
     }
 
-    pub fn body<'s>(&mut self, structure: &mut Structure<'s>) -> (TokenStream, TokenStream) {
-        // Keep track of which fields need to be handled with a by-move binding.
-        let mut needs_moved = std::collections::HashSet::new();
-
-        // Generates calls to `span_label` and similar functions based on the attributes
-        // on fields. Code for suggestions uses formatting machinery and the value of
-        // other fields - because any given field can be referenced multiple times, it
-        // should be accessed through a borrow. When passing fields to `add_subdiagnostic`
-        // or `set_arg` (which happens below) for Fluent, we want to move the data, so that
-        // has to happen in a separate pass over the fields.
-        let attrs = structure
-            .clone()
-            .filter(|field_binding| {
-                let ast = &field_binding.ast();
-                !self.needs_move(ast) || {
-                    needs_moved.insert(field_binding.binding.clone());
-                    false
-                }
-            })
-            .each(|field_binding| self.generate_field_attrs_code(field_binding));
-
-        structure.bind_with(|_| synstructure::BindStyle::Move);
-        // When a field has attributes like `#[label]` or `#[note]` then it doesn't
-        // need to be passed as an argument to the diagnostic. But when a field has no
-        // attributes or a `#[subdiagnostic]` attribute then it must be passed as an
-        // argument to the diagnostic so that it can be referred to by Fluent messages.
-        let args = structure
-            .filter(|field_binding| needs_moved.contains(&field_binding.binding))
-            .each(|field_binding| self.generate_field_attrs_code(field_binding));
-
-        (attrs, args)
+    /// Generates calls to `span_label` and similar functions based on the attributes on fields or
+    /// calls to `set_arg` when no attributes are present.
+    ///
+    /// Expects use of `Self::each_variant` which will have sorted bindings so that by-ref bindings
+    /// (which may create references to by-move bindings) have their code generated first -
+    /// necessary as code for suggestions uses formatting machinery and the value of other fields
+    /// (any given field can be referenced multiple times, so must be accessed through a borrow);
+    /// and when passing fields to `add_subdiagnostic` or `set_arg` for Fluent, fields must be
+    /// accessed by-move.
+    pub fn body<'s>(&mut self, variant: &VariantInfo<'s>) -> TokenStream {
+        let mut body = quote! {};
+        for binding in variant.bindings() {
+            body.extend(self.generate_field_attrs_code(binding));
+        }
+        body
     }
 
-    /// Returns `true` if `field` should generate a `set_arg` call rather than any other diagnostic
-    /// call (like `span_label`).
-    fn should_generate_set_arg(&self, field: &Field) -> bool {
-        field.attrs.is_empty()
-    }
-
-    /// Returns `true` if `field` needs to have code generated in the by-move branch of the
-    /// generated derive rather than the by-ref branch.
-    fn needs_move(&self, field: &Field) -> bool {
-        let generates_set_arg = self.should_generate_set_arg(field);
-        let is_multispan = type_matches_path(&field.ty, &["rustc_errors", "MultiSpan"]);
-        // FIXME(davidtwco): better support for one field needing to be in the by-move and
-        // by-ref branches.
-        let is_subdiagnostic = field
-            .attrs
-            .iter()
-            .map(|attr| attr.path.segments.last().unwrap().ident.to_string())
-            .any(|attr| attr == "subdiagnostic");
-
-        // `set_arg` calls take their argument by-move..
-        generates_set_arg
-            // If this is a `MultiSpan` field then it needs to be moved to be used by any
-            // attribute..
-            || is_multispan
-            // If this a `#[subdiagnostic]` then it needs to be moved as the other diagnostic is
-            // unlikely to be `Copy`..
-            || is_subdiagnostic
-    }
-
+    /// Parse a `SubdiagnosticKind` from an `Attribute`.
     fn parse_subdiag_attribute(
         &self,
         attr: &Attribute,
@@ -158,7 +190,7 @@ impl DiagnosticDeriveBuilder {
         &mut self,
         attr: &Attribute,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
-        let diag = &self.diag;
+        let diag = &self.parent.diag;
 
         let name = attr.path.segments.last().unwrap().ident.to_string();
         let name = name.as_str();
@@ -246,8 +278,8 @@ impl DiagnosticDeriveBuilder {
         let field = binding_info.ast();
         let field_binding = &binding_info.binding;
 
-        if self.should_generate_set_arg(&field) {
-            let diag = &self.diag;
+        if should_generate_set_arg(&field) {
+            let diag = &self.parent.diag;
             let ident = field.ident.as_ref().unwrap();
             return quote! {
                 #diag.set_arg(
@@ -257,7 +289,7 @@ impl DiagnosticDeriveBuilder {
             };
         }
 
-        let needs_move = self.needs_move(&field);
+        let needs_move = bind_style_of_field(&field).is_move();
         let inner_ty = FieldInnerTy::from_type(&field.ty);
 
         field
@@ -303,7 +335,7 @@ impl DiagnosticDeriveBuilder {
         info: FieldInfo<'_>,
         binding: TokenStream,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
-        let diag = &self.diag;
+        let diag = &self.parent.diag;
         let meta = attr.parse_meta()?;
 
         if let Meta::Path(_) = meta {
@@ -316,7 +348,7 @@ impl DiagnosticDeriveBuilder {
                     // `set_arg` call will not be generated.
                     return Ok(quote! {});
                 }
-                "primary_span" => match self.kind {
+                "primary_span" => match self.parent.kind {
                     DiagnosticDeriveKind::Diagnostic => {
                         report_error_if_not_applied_to_span(attr, &info)?;
 
@@ -390,7 +422,7 @@ impl DiagnosticDeriveBuilder {
         kind: &Ident,
         fluent_attr_identifier: Path,
     ) -> TokenStream {
-        let diag = &self.diag;
+        let diag = &self.parent.diag;
         let fn_name = format_ident!("span_{}", kind);
         quote! {
             #diag.#fn_name(
@@ -403,7 +435,7 @@ impl DiagnosticDeriveBuilder {
     /// Adds a subdiagnostic by generating a `diag.span_$kind` call with the current slug
     /// and `fluent_attr_identifier`.
     fn add_subdiagnostic(&self, kind: &Ident, fluent_attr_identifier: Path) -> TokenStream {
-        let diag = &self.diag;
+        let diag = &self.parent.diag;
         quote! {
             #diag.#kind(rustc_errors::fluent::#fluent_attr_identifier);
         }

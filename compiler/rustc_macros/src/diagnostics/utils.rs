@@ -4,12 +4,13 @@ use crate::diagnostics::error::{
 use proc_macro::Span;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
+use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt;
 use std::str::FromStr;
-use syn::{spanned::Spanned, Attribute, Meta, Type, TypeTuple};
+use syn::{spanned::Spanned, Attribute, Field, Meta, Type, TypeTuple};
 use syn::{MetaList, MetaNameValue, NestedMeta, Path};
-use synstructure::{BindingInfo, Structure};
+use synstructure::{BindStyle, BindingInfo, VariantInfo};
 
 use super::error::invalid_nested_attr;
 
@@ -210,6 +211,8 @@ impl<T> SetOnce<T> for SpannedOption<T> {
     }
 }
 
+pub(super) type FieldMap = HashMap<String, TokenStream>;
+
 pub(crate) trait HasFieldMap {
     /// Returns the binding for the field with the given name, if it exists on the type.
     fn get_field_binding(&self, field: &String) -> Option<&TokenStream>;
@@ -360,18 +363,13 @@ impl quote::ToTokens for Applicability {
 
 /// Build the mapping of field names to fields. This allows attributes to peek values from
 /// other fields.
-pub(crate) fn build_field_mapping<'a>(structure: &Structure<'a>) -> HashMap<String, TokenStream> {
-    let mut fields_map = HashMap::new();
-
-    let ast = structure.ast();
-    if let syn::Data::Struct(syn::DataStruct { fields, .. }) = &ast.data {
-        for field in fields.iter() {
-            if let Some(ident) = &field.ident {
-                fields_map.insert(ident.to_string(), quote! { &self.#ident });
-            }
+pub(super) fn build_field_mapping<'v>(variant: &VariantInfo<'v>) -> HashMap<String, TokenStream> {
+    let mut fields_map = FieldMap::new();
+    for binding in variant.bindings() {
+        if let Some(ident) = &binding.ast().ident {
+            fields_map.insert(ident.to_string(), quote! { #binding });
         }
     }
-
     fields_map
 }
 
@@ -620,4 +618,67 @@ impl quote::IdentFragment for SubdiagnosticKind {
     fn span(&self) -> Option<proc_macro2::Span> {
         None
     }
+}
+
+/// Wrapper around `synstructure::BindStyle` which implements `Ord`.
+#[derive(PartialEq, Eq)]
+pub(super) struct OrderedBindStyle(pub(super) BindStyle);
+
+impl OrderedBindStyle {
+    /// Is `BindStyle::Move` or `BindStyle::MoveMut`?
+    pub(super) fn is_move(&self) -> bool {
+        matches!(self.0, BindStyle::Move | BindStyle::MoveMut)
+    }
+}
+
+impl Ord for OrderedBindStyle {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self.is_move(), other.is_move()) {
+            // If both `self` and `other` are the same, then ordering is equal.
+            (true, true) | (false, false) => Ordering::Equal,
+            // If `self` is not a move then it should be considered less than `other` (so that
+            // references are sorted first).
+            (false, _) => Ordering::Less,
+            // If `self` is a move then it must be greater than `other` (again, so that references
+            // are sorted first).
+            (true, _) => Ordering::Greater,
+        }
+    }
+}
+
+impl PartialOrd for OrderedBindStyle {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// Returns `true` if `field` should generate a `set_arg` call rather than any other diagnostic
+/// call (like `span_label`).
+pub(super) fn should_generate_set_arg(field: &Field) -> bool {
+    field.attrs.is_empty()
+}
+
+/// Returns `true` if `field` needs to have code generated in the by-move branch of the
+/// generated derive rather than the by-ref branch.
+pub(super) fn bind_style_of_field(field: &Field) -> OrderedBindStyle {
+    let generates_set_arg = should_generate_set_arg(field);
+    let is_multispan = type_matches_path(&field.ty, &["rustc_errors", "MultiSpan"]);
+    // FIXME(davidtwco): better support for one field needing to be in the by-move and
+    // by-ref branches.
+    let is_subdiagnostic = field
+        .attrs
+        .iter()
+        .map(|attr| attr.path.segments.last().unwrap().ident.to_string())
+        .any(|attr| attr == "subdiagnostic");
+
+    // `set_arg` calls take their argument by-move..
+    let needs_move = generates_set_arg
+        // If this is a `MultiSpan` field then it needs to be moved to be used by any
+        // attribute..
+        || is_multispan
+        // If this a `#[subdiagnostic]` then it needs to be moved as the other diagnostic is
+        // unlikely to be `Copy`..
+        || is_subdiagnostic;
+
+    OrderedBindStyle(if needs_move { BindStyle::Move } else { BindStyle::Ref })
 }

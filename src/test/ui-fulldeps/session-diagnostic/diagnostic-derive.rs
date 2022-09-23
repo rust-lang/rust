@@ -37,10 +37,12 @@ struct HelloWarn {}
 
 #[derive(Diagnostic)]
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
-//~^ ERROR `#[derive(Diagnostic)]` can only be used on structs
+//~^ ERROR unsupported type attribute for diagnostic derive enum
 enum DiagnosticOnEnum {
     Foo,
+//~^ ERROR diagnostic slug not specified
     Bar,
+//~^ ERROR diagnostic slug not specified
 }
 
 #[derive(Diagnostic)]
@@ -650,4 +652,22 @@ struct SuggestionOnStruct {
 struct LabelOnStruct {
     #[primary_span]
     suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+enum ExampleEnum {
+    #[diag(typeck::ambiguous_lifetime_bound)]
+    Foo {
+        #[primary_span]
+        sp: Span,
+        #[note]
+        note_sp: Span,
+    },
+    #[diag(typeck::ambiguous_lifetime_bound)]
+    Bar {
+        #[primary_span]
+        sp: Span,
+    },
+    #[diag(typeck::ambiguous_lifetime_bound)]
+    Baz,
 }
