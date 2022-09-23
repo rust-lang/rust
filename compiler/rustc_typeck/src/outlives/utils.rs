@@ -105,7 +105,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // struct Ss<'a, T>(&'a Opaque<T>);
                         // ```
                         //
-                        // Here we want to require an explicit `where Opaque<T>: 'a`
+                        // Here we want to have an implied bound `Opaque<T>: 'a`
 
                         let ty = tcx.mk_opaque(def_id, substs);
                         required_predicates

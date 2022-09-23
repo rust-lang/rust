@@ -17,7 +17,6 @@ trait Yay<AdditionalValue> {
 
 impl<T> Yay<T> for () {
     type InnerStream<'s> = impl Stream<Item = i32> + 's;
-    //^ ERROR does not fulfill the required lifetime
     fn foo<'s>() -> Self::InnerStream<'s> { () }
 }
 
