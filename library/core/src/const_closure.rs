@@ -3,8 +3,8 @@ use crate::marker::Destruct;
 /// Struct representing a closure with owned data.
 ///
 /// Example:
-/// ```rust
-/// use const_closure::ConstFnOnceClosure;
+/// ```no_build
+/// use crate::const_closure::ConstFnOnceClosure;
 /// const fn imp(state: i32, (arg,): (i32,)) -> i32 {
 ///     state + arg
 /// }
@@ -51,9 +51,9 @@ where
 /// Struct representing a closure with mutably borrowed data.
 ///
 /// Example:
-/// ```rust
+/// ```no_build
 /// #![feature(const_mut_refs)]
-/// use const_closure::ConstFnMutClosure;
+/// use crate::const_closure::ConstFnMutClosure;
 /// const fn imp(state: &mut i32, (arg,): (i32,)) -> i32 {
 ///   *state += arg;
 ///   *state
@@ -110,8 +110,8 @@ where
 /// Struct representing a closure with borrowed data.
 ///
 /// Example:
-/// ```rust
-/// use const_closure::ConstFnClosure;
+/// ```no_build
+/// use crate::const_closure::ConstFnClosure;
 ///
 /// const fn imp(state: &i32, (arg,): (i32,)) -> i32 {
 ///     *state + arg
