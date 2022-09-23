@@ -641,6 +641,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
             bound_vars,
         );
+        // Astconv can't normalize inputs or outputs with escaping bound vars,
+        // so normalize them here, after we've wrapped them in a binder.
+        let result = self.normalize_associated_types_in(self.tcx.hir().span(hir_id), result);
 
         let c_result = self.inh.infcx.canonicalize_response(result);
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
