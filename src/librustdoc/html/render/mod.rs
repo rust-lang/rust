@@ -74,7 +74,9 @@ use crate::html::format::{
     PrintWithSpace,
 };
 use crate::html::highlight;
-use crate::html::markdown::{HeadingOffset, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::markdown::{
+    HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
+};
 use crate::html::sources;
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::scrape_examples::{CallData, CallLocation};
@@ -584,7 +586,6 @@ fn short_item_info(
     parent: Option<&clean::Item>,
 ) -> Vec<String> {
     let mut extra_info = vec![];
-    let error_codes = cx.shared.codes;
 
     if let Some(depr @ Deprecation { note, since, is_since_rustc_version: _, suggestion: _ }) =
         item.deprecation(cx.tcx())
@@ -608,13 +609,7 @@ fn short_item_info(
 
         if let Some(note) = note {
             let note = note.as_str();
-            let html = MarkdownHtml(
-                note,
-                &mut cx.id_map,
-                error_codes,
-                cx.shared.edition(),
-                &cx.shared.playground,
-            );
+            let html = MarkdownItemInfo(note, &mut cx.id_map);
             message.push_str(&format!(": {}", html.into_string()));
         }
         extra_info.push(format!(

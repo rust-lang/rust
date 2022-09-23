@@ -145,8 +145,8 @@
 //! abstracting over differences in common platforms, most notably Windows and
 //! Unix derivatives.
 //!
-//! Common types of I/O, including [files], [TCP], [UDP], are defined in the
-//! [`io`], [`fs`], and [`net`] modules.
+//! Common types of I/O, including [files], [TCP], and [UDP], are defined in
+//! the [`io`], [`fs`], and [`net`] modules.
 //!
 //! The [`thread`] module contains Rust's threading abstractions. [`sync`]
 //! contains further primitive shared memory types, including [`atomic`] and

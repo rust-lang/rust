@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use tracing::*;
 
-use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PanicStrategy, PassMode};
+use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PassMode};
 use crate::util;
 use crate::{extract_cdb_version, extract_gdb_version};
 
@@ -949,8 +949,7 @@ pub fn make_test_description<R: Read>(
         ignore |= !has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag");
         ignore |= !has_shadow_call_stack
             && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack");
-        ignore |= config.target_panic == PanicStrategy::Abort
-            && config.parse_name_directive(ln, "needs-unwind");
+        ignore |= !config.can_unwind() && config.parse_name_directive(ln, "needs-unwind");
         ignore |= config.target == "wasm32-unknown-unknown"
             && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS);
         ignore |= config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln);
