@@ -257,9 +257,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             expr.hir_id,
                             expr.span,
                             &format!(
-                                "called `{}` on `{}` after checking its variant with `{}`",
+                                "called `{}` on `{unwrappable_variable_name}` after checking its variant with `{}`",
                                 method_name.ident.name,
-                                unwrappable_variable_name,
                                 unwrappable.check_name.ident.as_str(),
                             ),
                             |diag| {
@@ -268,9 +267,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                                         unwrappable.check.span.with_lo(unwrappable.if_expr.span.lo()),
                                         "try",
                                         format!(
-                                            "if let {} = {}",
-                                            suggested_pattern,
-                                            unwrappable_variable_name,
+                                            "if let {suggested_pattern} = {unwrappable_variable_name}",
                                         ),
                                         // We don't track how the unwrapped value is used inside the
                                         // block or suggest deleting the unwrap, so we can't offer a

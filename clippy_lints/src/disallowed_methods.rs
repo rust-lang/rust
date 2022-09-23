@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
                 reason: Some(reason), ..
             } = conf
             {
-                diag.note(&format!("{} (from clippy.toml)", reason));
+                diag.note(&format!("{reason} (from clippy.toml)"));
             }
         });
     }

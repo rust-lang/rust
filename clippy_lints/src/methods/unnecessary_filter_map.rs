@@ -54,7 +54,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
                 UNNECESSARY_FIND_MAP
             },
             expr.span,
-            &format!("this `.{}` can be written more simply using `.{}`", name, sugg),
+            &format!("this `.{name}` can be written more simply using `.{sugg}`"),
         );
     }
 }

@@ -71,10 +71,7 @@ pub(super) fn check<'tcx>(
                         cx,
                         UNNECESSARY_CAST,
                         expr.span,
-                        &format!(
-                            "casting to the same type is unnecessary (`{}` -> `{}`)",
-                            cast_from, cast_to
-                        ),
+                        &format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
                         "try",
                         literal_str,
                         Applicability::MachineApplicable,
@@ -101,9 +98,9 @@ fn lint_unnecessary_cast(cx: &LateContext<'_>, expr: &Expr<'_>, literal_str: &st
         cx,
         UNNECESSARY_CAST,
         expr.span,
-        &format!("casting {} literal to `{}` is unnecessary", literal_kind_name, cast_to),
+        &format!("casting {literal_kind_name} literal to `{cast_to}` is unnecessary"),
         "try",
-        format!("{}_{}", matchless.trim_end_matches('.'), cast_to),
+        format!("{}_{cast_to}", matchless.trim_end_matches('.')),
         Applicability::MachineApplicable,
     );
 }

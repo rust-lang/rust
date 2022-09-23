@@ -739,7 +739,7 @@ fn path_to_string(path: &QPath<'_>) -> String {
                     *s += ", ";
                     write!(s, "{:?}", segment.ident.as_str()).unwrap();
                 },
-                other => write!(s, "/* unimplemented: {:?}*/", other).unwrap(),
+                other => write!(s, "/* unimplemented: {other:?}*/").unwrap(),
             },
             QPath::LangItem(..) => panic!("path_to_string: called for lang item qpath"),
         }

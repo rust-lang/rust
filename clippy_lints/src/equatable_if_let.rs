@@ -91,9 +91,8 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
                     "this pattern matching can be expressed using equality",
                     "try",
                     format!(
-                        "{} == {}",
+                        "{} == {pat_str}",
                         snippet_with_context(cx, let_expr.init.span, expr.span.ctxt(), "..", &mut applicability).0,
-                        pat_str,
                     ),
                     applicability,
                 );

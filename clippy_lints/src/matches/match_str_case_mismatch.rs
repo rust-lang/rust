@@ -118,8 +118,8 @@ fn lint(cx: &LateContext<'_>, case_method: &CaseMethod, bad_case_span: Span, bad
         MATCH_STR_CASE_MISMATCH,
         bad_case_span,
         "this `match` arm has a differing case than its expression",
-        &format!("consider changing the case of this arm to respect `{}`", method_str),
-        format!("\"{}\"", suggestion),
+        &format!("consider changing the case of this arm to respect `{method_str}`"),
+        format!("\"{suggestion}\""),
         Applicability::MachineApplicable,
     );
 }

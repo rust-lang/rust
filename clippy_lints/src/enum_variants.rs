@@ -202,12 +202,11 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         cx,
         ENUM_VARIANT_NAMES,
         span,
-        &format!("all variants have the same {}fix: `{}`", what, value),
+        &format!("all variants have the same {what}fix: `{value}`"),
         None,
         &format!(
-            "remove the {}fixes and use full paths to \
-             the variants instead of glob imports",
-            what
+            "remove the {what}fixes and use full paths to \
+             the variants instead of glob imports"
         ),
     );
 }

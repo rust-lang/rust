@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(
         then {
             let if_let_type = if some_ctor { "Some" } else { "Ok" };
             // Prepare the error message
-            let msg = format!("unnecessary `if let` since only the `{}` variant of the iterator element is used", if_let_type);
+            let msg = format!("unnecessary `if let` since only the `{if_let_type}` variant of the iterator element is used");
 
             // Prepare the help message
             let mut applicability = Applicability::MaybeIncorrect;

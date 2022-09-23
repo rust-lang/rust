@@ -101,9 +101,8 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                                 next_stmt_span,
                                 "reading zero byte data to `Vec`",
                                 "try",
-                                format!("{}.resize({}, 0); {}",
+                                format!("{}.resize({len}, 0); {}",
                                     ident.as_str(),
-                                    len,
                                     snippet(cx, next_stmt_span, "..")
                                 ),
                                 applicability,

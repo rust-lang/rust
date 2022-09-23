@@ -144,7 +144,7 @@ fn check<'tcx>(
     let scrutinee = peel_hir_expr_refs(scrutinee).0;
     let (scrutinee_str, _) = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
     let scrutinee_str = if scrutinee.span.ctxt() == expr.span.ctxt() && scrutinee.precedence().order() < PREC_POSTFIX {
-        format!("({})", scrutinee_str)
+        format!("({scrutinee_str})")
     } else {
         scrutinee_str.into()
     };
@@ -172,9 +172,9 @@ fn check<'tcx>(
                 };
                 let expr_snip = snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0;
                 if some_expr.needs_unsafe_block {
-                    format!("|{}{}| unsafe {{ {} }}", annotation, some_binding, expr_snip)
+                    format!("|{annotation}{some_binding}| unsafe {{ {expr_snip} }}")
                 } else {
-                    format!("|{}{}| {}", annotation, some_binding, expr_snip)
+                    format!("|{annotation}{some_binding}| {expr_snip}")
                 }
             }
         }
@@ -183,9 +183,9 @@ fn check<'tcx>(
         let pat_snip = snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0;
         let expr_snip = snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0;
         if some_expr.needs_unsafe_block {
-            format!("|{}| unsafe {{ {} }}", pat_snip, expr_snip)
+            format!("|{pat_snip}| unsafe {{ {expr_snip} }}")
         } else {
-            format!("|{}| {}", pat_snip, expr_snip)
+            format!("|{pat_snip}| {expr_snip}")
         }
     } else {
         // Refutable bindings and mixed reference annotations can't be handled by `map`.
@@ -199,9 +199,9 @@ fn check<'tcx>(
         "manual implementation of `Option::map`",
         "try this",
         if else_pat.is_none() && is_else_clause(cx.tcx, expr) {
-            format!("{{ {}{}.map({}) }}", scrutinee_str, as_ref_str, body_str)
+            format!("{{ {scrutinee_str}{as_ref_str}.map({body_str}) }}")
         } else {
-            format!("{}{}.map({})", scrutinee_str, as_ref_str, body_str)
+            format!("{scrutinee_str}{as_ref_str}.map({body_str})")
         },
         app,
     );

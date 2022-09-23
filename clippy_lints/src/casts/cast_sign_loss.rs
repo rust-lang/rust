@@ -14,10 +14,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_op: &Expr<'_>, c
             cx,
             CAST_SIGN_LOSS,
             expr.span,
-            &format!(
-                "casting `{}` to `{}` may lose the sign of the value",
-                cast_from, cast_to
-            ),
+            &format!("casting `{cast_from}` to `{cast_to}` may lose the sign of the value"),
         );
     }
 }

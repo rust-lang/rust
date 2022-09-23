@@ -138,7 +138,7 @@ fn find_sugg_for_if_let<'tcx>(
         cx,
         REDUNDANT_PATTERN_MATCHING,
         let_pat.span,
-        &format!("redundant pattern matching, consider using `{}`", good_method),
+        &format!("redundant pattern matching, consider using `{good_method}`"),
         |diag| {
             // if/while let ... = ... { ... }
             // ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -162,7 +162,7 @@ fn find_sugg_for_if_let<'tcx>(
                 .maybe_par()
                 .to_string();
 
-            diag.span_suggestion(span, "try this", format!("{} {}.{}", keyword, sugg, good_method), app);
+            diag.span_suggestion(span, "try this", format!("{keyword} {sugg}.{good_method}"), app);
 
             if needs_drop {
                 diag.note("this will change drop order of the result, as well as all temporaries");
@@ -252,12 +252,12 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 cx,
                 REDUNDANT_PATTERN_MATCHING,
                 expr.span,
-                &format!("redundant pattern matching, consider using `{}`", good_method),
+                &format!("redundant pattern matching, consider using `{good_method}`"),
                 |diag| {
                     diag.span_suggestion(
                         span,
                         "try this",
-                        format!("{}.{}", snippet(cx, result_expr.span, "_"), good_method),
+                        format!("{}.{good_method}", snippet(cx, result_expr.span, "_")),
                         Applicability::MaybeIncorrect, // snippet
                     );
                 },

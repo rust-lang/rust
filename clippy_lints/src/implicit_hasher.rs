@@ -89,8 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     (
                         generics_suggestion_span,
                         format!(
-                            "<{}{}S: ::std::hash::BuildHasher{}>",
-                            generics_snip,
+                            "<{generics_snip}{}S: ::std::hash::BuildHasher{}>",
                             if generics_snip.is_empty() { "" } else { ", " },
                             if vis.suggestions.is_empty() {
                                 ""
@@ -263,8 +262,8 @@ impl<'tcx> ImplicitHasherType<'tcx> {
 
     fn type_arguments(&self) -> String {
         match *self {
-            ImplicitHasherType::HashMap(.., ref k, ref v) => format!("{}, {}", k, v),
-            ImplicitHasherType::HashSet(.., ref t) => format!("{}", t),
+            ImplicitHasherType::HashMap(.., ref k, ref v) => format!("{k}, {v}"),
+            ImplicitHasherType::HashSet(.., ref t) => format!("{t}"),
         }
     }
 

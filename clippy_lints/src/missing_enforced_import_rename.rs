@@ -90,9 +90,7 @@ impl LateLintPass<'_> for ImportRename {
                     "this import should be renamed",
                     "try",
                     format!(
-                        "{} as {}",
-                        import,
-                        name,
+                        "{import} as {name}",
                     ),
                     Applicability::MachineApplicable,
                 );

@@ -107,11 +107,11 @@ fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a Mac
         if let Some(snip) = snippet_opt(cx, span_call_site);
         // we must check only invocation sites
         // https://github.com/rust-lang/rust-clippy/issues/7422
-        if snip.starts_with(&format!("{}!", name));
+        if snip.starts_with(&format!("{name}!"));
         if unnested_or_local();
         // make formatting consistent
         let c = snip.replace(' ', "");
-        if !c.starts_with(&format!("{}!{}", name, braces.0));
+        if !c.starts_with(&format!("{name}!{}", braces.0));
         if !mac_braces.done.contains(&span_call_site);
         then {
             Some((span_call_site, braces, snip))
@@ -131,9 +131,9 @@ fn emit_help(cx: &EarlyContext<'_>, snip: &str, braces: &(String, String), span:
             cx,
             NONSTANDARD_MACRO_BRACES,
             span,
-            &format!("use of irregular braces for `{}!` macro", macro_name),
+            &format!("use of irregular braces for `{macro_name}!` macro"),
             "consider writing",
-            format!("{}!{}{}{}", macro_name, braces.0, macro_args, braces.1),
+            format!("{macro_name}!{}{macro_args}{}", braces.0, braces.1),
             Applicability::MachineApplicable,
         );
     }
@@ -266,9 +266,7 @@ impl<'de> Deserialize<'de> for MacroMatcher {
                         .iter()
                         .find(|b| b.0 == brace)
                         .map(|(o, c)| ((*o).to_owned(), (*c).to_owned()))
-                        .ok_or_else(|| {
-                            de::Error::custom(&format!("expected one of `(`, `{{`, `[` found `{}`", brace))
-                        })?,
+                        .ok_or_else(|| de::Error::custom(&format!("expected one of `(`, `{{`, `[` found `{brace}`")))?,
                 })
             }
         }

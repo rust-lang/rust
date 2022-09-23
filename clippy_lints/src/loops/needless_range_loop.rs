@@ -145,7 +145,7 @@ pub(super) fn check<'tcx>(
                         cx,
                         NEEDLESS_RANGE_LOOP,
                         arg.span,
-                        &format!("the loop variable `{}` is used to index `{}`", ident.name, indexed),
+                        &format!("the loop variable `{}` is used to index `{indexed}`", ident.name),
                         |diag| {
                             multispan_sugg(
                                 diag,
@@ -154,7 +154,7 @@ pub(super) fn check<'tcx>(
                                     (pat.span, format!("({}, <item>)", ident.name)),
                                     (
                                         arg.span,
-                                        format!("{}.{}().enumerate(){}{}", indexed, method, method_1, method_2),
+                                        format!("{indexed}.{method}().enumerate(){method_1}{method_2}"),
                                     ),
                                 ],
                             );
@@ -162,16 +162,16 @@ pub(super) fn check<'tcx>(
                     );
                 } else {
                     let repl = if starts_at_zero && take_is_empty {
-                        format!("&{}{}", ref_mut, indexed)
+                        format!("&{ref_mut}{indexed}")
                     } else {
-                        format!("{}.{}(){}{}", indexed, method, method_1, method_2)
+                        format!("{indexed}.{method}(){method_1}{method_2}")
                     };
 
                     span_lint_and_then(
                         cx,
                         NEEDLESS_RANGE_LOOP,
                         arg.span,
-                        &format!("the loop variable `{}` is only used to index `{}`", ident.name, indexed),
+                        &format!("the loop variable `{}` is only used to index `{indexed}`", ident.name),
                         |diag| {
                             multispan_sugg(
                                 diag,

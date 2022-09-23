@@ -215,9 +215,8 @@ impl TraitBounds {
                         .map(|(_, _, span)| snippet_with_applicability(cx, span, "..", &mut applicability))
                         .join(" + ");
                     let hint_string = format!(
-                        "consider combining the bounds: `{}: {}`",
+                        "consider combining the bounds: `{}: {trait_bounds}`",
                         snippet(cx, p.bounded_ty.span, "_"),
-                        trait_bounds,
                     );
                     span_lint_and_help(
                         cx,

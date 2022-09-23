@@ -53,7 +53,7 @@ fn lint_return(cx: &LateContext<'_>, emission_place: HirId, span: Span) {
         span,
         "missing `return` statement",
         |diag| {
-            diag.span_suggestion(span, "add `return` as shown", format!("return {}", snip), app);
+            diag.span_suggestion(span, "add `return` as shown", format!("return {snip}"), app);
         },
     );
 }
@@ -71,7 +71,7 @@ fn lint_break(cx: &LateContext<'_>, emission_place: HirId, break_span: Span, exp
             diag.span_suggestion(
                 break_span,
                 "change `break` to `return` as shown",
-                format!("return {}", snip),
+                format!("return {snip}"),
                 app,
             );
         },

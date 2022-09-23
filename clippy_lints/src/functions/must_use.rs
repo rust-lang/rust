@@ -143,7 +143,7 @@ fn check_must_use_candidate<'tcx>(
             diag.span_suggestion(
                 fn_span,
                 "add the attribute",
-                format!("#[must_use] {}", snippet),
+                format!("#[must_use] {snippet}"),
                 Applicability::MachineApplicable,
             );
         }

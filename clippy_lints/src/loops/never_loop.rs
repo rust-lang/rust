@@ -222,9 +222,5 @@ fn for_to_if_let_sugg(cx: &LateContext<'_>, iterator: &Expr<'_>, pat: &Pat<'_>) 
     let pat_snippet = snippet(cx, pat.span, "_");
     let iter_snippet = make_iterator_snippet(cx, iterator, &mut Applicability::Unspecified);
 
-    format!(
-        "if let Some({pat}) = {iter}.next()",
-        pat = pat_snippet,
-        iter = iter_snippet
-    )
+    format!("if let Some({pat_snippet}) = {iter_snippet}.next()")
 }

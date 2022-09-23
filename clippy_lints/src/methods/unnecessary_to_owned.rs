@@ -133,12 +133,11 @@ fn check_addr_of_expr(
                     cx,
                     UNNECESSARY_TO_OWNED,
                     parent.span,
-                    &format!("unnecessary use of `{}`", method_name),
+                    &format!("unnecessary use of `{method_name}`"),
                     "use",
                     format!(
-                        "{:&>width$}{}",
+                        "{:&>width$}{receiver_snippet}",
                         "",
-                        receiver_snippet,
                         width = n_target_refs - n_receiver_refs
                     ),
                     Applicability::MachineApplicable,
@@ -155,7 +154,7 @@ fn check_addr_of_expr(
                             cx,
                             UNNECESSARY_TO_OWNED,
                             parent.span,
-                            &format!("unnecessary use of `{}`", method_name),
+                            &format!("unnecessary use of `{method_name}`"),
                             "use",
                             receiver_snippet,
                             Applicability::MachineApplicable,
@@ -165,7 +164,7 @@ fn check_addr_of_expr(
                             cx,
                             UNNECESSARY_TO_OWNED,
                             expr.span.with_lo(receiver.span.hi()),
-                            &format!("unnecessary use of `{}`", method_name),
+                            &format!("unnecessary use of `{method_name}`"),
                             "remove this",
                             String::new(),
                             Applicability::MachineApplicable,
@@ -182,9 +181,9 @@ fn check_addr_of_expr(
                         cx,
                         UNNECESSARY_TO_OWNED,
                         parent.span,
-                        &format!("unnecessary use of `{}`", method_name),
+                        &format!("unnecessary use of `{method_name}`"),
                         "use",
-                        format!("{}.as_ref()", receiver_snippet),
+                        format!("{receiver_snippet}.as_ref()"),
                         Applicability::MachineApplicable,
                     );
                     return true;
@@ -229,9 +228,9 @@ fn check_into_iter_call_arg(
                 cx,
                 UNNECESSARY_TO_OWNED,
                 parent.span,
-                &format!("unnecessary use of `{}`", method_name),
+                &format!("unnecessary use of `{method_name}`"),
                 "use",
-                format!("{}.iter().{}()", receiver_snippet, cloned_or_copied),
+                format!("{receiver_snippet}.iter().{cloned_or_copied}()"),
                 Applicability::MaybeIncorrect,
             );
             return true;
@@ -276,9 +275,9 @@ fn check_other_call_arg<'tcx>(
                 cx,
                 UNNECESSARY_TO_OWNED,
                 maybe_arg.span,
-                &format!("unnecessary use of `{}`", method_name),
+                &format!("unnecessary use of `{method_name}`"),
                 "use",
-                format!("{:&>width$}{}", "", receiver_snippet, width = n_refs),
+                format!("{:&>n_refs$}{receiver_snippet}", ""),
                 Applicability::MachineApplicable,
             );
             return true;

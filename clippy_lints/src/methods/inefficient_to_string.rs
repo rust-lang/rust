@@ -34,18 +34,17 @@ pub fn check<'tcx>(
                 cx,
                 INEFFICIENT_TO_STRING,
                 expr.span,
-                &format!("calling `to_string` on `{}`", arg_ty),
+                &format!("calling `to_string` on `{arg_ty}`"),
                 |diag| {
                     diag.help(&format!(
-                        "`{}` implements `ToString` through a slower blanket impl, but `{}` has a fast specialization of `ToString`",
-                        self_ty, deref_self_ty
+                        "`{self_ty}` implements `ToString` through a slower blanket impl, but `{deref_self_ty}` has a fast specialization of `ToString`"
                     ));
                     let mut applicability = Applicability::MachineApplicable;
                     let arg_snippet = snippet_with_applicability(cx, receiver.span, "..", &mut applicability);
                     diag.span_suggestion(
                         expr.span,
                         "try dereferencing the receiver",
-                        format!("({}{}).to_string()", "*".repeat(deref_count), arg_snippet),
+                        format!("({}{arg_snippet}).to_string()", "*".repeat(deref_count)),
                         applicability,
                     );
                 },

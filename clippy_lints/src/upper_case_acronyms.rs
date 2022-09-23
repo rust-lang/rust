@@ -93,7 +93,7 @@ fn check_ident(cx: &LateContext<'_>, ident: &Ident, be_aggressive: bool) {
             cx,
             UPPER_CASE_ACRONYMS,
             span,
-            &format!("name `{}` contains a capitalized acronym", ident),
+            &format!("name `{ident}` contains a capitalized acronym"),
             "consider making the acronym lowercase, except the initial letter",
             corrected,
             Applicability::MaybeIncorrect,

@@ -44,7 +44,7 @@ fn check_expr_asm_syntax(lint: &'static Lint, cx: &EarlyContext<'_>, expr: &Expr
                 cx,
                 lint,
                 expr.span,
-                &format!("{} x86 assembly syntax used", style),
+                &format!("{style} x86 assembly syntax used"),
                 None,
                 &format!("use {} x86 assembly syntax", !style),
             );

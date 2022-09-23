@@ -85,7 +85,7 @@ pub(crate) trait BindInsteadOfMap {
 
                 let closure_args_snip = snippet(cx, closure_args_span, "..");
                 let option_snip = snippet(cx, recv.span, "..");
-                let note = format!("{}.{}({} {})", option_snip, Self::GOOD_METHOD_NAME, closure_args_snip, some_inner_snip);
+                let note = format!("{option_snip}.{}({closure_args_snip} {some_inner_snip})", Self::GOOD_METHOD_NAME);
                 span_lint_and_sugg(
                     cx,
                     BIND_INSTEAD_OF_MAP,
