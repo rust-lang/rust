@@ -666,7 +666,6 @@ h2.location a {
 }
 
 .method > .code-header, .trait-impl > .code-header {
-	max-width: calc(100% - 41px);
 	display: block;
 }
 

@@ -312,6 +312,8 @@ declare_features! (
     (active, associated_type_defaults, "1.2.0", Some(29661), None),
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
+    /// Alows async functions to be declared, implemented, and used in traits.
+    (incomplete, async_fn_in_trait, "CURRENT_RUSTC_VERSION", Some(91611), None),
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
     (active, c_unwind, "1.52.0", Some(74990), None),
     /// Allows using C-variadics.
