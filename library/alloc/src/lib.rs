@@ -99,7 +99,7 @@
 #![feature(coerce_unsized)]
 #![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
 #![feature(const_box)]
-#![cfg_attr(not(no_global_oom_handling), feature(const_btree_new))]
+#![cfg_attr(not(no_global_oom_handling), feature(const_btree_len))]
 #![feature(const_cow_is_borrowed)]
 #![feature(const_convert)]
 #![feature(const_size_of_val)]
