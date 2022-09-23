@@ -573,8 +573,8 @@ impl FromStr for bool {
 
     /// Parse a `bool` from a string.
     ///
-    /// Yields a `Result<bool, ParseBoolError>`, because `s` may or may not
-    /// actually be parseable.
+    /// The only accepted values are `"true"` and `"false"`. Any other input
+    /// will return an error.
     ///
     /// # Examples
     ///
