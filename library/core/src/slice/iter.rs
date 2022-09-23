@@ -91,11 +91,8 @@ impl<'a, T> Iter<'a, T> {
         unsafe {
             assume(!ptr.is_null());
 
-            let end = if T::IS_ZST {
-                ptr.wrapping_byte_add(slice.len())
-            } else {
-                ptr.add(slice.len())
-            };
+            let end =
+                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: PhantomData }
         }
@@ -227,11 +224,8 @@ impl<'a, T> IterMut<'a, T> {
         unsafe {
             assume(!ptr.is_null());
 
-            let end = if T::IS_ZST {
-                ptr.wrapping_byte_add(slice.len())
-            } else {
-                ptr.add(slice.len())
-            };
+            let end =
+                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr), end, _marker: PhantomData }
         }
