@@ -1,6 +1,7 @@
 use crate::creader::CrateMetadataRef;
 use decoder::Metadata;
 use def_path_hash_map::DefPathHashMapRef;
+use rustc_data_structures::fx::FxHashMap;
 use table::TableBuilder;
 
 use rustc_ast as ast;
@@ -399,6 +400,8 @@ define_tables! {
     macro_definition: Table<DefIndex, LazyValue<ast::MacArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
+
+    trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, Ty<'static>>>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]

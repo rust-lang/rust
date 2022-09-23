@@ -1059,6 +1059,34 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
+fn should_encode_trait_impl_trait_tys<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    if tcx.def_kind(def_id) != DefKind::AssocFn {
+        return false;
+    }
+
+    let Some(item) = tcx.opt_associated_item(def_id) else { return false; };
+    if item.container != ty::AssocItemContainer::ImplContainer {
+        return false;
+    }
+
+    let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
+
+    // FIXME(RPITIT): This does a somewhat manual walk through the signature
+    // of the trait fn to look for any RPITITs, but that's kinda doing a lot
+    // of work. We can probably remove this when we refactor RPITITs to be
+    // associated types.
+    tcx.fn_sig(trait_item_def_id).skip_binder().output().walk().any(|arg| {
+        if let ty::GenericArgKind::Type(ty) = arg.unpack()
+            && let ty::Projection(data) = ty.kind()
+            && tcx.def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder
+        {
+            true
+        } else {
+            false
+        }
+    })
+}
+
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let mut attrs = self
@@ -1127,6 +1155,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Trait | DefKind::TraitAlias = def_kind {
                 record!(self.tables.super_predicates_of[def_id] <- self.tcx.super_predicates_of(def_id));
+            }
+            if should_encode_trait_impl_trait_tys(tcx, def_id)
+                && let Ok(table) = self.tcx.collect_trait_impl_trait_tys(def_id)
+            {
+                record!(self.tables.trait_impl_trait_tys[def_id] <- table);
             }
         }
         let inherent_impls = tcx.crate_inherent_impls(());
