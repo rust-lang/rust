@@ -16,7 +16,6 @@ use rustc_middle::mir::{
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-//use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::LocalDefId;
@@ -337,7 +336,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let inits = &self.move_data.init_path_map[mpi];
         let move_path = &self.move_data.move_paths[mpi];
         let decl_span = self.body.local_decls[move_path.place.local].source_info.span;
-
         let mut spans = vec![];
         for init_idx in inits {
             let init = &self.move_data.inits[*init_idx];
