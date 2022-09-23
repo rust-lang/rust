@@ -101,6 +101,7 @@
 #![feature(slice_flatten)]
 #![feature(provide_any)]
 #![feature(utf8_chunks)]
+#![feature(cmp_scalar)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

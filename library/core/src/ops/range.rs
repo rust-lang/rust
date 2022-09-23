@@ -147,6 +147,44 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     }
 }
 
+impl<Idx: core::cmp::Ord> Range<Idx> {
+    /// Compares the range to a scalar. Returns `Ordering::Equal`,
+    /// if the range contains the scalar. If not, returns `Ordering::Less`
+    /// or `Ordering::Greater`, depending on whether the range is
+    /// below or above the scalar.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(cmp_scalar)]
+    /// # fn main() -> Result<(), usize> {
+    /// # struct File {
+    /// #    seqnum: u32,
+    /// #    range: core::ops::Range<usize>,
+    /// # }
+    /// let files = vec![
+    ///     File { seqnum: 0, range: 0..1000 },
+    ///     File { seqnum: 1, range: 1000..2200 },
+    ///     File { seqnum: 2, range: 2200..3900 },
+    ///     File { seqnum: 3, range: 3900..5000 },
+    /// ];
+    /// let target = 1600;
+    /// let index = files.binary_search_by(|f| f.range.cmp_scalar(target))?;
+    /// assert_eq!(files[index].seqnum, 1);
+    /// # Ok(()) }
+    /// ```
+    #[unstable(feature = "cmp_scalar", issue = "none")]
+    pub fn cmp_scalar(&self, scalar: Idx) -> core::cmp::Ordering {
+        if self.end <= scalar {
+            core::cmp::Ordering::Less
+        } else if scalar < self.start {
+            core::cmp::Ordering::Greater
+        } else {
+            core::cmp::Ordering::Equal
+        }
+    }
+}
+
 /// A range only bounded inclusively below (`start..`).
 ///
 /// The `RangeFrom` `start..` contains all values with `x >= start`.
@@ -220,6 +258,26 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
         U: ?Sized + PartialOrd<Idx>,
     {
         <Self as RangeBounds<Idx>>::contains(self, item)
+    }
+}
+
+impl<Idx: core::cmp::Ord> RangeFrom<Idx> {
+    /// Compares the range to a scalar. Returns `Ordering::Equal`,
+    /// if the range contains the scalar. If not, the range
+    /// can be only above the scalar, so returns `Ordering::Greater`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(cmp_scalar)]
+    /// # use core::cmp::Ordering;
+    /// assert_eq!((100..).cmp_scalar(50), Ordering::Greater);
+    /// assert_eq!((100..).cmp_scalar(100), Ordering::Equal);
+    /// assert_eq!((100..).cmp_scalar(150), Ordering::Equal);
+    /// ```
+    #[unstable(feature = "cmp_scalar", issue = "none")]
+    pub fn cmp_scalar(&self, scalar: Idx) -> core::cmp::Ordering {
+        if scalar < self.start { core::cmp::Ordering::Greater } else { core::cmp::Ordering::Equal }
     }
 }
 
@@ -301,6 +359,26 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
         U: ?Sized + PartialOrd<Idx>,
     {
         <Self as RangeBounds<Idx>>::contains(self, item)
+    }
+}
+
+impl<Idx: core::cmp::Ord> RangeTo<Idx> {
+    /// Compares the range to a scalar. Returns `Ordering::Equal`,
+    /// if the range contains the scalar. If not, the range
+    /// can be only below the scalar, so returns `Ordering::Less`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(cmp_scalar)]
+    /// # use core::cmp::Ordering;
+    /// assert_eq!((..100).cmp_scalar(50), Ordering::Equal);
+    /// assert_eq!((..100).cmp_scalar(100), Ordering::Less);
+    /// assert_eq!((..100).cmp_scalar(150), Ordering::Less);
+    /// ```
+    #[unstable(feature = "cmp_scalar", issue = "none")]
+    pub fn cmp_scalar(&self, scalar: Idx) -> core::cmp::Ordering {
+        if self.end <= scalar { core::cmp::Ordering::Less } else { core::cmp::Ordering::Equal }
     }
 }
 
@@ -541,6 +619,44 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     }
 }
 
+impl<Idx: core::cmp::Ord> RangeInclusive<Idx> {
+    /// Compares the range to a scalar. Returns `Ordering::Equal`,
+    /// if the range contains the scalar. If not, returns `Ordering::Less`
+    /// or `Ordering::Greater`, depending on whether the range is
+    /// below or above the scalar.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(cmp_scalar)]
+    /// # fn main() -> Result<(), usize> {
+    /// # struct File {
+    /// #    seqnum: u32,
+    /// #    range: core::ops::RangeInclusive<usize>,
+    /// # }
+    /// let files = vec![
+    ///     File { seqnum: 0, range: 0..=999 },
+    ///     File { seqnum: 1, range: 1000..=2199 },
+    ///     File { seqnum: 2, range: 2200..=3899 },
+    ///     File { seqnum: 3, range: 3900..=4999 },
+    /// ];
+    /// let target = 1600;
+    /// let index = files.binary_search_by(|f| f.range.cmp_scalar(target))?;
+    /// assert_eq!(files[index].seqnum, 1);
+    /// # Ok(()) }
+    /// ```
+    #[unstable(feature = "cmp_scalar", issue = "none")]
+    pub fn cmp_scalar(&self, scalar: Idx) -> core::cmp::Ordering {
+        if *self.end() < scalar {
+            core::cmp::Ordering::Less
+        } else if scalar < *self.start() {
+            core::cmp::Ordering::Greater
+        } else {
+            core::cmp::Ordering::Equal
+        }
+    }
+}
+
 /// A range only bounded inclusively above (`..=end`).
 ///
 /// The `RangeToInclusive` `..=end` contains all values with `x <= end`.
@@ -619,6 +735,26 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
         U: ?Sized + PartialOrd<Idx>,
     {
         <Self as RangeBounds<Idx>>::contains(self, item)
+    }
+}
+
+impl<Idx: core::cmp::Ord> RangeToInclusive<Idx> {
+    /// Compares the range to a scalar. Returns `Ordering::Equal`,
+    /// if the range contains the scalar. If not, the range
+    /// can be only below the scalar, so returns `Ordering::Less`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(cmp_scalar)]
+    /// # use core::cmp::Ordering;
+    /// assert_eq!((..=100).cmp_scalar(50), Ordering::Equal);
+    /// assert_eq!((..=100).cmp_scalar(100), Ordering::Equal);
+    /// assert_eq!((..=100).cmp_scalar(150), Ordering::Less);
+    /// ```
+    #[unstable(feature = "cmp_scalar", issue = "none")]
+    pub fn cmp_scalar(&self, scalar: Idx) -> core::cmp::Ordering {
+        if self.end < scalar { core::cmp::Ordering::Less } else { core::cmp::Ordering::Equal }
     }
 }
 
