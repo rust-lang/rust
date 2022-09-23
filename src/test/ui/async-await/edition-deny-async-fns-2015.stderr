@@ -90,7 +90,7 @@ LL |     async fn foo() {}
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
    = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
 
 error[E0308]: mismatched types
   --> $DIR/edition-deny-async-fns-2015.rs:18:20

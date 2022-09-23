@@ -51,7 +51,7 @@ LL | trait C{async fn new(val: T) {}
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
    = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
 
 warning: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:6:57
