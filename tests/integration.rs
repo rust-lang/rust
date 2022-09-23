@@ -9,7 +9,7 @@ use std::process::Command;
 #[cfg_attr(feature = "integration", test)]
 fn integration_test() {
     let repo_name = env::var("INTEGRATION").expect("`INTEGRATION` var not set");
-    let repo_url = format!("https://github.com/{}", repo_name);
+    let repo_url = format!("https://github.com/{repo_name}");
     let crate_name = repo_name
         .split('/')
         .nth(1)
@@ -83,7 +83,7 @@ fn integration_test() {
 
     match output.status.code() {
         Some(0) => println!("Compilation successful"),
-        Some(code) => eprintln!("Compilation failed. Exit code: {}", code),
+        Some(code) => eprintln!("Compilation failed. Exit code: {code}"),
         None => panic!("Process terminated by signal"),
     }
 }

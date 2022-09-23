@@ -55,7 +55,7 @@ pub(super) fn check<'tcx>(
                                 diag.span_suggestion(
                                     expr.span,
                                     "replace it with",
-                                    format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
+                                    format!("{snip_a} {}= {snip_r}", op.node.as_str()),
                                     Applicability::MachineApplicable,
                                 );
                             }

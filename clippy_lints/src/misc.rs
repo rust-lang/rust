@@ -178,7 +178,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                     ("", sugg_init.addr())
                 };
                 let tyopt = if let Some(ty) = local.ty {
-                    format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, ".."))
+                    format!(": &{mutopt}{ty}", ty=snippet(cx, ty.span, ".."))
                 } else {
                     String::new()
                 };
@@ -195,8 +195,6 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                             format!(
                                 "let {name}{tyopt} = {initref};",
                                 name=snippet(cx, name.span, ".."),
-                                tyopt=tyopt,
-                                initref=initref,
                             ),
                             Applicability::MachineApplicable,
                         );
@@ -222,8 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                             stmt.span,
                             "replace it with",
                             format!(
-                                "if {} {{ {}; }}",
-                                sugg,
+                                "if {sugg} {{ {}; }}",
                                 &snippet(cx, b.span, ".."),
                             ),
                             Applicability::MachineApplicable, // snippet
@@ -275,9 +272,8 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                 USED_UNDERSCORE_BINDING,
                 expr.span,
                 &format!(
-                    "used binding `{}` which is prefixed with an underscore. A leading \
-                     underscore signals that a binding will not be used",
-                    binding
+                    "used binding `{binding}` which is prefixed with an underscore. A leading \
+                     underscore signals that a binding will not be used"
                 ),
             );
         }
@@ -328,12 +324,12 @@ fn check_cast(cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &hir::Ty<'_>) 
             };
 
             let (sugg, appl) = if let TyKind::Infer = mut_ty.ty.kind {
-                (format!("{}()", sugg_fn), Applicability::MachineApplicable)
+                (format!("{sugg_fn}()"), Applicability::MachineApplicable)
             } else if let Some(mut_ty_snip) = snippet_opt(cx, mut_ty.ty.span) {
-                (format!("{}::<{}>()", sugg_fn, mut_ty_snip), Applicability::MachineApplicable)
+                (format!("{sugg_fn}::<{mut_ty_snip}>()"), Applicability::MachineApplicable)
             } else {
                 // `MaybeIncorrect` as type inference may not work with the suggested code
-                (format!("{}()", sugg_fn), Applicability::MaybeIncorrect)
+                (format!("{sugg_fn}()"), Applicability::MaybeIncorrect)
             };
             span_lint_and_sugg(cx, ZERO_PTR, span, msg, "try", sugg, appl);
         }

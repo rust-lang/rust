@@ -37,9 +37,7 @@ pub(super) fn check<'tcx>(
                 "this pattern reimplements `Option::ok_or`",
                 "replace with",
                 format!(
-                    "{}.ok_or({})",
-                    recv_snippet,
-                    reindented_err_arg_snippet
+                    "{recv_snippet}.ok_or({reindented_err_arg_snippet})"
                 ),
                 Applicability::MachineApplicable,
             );

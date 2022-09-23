@@ -95,8 +95,8 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
                         src
                     } else {
                         match lit.node {
-                            LitKind::Int(src, _) => format!("{}", src),
-                            LitKind::Float(src, _) => format!("{}", src),
+                            LitKind::Int(src, _) => format!("{src}"),
+                            LitKind::Float(src, _) => format!("{src}"),
                             _ => return,
                         }
                     };

@@ -482,16 +482,13 @@ pub fn format_error(error: Box<dyn Error>) -> String {
                     let field = fields.get(index).copied().unwrap_or_default();
                     write!(
                         msg,
-                        "{:separator_width$}{:field_width$}",
-                        " ",
-                        field,
-                        separator_width = SEPARATOR_WIDTH,
-                        field_width = column_width
+                        "{:SEPARATOR_WIDTH$}{field:column_width$}",
+                        " "
                     )
                     .unwrap();
                 }
             }
-            write!(msg, "\n{}", suffix).unwrap();
+            write!(msg, "\n{suffix}").unwrap();
             msg
         } else {
             s

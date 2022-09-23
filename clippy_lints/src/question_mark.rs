@@ -97,12 +97,12 @@ fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Ex
                 !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
             let sugg = if let Some(else_inner) = r#else {
                 if eq_expr_value(cx, caller, peel_blocks(else_inner)) {
-                    format!("Some({}?)", receiver_str)
+                    format!("Some({receiver_str}?)")
                 } else {
                     return;
                 }
             } else {
-                format!("{}{}?;", receiver_str, if by_ref { ".as_ref()" } else { "" })
+                format!("{receiver_str}{}?;", if by_ref { ".as_ref()" } else { "" })
             };
 
             span_lint_and_sugg(
@@ -134,8 +134,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
             let requires_semi = matches!(get_parent_node(cx.tcx, expr.hir_id), Some(Node::Stmt(_)));
             let sugg = format!(
-                "{}{}?{}",
-                receiver_str,
+                "{receiver_str}{}?{}",
                 if by_ref == ByRef::Yes { ".as_ref()" } else { "" },
                 if requires_semi { ";" } else { "" }
             );

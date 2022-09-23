@@ -417,8 +417,7 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, sess: &Se
     let msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
             sess.err(&format!(
-                "error reading Clippy's configuration file. `{}` is not a valid Rust version",
-                s
+                "error reading Clippy's configuration file. `{s}` is not a valid Rust version"
             ));
             None
         })
@@ -434,8 +433,7 @@ fn read_msrv(conf: &Conf, sess: &Session) -> Option<RustcVersion> {
     let clippy_msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
             sess.err(&format!(
-                "error reading Clippy's configuration file. `{}` is not a valid Rust version",
-                s
+                "error reading Clippy's configuration file. `{s}` is not a valid Rust version"
             ));
             None
         })
@@ -446,8 +444,7 @@ fn read_msrv(conf: &Conf, sess: &Session) -> Option<RustcVersion> {
             // if both files have an msrv, let's compare them and emit a warning if they differ
             if clippy_msrv != cargo_msrv {
                 sess.warn(&format!(
-                    "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{}` from `clippy.toml`",
-                    clippy_msrv
+                    "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
                 ));
             }
 
@@ -466,7 +463,7 @@ pub fn read_conf(sess: &Session) -> Conf {
         Ok(Some(path)) => path,
         Ok(None) => return Conf::default(),
         Err(error) => {
-            sess.struct_err(&format!("error finding Clippy's configuration file: {}", error))
+            sess.struct_err(&format!("error finding Clippy's configuration file: {error}"))
                 .emit();
             return Conf::default();
         },

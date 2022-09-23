@@ -153,11 +153,8 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 )
             } else {
                 (
-                    format!(
-                        "this function's return value is unnecessarily wrapped by `{}`",
-                        return_type_label
-                    ),
-                    format!("remove `{}` from the return type...", return_type_label),
+                    format!("this function's return value is unnecessarily wrapped by `{return_type_label}`"),
+                    format!("remove `{return_type_label}` from the return type..."),
                     inner_type.to_string(),
                     "...and then change returning expressions",
                 )

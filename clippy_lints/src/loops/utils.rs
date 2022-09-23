@@ -344,9 +344,8 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
                     _ => arg,
                 };
                 format!(
-                    "{}.{}()",
+                    "{}.{method_name}()",
                     sugg::Sugg::hir_with_applicability(cx, caller, "_", applic_ref).maybe_par(),
-                    method_name,
                 )
             },
             _ => format!(

@@ -236,7 +236,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 expr.span,
                 msg,
                 Some(arg.span),
-                &format!("argument has type `{}`", arg_ty),
+                &format!("argument has type `{arg_ty}`"),
             );
         }
     }

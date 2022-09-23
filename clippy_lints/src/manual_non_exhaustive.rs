@@ -133,7 +133,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
                             diag.span_suggestion(
                                 header_span,
                                 "add the attribute",
-                                format!("#[non_exhaustive] {}", snippet),
+                                format!("#[non_exhaustive] {snippet}"),
                                 Applicability::Unspecified,
                             );
                         }
@@ -207,7 +207,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                             diag.span_suggestion(
                                 header_span,
                                 "add the attribute",
-                                format!("#[non_exhaustive] {}", snippet),
+                                format!("#[non_exhaustive] {snippet}"),
                                 Applicability::Unspecified,
                             );
                     }

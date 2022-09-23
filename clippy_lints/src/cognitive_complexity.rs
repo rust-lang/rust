@@ -107,8 +107,7 @@ impl CognitiveComplexity {
                 COGNITIVE_COMPLEXITY,
                 fn_span,
                 &format!(
-                    "the function has a cognitive complexity of ({}/{})",
-                    rust_cc,
+                    "the function has a cognitive complexity of ({rust_cc}/{})",
                     self.limit.limit()
                 ),
                 None,

@@ -112,11 +112,10 @@ fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symb
         cx,
         FORMAT_IN_FORMAT_ARGS,
         call_site,
-        &format!("`format!` in `{}!` args", name),
+        &format!("`format!` in `{name}!` args"),
         |diag| {
             diag.help(&format!(
-                "combine the `format!(..)` arguments with the outer `{}!(..)` call",
-                name
+                "combine the `format!(..)` arguments with the outer `{name}!(..)` call"
             ));
             diag.help("or consider changing `format!` to `format_args!`");
         },
@@ -144,8 +143,7 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
                     TO_STRING_IN_FORMAT_ARGS,
                     value.span.with_lo(receiver.span.hi()),
                     &format!(
-                        "`to_string` applied to a type that implements `Display` in `{}!` args",
-                        name
+                        "`to_string` applied to a type that implements `Display` in `{name}!` args"
                     ),
                     "remove this",
                     String::new(),
@@ -157,16 +155,13 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
                     TO_STRING_IN_FORMAT_ARGS,
                     value.span,
                     &format!(
-                        "`to_string` applied to a type that implements `Display` in `{}!` args",
-                        name
+                        "`to_string` applied to a type that implements `Display` in `{name}!` args"
                     ),
                     "use this",
                     format!(
-                        "{}{:*>width$}{}",
+                        "{}{:*>n_needed_derefs$}{receiver_snippet}",
                         if needs_ref { "&" } else { "" },
-                        "",
-                        receiver_snippet,
-                        width = n_needed_derefs
+                        ""
                     ),
                     Applicability::MachineApplicable,
                 );

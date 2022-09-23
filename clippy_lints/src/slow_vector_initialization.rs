@@ -174,7 +174,7 @@ impl SlowVectorInit {
             diag.span_suggestion(
                 vec_alloc.allocation_expr.span,
                 "consider replace allocation with",
-                format!("vec![0; {}]", len_expr),
+                format!("vec![0; {len_expr}]"),
                 Applicability::Unspecified,
             );
         });

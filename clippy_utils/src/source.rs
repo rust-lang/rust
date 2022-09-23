@@ -25,11 +25,11 @@ pub fn expr_block<'a, T: LintContext>(
     if expr.span.from_expansion() {
         Cow::Owned(format!("{{ {} }}", snippet_with_macro_callsite(cx, expr.span, default)))
     } else if let ExprKind::Block(_, _) = expr.kind {
-        Cow::Owned(format!("{}{}", code, string))
+        Cow::Owned(format!("{code}{string}"))
     } else if string.is_empty() {
-        Cow::Owned(format!("{{ {} }}", code))
+        Cow::Owned(format!("{{ {code} }}"))
     } else {
-        Cow::Owned(format!("{{\n{};\n{}\n}}", code, string))
+        Cow::Owned(format!("{{\n{code};\n{string}\n}}"))
     }
 }
 
@@ -466,7 +466,7 @@ mod test {
     #[test]
     fn test_without_block_comments_lines_without_block_comments() {
         let result = without_block_comments(vec!["/*", "", "*/"]);
-        println!("result: {:?}", result);
+        println!("result: {result:?}");
         assert!(result.is_empty());
 
         let result = without_block_comments(vec!["", "/*", "", "*/", "#[crate_type = \"lib\"]", "/*", "", "*/", ""]);

@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
                 conf::DisallowedType::Simple(path) => (path, None),
                 conf::DisallowedType::WithReason { path, reason } => (
                     path,
-                    reason.as_ref().map(|reason| format!("{} (from clippy.toml)", reason)),
+                    reason.as_ref().map(|reason| format!("{reason} (from clippy.toml)")),
                 ),
             };
             let segs: Vec<_> = path.split("::").collect();
@@ -130,7 +130,7 @@ fn emit(cx: &LateContext<'_>, name: &str, span: Span, reason: Option<&str>) {
         cx,
         DISALLOWED_TYPES,
         span,
-        &format!("`{}` is not allowed according to config", name),
+        &format!("`{name}` is not allowed according to config"),
         |diag| {
             if let Some(reason) = reason {
                 diag.note(reason);

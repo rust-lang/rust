@@ -99,23 +99,21 @@ fn report_single_pattern(
 
             let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
             let sugg = format!(
-                "if {} == {}{} {}{}",
+                "if {} == {}{} {}{els_str}",
                 snippet(cx, ex.span, ".."),
                 // PartialEq for different reference counts may not exist.
                 "&".repeat(ref_count_diff),
                 snippet(cx, arms[0].pat.span, ".."),
                 expr_block(cx, arms[0].body, None, "..", Some(expr.span)),
-                els_str,
             );
             (msg, sugg)
         } else {
             let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
             let sugg = format!(
-                "if let {} = {} {}{}",
+                "if let {} = {} {}{els_str}",
                 snippet(cx, arms[0].pat.span, ".."),
                 snippet(cx, ex.span, ".."),
                 expr_block(cx, arms[0].body, None, "..", Some(expr.span)),
-                els_str,
             );
             (msg, sugg)
         }

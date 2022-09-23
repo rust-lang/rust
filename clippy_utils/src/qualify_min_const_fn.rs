@@ -33,10 +33,10 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
-                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {:#?}", predicate),
+                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {predicate:#?}"),
+                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {predicate:#?}"),
             }
         }
         match predicates.parent {
@@ -315,8 +315,7 @@ fn check_terminator<'a, 'tcx>(
                         span,
                         format!(
                             "can only call other `const fn` within a `const fn`, \
-                             but `{:?}` is not stable as `const fn`",
-                            func,
+                             but `{func:?}` is not stable as `const fn`",
                         )
                         .into(),
                     ));

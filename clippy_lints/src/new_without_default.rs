@@ -136,8 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                     id,
                                     impl_item.span,
                                     &format!(
-                                        "you should consider adding a `Default` implementation for `{}`",
-                                        self_type_snip
+                                        "you should consider adding a `Default` implementation for `{self_type_snip}`"
                                     ),
                                     |diag| {
                                         diag.suggest_prepend_item(
@@ -161,9 +160,9 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
 fn create_new_without_default_suggest_msg(self_type_snip: &str, generics_sugg: &str) -> String {
     #[rustfmt::skip]
     format!(
-"impl{} Default for {} {{
+"impl{generics_sugg} Default for {self_type_snip} {{
     fn default() -> Self {{
         Self::new()
     }}
-}}", generics_sugg, self_type_snip)
+}}")
 }

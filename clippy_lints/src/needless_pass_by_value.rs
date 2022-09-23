@@ -236,7 +236,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                         snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
-                                                |x| Cow::from(format!("change `{}` to", x)),
+                                                |x| Cow::from(format!("change `{x}` to")),
                                             )
                                             .as_ref(),
                                         suggestion,
@@ -266,7 +266,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                         snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
-                                                |x| Cow::from(format!("change `{}` to", x))
+                                                |x| Cow::from(format!("change `{x}` to"))
                                             )
                                             .as_ref(),
                                         suggestion,

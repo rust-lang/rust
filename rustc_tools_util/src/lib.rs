@@ -48,8 +48,8 @@ impl std::fmt::Display for VersionInfo {
         if (hash_trimmed.len() + date_trimmed.len()) > 0 {
             write!(
                 f,
-                "{} {}.{}.{} ({} {})",
-                self.crate_name, self.major, self.minor, self.patch, hash_trimmed, date_trimmed,
+                "{} {}.{}.{} ({hash_trimmed} {date_trimmed})",
+                self.crate_name, self.major, self.minor, self.patch,
             )?;
         } else {
             write!(f, "{} {}.{}.{}", self.crate_name, self.major, self.minor, self.patch)?;
@@ -153,7 +153,7 @@ mod test {
     #[test]
     fn test_debug_local() {
         let vi = get_version_info!();
-        let s = format!("{:?}", vi);
+        let s = format!("{vi:?}");
         assert_eq!(
             s,
             "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 2, patch: 0 }"

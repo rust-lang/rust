@@ -287,7 +287,7 @@ fn check<'tcx>(
 
                     diag.span_suggestion(
                         assign.lhs_span,
-                        &format!("declare `{}` here", binding_name),
+                        &format!("declare `{binding_name}` here"),
                         let_snippet,
                         Applicability::MachineApplicable,
                     );
@@ -307,8 +307,8 @@ fn check<'tcx>(
 
                     diag.span_suggestion_verbose(
                         usage.stmt.span.shrink_to_lo(),
-                        &format!("declare `{}` here", binding_name),
-                        format!("{} = ", let_snippet),
+                        &format!("declare `{binding_name}` here"),
+                        format!("{let_snippet} = "),
                         applicability,
                     );
 
@@ -338,8 +338,8 @@ fn check<'tcx>(
 
                     diag.span_suggestion_verbose(
                         usage.stmt.span.shrink_to_lo(),
-                        &format!("declare `{}` here", binding_name),
-                        format!("{} = ", let_snippet),
+                        &format!("declare `{binding_name}` here"),
+                        format!("{let_snippet} = "),
                         applicability,
                     );
 

@@ -278,15 +278,13 @@ impl<'tcx> LenOutput<'tcx> {
             _ => "",
         };
         match self {
-            Self::Integral => format!("expected signature: `({}self) -> bool`", self_ref),
-            Self::Option(_) => format!(
-                "expected signature: `({}self) -> bool` or `({}self) -> Option<bool>",
-                self_ref, self_ref
-            ),
-            Self::Result(..) => format!(
-                "expected signature: `({}self) -> bool` or `({}self) -> Result<bool>",
-                self_ref, self_ref
-            ),
+            Self::Integral => format!("expected signature: `({self_ref}self) -> bool`"),
+            Self::Option(_) => {
+                format!("expected signature: `({self_ref}self) -> bool` or `({self_ref}self) -> Option<bool>")
+            },
+            Self::Result(..) => {
+                format!("expected signature: `({self_ref}self) -> bool` or `({self_ref}self) -> Result<bool>")
+            },
         }
     }
 }
@@ -326,8 +324,7 @@ fn check_for_is_empty<'tcx>(
     let (msg, is_empty_span, self_kind) = match is_empty {
         None => (
             format!(
-                "{} `{}` has a public `len` method, but no `is_empty` method",
-                item_kind,
+                "{item_kind} `{}` has a public `len` method, but no `is_empty` method",
                 item_name.as_str(),
             ),
             None,
@@ -335,8 +332,7 @@ fn check_for_is_empty<'tcx>(
         ),
         Some(is_empty) if !cx.access_levels.is_exported(is_empty.def_id.expect_local()) => (
             format!(
-                "{} `{}` has a public `len` method, but a private `is_empty` method",
-                item_kind,
+                "{item_kind} `{}` has a public `len` method, but a private `is_empty` method",
                 item_name.as_str(),
             ),
             Some(cx.tcx.def_span(is_empty.def_id)),
@@ -348,8 +344,7 @@ fn check_for_is_empty<'tcx>(
         {
             (
                 format!(
-                    "{} `{}` has a public `len` method, but the `is_empty` method has an unexpected signature",
-                    item_kind,
+                    "{item_kind} `{}` has a public `len` method, but the `is_empty` method has an unexpected signature",
                     item_name.as_str(),
                 ),
                 Some(cx.tcx.def_span(is_empty.def_id)),
@@ -419,10 +414,9 @@ fn check_len(
                 LEN_ZERO,
                 span,
                 &format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
-                &format!("using `{}is_empty` is clearer and more explicit", op),
+                &format!("using `{op}is_empty` is clearer and more explicit"),
                 format!(
-                    "{}{}.is_empty()",
-                    op,
+                    "{op}{}.is_empty()",
                     snippet_with_applicability(cx, receiver.span, "_", &mut applicability)
                 ),
                 applicability,
@@ -439,10 +433,9 @@ fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Ex
             COMPARISON_TO_EMPTY,
             span,
             "comparison to empty slice",
-            &format!("using `{}is_empty` is clearer and more explicit", op),
+            &format!("using `{op}is_empty` is clearer and more explicit"),
             format!(
-                "{}{}.is_empty()",
-                op,
+                "{op}{}.is_empty()",
                 snippet_with_applicability(cx, lit1.span, "_", &mut applicability)
             ),
             applicability,

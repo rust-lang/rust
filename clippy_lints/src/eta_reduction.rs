@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
 
                             then {
                                 // Mutable closure is used after current expr; we cannot consume it.
-                                snippet = format!("&mut {}", snippet);
+                                snippet = format!("&mut {snippet}");
                             }
                         }
                         diag.span_suggestion(
@@ -158,7 +158,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                     diag.span_suggestion(
                         expr.span,
                         "replace the closure with the method itself",
-                        format!("{}::{}", name, path.ident.name),
+                        format!("{name}::{}", path.ident.name),
                         Applicability::MachineApplicable,
                     );
                 })

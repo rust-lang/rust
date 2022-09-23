@@ -790,7 +790,7 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
                 diag.span_suggestion_with_style(
                     span,
                     "try",
-                    format!("`{}`", snippet),
+                    format!("`{snippet}`"),
                     applicability,
                     // always show the suggestion in a separate line, since the
                     // inline presentation adds another pair of backticks

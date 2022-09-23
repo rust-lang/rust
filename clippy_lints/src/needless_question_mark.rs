@@ -134,7 +134,7 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 NEEDLESS_QUESTION_MARK,
                 expr.span,
                 "question mark operator is useless here",
-                &format!("try removing question mark and `{}`", sugg_remove),
+                &format!("try removing question mark and `{sugg_remove}`"),
                 format!("{}", snippet(cx, inner_expr.span, r#""...""#)),
                 Applicability::MachineApplicable,
             );
