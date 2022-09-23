@@ -41,8 +41,8 @@ static TEST: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Copy, Clone)]
 struct Config {
-    pub remote: bool,
-    pub verbose: bool,
+    remote: bool,
+    verbose: bool,
 }
 
 impl Config {
@@ -56,12 +56,8 @@ impl Config {
         let args = env::args().skip(1);
         for argument in args {
             match &argument[..] {
-                "remote" => {
-                    config.remote = true;
-                }
-                "verbose" | "-v" => {
-                    config.verbose = true;
-                }
+                "--remote" => config.remote = true,
+                "--verbose" | "-v" => config.verbose = true,
                 arg => panic!("unknown argument: {}", arg),
             }
         }
