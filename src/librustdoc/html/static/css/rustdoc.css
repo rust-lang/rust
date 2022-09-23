@@ -522,10 +522,6 @@ img {
 	width: 100px;
 }
 
-.location:empty {
-	border: none;
-}
-
 .block ul, .block li {
 	padding: 0;
 	margin: 0;
@@ -577,13 +573,9 @@ h2.location a {
 }
 
 .rustdoc .example-wrap {
-	display: inline-flex;
+	display: flex;
 	margin-bottom: 10px;
-}
-
-.example-wrap {
 	position: relative;
-	width: 100%;
 }
 
 .example-wrap > pre.line-number {
@@ -745,7 +737,6 @@ pre, .rustdoc.source .example-wrap {
 }
 
 .content .item-info {
-	position: relative;
 	margin-left: 24px;
 }
 

@@ -129,7 +129,7 @@ impl<'tcx> UnifyKey for ty::ConstVid<'tcx> {
 }
 
 impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
-    type Error = (ty::Const<'tcx>, ty::Const<'tcx>);
+    type Error = NoError;
 
     fn unify_values(&value1: &Self, &value2: &Self) -> Result<Self, Self::Error> {
         Ok(match (value1.val, value2.val) {

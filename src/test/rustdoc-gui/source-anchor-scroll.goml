@@ -10,7 +10,7 @@ assert-property: ("html", {"scrollTop": "0"})
 click: '//a[text() = "barbar"]'
 assert-property: ("html", {"scrollTop": "125"})
 click: '//a[text() = "bar"]'
-assert-property: ("html", {"scrollTop": "166"})
+assert-property: ("html", {"scrollTop": "156"})
 click: '//a[text() = "sub_fn"]'
 assert-property: ("html", {"scrollTop": "53"})
 

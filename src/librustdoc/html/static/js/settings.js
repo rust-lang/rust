@@ -19,6 +19,13 @@
                 updateSystemTheme();
                 updateLightAndDark();
                 break;
+            case "line-numbers":
+                if (value === true) {
+                    window.rustdoc_add_line_numbers_to_examples();
+                } else {
+                    window.rustdoc_remove_line_numbers_from_examples();
+                }
+                break;
         }
     }
 
