@@ -22,7 +22,9 @@ use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKin
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::{self, DefIdTree, GenericArgKind, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{
+    self, DefIdTree, GenericArg, GenericArgKind, ToPredicate, Ty, TyCtxt, TypeVisitable,
+};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
@@ -283,7 +285,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ) {
                     return None;
                 }
-
                 span = item_name.span;
 
                 // Don't show generic arguments when the method can't be found in any implementation (#81576).
@@ -407,35 +408,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             (ty::Adt(def, _), ty::Adt(def_actual, substs)) if def == def_actual => {
                                 // If there are any inferred arguments, (`{integer}`), we should replace
                                 // them with underscores to allow the compiler to infer them
-                                let substs = substs
+                                let infer_substs: Vec<GenericArg<'_>> = substs
                                     .into_iter()
-                                    .filter(|arg| !arg.is_suggestable(tcx, true))
-                                    .map(|arg| match arg.unpack() {
-                                        GenericArgKind::Lifetime(_) => self
-                                            .next_region_var(RegionVariableOrigin::MiscVariable(
-                                                rustc_span::DUMMY_SP,
-                                            ))
-                                            .into(),
-                                        GenericArgKind::Type(_) => self
-                                            .next_ty_var(TypeVariableOrigin {
-                                                span: rustc_span::DUMMY_SP,
-                                                kind: TypeVariableOriginKind::MiscVariable,
-                                            })
-                                            .into(),
-                                        GenericArgKind::Const(arg) => self
-                                            .next_const_var(
-                                                arg.ty(),
-                                                ConstVariableOrigin {
+                                    .map(|arg| {
+                                        if !arg.is_suggestable(tcx, true) {
+                                            match arg.unpack() {
+                                            GenericArgKind::Lifetime(_) => self
+                                                .next_region_var(RegionVariableOrigin::MiscVariable(
+                                                    rustc_span::DUMMY_SP,
+                                                ))
+                                                .into(),
+                                            GenericArgKind::Type(_) => self
+                                                .next_ty_var(TypeVariableOrigin {
                                                     span: rustc_span::DUMMY_SP,
-                                                    kind: ConstVariableOriginKind::MiscVariable,
-                                                },
-                                            )
-                                            .into(),
+                                                    kind: TypeVariableOriginKind::MiscVariable,
+                                                })
+                                                .into(),
+                                            GenericArgKind::Const(arg) => self
+                                                .next_const_var(
+                                                    arg.ty(),
+                                                    ConstVariableOrigin {
+                                                        span: rustc_span::DUMMY_SP,
+                                                        kind: ConstVariableOriginKind::MiscVariable,
+                                                    },
+                                                )
+                                                .into(),
+                                            }
+                                        } else {
+                                            arg
+                                        }
                                     })
                                     .collect::<Vec<_>>();
-                                format!(
-                                    "{}",
-                                    ty::Instance::new(def_actual.did(), tcx.intern_substs(&substs))
+
+                                tcx.value_path_str_with_substs(
+                                    def_actual.did(),
+                                    tcx.intern_substs(&infer_substs),
                                 )
                             }
                             _ => self.ty_to_value_string(ty.peel_refs()),
@@ -1861,7 +1868,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Print out the type for use in value namespace.
     fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
         match ty.kind() {
-            ty::Adt(def, substs) => format!("{}", ty::Instance::new(def.did(), substs)),
+            ty::Adt(def, substs) => self.tcx.def_path_str_with_substs(def.did(), substs),
             _ => self.ty_to_string(ty),
         }
     }
