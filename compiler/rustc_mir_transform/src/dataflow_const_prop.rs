@@ -2,7 +2,7 @@ use rustc_const_eval::interpret::{ConstValue, ImmTy, Immediate, InterpCx, Scalar
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
     Map, ProjElem, State, ValueAnalysis, ValueOrPlace, ValueOrPlaceOrRef,
 };
@@ -43,7 +43,7 @@ struct ConstAnalysis<'tcx> {
 }
 
 impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
-    type Value = FlatSet<Const<'tcx>>;
+    type Value = FlatSet<ScalarTy<'tcx>>;
 
     const NAME: &'static str = "ConstAnalysis";
 
@@ -136,8 +136,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
             .literal
             .eval(self.tcx, self.param_env)
             .try_to_scalar()
-            .and_then(|scalar| scalar.try_to_int().ok())
-            .map(|value| FlatSet::Elem(Const::Scalar(value, constant.ty())))
+            .map(|value| FlatSet::Elem(ScalarTy(value, constant.ty())))
             .unwrap_or(FlatSet::Top)
     }
 
@@ -161,8 +160,9 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                     };
                     let result = match value {
                         FlatSet::Top => FlatSet::Top,
-                        FlatSet::Elem(Const::Scalar(scalar, _)) => {
-                            FlatSet::Elem(scalar.assert_bits(scalar.size()))
+                        FlatSet::Elem(ScalarTy(scalar, _)) => {
+                            let int = scalar.assert_int();
+                            FlatSet::Elem(int.assert_bits(int.size()))
                         }
                         FlatSet::Bottom => FlatSet::Bottom,
                     };
@@ -188,18 +188,11 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-enum Const<'tcx> {
-    // FIXME: If there won't be any other cases, make it a struct.
-    Scalar(ScalarInt, Ty<'tcx>),
-}
+struct ScalarTy<'tcx>(Scalar, Ty<'tcx>);
 
-impl<'tcx> std::fmt::Debug for Const<'tcx> {
+impl<'tcx> std::fmt::Debug for ScalarTy<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Self::Scalar(scalar, ty) => {
-                std::fmt::Display::fmt(&ConstantKind::Val(ConstValue::Scalar(scalar.into()), ty), f)
-            }
-        }
+        std::fmt::Display::fmt(&ConstantKind::Val(ConstValue::Scalar(self.0), self.1), f)
     }
 }
 
@@ -215,25 +208,20 @@ impl<'tcx> ConstAnalysis<'tcx> {
 
     fn binary_op(
         &self,
-        state: &mut State<FlatSet<Const<'tcx>>>,
+        state: &mut State<FlatSet<ScalarTy<'tcx>>>,
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
-    ) -> (FlatSet<Const<'tcx>>, FlatSet<Const<'tcx>>) {
+    ) -> (FlatSet<ScalarTy<'tcx>>, FlatSet<ScalarTy<'tcx>>) {
         let left = self.eval_operand(left, state);
         let right = self.eval_operand(right, state);
         match (left, right) {
             (FlatSet::Elem(left), FlatSet::Elem(right)) => {
                 match self.ecx.overflowing_binary_op(op, &left, &right) {
-                    Ok((val, overflow, ty)) => {
-                        let val = val
-                            .try_to_int()
-                            .ok()
-                            .map(|val| self.wrap_scalar(val, ty))
-                            .unwrap_or(FlatSet::Top);
-                        let overflow = self.wrap_scalar(overflow.into(), self.tcx.types.bool);
-                        (val, overflow)
-                    }
+                    Ok((val, overflow, ty)) => (
+                        self.wrap_scalar(val, ty),
+                        self.wrap_scalar(Scalar::from_bool(overflow), self.tcx.types.bool),
+                    ),
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
             }
@@ -248,7 +236,7 @@ impl<'tcx> ConstAnalysis<'tcx> {
     fn eval_operand(
         &self,
         op: &Operand<'tcx>,
-        state: &mut State<FlatSet<Const<'tcx>>>,
+        state: &mut State<FlatSet<ScalarTy<'tcx>>>,
     ) -> FlatSet<ImmTy<'tcx>> {
         let value = match self.handle_operand(op, state) {
             ValueOrPlace::Value(value) => value,
@@ -257,29 +245,29 @@ impl<'tcx> ConstAnalysis<'tcx> {
         };
         match value {
             FlatSet::Top => FlatSet::Top,
-            FlatSet::Elem(Const::Scalar(value, ty)) => {
+            FlatSet::Elem(ScalarTy(scalar, ty)) => {
                 let layout = self
                     .tcx
                     .layout_of(ty::ParamEnv::empty().and(ty))
                     .expect("this should not happen"); // FIXME
-                FlatSet::Elem(ImmTy::from_scalar(value.into(), layout))
+                FlatSet::Elem(ImmTy::from_scalar(scalar, layout))
             }
             FlatSet::Bottom => FlatSet::Bottom,
         }
     }
 
-    fn wrap_scalar(&self, scalar: ScalarInt, ty: Ty<'tcx>) -> FlatSet<Const<'tcx>> {
-        FlatSet::Elem(Const::Scalar(scalar, ty))
+    fn wrap_scalar(&self, scalar: Scalar, ty: Ty<'tcx>) -> FlatSet<ScalarTy<'tcx>> {
+        FlatSet::Elem(ScalarTy(scalar, ty))
     }
 
-    fn wrap_immediate(&self, imm: Immediate, ty: Ty<'tcx>) -> FlatSet<Const<'tcx>> {
+    fn wrap_immediate(&self, imm: Immediate, ty: Ty<'tcx>) -> FlatSet<ScalarTy<'tcx>> {
         match imm {
-            Immediate::Scalar(Scalar::Int(scalar)) => self.wrap_scalar(scalar, ty),
+            Immediate::Scalar(scalar) => self.wrap_scalar(scalar, ty),
             _ => FlatSet::Top,
         }
     }
 
-    fn wrap_immty(&self, val: ImmTy<'tcx>) -> FlatSet<Const<'tcx>> {
+    fn wrap_immty(&self, val: ImmTy<'tcx>) -> FlatSet<ScalarTy<'tcx>> {
         self.wrap_immediate(*val, val.layout.ty)
     }
 }
@@ -287,8 +275,8 @@ impl<'tcx> ConstAnalysis<'tcx> {
 struct CollectAndPatch<'tcx, 'map> {
     tcx: TyCtxt<'tcx>,
     map: &'map Map,
-    before_effect: FxHashMap<(Location, Place<'tcx>), Const<'tcx>>,
-    assignments: FxHashMap<Location, Const<'tcx>>,
+    before_effect: FxHashMap<(Location, Place<'tcx>), ScalarTy<'tcx>>,
+    assignments: FxHashMap<Location, ScalarTy<'tcx>>,
 }
 
 impl<'tcx, 'map> CollectAndPatch<'tcx, 'map> {
@@ -296,18 +284,17 @@ impl<'tcx, 'map> CollectAndPatch<'tcx, 'map> {
         Self { tcx, map, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
     }
 
-    fn make_operand(&self, constant: Const<'tcx>) -> Operand<'tcx> {
-        let Const::Scalar(scalar, ty) = constant;
+    fn make_operand(&self, scalar: ScalarTy<'tcx>) -> Operand<'tcx> {
         Operand::Constant(Box::new(Constant {
             span: DUMMY_SP,
             user_ty: None,
-            literal: ConstantKind::Val(ConstValue::Scalar(scalar.into()), ty),
+            literal: ConstantKind::Val(ConstValue::Scalar(scalar.0), scalar.1),
         }))
     }
 }
 
 impl<'mir, 'tcx, 'map> ResultsVisitor<'mir, 'tcx> for CollectAndPatch<'tcx, 'map> {
-    type FlowState = State<FlatSet<Const<'tcx>>>;
+    type FlowState = State<FlatSet<ScalarTy<'tcx>>>;
 
     fn visit_statement_before_primary_effect(
         &mut self,
@@ -384,7 +371,7 @@ impl<'tcx, 'map> MutVisitor<'tcx> for CollectAndPatch<'tcx, 'map> {
 }
 
 struct OperandCollector<'tcx, 'map, 'a> {
-    state: &'a State<FlatSet<Const<'tcx>>>,
+    state: &'a State<FlatSet<ScalarTy<'tcx>>>,
     visitor: &'a mut CollectAndPatch<'tcx, 'map>,
 }
 
