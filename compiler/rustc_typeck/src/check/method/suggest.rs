@@ -262,11 +262,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if actual.is_enum() {
                     "variant or associated item"
                 } else {
-                    match (item_name.as_str().chars().next(), actual.is_fresh_ty()) {
-                        (Some(name), false) if name.is_lowercase() => "function or associated item",
-                        (Some(_), false) => "associated item",
-                        (Some(_), true) | (None, false) => "variant or associated item",
-                        (None, true) => "variant",
+                    match item_name.as_str().chars().next() {
+                        Some(name) if name.is_lowercase() => "function or associated item",
+                        Some(_) => "associated item",
+                        None => "variant or associated item",
                     }
                 };
 
@@ -991,8 +990,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(span, &msg);
                 }
 
-                if actual.is_numeric() && actual.is_fresh() || restrict_type_params {
-                } else {
+                if !restrict_type_params {
                     self.suggest_traits_to_import(
                         &mut err,
                         span,

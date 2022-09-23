@@ -1403,22 +1403,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             |(last_ty, mut same, only_never_return): (std::option::Option<Ty<'_>>, bool, bool),
              (_, ty)| {
                 let ty = self.resolve_vars_if_possible(ty);
-                same &=
-                    !matches!(ty.kind(), ty::Error(_))
-                        && last_ty.map_or(true, |last_ty| {
-                            // FIXME: ideally we would use `can_coerce` here instead, but `typeck` comes
-                            // *after* in the dependency graph.
-                            match (ty.kind(), last_ty.kind()) {
-                                (Infer(InferTy::IntVar(_)), Infer(InferTy::IntVar(_)))
-                                | (Infer(InferTy::FloatVar(_)), Infer(InferTy::FloatVar(_)))
-                                | (Infer(InferTy::FreshIntTy(_)), Infer(InferTy::FreshIntTy(_)))
-                                | (
-                                    Infer(InferTy::FreshFloatTy(_)),
-                                    Infer(InferTy::FreshFloatTy(_)),
-                                ) => true,
-                                _ => ty == last_ty,
-                            }
-                        });
+                same &= !matches!(ty.kind(), ty::Error(_))
+                    && last_ty.map_or(true, |last_ty| {
+                        // FIXME: ideally we would use `can_coerce` here instead, but `typeck` comes
+                        // *after* in the dependency graph.
+                        match (ty.kind(), last_ty.kind()) {
+                            (Infer(InferTy::IntVar(_)), Infer(InferTy::IntVar(_)))
+                            | (Infer(InferTy::FloatVar(_)), Infer(InferTy::FloatVar(_))) => true,
+                            _ => ty == last_ty,
+                        }
+                    });
                 (Some(ty), same, only_never_return && matches!(ty.kind(), ty::Never))
             },
         );

@@ -1819,16 +1819,6 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn is_fresh_ty(self) -> bool {
-        matches!(self.kind(), Infer(FreshTy(_)))
-    }
-
-    #[inline]
-    pub fn is_fresh(self) -> bool {
-        matches!(self.kind(), Infer(FreshTy(_) | FreshIntTy(_) | FreshFloatTy(_)))
-    }
-
-    #[inline]
     pub fn is_char(self) -> bool {
         matches!(self.kind(), Char)
     }
@@ -2017,9 +2007,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types.u8,
 
-            ty::Bound(..)
-            | ty::Placeholder(_)
-            | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Bound(..) | ty::Placeholder(_) => {
                 bug!("`discriminant_ty` applied to unexpected type: {:?}", self)
             }
         }
@@ -2072,8 +2060,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Infer(ty::TyVar(_))
             | ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            | ty::Placeholder(..) => {
                 bug!("`ptr_metadata_ty` applied to unexpected type: {:?} (tail = {:?})", self, tail)
             }
         }
@@ -2149,9 +2136,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Infer(ty::TyVar(_)) => false,
 
-            ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Bound(..) | ty::Placeholder(..) => {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
             }
         }

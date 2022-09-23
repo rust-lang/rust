@@ -537,17 +537,6 @@ pub enum InferTy {
     /// We don't know until it's used what type it's supposed to be, so
     /// we create a fresh type variable.
     FloatVar(FloatVid),
-
-    /// A [`FreshTy`][Self::FreshTy] is one that is generated as a replacement
-    /// for an unbound type variable. This is convenient for caching etc. See
-    /// `rustc_infer::infer::freshen` for more details.
-    ///
-    /// Compare with [`TyVar`][Self::TyVar].
-    FreshTy(u32),
-    /// Like [`FreshTy`][Self::FreshTy], but as a replacement for [`IntVar`][Self::IntVar].
-    FreshIntTy(u32),
-    /// Like [`FreshTy`][Self::FreshTy], but as a replacement for [`FloatVar`][Self::FloatVar].
-    FreshFloatTy(u32),
 }
 
 /// Raw `TyVid` are used as the unification key for `sub_relations`;
@@ -678,7 +667,6 @@ impl<CTX> HashStable<CTX> for InferTy {
             TyVar(v) => v.as_u32().hash_stable(ctx, hasher),
             IntVar(v) => v.index.hash_stable(ctx, hasher),
             FloatVar(v) => v.index.hash_stable(ctx, hasher),
-            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
         }
     }
 }
@@ -717,9 +705,6 @@ impl fmt::Debug for InferTy {
             TyVar(ref v) => v.fmt(f),
             IntVar(ref v) => v.fmt(f),
             FloatVar(ref v) => v.fmt(f),
-            FreshTy(v) => write!(f, "FreshTy({:?})", v),
-            FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
-            FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v),
         }
     }
 }
@@ -742,9 +727,6 @@ impl fmt::Display for InferTy {
             TyVar(_) => write!(f, "_"),
             IntVar(_) => write!(f, "{}", "{integer}"),
             FloatVar(_) => write!(f, "{}", "{float}"),
-            FreshTy(v) => write!(f, "FreshTy({})", v),
-            FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
-            FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v),
         }
     }
 }

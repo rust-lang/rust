@@ -1133,9 +1133,7 @@ pub fn needs_drop_components<'tcx>(
     target_layout: &TargetDataLayout,
 ) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
     match ty.kind() {
-        ty::Infer(ty::FreshIntTy(_))
-        | ty::Infer(ty::FreshFloatTy(_))
-        | ty::Bool
+        ty::Bool
         | ty::Int(_)
         | ty::Uint(_)
         | ty::Float(_)

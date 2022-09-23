@@ -140,8 +140,6 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         ty::Never
         | ty::Error(_)
         | ty::Foreign(..)
-        | ty::Infer(ty::FreshIntTy(_))
-        | ty::Infer(ty::FreshFloatTy(_))
         | ty::Projection(..)
         | ty::Param(_)
         | ty::Bound(..)
@@ -305,8 +303,6 @@ pub fn valtree_to_const_value<'tcx>(
         ty::Never
         | ty::Error(_)
         | ty::Foreign(..)
-        | ty::Infer(ty::FreshIntTy(_))
-        | ty::Infer(ty::FreshFloatTy(_))
         | ty::Projection(..)
         | ty::Param(_)
         | ty::Bound(..)

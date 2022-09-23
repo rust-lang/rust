@@ -37,7 +37,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -143,25 +143,16 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
         let a_is_expected = relation.a_is_expected();
 
         match (a.kind(), b.kind()) {
-            (
-                ty::ConstKind::Infer(InferConst::Var(a_vid)),
-                ty::ConstKind::Infer(InferConst::Var(b_vid)),
-            ) => {
+            (ty::ConstKind::Infer(a_vid), ty::ConstKind::Infer(b_vid)) => {
                 self.inner.borrow_mut().const_unification_table().union(a_vid, b_vid);
                 return Ok(a);
             }
 
-            // All other cases of inference with other variables are errors.
-            (ty::ConstKind::Infer(InferConst::Var(_)), ty::ConstKind::Infer(_))
-            | (ty::ConstKind::Infer(_), ty::ConstKind::Infer(InferConst::Var(_))) => {
-                bug!("tried to combine ConstKind::Infer/ConstKind::Infer(InferConst::Var)")
-            }
-
-            (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
+            (ty::ConstKind::Infer(vid), _) => {
                 return self.unify_const_variable(relation.param_env(), vid, b, a_is_expected);
             }
 
-            (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
+            (_, ty::ConstKind::Infer(vid)) => {
                 return self.unify_const_variable(relation.param_env(), vid, a, !a_is_expected);
             }
             (ty::ConstKind::Unevaluated(..), _) if self.tcx.lazy_normalization() => {
@@ -712,7 +703,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         assert_eq!(c, c2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
         match c.kind() {
-            ty::ConstKind::Infer(InferConst::Var(vid)) => {
+            ty::ConstKind::Infer(vid) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);
@@ -729,7 +720,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                 origin: var_value.origin,
                                 val: ConstVariableValue::Unknown { universe: self.for_universe },
                             });
-                            Ok(self.tcx().mk_const_var(new_var_id, c.ty()))
+                            Ok(self.tcx().mk_const_infer(new_var_id, c.ty()))
                         }
                     }
                 }
@@ -909,7 +900,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         debug_assert_eq!(c, _c);
 
         match c.kind() {
-            ty::ConstKind::Infer(InferConst::Var(vid)) => {
+            ty::ConstKind::Infer(vid) => {
                 // Check if the current unification would end up
                 // unifying `target_vid` with a const which contains
                 // an inference variable which is unioned with `target_vid`.
@@ -942,7 +933,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                                         },
                                     },
                                 );
-                            Ok(self.tcx().mk_const_var(new_var_id, c.ty()))
+                            Ok(self.tcx().mk_const_infer(new_var_id, c.ty()))
                         }
                     }
                 }

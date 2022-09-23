@@ -1,4 +1,3 @@
-pub use self::freshen::TypeFreshener;
 pub use self::lexical_region_resolve::RegionResolutionError;
 pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
@@ -30,7 +29,7 @@ use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::visit::TypeVisitable;
 pub use rustc_middle::ty::IntVarValue;
-use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -54,7 +53,6 @@ mod combine;
 mod equate;
 pub mod error_reporting;
 pub mod free_regions;
-mod freshen;
 mod fudge;
 mod glb;
 mod higher_ranked;
@@ -730,10 +728,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.in_snapshot.get()
     }
 
-    pub fn freshen<T: TypeFoldable<'tcx>>(&self, t: T) -> T {
-        t.fold_with(&mut self.freshener())
-    }
-
     /// Returns the origin of the type variable identified by `vid`, or `None`
     /// if this is not a type variable.
     ///
@@ -745,15 +739,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             _ => None,
         }
-    }
-
-    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
-        freshen::TypeFreshener::new(self, false)
-    }
-
-    /// Like `freshener`, but does not replace `'static` regions.
-    pub fn freshener_keep_static<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
-        freshen::TypeFreshener::new(self, true)
     }
 
     pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
@@ -1112,7 +1097,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn next_const_var(&self, ty: Ty<'tcx>, origin: ConstVariableOrigin) -> ty::Const<'tcx> {
-        self.tcx.mk_const_var(self.next_const_var_id(origin), ty)
+        self.tcx.mk_const_infer(self.next_const_var_id(origin), ty)
     }
 
     pub fn next_const_var_in_universe(
@@ -1126,7 +1111,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .borrow_mut()
             .const_unification_table()
             .new_key(ConstVarValue { origin, val: ConstVariableValue::Unknown { universe } });
-        self.tcx.mk_const_var(vid, ty)
+        self.tcx.mk_const_infer(vid, ty)
     }
 
     pub fn next_const_var_id(&self, origin: ConstVariableOrigin) -> ConstVid<'tcx> {
@@ -1242,7 +1227,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         origin,
                         val: ConstVariableValue::Unknown { universe: self.universe() },
                     });
-                self.tcx.mk_const_var(const_var_id, self.tcx.type_of(param.def_id)).into()
+                self.tcx.mk_const_infer(const_var_id, self.tcx.type_of(param.def_id)).into()
             }
         }
     }
@@ -1857,7 +1842,7 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
     fn maybe_from_const(ct: ty::Const<'tcx>) -> Option<Self> {
         match ct.kind() {
-            ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
+            ty::ConstKind::Infer(v) => Some(TyOrConstInferVar::Const(v)),
             _ => None,
         }
     }
@@ -1876,8 +1861,8 @@ impl<'tcx> TypeFolder<'tcx> for InferenceLiteralEraser<'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.kind() {
-            ty::Infer(ty::IntVar(_) | ty::FreshIntTy(_)) => self.tcx.types.i32,
-            ty::Infer(ty::FloatVar(_) | ty::FreshFloatTy(_)) => self.tcx.types.f64,
+            ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
+            ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
             _ => ty.super_fold_with(self),
         }
     }
@@ -1935,7 +1920,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
+        if let ty::ConstKind::Infer(vid) = ct.kind() {
             self.infcx
                 .inner
                 .borrow_mut()

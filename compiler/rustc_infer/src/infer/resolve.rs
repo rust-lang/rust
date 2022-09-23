@@ -3,7 +3,7 @@ use super::{FixupError, FixupResult, InferCtxt, Span};
 use rustc_middle::mir;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
-use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 
 use std::ops::ControlFlow;
 
@@ -193,12 +193,11 @@ impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
         } else {
             let t = self.infcx.shallow_resolve(t);
             match *t.kind() {
-                ty::Infer(ty::TyVar(vid)) => Err(FixupError::UnresolvedTy(vid)),
-                ty::Infer(ty::IntVar(vid)) => Err(FixupError::UnresolvedIntTy(vid)),
-                ty::Infer(ty::FloatVar(vid)) => Err(FixupError::UnresolvedFloatTy(vid)),
-                ty::Infer(_) => {
-                    bug!("Unexpected type in full type resolver: {:?}", t);
-                }
+                ty::Infer(infer_ty) => match infer_ty {
+                    ty::TyVar(vid) => Err(FixupError::UnresolvedTy(vid)),
+                    ty::IntVar(vid) => Err(FixupError::UnresolvedIntTy(vid)),
+                    ty::FloatVar(vid) => Err(FixupError::UnresolvedFloatTy(vid)),
+                },
                 _ => t.try_super_fold_with(self),
             }
         }
@@ -223,11 +222,8 @@ impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
         } else {
             let c = self.infcx.shallow_resolve(c);
             match c.kind() {
-                ty::ConstKind::Infer(InferConst::Var(vid)) => {
+                ty::ConstKind::Infer(vid) => {
                     return Err(FixupError::UnresolvedConst(vid));
-                }
-                ty::ConstKind::Infer(InferConst::Fresh(_)) => {
-                    bug!("Unexpected const in full const resolver: {:?}", c);
                 }
                 _ => {}
             }

@@ -1,5 +1,5 @@
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, InferConst, Ty, TypeFlags};
+use crate::ty::{self, Ty, TypeFlags};
 use std::slice;
 
 #[derive(Debug)]
@@ -144,17 +144,9 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
-            &ty::Infer(infer) => {
+            &ty::Infer(_) => {
+                self.add_flags(TypeFlags::HAS_TY_INFER);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
-                match infer {
-                    ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
-                        self.add_flags(TypeFlags::HAS_TY_FRESH)
-                    }
-
-                    ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => {
-                        self.add_flags(TypeFlags::HAS_TY_INFER)
-                    }
-                }
             }
 
             &ty::Adt(_, substs) => {
@@ -290,12 +282,9 @@ impl FlagComputation {
         self.add_ty(c.ty());
         match c.kind() {
             ty::ConstKind::Unevaluated(unevaluated) => self.add_unevaluated_const(unevaluated),
-            ty::ConstKind::Infer(infer) => {
+            ty::ConstKind::Infer(_) => {
+                self.add_flags(TypeFlags::HAS_CT_INFER);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
-                match infer {
-                    InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
-                    InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
-                }
             }
             ty::ConstKind::Bound(debruijn, _) => {
                 self.add_bound_var(debruijn);

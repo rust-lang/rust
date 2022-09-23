@@ -51,7 +51,7 @@ pub enum ConstKind<'tcx> {
     Param(ty::ParamConst),
 
     /// Infer the value of the const.
-    Infer(InferConst<'tcx>),
+    Infer(ty::ConstVid<'tcx>),
 
     /// Bound const variable, used only when preparing a trait query.
     Bound(ty::DebruijnIndex, ty::BoundVar),
@@ -104,16 +104,6 @@ impl<'tcx> ConstKind<'tcx> {
     pub fn try_to_machine_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
         self.try_to_value()?.try_to_machine_usize(tcx)
     }
-}
-
-/// An inference variable for a const, for use in const generics.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable)]
-pub enum InferConst<'tcx> {
-    /// Infer the value of the const.
-    Var(ty::ConstVid<'tcx>),
-    /// A fresh const variable. See `infer::freshen` for more details.
-    Fresh(u32),
 }
 
 enum EvalMode {

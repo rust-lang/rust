@@ -7,7 +7,7 @@ use crate::mir::{Field, ProjectionKind};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{self, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
@@ -817,13 +817,13 @@ impl<'tcx> TypeSuperVisitable<'tcx> for ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ty::ConstVid<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _folder: &mut F) -> Result<Self, F::Error> {
         Ok(self)
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for InferConst<'tcx> {
+impl<'tcx> TypeVisitable<'tcx> for ty::ConstVid<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
     }

@@ -3,7 +3,7 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    visit::TypeVisitable, Const, ConstKind, DefIdTree, ExistentialPredicate, InferConst, InferTy,
+    visit::TypeVisitable, Const, ConstKind, DefIdTree, ExistentialPredicate, InferTy,
     PolyTraitPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
 
@@ -31,12 +31,7 @@ impl<'tcx> Ty<'tcx> {
                 | Int(_)
                 | Uint(_)
                 | Float(_)
-                | Infer(
-                    InferTy::IntVar(_)
-                        | InferTy::FloatVar(_)
-                        | InferTy::FreshIntTy(_)
-                        | InferTy::FreshFloatTy(_)
-                )
+                | Infer(InferTy::IntVar(_) | InferTy::FloatVar(_))
         )
     }
 
@@ -50,12 +45,7 @@ impl<'tcx> Ty<'tcx> {
             | Int(_)
             | Uint(_)
             | Float(_)
-            | Infer(
-                InferTy::IntVar(_)
-                | InferTy::FloatVar(_)
-                | InferTy::FreshIntTy(_)
-                | InferTy::FreshFloatTy(_),
-            ) => true,
+            | Infer(InferTy::IntVar(_) | InferTy::FloatVar(_)) => true,
             Ref(_, x, _) | Array(x, _) | Slice(x) => x.peel_refs().is_simple_ty(),
             Tuple(tys) if tys.is_empty() => true,
             _ => false,
@@ -497,7 +487,7 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
 
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         match c.kind() {
-            ConstKind::Infer(InferConst::Var(_)) if self.infer_suggestable => {}
+            ConstKind::Infer(_) if self.infer_suggestable => {}
 
             ConstKind::Infer(..)
             | ConstKind::Bound(..)

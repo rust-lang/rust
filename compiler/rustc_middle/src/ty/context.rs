@@ -18,10 +18,9 @@ use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
     ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, ExistentialPredicate, FloatTy,
-    FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
-    ParamConst, ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region,
-    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
-    Visibility,
+    FloatVar, FloatVid, GenericParamDefKind, InferTy, IntTy, IntVar, IntVid, List, ParamConst,
+    ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region, RegionKind,
+    ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef, UserSubsts};
 use rustc_ast as ast;
@@ -972,7 +971,15 @@ impl<'tcx> CommonTypes<'tcx> {
             str_: mk(Str),
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 
-            trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
+            // Using a placeholder type feels weird here, but placeholders cannot
+            // be directly created by astconv so it mostly works out ok.
+            //
+            // This is definitely not ideal and we should switch this to a more
+            // sensible type.
+            trait_object_dummy_self: mk(Placeholder(ty::PlaceholderType {
+                universe: ty::UniverseIndex::ROOT,
+                name: ty::BoundVar::from_usize(0),
+            })),
         }
     }
 }
@@ -2584,8 +2591,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.mk_const(ty::ConstS { kind: ty::ConstKind::Infer(InferConst::Var(v)), ty })
+    pub fn mk_const_infer(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+        self.mk_const(ty::ConstS { kind: ty::ConstKind::Infer(v), ty })
     }
 
     #[inline]
@@ -2601,11 +2608,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_ty_infer(self, it: InferTy) -> Ty<'tcx> {
         self.mk_ty(Infer(it))
-    }
-
-    #[inline]
-    pub fn mk_const_infer(self, ic: InferConst<'tcx>, ty: Ty<'tcx>) -> ty::Const<'tcx> {
-        self.mk_const(ty::ConstS { kind: ty::ConstKind::Infer(ic), ty })
     }
 
     #[inline]

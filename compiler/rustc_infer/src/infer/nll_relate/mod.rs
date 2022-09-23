@@ -29,7 +29,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use std::fmt::Debug;
 use std::ops::ControlFlow;
@@ -668,7 +668,7 @@ where
         }
 
         match b.kind() {
-            ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
+            ty::ConstKind::Infer(_) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
                 self.infcx.tcx.sess.delay_span_bug(
                     self.delegate.span(),
@@ -1047,10 +1047,10 @@ where
         _: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         match a.kind() {
-            ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
+            ty::ConstKind::Infer(_) if D::forbid_inference_vars() => {
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }
-            ty::ConstKind::Infer(InferConst::Var(vid)) => {
+            ty::ConstKind::Infer(vid) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);
@@ -1061,7 +1061,7 @@ where
                             origin: var_value.origin,
                             val: ConstVariableValue::Unknown { universe: self.universe },
                         });
-                        Ok(self.tcx().mk_const_var(new_var_id, a.ty()))
+                        Ok(self.tcx().mk_const_infer(new_var_id, a.ty()))
                     }
                 }
             }

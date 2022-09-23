@@ -72,9 +72,7 @@ pub use self::closure::{
     RootVariableMinCaptureList, UpvarCapture, UpvarCaptureMap, UpvarId, UpvarListMap, UpvarPath,
     CAPTURE_STRUCT_LOCAL,
 };
-pub use self::consts::{
-    Const, ConstInt, ConstKind, ConstS, InferConst, ScalarInt, UnevaluatedConst, ValTree,
-};
+pub use self::consts::{Const, ConstInt, ConstKind, ConstS, ScalarInt, UnevaluatedConst, ValTree};
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
     CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorDiagnosticData,

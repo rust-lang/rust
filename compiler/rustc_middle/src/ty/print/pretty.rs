@@ -1079,9 +1079,8 @@ pub trait PrettyPrinter<'tcx>:
                 // HACK(eddyb) this duplicates `FmtPrinter`'s `path_generic_args`,
                 // in order to place the projections inside the `<...>`.
                 if !resugared {
-                    // Use a type that can't appear in defaults of type parameters.
-                    let dummy_cx = cx.tcx().mk_ty_infer(ty::FreshTy(0));
-                    let principal = principal.with_self_ty(cx.tcx(), dummy_cx);
+                    let principal =
+                        principal.with_self_ty(cx.tcx(), cx.tcx().types.trait_object_dummy_self);
 
                     let args = cx
                         .tcx()
@@ -1220,12 +1219,11 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
             }
-            ty::ConstKind::Infer(infer_ct) => {
-                match infer_ct {
-                    ty::InferConst::Var(ct_vid)
-                        if let Some(name) = self.const_infer_name(ct_vid) =>
-                            p!(write("{}", name)),
-                    _ => print_underscore!(),
+            ty::ConstKind::Infer(ct_vid) => {
+                if let Some(name) = self.const_infer_name(ct_vid) {
+                    p!(write("{}", name))
+                } else {
+                    print_underscore!()
                 }
             }
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
@@ -2505,9 +2503,7 @@ define_print_and_forward_display! {
     }
 
     ty::ExistentialTraitRef<'tcx> {
-        // Use a type that can't appear in defaults of type parameters.
-        let dummy_self = cx.tcx().mk_ty_infer(ty::FreshTy(0));
-        let trait_ref = self.with_self_ty(cx.tcx(), dummy_self);
+        let trait_ref = self.with_self_ty(cx.tcx(), cx.tcx().types.trait_object_dummy_self);
         p!(print(trait_ref.print_only_trait_path()))
     }
 

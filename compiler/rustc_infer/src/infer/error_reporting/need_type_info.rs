@@ -16,7 +16,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
-use rustc_middle::ty::{self, DefIdTree, InferConst};
+use rustc_middle::ty::{self, DefIdTree};
 use rustc_middle::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeckResults};
 use rustc_span::symbol::{kw, Ident};
@@ -269,7 +269,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
             GenericArgKind::Const(ct) => {
-                if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
+                if let ty::ConstKind::Infer(vid) = ct.kind() {
                     let origin =
                         self.inner.borrow_mut().const_unification_table().probe_value(vid).origin;
                     if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
@@ -821,9 +821,8 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 }
             }
             (GenericArgKind::Const(inner_ct), GenericArgKind::Const(target_ct)) => {
-                use ty::InferConst::*;
                 match (inner_ct.kind(), target_ct.kind()) {
-                    (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => self
+                    (ty::ConstKind::Infer(a_vid), ty::ConstKind::Infer(b_vid)) => self
                         .infcx
                         .inner
                         .borrow_mut()

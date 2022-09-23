@@ -820,17 +820,16 @@ pub fn object_region_bounds<'tcx>(
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a placeholder type.
-    let open_ty = tcx.mk_ty_infer(ty::FreshTy(0));
 
     let predicates = existential_predicates.iter().filter_map(|predicate| {
         if let ty::ExistentialPredicate::Projection(_) = predicate.skip_binder() {
             None
         } else {
-            Some(predicate.with_self_ty(tcx, open_ty))
+            Some(predicate.with_self_ty(tcx, tcx.types.trait_object_dummy_self))
         }
     });
 
-    required_region_bounds(tcx, open_ty, predicates)
+    required_region_bounds(tcx, predicates)
 }
 
 /// Given a set of predicates that apply to an object type, returns
@@ -850,13 +849,10 @@ pub fn object_region_bounds<'tcx>(
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
 #[instrument(skip(tcx, predicates), level = "debug", ret)]
-pub(crate) fn required_region_bounds<'tcx>(
+fn required_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    erased_self_ty: Ty<'tcx>,
     predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
 ) -> Vec<ty::Region<'tcx>> {
-    assert!(!erased_self_ty.has_escaping_bound_vars());
-
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|obligation| {
             debug!(?obligation);
@@ -872,7 +868,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t, r)) => {
                     // Search for a bound of the form `erased_self_ty
                     // : 'a`, but be wary of something like `for<'a>
                     // erased_self_ty : 'a` (we interpret a
@@ -882,8 +878,8 @@ pub(crate) fn required_region_bounds<'tcx>(
                     // it's kind of a moot point since you could never
                     // construct such an object, but this seems
                     // correct even if that code changes).
-                    if t == &erased_self_ty && !r.has_escaping_bound_vars() {
-                        Some(*r)
+                    if t == tcx.types.trait_object_dummy_self && !r.has_escaping_bound_vars() {
+                        Some(r)
                     } else {
                         None
                     }
