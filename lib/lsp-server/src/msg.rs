@@ -135,6 +135,14 @@ pub enum ErrorCode {
     ///
     /// @since 3.17.0
     ServerCancelled = -32802,
+
+    /// A request failed but it was syntactically correct, e.g the
+    /// method name was known and the parameters were valid. The error
+    /// message should contain human readable information about why
+    /// the request failed.
+    ///
+    /// @since 3.17.0
+    RequestFailed = -32803,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
