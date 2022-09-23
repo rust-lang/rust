@@ -73,7 +73,7 @@ pub use self::closure::{
     CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{
-    Const, ConstInt, ConstKind, ConstS, InferConst, ScalarInt, Unevaluated, ValTree,
+    Const, ConstInt, ConstKind, ConstS, InferConst, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
@@ -682,7 +682,7 @@ pub enum PredicateKind<'tcx> {
     Coerce(CoercePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(ty::Unevaluated<'tcx, ()>),
+    ConstEvaluatable(ty::UnevaluatedConst<'tcx>),
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(Const<'tcx>, Const<'tcx>),

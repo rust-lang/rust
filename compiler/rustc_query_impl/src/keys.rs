@@ -276,7 +276,7 @@ impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>) {
+impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         (self.0).def.did.krate == LOCAL_CRATE

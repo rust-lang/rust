@@ -2141,7 +2141,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         let identity_substs =
             crate::traits::InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         let did = ty::WithOptConstParam::unknown(assoc_ty.item.def_id);
-        let kind = ty::ConstKind::Unevaluated(ty::Unevaluated::new(did, identity_substs));
+        let kind = ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
         ty.map_bound(|ty| tcx.mk_const(ty::ConstS { ty, kind }).into())
     } else {
         ty.map_bound(|ty| ty.into())

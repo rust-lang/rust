@@ -705,8 +705,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn try_unify_abstract_consts(
         &self,
-        a: ty::Unevaluated<'tcx, ()>,
-        b: ty::Unevaluated<'tcx, ()>,
+        a: ty::UnevaluatedConst<'tcx>,
+        b: ty::UnevaluatedConst<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
         // Reject any attempt to unify two unevaluated constants that contain inference
@@ -1690,7 +1690,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn try_const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::Unevaluated<'tcx, ()>,
+        unevaluated: ty::UnevaluatedConst<'tcx>,
         ty: Ty<'tcx>,
         span: Option<Span>,
     ) -> Result<ty::Const<'tcx>, ErrorHandled> {
@@ -1725,7 +1725,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn const_eval_resolve(
         &self,
         mut param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::Unevaluated<'tcx, ()>,
+        unevaluated: ty::UnevaluatedConst<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
         let mut substs = self.resolve_vars_if_possible(unevaluated.substs);
@@ -1756,8 +1756,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!(?param_env_erased);
         debug!(?substs_erased);
 
-        let unevaluated =
-            ty::Unevaluated { def: unevaluated.def, substs: substs_erased, promoted: () };
+        let unevaluated = ty::UnevaluatedConst { def: unevaluated.def, substs: substs_erased };
 
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.

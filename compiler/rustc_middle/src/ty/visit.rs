@@ -199,7 +199,17 @@ pub trait TypeVisitor<'tcx>: Sized {
         c.super_visit_with(self)
     }
 
-    fn visit_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty_unevaluated(
+        &mut self,
+        uv: ty::UnevaluatedConst<'tcx>,
+    ) -> ControlFlow<Self::BreakTy> {
+        uv.super_visit_with(self)
+    }
+
+    fn visit_mir_unevaluated(
+        &mut self,
+        uv: mir::UnevaluatedConst<'tcx>,
+    ) -> ControlFlow<Self::BreakTy> {
         uv.super_visit_with(self)
     }
 
@@ -597,8 +607,24 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
 
     #[inline]
     #[instrument(level = "trace", ret)]
-    fn visit_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty_unevaluated(
+        &mut self,
+        uv: ty::UnevaluatedConst<'tcx>,
+    ) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_unevaluated_const(uv);
+        trace!(r.flags=?flags);
+        if flags.intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::CONTINUE
+        }
+    }
+
+    fn visit_mir_unevaluated(
+        &mut self,
+        uv: mir::UnevaluatedConst<'tcx>,
+    ) -> ControlFlow<Self::BreakTy> {
+        let flags = FlagComputation::for_unevaluated_const(uv.shrink());
         trace!(r.flags=?flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)

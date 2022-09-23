@@ -381,7 +381,7 @@ rustc_queries! {
     }
 
     query try_unify_abstract_consts(key:
-        ty::ParamEnvAnd<'tcx, (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>
+        ty::ParamEnvAnd<'tcx, (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>
     )>) -> bool {
         desc {
             |tcx| "trying to unify the generic constants {} and {}",

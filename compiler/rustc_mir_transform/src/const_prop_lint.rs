@@ -16,8 +16,8 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    AssertKind, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, Location, Operand, Place,
-    Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator,
+    self, AssertKind, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, Location, Operand,
+    Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator,
     TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
@@ -301,7 +301,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let lint_only = match c.literal {
                         ConstantKind::Ty(ct) => ct.needs_subst(),
                         ConstantKind::Unevaluated(
-                            ty::Unevaluated { def: _, substs: _, promoted: Some(_) },
+                            mir::UnevaluatedConst { def: _, substs: _, promoted: Some(_) },
                             _,
                         ) => {
                             // Promoteds must lint and not error as the user didn't ask for them

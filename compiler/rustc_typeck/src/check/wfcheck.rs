@@ -1113,10 +1113,12 @@ fn check_type_defn<'tcx, F>(
                 wfcx.register_obligation(traits::Obligation::new(
                     cause,
                     wfcx.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ty::Unevaluated::new(
-                        ty::WithOptConstParam::unknown(discr_def_id.to_def_id()),
-                        discr_substs,
-                    )))
+                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(
+                        ty::UnevaluatedConst::new(
+                            ty::WithOptConstParam::unknown(discr_def_id.to_def_id()),
+                            discr_substs,
+                        ),
+                    ))
                     .to_predicate(tcx),
                 ));
             }

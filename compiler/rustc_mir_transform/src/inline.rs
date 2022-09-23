@@ -605,7 +605,7 @@ impl<'tcx> Inliner<'tcx> {
                 caller_body.required_consts.extend(
                     callee_body.required_consts.iter().copied().filter(|&ct| match ct.literal {
                         ConstantKind::Ty(_) => {
-                            bug!("should never encounter ty::Unevaluated in `required_consts`")
+                            bug!("should never encounter ty::UnevaluatedConst in `required_consts`")
                         }
                         ConstantKind::Val(..) | ConstantKind::Unevaluated(..) => true,
                     }),

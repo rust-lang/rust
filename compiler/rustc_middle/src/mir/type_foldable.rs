@@ -3,6 +3,7 @@
 use rustc_ast::InlineAsmTemplatePiece;
 
 use super::*;
+use crate::mir;
 use crate::ty;
 
 TrivialTypeTraversalAndLiftImpls! {
@@ -47,6 +48,25 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
 impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
         Ok(self)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for mir::UnevaluatedConst<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        folder.try_fold_mir_unevaluated(self)
+    }
+}
+
+impl<'tcx> TypeSuperFoldable<'tcx> for mir::UnevaluatedConst<'tcx> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(mir::UnevaluatedConst {
+            def: self.def,
+            substs: self.substs.try_fold_with(folder)?,
+            promoted: self.promoted,
+        })
     }
 }
 

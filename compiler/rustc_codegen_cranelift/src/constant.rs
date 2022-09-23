@@ -5,7 +5,6 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
-use rustc_middle::ty::ConstKind;
 use rustc_span::DUMMY_SP;
 
 use cranelift_codegen::ir::GlobalValueData;
@@ -42,15 +41,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
     let mut all_constants_ok = true;
     for constant in &fx.mir.required_consts {
         let unevaluated = match fx.monomorphize(constant.literal) {
-            ConstantKind::Ty(ct) => match ct.kind() {
-                ConstKind::Unevaluated(uv) => uv.expand(),
-                ConstKind::Value(_) => continue,
-                ConstKind::Param(_)
-                | ConstKind::Infer(_)
-                | ConstKind::Bound(_, _)
-                | ConstKind::Placeholder(_)
-                | ConstKind::Error(_) => unreachable!("{:?}", ct),
-            },
+            ConstantKind::Ty(_) => unreachable!(),
             ConstantKind::Unevaluated(uv, _) => uv,
             ConstantKind::Val(..) => continue,
         };
@@ -118,7 +109,7 @@ pub(crate) fn codegen_constant<'tcx>(
 ) -> CValue<'tcx> {
     let (const_val, ty) = match fx.monomorphize(constant.literal) {
         ConstantKind::Ty(const_) => unreachable!("{:?}", const_),
-        ConstantKind::Unevaluated(ty::Unevaluated { def, substs, promoted }, ty)
+        ConstantKind::Unevaluated(mir::UnevaluatedConst { def, substs, promoted }, ty)
             if fx.tcx.is_static(def.did) =>
         {
             assert!(substs.is_empty());

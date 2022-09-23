@@ -30,7 +30,7 @@ pub struct AbstractConst<'tcx> {
 impl<'tcx> AbstractConst<'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        uv: ty::Unevaluated<'tcx, ()>,
+        uv: ty::UnevaluatedConst<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
         let inner = tcx.thir_abstract_const_opt_const_arg(uv.def)?;
         debug!("AbstractConst::new({:?}) = {:?}", uv, inner);

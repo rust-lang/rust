@@ -36,7 +36,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_resolve(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        ct: ty::Unevaluated<'tcx>,
+        ct: mir::UnevaluatedConst<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
@@ -49,7 +49,11 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
+        match ty::Instance::resolve_opt_const_arg(
+            self, param_env,
+            // FIXME: maybe have a seperate version for resolving mir::UnevaluatedConst?
+            ct.def, ct.substs,
+        ) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: ct.promoted };
                 self.const_eval_global_id(param_env, cid, span)
@@ -63,7 +67,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_resolve_for_typeck(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        ct: ty::Unevaluated<'tcx, ()>,
+        ct: ty::UnevaluatedConst<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference

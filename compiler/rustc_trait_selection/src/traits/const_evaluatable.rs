@@ -138,7 +138,7 @@ impl<'tcx> ConstUnifyCtxt<'tcx> {
 #[instrument(skip(tcx), level = "debug")]
 pub fn try_unify_abstract_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (a, b): (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>),
+    (a, b): (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>),
     param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
     (|| {
@@ -161,7 +161,7 @@ pub fn try_unify_abstract_consts<'tcx>(
 #[instrument(skip(infcx), level = "debug")]
 pub fn is_const_evaluatable<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    uv: ty::Unevaluated<'tcx, ()>,
+    uv: ty::UnevaluatedConst<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {

@@ -1,10 +1,23 @@
 //! `TypeVisitable` implementations for MIR types
 
 use super::*;
+use crate::mir;
 
 impl<'tcx, R: Idx, C: Idx> TypeVisitable<'tcx> for BitMatrix<R, C> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for mir::UnevaluatedConst<'tcx> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        visitor.visit_mir_unevaluated(*self)
+    }
+}
+
+impl<'tcx> TypeSuperVisitable<'tcx> for mir::UnevaluatedConst<'tcx> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.substs.visit_with(visitor)
     }
 }
 
