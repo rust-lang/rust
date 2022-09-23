@@ -102,7 +102,7 @@ unsafe impl Trait for dyn (::std::string::ToString) + Send + Sync { }
 fn assert_trait<T: Trait + ?Sized>() {}
 
 fn main() {
-    assert_trait::<dyn Send>();
-    assert_trait::<dyn Sync>();
-    assert_trait::<dyn Send + Sync>();
+    assert_trait::<dyn Send + 'static>();
+    assert_trait::<dyn Sync + 'static>();
+    assert_trait::<dyn Send + Sync + 'static>();
 }

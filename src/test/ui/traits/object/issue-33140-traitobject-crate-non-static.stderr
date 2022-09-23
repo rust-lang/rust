@@ -1,0 +1,22 @@
+error[E0283]: type annotations needed: cannot satisfy `dyn Send + Sync: Trait`
+  --> $DIR/issue-33140-traitobject-crate-non-static.rs:9:5
+   |
+LL |     assert_trait::<dyn Send + Sync>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: multiple `impl`s satisfying `dyn Send + Sync: Trait` found
+  --> $DIR/issue-33140-traitobject-crate-non-static.rs:4:1
+   |
+LL | impl Trait for dyn Send + Sync {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl Trait for dyn Sync + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `assert_trait`
+  --> $DIR/issue-33140-traitobject-crate-non-static.rs:6:20
+   |
+LL | fn assert_trait<T: Trait + ?Sized>() {}
+   |                    ^^^^^ required by this bound in `assert_trait`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.
