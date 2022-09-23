@@ -5,6 +5,11 @@ LL |     let s: &'static str; s.len()
    |         -                ^^^^^^^ `*s` used here but it isn't initialized
    |         |
    |         binding declared here but left uninitialized
+   |
+help: consider assigning a value
+   |
+LL |     let s: &'static str = todo!(); s.len()
+   |                         +++++++++
 
 error: aborting due to previous error
 
