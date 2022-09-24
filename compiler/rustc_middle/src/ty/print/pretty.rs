@@ -1088,17 +1088,9 @@ pub trait PrettyPrinter<'tcx>:
                         .generics_of(principal.def_id)
                         .own_substs_no_defaults(cx.tcx(), principal.substs);
 
-                    // Don't print `'_` if there's no unerased regions.
-                    let print_regions = args.iter().any(|arg| match arg.unpack() {
-                        GenericArgKind::Lifetime(r) => !r.is_erased(),
-                        _ => false,
-                    });
-                    let mut args = args.iter().cloned().filter(|arg| match arg.unpack() {
-                        GenericArgKind::Lifetime(_) => print_regions,
-                        _ => true,
-                    });
                     let mut projections = predicates.projection_bounds();
 
+                    let mut args = args.iter().cloned();
                     let arg0 = args.next();
                     let projection0 = projections.next();
                     if arg0.is_some() || projection0.is_some() {
@@ -1845,22 +1837,11 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
-        // Don't print `'_` if there's no unerased regions.
-        let print_regions = self.tcx.sess.verbose()
-            || args.iter().any(|arg| match arg.unpack() {
-                GenericArgKind::Lifetime(r) => !r.is_erased(),
-                _ => false,
-            });
-        let args = args.iter().cloned().filter(|arg| match arg.unpack() {
-            GenericArgKind::Lifetime(_) => print_regions,
-            _ => true,
-        });
-
-        if args.clone().next().is_some() {
+        if args.first().is_some() {
             if self.in_value {
                 write!(self, "::")?;
             }
-            self.generic_delimiters(|cx| cx.comma_sep(args))
+            self.generic_delimiters(|cx| cx.comma_sep(args.iter().cloned()))
         } else {
             Ok(self)
         }

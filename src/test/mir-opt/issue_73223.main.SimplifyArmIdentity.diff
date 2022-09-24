@@ -25,7 +25,7 @@
       let _24: &i32;                       // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _25: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let _26: &i32;                       // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-      let mut _27: std::option::Option<std::fmt::Arguments>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _27: std::option::Option<std::fmt::Arguments<'_>>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       scope 1 {
           debug split => _1;               // in scope 1 at $DIR/issue-73223.rs:+1:9: +1:14
           let _6: std::option::Option<i32>; // in scope 1 at $DIR/issue-73223.rs:+6:9: +6:14
