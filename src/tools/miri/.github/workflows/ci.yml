@@ -38,14 +38,6 @@ jobs:
         if: runner.os == 'Linux'
         run: echo "MIRIFLAGS=-Zmiri-tag-gc=1" >> $GITHUB_ENV
 
-      # We install gnu-tar because BSD tar is buggy on macOS builders of GHA.
-      # See <https://github.com/actions/cache/issues/403>.
-      - name: Install GNU tar
-        if: runner.os == 'macOS'
-        run: |
-          brew install gnu-tar
-          echo "/usr/local/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
-
       # Cache the global cargo directory, but NOT the local `target` directory which
       # we cannot reuse anyway when the nightly changes (and it grows quite large
       # over time).
