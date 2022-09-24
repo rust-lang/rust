@@ -1,4 +1,5 @@
 use crate::array;
+use crate::const_closure::ConstFnMutClosure;
 use crate::iter::{ByRefSized, FusedIterator, Iterator};
 use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
@@ -82,12 +83,12 @@ where
         }
     }
 
-    fn fold<B, F>(mut self, init: B, f: F) -> B
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
+        self.try_fold(init, ConstFnMutClosure::new(&mut f, NeverShortCircuit::wrap_mut_2_imp)).0
     }
 }
 
@@ -126,12 +127,12 @@ where
         try { acc }
     }
 
-    fn rfold<B, F>(mut self, init: B, f: F) -> B
+    fn rfold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).0
+        self.try_rfold(init, ConstFnMutClosure::new(&mut f, NeverShortCircuit::wrap_mut_2_imp)).0
     }
 }
 
