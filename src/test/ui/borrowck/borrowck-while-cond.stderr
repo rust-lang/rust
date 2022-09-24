@@ -6,7 +6,7 @@ LL |     let x: bool;
 LL |     while x { }
    |           ^ `x` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let x: bool = false;
    |                 +++++++

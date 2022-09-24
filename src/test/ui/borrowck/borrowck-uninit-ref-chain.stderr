@@ -6,7 +6,7 @@ LL |     let x: &&Box<i32>;
 LL |     let _y = &**x;
    |              ^^^^ `**x` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let x: &&Box<i32> = todo!();
    |                       +++++++++
@@ -19,7 +19,7 @@ LL |     let x: &&S<i32, i32>;
 LL |     let _y = &**x;
    |              ^^^^ `**x` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let x: &&S<i32, i32> = todo!();
    |                          +++++++++
@@ -32,7 +32,7 @@ LL |     let x: &&i32;
 LL |     let _y = &**x;
    |              ^^^^ `**x` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let x: &&i32 = todo!();
    |                  +++++++++

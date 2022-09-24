@@ -25,7 +25,7 @@ LL |     let x: u8;
 LL |     let _ = [x; 0];
    |              ^ `x` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let x: u8 = 0;
    |               +++

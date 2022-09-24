@@ -6,7 +6,7 @@ LL |     let mut v: isize;
 LL |     v = v + 1;
    |         ^ `v` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let mut v: isize = 0;
    |                      +++

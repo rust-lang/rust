@@ -8,7 +8,7 @@ LL |     force(|| {
 LL |         println!("{}", x);
    |                        - borrow occurs due to use in closure
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let x: isize = 0;
    |                  +++

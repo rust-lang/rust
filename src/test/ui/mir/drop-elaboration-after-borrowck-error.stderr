@@ -25,7 +25,7 @@ LL |
 LL |     a[0] = String::new();
    |     ^^^^ `a` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let a: [String; 1] = todo!();
    |                        +++++++++

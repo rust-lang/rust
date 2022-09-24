@@ -6,7 +6,7 @@ LL |     let mut a: Point;
 LL |     let _ = a.x + 1;
    |             ^^^ `a.x` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let mut a: Point = Default::default();
    |                      ++++++++++++++++++++

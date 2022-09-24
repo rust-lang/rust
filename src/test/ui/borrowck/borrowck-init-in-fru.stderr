@@ -6,7 +6,7 @@ LL |     let mut origin: Point;
 LL |     origin = Point { x: 10, ..origin };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ `origin.y` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let mut origin: Point = todo!();
    |                           +++++++++

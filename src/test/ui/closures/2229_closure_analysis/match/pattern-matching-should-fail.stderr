@@ -77,7 +77,7 @@ LL |     let x: u8;
 LL |     let c1 = || match x { };
    |                       ^ `x` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let x: u8 = 0;
    |               +++

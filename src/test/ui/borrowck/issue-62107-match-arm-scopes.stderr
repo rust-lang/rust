@@ -6,7 +6,7 @@ LL |     let e: i32;
 LL |     match e {
    |           ^ `e` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let e: i32 = 0;
    |                +++

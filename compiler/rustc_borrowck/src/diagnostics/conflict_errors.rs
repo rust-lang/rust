@@ -453,27 +453,27 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if show_assign_sugg {
             struct LetVisitor {
                 decl_span: Span,
-                ty_span: Option<Span>,
+                sugg_span: Option<Span>,
             }
 
             impl<'v> Visitor<'v> for LetVisitor {
                 fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
-                    if self.ty_span.is_some() {
+                    if self.sugg_span.is_some() {
                         return;
                     }
                     if let hir::StmtKind::Local(hir::Local {
-                            span, init: None, ty: Some(ty), ..
+                            span, ty, init: None, ..
                         }) = &ex.kind && span.contains(self.decl_span) {
-                            self.ty_span = Some(ty.span);
+                            self.sugg_span = ty.map_or(Some(self.decl_span), |ty| Some(ty.span));
                     }
                     hir::intravisit::walk_stmt(self, ex);
                 }
             }
 
-            let mut visitor = LetVisitor { decl_span, ty_span: None };
+            let mut visitor = LetVisitor { decl_span, sugg_span: None };
             visitor.visit_body(&body);
-            if let Some(ty_span) = visitor.ty_span {
-                self.suggest_assign_value(&mut err, moved_place, ty_span);
+            if let Some(span) = visitor.sugg_span {
+                self.suggest_assign_value(&mut err, moved_place, span);
             }
         }
         err
@@ -483,40 +483,41 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         err: &mut Diagnostic,
         moved_place: PlaceRef<'tcx>,
-        ty_span: Span,
+        sugg_span: Span,
     ) {
         let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
         debug!("ty: {:?}, kind: {:?}", ty, ty.kind());
 
-        let assign_value = match ty.kind() {
-            ty::Int(_) | ty::Uint(_) => format!("0"),
-            ty::Float(_) => format!("0.0"),
-            ty::Bool => format!("false"),
-            ty::Never | ty::Error(_) => "".to_string(),
-            ty::Adt(def, _substs) => {
-                if Some(def.did()) == self.infcx.tcx.get_diagnostic_item(sym::Vec) {
-                    format!("vec![]")
-                } else if let Some(default_trait) = self.infcx.tcx.get_diagnostic_item(sym::Default) &&
-                    self.infcx.tcx.infer_ctxt().enter(|infcx| {
-                        infcx.type_implements_trait(default_trait, ty, ty::List::empty(), self.param_env).may_apply()
-                    }) {
-                    format!("Default::default()")
-                } else {
-                    format!("todo!()")
-                }
-            }
-            _ => format!("todo!()"),
+        let tcx = self.infcx.tcx;
+        let implements_default = |ty, param_env| {
+            let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
+                return false;
+            };
+            tcx.infer_ctxt().enter(|infcx| {
+                infcx
+                    .type_implements_trait(default_trait, ty, ty::List::empty(), param_env)
+                    .may_apply()
+            })
         };
 
-        if assign_value.is_empty() {
-            return;
+        let assign_value = match ty.kind() {
+            ty::Bool => "false",
+            ty::Float(_) => "0.0",
+            ty::Int(_) | ty::Uint(_) => "0",
+            ty::Never | ty::Error(_) => "",
+            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => "vec![]",
+            ty::Adt(_, _) if implements_default(ty, self.param_env) => "Default::default()",
+            _ => "todo!()",
+        };
+
+        if !assign_value.is_empty() {
+            err.span_suggestion_verbose(
+                sugg_span.shrink_to_hi(),
+                format!("consider assigning a value"),
+                format!(" = {}", assign_value),
+                Applicability::MaybeIncorrect,
+            );
         }
-        err.span_suggestion_verbose(
-            ty_span.shrink_to_hi(),
-            format!("consider assigning a default value"),
-            format!(" = {}", assign_value),
-            Applicability::MaybeIncorrect,
-        );
     }
 
     fn suggest_borrow_fn_like(

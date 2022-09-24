@@ -6,7 +6,7 @@ LL |         let x: i32;
 LL |         let _ = x + 1;
    |                 ^ `x` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |         let x: i32 = 0;
    |                    +++

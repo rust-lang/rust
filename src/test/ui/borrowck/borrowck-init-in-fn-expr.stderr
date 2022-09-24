@@ -6,7 +6,7 @@ LL |         let i: isize;
 LL |         i
    |         ^ `i` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |         let i: isize = 0;
    |                      +++

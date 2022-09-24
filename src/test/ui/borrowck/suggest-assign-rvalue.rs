@@ -7,6 +7,14 @@ struct Demo {}
 #[derive(Debug)]
 struct DemoNoDef {}
 
+fn apple(_: u32) {}
+
+fn banana() {
+    let chaenomeles;
+    apple(chaenomeles);
+    //~^ ERROR used binding `chaenomeles` isn't initialized [E0381]
+}
+
 fn main() {
     let my_bool: bool = bool::default();
     println!("my_bool: {}", my_bool);
@@ -44,4 +52,6 @@ fn main() {
     let never: !;
     println!("never: {}", never);
     //~^ ERROR used binding `never` isn't initialized [E0381]
+
+    banana();
 }

@@ -41,7 +41,7 @@ LL |     let n: Never;
 LL |     match n {}
    |           ^ `n` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let n: Never = todo!();
    |                  +++++++++

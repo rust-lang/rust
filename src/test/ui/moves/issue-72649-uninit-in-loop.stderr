@@ -48,7 +48,7 @@ LL |         let value: NonCopy;
 LL |         let _used = value;
    |                     ^^^^^ `value` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |         let value: NonCopy = todo!();
    |                            +++++++++
@@ -62,7 +62,7 @@ LL |     loop {
 LL |         let _used = value;
    |                     ^^^^^ `value` used here but it isn't initialized
    |
-help: consider assigning a default value
+help: consider assigning a value
    |
 LL |     let mut value: NonCopy = todo!();
    |                            +++++++++
