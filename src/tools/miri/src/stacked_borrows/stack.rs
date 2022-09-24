@@ -43,8 +43,11 @@ impl Stack {
     pub fn retain(&mut self, tags: &FxHashSet<SbTag>) {
         let mut first_removed = None;
 
-        let mut read_idx = 1;
-        let mut write_idx = 1;
+        // For stacks with a known bottom, we never consider removing the bottom-most tag, because
+        // that is the base tag which exists whether or not there are any pointers to the
+        // allocation.
+        let mut read_idx = usize::from(self.unknown_bottom.is_none());
+        let mut write_idx = read_idx;
         while read_idx < self.borrows.len() {
             let left = self.borrows[read_idx - 1];
             let this = self.borrows[read_idx];

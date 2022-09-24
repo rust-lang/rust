@@ -462,6 +462,14 @@ impl Default for DirHandler {
     }
 }
 
+impl VisitMachineValues for DirHandler {
+    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+        for dir in self.streams.values() {
+            visit(&Operand::Indirect(MemPlace::from_ptr(dir.entry)));
+        }
+    }
+}
+
 fn maybe_sync_file(
     file: &File,
     writable: bool,

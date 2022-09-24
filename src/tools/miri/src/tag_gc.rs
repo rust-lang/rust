@@ -71,6 +71,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                         tags.insert(*sb);
                     }
                 }
+                let stacks = alloc
+                    .extra
+                    .stacked_borrows
+                    .as_ref()
+                    .expect("we should not even enter the GC if Stacked Borrows is disabled");
+                tags.extend(&stacks.borrow().exposed_tags);
+
+                if let Some(store_buffers) = alloc.extra.weak_memory.as_ref() {
+                    store_buffers.iter(|val| {
+                        if let Scalar::Ptr(ptr, _) = val {
+                            if let Provenance::Concrete { sb, .. } = ptr.provenance {
+                                tags.insert(sb);
+                            }
+                        }
+                    });
+                }
             },
         );
 

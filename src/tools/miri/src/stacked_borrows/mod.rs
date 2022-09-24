@@ -79,7 +79,7 @@ pub struct Stacks {
     /// Stores past operations on this allocation
     history: AllocHistory,
     /// The set of tags that have been exposed inside this allocation.
-    exposed_tags: FxHashSet<SbTag>,
+    pub exposed_tags: FxHashSet<SbTag>,
     /// Whether this memory has been modified since the last time the tag GC ran
     modified_since_last_gc: bool,
 }

@@ -181,6 +181,41 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
     }
 }
 
+impl VisitMachineValues for Thread<'_, '_> {
+    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+        let Thread { panic_payload, last_error, stack, .. } = self;
+
+        if let Some(payload) = panic_payload {
+            visit(&Operand::Immediate(Immediate::Scalar(*payload)))
+        }
+        if let Some(error) = last_error {
+            visit(&Operand::Indirect(**error))
+        }
+        for frame in stack {
+            frame.visit_machine_values(visit)
+        }
+    }
+}
+
+impl VisitMachineValues for Frame<'_, '_, Provenance, FrameData<'_>> {
+    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+        let Frame { return_place, locals, extra, .. } = self;
+
+        // Return place.
+        if let Place::Ptr(mplace) = **return_place {
+            visit(&Operand::Indirect(mplace));
+        }
+        // Locals.
+        for local in locals.iter() {
+            if let LocalValue::Live(value) = &local.value {
+                visit(value);
+            }
+        }
+
+        extra.visit_machine_values(visit);
+    }
+}
+
 /// A specific moment in time.
 #[derive(Debug)]
 pub enum Time {
@@ -250,6 +285,22 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
             yield_active_thread: false,
             timeout_callbacks: FxHashMap::default(),
         }
+    }
+}
+
+impl VisitMachineValues for ThreadManager<'_, '_> {
+    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+        let ThreadManager { threads, thread_local_alloc_ids, .. } = self;
+
+        for thread in threads {
+            thread.visit_machine_values(visit);
+        }
+        for ptr in thread_local_alloc_ids.borrow().values().copied() {
+            let ptr: Pointer<Option<Provenance>> = ptr.into();
+            visit(&Operand::Indirect(MemPlace::from_ptr(ptr)));
+        }
+        // FIXME: Do we need to do something for TimeoutCallback? That's a Box<dyn>, not sure what
+        // to do.
     }
 }
 
@@ -621,33 +672,6 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             Ok(SchedulingAction::ExecuteTimeoutCallback)
         } else {
             throw_machine_stop!(TerminationInfo::Deadlock);
-        }
-    }
-}
-
-impl VisitMachineValues for ThreadManager<'_, '_> {
-    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
-        // FIXME some other fields also contain machine values
-        let ThreadManager { threads, .. } = self;
-
-        for thread in threads {
-            // FIXME: implement VisitMachineValues for `Thread` and `Frame` instead.
-            // In particular we need to visit the `last_error` and `catch_unwind` fields.
-            if let Some(payload) = thread.panic_payload {
-                visit(&Operand::Immediate(Immediate::Scalar(payload)))
-            }
-            for frame in &thread.stack {
-                // Return place.
-                if let Place::Ptr(mplace) = *frame.return_place {
-                    visit(&Operand::Indirect(mplace));
-                }
-                // Locals.
-                for local in frame.locals.iter() {
-                    if let LocalValue::Live(value) = &local.value {
-                        visit(value);
-                    }
-                }
-            }
         }
     }
 }

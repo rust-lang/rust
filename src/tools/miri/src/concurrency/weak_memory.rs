@@ -108,6 +108,19 @@ pub struct StoreBufferAlloc {
     store_buffers: RefCell<RangeObjectMap<StoreBuffer>>,
 }
 
+impl StoreBufferAlloc {
+    pub fn iter(&self, mut visitor: impl FnMut(&Scalar<Provenance>)) {
+        for val in self
+            .store_buffers
+            .borrow()
+            .iter()
+            .flat_map(|buf| buf.buffer.iter().map(|element| &element.val))
+        {
+            visitor(val)
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct StoreBuffer {
     // Stores to this location in modification order

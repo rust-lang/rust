@@ -63,6 +63,16 @@ impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
     }
 }
 
+impl VisitMachineValues for FrameData<'_> {
+    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+        let FrameData { catch_unwind, .. } = self;
+
+        if let Some(catch_unwind) = catch_unwind {
+            catch_unwind.visit_machine_values(visit);
+        }
+    }
+}
+
 /// Extra memory kinds
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MiriMemoryKind {
@@ -593,12 +603,36 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
 
 impl VisitMachineValues for MiriMachine<'_, '_> {
     fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
-        // FIXME: visit the missing fields: env vars, weak mem, the MemPlace fields in the machine,
-        // DirHandler, extern_statics, the Stacked Borrows base pointers; maybe more.
-        let MiriMachine { threads, tls, .. } = self;
+        let MiriMachine {
+            threads,
+            tls,
+            env_vars,
+            argc,
+            argv,
+            cmd_line,
+            extern_statics,
+            dir_handler,
+            ..
+        } = self;
 
         threads.visit_machine_values(visit);
         tls.visit_machine_values(visit);
+        env_vars.visit_machine_values(visit);
+        dir_handler.visit_machine_values(visit);
+
+        if let Some(argc) = argc {
+            visit(&Operand::Indirect(*argc));
+        }
+        if let Some(argv) = argv {
+            visit(&Operand::Indirect(*argv));
+        }
+        if let Some(cmd_line) = cmd_line {
+            visit(&Operand::Indirect(*cmd_line));
+        }
+        for ptr in extern_statics.values().copied() {
+            let ptr: Pointer<Option<Provenance>> = ptr.into();
+            visit(&Operand::Indirect(MemPlace::from_ptr(ptr)));
+        }
     }
 }
 

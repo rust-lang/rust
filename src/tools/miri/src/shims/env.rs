@@ -36,6 +36,20 @@ pub struct EnvVars<'tcx> {
     pub(crate) environ: Option<MPlaceTy<'tcx, Provenance>>,
 }
 
+impl VisitMachineValues for EnvVars<'_> {
+    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+        let EnvVars { map, environ } = self;
+
+        for ptr in map.values() {
+            visit(&Operand::Indirect(MemPlace::from_ptr(*ptr)));
+        }
+
+        if let Some(env) = environ {
+            visit(&Operand::Indirect(**env));
+        }
+    }
+}
+
 impl<'tcx> EnvVars<'tcx> {
     pub(crate) fn init<'mir>(
         ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,

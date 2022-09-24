@@ -35,6 +35,13 @@ pub struct CatchUnwindData<'tcx> {
     ret: mir::BasicBlock,
 }
 
+impl VisitMachineValues for CatchUnwindData<'_> {
+    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+        visit(&Operand::Indirect(MemPlace::from_ptr(self.catch_fn)));
+        visit(&Operand::Immediate(Immediate::Scalar(self.data)));
+    }
+}
+
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Handles the special `miri_start_panic` intrinsic, which is called
