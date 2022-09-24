@@ -60,10 +60,26 @@ pub fn load_workspace(
     };
 
     let proc_macro_client = if load_config.with_proc_macro {
-        let path = AbsPathBuf::assert(std::env::current_exe()?);
-        Ok(ProcMacroServer::spawn(path, &["proc-macro"]).unwrap())
+        let mut path = AbsPathBuf::assert(std::env::current_exe()?);
+        let mut args = vec!["proc-macro"];
+
+        if let ProjectWorkspace::Cargo { sysroot, .. } | ProjectWorkspace::Json { sysroot, .. } =
+            &ws
+        {
+            if let Some(sysroot) = sysroot.as_ref() {
+                let standalone_server_name =
+                    format!("rust-analyzer-proc-macro-srv{}", std::env::consts::EXE_SUFFIX);
+                let server_path = sysroot.root().join("libexec").join(&standalone_server_name);
+                if std::fs::metadata(&server_path).is_ok() {
+                    path = server_path;
+                    args = vec![];
+                }
+            }
+        }
+
+        ProcMacroServer::spawn(path.clone(), args.clone()).map_err(|e| e.to_string())
     } else {
-        Err("proc macro server not started".to_owned())
+        Err("proc macro server disabled".to_owned())
     };
 
     let crate_graph = ws.to_crate_graph(
