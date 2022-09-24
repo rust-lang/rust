@@ -3,7 +3,7 @@
 // Run-time:
 //   status: 0
 
-#![feature(bench_black_box, const_black_box)]
+#![feature(const_black_box)]
 
 /*
  * Code
