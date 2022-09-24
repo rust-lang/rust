@@ -437,7 +437,7 @@ impl Builder {
             host_component("rustfmt-preview"),
             host_component("llvm-tools-preview"),
             host_component("rust-analysis"),
-            host_component("rust-docs-json"),
+            host_component("rust-docs-json-preview"),
         ]);
 
         extensions.extend(

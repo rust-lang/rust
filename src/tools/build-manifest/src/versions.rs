@@ -20,6 +20,7 @@ pub(crate) enum PkgType {
     Rustfmt,
     LlvmTools,
     Miri,
+    JsonDocs,
     Other(String),
 }
 
@@ -36,6 +37,7 @@ impl PkgType {
             "rustfmt" | "rustfmt-preview" => PkgType::Rustfmt,
             "llvm-tools" | "llvm-tools-preview" => PkgType::LlvmTools,
             "miri" | "miri-preview" => PkgType::Miri,
+            "rust-docs-json" | "rust-docs-json-preview" => PkgType::JsonDocs,
             other => PkgType::Other(other.into()),
         }
     }
@@ -53,6 +55,7 @@ impl PkgType {
             PkgType::Rustfmt => "rustfmt",
             PkgType::LlvmTools => "llvm-tools",
             PkgType::Miri => "miri",
+            PkgType::JsonDocs => "rust-docs-json",
             PkgType::Other(component) => component,
         }
     }
@@ -72,6 +75,7 @@ impl PkgType {
             PkgType::Rust => true,
             PkgType::RustSrc => true,
             PkgType::Rustc => true,
+            PkgType::JsonDocs => true,
             PkgType::Other(_) => true,
         }
     }
