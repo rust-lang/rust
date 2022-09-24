@@ -61,7 +61,7 @@ pub struct ParentHirIterator<'hir> {
 }
 
 impl<'hir> Iterator for ParentHirIterator<'hir> {
-    type Item = HirId;
+    type Item = (HirId, Node<'hir>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_id == CRATE_HIR_ID {
@@ -77,7 +77,10 @@ impl<'hir> Iterator for ParentHirIterator<'hir> {
             }
 
             self.current_id = parent_id;
-            return Some(parent_id);
+            if let Some(node) = self.map.find(parent_id) {
+                return Some((parent_id, node));
+            }
+            // If this `HirId` doesn't have an entry, skip it and look for its `parent_id`.
         }
     }
 }
@@ -390,8 +393,8 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
-        for (_, node) in self.parent_iter(hir_id) {
-            if let Some(body) = associated_body(node) {
+        for (parent, _) in self.parent_iter(hir_id) {
+            if let Some(body) = self.find(parent).map(associated_body).flatten() {
                 return self.body_owner_def_id(body);
             }
         }
@@ -632,15 +635,8 @@ impl<'hir> Map<'hir> {
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
     #[inline]
-    pub fn parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> + 'hir {
+    pub fn parent_iter(self, current_id: HirId) -> ParentHirIterator<'hir> {
         ParentHirIterator { current_id, map: self }
-    }
-
-    /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
-    /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
-    #[inline]
-    pub fn parent_iter(self, current_id: HirId) -> impl Iterator<Item = (HirId, Node<'hir>)> {
-        self.parent_id_iter(current_id).filter_map(move |id| Some((id, self.find(id)?)))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`

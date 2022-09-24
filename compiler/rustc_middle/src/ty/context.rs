@@ -4,7 +4,7 @@ use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKind, DepKindStruct};
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
-use crate::lint::struct_lint_level;
+use crate::lint::{struct_lint_level, LintLevelSource};
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_lifetime;
 use crate::middle::stability;
@@ -54,7 +54,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{CrateType, OutputFilenames};
 use rustc_session::cstore::CrateStoreDyn;
 use rustc_session::errors::TargetDataLayoutErrorsWrapper;
-use rustc_session::lint::Lint;
+use rustc_session::lint::{Level, Lint};
 use rustc_session::Limit;
 use rustc_session::Session;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
@@ -2811,6 +2811,44 @@ impl<'tcx> TyCtxt<'tcx> {
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_bound_variable_kinds(xs))
+    }
+
+    /// Walks upwards from `id` to find a node which might change lint levels with attributes.
+    /// It stops at `bound` and just returns it if reached.
+    pub fn maybe_lint_level_root_bounded(self, mut id: HirId, bound: HirId) -> HirId {
+        let hir = self.hir();
+        loop {
+            if id == bound {
+                return bound;
+            }
+
+            if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
+                return id;
+            }
+            let next = hir.get_parent_node(id);
+            if next == id {
+                bug!("lint traversal reached the root of the crate");
+            }
+            id = next;
+        }
+    }
+
+    pub fn lint_level_at_node(
+        self,
+        lint: &'static Lint,
+        mut id: hir::HirId,
+    ) -> (Level, LintLevelSource) {
+        let sets = self.lint_levels(());
+        loop {
+            if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
+                return pair;
+            }
+            let next = self.hir().get_parent_node(id);
+            if next == id {
+                bug!("lint traversal reached the root of the crate");
+            }
+            id = next;
+        }
     }
 
     /// Emit a lint at `span` from a lint struct (some type that implements `DecorateLint`,

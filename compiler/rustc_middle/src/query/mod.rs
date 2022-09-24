@@ -274,14 +274,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query shallow_lint_levels_on(key: HirId) -> rustc_middle::lint::ShallowLintLevelMap {
+    query lint_levels(_: ()) -> LintLevelMap {
         arena_cache
-        desc { |tcx| "looking up lint levels for `{}`", key }
-    }
-
-    query lint_expectations(_: ()) -> Vec<(LintExpectationId, LintExpectation)> {
-        arena_cache
-        desc { "computing `#[expect]`ed lints in this crate" }
+        eval_always
+        desc { "computing the lint levels for items in this crate" }
     }
 
     query parent_module_from_def_id(key: LocalDefId) -> LocalDefId {
