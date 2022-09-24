@@ -6,10 +6,10 @@ LL |     let x: bool;
 LL |     while x { }
    |           ^ `x` used here but it isn't initialized
    |
-help: use `=` to assign some value to `x`
+help: consider assigning a default value
    |
 LL |     let x: bool = false;
-   |         ~~~~~~~~~~~~~~~~
+   |                 +++++++
 
 error: aborting due to previous error
 

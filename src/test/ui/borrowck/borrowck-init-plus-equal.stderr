@@ -6,10 +6,10 @@ LL |     let mut v: isize;
 LL |     v = v + 1;
    |         ^ `v` used here but it isn't initialized
    |
-help: use `=` to assign some value to `v`
+help: consider assigning a default value
    |
 LL |     let mut v: isize = 0;
-   |         ~~~~~~~~~~~~~~~~~
+   |                      +++
 
 error: aborting due to previous error
 

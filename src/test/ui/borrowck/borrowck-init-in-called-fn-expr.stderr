@@ -6,10 +6,10 @@ LL |         let i: isize;
 LL |         i
    |         ^ `i` used here but it isn't initialized
    |
-help: use `=` to assign some value to `i`
+help: consider assigning a default value
    |
 LL |         let i: isize = 0;
-   |             ~~~~~~~~~~~~~
+   |                      +++
 
 error: aborting due to previous error
 

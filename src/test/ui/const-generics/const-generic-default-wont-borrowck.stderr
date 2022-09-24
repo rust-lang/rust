@@ -6,10 +6,10 @@ LL |     let s: &'static str; s.len()
    |         |
    |         binding declared here but left uninitialized
    |
-help: use `=` to assign some value to `s`
+help: consider assigning a default value
    |
-LL |     let s: &'static str; s.len()
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let s: &'static str = todo!(); s.len()
+   |                         +++++++++
 
 error: aborting due to previous error
 

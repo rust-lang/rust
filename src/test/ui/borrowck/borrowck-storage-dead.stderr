@@ -6,10 +6,10 @@ LL |         let x: i32;
 LL |         let _ = x + 1;
    |                 ^ `x` used here but it isn't initialized
    |
-help: use `=` to assign some value to `x`
+help: consider assigning a default value
    |
 LL |         let x: i32 = 0;
-   |             ~~~~~~~~~~~
+   |                    +++
 
 error: aborting due to previous error
 

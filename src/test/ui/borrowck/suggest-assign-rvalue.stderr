@@ -7,10 +7,10 @@ LL |     println!("my_float: {}", my_float);
    |                              ^^^^^^^^ `my_float` used here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: use `=` to assign some value to `my_float`
+help: consider assigning a default value
    |
 LL |     let my_float: f32 = 0.0;
-   |         ~~~~~~~~~~~~~~~~~~~~
+   |                       +++++
 
 error[E0381]: used binding `demo` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:18:28
@@ -21,10 +21,10 @@ LL |     println!("demo: {:?}", demo);
    |                            ^^^^ `demo` used here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: use `=` to assign some value to `demo`
+help: consider assigning a default value
    |
 LL |     let demo: Demo = Default::default();
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                    ++++++++++++++++++++
 
 error[E0381]: used binding `demo_no` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:22:31
@@ -35,10 +35,10 @@ LL |     println!("demo_no: {:?}", demo_no);
    |                               ^^^^^^^ `demo_no` used here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: use `=` to assign some value to `demo_no`
+help: consider assigning a default value
    |
-LL |     let demo_no: DemoNoDef = something;
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let demo_no: DemoNoDef = todo!();
+   |                            +++++++++
 
 error[E0381]: used binding `arr` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:26:27
@@ -49,10 +49,10 @@ LL |     println!("arr: {:?}", arr);
    |                           ^^^ `arr` used here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: use `=` to assign some value to `arr`
+help: consider assigning a default value
    |
-LL |     let arr: [i32; 5] = [val; 5];
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let arr: [i32; 5] = todo!();
+   |                       +++++++++
 
 error[E0381]: used binding `foo` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:29:27
@@ -63,10 +63,10 @@ LL |     println!("foo: {:?}", foo);
    |                           ^^^ `foo` used here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: use `=` to assign some value to `foo`
+help: consider assigning a default value
    |
 LL |     let foo: Vec<&str> = vec![];
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ++++++++
 
 error[E0381]: used binding `my_string` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:33:31
@@ -77,10 +77,10 @@ LL |     println!("my_string: {}", my_string);
    |                               ^^^^^^^^^ `my_string` used here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: use `=` to assign some value to `my_string`
+help: consider assigning a default value
    |
 LL |     let my_string: String = Default::default();
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                           ++++++++++++++++++++
 
 error[E0381]: used binding `my_int` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:37:28
@@ -91,10 +91,10 @@ LL |     println!("my_int: {}", *my_int);
    |                            ^^^^^^^ `*my_int` used here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: use `=` to assign some value to `my_int`
+help: consider assigning a default value
    |
-LL |     let my_int: &i32 = something;
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let my_int: &i32 = todo!();
+   |                      +++++++++
 
 error[E0381]: used binding `hello` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:41:27
@@ -105,10 +105,10 @@ LL |     println!("hello: {}", hello);
    |                           ^^^^^ `hello` used here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: use `=` to assign some value to `hello`
+help: consider assigning a default value
    |
-LL |     let hello: &str = something;
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let hello: &str = todo!();
+   |                     +++++++++
 
 error[E0381]: used binding `never` isn't initialized
   --> $DIR/suggest-assign-rvalue.rs:45:27

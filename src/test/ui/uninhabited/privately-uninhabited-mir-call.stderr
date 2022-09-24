@@ -7,10 +7,10 @@ LL |     let y: &mut u32;
 LL |     *y = 2;
    |     ^^^^^^ `y` used here but it isn't initialized
    |
-help: use `=` to assign some value to `y`
+help: consider assigning a default value
    |
-LL |     let y: &mut u32 = something;
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let y: &mut u32 = todo!();
+   |                     +++++++++
 
 error: aborting due to previous error
 

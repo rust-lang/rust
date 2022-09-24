@@ -41,10 +41,10 @@ LL |     let n: Never;
 LL |     match n {}
    |           ^ `n` used here but it isn't initialized
    |
-help: use `=` to assign some value to `n`
+help: consider assigning a default value
    |
-LL |     let n: Never = something;
-   |         ~~~~~~~~~~~~~~~~~~~~~
+LL |     let n: Never = todo!();
+   |                  +++++++++
 
 error: aborting due to 4 previous errors
 

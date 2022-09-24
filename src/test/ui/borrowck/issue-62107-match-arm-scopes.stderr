@@ -6,10 +6,10 @@ LL |     let e: i32;
 LL |     match e {
    |           ^ `e` used here but it isn't initialized
    |
-help: use `=` to assign some value to `e`
+help: consider assigning a default value
    |
 LL |     let e: i32 = 0;
-   |         ~~~~~~~~~~~
+   |                +++
 
 error: aborting due to previous error
 

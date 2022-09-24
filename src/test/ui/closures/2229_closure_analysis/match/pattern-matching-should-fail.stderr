@@ -77,10 +77,10 @@ LL |     let x: u8;
 LL |     let c1 = || match x { };
    |                       ^ `x` used here but it isn't initialized
    |
-help: use `=` to assign some value to `x`
+help: consider assigning a default value
    |
 LL |     let x: u8 = 0;
-   |         ~~~~~~~~~~
+   |               +++
 
 error: aborting due to 8 previous errors
 

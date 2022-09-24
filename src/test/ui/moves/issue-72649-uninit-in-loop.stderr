@@ -48,10 +48,10 @@ LL |         let value: NonCopy;
 LL |         let _used = value;
    |                     ^^^^^ `value` used here but it isn't initialized
    |
-help: use `=` to assign some value to `value`
+help: consider assigning a default value
    |
-LL |         let value: NonCopy;
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |         let value: NonCopy = todo!();
+   |                            +++++++++
 
 error[E0381]: used binding `value` isn't initialized
   --> $DIR/issue-72649-uninit-in-loop.rs:69:21
@@ -62,10 +62,10 @@ LL |     loop {
 LL |         let _used = value;
    |                     ^^^^^ `value` used here but it isn't initialized
    |
-help: use `=` to assign some value to `value`
+help: consider assigning a default value
    |
-LL |     let mut value: NonCopy;
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let mut value: NonCopy = todo!();
+   |                            +++++++++
 
 error: aborting due to 6 previous errors
 

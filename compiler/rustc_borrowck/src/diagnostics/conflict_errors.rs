@@ -451,29 +451,50 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         err.span_label(decl_span, "binding declared here but left uninitialized");
         if show_assign_sugg {
-            self.suggest_assign_rvalue(&mut err, moved_place, &name, decl_span);
+            struct LetVisitor {
+                decl_span: Span,
+                ty_span: Option<Span>,
+            }
+
+            impl<'v> Visitor<'v> for LetVisitor {
+                fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
+                    if self.ty_span.is_some() {
+                        return;
+                    }
+                    if let hir::StmtKind::Local(hir::Local {
+                            span, init: None, ty: Some(ty), ..
+                        }) = &ex.kind && span.contains(self.decl_span) {
+                            self.ty_span = Some(ty.span);
+                    }
+                    hir::intravisit::walk_stmt(self, ex);
+                }
+            }
+
+            let mut visitor = LetVisitor { decl_span, ty_span: None };
+            visitor.visit_body(&body);
+            if let Some(ty_span) = visitor.ty_span {
+                self.suggest_assign_value(&mut err, moved_place, ty_span);
+            }
         }
         err
     }
 
-    fn suggest_assign_rvalue(
+    fn suggest_assign_value(
         &self,
         err: &mut Diagnostic,
         moved_place: PlaceRef<'tcx>,
-        name: &str,
-        decl_span: Span,
+        ty_span: Span,
     ) {
         let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
         debug!("ty: {:?}, kind: {:?}", ty, ty.kind());
 
-        let initilize_msg = match ty.kind() {
-            ty::Array(_, n) => format!("[val; {}]", n),
+        let assign_value = match ty.kind() {
             ty::Int(_) | ty::Uint(_) => format!("0"),
             ty::Float(_) => format!("0.0"),
             ty::Bool => format!("false"),
             ty::Never | ty::Error(_) => "".to_string(),
             ty::Adt(def, _substs) => {
-                if format!("{:?}", def).starts_with("std::vec::Vec") {
+                if Some(def.did()) == self.infcx.tcx.get_diagnostic_item(sym::Vec) {
                     format!("vec![]")
                 } else if let Some(default_trait) = self.infcx.tcx.get_diagnostic_item(sym::Default) &&
                     self.infcx.tcx.infer_ctxt().enter(|infcx| {
@@ -481,32 +502,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }) {
                     format!("Default::default()")
                 } else {
-                    format!("something")
+                    format!("todo!()")
                 }
-            },
-            _ => format!("something"),
+            }
+            _ => format!("todo!()"),
         };
 
-        if initilize_msg.is_empty() {
+        if assign_value.is_empty() {
             return;
         }
-
-        let sugg_span = self
-            .infcx
-            .tcx
-            .sess
-            .source_map()
-            .span_extend_while(decl_span, |c| c != '\n')
-            .unwrap_or(decl_span);
-        let mut prefix = self.infcx.tcx.sess.source_map().span_to_snippet(sugg_span).unwrap();
-        // remove last char if eq ';'
-        if prefix.ends_with(';') {
-            prefix.pop();
-        }
         err.span_suggestion_verbose(
-            sugg_span,
-            format!("use `=` to assign some value to {}", name),
-            format!("{} = {};", prefix, initilize_msg),
+            ty_span.shrink_to_hi(),
+            format!("consider assigning a default value"),
+            format!(" = {}", assign_value),
             Applicability::MaybeIncorrect,
         );
     }

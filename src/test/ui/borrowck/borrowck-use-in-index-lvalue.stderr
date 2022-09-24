@@ -6,10 +6,10 @@ LL |     let w: &mut [isize];
 LL |     w[5] = 0;
    |     ^^^^ `*w` used here but it isn't initialized
    |
-help: use `=` to assign some value to `w`
+help: consider assigning a default value
    |
-LL |     let w: &mut [isize] = something;
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let w: &mut [isize] = todo!();
+   |                         +++++++++
 
 error[E0381]: used binding `w` isn't initialized
   --> $DIR/borrowck-use-in-index-lvalue.rs:6:5
@@ -19,10 +19,10 @@ LL |     let mut w: &mut [isize];
 LL |     w[5] = 0;
    |     ^^^^ `*w` used here but it isn't initialized
    |
-help: use `=` to assign some value to `w`
+help: consider assigning a default value
    |
-LL |     let mut w: &mut [isize] = something;
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let mut w: &mut [isize] = todo!();
+   |                             +++++++++
 
 error: aborting due to 2 previous errors
 

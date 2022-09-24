@@ -6,10 +6,10 @@ LL |     let mut a: Point;
 LL |     let _ = a.x + 1;
    |             ^^^ `a.x` used here but it isn't initialized
    |
-help: use `=` to assign some value to `a`
+help: consider assigning a default value
    |
 LL |     let mut a: Point = Default::default();
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                      ++++++++++++++++++++
 
 error[E0382]: use of moved value: `line1.origin`
   --> $DIR/borrowck-uninit-field-access.rs:25:13

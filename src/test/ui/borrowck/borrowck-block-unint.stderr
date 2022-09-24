@@ -8,10 +8,10 @@ LL |     force(|| {
 LL |         println!("{}", x);
    |                        - borrow occurs due to use in closure
    |
-help: use `=` to assign some value to `x`
+help: consider assigning a default value
    |
 LL |     let x: isize = 0;
-   |         ~~~~~~~~~~~~~
+   |                  +++
 
 error: aborting due to previous error
 
