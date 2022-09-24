@@ -342,6 +342,7 @@ macro_rules! dbg {
     // `$val` expression could be a block (`{ .. }`), in which case the `eprintln!`
     // will be malformed.
     () => {
+        #[cfg($crate::debug_assertions)]
         $crate::eprintln!("[{}:{}]", $crate::file!(), $crate::line!())
     };
     ($val:expr $(,)?) => {
@@ -349,6 +350,7 @@ macro_rules! dbg {
         // of temporaries - https://stackoverflow.com/a/48732525/1063961
         match $val {
             tmp => {
+                #[cfg($crate::debug_assertions)]
                 $crate::eprintln!("[{}:{}] {} = {:#?}",
                     $crate::file!(), $crate::line!(), $crate::stringify!($val), &tmp);
                 tmp
