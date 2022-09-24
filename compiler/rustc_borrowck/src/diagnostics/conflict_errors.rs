@@ -369,6 +369,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
         visitor.visit_body(&body);
 
+        let mut show_assign_sugg = false;
         let isnt_initialized = if let InitializationRequiringAction::PartialAssignment
         | InitializationRequiringAction::Assignment = desired_action
         {
@@ -396,6 +397,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .count()
             == 0
         {
+            show_assign_sugg = true;
             "isn't initialized"
         } else {
             "is possibly-uninitialized"
@@ -446,8 +448,76 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
         }
+
         err.span_label(decl_span, "binding declared here but left uninitialized");
+        if show_assign_sugg {
+            struct LetVisitor {
+                decl_span: Span,
+                sugg_span: Option<Span>,
+            }
+
+            impl<'v> Visitor<'v> for LetVisitor {
+                fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
+                    if self.sugg_span.is_some() {
+                        return;
+                    }
+                    if let hir::StmtKind::Local(hir::Local {
+                            span, ty, init: None, ..
+                        }) = &ex.kind && span.contains(self.decl_span) {
+                            self.sugg_span = ty.map_or(Some(self.decl_span), |ty| Some(ty.span));
+                    }
+                    hir::intravisit::walk_stmt(self, ex);
+                }
+            }
+
+            let mut visitor = LetVisitor { decl_span, sugg_span: None };
+            visitor.visit_body(&body);
+            if let Some(span) = visitor.sugg_span {
+                self.suggest_assign_value(&mut err, moved_place, span);
+            }
+        }
         err
+    }
+
+    fn suggest_assign_value(
+        &self,
+        err: &mut Diagnostic,
+        moved_place: PlaceRef<'tcx>,
+        sugg_span: Span,
+    ) {
+        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
+        debug!("ty: {:?}, kind: {:?}", ty, ty.kind());
+
+        let tcx = self.infcx.tcx;
+        let implements_default = |ty, param_env| {
+            let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
+                return false;
+            };
+            tcx.infer_ctxt().enter(|infcx| {
+                infcx
+                    .type_implements_trait(default_trait, ty, ty::List::empty(), param_env)
+                    .may_apply()
+            })
+        };
+
+        let assign_value = match ty.kind() {
+            ty::Bool => "false",
+            ty::Float(_) => "0.0",
+            ty::Int(_) | ty::Uint(_) => "0",
+            ty::Never | ty::Error(_) => "",
+            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => "vec![]",
+            ty::Adt(_, _) if implements_default(ty, self.param_env) => "Default::default()",
+            _ => "todo!()",
+        };
+
+        if !assign_value.is_empty() {
+            err.span_suggestion_verbose(
+                sugg_span.shrink_to_hi(),
+                format!("consider assigning a value"),
+                format!(" = {}", assign_value),
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 
     fn suggest_borrow_fn_like(

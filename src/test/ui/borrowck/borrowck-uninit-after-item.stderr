@@ -6,6 +6,11 @@ LL |     let bar;
 LL |     fn baz(_x: isize) { }
 LL |     baz(bar);
    |         ^^^ `bar` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let bar = 0;
+   |             +++
 
 error: aborting due to previous error
 
