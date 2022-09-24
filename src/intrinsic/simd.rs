@@ -428,7 +428,6 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                     32 => ("f32", elem_ty),
                     64 => ("f64", elem_ty),
                     _ => {
-                        // Can we pass elem_ty directly?
                         return_error!(InvalidMonomorphizationInvalidFloatVector { span, name, elem_ty: f.name_str(), vec_ty: in_ty });
                     }
                 }
