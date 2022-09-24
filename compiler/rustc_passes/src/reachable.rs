@@ -153,7 +153,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 hir::ImplItemKind::Fn(..) => {
                     let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                     let impl_did = self.tcx.hir().get_parent_item(hir_id);
-                    method_might_be_inlined(self.tcx, impl_item, impl_did)
+                    method_might_be_inlined(self.tcx, impl_item, impl_did.def_id)
                 }
                 hir::ImplItemKind::TyAlias(_) => false,
             },
@@ -305,8 +305,8 @@ fn check_item<'tcx>(
     worklist: &mut Vec<LocalDefId>,
     access_levels: &privacy::AccessLevels,
 ) {
-    if has_custom_linkage(tcx, id.def_id) {
-        worklist.push(id.def_id);
+    if has_custom_linkage(tcx, id.def_id.def_id) {
+        worklist.push(id.def_id.def_id);
     }
 
     if !matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
@@ -318,8 +318,8 @@ fn check_item<'tcx>(
     if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
         item.kind
     {
-        if !access_levels.is_reachable(item.def_id) {
-            worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
+        if !access_levels.is_reachable(item.def_id.def_id) {
+            worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id.def_id));
 
             let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res else {
                 unreachable!();
@@ -403,8 +403,8 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
         }
 
         for id in crate_items.impl_items() {
-            if has_custom_linkage(tcx, id.def_id) {
-                reachable_context.worklist.push(id.def_id);
+            if has_custom_linkage(tcx, id.def_id.def_id) {
+                reachable_context.worklist.push(id.def_id.def_id);
             }
         }
     }

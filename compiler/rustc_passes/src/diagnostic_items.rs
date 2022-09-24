@@ -74,19 +74,19 @@ fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> DiagnosticItems 
     let crate_items = tcx.hir_crate_items(());
 
     for id in crate_items.items() {
-        observe_item(tcx, &mut diagnostic_items, id.def_id);
+        observe_item(tcx, &mut diagnostic_items, id.def_id.def_id);
     }
 
     for id in crate_items.trait_items() {
-        observe_item(tcx, &mut diagnostic_items, id.def_id);
+        observe_item(tcx, &mut diagnostic_items, id.def_id.def_id);
     }
 
     for id in crate_items.impl_items() {
-        observe_item(tcx, &mut diagnostic_items, id.def_id);
+        observe_item(tcx, &mut diagnostic_items, id.def_id.def_id);
     }
 
     for id in crate_items.foreign_items() {
-        observe_item(tcx, &mut diagnostic_items, id.def_id);
+        observe_item(tcx, &mut diagnostic_items, id.def_id.def_id);
     }
 
     diagnostic_items

@@ -339,24 +339,25 @@ fn convert_named_region_map(named_region_map: NamedRegionMap) -> ResolveLifetime
 /// This allows us to avoid cycles. Importantly, if we ask for lifetimes for lifetimes that have an owner
 /// other than the trait itself (like the trait methods or associated types), then we just use the regular
 /// `resolve_lifetimes`.
-fn resolve_lifetimes_for<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ResolveLifetimes {
-    let item_id = item_for(tcx, def_id);
-    if item_id == def_id {
-        let item = tcx.hir().item(hir::ItemId { def_id: item_id });
+fn resolve_lifetimes_for<'tcx>(tcx: TyCtxt<'tcx>, def_id: hir::OwnerId) -> &'tcx ResolveLifetimes {
+    let item_id = item_for(tcx, def_id.def_id);
+    let local_def_id = item_id.def_id.def_id;
+    if item_id.def_id == def_id {
+        let item = tcx.hir().item(item_id);
         match item.kind {
-            hir::ItemKind::Trait(..) => tcx.resolve_lifetimes_trait_definition(item_id),
-            _ => tcx.resolve_lifetimes(item_id),
+            hir::ItemKind::Trait(..) => tcx.resolve_lifetimes_trait_definition(local_def_id),
+            _ => tcx.resolve_lifetimes(local_def_id),
         }
     } else {
-        tcx.resolve_lifetimes(item_id)
+        tcx.resolve_lifetimes(local_def_id)
     }
 }
 
 /// Finds the `Item` that contains the given `LocalDefId`
-fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
+fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> hir::ItemId {
     match tcx.hir().find_by_def_id(local_def_id) {
         Some(Node::Item(item)) => {
-            return item.def_id;
+            return item.item_id();
         }
         _ => {}
     }
@@ -366,7 +367,7 @@ fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
         loop {
             let node = parent_iter.next().map(|n| n.1);
             match node {
-                Some(hir::Node::Item(item)) => break item.def_id,
+                Some(hir::Node::Item(item)) => break item.item_id(),
                 Some(hir::Node::Crate(_)) | None => bug!("Called `item_for` on an Item."),
                 _ => {}
             }
@@ -566,13 +567,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // their owner, we can keep going until we find the Item that owns that. We then
                 // conservatively add all resolved lifetimes. Otherwise we run into problems in
                 // cases like `type Foo<'a> = impl Bar<As = impl Baz + 'a>`.
-                for (_hir_id, node) in
-                    self.tcx.hir().parent_iter(self.tcx.hir().local_def_id_to_hir_id(item.def_id))
-                {
+                for (_hir_id, node) in self.tcx.hir().parent_iter(item.def_id.into()) {
                     match node {
                         hir::Node::Item(parent_item) => {
-                            let resolved_lifetimes: &ResolveLifetimes =
-                                self.tcx.resolve_lifetimes(item_for(self.tcx, parent_item.def_id));
+                            let resolved_lifetimes: &ResolveLifetimes = self.tcx.resolve_lifetimes(
+                                item_for(self.tcx, parent_item.def_id.def_id).def_id.def_id,
+                            );
                             // We need to add *all* deps, since opaque tys may want them from *us*
                             for (&owner, defs) in resolved_lifetimes.defs.iter() {
                                 defs.iter().for_each(|(&local_id, region)| {
@@ -1315,7 +1315,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     // regular fns.
                     if let Some(hir::PredicateOrigin::ImplTrait) = where_bound_origin
                         && let hir::LifetimeName::Param(_, hir::ParamName::Fresh) = lifetime_ref.name
-                        && let hir::IsAsync::NotAsync = self.tcx.asyncness(lifetime_ref.hir_id.owner)
+                        && let hir::IsAsync::NotAsync = self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id)
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {
                         rustc_session::parse::feature_err(

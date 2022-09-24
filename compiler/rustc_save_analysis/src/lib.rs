@@ -622,7 +622,7 @@ impl<'tcx> SaveContext<'tcx> {
                 hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
                     // #75962: `self.typeck_results` may be different from the `hir_id`'s result.
                     if self.tcx.has_typeck_results(hir_id.owner.to_def_id()) {
-                        self.tcx.typeck(hir_id.owner).qpath_res(qpath, hir_id)
+                        self.tcx.typeck(hir_id.owner.def_id).qpath_res(qpath, hir_id)
                     } else {
                         Res::Err
                     }
@@ -1041,7 +1041,7 @@ fn id_from_hir_id(id: hir::HirId, scx: &SaveContext<'_>) -> rls_data::Id {
         // crate (very unlikely to actually happen).
         rls_data::Id {
             krate: LOCAL_CRATE.as_u32(),
-            index: id.owner.local_def_index.as_u32() | id.local_id.as_u32().reverse_bits(),
+            index: id.owner.def_id.local_def_index.as_u32() | id.local_id.as_u32().reverse_bits(),
         }
     })
 }

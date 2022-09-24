@@ -659,7 +659,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 _ => {}
             }
 
-            hir_id = self.tcx.hir().local_def_id_to_hir_id(self.tcx.hir().get_parent_item(hir_id));
+            hir_id = self.tcx.hir().get_parent_item(hir_id).into();
         }
     }
 
@@ -2712,7 +2712,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     let parent_id = hir.get_parent_item(arg_hir_id);
                     let typeck_results: &TypeckResults<'tcx> = match &in_progress_typeck_results {
                         Some(t) if t.hir_owner == parent_id => t,
-                        _ => self.tcx.typeck(parent_id),
+                        _ => self.tcx.typeck(parent_id.def_id),
                     };
                     let expr = expr.peel_blocks();
                     let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error());

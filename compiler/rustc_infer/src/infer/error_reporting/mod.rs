@@ -2440,7 +2440,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                         // instead we suggest `T: 'a + 'b` in that case.
                         let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                        let ast_generics = self.tcx.hir().get_generics(hir_id.owner);
+                        let ast_generics = self.tcx.hir().get_generics(hir_id.owner.def_id);
                         let bounds =
                             ast_generics.and_then(|g| g.bounds_span_for_suggestions(def_id));
                         // `sp` only covers `T`, change it so that it covers

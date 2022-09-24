@@ -752,7 +752,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: hir::ImplItemKind::Fn(..),
                 span: encl_fn_span,
                 ..
-            })) = self.tcx.hir().find_by_def_id(encl_item_id)
+            })) = self.tcx.hir().find_by_def_id(encl_item_id.def_id)
             {
                 // We are inside a function body, so reporting "return statement
                 // outside of function body" needs an explanation.
@@ -761,7 +761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // If this didn't hold, we would not have to report an error in
                 // the first place.
-                assert_ne!(encl_item_id, encl_body_owner_id);
+                assert_ne!(encl_item_id.def_id, encl_body_owner_id);
 
                 let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
                 let encl_body = self.tcx.hir().body(encl_body_id);
@@ -2338,7 +2338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Adt(def, _) = output_ty.kind() && !def.is_enum() {
                 def.non_enum_variant().fields.iter().any(|field| {
                     field.ident(self.tcx) == ident
-                        && field.vis.is_accessible_from(expr.hir_id.owner, self.tcx)
+                        && field.vis.is_accessible_from(expr.hir_id.owner.def_id, self.tcx)
                 })
             } else if let ty::Tuple(tys) = output_ty.kind()
                 && let Ok(idx) = ident.as_str().parse::<usize>()

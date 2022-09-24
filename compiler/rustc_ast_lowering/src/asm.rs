@@ -237,7 +237,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             // Wrap the expression in an AnonConst.
                             let parent_def_id = self.current_hir_id_owner;
                             let node_id = self.next_node_id();
-                            self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
+                            self.create_def(parent_def_id.def_id, node_id, DefPathData::AnonConst);
                             let anon_const = AnonConst { id: node_id, value: P(expr) };
                             hir::InlineAsmOperand::SymFn {
                                 anon_const: self.lower_anon_const(&anon_const),

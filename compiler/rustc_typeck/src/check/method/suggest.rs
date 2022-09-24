@@ -2077,7 +2077,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Colon,
                                 Nothing,
                             }
-                            let ast_generics = hir.get_generics(id.owner).unwrap();
+                            let ast_generics = hir.get_generics(id.owner.def_id).unwrap();
                             let (sp, mut introducer) = if let Some(span) =
                                 ast_generics.bounds_span_for_suggestions(def_id)
                             {

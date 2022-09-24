@@ -143,14 +143,14 @@ where
         // then we need to exit before calling typeck (which will panic). See
         // test/run-make/rustdoc-scrape-examples-invalid-expr for an example.
         let hir = tcx.hir();
-        if hir.maybe_body_owned_by(ex.hir_id.owner).is_none() {
+        if hir.maybe_body_owned_by(ex.hir_id.owner.def_id).is_none() {
             return;
         }
 
         // Get type of function if expression is a function call
         let (ty, call_span, ident_span) = match ex.kind {
             hir::ExprKind::Call(f, _) => {
-                let types = tcx.typeck(ex.hir_id.owner);
+                let types = tcx.typeck(ex.hir_id.owner.def_id);
 
                 if let Some(ty) = types.node_type_opt(f.hir_id) {
                     (ty, ex.span, f.span)
@@ -160,7 +160,7 @@ where
                 }
             }
             hir::ExprKind::MethodCall(path, _, _, call_span) => {
-                let types = tcx.typeck(ex.hir_id.owner);
+                let types = tcx.typeck(ex.hir_id.owner.def_id);
                 let Some(def_id) = types.type_dependent_def_id(ex.hir_id) else {
                     trace!("type_dependent_def_id({}) = None", ex.hir_id);
                     return;
@@ -183,9 +183,8 @@ where
 
         // If the enclosing item has a span coming from a proc macro, then we also don't want to include
         // the example.
-        let enclosing_item_span = tcx
-            .hir()
-            .span_with_body(tcx.hir().local_def_id_to_hir_id(tcx.hir().get_parent_item(ex.hir_id)));
+        let enclosing_item_span =
+            tcx.hir().span_with_body(tcx.hir().get_parent_item(ex.hir_id).into());
         if enclosing_item_span.from_expansion() {
             trace!("Rejecting expr ({call_span:?}) from macro item: {enclosing_item_span:?}");
             return;

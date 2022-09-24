@@ -1080,7 +1080,7 @@ pub(crate) fn clean_impl_item<'tcx>(
         let mut what_rustc_thinks =
             Item::from_def_id_and_parts(local_did, Some(impl_.ident.name), inner, cx);
 
-        let impl_ref = cx.tcx.impl_trait_ref(cx.tcx.local_parent(impl_.def_id));
+        let impl_ref = cx.tcx.impl_trait_ref(cx.tcx.local_parent(impl_.def_id.def_id));
 
         // Trait impl items always inherit the impl's visibility --
         // we don't want to show `pub`.
@@ -1325,7 +1325,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
                 segments: trait_segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
             };
             register_res(cx, trait_.res);
-            let self_def_id = DefId::local(qself.hir_id.owner.local_def_index);
+            let self_def_id = DefId::local(qself.hir_id.owner.def_id.local_def_index);
             let self_type = clean_ty(qself, cx);
             let should_show_cast = compute_should_show_cast(Some(self_def_id), &trait_, &self_type);
             Type::QPath(Box::new(QPathData {
@@ -2037,7 +2037,7 @@ fn clean_extern_crate<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> Vec<Item> {
     // this is the ID of the `extern crate` statement
-    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.def_id).unwrap_or(LOCAL_CRATE);
+    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.def_id.def_id).unwrap_or(LOCAL_CRATE);
     // this is the ID of the crate itself
     let crate_def_id = cnum.as_def_id();
     let attrs = cx.tcx.hir().attrs(krate.hir_id());
@@ -2099,7 +2099,7 @@ fn clean_use_statement<'tcx>(
     let attrs = cx.tcx.hir().attrs(import.hir_id());
     let inline_attr = attrs.lists(sym::doc).get_word_attr(sym::inline);
     let pub_underscore = visibility.is_public() && name == kw::Underscore;
-    let current_mod = cx.tcx.parent_module_from_def_id(import.def_id);
+    let current_mod = cx.tcx.parent_module_from_def_id(import.def_id.def_id);
 
     // The parent of the module in which this import resides. This
     // is the same as `current_mod` if that's already the top

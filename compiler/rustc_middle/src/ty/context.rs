@@ -40,6 +40,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
+use rustc_hir::hir_id::OwnerId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
@@ -289,7 +290,7 @@ pub struct CommonConsts<'tcx> {
 }
 
 pub struct LocalTableInContext<'a, V> {
-    hir_owner: LocalDefId,
+    hir_owner: OwnerId,
     data: &'a ItemLocalMap<V>,
 }
 
@@ -301,7 +302,7 @@ pub struct LocalTableInContext<'a, V> {
 /// would result in lookup errors, or worse, in silently wrong data being
 /// stored/returned.
 #[inline]
-fn validate_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId) {
+fn validate_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
     if hir_id.owner != hir_owner {
         invalid_hir_id_for_typeck_results(hir_owner, hir_id);
     }
@@ -309,7 +310,7 @@ fn validate_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId)
 
 #[cold]
 #[inline(never)]
-fn invalid_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId) {
+fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} with HirId::owner {:?} cannot be placed in TypeckResults with hir_owner {:?}",
@@ -345,7 +346,7 @@ impl<'a, V> ::std::ops::Index<hir::HirId> for LocalTableInContext<'a, V> {
 }
 
 pub struct LocalTableInContextMut<'a, V> {
-    hir_owner: LocalDefId,
+    hir_owner: OwnerId,
     data: &'a mut ItemLocalMap<V>,
 }
 
@@ -417,7 +418,7 @@ pub struct GeneratorDiagnosticData<'tcx> {
 #[derive(TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
-    pub hir_owner: LocalDefId,
+    pub hir_owner: OwnerId,
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
@@ -592,7 +593,7 @@ pub struct TypeckResults<'tcx> {
 }
 
 impl<'tcx> TypeckResults<'tcx> {
-    pub fn new(hir_owner: LocalDefId) -> TypeckResults<'tcx> {
+    pub fn new(hir_owner: OwnerId) -> TypeckResults<'tcx> {
         TypeckResults {
             hir_owner,
             type_dependent_defs: Default::default(),
@@ -1726,7 +1727,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn local_visibility(self, def_id: LocalDefId) -> Visibility {
-        self.visibility(def_id.to_def_id()).expect_local()
+        self.visibility(def_id).expect_local()
     }
 }
 
@@ -2907,7 +2908,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner).map_or(false, |set| {
+        self.is_late_bound_map(id.owner.def_id).map_or(false, |set| {
             let def_id = self.hir().local_def_id(id);
             set.contains(&def_id)
         })

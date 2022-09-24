@@ -28,7 +28,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::weak_lang_items;
 use rustc_hir::{GenericParamKind, HirId, Node};
@@ -449,8 +449,10 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
 
             match self.node() {
                 hir::Node::Field(_) | hir::Node::Ctor(_) | hir::Node::Variant(_) => {
-                    let item =
-                        self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(self.hir_id()));
+                    let item = self
+                        .tcx
+                        .hir()
+                        .expect_item(self.tcx.hir().get_parent_item(self.hir_id()).def_id);
                     match &item.kind {
                         hir::ItemKind::Enum(_, generics)
                         | hir::ItemKind::Struct(_, generics)
@@ -728,7 +730,7 @@ impl<'tcx> ItemCtxt<'tcx> {
 fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     let it = tcx.hir().item(item_id);
     debug!("convert: item {} with id {}", it.ident, it.hir_id());
-    let def_id = item_id.def_id;
+    let def_id = item_id.def_id.def_id;
 
     match it.kind {
         // These don't define types.
@@ -840,20 +842,21 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
 
 fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     let trait_item = tcx.hir().trait_item(trait_item_id);
-    tcx.ensure().generics_of(trait_item_id.def_id);
+    let def_id = trait_item_id.def_id;
+    tcx.ensure().generics_of(def_id);
 
     match trait_item.kind {
         hir::TraitItemKind::Fn(..) => {
-            tcx.ensure().type_of(trait_item_id.def_id);
-            tcx.ensure().fn_sig(trait_item_id.def_id);
+            tcx.ensure().type_of(def_id);
+            tcx.ensure().fn_sig(def_id);
         }
 
         hir::TraitItemKind::Const(.., Some(_)) => {
-            tcx.ensure().type_of(trait_item_id.def_id);
+            tcx.ensure().type_of(def_id);
         }
 
         hir::TraitItemKind::Const(hir_ty, _) => {
-            tcx.ensure().type_of(trait_item_id.def_id);
+            tcx.ensure().type_of(def_id);
             // Account for `const C: _;`.
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
@@ -863,8 +866,8 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
         }
 
         hir::TraitItemKind::Type(_, Some(_)) => {
-            tcx.ensure().item_bounds(trait_item_id.def_id);
-            tcx.ensure().type_of(trait_item_id.def_id);
+            tcx.ensure().item_bounds(def_id);
+            tcx.ensure().type_of(def_id);
             // Account for `type T = _;`.
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
@@ -872,7 +875,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
         }
 
         hir::TraitItemKind::Type(_, None) => {
-            tcx.ensure().item_bounds(trait_item_id.def_id);
+            tcx.ensure().item_bounds(def_id);
             // #74612: Visit and try to find bad placeholders
             // even if there is no concrete type.
             let mut visitor = HirPlaceholderCollector::default();
@@ -882,7 +885,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
         }
     };
 
-    tcx.ensure().predicates_of(trait_item_id.def_id);
+    tcx.ensure().predicates_of(def_id);
 }
 
 fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
@@ -1595,7 +1598,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             }
             ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
                 let parent_id = tcx.hir().get_parent_item(hir_id);
-                assert_ne!(parent_id, CRATE_DEF_ID);
+                assert_ne!(parent_id, hir::CRATE_OWNER_ID);
                 debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent_id);
                 // Opaque types are always nested within another item, and
                 // inherit the generics of the item.
@@ -3386,7 +3389,7 @@ fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span:
     let node = tcx.hir().get(hir_id);
     if let Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) = node {
         let parent_id = tcx.hir().get_parent_item(hir_id);
-        let parent_item = tcx.hir().expect_item(parent_id);
+        let parent_item = tcx.hir().expect_item(parent_id.def_id);
         if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = parent_item.kind {
             tcx.sess
                 .struct_span_err(
