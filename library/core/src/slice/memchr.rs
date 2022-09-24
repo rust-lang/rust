@@ -141,8 +141,8 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
         // SAFETY: offset starts at len - suffix.len(), as long as it is greater than
         // min_aligned_offset (prefix.len()) the remaining distance is at least 2 * chunk_bytes.
         unsafe {
-            let u = *(ptr.offset(offset as isize - 2 * chunk_bytes as isize) as *const Chunk);
-            let v = *(ptr.offset(offset as isize - chunk_bytes as isize) as *const Chunk);
+            let u = *(ptr.add(offset - 2 * chunk_bytes) as *const Chunk);
+            let v = *(ptr.add(offset - chunk_bytes) as *const Chunk);
 
             // Break if there is a matching byte.
             let zu = contains_zero_byte(u ^ repeated_x);
