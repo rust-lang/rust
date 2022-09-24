@@ -15,7 +15,7 @@ assert-property: (".item-table .struct", {"offsetWidth": "684"})
 goto: file://|DOC_PATH|/lib2/too_long/type.ReallyLongTypeNameLongLongLong.html
 assert-property: ("body", {"scrollWidth": "1100"})
 // We now check that the section width hasn't grown because of it.
-assert-property: ("#main-content", {"scrollWidth": "825"})
+assert-property: ("#main-content", {"scrollWidth": "840"})
 // And now checking that it has scrollable content.
 assert-property: (".item-decl pre", {"scrollWidth": "1103"})
 
@@ -24,7 +24,7 @@ assert-property: (".item-decl pre", {"scrollWidth": "1103"})
 goto: file://|DOC_PATH|/lib2/too_long/constant.ReallyLongTypeNameLongLongLongConstBecauseWhyNotAConstRightGigaGigaSupraLong.html
 assert-property: ("body", {"scrollWidth": "1100"})
 // We now check that the section width hasn't grown because of it.
-assert-property: ("#main-content", {"scrollWidth": "825"})
+assert-property: ("#main-content", {"scrollWidth": "840"})
 // And now checking that it has scrollable content.
 assert-property: (".item-decl pre", {"scrollWidth": "950"})
 
@@ -32,6 +32,6 @@ assert-property: (".item-decl pre", {"scrollWidth": "950"})
 size: (600, 600)
 goto: file://|DOC_PATH|/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html
 // It shouldn't have an overflow in the topbar either.
-assert-property: (".mobile-topbar .location", {"scrollWidth": "500"})
-assert-property: (".mobile-topbar .location", {"clientWidth": "500"})
+store-property: (scrollWidth, ".mobile-topbar .location", "scrollWidth")
+assert-property: (".mobile-topbar .location", {"clientWidth": |scrollWidth|})
 assert-css: (".mobile-topbar .location", {"overflow-x": "hidden"})
