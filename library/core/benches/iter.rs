@@ -364,6 +364,13 @@ fn bench_partial_cmp(b: &mut Bencher) {
 }
 
 #[bench]
+fn bench_chain_partial_cmp(b: &mut Bencher) {
+    b.iter(|| {
+        (0..50000).chain(50000..100000).map(black_box).partial_cmp((0..100000).map(black_box))
+    })
+}
+
+#[bench]
 fn bench_lt(b: &mut Bencher) {
     b.iter(|| (0..100000).map(black_box).lt((0..100000).map(black_box)))
 }
