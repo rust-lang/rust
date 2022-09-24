@@ -19,7 +19,10 @@ impl<I: Iterator> Intersperse<I>
 where
     I::Item: Clone,
 {
-    pub(in crate::iter) fn new(iter: I, separator: I::Item) -> Self {
+    pub(in crate::iter) const fn new(iter: I, separator: I::Item) -> Self
+    where
+        I: ~const Iterator,
+    {
         Self { iter: iter.peekable(), separator, needs_sep: false }
     }
 }
@@ -103,12 +106,14 @@ where
     }
 }
 
-impl<I, G> IntersperseWith<I, G>
+impl<I: Iterator, G> IntersperseWith<I, G>
 where
-    I: Iterator,
     G: FnMut() -> I::Item,
 {
-    pub(in crate::iter) fn new(iter: I, separator: G) -> Self {
+    pub(in crate::iter) const fn new(iter: I, separator: G) -> Self
+    where
+        I: ~const Iterator,
+    {
         Self { iter: iter.peekable(), separator, needs_sep: false }
     }
 }

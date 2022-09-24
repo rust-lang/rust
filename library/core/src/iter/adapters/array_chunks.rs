@@ -24,7 +24,7 @@ where
     I: Iterator,
 {
     #[track_caller]
-    pub(in crate::iter) fn new(iter: I) -> Self {
+    pub(in crate::iter) const fn new(iter: I) -> Self {
         assert!(N != 0, "chunk size must be non-zero");
         Self { iter, remainder: None }
     }

@@ -19,7 +19,7 @@ pub struct Peekable<I: Iterator> {
 }
 
 impl<I: Iterator> Peekable<I> {
-    pub(in crate::iter) fn new(iter: I) -> Peekable<I> {
+    pub(in crate::iter) const fn new(iter: I) -> Peekable<I> {
         Peekable { iter, peeked: None }
     }
 }

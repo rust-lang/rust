@@ -18,7 +18,7 @@ pub struct MapWhile<I, P> {
 }
 
 impl<I, P> MapWhile<I, P> {
-    pub(in crate::iter) fn new(iter: I, predicate: P) -> MapWhile<I, P> {
+    pub(in crate::iter) const fn new(iter: I, predicate: P) -> MapWhile<I, P> {
         MapWhile { iter, predicate }
     }
 }

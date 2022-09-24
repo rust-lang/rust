@@ -19,7 +19,7 @@ pub struct Scan<I, St, F> {
 }
 
 impl<I, St, F> Scan<I, St, F> {
-    pub(in crate::iter) fn new(iter: I, state: St, f: F) -> Scan<I, St, F> {
+    pub(in crate::iter) const fn new(iter: I, state: St, f: F) -> Scan<I, St, F> {
         Scan { iter, state, f }
     }
 }

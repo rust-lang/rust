@@ -1,3 +1,5 @@
+use crate::intrinsics::const_eval_select;
+
 /// An iterator that knows its exact length.
 ///
 /// Many [`Iterator`]s don't know how many times they will iterate, but some do.
@@ -73,7 +75,8 @@
 /// assert_eq!(4, counter.len());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait ExactSizeIterator: Iterator {
+#[const_trait]
+pub trait ExactSizeIterator: ~const Iterator {
     /// Returns the exact remaining length of the iterator.
     ///
     /// The implementation ensures that the iterator will return exactly `len()`
@@ -105,11 +108,25 @@ pub trait ExactSizeIterator: Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn len(&self) -> usize {
         let (lower, upper) = self.size_hint();
+        #[track_caller]
+        #[inline]
+        fn assert_rt(lower: usize, upper: Option<usize>) {
+            assert_eq!(upper, Some(lower));
+        }
+        const fn assert_ct(lower: usize, upper: Option<usize>) {
+            match upper {
+                Some(upper) if upper == lower => {}
+                _ => panic!("expected `upper` to be equal to `Some(lower)`"),
+            }
+        }
         // Note: This assertion is overly defensive, but it checks the invariant
         // guaranteed by the trait. If this trait were rust-internal,
         // we could use debug_assert!; assert_eq! will check all Rust user
         // implementations too.
-        assert_eq!(upper, Some(lower));
+        // SAFETY: only using because compile time functions do not get formatted panic messages
+        unsafe {
+            const_eval_select((lower, upper), assert_ct, assert_rt);
+        }
         lower
     }
 
@@ -141,7 +158,8 @@ pub trait ExactSizeIterator: Iterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for &mut I {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<I: ~const ExactSizeIterator + ?Sized> const ExactSizeIterator for &mut I {
     fn len(&self) -> usize {
         (**self).len()
     }

@@ -18,7 +18,7 @@ LL |     let some_generated_vec = (0..10).collect();
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
-LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
+LL |     fn collect<B: ~const FromIterator<Self::Item>>(self) -> B
    |                ^ required by this bound in `collect`
 
 error[E0277]: a slice of type `[i32]` cannot be built since `[i32]` has no definite size
@@ -33,8 +33,8 @@ LL |     let some_generated_vec = (0..10).collect();
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
-LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `collect`
+LL |     fn collect<B: ~const FromIterator<Self::Item>>(self) -> B
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `collect`
 
 error: aborting due to 3 previous errors
 

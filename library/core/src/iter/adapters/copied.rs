@@ -22,7 +22,7 @@ pub struct Copied<I> {
 }
 
 impl<I> Copied<I> {
-    pub(in crate::iter) fn new(it: I) -> Copied<I> {
+    pub(in crate::iter) const fn new(it: I) -> Copied<I> {
         Copied { it }
     }
 }

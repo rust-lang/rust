@@ -281,7 +281,8 @@ pub macro PartialEq($item:item) {
 #[doc(alias = "!=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Eq"]
-pub trait Eq: PartialEq<Self> {
+#[const_trait]
+pub trait Eq: ~const PartialEq<Self> {
     // this method is used solely by #[deriving] to assert
     // that every component of a type implements #[deriving]
     // itself, the current deriving infrastructure means doing this
@@ -331,8 +332,9 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// let result = 2.cmp(&1);
 /// assert_eq!(Ordering::Greater, result);
 /// ```
-#[derive(Clone, Copy, Eq, Debug, Hash)]
-#[cfg_attr(not(bootstrap), derive_const(PartialOrd, Ord, PartialEq))]
+#[derive(Clone, Copy, Debug, Hash)]
+#[cfg_attr(bootstrap, derive(Ord, Eq))]
+#[cfg_attr(not(bootstrap), derive_const(PartialOrd, Ord, PartialEq, Eq))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(i8)]
 pub enum Ordering {
@@ -762,7 +764,7 @@ impl<T: Clone> Clone for Reverse<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Ord"]
 #[const_trait]
-pub trait Ord: Eq + PartialOrd<Self> {
+pub trait Ord: ~const Eq + ~const PartialOrd<Self> {
     /// This method returns an [`Ordering`] between `self` and `other`.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching the expression
@@ -889,16 +891,6 @@ impl const PartialEq for Ordering {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         (*self as i32).eq(&(*other as i32))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-#[cfg(bootstrap)]
-impl const Ord for Ordering {
-    #[inline]
-    fn cmp(&self, other: &Ordering) -> Ordering {
-        (*self as i32).cmp(&(*other as i32))
     }
 }
 
@@ -1231,9 +1223,8 @@ pub const fn min<T: ~const Ord + ~const Destruct>(v1: T, v2: T) -> T {
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
 pub const fn min_by<T, F: ~const FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
-where
+where 
     T: ~const Destruct,
-    F: ~const Destruct,
 {
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v1,
@@ -1318,8 +1309,6 @@ pub const fn max<T: ~const Ord + ~const Destruct>(v1: T, v2: T) -> T {
 pub const fn max_by<T, F: ~const FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
 where
     T: ~const Destruct,
-    F: ~const Destruct,
-{
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v2,
         Ordering::Greater => v1,
@@ -1399,7 +1388,8 @@ mod impls {
     macro_rules! eq_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl Eq for $t {}
+            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+            impl const Eq for $t {}
         )*)
     }
 
@@ -1523,7 +1513,8 @@ mod impls {
     }
 
     #[unstable(feature = "never_type", issue = "35121")]
-    impl Eq for ! {}
+    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    impl const Eq for ! {}
 
     #[unstable(feature = "never_type", issue = "35121")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]

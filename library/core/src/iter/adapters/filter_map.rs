@@ -17,7 +17,7 @@ pub struct FilterMap<I, F> {
     f: F,
 }
 impl<I, F> FilterMap<I, F> {
-    pub(in crate::iter) fn new(iter: I, f: F) -> FilterMap<I, F> {
+    pub(in crate::iter) const fn new(iter: I, f: F) -> FilterMap<I, F> {
         FilterMap { iter, f }
     }
 }

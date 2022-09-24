@@ -1,5 +1,6 @@
 use crate::fmt;
 use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map, TrustedLen};
+use crate::marker::Destruct;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that maps each element to an iterator, and yields the elements
@@ -13,8 +14,12 @@ pub struct FlatMap<I, U: IntoIterator, F> {
     inner: FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>,
 }
 
-impl<I: Iterator, U: IntoIterator, F: FnMut(I::Item) -> U> FlatMap<I, U, F> {
-    pub(in crate::iter) fn new(iter: I, f: F) -> FlatMap<I, U, F> {
+impl<I, U: IntoIterator, F> FlatMap<I, U, F> {
+    pub(in crate::iter) const fn new(iter: I, f: F) -> FlatMap<I, U, F>
+    where
+        I: ~const Iterator + ~const Destruct,
+        F: ~const FnMut(I::Item) -> U + ~const Destruct,
+    {
         FlatMap { inner: FlattenCompat::new(iter.map(f)) }
     }
 }
@@ -172,7 +177,10 @@ pub struct Flatten<I: Iterator<Item: IntoIterator>> {
 }
 
 impl<I: Iterator<Item: IntoIterator>> Flatten<I> {
-    pub(in super::super) fn new(iter: I) -> Flatten<I> {
+    pub(in super::super) const fn new(iter: I) -> Flatten<I>
+    where
+        I: ~const Iterator,
+    {
         Flatten { inner: FlattenCompat::new(iter) }
     }
 }
@@ -310,12 +318,12 @@ struct FlattenCompat<I, U> {
     frontiter: Option<U>,
     backiter: Option<U>,
 }
-impl<I, U> FlattenCompat<I, U>
-where
-    I: Iterator,
-{
+impl<I, U> FlattenCompat<I, U> {
     /// Adapts an iterator by flattening it, for use in `flatten()` and `flat_map()`.
-    fn new(iter: I) -> FlattenCompat<I, U> {
+    const fn new(iter: I) -> FlattenCompat<I, U>
+    where
+        I: ~const Iterator,
+    {
         FlattenCompat { iter: iter.fuse(), frontiter: None, backiter: None }
     }
 }

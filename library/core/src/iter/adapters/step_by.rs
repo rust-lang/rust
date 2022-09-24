@@ -17,7 +17,7 @@ pub struct StepBy<I> {
 }
 
 impl<I> StepBy<I> {
-    pub(in crate::iter) fn new(iter: I, step: usize) -> StepBy<I> {
+    pub(in crate::iter) const fn new(iter: I, step: usize) -> StepBy<I> {
         assert!(step != 0);
         StepBy { iter, step: step - 1, first_take: true }
     }

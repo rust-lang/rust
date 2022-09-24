@@ -1,3 +1,6 @@
+use crate::const_closure::ConstFnMutClosure;
+use crate::marker::Destruct;
+
 /// Conversion from an [`Iterator`].
 ///
 /// By implementing `FromIterator` for a type, you define how it will be
@@ -236,7 +239,7 @@ pub trait IntoIterator {
 
     /// Which kind of iterator are we turning this into?
     #[stable(feature = "rust1", since = "1.0.0")]
-    type IntoIter: Iterator<Item = Self::Item>;
+    type IntoIter: ~const Iterator<Item = Self::Item>;
 
     /// Creates an iterator from a value.
     ///
@@ -344,6 +347,7 @@ impl<I: Iterator> const IntoIterator for I {
 /// assert_eq!("MyCollection([5, 6, 7, 1, 2, 3])", format!("{c:?}"));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait Extend<A> {
     /// Extends a collection with the contents of an iterator.
     ///
@@ -365,7 +369,7 @@ pub trait Extend<A> {
     /// assert_eq!("abcdef", &message);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
+    fn extend<T: ~const IntoIterator<Item = A>>(&mut self, iter: T);
 
     /// Extends a collection with exactly one element.
     #[unstable(feature = "extend_one", issue = "72631")]
@@ -391,10 +395,11 @@ impl Extend<()> for () {
 }
 
 #[stable(feature = "extend_for_tuple", since = "1.56.0")]
-impl<A, B, ExtendA, ExtendB> Extend<(A, B)> for (ExtendA, ExtendB)
+#[rustc_const_unstable(feature = "const_extend", issue = "none")]
+impl<A, B, ExtendA, ExtendB> const Extend<(A, B)> for (ExtendA, ExtendB)
 where
-    ExtendA: Extend<A>,
-    ExtendB: Extend<B>,
+    ExtendA: ~const Extend<A>,
+    ExtendB: ~const Extend<B>,
 {
     /// Allows to `extend` a tuple of collections that also implement `Extend`.
     ///
@@ -416,18 +421,20 @@ where
     /// assert_eq!(b, [2, 5, 8]);
     /// assert_eq!(c, [3, 6, 9]);
     /// ```
-    fn extend<T: IntoIterator<Item = (A, B)>>(&mut self, into_iter: T) {
+    fn extend<T: ~const IntoIterator<Item = (A, B)>>(&mut self, into_iter: T)
+    where
+        T::IntoIter: ~const Destruct,
+    {
         let (a, b) = self;
         let iter = into_iter.into_iter();
 
-        fn extend<'a, A, B>(
-            a: &'a mut impl Extend<A>,
-            b: &'a mut impl Extend<B>,
-        ) -> impl FnMut((), (A, B)) + 'a {
-            move |(), (t, u)| {
-                a.extend_one(t);
-                b.extend_one(u);
-            }
+        const fn extend<EA, A, EB, B>((a, b): &mut (&mut EA, &mut EB), ((), (t, u)): ((), (A, B)))
+        where
+            EA: ~const Extend<A>,
+            EB: ~const Extend<B>,
+        {
+            a.extend_one(t);
+            b.extend_one(u);
         }
 
         let (lower_bound, _) = iter.size_hint();
@@ -435,8 +442,7 @@ where
             a.extend_reserve(lower_bound);
             b.extend_reserve(lower_bound);
         }
-
-        iter.fold((), extend(a, b));
+        iter.fold((), ConstFnMutClosure::new(&mut (a, b), extend));
     }
 
     fn extend_one(&mut self, item: (A, B)) {

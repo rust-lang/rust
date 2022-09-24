@@ -1,3 +1,4 @@
+use crate::marker::Destruct;
 use crate::{convert, ops};
 
 /// Used to tell an operation whether it should exit early or go on as usual.
@@ -180,9 +181,13 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
-    pub fn break_value(self) -> Option<B> {
+    #[rustc_const_unstable(feature = "const_control_flow", issue = "none")]
+    pub const fn break_value(self) -> Option<B>
+    where
+        C: ~const Destruct,
+    {
         match self {
-            ControlFlow::Continue(..) => None,
+            ControlFlow::Continue(_x) => None,
             ControlFlow::Break(x) => Some(x),
         }
     }
@@ -243,7 +248,10 @@ impl<B, C> ControlFlow<B, C> {
 impl<R: ops::Try> ControlFlow<R, R::Output> {
     /// Create a `ControlFlow` from any type implementing `Try`.
     #[inline]
-    pub(crate) fn from_try(r: R) -> Self {
+    pub(crate) const fn from_try(r: R) -> Self
+    where
+        R: ~const ops::Try,
+    {
         match R::branch(r) {
             ControlFlow::Continue(v) => ControlFlow::Continue(v),
             ControlFlow::Break(v) => ControlFlow::Break(R::from_residual(v)),
@@ -252,7 +260,10 @@ impl<R: ops::Try> ControlFlow<R, R::Output> {
 
     /// Convert a `ControlFlow` into any type implementing `Try`;
     #[inline]
-    pub(crate) fn into_try(self) -> R {
+    pub(crate) const fn into_try(self) -> R
+    where
+        R: ~const ops::Try,
+    {
         match self {
             ControlFlow::Continue(v) => R::from_output(v),
             ControlFlow::Break(v) => v,

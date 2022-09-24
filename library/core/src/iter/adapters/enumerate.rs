@@ -19,7 +19,7 @@ pub struct Enumerate<I> {
     count: usize,
 }
 impl<I> Enumerate<I> {
-    pub(in crate::iter) fn new(iter: I) -> Enumerate<I> {
+    pub(in crate::iter) const fn new(iter: I) -> Enumerate<I> {
         Enumerate { iter, count: 0 }
     }
 }

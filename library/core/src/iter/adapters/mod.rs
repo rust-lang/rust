@@ -1,4 +1,5 @@
 use crate::iter::{InPlaceIterable, Iterator};
+use crate::marker::Destruct;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 mod array_chunks;
@@ -153,11 +154,14 @@ pub(crate) struct GenericShunt<'a, I, R> {
 /// Process the given iterator as if it yielded a the item's `Try::Output`
 /// type instead. Any `Try::Residual`s encountered will stop the inner iterator
 /// and be propagated back to the overall result.
-pub(crate) fn try_process<I, T, R, F, U>(iter: I, mut f: F) -> ChangeOutputType<I::Item, U>
+pub(crate) const fn try_process<I, T, R, F, U>(iter: I, mut f: F) -> ChangeOutputType<I::Item, U>
 where
-    I: Iterator<Item: Try<Output = T, Residual = R>>,
-    for<'a> F: FnMut(GenericShunt<'a, I, R>) -> U,
-    R: Residual<U>,
+    I: ~const Iterator,
+    I::Item: ~const Try<Output = T, Residual = R>,
+    for<'a> F: ~const FnMut(GenericShunt<'a, I, R>) -> U,
+    F: ~const Destruct,
+    R: ~const Residual<U>,
+    U: ~const Destruct,
 {
     let mut residual = None;
     let shunt = GenericShunt { iter, residual: &mut residual };
@@ -168,9 +172,11 @@ where
     }
 }
 
-impl<I, R> Iterator for GenericShunt<'_, I, R>
+impl<I, R> const Iterator for GenericShunt<'_, I, R>
 where
-    I: Iterator<Item: Try<Residual = R>>,
+    I: ~const Iterator,
+    I::Item: ~const Try<Residual = R>,
+    R: ~const Destruct,
 {
     type Item = <I::Item as Try>::Output;
 
@@ -187,20 +193,31 @@ where
         }
     }
 
-    fn try_fold<B, F, T>(&mut self, init: B, mut f: F) -> T
+    fn try_fold<B, F, T>(&mut self, init: B, f: F) -> T
     where
-        F: FnMut(B, Self::Item) -> T,
-        T: Try<Output = B>,
+        F: ~const FnMut(B, Self::Item) -> T + ~const Destruct,
+        T: ~const Try<Output = B>,
     {
-        self.iter
-            .try_fold(init, |acc, x| match Try::branch(x) {
+        const fn try_fold_impl<B, F, T, Item>(
+            (f, residual): &mut (F, &mut Option<Item::Residual>),
+            (acc, x): (B, Item),
+        ) -> ControlFlow<T, B>
+        where
+            F: ~const FnMut(B, Item::Output) -> T,
+            Item: ~const Try,
+            T: ~const Try<Output = B>,
+            Item::Residual: ~const Destruct,
+        {
+            match Try::branch(x) {
                 ControlFlow::Continue(x) => ControlFlow::from_try(f(acc, x)),
                 ControlFlow::Break(r) => {
-                    *self.residual = Some(r);
+                    **residual = Some(r);
                     ControlFlow::Break(try { acc })
                 }
-            })
-            .into_try()
+            }
+        }
+        let mut tuple = (f, &mut *self.residual);
+        self.iter.try_fold(init, ConstFnMutClosure::new(&mut tuple, try_fold_impl)).into_try()
     }
 
     impl_fold_via_try_fold! { fold -> try_fold }

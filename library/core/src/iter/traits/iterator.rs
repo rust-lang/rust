@@ -1,5 +1,8 @@
 use crate::array;
 use crate::cmp::{self, Ordering};
+use crate::const_closure::ConstFnMutClosure;
+use crate::iter::adapters::GenericShunt;
+use crate::marker::Destruct;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::try_process;
@@ -64,6 +67,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 #[doc(notable_trait)]
 #[rustc_diagnostic_item = "Iterator"]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
+#[const_trait]
 pub trait Iterator {
     /// The type of the elements being iterated over.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -140,6 +144,7 @@ pub trait Iterator {
     ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>>
     where
         Self: Sized,
+        Self::Item: ~const Destruct,
     {
         array::iter_next_chunk(self)
     }
@@ -252,12 +257,14 @@ pub trait Iterator {
     fn count(self) -> usize
     where
         Self: Sized,
+        Self: ~const Destruct,
+        Self::Item: ~const Destruct,
     {
-        self.fold(
-            0,
-            #[rustc_inherit_overflow_checks]
-            |count, _| count + 1,
-        )
+        #[rustc_inherit_overflow_checks]
+        const fn fold<T: ~const Destruct>(count: usize, _: T) -> usize {
+            count + 1
+        }
+        self.fold(0, fold)
     }
 
     /// Consumes the iterator, returning the last element.
@@ -282,9 +289,11 @@ pub trait Iterator {
     fn last(self) -> Option<Self::Item>
     where
         Self: Sized,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
-        fn some<T>(_: Option<T>, x: T) -> Option<T> {
+        const fn some<T: ~const Destruct>(_: Option<T>, x: T) -> Option<T> {
             Some(x)
         }
 
@@ -325,9 +334,15 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        for i in 0..n {
+    fn advance_by(&mut self, n: usize) -> Result<(), usize>
+    where
+        Self::Item: ~const Destruct,
+    {
+        let mut i = 0;
+        // FIXME(const_trait_impl) use a for loop once `Range` can implement iterator.
+        while i < n {
             self.next().ok_or(i)?;
+            i += 1;
         }
         Ok(())
     }
@@ -373,7 +388,10 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+    fn nth(&mut self, n: usize) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+    {
         self.advance_by(n).ok()?;
         self.next()
     }
@@ -499,7 +517,7 @@ pub trait Iterator {
     fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter>
     where
         Self: Sized,
-        U: IntoIterator<Item = Self::Item>,
+        U: ~const IntoIterator<Item = Self::Item>,
     {
         Chain::new(self, other.into_iter())
     }
@@ -617,7 +635,9 @@ pub trait Iterator {
     fn zip<U>(self, other: U) -> Zip<Self, U::IntoIter>
     where
         Self: Sized,
-        U: IntoIterator,
+        U: ~const IntoIterator,
+        U::Item: ~const Destruct,
+        Self::Item: ~const Destruct,
     {
         Zip::new(self, other.into_iter())
     }
@@ -818,17 +838,18 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_for_each", since = "1.21.0")]
-    fn for_each<F>(self, f: F)
+    fn for_each<F>(self, mut f: F)
     where
         Self: Sized,
-        F: FnMut(Self::Item),
+        F: ~const FnMut(Self::Item) + ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
-        fn call<T>(mut f: impl FnMut(T)) -> impl FnMut((), T) {
-            move |(), item| f(item)
+        const fn call<F: ~const FnMut(T), T>(f: &mut F, ((), item): ((), T)) {
+            f(item)
         }
 
-        self.fold((), call(f));
+        self.fold((), ConstFnMutClosure::new(&mut f, call));
     }
 
     /// Creates an iterator which uses a closure to determine if an element
@@ -1461,7 +1482,8 @@ pub trait Iterator {
     where
         Self: Sized,
         U: IntoIterator,
-        F: FnMut(Self::Item) -> U,
+        F: ~const FnMut(Self::Item) -> U + ~const Destruct,
+        Self: ~const Destruct,
     {
         FlatMap::new(self, f)
     }
@@ -1829,7 +1851,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "if you really need to exhaust the iterator, consider `.for_each(drop)` instead"]
-    fn collect<B: FromIterator<Self::Item>>(self) -> B
+    fn collect<B: ~const FromIterator<Self::Item>>(self) -> B
     where
         Self: Sized,
     {
@@ -1910,11 +1932,21 @@ pub trait Iterator {
     fn try_collect<B>(&mut self) -> ChangeOutputType<Self::Item, B>
     where
         Self: Sized,
-        <Self as Iterator>::Item: Try,
-        <<Self as Iterator>::Item as Try>::Residual: Residual<B>,
-        B: FromIterator<<Self::Item as Try>::Output>,
+        <Self as Iterator>::Item: ~const Try,
+        <<Self as Iterator>::Item as Try>::Residual: ~const Residual<B> + ~const Destruct,
+        B: ~const FromIterator<<Self::Item as Try>::Output> + ~const Destruct,
     {
-        try_process(ByRefSized(self), |i| i.collect())
+        const fn collect<'a, T, R, O>(x: GenericShunt<'a, T, R>) -> O
+        where
+            T: ~const Iterator,
+            T::Item: ~const Try<Residual = R>,
+            R: ~const Destruct,
+            O: ~const FromIterator<<<T as Iterator>::Item as Try>::Output>,
+        {
+            x.collect()
+        }
+
+        try_process(ByRefSized(self), collect)
     }
 
     /// Collects all the items from an iterator into a collection.
@@ -1980,7 +2012,7 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iter_collect_into", reason = "new API", issue = "94780")]
-    fn collect_into<E: Extend<Self::Item>>(self, collection: &mut E) -> &mut E
+    fn collect_into<E: ~const Extend<Self::Item>>(self, collection: &mut E) -> &mut E
     where
         Self: Sized,
     {
@@ -2017,30 +2049,29 @@ pub trait Iterator {
     fn partition<B, F>(self, f: F) -> (B, B)
     where
         Self: Sized,
-        B: Default + Extend<Self::Item>,
-        F: FnMut(&Self::Item) -> bool,
+        B: ~const Default + ~const Extend<Self::Item> + ~const Destruct,
+        F: ~const FnMut(&Self::Item) -> bool + ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
-        fn extend<'a, T, B: Extend<T>>(
-            mut f: impl FnMut(&T) -> bool + 'a,
-            left: &'a mut B,
-            right: &'a mut B,
-        ) -> impl FnMut((), T) + 'a {
-            move |(), x| {
-                if f(&x) {
-                    left.extend_one(x);
-                } else {
-                    right.extend_one(x);
-                }
+        const fn extend<F: ~const FnMut(&T) -> bool, T, B: ~const Extend<T>>(
+            (f, left, right): &mut (F, B, B),
+            ((), x): ((), T),
+        ) {
+            if f(&x) {
+                left.extend_one(x);
+            } else {
+                right.extend_one(x);
             }
         }
 
-        let mut left: B = Default::default();
-        let mut right: B = Default::default();
+        let left: B = Default::default();
+        let right: B = Default::default();
+        let mut tuple = (f, left, right);
 
-        self.fold((), extend(f, &mut left, &mut right));
+        self.fold((), ConstFnMutClosure::new(&mut tuple, extend));
 
-        (left, right)
+        (tuple.1, tuple.2)
     }
 
     /// Reorders the elements of this iterator *in-place* according to the given predicate,
@@ -2078,8 +2109,9 @@ pub trait Iterator {
     #[unstable(feature = "iter_partition_in_place", reason = "new API", issue = "62543")]
     fn partition_in_place<'a, T: 'a, P>(mut self, ref mut predicate: P) -> usize
     where
-        Self: Sized + DoubleEndedIterator<Item = &'a mut T>,
-        P: FnMut(&T) -> bool,
+        Self: Sized + ~const DoubleEndedIterator<Item = &'a mut T>,
+        P: ~const FnMut(&T) -> bool + ~const Destruct,
+        Self: ~const Destruct,
     {
         // FIXME: should we worry about the count overflowing? The only way to have more than
         // `usize::MAX` mutable references is with ZSTs, which aren't useful to partition...
@@ -2087,33 +2119,35 @@ pub trait Iterator {
         // These closure "factory" functions exist to avoid genericity in `Self`.
 
         #[inline]
-        fn is_false<'a, T>(
-            predicate: &'a mut impl FnMut(&T) -> bool,
-            true_count: &'a mut usize,
-        ) -> impl FnMut(&&mut T) -> bool + 'a {
-            move |x| {
-                let p = predicate(&**x);
-                *true_count += p as usize;
-                !p
-            }
+        const fn is_false<F: ~const FnMut(&T) -> bool, T>(
+            (predicate, true_count): &mut (F, usize),
+            (x,): (&&mut T,),
+        ) -> bool {
+            let p = predicate(&**x);
+            *true_count += p as usize;
+            !p
         }
 
         #[inline]
-        fn is_true<T>(predicate: &mut impl FnMut(&T) -> bool) -> impl FnMut(&&mut T) -> bool + '_ {
-            move |x| predicate(&**x)
+        const fn is_true<F: ~const FnMut(&T) -> bool, T>(
+            predicate: &mut F,
+            (x,): (&&mut T,),
+        ) -> bool {
+            predicate(&**x)
         }
 
         // Repeatedly find the first `false` and swap it with the last `true`.
-        let mut true_count = 0;
-        while let Some(head) = self.find(is_false(predicate, &mut true_count)) {
-            if let Some(tail) = self.rfind(is_true(predicate)) {
+        let mut tuple = (predicate, 0);
+        let mut f = ConstFnMutClosure::new(&mut tuple, is_false);
+        while let Some(head) = self.find(&mut f) {
+            if let Some(tail) = self.rfind(ConstFnMutClosure::new(&mut f.data.0, is_true)) {
                 crate::mem::swap(head, tail);
-                true_count += 1;
+                f.data.1 += 1;
             } else {
                 break;
             }
         }
-        true_count
+        tuple.1
     }
 
     /// Checks if the elements of this iterator are partitioned according to the given predicate,
@@ -2136,7 +2170,9 @@ pub trait Iterator {
     fn is_partitioned<P>(mut self, mut predicate: P) -> bool
     where
         Self: Sized,
-        P: FnMut(Self::Item) -> bool,
+        P: ~const FnMut(Self::Item) -> bool + ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         // Either all items test `true`, or the first clause stops at `false`
         // and we check that there are no more `true` items after that.
@@ -2230,12 +2266,15 @@ pub trait Iterator {
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
+        F: ~const FnMut(B, Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = B>,
     {
         let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x)?;
+        loop {
+            match self.next() {
+                Some(x) => accum = f(accum, x)?,
+                None => break,
+            }
         }
         try { accum }
     }
@@ -2285,18 +2324,21 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
-    fn try_for_each<F, R>(&mut self, f: F) -> R
+    fn try_for_each<F, R>(&mut self, mut f: F) -> R
     where
         Self: Sized,
-        F: FnMut(Self::Item) -> R,
-        R: Try<Output = ()>,
+        F: ~const FnMut(Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = ()>,
     {
         #[inline]
-        fn call<T, R>(mut f: impl FnMut(T) -> R) -> impl FnMut((), T) -> R {
-            move |(), x| f(x)
+        const fn call<F, T, R>(f: &mut F, ((), x): ((), T)) -> R
+        where
+            F: ~const FnMut(T) -> R,
+        {
+            f(x)
         }
 
-        self.try_fold((), call(f))
+        self.try_fold((), ConstFnMutClosure::new(&mut f, call))
     }
 
     /// Folds every element into an accumulator by applying an operation,
@@ -2407,11 +2449,15 @@ pub trait Iterator {
     fn fold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
+        F: ~const FnMut(B, Self::Item) -> B + ~const Destruct,
+        Self: ~const Destruct,
     {
         let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x);
+        loop {
+            match self.next() {
+                Some(x) => accum = f(accum, x),
+                None => break,
+            }
         }
         accum
     }
@@ -2444,7 +2490,8 @@ pub trait Iterator {
     fn reduce<F>(mut self, f: F) -> Option<Self::Item>
     where
         Self: Sized,
-        F: FnMut(Self::Item, Self::Item) -> Self::Item,
+        F: ~const FnMut(Self::Item, Self::Item) -> Self::Item + ~const Destruct,
+        Self: ~const Destruct,
     {
         let first = self.next()?;
         Some(self.fold(first, f))
@@ -2515,9 +2562,9 @@ pub trait Iterator {
     fn try_reduce<F, R>(&mut self, f: F) -> ChangeOutputType<R, Option<R::Output>>
     where
         Self: Sized,
-        F: FnMut(Self::Item, Self::Item) -> R,
-        R: Try<Output = Self::Item>,
-        R::Residual: Residual<Option<Self::Item>>,
+        F: ~const FnMut(Self::Item, Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = Self::Item>,
+        R::Residual: ~const Residual<Option<Self::Item>>,
     {
         let first = match self.next() {
             Some(i) => i,
@@ -2569,18 +2616,19 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn all<F>(&mut self, f: F) -> bool
+    fn all<F>(&mut self, mut f: F) -> bool
     where
         Self: Sized,
-        F: FnMut(Self::Item) -> bool,
+        F: ~const FnMut(Self::Item) -> bool + ~const Destruct,
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<()> {
-            move |(), x| {
-                if f(x) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
-            }
+        const fn check<F: ~const FnMut(T) -> bool, T>(
+            f: &mut F,
+            ((), x): ((), T),
+        ) -> ControlFlow<()> {
+            if f(x) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
         }
-        self.try_fold((), check(f)) == ControlFlow::CONTINUE
+        matches!(self.try_fold((), ConstFnMutClosure::new(&mut f, check)), ControlFlow::CONTINUE)
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -2622,19 +2670,20 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn any<F>(&mut self, f: F) -> bool
+    fn any<F>(&mut self, mut f: F) -> bool
     where
         Self: Sized,
-        F: FnMut(Self::Item) -> bool,
+        F: ~const FnMut(Self::Item) -> bool + ~const Destruct,
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<()> {
-            move |(), x| {
-                if f(x) { ControlFlow::BREAK } else { ControlFlow::CONTINUE }
-            }
+        const fn check<F: ~const FnMut(T) -> bool, T>(
+            f: &mut F,
+            ((), x): ((), T),
+        ) -> ControlFlow<()> {
+            if f(x) { ControlFlow::BREAK } else { ControlFlow::CONTINUE }
         }
 
-        self.try_fold((), check(f)) == ControlFlow::BREAK
+        matches!(self.try_fold((), ConstFnMutClosure::new(&mut f, check)), ControlFlow::BREAK)
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -2682,19 +2731,22 @@ pub trait Iterator {
     /// Note that `iter.find(f)` is equivalent to `iter.filter(f).next()`.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
+    fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item>
     where
         Self: Sized,
-        P: FnMut(&Self::Item) -> bool,
+        P: ~const FnMut(&Self::Item) -> bool + ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
-        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut((), T) -> ControlFlow<T> {
-            move |(), x| {
-                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
-            }
+        const fn check<F: ~const FnMut(&T) -> bool, T: ~const Destruct>(
+            predicate: &mut F,
+            ((), x): ((), T),
+        ) -> ControlFlow<T> {
+            if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
         }
 
-        self.try_fold((), check(predicate)).break_value()
+        self.try_fold((), ConstFnMutClosure::new(&mut predicate, check)).break_value()
     }
 
     /// Applies function to the elements of iterator and returns
@@ -2713,20 +2765,23 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_find_map", since = "1.30.0")]
-    fn find_map<B, F>(&mut self, f: F) -> Option<B>
+    fn find_map<B, F>(&mut self, mut f: F) -> Option<B>
     where
         Self: Sized,
-        F: FnMut(Self::Item) -> Option<B>,
+        F: ~const FnMut(Self::Item) -> Option<B> + ~const Destruct,
     {
         #[inline]
-        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut((), T) -> ControlFlow<B> {
-            move |(), x| match f(x) {
+        const fn check<F, T, B>(f: &mut F, ((), x): ((), T)) -> ControlFlow<B>
+        where
+            F: ~const FnMut(T) -> Option<B>,
+        {
+            match f(x) {
                 Some(x) => ControlFlow::Break(x),
                 None => ControlFlow::CONTINUE,
             }
         }
 
-        self.try_fold((), check(f)).break_value()
+        self.try_fold((), ConstFnMutClosure::new(&mut f, check)).break_value()
     }
 
     /// Applies function to the elements of iterator and returns
@@ -2769,29 +2824,30 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
-    fn try_find<F, R>(&mut self, f: F) -> ChangeOutputType<R, Option<Self::Item>>
+    fn try_find<F, R>(&mut self, mut f: F) -> ChangeOutputType<R, Option<Self::Item>>
     where
         Self: Sized,
-        F: FnMut(&Self::Item) -> R,
-        R: Try<Output = bool>,
-        R::Residual: Residual<Option<Self::Item>>,
+        F: ~const FnMut(&Self::Item) -> R + ~const Destruct,
+        R: ~const Try<Output = bool>,
+        R::Residual: ~const Residual<Option<Self::Item>>,
+        Self::Item: ~const Destruct,
     {
         #[inline]
-        fn check<I, V, R>(
-            mut f: impl FnMut(&I) -> V,
-        ) -> impl FnMut((), I) -> ControlFlow<R::TryType>
+        const fn check<F, I, V, R>(f: &mut F, ((), x): ((), I)) -> ControlFlow<R::TryType>
         where
-            V: Try<Output = bool, Residual = R>,
-            R: Residual<Option<I>>,
+            F: ~const FnMut(&I) -> V,
+            V: ~const Try<Output = bool, Residual = R>,
+            R: ~const Residual<Option<I>>,
+            I: ~const Destruct,
         {
-            move |(), x| match f(&x).branch() {
+            match f(&x).branch() {
                 ControlFlow::Continue(false) => ControlFlow::CONTINUE,
                 ControlFlow::Continue(true) => ControlFlow::Break(Try::from_output(Some(x))),
                 ControlFlow::Break(r) => ControlFlow::Break(FromResidual::from_residual(r)),
             }
         }
 
-        match self.try_fold((), check(f)) {
+        match self.try_fold((), ConstFnMutClosure::new(&mut f, check)) {
             ControlFlow::Break(x) => x,
             ControlFlow::Continue(()) => Try::from_output(None),
         }
@@ -2851,22 +2907,22 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn position<P>(&mut self, predicate: P) -> Option<usize>
+    fn position<P>(&mut self, mut predicate: P) -> Option<usize>
     where
         Self: Sized,
-        P: FnMut(Self::Item) -> bool,
+        P: ~const FnMut(Self::Item) -> bool + ~const Destruct,
+        Self::Item: ~const Destruct,
     {
         #[inline]
-        fn check<T>(
-            mut predicate: impl FnMut(T) -> bool,
-        ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
-            #[rustc_inherit_overflow_checks]
-            move |i, x| {
-                if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(i + 1) }
-            }
+        #[rustc_inherit_overflow_checks]
+        const fn check<F: ~const FnMut(T) -> bool, T>(
+            predicate: &mut F,
+            (i, x): (usize, T),
+        ) -> ControlFlow<usize, usize> {
+            if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(i + 1) }
         }
 
-        self.try_fold(0, check(predicate)).break_value()
+        self.try_fold(0, ConstFnMutClosure::new(&mut predicate, check)).break_value()
     }
 
     /// Searches for an element in an iterator from the right, returning its
@@ -2908,25 +2964,25 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn rposition<P>(&mut self, predicate: P) -> Option<usize>
+    fn rposition<P>(&mut self, mut predicate: P) -> Option<usize>
     where
-        P: FnMut(Self::Item) -> bool,
-        Self: Sized + ExactSizeIterator + DoubleEndedIterator,
+        P: ~const FnMut(Self::Item) -> bool + ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: Sized + ~const ExactSizeIterator + ~const DoubleEndedIterator,
     {
         // No need for an overflow check here, because `ExactSizeIterator`
         // implies that the number of elements fits into a `usize`.
         #[inline]
-        fn check<T>(
-            mut predicate: impl FnMut(T) -> bool,
-        ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
-            move |i, x| {
-                let i = i - 1;
-                if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(i) }
-            }
+        const fn check<F, T>(predicate: &mut F, (i, x): (usize, T)) -> ControlFlow<usize, usize>
+        where
+            F: ~const FnMut(T) -> bool,
+        {
+            let i = i - 1;
+            if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(i) }
         }
 
         let n = self.len();
-        self.try_rfold(n, check(predicate)).break_value()
+        self.try_rfold(n, ConstFnMutClosure::new(&mut predicate, check)).break_value()
     }
 
     /// Returns the maximum element of an iterator.
@@ -2962,9 +3018,13 @@ pub trait Iterator {
     fn max(self) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: Ord,
+        Self::Item: ~const Ord + ~const Destruct,
+        Self: ~const Destruct,
     {
-        self.max_by(Ord::cmp)
+        const fn cmp<T: ~const Ord>(x: &T, y: &T) -> Ordering {
+            x.cmp(y)
+        }
+        self.max_by(cmp)
     }
 
     /// Returns the minimum element of an iterator.
@@ -3000,9 +3060,14 @@ pub trait Iterator {
     fn min(self) -> Option<Self::Item>
     where
         Self: Sized,
-        Self::Item: Ord,
+        Self::Item: ~const Ord,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
-        self.min_by(Ord::cmp)
+        const fn cmp<T: ~const Ord>(x: &T, y: &T) -> Ordering {
+            x.cmp(y)
+        }
+        self.min_by(cmp)
     }
 
     /// Returns the element that gives the maximum value from the
@@ -3019,22 +3084,25 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_cmp_by_key", since = "1.6.0")]
-    fn max_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
+    fn max_by_key<B: ~const Ord, F>(self, mut f: F) -> Option<Self::Item>
     where
         Self: Sized,
-        F: FnMut(&Self::Item) -> B,
+        F: ~const FnMut(&Self::Item) -> B + ~const Destruct,
+        B: ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
-        fn key<T, B>(mut f: impl FnMut(&T) -> B) -> impl FnMut(T) -> (B, T) {
-            move |x| (f(&x), x)
+        const fn key<F: ~const FnMut(&T) -> B, T, B>(f: &mut F, (x,): (T,)) -> (B, T) {
+            (f(&x), x)
         }
 
         #[inline]
-        fn compare<T, B: Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> Ordering {
+        const fn compare<T, B: ~const Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> Ordering {
             x_p.cmp(y_p)
         }
 
-        let (_, x) = self.map(key(f)).max_by(compare)?;
+        let (_, x) = self.map(ConstFnMutClosure::new(&mut f, key)).max_by(compare)?;
         Some(x)
     }
 
@@ -3052,17 +3120,22 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_max_by", since = "1.15.0")]
-    fn max_by<F>(self, compare: F) -> Option<Self::Item>
+    fn max_by<F>(self, mut compare: F) -> Option<Self::Item>
     where
         Self: Sized,
-        F: FnMut(&Self::Item, &Self::Item) -> Ordering,
+        F: ~const FnMut(&Self::Item, &Self::Item) -> Ordering + ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
-        fn fold<T>(mut compare: impl FnMut(&T, &T) -> Ordering) -> impl FnMut(T, T) -> T {
-            move |x, y| cmp::max_by(x, y, &mut compare)
+        const fn fold<F: ~const FnMut(&T, &T) -> Ordering, T: ~const Destruct>(
+            compare: &mut F,
+            (x, y): (T, T),
+        ) -> T {
+            cmp::max_by(x, y, compare)
         }
 
-        self.reduce(fold(compare))
+        self.reduce(ConstFnMutClosure::new(&mut compare, fold))
     }
 
     /// Returns the element that gives the minimum value from the
@@ -3079,22 +3152,25 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_cmp_by_key", since = "1.6.0")]
-    fn min_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
+    fn min_by_key<B: ~const Ord, F>(self, mut f: F) -> Option<Self::Item>
     where
         Self: Sized,
-        F: FnMut(&Self::Item) -> B,
+        F: ~const FnMut(&Self::Item) -> B + ~const Destruct,
+        B: ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
-        fn key<T, B>(mut f: impl FnMut(&T) -> B) -> impl FnMut(T) -> (B, T) {
-            move |x| (f(&x), x)
+        const fn key<F: ~const FnMut(&T) -> B, T, B>(f: &mut F, (x,): (T,)) -> (B, T) {
+            (f(&x), x)
         }
 
         #[inline]
-        fn compare<T, B: Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> Ordering {
+        const fn compare<T, B: ~const Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> Ordering {
             x_p.cmp(y_p)
         }
 
-        let (_, x) = self.map(key(f)).min_by(compare)?;
+        let (_, x) = self.map(ConstFnMutClosure::new(&mut f, key)).min_by(compare)?;
         Some(x)
     }
 
@@ -3112,17 +3188,22 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_min_by", since = "1.15.0")]
-    fn min_by<F>(self, compare: F) -> Option<Self::Item>
+    fn min_by<F>(self, mut compare: F) -> Option<Self::Item>
     where
         Self: Sized,
-        F: FnMut(&Self::Item, &Self::Item) -> Ordering,
+        F: ~const FnMut(&Self::Item, &Self::Item) -> Ordering + ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
-        fn fold<T>(mut compare: impl FnMut(&T, &T) -> Ordering) -> impl FnMut(T, T) -> T {
-            move |x, y| cmp::min_by(x, y, &mut compare)
+        const fn fold<F: ~const FnMut(&T, &T) -> Ordering, T: ~const Destruct>(
+            compare: &mut F,
+            (x, y): (T, T),
+        ) -> T {
+            cmp::min_by(x, y, compare)
         }
 
-        self.reduce(fold(compare))
+        self.reduce(ConstFnMutClosure::new(&mut compare, fold))
     }
 
     /// Reverses an iterator's direction.
@@ -3189,9 +3270,9 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn unzip<A, B, FromA, FromB>(self) -> (FromA, FromB)
     where
-        FromA: Default + Extend<A>,
-        FromB: Default + Extend<B>,
-        Self: Sized + Iterator<Item = (A, B)>,
+        FromA: ~const Default + ~const Extend<A>,
+        FromB: ~const Default + ~const Extend<B>,
+        Self: Sized + ~const Iterator<Item = (A, B)>,
     {
         let mut unzipped: (FromA, FromB) = Default::default();
         unzipped.extend(self);
@@ -3221,7 +3302,7 @@ pub trait Iterator {
     #[stable(feature = "iter_copied", since = "1.36.0")]
     fn copied<'a, T: 'a>(self) -> Copied<Self>
     where
-        Self: Sized + Iterator<Item = &'a T>,
+        Self: Sized + ~const Iterator<Item = &'a T>,
         T: Copy,
     {
         Copied::new(self)
@@ -3302,7 +3383,7 @@ pub trait Iterator {
     #[inline]
     fn cycle(self) -> Cycle<Self>
     where
-        Self: Sized + Clone,
+        Self: Sized + ~const Clone,
     {
         Cycle::new(self)
     }
@@ -3376,7 +3457,7 @@ pub trait Iterator {
     fn sum<S>(self) -> S
     where
         Self: Sized,
-        S: Sum<Self::Item>,
+        S: ~const Sum<Self::Item>,
     {
         Sum::sum(self)
     }
@@ -3405,7 +3486,7 @@ pub trait Iterator {
     fn product<P>(self) -> P
     where
         Self: Sized,
-        P: Product<Self::Item>,
+        P: ~const Product<Self::Item>,
     {
         Product::product(self)
     }
@@ -3425,11 +3506,18 @@ pub trait Iterator {
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn cmp<I>(self, other: I) -> Ordering
     where
-        I: IntoIterator<Item = Self::Item>,
-        Self::Item: Ord,
+        I: ~const IntoIterator<Item = Self::Item>,
+        Self::Item: ~const Ord + ~const Destruct,
+        I::IntoIter: ~const Destruct,
+        I::Item: ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
         Self: Sized,
     {
-        self.cmp_by(other, |x, y| x.cmp(&y))
+        const fn cmp<T: ~const Ord + ~const Destruct>(x: T, y: T) -> Ordering {
+            x.cmp(&y)
+        }
+        self.cmp_by(other, cmp)
     }
 
     /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
@@ -3455,8 +3543,12 @@ pub trait Iterator {
     fn cmp_by<I, F>(self, other: I, cmp: F) -> Ordering
     where
         Self: Sized,
-        I: IntoIterator,
-        F: FnMut(Self::Item, I::Item) -> Ordering,
+        I: ~const IntoIterator,
+        F: ~const FnMut(Self::Item, I::Item) -> Ordering + ~const Destruct,
+        I::IntoIter: ~const Destruct,
+        I::Item: ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
         fn compare<X, Y, F>(mut cmp: F) -> impl FnMut(X, Y) -> ControlFlow<Ordering>
@@ -3492,11 +3584,19 @@ pub trait Iterator {
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn partial_cmp<I>(self, other: I) -> Option<Ordering>
     where
-        I: IntoIterator,
-        Self::Item: PartialOrd<I::Item>,
-        Self: Sized,
+        I: ~const IntoIterator,
+        Self::Item: ~const PartialOrd<I::Item> + ~const Destruct,
+        I::Item: ~const Destruct,
+        I::IntoIter: ~const Destruct,
+        Self: ~const Destruct + Sized,
     {
-        self.partial_cmp_by(other, |x, y| x.partial_cmp(&y))
+        const fn partial_cmp<A: ~const PartialOrd<B> + ~const Destruct, B: ~const Destruct>(
+            a: A,
+            b: B,
+        ) -> Option<Ordering> {
+            a.partial_cmp(&b)
+        }
+        self.partial_cmp_by(other, partial_cmp)
     }
 
     /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
@@ -3531,8 +3631,12 @@ pub trait Iterator {
     fn partial_cmp_by<I, F>(self, other: I, partial_cmp: F) -> Option<Ordering>
     where
         Self: Sized,
-        I: IntoIterator,
-        F: FnMut(Self::Item, I::Item) -> Option<Ordering>,
+        I: ~const IntoIterator,
+        F: ~const FnMut(Self::Item, I::Item) -> Option<Ordering> + ~const Destruct,
+        I::IntoIter: ~const Destruct,
+        I::Item: ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
         fn compare<X, Y, F>(mut partial_cmp: F) -> impl FnMut(X, Y) -> ControlFlow<Option<Ordering>>
@@ -3563,11 +3667,21 @@ pub trait Iterator {
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn eq<I>(self, other: I) -> bool
     where
-        I: IntoIterator,
-        Self::Item: PartialEq<I::Item>,
+        I: ~const IntoIterator,
+        Self::Item: ~const PartialEq<I::Item> + ~const Destruct,
+        I::IntoIter: ~const Destruct,
+        I::Item: ~const Destruct,
+        Self: ~const Destruct,
         Self: Sized,
     {
-        self.eq_by(other, |x, y| x == y)
+        const fn eq<A: ~const PartialEq<B> + ~const Destruct, B: ~const Destruct>(
+            a: A,
+            b: B,
+        ) -> bool {
+            a == b
+        }
+
+        self.eq_by(other, eq)
     }
 
     /// Determines if the elements of this [`Iterator`] are equal to those of
@@ -3589,8 +3703,12 @@ pub trait Iterator {
     fn eq_by<I, F>(self, other: I, eq: F) -> bool
     where
         Self: Sized,
-        I: IntoIterator,
-        F: FnMut(Self::Item, I::Item) -> bool,
+        I: ~const IntoIterator,
+        I::IntoIter: ~const Destruct,
+        F: ~const FnMut(Self::Item, I::Item) -> bool + ~const Destruct,
+        Self::Item: ~const Destruct,
+        I::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
         fn compare<X, Y, F>(mut eq: F) -> impl FnMut(X, Y) -> ControlFlow<()>
@@ -3620,8 +3738,11 @@ pub trait Iterator {
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn ne<I>(self, other: I) -> bool
     where
-        I: IntoIterator,
-        Self::Item: PartialEq<I::Item>,
+        I: ~const IntoIterator,
+        Self::Item: ~const PartialEq<I::Item> + ~const Destruct,
+        I::Item: ~const Destruct,
+        I::IntoIter: ~const Destruct,
+        Self: ~const Destruct,
         Self: Sized,
     {
         !self.eq(other)
@@ -3641,11 +3762,14 @@ pub trait Iterator {
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn lt<I>(self, other: I) -> bool
     where
-        I: IntoIterator,
-        Self::Item: PartialOrd<I::Item>,
+        I: ~const IntoIterator,
+        Self::Item: ~const PartialOrd<I::Item> + ~const Destruct,
+        I::Item: ~const Destruct,
+        I::IntoIter: ~const Destruct,
+        Self: ~const Destruct,
         Self: Sized,
     {
-        self.partial_cmp(other) == Some(Ordering::Less)
+        matches!(self.partial_cmp(other), Some(Ordering::Less))
     }
 
     /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
@@ -3662,8 +3786,11 @@ pub trait Iterator {
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn le<I>(self, other: I) -> bool
     where
-        I: IntoIterator,
-        Self::Item: PartialOrd<I::Item>,
+        I: ~const IntoIterator,
+        Self::Item: ~const PartialOrd<I::Item> + ~const Destruct,
+        I::Item: ~const Destruct,
+        I::IntoIter: ~const Destruct,
+        Self: ~const Destruct,
         Self: Sized,
     {
         matches!(self.partial_cmp(other), Some(Ordering::Less | Ordering::Equal))
@@ -3683,11 +3810,14 @@ pub trait Iterator {
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn gt<I>(self, other: I) -> bool
     where
-        I: IntoIterator,
-        Self::Item: PartialOrd<I::Item>,
+        I: ~const IntoIterator,
+        Self::Item: ~const PartialOrd<I::Item> + ~const Destruct,
+        I::Item: ~const Destruct,
+        I::IntoIter: ~const Destruct,
+        Self: ~const Destruct,
         Self: Sized,
     {
-        self.partial_cmp(other) == Some(Ordering::Greater)
+        matches!(self.partial_cmp(other), Some(Ordering::Greater))
     }
 
     /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
@@ -3704,9 +3834,11 @@ pub trait Iterator {
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn ge<I>(self, other: I) -> bool
     where
-        I: IntoIterator,
-        Self::Item: PartialOrd<I::Item>,
-        Self: Sized,
+        I: ~const IntoIterator,
+        Self::Item: ~const PartialOrd<I::Item> + ~const Destruct,
+        I::Item: ~const Destruct,
+        I::IntoIter: ~const Destruct,
+        Self: ~const Destruct + Sized,
     {
         matches!(self.partial_cmp(other), Some(Ordering::Greater | Ordering::Equal))
     }
@@ -3736,9 +3868,13 @@ pub trait Iterator {
     fn is_sorted(self) -> bool
     where
         Self: Sized,
-        Self::Item: PartialOrd,
+        Self::Item: ~const PartialOrd + ~const Destruct,
+        Self: ~const Destruct,
     {
-        self.is_sorted_by(PartialOrd::partial_cmp)
+        const fn partial_cmp<T: ~const PartialOrd>(x: &T, y: &T) -> Option<Ordering> {
+            x.partial_cmp(y)
+        }
+        self.is_sorted_by(partial_cmp)
     }
 
     /// Checks if the elements of this iterator are sorted using the given comparator function.
@@ -3764,28 +3900,30 @@ pub trait Iterator {
     fn is_sorted_by<F>(mut self, compare: F) -> bool
     where
         Self: Sized,
-        F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
+        F: ~const FnMut(&Self::Item, &Self::Item) -> Option<Ordering> + ~const Destruct,
+        Self::Item: ~const Destruct,
+        Self: ~const Destruct,
     {
         #[inline]
-        fn check<'a, T>(
-            last: &'a mut T,
-            mut compare: impl FnMut(&T, &T) -> Option<Ordering> + 'a,
-        ) -> impl FnMut(T) -> bool + 'a {
-            move |curr| {
-                if let Some(Ordering::Greater) | None = compare(&last, &curr) {
-                    return false;
-                }
-                *last = curr;
-                true
+        const fn check<T: ~const Destruct, F: ~const FnMut(&T, &T) -> Option<Ordering>>(
+            (last, compare): &mut (T, F),
+            (curr,): (T,),
+        ) -> bool {
+            if let Some(Ordering::Greater) | None = compare(&last, &curr) {
+                return false;
             }
+            *last = curr;
+            true
         }
 
-        let mut last = match self.next() {
+        let last = match self.next() {
             Some(e) => e,
             None => return true,
         };
 
-        self.all(check(&mut last, compare))
+        let mut tupled = (last, compare);
+
+        self.all(ConstFnMutClosure::new(&mut tupled, check))
     }
 
     /// Checks if the elements of this iterator are sorted using the given key extraction
@@ -3810,8 +3948,9 @@ pub trait Iterator {
     fn is_sorted_by_key<F, K>(self, f: F) -> bool
     where
         Self: Sized,
-        F: FnMut(Self::Item) -> K,
-        K: PartialOrd,
+        F: ~const FnMut(Self::Item) -> K + ~const Destruct,
+        K: ~const PartialOrd + ~const Destruct,
+        Self: ~const Destruct,
     {
         self.map(f).is_sorted()
     }
@@ -3826,7 +3965,8 @@ pub trait Iterator {
     where
         Self: TrustedRandomAccessNoCoerce,
     {
-        unreachable!("Always specialized");
+        // FIXME(const_trait_impl): replace with unreachable when formatting is const
+        panic!("internal error: entered unreachable code: Always specialized");
     }
 }
 
@@ -3871,7 +4011,8 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator + ?Sized> Iterator for &mut I {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<I: ~const Iterator + ?Sized> const Iterator for &mut I {
     type Item = I::Item;
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
@@ -3880,10 +4021,16 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), usize>
+    where
+        I::Item: ~const Destruct,
+    {
         (**self).advance_by(n)
     }
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+    fn nth(&mut self, n: usize) -> Option<Self::Item>
+    where
+        I::Item: ~const Destruct,
+    {
         (**self).nth(n)
     }
 }

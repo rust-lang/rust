@@ -11,6 +11,7 @@ use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::iter::TrustedLen;
+use crate::marker::Destruct;
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
@@ -852,23 +853,26 @@ where
 /// If `iter.next()` panicks, all items already yielded by the iterator are
 /// dropped.
 #[inline]
-fn try_collect_into_array<I, T, R, const N: usize>(
+const fn try_collect_into_array<I, T, R, const N: usize>(
     iter: &mut I,
 ) -> Result<R::TryType, IntoIter<T, N>>
 where
-    I: Iterator,
-    I::Item: Try<Output = T, Residual = R>,
-    R: Residual<[T; N]>,
+    I: ~const Iterator,
+    I::Item: ~const Try<Output = T, Residual = R>,
+    R: ~const Residual<[T; N]>,
+    T: ~const Destruct,
 {
     if N == 0 {
         // SAFETY: An empty array is always inhabited and has no validity invariants.
-        return Ok(Try::from_output(unsafe { mem::zeroed() }));
+        return Ok(Try::from_output(unsafe { MaybeUninit::zeroed().assume_init() }));
     }
 
     let mut array = MaybeUninit::uninit_array::<N>();
     let mut guard = Guard { array_mut: &mut array, initialized: 0 };
 
-    for _ in 0..N {
+    let mut i = 0;
+    // FIXME(const_trait_impl): replace with `for` loop
+    while i < N {
         match iter.next() {
             Some(item_rslt) => {
                 let item = match item_rslt.branch() {
@@ -892,6 +896,7 @@ where
                 return Err(unsafe { IntoIter::new_unchecked(array, alive) });
             }
         }
+        i += 1;
     }
 
     mem::forget(guard);
@@ -952,12 +957,17 @@ impl<T, const N: usize> Drop for Guard<'_, T, N> {
 /// Returns the next chunk of `N` items from the iterator or errors with an
 /// iterator over the remainder. Used for `Iterator::next_chunk`.
 #[inline]
-pub(crate) fn iter_next_chunk<I, const N: usize>(
+pub(crate) const fn iter_next_chunk<I, const N: usize>(
     iter: &mut I,
 ) -> Result<[I::Item; N], IntoIter<I::Item, N>>
 where
-    I: Iterator,
+    I: ~const Iterator,
+    I::Item: ~const Destruct,
 {
     let mut map = iter.map(NeverShortCircuit);
-    try_collect_into_array(&mut map).map(|NeverShortCircuit(arr)| arr)
+
+    match try_collect_into_array(&mut map) {
+        Ok(NeverShortCircuit(x)) => Ok(x),
+        Err(e) => Err(e),
+    }
 }

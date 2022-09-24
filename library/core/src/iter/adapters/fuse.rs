@@ -21,7 +21,7 @@ pub struct Fuse<I> {
     iter: Option<I>,
 }
 impl<I> Fuse<I> {
-    pub(in crate::iter) fn new(iter: I) -> Fuse<I> {
+    pub(in crate::iter) const fn new(iter: I) -> Fuse<I> {
         Fuse { iter: Some(iter) }
     }
 }

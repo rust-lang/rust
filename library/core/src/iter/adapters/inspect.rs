@@ -18,7 +18,7 @@ pub struct Inspect<I, F> {
     f: F,
 }
 impl<I, F> Inspect<I, F> {
-    pub(in crate::iter) fn new(iter: I, f: F) -> Inspect<I, F> {
+    pub(in crate::iter) const fn new(iter: I, f: F) -> Inspect<I, F> {
         Inspect { iter, f }
     }
 }
