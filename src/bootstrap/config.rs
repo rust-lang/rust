@@ -772,21 +772,20 @@ impl Config {
 
         // set by build.rs
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
+
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         // Undo `src/bootstrap`
         config.src = manifest_dir.parent().unwrap().parent().unwrap().to_owned();
         config.out = PathBuf::from("build");
-
-        config.initial_cargo = PathBuf::from(env!("CARGO"));
-        config.initial_rustc = PathBuf::from(env!("RUSTC"));
 
         config
     }
 
     pub fn parse(args: &[String]) -> Config {
         let flags = Flags::parse(&args);
-
         let mut config = Config::default_opts();
+
+        // Set flags.
         config.exclude = flags.exclude.into_iter().map(|path| TaskPath::parse(path)).collect();
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
@@ -805,7 +804,49 @@ impl Config {
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
 
+        // Infer the rest of the configuration.
+
+        // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
+        // running on a completely machine from where it was compiled.
+        let mut cmd = Command::new("git");
+        // NOTE: we cannot support running from outside the repository because the only path we have available
+        // is set at compile time, which can be wrong if bootstrap was downloaded from source.
+        // We still support running outside the repository if we find we aren't in a git directory.
+        cmd.arg("rev-parse").arg("--show-toplevel");
+        // Discard stderr because we expect this to fail when building from a tarball.
+        let output = cmd
+            .stderr(std::process::Stdio::null())
+            .output()
+            .ok()
+            .and_then(|output| if output.status.success() { Some(output) } else { None });
+        if let Some(output) = output {
+            let git_root = String::from_utf8(output.stdout).unwrap();
+            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes.
+            let git_root = PathBuf::from(git_root.trim()).canonicalize().unwrap();
+            let s = git_root.to_str().unwrap();
+
+            // Bootstrap is quite bad at handling /? in front of paths
+            config.src = match s.strip_prefix("\\\\?\\") {
+                Some(p) => PathBuf::from(p),
+                None => PathBuf::from(git_root),
+            };
+        } else {
+            // We're building from a tarball, not git sources.
+            // We don't support pre-downloaded bootstrap in this case.
+        }
+
+        if cfg!(test) {
+            // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
+            config.out = Path::new(
+                &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
+            )
+            .parent()
+            .unwrap()
+            .to_path_buf();
+        }
+
         let stage0_json = t!(std::fs::read(&config.src.join("src").join("stage0.json")));
+
         config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
 
         #[cfg(test)]
@@ -860,6 +901,7 @@ impl Config {
         config.config = toml_path;
 
         let build = toml.build.unwrap_or_default();
+        let has_custom_rustc = build.rustc.is_some();
 
         set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
         set(&mut config.out, flags.build_dir.or_else(|| build.build_dir.map(PathBuf::from)));
@@ -870,6 +912,12 @@ impl Config {
             config.out = crate::util::absolute(&config.out);
         }
 
+        if !has_custom_rustc && !config.initial_rustc.starts_with(&config.out) {
+            config.initial_rustc = config.out.join(config.build.triple).join("stage0/bin/rustc");
+            config.initial_cargo = config.out.join(config.build.triple).join("stage0/bin/cargo");
+        }
+
+        // NOTE: it's important this comes *after* we set `initial_rustc` just above.
         if config.dry_run {
             let dir = config.out.join("tmp-dry-run");
             t!(fs::create_dir_all(&dir));
