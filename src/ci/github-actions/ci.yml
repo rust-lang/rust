@@ -286,16 +286,55 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-llvm-13
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-tools
+          - name: i686-mingw-1
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            <<: *job-linux-xl
+              RUST_CONFIGURE_ARGS: >-
+                --build=i686-pc-windows-gnu
+                --set llvm.allow-old-toolchain
+              SCRIPT: make ci-mingw-subset-1
+              # We are intentionally allowing an old toolchain on this builder (and that's
+              # incompatible with LLVM downloads today).
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            <<: *job-windows-xl
+
+          - name: i686-mingw-2
+            env:
+              RUST_CONFIGURE_ARGS: >-
+                --build=i686-pc-windows-gnu
+                --set llvm.allow-old-toolchain
+              SCRIPT: make ci-mingw-subset-2
+              # We are intentionally allowing an old toolchain on this builder (and that's
+              # incompatible with LLVM downloads today).
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            <<: *job-windows-xl
+
+          - name: x86_64-mingw-1
+            env:
+              SCRIPT: make ci-mingw-subset-1
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-gnu
+                --enable-profiler
+                --set llvm.allow-old-toolchain
+              # We are intentionally allowing an old toolchain on this builder (and that's
+              # incompatible with LLVM downloads today).
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            <<: *job-windows-xl
+
+          - name: x86_64-mingw-2
+            env:
+              SCRIPT: make ci-mingw-subset-2
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-gnu
+                --enable-profiler
+                --set llvm.allow-old-toolchain
+              # We are intentionally allowing an old toolchain on this builder (and that's
+              # incompatible with LLVM downloads today).
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            <<: *job-windows-xl
 
   auto:
     permissions:
