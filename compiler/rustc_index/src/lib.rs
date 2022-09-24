@@ -1,7 +1,6 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![feature(allow_internal_unstable)]
-#![feature(bench_black_box)]
 #![feature(extend_one)]
 #![cfg_attr(bootstrap, feature(let_else))]
 #![feature(min_specialization)]

@@ -351,7 +351,6 @@
 #![feature(trace_macros)]
 //
 // Only used in tests/benchmarks:
-#![feature(bench_black_box)]
 //
 // Only for const-ness:
 #![feature(const_io_structs)]
