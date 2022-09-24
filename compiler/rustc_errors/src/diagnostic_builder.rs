@@ -5,6 +5,7 @@ use crate::{
 };
 use crate::{Handler, Level, MultiSpan, StashKey};
 use rustc_lint_defs::Applicability;
+use rustc_span::source_map::Spanned;
 
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -21,6 +22,18 @@ pub trait IntoDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `Handler`.
     #[must_use]
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, T>;
+}
+
+impl<'a, T, E> IntoDiagnostic<'a, E> for Spanned<T>
+where
+    T: IntoDiagnostic<'a, E>,
+    E: EmissionGuarantee,
+{
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, E> {
+        let mut diag = self.node.into_diagnostic(handler);
+        diag.set_span(self.span);
+        diag
+    }
 }
 
 /// Used for emitting structured error messages and other diagnostic information.
