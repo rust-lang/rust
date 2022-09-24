@@ -2,14 +2,13 @@ use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fmt::Write as _;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::{self, BufWriter, Read, Write};
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use cargo_metadata::{Metadata, MetadataCommand};
-use rustc_version::VersionMeta;
 use serde::{Deserialize, Serialize};
 
 pub use crate::arg::*;
@@ -111,17 +110,8 @@ pub fn miri_for_host() -> Command {
     cmd
 }
 
-pub fn version_info() -> VersionMeta {
-    VersionMeta::for_command(miri_for_host())
-        .expect("failed to determine underlying rustc version of Miri")
-}
-
 pub fn cargo() -> Command {
     Command::new(env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo")))
-}
-
-pub fn xargo_check() -> Command {
-    Command::new(env::var_os("XARGO_CHECK").unwrap_or_else(|| OsString::from("xargo-check")))
 }
 
 /// Execute the `Command`, where possible by replacing the current process with a new process
@@ -201,23 +191,6 @@ pub fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
     if cmd.status().unwrap_or_else(|_| panic!("failed to execute {:?}", cmd)).success().not() {
         show_error!("failed to {}", text);
     }
-}
-
-/// Writes the given content to the given file *cross-process atomically*, in the sense that another
-/// process concurrently reading that file will see either the old content or the new content, but
-/// not some intermediate (e.g., empty) state.
-///
-/// We assume no other parts of this same process are trying to read or write that file.
-pub fn write_to_file(filename: &Path, content: &str) {
-    // Create a temporary file with the desired contents.
-    let mut temp_filename = filename.as_os_str().to_os_string();
-    temp_filename.push(&format!(".{}", std::process::id()));
-    let mut temp_file = File::create(&temp_filename).unwrap();
-    temp_file.write_all(content.as_bytes()).unwrap();
-    drop(temp_file);
-
-    // Move file to the desired location.
-    fs::rename(temp_filename, filename).unwrap();
 }
 
 // Computes the extra flags that need to be passed to cargo to make it behave like the current

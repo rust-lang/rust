@@ -447,7 +447,7 @@ binaries, and as such worth documenting:
   some compiler flags to prepare the code for interpretation; with `host`, this is not done.
   This environment variable is useful to be sure that the compiled `rlib`s are compatible
   with Miri.
-* `MIRI_CALLED_FROM_XARGO` is set during the Miri-induced `xargo` sysroot build,
+* `MIRI_CALLED_FROM_SETUP` is set during the Miri sysroot build,
   which will re-invoke `cargo-miri` as the `rustc` to use for this build.
 * `MIRI_CALLED_FROM_RUSTDOC` when set to any value tells `cargo-miri` that it is
   running as a child process of `rustdoc`, which invokes it twice for each doc-test
