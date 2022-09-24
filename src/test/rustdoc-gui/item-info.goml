@@ -30,3 +30,29 @@ compare-elements-css: (
     "#main-content > .item-info .stab:nth-of-type(2)",
     ["height"],
 )
+
+// Now checking the text color and the links color.
+show-text: true
+local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+goto: file://|DOC_PATH|/lib2/trait.Trait.html
+
+assert-css: (".item-info .stab", {"color": "rgb(221, 221, 221)"}, ALL)
+assert-css: (".item-info .stab strong", {"color": "rgb(221, 221, 221)"}, ALL)
+assert-css: (".item-info .stab span", {"color": "rgb(221, 221, 221)"}, ALL)
+assert-css: (".item-info .stab a", {"color": "rgb(221, 221, 221)"}, ALL)
+
+local-storage: {"rustdoc-theme": "ayu"}
+reload:
+
+assert-css: (".item-info .stab", {"color": "rgb(197, 197, 197)"}, ALL)
+assert-css: (".item-info .stab strong", {"color": "rgb(197, 197, 197)"}, ALL)
+assert-css: (".item-info .stab span", {"color": "rgb(197, 197, 197)"}, ALL)
+assert-css: (".item-info .stab a", {"color": "rgb(197, 197, 197)"}, ALL)
+
+local-storage: {"rustdoc-theme": "light"}
+reload:
+
+assert-css: (".item-info .stab", {"color": "rgb(0, 0, 0)"}, ALL)
+assert-css: (".item-info .stab strong", {"color": "rgb(0, 0, 0)"}, ALL)
+assert-css: (".item-info .stab span", {"color": "rgb(0, 0, 0)"}, ALL)
+assert-css: (".item-info .stab a", {"color": "rgb(0, 0, 0)"}, ALL)
