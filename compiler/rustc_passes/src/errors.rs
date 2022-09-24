@@ -832,3 +832,23 @@ pub struct Layout {
     pub span: Span,
     pub layout_error: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes::feature_stable_twice, code = "E0711")]
+pub struct FeatureStableTwice {
+    #[primary_span]
+    pub span: Span,
+    pub feature: Symbol,
+    pub since: Symbol,
+    pub prev_since: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::feature_previously_declared, code = "E0711")]
+pub struct FeaturePreviouslyDeclared<'a, 'b> {
+    #[primary_span]
+    pub span: Span,
+    pub feature: Symbol,
+    pub declared: &'a str,
+    pub prev_declared: &'b str,
+}

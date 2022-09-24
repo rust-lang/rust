@@ -420,3 +420,9 @@ passes_unrecognized_field =
 
 passes_layout =
     layout error: {$layout_error}
+
+passes_feature_stable_twice =
+    feature `{$feature}` is declared stable since {$since}, but was previously declared stable since {$prev_since}
+
+passes_feature_previously_declared =
+    feature `{$feature}` is declared {$declared}, but was previously declared {$prev_declared}
