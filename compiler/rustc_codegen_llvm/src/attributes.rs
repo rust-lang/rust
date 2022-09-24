@@ -118,7 +118,8 @@ pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attr
 
 /// Tell LLVM what instrument function to insert.
 #[inline]
-fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 4]> {
+    let mut attrs = SmallVec::new();
     if cx.sess().opts.unstable_opts.instrument_mcount {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
@@ -127,14 +128,13 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribu
         // See test/CodeGen/mcount.c in clang.
         let mcount_name = cx.sess().target.mcount.as_ref();
 
-        Some(llvm::CreateAttrStringValue(
+        attrs.push(llvm::CreateAttrStringValue(
             cx.llcx,
             "instrument-function-entry-inlined",
             &mcount_name,
-        ))
-    } else {
-        None
+        ));
     }
+    attrs
 }
 
 fn nojumptables_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
