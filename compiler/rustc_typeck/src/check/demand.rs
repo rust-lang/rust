@@ -417,6 +417,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::def::CtorKind::Const => unreachable!(),
                 };
 
+                // Suggest constructor as deep into the block tree as possible.
+                // This fixes https://github.com/rust-lang/rust/issues/101065,
+                // and also just helps make the most minimal suggestions.
+                let mut expr = expr;
+                while let hir::ExprKind::Block(block, _) = &expr.kind
+                    && let Some(expr_) = &block.expr
+                {
+                    expr = expr_
+                }
+
                 vec![
                     (expr.span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
                     (expr.span.shrink_to_hi(), close.to_owned()),
