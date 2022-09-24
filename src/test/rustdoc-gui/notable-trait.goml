@@ -18,11 +18,11 @@ compare-elements-position-false: (
 // The `i` should be *after* the type.
 assert-position: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    {"x": 692},
+    {"x": 677},
 )
 assert-position: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    {"x": 966},
+    {"x": 951},
 )
 
 

@@ -4,7 +4,7 @@ goto: file://|DOC_PATH|/lib2/struct.LongItemInfo.html
 size: (1200, 870)
 // Logically, the "item-decl" and the "item-info" should have the same scroll width.
 compare-elements-property: (".item-decl", ".item-info", ["scrollWidth"])
-assert-property: (".item-info", {"scrollWidth": "890"})
+assert-property: (".item-info", {"scrollWidth": "940"})
 // Just to be sure we're comparing the correct "item-info":
 assert-text: (
     ".item-info",
@@ -21,7 +21,7 @@ compare-elements-property: (
 )
 assert-property: (
     "#impl-SimpleTrait-for-LongItemInfo2 .item-info",
-    {"scrollWidth": "866"},
+    {"scrollWidth": "916"},
 )
 // Just to be sure we're comparing the correct "item-info":
 assert-text: (
