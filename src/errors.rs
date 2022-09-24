@@ -226,14 +226,6 @@ pub(crate) struct InvalidMonomorphizationUnsupportedOperation<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_gcc::layout_size_overflow)]
-pub(crate) struct LayoutSizeOverflow {
-    #[primary_span]
-    pub span: Span,
-    pub error: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_gcc::linkage_const_or_mut_type)]
 pub(crate) struct LinkageConstOrMutType {
     #[primary_span]
