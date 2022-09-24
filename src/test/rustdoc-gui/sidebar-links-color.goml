@@ -1,0 +1,233 @@
+// This test checks links colors in sidebar before and after hover.
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+
+// This is needed so that the text color is computed.
+show-text: true
+
+// Ayu theme
+local-storage: {
+    "rustdoc-theme": "ayu",
+    "rustdoc-use-system-theme": "false",
+}
+reload:
+
+// Struct
+assert-css: (
+    ".sidebar a.struct:not(.current)",
+    {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.struct:not(.current)"
+assert-css: (
+    ".sidebar a.struct:hover",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// Enum
+assert-css: (
+    ".sidebar a.enum",
+    {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.enum"
+assert-css: (
+    ".sidebar a.enum:hover",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// Union
+assert-css: (
+    ".sidebar a.union",
+    {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.union"
+assert-css: (
+    ".sidebar a.union:hover",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// Trait
+assert-css: (
+    ".sidebar a.trait",
+    {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.trait"
+assert-css: (
+    ".sidebar a.trait:hover",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// Function
+assert-css: (
+    ".sidebar a.fn",
+    {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.fn"
+assert-css: (
+    ".sidebar a.fn:hover",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// Type definition
+assert-css: (
+    ".sidebar a.type",
+    {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.type"
+assert-css: (
+    ".sidebar a.type:hover",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// Keyword
+assert-css: (
+    ".sidebar a.keyword",
+    {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.keyword"
+assert-css: (
+    ".sidebar a.keyword:hover",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+
+// Dark theme
+local-storage: {"rustdoc-theme": "dark"}
+reload:
+
+// Struct
+assert-css: (
+    ".sidebar a.struct:not(.current)",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.struct:not(.current)"
+assert-css: (
+    ".sidebar a.struct:hover",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
+)
+// Enum
+assert-css: (
+    ".sidebar a.enum",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.enum"
+assert-css: (
+    ".sidebar a.enum:hover",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
+)
+// Union
+assert-css: (
+    ".sidebar a.union",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.union"
+assert-css: (
+    ".sidebar a.union:hover",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
+)
+// Trait
+assert-css: (
+    ".sidebar a.trait",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.trait"
+assert-css: (
+    ".sidebar a.trait:hover",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
+)
+// Function
+assert-css: (
+    ".sidebar a.fn",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.fn"
+assert-css: (
+    ".sidebar a.fn:hover",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
+)
+// Type definition
+assert-css: (
+    ".sidebar a.type",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.type"
+assert-css: (
+    ".sidebar a.type:hover",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
+)
+// Keyword
+assert-css: (
+    ".sidebar a.keyword",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.keyword"
+assert-css: (
+    ".sidebar a.keyword:hover",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
+)
+
+// Light theme
+local-storage: {"rustdoc-theme": "light"}
+reload:
+
+// Struct
+assert-css: (
+    ".sidebar a.struct:not(.current)",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.struct:not(.current)"
+assert-css: (
+    ".sidebar a.struct:hover",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
+)
+// Enum
+assert-css: (
+    ".sidebar a.enum",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.enum"
+assert-css: (
+    ".sidebar a.enum:hover",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
+)
+// Union
+assert-css: (
+    ".sidebar a.union",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.union"
+assert-css: (
+    ".sidebar a.union:hover",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
+)
+// Trait
+assert-css: (
+    ".sidebar a.trait",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.trait"
+assert-css: (
+    ".sidebar a.trait:hover",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
+)
+// Function
+assert-css: (
+    ".sidebar a.fn",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.fn"
+assert-css: (
+    ".sidebar a.fn:hover",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
+)
+// Type definition
+assert-css: (
+    ".sidebar a.type",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.type"
+assert-css: (
+    ".sidebar a.type:hover",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
+)
+// Keyword
+assert-css: (
+    ".sidebar a.keyword",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+move-cursor-to: ".sidebar a.keyword"
+assert-css: (
+    ".sidebar a.keyword:hover",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
+)
