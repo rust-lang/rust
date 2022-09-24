@@ -377,10 +377,10 @@ impl ModuleDef {
             ModuleDef::Function(it) => Some(it.into()),
             ModuleDef::Const(it) => Some(it.into()),
             ModuleDef::Static(it) => Some(it.into()),
+            ModuleDef::Variant(it) => Some(it.into()),
 
             ModuleDef::Module(_)
             | ModuleDef::Adt(_)
-            | ModuleDef::Variant(_)
             | ModuleDef::Trait(_)
             | ModuleDef::TypeAlias(_)
             | ModuleDef::Macro(_)
@@ -1160,7 +1160,7 @@ pub enum DefWithBody {
     Const(Const),
     Variant(Variant),
 }
-impl_from!(Function, Const, Static for DefWithBody);
+impl_from!(Function, Const, Static, Variant for DefWithBody);
 
 impl DefWithBody {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
