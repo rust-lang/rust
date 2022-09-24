@@ -270,6 +270,11 @@ This flag will set which lints should be set to the [warn level](lints/levels.md
 
 _Note:_ The order of these lint level arguments is taken into account, see [lint level via compiler flag](lints/levels.md#via-compiler-flag) for more information.
 
+<a id="option-force-warn"></a>
+## `--force-warn`: force a lint to warn
+
+This flag sets the given lint to the [forced warn level](lints/levels.md#force-warn) and the level cannot be overridden, even ignoring the [lint caps](lints/levels.md#capping-lints).
+
 <a id="option-a-allow"></a>
 ## `-A`: set lint allowed
 
@@ -380,6 +385,12 @@ are:
 - `auto` — Use colors if output goes to a tty. This is the default.
 - `always` — Always use colors.
 - `never` — Never colorize output.
+
+<a id="option-diagnostic-width"></a>
+## `--diagnostic-width`: specify the terminal width for diagnostics
+
+This flag takes a number that specifies the width of the terminal in characters.
+Formatting of diagnostics will take the width into consideration to make them better fit on the screen.
 
 <a id="option-remap-path-prefix"></a>
 ## `--remap-path-prefix`: remap source names in output
