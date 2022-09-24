@@ -6,8 +6,6 @@
 // run-fail
 // error-pattern: LeakSanitizer: detected memory leaks
 
-#![feature(bench_black_box)]
-
 use std::hint::black_box;
 use std::mem;
 

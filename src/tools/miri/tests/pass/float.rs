@@ -1,4 +1,4 @@
-#![feature(stmt_expr_attributes, bench_black_box)]
+#![feature(stmt_expr_attributes)]
 #![allow(arithmetic_overflow)]
 use std::fmt::Debug;
 use std::hint::black_box;

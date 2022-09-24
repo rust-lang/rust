@@ -1,7 +1,7 @@
 // Validation makes this fail in the wrong place
 // Make sure we find these even with many checks disabled.
 //@compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
-#![feature(bench_black_box)]
+
 
 fn main() {
     let b = unsafe { std::mem::transmute::<u8, bool>(2) };
