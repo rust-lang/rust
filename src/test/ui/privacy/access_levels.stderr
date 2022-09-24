@@ -88,6 +88,36 @@ error: Public: pub(self), Exported: pub(self), Reachable: pub, ReachableFromImpl
 LL |         pub a: u8,
    |         ^^^^^^^^^
 
+error: Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:59:9
+   |
+LL | pub use outer::inner1;
+   |         ^^^^^^^^^^^^^
+
+error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:65:5
+   |
+LL |     pub type HalfPublicImport = u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+  --> $DIR/access_levels.rs:68:5
+   |
+LL |     pub(crate) const HalfPublicImport: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:72:9
+   |
+LL | pub use half_public_import::HalfPublicImport;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+  --> $DIR/access_levels.rs:72:9
+   |
+LL | pub use half_public_import::HalfPublicImport;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:14:13
    |
@@ -100,5 +130,5 @@ error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait:
 LL |             type B;
    |             ^^^^^^
 
-error: aborting due to 17 previous errors
+error: aborting due to 22 previous errors
 

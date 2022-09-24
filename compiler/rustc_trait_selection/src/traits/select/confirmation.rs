@@ -1224,6 +1224,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Never
                 | ty::Foreign(_) => {}
 
+                // `ManuallyDrop` is trivially drop
+                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().manually_drop() => {}
+
                 // These types are built-in, so we can fast-track by registering
                 // nested predicates for their constituent type(s)
                 ty::Array(ty, _) | ty::Slice(ty) => {

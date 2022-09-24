@@ -55,8 +55,21 @@ mod outer { //~ ERROR Public: pub(self), Exported: pub(self), Reachable: pub(sel
     }
 }
 
-pub use outer::inner1;
+#[rustc_effective_visibility]
+pub use outer::inner1; //~ ERROR Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
 
 pub fn foo() -> outer::ReachableStruct { outer::ReachableStruct {a: 0} }
+
+mod half_public_import {
+    #[rustc_effective_visibility]
+    pub type HalfPublicImport = u8; //~ ERROR Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+    #[rustc_effective_visibility]
+    #[allow(non_upper_case_globals)]
+    pub(crate) const HalfPublicImport: u8 = 0; //~ ERROR Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+}
+
+#[rustc_effective_visibility]
+pub use half_public_import::HalfPublicImport; //~ ERROR Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+                                              //~^ ERROR Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
 
 fn main() {}

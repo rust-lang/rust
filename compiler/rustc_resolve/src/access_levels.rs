@@ -1,4 +1,3 @@
-use crate::imports::ImportKind;
 use crate::NameBinding;
 use crate::NameBindingKind;
 use crate::Resolver;
@@ -54,15 +53,11 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
         // sets the rest of the `use` chain to `AccessLevel::Exported` until
         // we hit the actual exported item.
         let set_import_binding_access_level =
-            |this: &mut Self, mut binding: &NameBinding<'a>, mut access_level| {
+            |this: &mut Self, mut binding: &NameBinding<'a>, mut access_level, ns| {
                 while let NameBindingKind::Import { binding: nested_binding, import, .. } =
                     binding.kind
                 {
-                    this.set_access_level(import.id, access_level);
-                    if let ImportKind::Single { additional_ids, .. } = import.kind {
-                        this.set_access_level(additional_ids.0, access_level);
-                        this.set_access_level(additional_ids.1, access_level);
-                    }
+                    this.set_access_level(this.r.import_id_for_ns(import, ns), access_level);
 
                     access_level = Some(AccessLevel::Exported);
                     binding = nested_binding;
@@ -72,11 +67,11 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
         let module = self.r.get_module(module_id.to_def_id()).unwrap();
         let resolutions = self.r.resolutions(module);
 
-        for (.., name_resolution) in resolutions.borrow().iter() {
+        for (key, name_resolution) in resolutions.borrow().iter() {
             if let Some(binding) = name_resolution.borrow().binding() && binding.vis.is_public() && !binding.is_ambiguity() {
                 let access_level = match binding.is_import() {
                     true => {
-                        set_import_binding_access_level(self, binding, module_level);
+                        set_import_binding_access_level(self, binding, module_level, key.ns);
                         Some(AccessLevel::Exported)
                     },
                     false => module_level,

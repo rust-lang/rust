@@ -356,6 +356,8 @@ mod bool;
 mod tuple;
 mod unit;
 
+mod const_closure;
+
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub mod primitive;
 
