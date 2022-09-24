@@ -79,14 +79,14 @@ let foo:
     ALongType =
 {
     an_expression();
-    ...    
+    ...
 };
 
 let Foo {
     f: abcd,
     g: qwer,
 }: Foo<Bar> = Foo {
-    f: blimblimblim, 
+    f: blimblimblim,
     g: blamblamblam,
 };
 

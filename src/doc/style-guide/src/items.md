@@ -113,7 +113,7 @@ pulled down to its own line and indented again.
 ```rust
 struct Foo {
     a: A,
-    long_name: 
+    long_name:
         LongType,
 }
 ```
@@ -129,7 +129,7 @@ The same guidelines are used for untagged union declarations.
 union Foo {
     a: A,
     b: B,
-    long_name: 
+    long_name:
         LongType,
 }
 ```
