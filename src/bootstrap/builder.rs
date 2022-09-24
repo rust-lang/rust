@@ -704,6 +704,7 @@ impl<'a> Builder<'a> {
                 doc::Miri,
                 doc::EmbeddedBook,
                 doc::EditionGuide,
+                doc::StyleGuide,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
