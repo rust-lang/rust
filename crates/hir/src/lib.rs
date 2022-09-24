@@ -50,7 +50,7 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
-    FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
+    EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
     TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
@@ -348,7 +348,10 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.id.into(),
             ModuleDef::Const(it) => it.id.into(),
             ModuleDef::Static(it) => it.id.into(),
-            _ => return Vec::new(),
+            ModuleDef::Variant(it) => {
+                EnumVariantId { parent: it.parent.into(), local_id: it.id }.into()
+            }
+            ModuleDef::BuiltinType(_) | ModuleDef::Macro(_) => return Vec::new(),
         };
 
         let module = match self.module(db) {
@@ -534,6 +537,12 @@ impl Module {
                 ModuleDef::Trait(t) => {
                     for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
                         emit_def_diagnostic(db, acc, diag);
+                    }
+                    acc.extend(decl.diagnostics(db))
+                }
+                ModuleDef::Adt(Adt::Enum(e)) => {
+                    for v in e.variants(db) {
+                        acc.extend(ModuleDef::Variant(v).diagnostics(db));
                     }
                     acc.extend(decl.diagnostics(db))
                 }
