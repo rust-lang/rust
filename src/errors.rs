@@ -1,5 +1,5 @@
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
-use rustc_macros::SessionDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
@@ -17,7 +17,7 @@ impl IntoDiagnosticArg for ExitCode {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::ranlib_failure)]
 pub(crate) struct RanlibFailure {
     exit_code: ExitCode,
@@ -30,7 +30,7 @@ impl RanlibFailure {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_basic_integer, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationBasicInteger<'a> {
     #[primary_span]
@@ -39,7 +39,7 @@ pub(crate) struct InvalidMonomorphizationBasicInteger<'a> {
     pub ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_invalid_float_vector, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationInvalidFloatVector<'a> {
     #[primary_span]
@@ -49,7 +49,7 @@ pub(crate) struct InvalidMonomorphizationInvalidFloatVector<'a> {
     pub vec_ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_not_float, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationNotFloat<'a> {
     #[primary_span]
@@ -58,7 +58,7 @@ pub(crate) struct InvalidMonomorphizationNotFloat<'a> {
     pub ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_unrecognized, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationUnrecognized {
     #[primary_span]
@@ -66,7 +66,7 @@ pub(crate) struct InvalidMonomorphizationUnrecognized {
     pub name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_expected_signed_unsigned, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationExpectedSignedUnsigned<'a> {
     #[primary_span]
@@ -76,7 +76,7 @@ pub(crate) struct InvalidMonomorphizationExpectedSignedUnsigned<'a> {
     pub vec_ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_unsupported_element, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationUnsupportedElement<'a> {
     #[primary_span]
@@ -87,7 +87,7 @@ pub(crate) struct InvalidMonomorphizationUnsupportedElement<'a> {
     pub ret_ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_invalid_bitmask, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationInvalidBitmask<'a> {
     #[primary_span]
@@ -98,7 +98,7 @@ pub(crate) struct InvalidMonomorphizationInvalidBitmask<'a> {
     pub expected_bytes: u64,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_simd_shuffle, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationSimdShuffle<'a> {
     #[primary_span]
@@ -107,7 +107,7 @@ pub(crate) struct InvalidMonomorphizationSimdShuffle<'a> {
     pub ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_expected_simd, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationExpectedSimd<'a> {
     #[primary_span]
@@ -117,7 +117,7 @@ pub(crate) struct InvalidMonomorphizationExpectedSimd<'a> {
     pub found_ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_mask_type, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationMaskType<'a> {
     #[primary_span]
@@ -126,7 +126,7 @@ pub(crate) struct InvalidMonomorphizationMaskType<'a> {
     pub ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_return_length, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationReturnLength<'a> {
     #[primary_span]
@@ -137,7 +137,7 @@ pub(crate) struct InvalidMonomorphizationReturnLength<'a> {
     pub out_len: u64,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_return_length_input_type, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationReturnLengthInputType<'a> {
     #[primary_span]
@@ -149,7 +149,7 @@ pub(crate) struct InvalidMonomorphizationReturnLengthInputType<'a> {
     pub out_len: u64,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_return_element, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationReturnElement<'a> {
     #[primary_span]
@@ -161,7 +161,7 @@ pub(crate) struct InvalidMonomorphizationReturnElement<'a> {
     pub out_ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_return_type, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationReturnType<'a> {
     #[primary_span]
@@ -172,7 +172,7 @@ pub(crate) struct InvalidMonomorphizationReturnType<'a> {
     pub ret_ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_inserted_type, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationInsertedType<'a> {
     #[primary_span]
@@ -183,7 +183,7 @@ pub(crate) struct InvalidMonomorphizationInsertedType<'a> {
     pub out_ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_return_integer_type, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationReturnIntegerType<'a> {
     #[primary_span]
@@ -193,7 +193,7 @@ pub(crate) struct InvalidMonomorphizationReturnIntegerType<'a> {
     pub out_ty: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_mismatched_lengths, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationMismatchedLengths {
     #[primary_span]
@@ -203,7 +203,7 @@ pub(crate) struct InvalidMonomorphizationMismatchedLengths {
     pub v_len: u64,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_unsupported_cast, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationUnsupportedCast<'a> {
     #[primary_span]
@@ -215,7 +215,7 @@ pub(crate) struct InvalidMonomorphizationUnsupportedCast<'a> {
     pub out_elem: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::invalid_monomorphization_unsupported_operation, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationUnsupportedOperation<'a> {
     #[primary_span]
@@ -225,7 +225,7 @@ pub(crate) struct InvalidMonomorphizationUnsupportedOperation<'a> {
     pub in_elem: Ty<'a>,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::layout_size_overflow)]
 pub(crate) struct LayoutSizeOverflow {
     #[primary_span]
@@ -233,18 +233,18 @@ pub(crate) struct LayoutSizeOverflow {
     pub error: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::linkage_const_or_mut_type)]
 pub(crate) struct LinkageConstOrMutType {
     #[primary_span]
     pub span: Span
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::lto_not_supported)]
 pub(crate) struct LTONotSupported;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_gcc::unwinding_inline_asm)]
 pub(crate) struct UnwindingInlineAsm {
     #[primary_span]
