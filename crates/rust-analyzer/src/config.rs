@@ -120,7 +120,7 @@ config_data! {
         /// Compilation target override (target triple).
         cargo_target: Option<String>     = "null",
         /// Unsets `#[cfg(test)]` for the specified crates.
-        cargo_unsetTest: Vec<String>   = "[\"core\"]",
+        cargo_unsetTest: Vec<String>     = "[\"core\"]",
 
         /// Check all targets and tests (`--all-targets`).
         checkOnSave_allTargets: bool                     = "true",
