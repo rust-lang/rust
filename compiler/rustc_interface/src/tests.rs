@@ -5,6 +5,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::rustc_optgroups;
 use rustc_session::config::Input;
+use rustc_session::config::InstrumentXRay;
 use rustc_session::config::TraitSolver;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{
@@ -755,6 +756,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(inline_mir_threshold, Some(123));
     tracked!(instrument_coverage, Some(InstrumentCoverage::All));
     tracked!(instrument_mcount, true);
+    tracked!(instrument_xray, Some(InstrumentXRay::default()));
     tracked!(link_only, true);
     tracked!(llvm_plugins, vec![String::from("plugin_name")]);
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });

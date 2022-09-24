@@ -70,6 +70,15 @@
         `=except-unused-functions`
         `=off` (default)
     -Z                       instrument-mcount=val -- insert function instrument code for mcount-based tracing (default: no)
+    -Z                         instrument-xray=val -- insert function instrument code for XRay-based tracing (default: no)
+         Optional extra settings:
+         `=always`
+         `=never`
+         `=ignore-loops`
+         `=instruction-threshold=N`
+         `=skip-entry`
+         `=skip-exit`
+         Multiple options can be combined with commas.
     -Z                       keep-hygiene-data=val -- keep hygiene data after analysis (default: no)
     -Z                             layout-seed=val -- seed layout randomization
     -Z                   link-native-libraries=val -- link native libraries in the linker invocation (default: yes)
