@@ -852,3 +852,21 @@ pub struct FeaturePreviouslyDeclared<'a, 'b> {
     pub declared: &'a str,
     pub prev_declared: &'b str,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes::expr_not_allowed_in_context, code = "E0744")]
+pub struct ExprNotAllowedInContext<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub expr: String,
+    pub context: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::const_impl_const_trait)]
+pub struct ConstImplConstTrait {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub def_span: Span,
+}

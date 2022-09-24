@@ -8,7 +8,6 @@
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
 use rustc_attr as attr;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -17,6 +16,8 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, Span, Symbol};
+
+use crate::errors::{ConstImplConstTrait, ExprNotAllowedInContext};
 
 /// An expression that is not *always* legal in a const context.
 #[derive(Clone, Copy)]
@@ -133,18 +134,22 @@ impl<'tcx> CheckConstVisitor<'tcx> {
         let const_kind =
             const_kind.expect("`const_check_violated` may only be called inside a const context");
 
-        let msg = format!("{} is not allowed in a `{}`", expr.name(), const_kind.keyword_name());
-
         let required_gates = required_gates.unwrap_or(&[]);
         let missing_gates: Vec<_> =
             required_gates.iter().copied().filter(|&g| !features.enabled(g)).collect();
 
         match missing_gates.as_slice() {
             [] => {
-                struct_span_err!(tcx.sess, span, E0744, "{}", msg).emit();
+                tcx.sess.emit_err(ExprNotAllowedInContext {
+                    span,
+                    expr: expr.name(),
+                    context: const_kind.keyword_name(),
+                });
             }
 
             [missing_primary, ref missing_secondary @ ..] => {
+                let msg =
+                    format!("{} is not allowed in a `{}`", expr.name(), const_kind.keyword_name());
                 let mut err = feature_err(&tcx.sess.parse_sess, *missing_primary, span, &msg);
 
                 // If multiple feature gates would be required to enable this expression, include
@@ -189,6 +194,26 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.tcx.hir()
+    }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+        let tcx = self.tcx;
+        if let hir::ItemKind::Impl(hir::Impl {
+            constness: hir::Constness::Const,
+            of_trait: Some(trait_ref),
+            ..
+        }) = item.kind
+            && let Some(def_id) = trait_ref.trait_def_id()
+        {
+            let source_map = tcx.sess.source_map();
+            if !tcx.has_attr(def_id, sym::const_trait) {
+                tcx.sess.emit_err(ConstImplConstTrait {
+                    span: source_map.guess_head_span(item.span),
+                    def_span: source_map.guess_head_span(tcx.def_span(def_id)),
+                });
+            }
+        }
+        intravisit::walk_item(self, item);
     }
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {

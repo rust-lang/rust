@@ -426,3 +426,10 @@ passes_feature_stable_twice =
 
 passes_feature_previously_declared =
     feature `{$feature}` is declared {$declared}, but was previously declared {$prev_declared}
+
+passes_expr_not_allowed_in_context =
+    {$expr} is not allowed in a `{$context}`
+
+passes_const_impl_const_trait =
+    const `impl`s must be for traits marked with `#[const_trait]`
+    .note = this trait must be annotated with `#[const_trait]`
