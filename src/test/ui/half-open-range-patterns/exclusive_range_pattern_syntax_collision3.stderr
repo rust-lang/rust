@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:6:12
+  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:5:12
    |
 LL |     match [5..4, 99..105, 43..44] {
    |           ----------------------- this expression has type `[std::ops::Range<{integer}>; 3]`
@@ -10,7 +10,7 @@ LL |         [..9, 99..100, _] => {},
                 found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:6:15
+  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:5:15
    |
 LL |     match [5..4, 99..105, 43..44] {
    |           ----------------------- this expression has type `[std::ops::Range<{integer}>; 3]`
@@ -23,7 +23,7 @@ LL |         [..9, 99..100, _] => {},
                 found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:6:19
+  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:5:19
    |
 LL |     match [5..4, 99..105, 43..44] {
    |           ----------------------- this expression has type `[std::ops::Range<{integer}>; 3]`

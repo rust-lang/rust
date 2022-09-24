@@ -1,6 +1,5 @@
 // Test various non-exhaustive matches for `X..`, `..=X` and `..X` ranges.
 
-#![feature(half_open_range_patterns)]
 #![feature(exclusive_range_pattern)]
 #![allow(illegal_floating_point_literal_pattern)]
 

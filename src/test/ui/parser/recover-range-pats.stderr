@@ -1,47 +1,47 @@
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:22:12
+  --> $DIR/recover-range-pats.rs:21:12
    |
 LL |     if let .0..Y = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:24:16
+  --> $DIR/recover-range-pats.rs:23:16
    |
 LL |     if let X.. .0 = 0 {}
    |                ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:35:12
+  --> $DIR/recover-range-pats.rs:34:12
    |
 LL |     if let .0..=Y = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:37:16
+  --> $DIR/recover-range-pats.rs:36:16
    |
 LL |     if let X..=.0 = 0 {}
    |                ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:60:12
+  --> $DIR/recover-range-pats.rs:59:12
    |
 LL |     if let .0...Y = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:64:17
+  --> $DIR/recover-range-pats.rs:63:17
    |
 LL |     if let X... .0 = 0 {}
    |                 ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:75:12
+  --> $DIR/recover-range-pats.rs:74:12
    |
 LL |     if let .0.. = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:81:13
+  --> $DIR/recover-range-pats.rs:80:13
    |
 LL |     if let 0..= = 0 {}
    |             ^^^ help: use `..` instead
@@ -49,7 +49,7 @@ LL |     if let 0..= = 0 {}
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:82:13
+  --> $DIR/recover-range-pats.rs:81:13
    |
 LL |     if let X..= = 0 {}
    |             ^^^ help: use `..` instead
@@ -57,7 +57,7 @@ LL |     if let X..= = 0 {}
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:83:16
+  --> $DIR/recover-range-pats.rs:82:16
    |
 LL |     if let true..= = 0 {}
    |                ^^^ help: use `..` instead
@@ -65,13 +65,13 @@ LL |     if let true..= = 0 {}
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:85:12
+  --> $DIR/recover-range-pats.rs:84:12
    |
 LL |     if let .0..= = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:85:14
+  --> $DIR/recover-range-pats.rs:84:14
    |
 LL |     if let .0..= = 0 {}
    |              ^^^ help: use `..` instead
@@ -79,7 +79,7 @@ LL |     if let .0..= = 0 {}
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:91:13
+  --> $DIR/recover-range-pats.rs:90:13
    |
 LL |     if let 0... = 0 {}
    |             ^^^ help: use `..` instead
@@ -87,7 +87,7 @@ LL |     if let 0... = 0 {}
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:92:13
+  --> $DIR/recover-range-pats.rs:91:13
    |
 LL |     if let X... = 0 {}
    |             ^^^ help: use `..` instead
@@ -95,7 +95,7 @@ LL |     if let X... = 0 {}
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:93:16
+  --> $DIR/recover-range-pats.rs:92:16
    |
 LL |     if let true... = 0 {}
    |                ^^^ help: use `..` instead
@@ -103,13 +103,13 @@ LL |     if let true... = 0 {}
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:95:12
+  --> $DIR/recover-range-pats.rs:94:12
    |
 LL |     if let .0... = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:95:14
+  --> $DIR/recover-range-pats.rs:94:14
    |
 LL |     if let .0... = 0 {}
    |              ^^^ help: use `..` instead
@@ -117,49 +117,49 @@ LL |     if let .0... = 0 {}
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:105:15
+  --> $DIR/recover-range-pats.rs:104:15
    |
 LL |     if let .. .0 = 0 {}
    |               ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:115:15
+  --> $DIR/recover-range-pats.rs:114:15
    |
 LL |     if let ..=.0 = 0 {}
    |               ^^ help: must have an integer part: `0.0`
 
 error: range-to patterns with `...` are not allowed
-  --> $DIR/recover-range-pats.rs:121:12
+  --> $DIR/recover-range-pats.rs:120:12
    |
 LL |     if let ...3 = 0 {}
    |            ^^^ help: use `..=` instead
 
 error: range-to patterns with `...` are not allowed
-  --> $DIR/recover-range-pats.rs:123:12
+  --> $DIR/recover-range-pats.rs:122:12
    |
 LL |     if let ...Y = 0 {}
    |            ^^^ help: use `..=` instead
 
 error: range-to patterns with `...` are not allowed
-  --> $DIR/recover-range-pats.rs:125:12
+  --> $DIR/recover-range-pats.rs:124:12
    |
 LL |     if let ...true = 0 {}
    |            ^^^ help: use `..=` instead
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:128:15
+  --> $DIR/recover-range-pats.rs:127:15
    |
 LL |     if let ....3 = 0 {}
    |               ^^ help: must have an integer part: `0.3`
 
 error: range-to patterns with `...` are not allowed
-  --> $DIR/recover-range-pats.rs:128:12
+  --> $DIR/recover-range-pats.rs:127:12
    |
 LL |     if let ....3 = 0 {}
    |            ^^^ help: use `..=` instead
 
 error: range-to patterns with `...` are not allowed
-  --> $DIR/recover-range-pats.rs:150:17
+  --> $DIR/recover-range-pats.rs:149:17
    |
 LL |             let ...$e;
    |                 ^^^ help: use `..=` instead
@@ -170,7 +170,7 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:154:19
+  --> $DIR/recover-range-pats.rs:153:19
    |
 LL |             let $e...;
    |                   ^^^ help: use `..` instead
@@ -182,7 +182,7 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:155:19
+  --> $DIR/recover-range-pats.rs:154:19
    |
 LL |             let $e..=;
    |                   ^^^ help: use `..` instead
@@ -194,7 +194,7 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:42:13
+  --> $DIR/recover-range-pats.rs:41:13
    |
 LL |     if let 0...3 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
@@ -202,13 +202,13 @@ LL |     if let 0...3 = 0 {}
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 note: the lint level is defined here
-  --> $DIR/recover-range-pats.rs:8:9
+  --> $DIR/recover-range-pats.rs:7:9
    |
 LL | #![deny(ellipsis_inclusive_range_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:45:13
+  --> $DIR/recover-range-pats.rs:44:13
    |
 LL |     if let 0...Y = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
@@ -217,7 +217,7 @@ LL |     if let 0...Y = 0 {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:48:13
+  --> $DIR/recover-range-pats.rs:47:13
    |
 LL |     if let X...3 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
@@ -226,7 +226,7 @@ LL |     if let X...3 = 0 {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:51:13
+  --> $DIR/recover-range-pats.rs:50:13
    |
 LL |     if let X...Y = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
@@ -235,7 +235,7 @@ LL |     if let X...Y = 0 {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:54:16
+  --> $DIR/recover-range-pats.rs:53:16
    |
 LL |     if let true...Y = 0 {}
    |                ^^^ help: use `..=` for an inclusive range
@@ -244,7 +244,7 @@ LL |     if let true...Y = 0 {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:57:13
+  --> $DIR/recover-range-pats.rs:56:13
    |
 LL |     if let X...true = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
@@ -253,7 +253,7 @@ LL |     if let X...true = 0 {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:60:14
+  --> $DIR/recover-range-pats.rs:59:14
    |
 LL |     if let .0...Y = 0 {}
    |              ^^^ help: use `..=` for an inclusive range
@@ -262,7 +262,7 @@ LL |     if let .0...Y = 0 {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:64:13
+  --> $DIR/recover-range-pats.rs:63:13
    |
 LL |     if let X... .0 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
@@ -271,7 +271,7 @@ LL |     if let X... .0 = 0 {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:138:20
+  --> $DIR/recover-range-pats.rs:137:20
    |
 LL |             let $e1...$e2;
    |                    ^^^ help: use `..=` for an inclusive range
@@ -284,7 +284,7 @@ LL |     mac2!(0, 1);
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:20:12
+  --> $DIR/recover-range-pats.rs:19:12
    |
 LL |     if let true..Y = 0 {}
    |            ^^^^  - this is of type `u8`
@@ -292,7 +292,7 @@ LL |     if let true..Y = 0 {}
    |            this is of type `bool` but it should be `char` or numeric
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:21:15
+  --> $DIR/recover-range-pats.rs:20:15
    |
 LL |     if let X..true = 0 {}
    |            -  ^^^^ this is of type `bool` but it should be `char` or numeric
@@ -300,7 +300,7 @@ LL |     if let X..true = 0 {}
    |            this is of type `u8`
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:22:12
+  --> $DIR/recover-range-pats.rs:21:12
    |
 LL |     if let .0..Y = 0 {}
    |            ^^  -   - this expression has type `{integer}`
@@ -309,7 +309,7 @@ LL |     if let .0..Y = 0 {}
    |            expected integer, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:24:16
+  --> $DIR/recover-range-pats.rs:23:16
    |
 LL |     if let X.. .0 = 0 {}
    |            -   ^^   - this expression has type `u8`
@@ -321,7 +321,7 @@ LL |     if let X.. .0 = 0 {}
               found type `{float}`
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:33:12
+  --> $DIR/recover-range-pats.rs:32:12
    |
 LL |     if let true..=Y = 0 {}
    |            ^^^^   - this is of type `u8`
@@ -329,7 +329,7 @@ LL |     if let true..=Y = 0 {}
    |            this is of type `bool` but it should be `char` or numeric
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:34:16
+  --> $DIR/recover-range-pats.rs:33:16
    |
 LL |     if let X..=true = 0 {}
    |            -   ^^^^ this is of type `bool` but it should be `char` or numeric
@@ -337,7 +337,7 @@ LL |     if let X..=true = 0 {}
    |            this is of type `u8`
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:35:12
+  --> $DIR/recover-range-pats.rs:34:12
    |
 LL |     if let .0..=Y = 0 {}
    |            ^^   -   - this expression has type `{integer}`
@@ -346,7 +346,7 @@ LL |     if let .0..=Y = 0 {}
    |            expected integer, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:37:16
+  --> $DIR/recover-range-pats.rs:36:16
    |
 LL |     if let X..=.0 = 0 {}
    |            -   ^^   - this expression has type `u8`
@@ -358,7 +358,7 @@ LL |     if let X..=.0 = 0 {}
               found type `{float}`
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:54:12
+  --> $DIR/recover-range-pats.rs:53:12
    |
 LL |     if let true...Y = 0 {}
    |            ^^^^   - this is of type `u8`
@@ -366,7 +366,7 @@ LL |     if let true...Y = 0 {}
    |            this is of type `bool` but it should be `char` or numeric
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:57:16
+  --> $DIR/recover-range-pats.rs:56:16
    |
 LL |     if let X...true = 0 {}
    |            -   ^^^^ this is of type `bool` but it should be `char` or numeric
@@ -374,7 +374,7 @@ LL |     if let X...true = 0 {}
    |            this is of type `u8`
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:60:12
+  --> $DIR/recover-range-pats.rs:59:12
    |
 LL |     if let .0...Y = 0 {}
    |            ^^   -   - this expression has type `{integer}`
@@ -383,7 +383,7 @@ LL |     if let .0...Y = 0 {}
    |            expected integer, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:64:17
+  --> $DIR/recover-range-pats.rs:63:17
    |
 LL |     if let X... .0 = 0 {}
    |            -    ^^   - this expression has type `u8`
@@ -395,13 +395,13 @@ LL |     if let X... .0 = 0 {}
               found type `{float}`
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:73:12
+  --> $DIR/recover-range-pats.rs:72:12
    |
 LL |     if let true.. = 0 {}
    |            ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:75:12
+  --> $DIR/recover-range-pats.rs:74:12
    |
 LL |     if let .0.. = 0 {}
    |            ^^     - this expression has type `{integer}`
@@ -409,13 +409,13 @@ LL |     if let .0.. = 0 {}
    |            expected integer, found floating-point number
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:83:12
+  --> $DIR/recover-range-pats.rs:82:12
    |
 LL |     if let true..= = 0 {}
    |            ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:85:12
+  --> $DIR/recover-range-pats.rs:84:12
    |
 LL |     if let .0..= = 0 {}
    |            ^^      - this expression has type `{integer}`
@@ -423,13 +423,13 @@ LL |     if let .0..= = 0 {}
    |            expected integer, found floating-point number
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:93:12
+  --> $DIR/recover-range-pats.rs:92:12
    |
 LL |     if let true... = 0 {}
    |            ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:95:12
+  --> $DIR/recover-range-pats.rs:94:12
    |
 LL |     if let .0... = 0 {}
    |            ^^      - this expression has type `{integer}`
@@ -437,13 +437,13 @@ LL |     if let .0... = 0 {}
    |            expected integer, found floating-point number
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:103:14
+  --> $DIR/recover-range-pats.rs:102:14
    |
 LL |     if let ..true = 0 {}
    |              ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:105:15
+  --> $DIR/recover-range-pats.rs:104:15
    |
 LL |     if let .. .0 = 0 {}
    |               ^^   - this expression has type `{integer}`
@@ -451,13 +451,13 @@ LL |     if let .. .0 = 0 {}
    |               expected integer, found floating-point number
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:113:15
+  --> $DIR/recover-range-pats.rs:112:15
    |
 LL |     if let ..=true = 0 {}
    |               ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:115:15
+  --> $DIR/recover-range-pats.rs:114:15
    |
 LL |     if let ..=.0 = 0 {}
    |               ^^   - this expression has type `{integer}`
@@ -465,13 +465,13 @@ LL |     if let ..=.0 = 0 {}
    |               expected integer, found floating-point number
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:125:15
+  --> $DIR/recover-range-pats.rs:124:15
    |
 LL |     if let ...true = 0 {}
    |               ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:128:15
+  --> $DIR/recover-range-pats.rs:127:15
    |
 LL |     if let ....3 = 0 {}
    |               ^^   - this expression has type `{integer}`

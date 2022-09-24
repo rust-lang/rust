@@ -3,7 +3,6 @@
 // Test the parsing of half-open ranges.
 
 #![feature(exclusive_range_pattern)]
-#![feature(half_open_range_patterns)]
 
 fn main() {}
 
