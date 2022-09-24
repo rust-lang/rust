@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `T: ~const Sup` is not satisfied
+  --> $DIR/specializing-constness-2.rs:27:5
+   |
+LL |     <T as A>::a();
+   |     ^^^^^^^^^^^^^ the trait `~const Sup` is not implemented for `T`
+   |
+note: required for `T` to implement `~const A`
+  --> $DIR/specializing-constness-2.rs:20:37
+   |
+LL | impl<T: Default + ~const Sup> const A for T {
+   |                                     ^     ^
+help: consider further restricting this bound
+   |
+LL | const fn generic<T: Default + ~const Sup>() {
+   |                             ++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
