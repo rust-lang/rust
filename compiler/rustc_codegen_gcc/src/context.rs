@@ -18,7 +18,6 @@ use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDat
 use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 
 use crate::callee::get_fn;
-use crate::errors::LayoutSizeOverflow;
 
 #[derive(Clone)]
 pub struct FuncSig<'gcc> {
@@ -294,7 +293,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
     }
 
-    pub fn sess(&self) -> &Session {
+    pub fn sess(&self) -> &'tcx Session {
         &self.tcx.sess
     }
 
@@ -478,24 +477,7 @@ impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) = err {
-            let _ = respan(span, err);
-            //             error: lifetime may not live long enough
-            //    --> src/context.rs:483:13
-            //     |
-            // 475 | impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
-            //     |      ----  ---- lifetime `'tcx` defined here
-            //     |      |
-            //     |      lifetime `'gcc` defined here
-            // ...
-            // 483 |             self.sess().emit_fatal(respan(span, err))
-            //     |             ^^^^^^^^^^^ argument requires that `'gcc` must outlive `'tcx`
-            //     |
-            //     = help: consider adding the following bound: `'gcc: 'tcx`
-            //     = note: requirement occurs because of the type `CodegenCx<'_, '_>`, which makes the generic argument `'_` invariant
-            //     = note: the struct `CodegenCx<'gcc, 'tcx>` is invariant over the parameter `'gcc`
-            //     = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-            // self.sess().emit_fatal(respan(span, err))
-            self.sess().emit_fatal(LayoutSizeOverflow { span, error: err.to_string() })
+            self.sess().emit_fatal(respan(span, err))
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
         }
@@ -513,7 +495,7 @@ impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.sess().emit_fatal(LayoutSizeOverflow { span, error: err.to_string() })
+            self.sess().emit_fatal(respan(span, err))
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {
