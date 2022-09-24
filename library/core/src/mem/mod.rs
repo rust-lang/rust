@@ -1179,6 +1179,9 @@ pub const fn variant_count<T>() -> usize {
     intrinsics::variant_count::<T>()
 }
 
+/// Provides associated constants for various useful properties of types,
+/// to give them a canonical form in our code and make them easier to read.
+///
 /// This is here only to simplify all the ZST checks we need in the library.
 /// It's not on a stabilization track right now.
 #[doc(hidden)]
@@ -1186,6 +1189,29 @@ pub const fn variant_count<T>() -> usize {
 pub trait SizedTypeProperties: Sized {
     /// `true` if this type requires no storage.
     /// `false` if its [size](size_of) is greater than zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sized_type_properties)]
+    /// use core::mem::SizedTypeProperties;
+    ///
+    /// fn do_something_with<T>() {
+    ///     if T::IS_ZST {
+    ///         // ... special approach ...
+    ///     } else {
+    ///         // ... the normal thing ...
+    ///     }
+    /// }
+    ///
+    /// struct MyUnit;
+    /// assert!(MyUnit::IS_ZST);
+    ///
+    /// // For negative checks, consider using UFCS to emphasize the negation
+    /// assert!(!<i32>::IS_ZST);
+    /// // As it can sometimes hide in the type otherwise
+    /// assert!(!String::IS_ZST);
+    /// ```
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
     const IS_ZST: bool = size_of::<Self>() == 0;
