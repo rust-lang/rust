@@ -77,7 +77,7 @@ enum FooBar {
 }
 ```
 
-If a struct variant is [*small*](#small-items), it may be formatted on
+If a struct variant is [*small*](index.html#small-items), it may be formatted on
 one line. In this case, do not use a trailing comma for the field list, but do
 put spaces around each brace:
 

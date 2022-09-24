@@ -489,7 +489,7 @@ This section covers `if`, `if let`, `loop`, `while`, `while let`, and `for`
 expressions.
 
 The keyword, any initial clauses, and the opening brace of the block should be
-on a single line. The usual rules for [block formatting](#Blocks) should be
+on a single line. The usual rules for [block formatting](#blocks) should be
 applied to the block.
 
 If there is an `else` component, then the closing brace, `else`, any following
