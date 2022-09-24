@@ -375,7 +375,8 @@ where
                 if A::MAY_HAVE_SIDE_EFFECT && sz_a > self.len {
                     // FIXME(const_trait_impl): replace with `for`
                     let mut i = 0;
-                    while i < sz_a - self.len {
+                    let upper_bound = sz_a - self.len;
+                    while i < upper_bound {
                         // since next_back() may panic we increment the counters beforehand
                         // to keep Zip's state in sync with the underlying iterator source
                         self.a_len -= 1;
@@ -401,7 +402,7 @@ where
                 if B::MAY_HAVE_SIDE_EFFECT && sz_b > self.len {
                     // FIXME(const_trait_impl): replace with `for`
                     let mut i = 0;
-                    while i < sz_a - self.len {
+                    while i < sz_b - self.len {
                         self.b.next_back();
                         i += 1;
                     }
