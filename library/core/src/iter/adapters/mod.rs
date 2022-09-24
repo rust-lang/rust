@@ -1,3 +1,4 @@
+use crate::const_closure::ConstFnMutClosure;
 use crate::iter::{InPlaceIterable, Iterator};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, NeverShortCircuit, Residual, Try};
 
@@ -203,12 +204,12 @@ where
             .into_try()
     }
 
-    fn fold<B, F>(mut self, init: B, fold: F) -> B
+    fn fold<B, F>(mut self, init: B, mut fold: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.try_fold(init, NeverShortCircuit::wrap_mut_2(fold)).0
+        self.try_fold(init, ConstFnMutClosure::new(&mut fold, NeverShortCircuit::wrap_mut_2_imp)).0
     }
 }
 
