@@ -9,8 +9,8 @@ use rustc_hir::{intravisit, HirId};
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
-    reveal_actual_level, struct_lint_level, LevelAndSource, LintExpectation, LintLevelQueryMap,
-    LintLevelSource,
+    reveal_actual_level, struct_lint_level, LevelAndSource, LintExpectation, LintLevelSource,
+    ShallowLintLevelMap,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
@@ -99,7 +99,9 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
     let mut builder = LintLevelsBuilder {
         sess: tcx.sess,
         provider: QueryMapExpectationsWrapper {
-            map: LintLevelQueryMap { tcx, cur: hir::CRATE_HIR_ID, specs: FxHashMap::default() },
+            tcx,
+            cur: hir::CRATE_HIR_ID,
+            specs: ShallowLintLevelMap::default(),
             expectations: Vec::new(),
             unstable_to_stable_ids: FxHashMap::default(),
         },
@@ -117,12 +119,12 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
     builder.provider.expectations
 }
 
-fn lint_levels_on(tcx: TyCtxt<'_>, hir_id: HirId) -> FxHashMap<LintId, LevelAndSource> {
+fn shallow_lint_levels_on(tcx: TyCtxt<'_>, hir_id: HirId) -> ShallowLintLevelMap {
     let store = unerased_lint_store(tcx);
 
     let mut levels = LintLevelsBuilder {
         sess: tcx.sess,
-        provider: LintLevelQueryMap { tcx, cur: hir_id, specs: FxHashMap::default() },
+        provider: LintLevelQueryMap { tcx, cur: hir_id, specs: ShallowLintLevelMap::default() },
         warn_about_weird_lints: false,
         store,
         registered_tools: &tcx.resolutions(()).registered_tools,
@@ -141,12 +143,6 @@ fn lint_levels_on(tcx: TyCtxt<'_>, hir_id: HirId) -> FxHashMap<LintId, LevelAndS
 pub struct TopDown {
     sets: LintLevelSets,
     cur: LintStackIndex,
-}
-
-pub struct QueryMapExpectationsWrapper<'tcx> {
-    map: LintLevelQueryMap<'tcx>,
-    expectations: Vec<(LintExpectationId, LintExpectation)>,
-    unstable_to_stable_ids: FxHashMap<LintExpectationId, LintExpectationId>,
 }
 
 pub trait LintLevelsProvider {
@@ -170,28 +166,42 @@ impl LintLevelsProvider for TopDown {
     }
 }
 
+struct LintLevelQueryMap<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    cur: HirId,
+    specs: ShallowLintLevelMap,
+}
+
 impl LintLevelsProvider for LintLevelQueryMap<'_> {
     fn current_specs(&self) -> &FxHashMap<LintId, LevelAndSource> {
-        &self.specs
+        &self.specs.specs
     }
     fn current_specs_mut(&mut self) -> &mut FxHashMap<LintId, LevelAndSource> {
-        &mut self.specs
+        &mut self.specs.specs
     }
     fn get_lint_level(&self, lint: &'static Lint, _: &Session) -> LevelAndSource {
-        self.lint_level(lint)
+        self.specs.lint_level_id_at_node(self.tcx, LintId::of(lint), self.cur)
     }
+}
+
+struct QueryMapExpectationsWrapper<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    cur: HirId,
+    specs: ShallowLintLevelMap,
+    expectations: Vec<(LintExpectationId, LintExpectation)>,
+    unstable_to_stable_ids: FxHashMap<LintExpectationId, LintExpectationId>,
 }
 
 impl LintLevelsProvider for QueryMapExpectationsWrapper<'_> {
     fn current_specs(&self) -> &FxHashMap<LintId, LevelAndSource> {
-        &self.map.specs
+        &self.specs.specs
     }
     fn current_specs_mut(&mut self) -> &mut FxHashMap<LintId, LevelAndSource> {
-        self.map.specs.clear();
-        &mut self.map.specs
+        self.specs.specs.clear();
+        &mut self.specs.specs
     }
     fn get_lint_level(&self, lint: &'static Lint, _: &Session) -> LevelAndSource {
-        self.map.lint_level(lint)
+        self.specs.lint_level_id_at_node(self.tcx, LintId::of(lint), self.cur)
     }
     fn push_expectation(&mut self, id: LintExpectationId, expectation: LintExpectation) {
         let LintExpectationId::Stable { attr_id: Some(attr_id), hir_id, attr_index, .. } = id else { bug!("unstable expectation id should already be mapped") };
@@ -210,11 +220,7 @@ impl LintLevelsProvider for QueryMapExpectationsWrapper<'_> {
 
 impl<'tcx> LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'tcx>> {
     fn add_id(&mut self, hir_id: HirId) {
-        self.add(
-            self.provider.map.tcx.hir().attrs(hir_id),
-            hir_id == hir::CRATE_HIR_ID,
-            Some(hir_id),
-        );
+        self.add(self.provider.tcx.hir().attrs(hir_id), hir_id == hir::CRATE_HIR_ID, Some(hir_id));
     }
 }
 
@@ -222,7 +228,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelsBuilder<'_, QueryMapExpectati
     type NestedFilter = nested_filter::All;
 
     fn nested_visit_map(&mut self) -> Self::Map {
-        self.provider.map.tcx.hir()
+        self.provider.tcx.hir()
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -941,6 +947,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers { lint_levels_on, lint_expectations, ..*providers };
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers = Providers { shallow_lint_levels_on, lint_expectations, ..*providers };
 }

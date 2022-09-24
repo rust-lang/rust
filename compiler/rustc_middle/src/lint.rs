@@ -56,15 +56,27 @@ impl LintLevelSource {
 /// A tuple of a lint level and its source.
 pub type LevelAndSource = (Level, LintLevelSource);
 
+/// Return type for the `shallow_lint_levels_on` query.
+///
+/// This map represents the set of allowed lints and allowance levels given
+/// by the attributes for *a single HirId*.
+#[derive(Default, Debug, HashStable)]
+pub struct ShallowLintLevelMap {
+    pub specs: FxHashMap<LintId, LevelAndSource>,
+}
+
+/// From an initial level and source, verify the effect of special annotations:
+/// `warnings` lint level and lint caps.
+///
+/// The return of this function is suitable for diagnostics.
 pub fn reveal_actual_level(
     level: Option<Level>,
     src: &mut LintLevelSource,
     sess: &Session,
     lint: LintId,
-    get_lint_id_level: impl FnOnce(LintId) -> (Option<Level>, LintLevelSource),
+    probe_for_lint_level: impl FnOnce(LintId) -> (Option<Level>, LintLevelSource),
 ) -> Level {
-    // If `level` is none then we actually assume the default level for this
-    // lint.
+    // If `level` is none then we actually assume the default level for this lint.
     let mut level = level.unwrap_or_else(|| lint.lint.default_level(sess.edition()));
 
     // If we're about to issue a warning, check at the last minute for any
@@ -76,7 +88,7 @@ pub fn reveal_actual_level(
     // and so if we turned that into an error, it'd defeat the purpose of the
     // future compatibility warning.
     if level == Level::Warn && lint != LintId::of(FORBIDDEN_LINT_GROUPS) {
-        let (warnings_level, warnings_src) = get_lint_id_level(LintId::of(builtin::WARNINGS));
+        let (warnings_level, warnings_src) = probe_for_lint_level(LintId::of(builtin::WARNINGS));
         if let Some(configured_warning_level) = warnings_level {
             if configured_warning_level != Level::Warn {
                 level = configured_warning_level;
@@ -85,8 +97,7 @@ pub fn reveal_actual_level(
         }
     }
 
-    // Ensure that we never exceed the `--cap-lints` argument
-    // unless the source is a --force-warn
+    // Ensure that we never exceed the `--cap-lints` argument unless the source is a --force-warn
     level = if let LintLevelSource::CommandLine(_, Level::ForceWarn(_)) = src {
         level
     } else {
@@ -101,56 +112,73 @@ pub fn reveal_actual_level(
     level
 }
 
-pub struct LintLevelQueryMap<'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-    pub cur: HirId,
-    pub specs: FxHashMap<LintId, LevelAndSource>,
-}
-
-impl<'tcx> LintLevelQueryMap<'tcx> {
-    pub fn lint_id_level(&self, id: LintId) -> (Option<Level>, LintLevelSource) {
-        Self::get_lint_id_level(id, self.cur, self.tcx, &self.specs)
-    }
-
-    pub fn lint_level(&self, lint: &'static Lint) -> LevelAndSource {
-        Self::get_lint_level(LintId::of(lint), self.cur, self.tcx, &self.specs)
-    }
-
-    pub fn get_lint_id_level(
+impl ShallowLintLevelMap {
+    /// Perform a deep probe in the HIR tree looking for the actual level for the lint.
+    /// This lint level is not usable for diagnostics, it needs to be corrected by
+    /// `reveal_actual_level` beforehand.
+    fn probe_for_lint_level(
+        &self,
+        tcx: TyCtxt<'_>,
         id: LintId,
-        cur: HirId,
-        tcx: TyCtxt<'tcx>,
-        specs: &FxHashMap<LintId, LevelAndSource>,
+        start: HirId,
     ) -> (Option<Level>, LintLevelSource) {
-        if let Some(&(level, src)) = specs.get(&id) {
+        if let Some(&(level, src)) = self.specs.get(&id) {
             return (Some(level), src);
         }
-        let mut cur = cur;
+        let mut cur = start;
 
         loop {
             let parent = tcx.hir().get_parent_node(cur);
             if cur == parent {
                 return (None, LintLevelSource::Default);
             }
-            let specs = tcx.lint_levels_on(parent);
-            if let Some(&(level, src)) = specs.get(&id) {
+            let specs = tcx.shallow_lint_levels_on(parent);
+            if let Some(&(level, src)) = specs.specs.get(&id) {
                 return (Some(level), src);
             }
             cur = parent
         }
     }
 
-    pub fn get_lint_level(
-        id: LintId,
+    /// Fetch and return the user-visible lint level for the given lint at the given HirId.
+    pub fn lint_level_id_at_node(
+        &self,
+        tcx: TyCtxt<'_>,
+        lint: LintId,
         cur: HirId,
-        tcx: TyCtxt<'tcx>,
-        specs: &FxHashMap<LintId, LevelAndSource>,
     ) -> (Level, LintLevelSource) {
-        let (level, mut src) = Self::get_lint_id_level(id, cur, tcx, specs);
-        let level = reveal_actual_level(level, &mut src, tcx.sess, id, |id| {
-            Self::get_lint_id_level(id, cur, tcx, specs)
+        let (level, mut src) = self.probe_for_lint_level(tcx, lint, cur);
+        let level = reveal_actual_level(level, &mut src, tcx.sess, lint, |lint| {
+            self.probe_for_lint_level(tcx, lint, cur)
         });
         (level, src)
+    }
+}
+
+impl TyCtxt<'_> {
+    /// Fetch and return the user-visible lint level for the given lint at the given HirId.
+    pub fn lint_level_at_node(self, lint: &'static Lint, id: HirId) -> (Level, LintLevelSource) {
+        self.shallow_lint_levels_on(id).lint_level_id_at_node(self, LintId::of(lint), id)
+    }
+
+    /// Walks upwards from `id` to find a node which might change lint levels with attributes.
+    /// It stops at `bound` and just returns it if reached.
+    pub fn maybe_lint_level_root_bounded(self, mut id: HirId, bound: HirId) -> HirId {
+        let hir = self.hir();
+        loop {
+            if id == bound {
+                return bound;
+            }
+
+            if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
+                return id;
+            }
+            let next = hir.get_parent_node(id);
+            if next == id {
+                bug!("lint traversal reached the root of the crate");
+            }
+            id = next;
+        }
     }
 }
 

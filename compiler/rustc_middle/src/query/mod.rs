@@ -274,7 +274,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query lint_levels_on(key: HirId) -> FxHashMap<LintId, LevelAndSource> {
+    query shallow_lint_levels_on(key: HirId) -> rustc_middle::lint::ShallowLintLevelMap {
         arena_cache
         desc { |tcx| "looking up lint levels for `{}`", key }
     }
