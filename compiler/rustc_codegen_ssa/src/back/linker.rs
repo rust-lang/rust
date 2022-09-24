@@ -1265,11 +1265,11 @@ impl<'a> Linker for WasmLd<'a> {
     }
 
     fn link_whole_staticlib(&mut self, lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {
-        self.cmd.arg("-l").arg(lib);
+        self.cmd.arg("--whole-archive").arg("-l").arg(lib).arg("--no-whole-archive");
     }
 
     fn link_whole_rlib(&mut self, lib: &Path) {
-        self.cmd.arg(lib);
+        self.cmd.arg("--whole-archive").arg(lib).arg("--no-whole-archive");
     }
 
     fn gc_sections(&mut self, _keep_metadata: bool) {
