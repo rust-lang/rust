@@ -30,6 +30,8 @@
 	--keyword-link-color: #d2991d;
 	--mod-link-color:  #d2991d;
 	--link-color: #d2991d;
+	--sidebar-link-color: #fdbf35;
+	--sidebar-current-link-background-color: #444;
 }
 
 .slider {
@@ -47,11 +49,6 @@ input:focus + .slider {
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
 		drop-shadow(0 -1px 0 #fff)
-}
-
-.sidebar .current,
-.sidebar a:hover {
-	background: #444;
 }
 
 .src-line-numbers span { color: #3B91E2; }
@@ -90,23 +87,6 @@ a.result-primitive:focus { background-color: #194e9f; }
 a.result-keyword:focus { background-color: #884719; }
 
 .content .item-info::before { color: #ccc; }
-
-.sidebar a { color: #fdbf35; }
-.sidebar a.current.enum { color: #12ece2; }
-.sidebar a.current.struct { color: #12ece2; }
-.sidebar a.current.type { color: #12ece2; }
-.sidebar a.current.foreigntype { color: #12ece2; }
-.sidebar a.current.attr,
-.sidebar a.current.derive,
-.sidebar a.current.macro { color: #0be900; }
-.sidebar a.current.union { color: #12ece2; }
-.sidebar a.current.constant
-.sidebar a.current.static { color: #fdbf35; }
-.sidebar a.current.primitive { color: #12ece2; }
-.sidebar a.current.trait { color: #cca7ff; }
-.sidebar a.current.traitalias { color: #cca7ff; }
-.sidebar a.current.fn { color: #32d479; }
-.sidebar a.current.keyword { color: #fdbf35; }
 
 pre.rust .comment { color: #8d8d8b; }
 pre.rust .doccomment { color: #8ca375; }
