@@ -300,7 +300,7 @@ pub mod panic_count {
     thread_local! { static LOCAL_PANIC_COUNT: Cell<usize> = const { Cell::new(0) } }
 
     // Sum of panic counts from all threads. The purpose of this is to have
-    // a fast path in `is_zero` (which is used by `panicking`). In any particular
+    // a fast path in `count_is_zero` (which is used by `panicking`). In any particular
     // thread, if that thread currently views `GLOBAL_PANIC_COUNT` as being zero,
     // then `LOCAL_PANIC_COUNT` in that thread is zero. This invariant holds before
     // and after increase and decrease, but not necessarily during their execution.
@@ -369,7 +369,7 @@ pub mod panic_count {
     }
 
     // Slow path is in a separate function to reduce the amount of code
-    // inlined from `is_zero`.
+    // inlined from `count_is_zero`.
     #[inline(never)]
     #[cold]
     fn is_zero_slow_path() -> bool {
