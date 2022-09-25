@@ -27,6 +27,21 @@ index d95b5b7f17f..00b6f0e3635 100644
  [dev-dependencies]
  rand = "0.7"
  rand_xorshift = "0.2"
+diff --git a/src/bootstrap/config.rs b/src/bootstrap/config.rs
+index a6333976f2a..c9a872e876c 100644
+--- a/src/bootstrap/config.rs
++++ b/src/bootstrap/config.rs
+@@ -917,6 +917,10 @@ pub fn parse(args: &[String]) -> Config {
+             config.initial_cargo = config.out.join(config.build.triple).join("stage0/bin/cargo");
+         }
+
++        // Workaround for rustbuild bug
++        config.initial_rustc = PathBuf::from("$(pwd)/../build/rustc-clif");
++        config.initial_cargo = PathBuf::from("$(rustup which cargo)");
++
+         // NOTE: it's important this comes *after* we set \`initial_rustc\` just above.
+         if config.dry_run {
+             let dir = config.out.join("tmp-dry-run");
 diff --git a/src/tools/compiletest/src/runtest.rs b/src/tools/compiletest/src/runtest.rs
 index 8431aa7b818..a3ff7e68ce5 100644
 --- a/src/tools/compiletest/src/runtest.rs
