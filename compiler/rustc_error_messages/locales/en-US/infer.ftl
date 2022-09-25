@@ -184,7 +184,7 @@ infer_explicit_lifetime_required_sugg = add explicit lifetime `{$named}` to {$id
     *[param_type] type
 }
 
-infer_actual_impl_expl_1 = {$leading_ellipsis ->
+infer_actual_impl_expl_expected = {$leading_ellipsis ->
     [true] ...
     *[false] {""}
 }{$kind ->
@@ -198,7 +198,7 @@ infer_actual_impl_expl_1 = {$leading_ellipsis ->
     *[nothing] {""}
 }
 
-infer_actual_impl_expl_2 = {$kind_2 ->
+infer_actual_impl_expl_but_actually = {$kind_2 ->
     [implements_trait] ...but it actually implements `{$trait_path_2}`
     [implemented_for_ty] ...but `{$trait_path_2}` is actually implemented for the type `{$ty}`
     *[ty_implements] ...but `{$ty}` actually implements `{$trait_path_2}`

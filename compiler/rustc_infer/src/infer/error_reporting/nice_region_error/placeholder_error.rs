@@ -451,7 +451,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             }
         };
 
-        let note_1 = ActualImplExplNotes::NoteOne {
+        let note_1 = ActualImplExplNotes::Expected {
             leading_ellipsis,
             kind,
             ty_or_sig,
@@ -483,7 +483,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let lifetime = actual_has_vid.unwrap_or_default();
 
         let note_2 =
-            ActualImplExplNotes::NoteTwo { kind_2, trait_path_2, ty, has_lifetime, lifetime };
+            ActualImplExplNotes::ButActually { kind_2, trait_path_2, ty, has_lifetime, lifetime };
 
         vec![note_1, note_2]
     }

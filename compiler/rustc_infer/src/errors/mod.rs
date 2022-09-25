@@ -545,8 +545,8 @@ pub struct ExplicitLifetimeRequired<'a> {
 #[derive(Subdiagnostic)]
 pub enum ActualImplExplNotes {
     // Field names have to be different across all variants
-    #[note(infer::actual_impl_expl_1)]
-    NoteOne {
+    #[note(infer::actual_impl_expl_expected)]
+    Expected {
         leading_ellipsis: bool,
         kind: &'static str,
         ty_or_sig: String,
@@ -555,8 +555,8 @@ pub enum ActualImplExplNotes {
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note(infer::actual_impl_expl_2)]
-    NoteTwo {
+    #[note(infer::actual_impl_expl_but_actually)]
+    ButActually {
         kind_2: &'static str,
         trait_path_2: String,
         has_lifetime: bool,
