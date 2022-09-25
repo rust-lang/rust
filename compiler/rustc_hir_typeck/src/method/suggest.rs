@@ -13,7 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Expr, ExprKind, Node, QPath};
+use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::{
     type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
     RegionVariableOrigin,
@@ -475,29 +475,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let mut applicability = Applicability::MachineApplicable;
                         let args = if let Some((receiver, args)) = args {
                             // The first arg is the same kind as the receiver
-                            let it = if first_arg.is_some() {
-                                Box::new(std::iter::once(receiver).chain(args.iter()))
-                                    as Box<dyn Iterator<Item = &Expr<'_>>>
+                            let explicit_args = if first_arg.is_some() {
+                                std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>()
                             } else {
                                 // There is no `Self` kind to infer the arguments from
                                 if has_unsuggestable_args {
                                     applicability = Applicability::HasPlaceholders;
                                 }
-                                Box::new(args.iter()) as _
+                                args.iter().collect()
                             };
                             format!(
                                 "({}{})",
                                 first_arg.unwrap_or(""),
-                                it.map(|arg| tcx
-                                    .sess
-                                    .source_map()
-                                    .span_to_snippet(arg.span)
-                                    .unwrap_or_else(|_| {
-                                        applicability = Applicability::HasPlaceholders;
-                                        "_".to_owned()
-                                    }))
-                                .collect::<Vec<_>>()
-                                .join(", "),
+                                explicit_args
+                                    .iter()
+                                    .map(|arg| tcx
+                                        .sess
+                                        .source_map()
+                                        .span_to_snippet(arg.span)
+                                        .unwrap_or_else(|_| {
+                                            applicability = Applicability::HasPlaceholders;
+                                            "_".to_owned()
+                                        }))
+                                    .collect::<Vec<_>>()
+                                    .join(", "),
                             )
                         } else {
                             applicability = Applicability::HasPlaceholders;
