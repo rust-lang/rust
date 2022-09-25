@@ -805,7 +805,12 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             sig.decl.has_self(),
                             sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
                             &sig.decl.output,
-                        )
+                        );
+
+                        this.record_lifetime_params_for_async(
+                            fn_id,
+                            sig.header.asyncness.opt_return_id(),
+                        );
                     },
                 );
                 return;
@@ -847,41 +852,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             },
                         );
 
-                        // Construct the list of in-scope lifetime parameters for async lowering.
-                        // We include all lifetime parameters, either named or "Fresh".
-                        // The order of those parameters does not matter, as long as it is
-                        // deterministic.
-                        if let Some((async_node_id, _)) = async_node_id {
-                            let mut extra_lifetime_params = this
-                                .r
-                                .extra_lifetime_params_map
-                                .get(&fn_id)
-                                .cloned()
-                                .unwrap_or_default();
-                            for rib in this.lifetime_ribs.iter().rev() {
-                                extra_lifetime_params.extend(
-                                    rib.bindings
-                                        .iter()
-                                        .map(|(&ident, &(node_id, res))| (ident, node_id, res)),
-                                );
-                                match rib.kind {
-                                    LifetimeRibKind::Item => break,
-                                    LifetimeRibKind::AnonymousCreateParameter {
-                                        binder, ..
-                                    } => {
-                                        if let Some(earlier_fresh) =
-                                            this.r.extra_lifetime_params_map.get(&binder)
-                                        {
-                                            extra_lifetime_params.extend(earlier_fresh);
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                            }
-                            this.r
-                                .extra_lifetime_params_map
-                                .insert(async_node_id, extra_lifetime_params);
-                        }
+                        this.record_lifetime_params_for_async(fn_id, async_node_id);
 
                         if let Some(body) = body {
                             // Ignore errors in function bodies if this is rustdoc
@@ -3925,6 +3896,36 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ident.span.ctxt(),
             Some((ident.name, ns)),
         )
+    }
+
+    /// Construct the list of in-scope lifetime parameters for async lowering.
+    /// We include all lifetime parameters, either named or "Fresh".
+    /// The order of those parameters does not matter, as long as it is
+    /// deterministic.
+    fn record_lifetime_params_for_async(
+        &mut self,
+        fn_id: NodeId,
+        async_node_id: Option<(NodeId, Span)>,
+    ) {
+        if let Some((async_node_id, _)) = async_node_id {
+            let mut extra_lifetime_params =
+                self.r.extra_lifetime_params_map.get(&fn_id).cloned().unwrap_or_default();
+            for rib in self.lifetime_ribs.iter().rev() {
+                extra_lifetime_params.extend(
+                    rib.bindings.iter().map(|(&ident, &(node_id, res))| (ident, node_id, res)),
+                );
+                match rib.kind {
+                    LifetimeRibKind::Item => break,
+                    LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
+                        if let Some(earlier_fresh) = self.r.extra_lifetime_params_map.get(&binder) {
+                            extra_lifetime_params.extend(earlier_fresh);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            self.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
+        }
     }
 }
 
