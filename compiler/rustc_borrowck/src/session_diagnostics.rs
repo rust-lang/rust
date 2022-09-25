@@ -158,7 +158,7 @@ pub(crate) enum RequireStaticErr {
     },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum AddMoveErr {
     #[label(borrowck::data_moved_here)]
     Here {
@@ -174,7 +174,7 @@ pub(crate) enum AddMoveErr {
     MovedNotCopy,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum BorrowUsedHere {
     #[label(borrowck::used_here_by_closure)]
     ByClosure {
@@ -183,7 +183,7 @@ pub(crate) enum BorrowUsedHere {
     },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum UsedLaterDropped<'a> {
     #[label(borrowck::drop_local_might_cause_borrow)]
     UsedHere {
@@ -233,13 +233,13 @@ pub(crate) enum UsedLaterDropped<'a> {
     ManualDrop,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum OnLifetimeBound<'a> {
     #[help(borrowck::consider_add_lifetime_bound)]
     Add { fr_name: &'a RegionName, outlived_fr_name: &'a RegionName },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum ClosureCannotAgain {
     #[note(borrowck::closure_cannot_invoke_again)]
     Invoke {
@@ -255,7 +255,7 @@ pub(crate) enum ClosureCannotAgain {
     },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum ShowMutatingUpvar {
     #[label(borrowck::require_mutable_binding)]
     RequireMutableBinding {
@@ -267,7 +267,7 @@ pub(crate) enum ShowMutatingUpvar {
     },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum CaptureCausedBy<'a> {
     #[label(borrowck::moved_by_call)]
     Call {
@@ -332,7 +332,7 @@ pub(crate) enum CaptureCausedBy<'a> {
     },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum NotImplCopy<'a, 'tcx> {
     #[label(borrowck::type_not_impl_Copy)]
     Label {
@@ -346,7 +346,7 @@ pub(crate) enum NotImplCopy<'a, 'tcx> {
     Note { place_desc: &'a str, ty: Ty<'tcx>, move_prefix: &'a str },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum FnMutBumpFn<'a> {
     #[label(borrowck::cannot_act)]
     Cannot {
@@ -381,7 +381,7 @@ pub(crate) enum FnMutBumpFn<'a> {
     },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum RegionNameLabels<'a> {
     #[label(borrowck::name_this_region)]
     NameRegion {
@@ -433,7 +433,7 @@ pub(crate) enum RegionNameLabels<'a> {
     },
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::type_parameter_not_used_in_trait_type_alias)]
 pub(crate) struct UnusedTypeParameter<'tcx> {
     pub ty: Ty<'tcx>,
@@ -441,7 +441,7 @@ pub(crate) struct UnusedTypeParameter<'tcx> {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::non_defining_opaque_type)]
 pub(crate) struct OpaqueTypeNotDefine {
     #[subdiagnostic]
@@ -450,7 +450,7 @@ pub(crate) struct OpaqueTypeNotDefine {
     pub span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum OpaqueTyDefineErrCause {
     #[label(borrowck::lifetime_not_used_in_trait_type_alias)]
     UnusedLifetime {
@@ -472,7 +472,7 @@ pub(crate) enum OpaqueTyDefineErrCause {
     },
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum DefiningTypeNote<'a> {
     #[note(borrowck::define_type_with_closure_substs)]
     Closure { type_name: &'a str, subsets: &'a str },
@@ -486,21 +486,21 @@ pub(crate) enum DefiningTypeNote<'a> {
     InlineConst { type_name: &'a str },
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::borrowed_temporary_value_dropped, code = "E0716")]
 pub(crate) struct TemporaryDroppedErr {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::thread_local_outlive_function, code = "E0712")]
 pub(crate) struct ThreadLocalOutliveErr {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::closure_borrowing_outlive_function, code = "E0373")]
 pub(crate) struct ClosureVarOutliveErr<'a> {
     pub closure_kind: &'a str,
@@ -512,7 +512,7 @@ pub(crate) struct ClosureVarOutliveErr<'a> {
     pub capture_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::cannot_return_ref_to_local, code = "E0515")]
 pub(crate) struct ReturnRefLocalErr<'a> {
     pub return_kind: &'a str,
@@ -523,7 +523,7 @@ pub(crate) struct ReturnRefLocalErr<'a> {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::path_does_not_live_long_enough, code = "E0597")]
 pub(crate) struct PathShortLive<'a> {
     pub path: &'a str,
@@ -531,14 +531,14 @@ pub(crate) struct PathShortLive<'a> {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::cannot_borrow_across_destructor, code = "E0713")]
 pub(crate) struct BorrowAcrossDestructor {
     #[primary_span]
     pub borrow_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::cannot_borrow_across_generator_yield, code = "E0626")]
 pub(crate) struct BorrowAcrossGeneratorYield {
     #[primary_span]
@@ -547,7 +547,7 @@ pub(crate) struct BorrowAcrossGeneratorYield {
     pub yield_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::cannot_move_out_of_interior_of_drop, code = "E0509")]
 pub(crate) struct InteriorDropMoveErr<'a> {
     pub container_ty: Ty<'a>,
@@ -556,7 +556,7 @@ pub(crate) struct InteriorDropMoveErr<'a> {
     pub move_from_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::cannot_assign_to_borrowed, code = "E0506")]
 pub(crate) struct AssignBorrowErr<'a> {
     pub desc: &'a str,
@@ -567,7 +567,7 @@ pub(crate) struct AssignBorrowErr<'a> {
     pub borrow_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::cannot_uniquely_borrow_by_two_closures, code = "E0524")]
 pub(crate) struct TwoClosuresUniquelyBorrowErr<'a> {
     pub desc: &'a str,
@@ -581,7 +581,7 @@ pub(crate) struct TwoClosuresUniquelyBorrowErr<'a> {
     pub diff_span: Option<Span>,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub(crate) enum ClosureConstructLabel {
     #[label(borrowck::first_closure_constructed_here)]
     First {
@@ -595,7 +595,7 @@ pub(crate) enum ClosureConstructLabel {
     },
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::cannot_use_when_mutably_borrowed, code = "E0503")]
 pub(crate) struct UseMutBorrowErr<'a> {
     pub desc: &'a str,
@@ -607,7 +607,7 @@ pub(crate) struct UseMutBorrowErr<'a> {
     pub borrow_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(borrowck::cannot_move_when_borrowed, code = "E0505")]
 pub(crate) struct MoveBorrowedErr<'a> {
     pub desc: &'a str,
