@@ -4,7 +4,7 @@ mod graph;
 mod query;
 mod serialized;
 
-pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
+pub use dep_node::{DepKindStruct, DepNode, DepNodeParams, WorkProductId};
 pub use graph::{
     hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, TaskDepsRef, WorkProduct,
 };
@@ -34,16 +34,43 @@ pub trait DepContext: Copy {
     /// Access the compiler session.
     fn sess(&self) -> &Session;
 
-    /// Return whether this kind always require evaluation.
-    fn is_eval_always(&self, kind: Self::DepKind) -> bool;
+    fn dep_kind_info(&self, dep_node: Self::DepKind) -> &DepKindStruct<Self>;
 
-    fn fingerprint_style(&self, kind: Self::DepKind) -> FingerprintStyle;
+    #[inline(always)]
+    fn fingerprint_style(&self, kind: Self::DepKind) -> FingerprintStyle {
+        let data = self.dep_kind_info(kind);
+        if data.is_anon {
+            return FingerprintStyle::Opaque;
+        }
+        data.fingerprint_style
+    }
+
+    #[inline(always)]
+    /// Return whether this kind always require evaluation.
+    fn is_eval_always(&self, kind: Self::DepKind) -> bool {
+        self.dep_kind_info(kind).is_eval_always
+    }
 
     /// Try to force a dep node to execute and see if it's green.
-    fn try_force_from_dep_node(&self, dep_node: DepNode<Self::DepKind>) -> bool;
+    fn try_force_from_dep_node(self, dep_node: DepNode<Self::DepKind>) -> bool {
+        debug!("try_force_from_dep_node({:?}) --- trying to force", dep_node);
+
+        let cb = self.dep_kind_info(dep_node.kind);
+        if let Some(f) = cb.force_from_dep_node {
+            f(self, dep_node);
+            true
+        } else {
+            false
+        }
+    }
 
     /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(&self, dep_node: DepNode<Self::DepKind>);
+    fn try_load_from_on_disk_cache(self, dep_node: DepNode<Self::DepKind>) {
+        let cb = self.dep_kind_info(dep_node.kind);
+        if let Some(f) = cb.try_load_from_on_disk_cache {
+            f(self, dep_node)
+        }
+    }
 }
 
 pub trait HasDepContext: Copy {
