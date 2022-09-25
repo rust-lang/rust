@@ -198,7 +198,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     move_span,
                     move_spans,
                     *moved_place,
-                    Some(used_place),
                     partially_str,
                     loop_message,
                     move_msg,
