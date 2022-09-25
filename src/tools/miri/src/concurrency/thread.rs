@@ -386,6 +386,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         data_race: Option<&mut data_race::GlobalState>,
     ) -> InterpResult<'tcx> {
         if self.threads[joined_thread_id].join_status == ThreadJoinStatus::Detached {
+            // On Windows this corresponds to joining on a closed handle.
             throw_ub_format!("trying to join a detached thread");
         }
 
