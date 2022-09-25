@@ -1580,7 +1580,8 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
+    pub const fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         assert!(mid <= self.len());
         // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
         // fulfills the requirements of `from_raw_parts_mut`.
@@ -1679,9 +1680,10 @@ impl<T> [T] {
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
     #[inline]
     #[must_use]
-    pub unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    pub const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
