@@ -8,7 +8,7 @@ LL | }
    | -
    | |
    | here, drop of `foo` needs exclusive access to `foo.data`, because the type `Foo<Concrete<'_>>` implements the `Drop` trait
-   | borrow might be used here, when `foo` is dropped and runs the `Drop` code for type `Foo`
+   | borrow might be used here, when `foo` is dropped and runs the destructor for type `Foo`
    |
    = note: consider using a `let` binding to create a longer lived value
 

@@ -16,7 +16,7 @@ LL |     }
    |     -
    |     |
    |     `y` dropped here while still borrowed
-   |     ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |     ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `D`
 
 error: aborting due to 2 previous errors
 

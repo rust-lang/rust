@@ -2,7 +2,7 @@ error[E0597]: `_t1` does not live long enough
   --> $DIR/issue-54556-used-vs-unused-tails.rs:10:55
    |
 LL |     {              let mut _t1 = D(Box::new("t1")); D(&_t1).end()    } ; // suggest `;`
-   |                                                     --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                                                     --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `D`
    |                                                     | |              |
    |                                                     | |              `_t1` dropped here while still borrowed
    |                                                     | borrowed value does not live long enough
@@ -17,7 +17,7 @@ error[E0597]: `_t1` does not live long enough
   --> $DIR/issue-54556-used-vs-unused-tails.rs:13:55
    |
 LL |     {            { let mut _t1 = D(Box::new("t1")); D(&_t1).end() }  } ; // suggest `;`
-   |                                                     --^^^^-       -    - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                                                     --^^^^-       -    - ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `D`
    |                                                     | |           |
    |                                                     | |           `_t1` dropped here while still borrowed
    |                                                     | borrowed value does not live long enough
@@ -32,7 +32,7 @@ error[E0597]: `_t1` does not live long enough
   --> $DIR/issue-54556-used-vs-unused-tails.rs:16:55
    |
 LL |     {            { let mut _t1 = D(Box::new("t1")); D(&_t1).end() }; }   // suggest `;`
-   |                                                     --^^^^-       -- ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                                                     --^^^^-       -- ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `D`
    |                                                     | |           |
    |                                                     | |           `_t1` dropped here while still borrowed
    |                                                     | borrowed value does not live long enough
@@ -47,7 +47,7 @@ error[E0597]: `_t1` does not live long enough
   --> $DIR/issue-54556-used-vs-unused-tails.rs:19:55
    |
 LL |     let _ =      { let mut _t1 = D(Box::new("t1")); D(&_t1).end()    } ; // suggest `;`
-   |                                                     --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                                                     --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `D`
    |                                                     | |              |
    |                                                     | |              `_t1` dropped here while still borrowed
    |                                                     | borrowed value does not live long enough
@@ -62,7 +62,7 @@ error[E0597]: `_t1` does not live long enough
   --> $DIR/issue-54556-used-vs-unused-tails.rs:22:55
    |
 LL |     let _u =     { let mut _t1 = D(Box::new("t1")); D(&_t1).unit()   } ; // suggest `;`
-   |                                                     --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                                                     --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `D`
    |                                                     | |              |
    |                                                     | |              `_t1` dropped here while still borrowed
    |                                                     | borrowed value does not live long enough
@@ -77,7 +77,7 @@ error[E0597]: `_t1` does not live long enough
   --> $DIR/issue-54556-used-vs-unused-tails.rs:25:55
    |
 LL |     let _x =     { let mut _t1 = D(Box::new("t1")); D(&_t1).end()    } ; // `let x = ...; x`
-   |                                                     --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                                                     --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `D`
    |                                                     | |              |
    |                                                     | |              `_t1` dropped here while still borrowed
    |                                                     | borrowed value does not live long enough
@@ -94,7 +94,7 @@ error[E0597]: `_t1` does not live long enough
   --> $DIR/issue-54556-used-vs-unused-tails.rs:30:55
    |
 LL |     _y =         { let mut _t1 = D(Box::new("t1")); D(&_t1).end() } ; // `let x = ...; x`
-   |                                                     --^^^^-       - - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                                                     --^^^^-       - - ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `D`
    |                                                     | |           |
    |                                                     | |           `_t1` dropped here while still borrowed
    |                                                     | borrowed value does not live long enough
@@ -114,7 +114,7 @@ LL | fn f_local_ref() { let mut _t1 = D(Box::new("t1")); D(&_t1).unit()   }  // 
    |                                                     --^^^^-          -
    |                                                     | |              |
    |                                                     | |              `_t1` dropped here while still borrowed
-   |                                                     | |              ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                                                     | |              ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `D`
    |                                                     | borrowed value does not live long enough
    |                                                     a temporary with access to the borrow is created here ...
    |
@@ -130,7 +130,7 @@ LL | fn f() -> String { let mut _t1 = D(Box::new("t1")); D(&_t1).end()   }   // 
    |                                                     --^^^^-         -
    |                                                     | |             |
    |                                                     | |             `_t1` dropped here while still borrowed
-   |                                                     | |             ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                                                     | |             ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `D`
    |                                                     | borrowed value does not live long enough
    |                                                     a temporary with access to the borrow is created here ...
    |
