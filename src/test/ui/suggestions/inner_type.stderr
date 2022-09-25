@@ -1,0 +1,51 @@
+error[E0599]: no method named `method` found for struct `RefCell` in the current scope
+  --> $DIR/inner_type.rs:17:16
+   |
+LL |     other_item.method();
+   |                ^^^^^^ method not found in `RefCell<Struct<u32>>`
+   |
+note: the method `method` exists on the type `Struct<u32>`
+  --> $DIR/inner_type.rs:9:5
+   |
+LL |     pub fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: use `.borrow()` to borrow the Struct<u32>, panicking if any outstanding mutable borrows exist.
+   |
+LL |     other_item.borrow().method();
+   |               +++++++++
+
+error[E0599]: no method named `some_mutable_method` found for struct `RefCell` in the current scope
+  --> $DIR/inner_type.rs:21:16
+   |
+LL |     other_item.some_mutable_method();
+   |                ^^^^^^^^^^^^^^^^^^^ method not found in `RefCell<Struct<u32>>`
+   |
+note: the method `some_mutable_method` exists on the type `Struct<u32>`
+  --> $DIR/inner_type.rs:11:5
+   |
+LL |     pub fn some_mutable_method(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use `.borrow_mut()` to mutably borrow the Struct<u32>, panicking if any outstanding borrows exist.
+   |
+LL |     other_item.borrow_mut().some_mutable_method();
+   |               +++++++++++++
+
+error[E0599]: no method named `method` found for struct `Mutex` in the current scope
+  --> $DIR/inner_type.rs:27:18
+   |
+LL |     another_item.method();
+   |                  ^^^^^^ method not found in `Mutex<Struct<u32>>`
+   |
+note: the method `method` exists on the type `Struct<u32>`
+  --> $DIR/inner_type.rs:9:5
+   |
+LL |     pub fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: use `.lock()` to borrow the Struct<u32>, blocking the current thread until it can be acquired
+   |
+LL |     another_item.lock().unwrap().method();
+   |                 ++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.
