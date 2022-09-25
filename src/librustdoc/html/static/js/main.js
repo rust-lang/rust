@@ -555,7 +555,6 @@ function loadCss(cssFileName) {
                 const code = document.createElement("h3");
                 code.innerHTML = struct[TEXT_IDX];
                 addClass(code, "code-header");
-                addClass(code, "in-band");
 
                 onEachLazy(code.getElementsByTagName("a"), elem => {
                     const href = elem.getAttribute("href");

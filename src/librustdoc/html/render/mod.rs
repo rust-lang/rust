@@ -1790,7 +1790,7 @@ pub(crate) fn render_impl_summary(
     write!(w, "<section id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
     render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-    write!(w, "<h3 class=\"code-header in-band\">");
+    write!(w, "<h3 class=\"code-header\">");
 
     if let Some(use_absolute) = use_absolute {
         write!(w, "{}", inner_impl.print(use_absolute, cx));
