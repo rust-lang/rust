@@ -1830,7 +1830,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // ```rust
         // impl<'a> Foo<'a> {
         //     async fn bar<'b>(&self, x: &'b Vec<f64>, y: &str) -> &u32 {
-        //         //               ^ '0                       ^ '1     ^ '2
+        //         //           ^ '0                       ^ '1     ^ '2
         //         // elided lifetimes used below
         //     }
         // }
