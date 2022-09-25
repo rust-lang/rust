@@ -850,6 +850,7 @@ pub(crate) fn codegen_place<'tcx>(
             PlaceElem::Deref => {
                 cplace = cplace.place_deref(fx);
             }
+            PlaceElem::OpaqueCast(ty) => cplace = cplace.place_opaque_cast(fx, ty),
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
             }
@@ -916,7 +917,7 @@ pub(crate) fn codegen_operand<'tcx>(
             let cplace = codegen_place(fx, *place);
             cplace.to_cvalue(fx)
         }
-        Operand::Constant(const_) => crate::constant::codegen_constant(fx, const_),
+        Operand::Constant(const_) => crate::constant::codegen_constant_operand(fx, const_),
     }
 }
 
