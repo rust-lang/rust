@@ -19,12 +19,12 @@ goto: file://|DOC_PATH|/test_docs/struct.HasEmptyTraits.html
 compare-elements-position-near-false: (
     "#impl-EmptyTrait1-for-HasEmptyTraits",
     "#impl-EmptyTrait2-for-HasEmptyTraits",
-    {"y": 34.1875},
+    {"y": 34},
 )
 compare-elements-position-near: (
     "#impl-EmptyTrait3-for-HasEmptyTraits h3",
     "#impl-EmptyTrait3-for-HasEmptyTraits .item-info",
-    {"y": 34.1875},
+    {"y": 34},
 )
 
 // Now check that re-exports work correctly.
