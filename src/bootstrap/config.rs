@@ -901,9 +901,7 @@ impl Config {
         config.config = toml_path;
 
         let build = toml.build.unwrap_or_default();
-        let has_custom_rustc = build.rustc.is_some();
 
-        set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
         set(&mut config.out, flags.build_dir.or_else(|| build.build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
@@ -912,10 +910,14 @@ impl Config {
             config.out = crate::util::absolute(&config.out);
         }
 
-        if !has_custom_rustc && !config.initial_rustc.starts_with(&config.out) {
-            config.initial_rustc = config.out.join(config.build.triple).join("stage0/bin/rustc");
-            config.initial_cargo = config.out.join(config.build.triple).join("stage0/bin/cargo");
-        }
+        config.initial_rustc = build
+            .rustc
+            .map(PathBuf::from)
+            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/rustc"));
+        config.initial_cargo = build
+            .cargo
+            .map(PathBuf::from)
+            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/cargo"));
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
         if config.dry_run {
