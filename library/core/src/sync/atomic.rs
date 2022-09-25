@@ -84,15 +84,15 @@
 //! A simple spinlock:
 //!
 //! ```
-//! use std::sync::Arc;
 //! use std::sync::atomic::{AtomicUsize, Ordering};
+//! use std::sync::Arc;
 //! use std::{hint, thread};
 //!
 //! fn main() {
 //!     let spinlock = Arc::new(AtomicUsize::new(1));
 //!
 //!     let spinlock_clone = Arc::clone(&spinlock);
-//!     let thread = thread::spawn(move|| {
+//!     let thread = thread::spawn(move || {
 //!         spinlock_clone.store(0, Ordering::SeqCst);
 //!     });
 //!
@@ -294,7 +294,7 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomic::AtomicBool;
     ///
-    /// let atomic_true  = AtomicBool::new(true);
+    /// let atomic_true = AtomicBool::new(true);
     /// let atomic_false = AtomicBool::new(false);
     /// ```
     #[inline]
@@ -597,17 +597,16 @@ impl AtomicBool {
     ///
     /// let some_bool = AtomicBool::new(true);
     ///
-    /// assert_eq!(some_bool.compare_exchange(true,
-    ///                                       false,
-    ///                                       Ordering::Acquire,
-    ///                                       Ordering::Relaxed),
-    ///            Ok(true));
+    /// assert_eq!(
+    ///     some_bool.compare_exchange(true, false, Ordering::Acquire, Ordering::Relaxed),
+    ///     Ok(true)
+    /// );
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     ///
-    /// assert_eq!(some_bool.compare_exchange(true, true,
-    ///                                       Ordering::SeqCst,
-    ///                                       Ordering::Acquire),
-    ///            Err(false));
+    /// assert_eq!(
+    ///     some_bool.compare_exchange(true, true, Ordering::SeqCst, Ordering::Acquire),
+    ///     Err(false)
+    /// );
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
     #[inline]
@@ -1075,8 +1074,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// let view: &mut [*mut String] = AtomicPtr::get_mut_slice(&mut some_ptrs);
     /// assert_eq!(view, [null_mut::<String>(); 10]);
-    /// view
-    ///     .iter_mut()
+    /// view.iter_mut()
     ///     .enumerate()
     ///     .for_each(|(i, ptr)| *ptr = Box::into_raw(Box::new(format!("iteration#{i}"))));
     ///
@@ -1171,7 +1169,7 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
     /// let value = some_ptr.load(Ordering::Relaxed);
     /// ```
@@ -1198,7 +1196,7 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
     /// let other_ptr = &mut 10;
     ///
@@ -1230,7 +1228,7 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
     /// let other_ptr = &mut 10;
     ///
@@ -1282,9 +1280,9 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
-    /// let other_ptr   = &mut 10;
+    /// let other_ptr = &mut 10;
     ///
     /// let value = some_ptr.compare_and_swap(ptr, other_ptr, Ordering::Relaxed);
     /// ```
@@ -1325,12 +1323,11 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
-    /// let other_ptr   = &mut 10;
+    /// let other_ptr = &mut 10;
     ///
-    /// let value = some_ptr.compare_exchange(ptr, other_ptr,
-    ///                                       Ordering::SeqCst, Ordering::Relaxed);
+    /// let value = some_ptr.compare_exchange(ptr, other_ptr, Ordering::SeqCst, Ordering::Relaxed);
     /// ```
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
@@ -1433,11 +1430,7 @@ impl<T> AtomicPtr<T> {
     /// let new: *mut _ = &mut 10;
     /// assert_eq!(some_ptr.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(ptr));
     /// let result = some_ptr.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| {
-    ///     if x == ptr {
-    ///         Some(new)
-    ///     } else {
-    ///         None
-    ///     }
+    ///     if x == ptr { Some(new) } else { None }
     /// });
     /// assert_eq!(result, Ok(ptr));
     /// assert_eq!(some_ptr.load(Ordering::SeqCst), new);
@@ -1537,10 +1530,7 @@ impl<T> AtomicPtr<T> {
     /// let array = [1i32, 2i32];
     /// let atom = AtomicPtr::new(array.as_ptr().wrapping_add(1) as *mut _);
     ///
-    /// assert!(core::ptr::eq(
-    ///     atom.fetch_ptr_sub(1, Ordering::Relaxed),
-    ///     &array[1],
-    /// ));
+    /// assert!(core::ptr::eq(atom.fetch_ptr_sub(1, Ordering::Relaxed), &array[1],));
     /// assert!(core::ptr::eq(atom.load(Ordering::Relaxed), &array[0]));
     /// ```
     #[inline]
@@ -1710,8 +1700,7 @@ impl<T> AtomicPtr<T> {
     /// let atom = AtomicPtr::<i64>::new(pointer.map_addr(|a| a | 1));
     /// assert_eq!(atom.fetch_or(1, Ordering::Relaxed).addr() & 1, 1);
     /// // Untag, and extract the previously tagged pointer.
-    /// let untagged = atom.fetch_and(!1, Ordering::Relaxed)
-    ///     .map_addr(|a| a & !1);
+    /// let untagged = atom.fetch_and(!1, Ordering::Relaxed).map_addr(|a| a & !1);
     /// assert_eq!(untagged, pointer);
     /// ```
     #[inline]
@@ -3261,8 +3250,8 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// # Examples
 ///
 /// ```
-/// use std::sync::atomic::AtomicBool;
 /// use std::sync::atomic::fence;
+/// use std::sync::atomic::AtomicBool;
 /// use std::sync::atomic::Ordering;
 ///
 /// // A mutual exclusion primitive based on spinlock.
@@ -3272,9 +3261,7 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 ///
 /// impl Mutex {
 ///     pub fn new() -> Mutex {
-///         Mutex {
-///             flag: AtomicBool::new(false),
-///         }
+///         Mutex { flag: AtomicBool::new(false) }
 ///     }
 ///
 ///     pub fn lock(&self) {
@@ -3354,9 +3341,9 @@ pub fn fence(order: Ordering) {
 /// Using a `compiler_fence` remedies this situation.
 ///
 /// ```
-/// use std::sync::atomic::{AtomicBool, AtomicUsize};
-/// use std::sync::atomic::Ordering;
 /// use std::sync::atomic::compiler_fence;
+/// use std::sync::atomic::Ordering;
+/// use std::sync::atomic::{AtomicBool, AtomicUsize};
 ///
 /// static IMPORTANT_VARIABLE: AtomicUsize = AtomicUsize::new(0);
 /// static IS_READY: AtomicBool = AtomicBool::new(false);

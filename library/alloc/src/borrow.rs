@@ -146,11 +146,17 @@ where
 /// ```
 /// use std::borrow::Cow;
 ///
-/// struct Items<'a, X: 'a> where [X]: ToOwned<Owned = Vec<X>> {
+/// struct Items<'a, X: 'a>
+/// where
+///     [X]: ToOwned<Owned = Vec<X>>,
+/// {
 ///     values: Cow<'a, [X]>,
 /// }
 ///
-/// impl<'a, X: Clone + 'a> Items<'a, X> where [X]: ToOwned<Owned = Vec<X>> {
+/// impl<'a, X: Clone + 'a> Items<'a, X>
+/// where
+///     [X]: ToOwned<Owned = Vec<X>>,
+/// {
 ///     fn new(v: Cow<'a, [X]>) -> Self {
 ///         Items { values: v }
 ///     }
@@ -266,10 +272,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// let mut cow = Cow::Borrowed("foo");
     /// cow.to_mut().make_ascii_uppercase();
     ///
-    /// assert_eq!(
-    ///   cow,
-    ///   Cow::Owned(String::from("FOO")) as Cow<str>
-    /// );
+    /// assert_eq!(cow, Cow::Owned(String::from("FOO")) as Cow<str>);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {
@@ -299,10 +302,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// let s = "Hello world!";
     /// let cow = Cow::Borrowed(s);
     ///
-    /// assert_eq!(
-    ///   cow.into_owned(),
-    ///   String::from(s)
-    /// );
+    /// assert_eq!(cow.into_owned(), String::from(s));
     /// ```
     ///
     /// Calling `into_owned` on a `Cow::Owned` returns the owned data. The data is moved out of the
@@ -314,10 +314,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// let s = "Hello world!";
     /// let cow: Cow<str> = Cow::Owned(String::from(s));
     ///
-    /// assert_eq!(
-    ///   cow.into_owned(),
-    ///   String::from(s)
-    /// );
+    /// assert_eq!(cow.into_owned(), String::from(s));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_owned(self) -> <B as ToOwned>::Owned {

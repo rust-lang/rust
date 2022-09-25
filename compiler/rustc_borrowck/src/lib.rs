@@ -1155,7 +1155,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         flow_state: &Flows<'cx, 'tcx>,
     ) {
         match *rvalue {
-            Rvalue::Ref(_ /*rgn*/, bk, place) => {
+            Rvalue::Ref(_ /* rgn */, bk, place) => {
                 let access_kind = match bk {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
@@ -1224,9 +1224,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
-            | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
-            | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(ref operand, _ /*ty*/) => {
+            | Rvalue::UnaryOp(_ /* un_op */, ref operand)
+            | Rvalue::Cast(_ /* cast_kind */, ref operand, _ /* ty */)
+            | Rvalue::ShallowInitBox(ref operand, _ /* ty */) => {
                 self.consume_operand(location, (operand, span), flow_state)
             }
             Rvalue::CopyForDeref(place) => {
@@ -2209,7 +2209,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     // as needed:
                                     //
                                     // ```
-                                    // fn foo<F: FnOnce()>(_f: F) { }
+                                    // fn foo<F: FnOnce()>(_f: F) {}
                                     // fn main() {
                                     //     let var = Vec::new();
                                     //     foo(move || {

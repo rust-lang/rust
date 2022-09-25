@@ -51,8 +51,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         //
         // ```rust
         // type MyType = impl Copy;
-        // fn produce() -> MyType { true }
-        // fn bad_produce() -> MyType { panic!() }
+        // fn produce() -> MyType {
+        //     true
+        // }
+        // fn bad_produce() -> MyType {
+        //     panic!()
+        // }
         // ```
         //
         // we want to unify the opaque inference variable in `bad_produce`
@@ -146,7 +150,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// # fn foo() -> i32 { 4 }
     /// match foo() {
     ///     22 => Default::default(), // call this type `?D`
-    ///     _ => return, // return has type `!`
+    ///     _ => return,              // return has type `!`
     /// } // call the type of this match `?M`
     /// ```
     ///

@@ -1286,18 +1286,18 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     }
     pub fn vector_reduce_fmin(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe {
-            llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ false)
+            llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /* NoNaNs: */ false)
         }
     }
     pub fn vector_reduce_fmax(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe {
-            llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ false)
+            llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /* NoNaNs: */ false)
         }
     }
     pub fn vector_reduce_fmin_fast(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe {
             let instr =
-                llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true);
+                llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /* NoNaNs: */ true);
             llvm::LLVMRustSetFastMath(instr);
             instr
         }
@@ -1305,7 +1305,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub fn vector_reduce_fmax_fast(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe {
             let instr =
-                llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true);
+                llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /* NoNaNs: */ true);
             llvm::LLVMRustSetFastMath(instr);
             instr
         }

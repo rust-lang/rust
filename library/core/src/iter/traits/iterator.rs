@@ -117,8 +117,8 @@ pub trait Iterator {
     ///
     /// let mut iter = "lorem".chars();
     ///
-    /// assert_eq!(iter.next_chunk().unwrap(), ['l', 'o']);              // N is inferred as 2
-    /// assert_eq!(iter.next_chunk().unwrap(), ['r', 'e', 'm']);         // N is inferred as 3
+    /// assert_eq!(iter.next_chunk().unwrap(), ['l', 'o']); // N is inferred as 2
+    /// assert_eq!(iter.next_chunk().unwrap(), ['r', 'e', 'm']); // N is inferred as 3
     /// assert_eq!(iter.next_chunk::<4>().unwrap_err().as_slice(), &[]); // N is explicitly 4
     /// ```
     ///
@@ -582,10 +582,8 @@ pub trait Iterator {
     /// let a = [1, 2, 3];
     /// let b = [2, 3, 4];
     ///
-    /// let mut zipped = zip(
-    ///     a.into_iter().map(|x| x * 2).skip(1),
-    ///     b.into_iter().map(|x| x * 2).skip(1),
-    /// );
+    /// let mut zipped =
+    ///     zip(a.into_iter().map(|x| x * 2).skip(1), b.into_iter().map(|x| x * 2).skip(1));
     ///
     /// assert_eq!(zipped.next(), Some((4, 6)));
     /// assert_eq!(zipped.next(), Some((6, 8)));
@@ -598,11 +596,7 @@ pub trait Iterator {
     /// # let a = [1, 2, 3];
     /// # let b = [2, 3, 4];
     /// #
-    /// let mut zipped = a
-    ///     .into_iter()
-    ///     .map(|x| x * 2)
-    ///     .skip(1)
-    ///     .zip(b.into_iter().map(|x| x * 2).skip(1));
+    /// let mut zipped = a.into_iter().map(|x| x * 2).skip(1).zip(b.into_iter().map(|x| x * 2).skip(1));
     /// #
     /// # assert_eq!(zipped.next(), Some((4, 6)));
     /// # assert_eq!(zipped.next(), Some((6, 8)));
@@ -636,12 +630,12 @@ pub trait Iterator {
     /// #![feature(iter_intersperse)]
     ///
     /// let mut a = [0, 1, 2].iter().intersperse(&100);
-    /// assert_eq!(a.next(), Some(&0));   // The first element from `a`.
+    /// assert_eq!(a.next(), Some(&0)); // The first element from `a`.
     /// assert_eq!(a.next(), Some(&100)); // The separator.
-    /// assert_eq!(a.next(), Some(&1));   // The next element from `a`.
+    /// assert_eq!(a.next(), Some(&1)); // The next element from `a`.
     /// assert_eq!(a.next(), Some(&100)); // The separator.
-    /// assert_eq!(a.next(), Some(&2));   // The last element from `a`.
-    /// assert_eq!(a.next(), None);       // The iterator is finished.
+    /// assert_eq!(a.next(), Some(&2)); // The last element from `a`.
+    /// assert_eq!(a.next(), None); // The iterator is finished.
     /// ```
     ///
     /// `intersperse` can be very useful to join an iterator's items using a common element:
@@ -688,12 +682,12 @@ pub trait Iterator {
     /// let v = [NotClone(0), NotClone(1), NotClone(2)];
     /// let mut it = v.into_iter().intersperse_with(|| NotClone(99));
     ///
-    /// assert_eq!(it.next(), Some(NotClone(0)));  // The first element from `v`.
+    /// assert_eq!(it.next(), Some(NotClone(0))); // The first element from `v`.
     /// assert_eq!(it.next(), Some(NotClone(99))); // The separator.
-    /// assert_eq!(it.next(), Some(NotClone(1)));  // The next element from `v`.
+    /// assert_eq!(it.next(), Some(NotClone(1))); // The next element from `v`.
     /// assert_eq!(it.next(), Some(NotClone(99))); // The separator.
-    /// assert_eq!(it.next(), Some(NotClone(2)));  // The last element from from `v`.
-    /// assert_eq!(it.next(), None);               // The iterator is finished.
+    /// assert_eq!(it.next(), Some(NotClone(2))); // The last element from from `v`.
+    /// assert_eq!(it.next(), None); // The iterator is finished.
     /// ```
     ///
     /// `intersperse_with` can be used in situations where the separator needs
@@ -800,10 +794,9 @@ pub trait Iterator {
     /// use std::sync::mpsc::channel;
     ///
     /// let (tx, rx) = channel();
-    /// (0..5).map(|x| x * 2 + 1)
-    ///       .for_each(move |x| tx.send(x).unwrap());
+    /// (0..5).map(|x| x * 2 + 1).for_each(move |x| tx.send(x).unwrap());
     ///
-    /// let v: Vec<_> =  rx.iter().collect();
+    /// let v: Vec<_> = rx.iter().collect();
     /// assert_eq!(v, vec![1, 3, 5, 7, 9]);
     /// ```
     ///
@@ -811,10 +804,11 @@ pub trait Iterator {
     /// might be preferable to keep a functional style with longer iterators:
     ///
     /// ```
-    /// (0..5).flat_map(|x| x * 100 .. x * 110)
-    ///       .enumerate()
-    ///       .filter(|&(i, x)| (i + x) % 3 == 0)
-    ///       .for_each(|(i, x)| println!("{i}:{x}"));
+    /// (0..5)
+    ///     .flat_map(|x| x * 100..x * 110)
+    ///     .enumerate()
+    ///     .filter(|&(i, x)| (i + x) % 3 == 0)
+    ///     .for_each(|(i, x)| println!("{i}:{x}"));
     /// ```
     #[inline]
     #[stable(feature = "iterator_for_each", since = "1.21.0")]
@@ -1185,10 +1179,7 @@ pub trait Iterator {
     /// let a = [1, 2, 3, 4];
     /// let mut iter = a.iter();
     ///
-    /// let result: Vec<i32> = iter.by_ref()
-    ///                            .take_while(|n| **n != 3)
-    ///                            .cloned()
-    ///                            .collect();
+    /// let result: Vec<i32> = iter.by_ref().take_while(|n| **n != 3).cloned().collect();
     ///
     /// assert_eq!(result, &[1, 2]);
     ///
@@ -1237,10 +1228,8 @@ pub trait Iterator {
     /// ```
     /// let a = [-1i32, 4, 0, 1];
     ///
-    /// let mut iter = a.iter()
-    ///                 .map(|x| 16i32.checked_div(*x))
-    ///                 .take_while(|x| x.is_some())
-    ///                 .map(|x| x.unwrap());
+    /// let mut iter =
+    ///     a.iter().map(|x| 16i32.checked_div(*x)).take_while(|x| x.is_some()).map(|x| x.unwrap());
     ///
     /// assert_eq!(iter.next(), Some(-16));
     /// assert_eq!(iter.next(), Some(4));
@@ -1268,9 +1257,7 @@ pub trait Iterator {
     /// let a = [1, 2, -3, 4];
     /// let mut iter = a.iter();
     ///
-    /// let result: Vec<u32> = iter.by_ref()
-    ///                            .map_while(|n| u32::try_from(*n).ok())
-    ///                            .collect();
+    /// let result: Vec<u32> = iter.by_ref().map_while(|n| u32::try_from(*n).ok()).collect();
     ///
     /// assert_eq!(result, &[1, 2]);
     ///
@@ -1450,9 +1437,7 @@ pub trait Iterator {
     /// let words = ["alpha", "beta", "gamma"];
     ///
     /// // chars() returns an iterator
-    /// let merged: String = words.iter()
-    ///                           .flat_map(|s| s.chars())
-    ///                           .collect();
+    /// let merged: String = words.iter().flat_map(|s| s.chars()).collect();
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     #[inline]
@@ -1488,10 +1473,7 @@ pub trait Iterator {
     /// let words = ["alpha", "beta", "gamma"];
     ///
     /// // chars() returns an iterator
-    /// let merged: String = words.iter()
-    ///                           .map(|s| s.chars())
-    ///                           .flatten()
-    ///                           .collect();
+    /// let merged: String = words.iter().map(|s| s.chars()).flatten().collect();
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     ///
@@ -1502,9 +1484,7 @@ pub trait Iterator {
     /// let words = ["alpha", "beta", "gamma"];
     ///
     /// // chars() returns an iterator
-    /// let merged: String = words.iter()
-    ///                           .flat_map(|s| s.chars())
-    ///                           .collect();
+    /// let merged: String = words.iter().flat_map(|s| s.chars()).collect();
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     ///
@@ -1568,11 +1548,7 @@ pub trait Iterator {
     ///         self.state = self.state + 1;
     ///
     ///         // if it's even, Some(i32), else None
-    ///         if val % 2 == 0 {
-    ///             Some(val)
-    ///         } else {
-    ///             None
-    ///         }
+    ///         if val % 2 == 0 { Some(val) } else { None }
     ///     }
     /// }
     ///
@@ -1623,15 +1599,13 @@ pub trait Iterator {
     /// let a = [1, 4, 2, 3];
     ///
     /// // this iterator sequence is complex.
-    /// let sum = a.iter()
-    ///     .cloned()
-    ///     .filter(|x| x % 2 == 0)
-    ///     .fold(0, |sum, i| sum + i);
+    /// let sum = a.iter().cloned().filter(|x| x % 2 == 0).fold(0, |sum, i| sum + i);
     ///
     /// println!("{sum}");
     ///
     /// // let's add some inspect() calls to investigate what's happening
-    /// let sum = a.iter()
+    /// let sum = a
+    ///     .iter()
     ///     .cloned()
     ///     .inspect(|x| println!("about to filter: {x}"))
     ///     .filter(|x| x % 2 == 0)
@@ -1746,9 +1720,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let doubled: Vec<i32> = a.iter()
-    ///                          .map(|&x| x * 2)
-    ///                          .collect();
+    /// let doubled: Vec<i32> = a.iter().map(|&x| x * 2).collect();
     ///
     /// assert_eq!(vec![2, 4, 6], doubled);
     /// ```
@@ -1796,10 +1768,7 @@ pub trait Iterator {
     /// ```
     /// let chars = ['g', 'd', 'k', 'k', 'n'];
     ///
-    /// let hello: String = chars.iter()
-    ///     .map(|&x| x as u8)
-    ///     .map(|x| (x + 1) as char)
-    ///     .collect();
+    /// let hello: String = chars.iter().map(|&x| x as u8).map(|x| (x + 1) as char).collect();
     ///
     /// assert_eq!("hello", hello);
     /// ```
@@ -1937,7 +1906,7 @@ pub trait Iterator {
     /// #![feature(iter_collect_into)]
     ///
     /// let a = [1, 2, 3];
-    /// let mut vec: Vec::<i32> = vec![0, 1];
+    /// let mut vec: Vec<i32> = vec![0, 1];
     ///
     /// a.iter().map(|&x| x * 2).collect_into(&mut vec);
     /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
@@ -1951,7 +1920,7 @@ pub trait Iterator {
     /// #![feature(iter_collect_into)]
     ///
     /// let a = [1, 2, 3];
-    /// let mut vec: Vec::<i32> = Vec::with_capacity(6);
+    /// let mut vec: Vec<i32> = Vec::with_capacity(6);
     ///
     /// a.iter().map(|&x| x * 2).collect_into(&mut vec);
     /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
@@ -1966,7 +1935,7 @@ pub trait Iterator {
     /// #![feature(iter_collect_into)]
     ///
     /// let a = [1, 2, 3];
-    /// let mut vec: Vec::<i32> = Vec::with_capacity(6);
+    /// let mut vec: Vec<i32> = Vec::with_capacity(6);
     ///
     /// let count = a.iter().collect_into(&mut vec).iter().count();
     ///
@@ -2006,9 +1975,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let (even, odd): (Vec<_>, Vec<_>) = a
-    ///     .into_iter()
-    ///     .partition(|n| n % 2 == 0);
+    /// let (even, odd): (Vec<_>, Vec<_>) = a.into_iter().partition(|n| n % 2 == 0);
     ///
     /// assert_eq!(even, vec![2]);
     /// assert_eq!(odd, vec![1, 3]);
@@ -2276,7 +2243,7 @@ pub trait Iterator {
     ///
     /// let r = (2..100).try_for_each(|x| {
     ///     if 323 % x == 0 {
-    ///         return ControlFlow::Break(x)
+    ///         return ControlFlow::Break(x);
     ///     }
     ///
     ///     ControlFlow::Continue(())
@@ -2371,9 +2338,7 @@ pub trait Iterator {
     ///
     /// let zero = "0".to_string();
     ///
-    /// let result = numbers.iter().fold(zero, |acc, &x| {
-    ///     format!("({acc} + {x})")
-    /// });
+    /// let result = numbers.iter().fold(zero, |acc, &x| format!("({acc} + {x})"));
     ///
     /// assert_eq!(result, "(((((0 + 1) + 2) + 3) + 4) + 5)");
     /// ```
@@ -2435,12 +2400,11 @@ pub trait Iterator {
     ///
     /// ```
     /// fn find_max<I>(iter: I) -> Option<I::Item>
-    ///     where I: Iterator,
-    ///           I::Item: Ord,
+    /// where
+    ///     I: Iterator,
+    ///     I::Item: Ord,
     /// {
-    ///     iter.reduce(|accum, item| {
-    ///         if accum >= item { accum } else { item }
-    ///     })
+    ///     iter.reduce(|accum, item| if accum >= item { accum } else { item })
     /// }
     /// let a = [10, 20, 5, -23, 0];
     /// let b: [u32; 0] = [];
@@ -2753,7 +2717,7 @@ pub trait Iterator {
     /// let a = ["1", "2", "lol", "NaN", "5"];
     ///
     /// let is_my_num = |s: &str, search: i32| -> Result<bool, std::num::ParseIntError> {
-    ///     Ok(s.parse::<i32>()?  == search)
+    ///     Ok(s.parse::<i32>()? == search)
     /// };
     ///
     /// let result = a.iter().try_find(|&&s| is_my_num(s, 2));
@@ -2856,7 +2820,6 @@ pub trait Iterator {
     ///
     /// // The returned index depends on iterator state
     /// assert_eq!(iter.position(|&x| x == 4), Some(0));
-    ///
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2946,13 +2909,7 @@ pub trait Iterator {
     /// Note that [`f32`]/[`f64`] doesn't implement [`Ord`] due to NaN being
     /// incomparable. You can work around this by using [`Iterator::reduce`]:
     /// ```
-    /// assert_eq!(
-    ///     [2.4, f32::NAN, 1.3]
-    ///         .into_iter()
-    ///         .reduce(f32::max)
-    ///         .unwrap(),
-    ///     2.4
-    /// );
+    /// assert_eq!([2.4, f32::NAN, 1.3].into_iter().reduce(f32::max).unwrap(), 2.4);
     /// ```
     ///
     /// # Examples
@@ -2984,13 +2941,7 @@ pub trait Iterator {
     /// Note that [`f32`]/[`f64`] doesn't implement [`Ord`] due to NaN being
     /// incomparable. You can work around this by using [`Iterator::reduce`]:
     /// ```
-    /// assert_eq!(
-    ///     [2.4, f32::NAN, 1.3]
-    ///         .into_iter()
-    ///         .reduce(f32::min)
-    ///         .unwrap(),
-    ///     1.3
-    /// );
+    /// assert_eq!([2.4, f32::NAN, 1.3].into_iter().reduce(f32::min).unwrap(), 1.3);
     /// ```
     ///
     /// # Examples
@@ -3523,10 +3474,7 @@ pub trait Iterator {
     /// let xs = [1.0, 2.0, 3.0, 4.0];
     /// let ys = [1.0, 4.0, 9.0, 16.0];
     ///
-    /// assert_eq!(
-    ///     xs.iter().partial_cmp_by(&ys, |&x, &y| x.partial_cmp(&y)),
-    ///     Some(Ordering::Less)
-    /// );
+    /// assert_eq!(xs.iter().partial_cmp_by(&ys, |&x, &y| x.partial_cmp(&y)), Some(Ordering::Less));
     /// assert_eq!(
     ///     xs.iter().partial_cmp_by(&ys, |&x, &y| (x * x).partial_cmp(&y)),
     ///     Some(Ordering::Equal)

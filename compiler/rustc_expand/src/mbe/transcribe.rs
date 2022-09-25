@@ -66,7 +66,9 @@ impl<'a> Iterator for Frame<'a> {
 ///
 /// ```rust
 /// macro_rules! foo {
-///     ($id:ident) => { println!("{}", stringify!($id)); }
+///     ($id:ident) => {
+///         println!("{}", stringify!($id));
+///     };
 /// }
 ///
 /// foo!(bar);

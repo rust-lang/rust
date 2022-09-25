@@ -712,7 +712,9 @@ impl SyntaxContext {
     ///
     /// ```rust
     /// #![feature(decl_macro)]
-    /// mod foo { pub fn f() {} } // `f`'s `SyntaxContext` is empty.
+    /// mod foo {
+    ///     pub fn f() {}
+    /// } // `f`'s `SyntaxContext` is empty.
     /// m!(f);
     /// macro m($f:ident) {
     ///     mod bar {
@@ -720,12 +722,15 @@ impl SyntaxContext {
     ///         pub fn $f() {} // `$f`'s `SyntaxContext` is empty.
     ///     }
     ///     foo::f(); // `f`'s `SyntaxContext` has a single `ExpnId` from `m`
+    ///     //
     ///     //^ Since `mod foo` is outside this expansion, `adjust` removes the mark from `f`,
     ///     //| and it resolves to `::foo::f`.
     ///     bar::f(); // `f`'s `SyntaxContext` has a single `ExpnId` from `m`
+    ///     //
     ///     //^ Since `mod bar` not outside this expansion, `adjust` does not change `f`,
     ///     //| and it resolves to `::bar::f`.
     ///     bar::$f(); // `f`'s `SyntaxContext` is empty.
+    ///     //
     ///     //^ Since `mod bar` is not outside this expansion, `adjust` does not change `$f`,
     ///     //| and it resolves to `::bar::$f`.
     /// }

@@ -1556,7 +1556,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let name = path[path.len() - 1].ident.as_str();
         // Common Java types
         Some(match name {
-            "byte" => sym::u8, // In Java, bytes are signed, but in practice one almost always wants unsigned bytes.
+            "byte" => sym::u8, /* In Java, bytes are signed, but in practice one almost always wants unsigned bytes. */
             "short" => sym::i16,
             "Bool" => sym::bool,
             "Boolean" => sym::bool,

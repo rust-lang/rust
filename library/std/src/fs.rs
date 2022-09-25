@@ -64,8 +64,8 @@ use crate::time::SystemTime;
 ///
 /// ```no_run
 /// use std::fs::File;
-/// use std::io::BufReader;
 /// use std::io::prelude::*;
+/// use std::io::BufReader;
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let file = File::open("foo.txt")?;
@@ -174,11 +174,7 @@ pub struct DirEntry(fs_imp::DirEntry);
 /// ```no_run
 /// use std::fs::OpenOptions;
 ///
-/// let file = OpenOptions::new()
-///             .read(true)
-///             .write(true)
-///             .create(true)
-///             .open("foo.txt");
+/// let file = OpenOptions::new().read(true).write(true).create(true).open("foo.txt");
 /// ```
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -275,9 +271,9 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// # Examples
 ///
 /// ```no_run
+/// use std::error::Error;
 /// use std::fs;
 /// use std::net::SocketAddr;
-/// use std::error::Error;
 ///
 /// fn main() -> Result<(), Box<dyn Error>> {
 ///     let foo: SocketAddr = fs::read_to_string("address.txt")?.parse()?;
@@ -574,8 +570,8 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use std::io::SeekFrom;
     /// use std::io::prelude::*;
+    /// use std::io::SeekFrom;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut file = File::open("foo.txt")?;
@@ -659,9 +655,7 @@ impl File {
     ///
     ///     let src = fs::metadata("src")?;
     ///     let dest = File::options().write(true).open("dest")?;
-    ///     let times = FileTimes::new()
-    ///         .set_accessed(src.accessed()?)
-    ///         .set_modified(src.modified()?);
+    ///     let times = FileTimes::new().set_accessed(src.accessed()?).set_modified(src.modified()?);
     ///     dest.set_times(times)?;
     ///     Ok(())
     /// }
@@ -999,9 +993,7 @@ impl OpenOptions {
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().write(true)
-    ///                              .create_new(true)
-    ///                              .open("foo.txt");
+    /// let file = OpenOptions::new().write(true).create_new(true).open("foo.txt");
     /// ```
     #[stable(feature = "expand_open_options2", since = "1.9.0")]
     pub fn create_new(&mut self, create_new: bool) -> &mut Self {
@@ -1149,7 +1141,6 @@ impl Metadata {
     /// Returns `true` if this metadata is for a symbolic link.
     ///
     /// # Examples
-    ///
     #[cfg_attr(unix, doc = "```no_run")]
     #[cfg_attr(not(unix), doc = "```ignore")]
     /// use std::fs;
@@ -1891,7 +1882,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// use std::fs;
 ///
 /// fn main() -> std::io::Result<()> {
-///     fs::copy("foo.txt", "bar.txt")?;  // Copy foo.txt to bar.txt
+///     fs::copy("foo.txt", "bar.txt")?; // Copy foo.txt to bar.txt
 ///     Ok(())
 /// }
 /// ```
@@ -2247,8 +2238,8 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Examples
 ///
 /// ```
-/// use std::io;
 /// use std::fs::{self, DirEntry};
+/// use std::io;
 /// use std::path::Path;
 ///
 /// // one possible implementation of walking a directory only visiting files
@@ -2375,9 +2366,7 @@ impl DirBuilder {
     /// use std::fs::{self, DirBuilder};
     ///
     /// let path = "/tmp/foo/bar/baz";
-    /// DirBuilder::new()
-    ///     .recursive(true)
-    ///     .create(path).unwrap();
+    /// DirBuilder::new().recursive(true).create(path).unwrap();
     ///
     /// assert!(fs::metadata(path).unwrap().is_dir());
     /// ```
@@ -2443,7 +2432,10 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// #![feature(fs_try_exists)]
 /// use std::fs;
 ///
-/// assert!(!fs::try_exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
+/// assert!(
+///     !fs::try_exists("does_not_exist.txt")
+///         .expect("Can't check existence of file does_not_exist.txt")
+/// );
 /// assert!(fs::try_exists("/root/secret_file.txt").is_err());
 /// ```
 ///

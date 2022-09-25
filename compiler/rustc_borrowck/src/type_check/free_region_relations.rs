@@ -260,12 +260,12 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 // Note: we need this in examples like
                 // ```
                 // trait Foo {
-                //   type Bar;
-                //   fn foo(&self) -> &Self::Bar;
+                //     type Bar;
+                //     fn foo(&self) -> &Self::Bar;
                 // }
                 // impl Foo for () {
-                //   type Bar = ();
-                //   fn foo(&self) -> &() {}
+                //     type Bar = ();
+                //     fn foo(&self) -> &() {}
                 // }
                 // ```
                 // Both &Self::Bar and &() are WF

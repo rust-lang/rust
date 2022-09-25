@@ -529,7 +529,6 @@ impl<T> Vec<T> {
     /// use std::mem;
     ///
     /// let v = vec![1, 2, 3];
-    ///
     // FIXME Update this when vec_into_raw_parts is stabilized
     /// // Prevent running `v`'s destructor so we are in complete control
     /// // of the allocation.
@@ -688,7 +687,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// v.push(1);
     /// v.push(2);
     /// v.push(3);
-    ///
     // FIXME Update this when vec_into_raw_parts is stabilized
     /// // Prevent running `v`'s destructor so we are in complete control
     /// // of the allocation.
@@ -1284,9 +1282,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// the inner vectors were not freed prior to the `set_len` call:
     ///
     /// ```
-    /// let mut vec = vec![vec![1, 0, 0],
-    ///                    vec![0, 1, 0],
-    ///                    vec![0, 0, 1]];
+    /// let mut vec = vec![vec![1, 0, 0], vec![0, 1, 0], vec![0, 0, 1]];
     /// // SAFETY:
     /// // 1. `old_len..0` is empty so no elements need to be initialized.
     /// // 2. `0 <= capacity` always holds whatever `capacity` is.
@@ -1505,11 +1501,13 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// ```
     /// let mut vec = vec![1, 2, 3, 4];
-    /// vec.retain_mut(|x| if *x <= 3 {
-    ///     *x += 1;
-    ///     true
-    /// } else {
-    ///     false
+    /// vec.retain_mut(|x| {
+    ///     if *x <= 3 {
+    ///         *x += 1;
+    ///         true
+    ///     } else {
+    ///         false
+    ///     }
     /// });
     /// assert_eq!(vec, [2, 3, 4]);
     /// ```
@@ -2043,7 +2041,10 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// let mut vec = vec![];
     /// let mut p = 1;
-    /// vec.resize_with(4, || { p *= 2; p });
+    /// vec.resize_with(4, || {
+    ///     p *= 2;
+    ///     p
+    /// });
     /// assert_eq!(vec, [2, 4, 8, 16]);
     /// ```
     #[cfg(not(no_global_oom_handling))]

@@ -304,7 +304,7 @@ where
         // Not using layout method because that works with usize, and does not work with slices
         // (that have count 0 in their layout).
         let from_offset = match base.layout.fields {
-            abi::FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
+            abi::FieldsShape::Array { stride, .. } => stride * from, /* `Size` multiplication is checked */
             _ => {
                 span_bug!(self.cur_span(), "unexpected layout of index access: {:#?}", base.layout)
             }

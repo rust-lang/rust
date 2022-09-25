@@ -172,7 +172,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val =
                     self.tcx.const_eval_global_id(self.param_env, gid, Some(self.tcx.span))?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
-                self.copy_op(&val, dest, /*allow_transmute*/ false)?;
+                self.copy_op(&val, dest, /* allow_transmute */ false)?;
             }
 
             sym::ctpop
@@ -216,7 +216,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     _ => bug!(),
                 };
                 self.binop_with_overflow(
-                    bin_op, /*force_overflow_checks*/ true, &lhs, &rhs, dest,
+                    bin_op, /* force_overflow_checks */ true, &lhs, &rhs, dest,
                 )?;
             }
             sym::saturating_add | sym::saturating_sub => {
@@ -286,7 +286,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(result, dest)?;
             }
             sym::copy => {
-                self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
+                self.copy_intrinsic(&args[0], &args[1], &args[2], /* nonoverlapping */ false)?;
             }
             sym::write_bytes => {
                 self.write_bytes_intrinsic(&args[0], &args[1], &args[2])?;
@@ -416,7 +416,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             sym::transmute => {
-                self.copy_op(&args[0], dest, /*allow_transmute*/ true)?;
+                self.copy_op(&args[0], dest, /* allow_transmute */ true)?;
             }
             sym::assert_inhabited | sym::assert_zero_valid | sym::assert_uninit_valid => {
                 let ty = instance.substs.type_at(0);
@@ -484,7 +484,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     } else {
                         self.mplace_index(&input, i)?.into()
                     };
-                    self.copy_op(&value, &place.into(), /*allow_transmute*/ false)?;
+                    self.copy_op(&value, &place.into(), /* allow_transmute */ false)?;
                 }
             }
             sym::simd_extract => {
@@ -499,12 +499,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.copy_op(
                     &self.mplace_index(&input, index)?.into(),
                     dest,
-                    /*allow_transmute*/ false,
+                    /* allow_transmute */ false,
                 )?;
             }
             sym::likely | sym::unlikely | sym::black_box => {
                 // These just return their argument
-                self.copy_op(&args[0], dest, /*allow_transmute*/ false)?;
+                self.copy_op(&args[0], dest, /* allow_transmute */ false)?;
             }
             sym::raw_eq => {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;

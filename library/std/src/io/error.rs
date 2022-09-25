@@ -343,7 +343,6 @@ pub enum ErrorKind {
 
     // ErrorKinds which are primarily categorisations for OS error
     // codes should be added above.
-    //
     /// An error returned when an operation could not be completed because an
     /// "end of file" was reached prematurely.
     ///
@@ -361,7 +360,6 @@ pub enum ErrorKind {
     // "Unusual" error kinds which do not correspond simply to (sets
     // of) OS error codes, should be added just above this comment.
     // `Other` and `Uncategorised` should remain at the end:
-    //
     /// A custom error that does not fall under any other I/O error kind.
     ///
     /// This can be used to construct your own [`Error`]s that do not match any
@@ -704,9 +702,9 @@ impl Error {
     /// # Examples
     ///
     /// ```
+    /// use std::fmt::Display;
     /// use std::io::{Error, ErrorKind};
     /// use std::{error, fmt};
-    /// use std::fmt::Display;
     ///
     /// #[derive(Debug)]
     /// struct MyError {
@@ -715,9 +713,7 @@ impl Error {
     ///
     /// impl MyError {
     ///     fn new() -> MyError {
-    ///         MyError {
-    ///             v: "oh no!".to_string()
-    ///         }
+    ///         MyError { v: "oh no!".to_string() }
     ///     }
     ///
     ///     fn change_message(&mut self, new_message: &str) {
@@ -821,9 +817,9 @@ impl Error {
     /// ```
     /// #![feature(io_error_downcast)]
     ///
+    /// use std::error::Error;
     /// use std::fmt;
     /// use std::io;
-    /// use std::error::Error;
     ///
     /// #[derive(Debug)]
     /// enum E {
@@ -832,7 +828,7 @@ impl Error {
     /// }
     ///
     /// impl fmt::Display for E {
-    ///    // ...
+    ///     // ...
     /// #    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     /// #        todo!()
     /// #    }
@@ -841,9 +837,7 @@ impl Error {
     ///
     /// impl From<io::Error> for E {
     ///     fn from(err: io::Error) -> E {
-    ///         err.downcast::<E>()
-    ///             .map(|b| *b)
-    ///             .unwrap_or_else(E::Io)
+    ///         err.downcast::<E>().map(|b| *b).unwrap_or_else(E::Io)
     ///     }
     /// }
     /// ```

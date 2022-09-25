@@ -24,7 +24,7 @@ pub trait InferCtxtExt<'tcx> {
     // Helper function that canonicalizes and runs the query. If an
     // overflow results, we re-run it in the local context so we can
     // report a nice error.
-    /*crate*/
+    /* crate */
     fn evaluate_obligation_no_overflow(
         &self,
         obligation: &PredicateObligation<'tcx>,

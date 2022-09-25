@@ -66,7 +66,7 @@
 ///
 /// // and we'll implement FromIterator
 /// impl FromIterator<i32> for MyCollection {
-///     fn from_iter<I: IntoIterator<Item=i32>>(iter: I) -> Self {
+///     fn from_iter<I: IntoIterator<Item = i32>>(iter: I) -> Self {
 ///         let mut c = MyCollection::new();
 ///
 ///         for i in iter {
@@ -219,10 +219,7 @@ pub trait FromIterator<A>: Sized {
 ///     T: IntoIterator,
 ///     T::Item: std::fmt::Debug,
 /// {
-///     collection
-///         .into_iter()
-///         .map(|item| format!("{item:?}"))
-///         .collect()
+///     collection.into_iter().map(|item| format!("{item:?}")).collect()
 /// }
 /// ```
 #[rustc_diagnostic_item = "IntoIterator"]
@@ -317,12 +314,10 @@ impl<I: ~const Iterator> const IntoIterator for I {
 ///
 /// // since MyCollection has a list of i32s, we implement Extend for i32
 /// impl Extend<i32> for MyCollection {
-///
 ///     // This is a bit simpler with the concrete type signature: we can call
 ///     // extend on anything which can be turned into an Iterator which gives
 ///     // us i32s. Because we need i32s to put into MyCollection.
-///     fn extend<T: IntoIterator<Item=i32>>(&mut self, iter: T) {
-///
+///     fn extend<T: IntoIterator<Item = i32>>(&mut self, iter: T) {
 ///         // The implementation is very straightforward: loop through the
 ///         // iterator, and add() each element to ourselves.
 ///         for elem in iter {

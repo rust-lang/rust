@@ -648,7 +648,6 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
 ///   T. Granlund and P. Montgomery, “Division by Invariant Integers Using Multiplication”
 ///   in Proc. of the SIGPLAN94 Conference on Programming Language Design and
 ///   Implementation, 1994, pp. 61–72
-///
 fn udiv_1e19(n: u128) -> (u128, u64) {
     const DIV: u64 = 1e19 as u64;
     const FACTOR: u128 = 156927543384667019095894735580191660403;

@@ -407,8 +407,12 @@ impl<'tcx> InternalSubsts<'tcx> {
     /// For example given:
     ///
     /// ```no_run
-    /// trait X<S> { fn f<T>(); }
-    /// impl<U> X<U> for U { fn f<V>() {} }
+    /// trait X<S> {
+    ///     fn f<T>();
+    /// }
+    /// impl<U> X<U> for U {
+    ///     fn f<V>() {}
+    /// }
     /// ```
     ///
     /// * If `self` is `[Self, S, T]`: the identity substs of `f` in the trait.
@@ -762,7 +766,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
     /// As a second example, consider this twist:
     ///
     /// ```
-    /// type FuncTuple<A> = (A,fn(A));
+    /// type FuncTuple<A> = (A, fn(A));
     /// type MetaFuncTuple = for<'a> fn(FuncTuple<&'a i32>);
     /// ```
     ///

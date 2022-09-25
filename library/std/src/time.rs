@@ -70,16 +70,16 @@ pub use core::time::FromFloatSecsError;
 /// Example:
 ///
 /// ```no_run
-/// use std::time::{Duration, Instant};
 /// use std::thread::sleep;
+/// use std::time::{Duration, Instant};
 ///
 /// fn main() {
-///    let now = Instant::now();
+///     let now = Instant::now();
 ///
-///    // we sleep for 2 seconds
-///    sleep(Duration::new(2, 0));
-///    // it prints '2'
-///    println!("{}", now.elapsed().as_secs());
+///     // we sleep for 2 seconds
+///     sleep(Duration::new(2, 0));
+///     // it prints '2'
+///     println!("{}", now.elapsed().as_secs());
 /// }
 /// ```
 ///
@@ -92,7 +92,7 @@ pub use core::time::FromFloatSecsError;
 /// the following snippet is fine on Linux but panics on macOS:
 ///
 /// ```no_run
-/// use std::time::{Instant, Duration};
+/// use std::time::{Duration, Instant};
 ///
 /// let now = Instant::now();
 /// let max_seconds = u64::MAX / 1_000_000_000;
@@ -148,7 +148,6 @@ pub use core::time::FromFloatSecsError;
 /// [`elapsed`]: Instant::elapsed
 /// [`sub`]: Instant::sub
 /// [`checked_duration_since`]: Instant::checked_duration_since
-///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct Instant(time::Instant);
@@ -179,24 +178,24 @@ pub struct Instant(time::Instant);
 /// Example:
 ///
 /// ```no_run
-/// use std::time::{Duration, SystemTime};
 /// use std::thread::sleep;
+/// use std::time::{Duration, SystemTime};
 ///
 /// fn main() {
-///    let now = SystemTime::now();
+///     let now = SystemTime::now();
 ///
-///    // we sleep for 2 seconds
-///    sleep(Duration::new(2, 0));
-///    match now.elapsed() {
-///        Ok(elapsed) => {
-///            // it prints '2'
-///            println!("{}", elapsed.as_secs());
-///        }
-///        Err(e) => {
-///            // an error occurred!
-///            println!("Error: {e:?}");
-///        }
-///    }
+///     // we sleep for 2 seconds
+///     sleep(Duration::new(2, 0));
+///     match now.elapsed() {
+///         Ok(elapsed) => {
+///             // it prints '2'
+///             println!("{}", elapsed.as_secs());
+///         }
+///         Err(e) => {
+///             // an error occurred!
+///             println!("Error: {e:?}");
+///         }
+///     }
 /// }
 /// ```
 ///
@@ -290,8 +289,8 @@ impl Instant {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::time::{Duration, Instant};
     /// use std::thread::sleep;
+    /// use std::time::{Duration, Instant};
     ///
     /// let now = Instant::now();
     /// sleep(Duration::new(1, 0));
@@ -316,8 +315,8 @@ impl Instant {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::time::{Duration, Instant};
     /// use std::thread::sleep;
+    /// use std::time::{Duration, Instant};
     ///
     /// let now = Instant::now();
     /// sleep(Duration::new(1, 0));
@@ -337,8 +336,8 @@ impl Instant {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::time::{Duration, Instant};
     /// use std::thread::sleep;
+    /// use std::time::{Duration, Instant};
     ///
     /// let now = Instant::now();
     /// sleep(Duration::new(1, 0));
@@ -516,8 +515,7 @@ impl SystemTime {
     ///
     /// let sys_time = SystemTime::now();
     /// let new_sys_time = SystemTime::now();
-    /// let difference = new_sys_time.duration_since(sys_time)
-    ///     .expect("Clock may have gone backwards");
+    /// let difference = new_sys_time.duration_since(sys_time).expect("Clock may have gone backwards");
     /// println!("{difference:?}");
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]

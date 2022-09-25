@@ -282,11 +282,13 @@ impl DefKind {
 /// an associated `Res`:
 ///
 /// ```
-/// fn str_to_string(s: & /* Res */ str) -> /* Res */ String {
-///     /* Res */ String::from(/* Res */ s)
+/// fn str_to_string(s: & /* Res */ str) -> String {
+///     /* Res */
+///     String::from(/* Res */ s)
 /// }
 ///
-/// /* Res */ str_to_string("hello");
+/// /* Res */
+/// str_to_string("hello");
 /// ```
 ///
 /// The associated `Res`s will be:
@@ -338,7 +340,7 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// impl Foo for Bar {
     ///     fn foo() -> Box<Self> {
-    ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
+    ///         // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
     ///         let _: Self;
     ///         // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
     ///
@@ -355,10 +357,16 @@ pub enum Res<Id = hir::HirId> {
     /// any generic parameters to allow the following with `min_const_generics`:
     /// ```
     /// # struct Foo;
-    /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
+    /// impl Foo {
+    ///     fn test() -> [u8; std::mem::size_of::<Self>()] {
+    ///         todo!()
+    ///     }
+    /// }
     ///
     /// struct Bar([u8; baz::<Self>()]);
-    /// const fn baz<T>() -> usize { 10 }
+    /// const fn baz<T>() -> usize {
+    ///     10
+    /// }
     /// ```
     /// We do however allow `Self` in repeat expression even if it is generic to not break code
     /// which already works on stable while causing the `const_evaluatable_unchecked` future compat

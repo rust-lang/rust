@@ -611,7 +611,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // ```
                     // let foo = (0, 1);
                     // let c = || {
-                    //    let (v1, v2) = foo;
+                    //     let (v1, v2) = foo;
                     // };
                     // ```
                     if let Ok(match_pair_resolved) = initializer.clone().try_upvars_resolved(self) {
@@ -1487,10 +1487,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// ```
     /// # let (x, y, z) = (true, true, true);
     /// match (x, y, z) {
-    ///     (true , _    , true ) => true,  // (0)
-    ///     (_    , true , _    ) => true,  // (1)
-    ///     (false, false, _    ) => false, // (2)
-    ///     (true , _    , false) => false, // (3)
+    ///     (true, _, true) => true,    // (0)
+    ///     (_, true, _) => true,       // (1)
+    ///     (false, false, _) => false, // (2)
+    ///     (true, _, false) => false,  // (3)
     /// }
     /// # ;
     /// ```
@@ -1909,7 +1909,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //     => { let tmp2 = place; feed(tmp2) }, ... }
         //
         // And an input like:
-        //
         // ```
         // let place = Foo::new();
         // match place { ref mut foo if inspect(foo)
@@ -1917,7 +1916,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // ```
         //
         // will be treated as if it were really something like:
-        //
         // ```
         // let place = Foo::new();
         // match place { Foo { .. } if { let tmp1 = & &mut place; inspect(*tmp1) }
@@ -2047,9 +2045,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // would yield an `arm_block` something like:
             //
             // ```
-            // StorageLive(_4);        // _4 is `x`
-            // _4 = &mut (_1.0: i32);  // this is handling `(mut x, 1)` case
-            // _4 = &mut (_1.1: i32);  // this is handling `(2, mut x)` case
+            // StorageLive(_4); // _4 is `x`
+            // _4 = &mut (_1.0: i32); // this is handling `(mut x, 1)` case
+            // _4 = &mut (_1.1: i32); // this is handling `(2, mut x)` case
             // ```
             //
             // and that is clearly not correct.

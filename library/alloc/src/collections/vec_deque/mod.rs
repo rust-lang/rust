@@ -1236,13 +1236,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// let mut deque: VecDeque<_> = [1, 2, 3].into();
     /// for v in deque.range_mut(2..) {
-    ///   *v *= 2;
+    ///     *v *= 2;
     /// }
     /// assert_eq!(deque, [1, 2, 6]);
     ///
     /// // A full range covers all contents
     /// for v in deque.range_mut(..) {
-    ///   *v *= 2;
+    ///     *v *= 2;
     /// }
     /// assert_eq!(deque, [2, 4, 12]);
     /// ```
@@ -2219,11 +2219,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// let mut buf = VecDeque::new();
     /// buf.extend(1..5);
-    /// buf.retain_mut(|x| if *x % 2 == 0 {
-    ///     *x += 1;
-    ///     true
-    /// } else {
-    ///     false
+    /// buf.retain_mut(|x| {
+    ///     if *x % 2 == 0 {
+    ///         *x += 1;
+    ///         true
+    ///     } else {
+    ///         false
+    ///     }
     /// });
     /// assert_eq!(buf, [3, 5]);
     /// ```
@@ -2301,7 +2303,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 10]);
     ///
     /// let mut state = 100;
-    /// buf.resize_with(5, || { state += 1; state });
+    /// buf.resize_with(5, || {
+    ///     state += 1;
+    ///     state
+    /// });
     /// assert_eq!(buf, [5, 10, 101, 102, 103]);
     /// ```
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
@@ -2617,8 +2622,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// let deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     ///
-    /// assert_eq!(deque.binary_search(&13),  Ok(9));
-    /// assert_eq!(deque.binary_search(&4),   Err(7));
+    /// assert_eq!(deque.binary_search(&13), Ok(9));
+    /// assert_eq!(deque.binary_search(&4), Err(7));
     /// assert_eq!(deque.binary_search(&100), Err(13));
     /// let r = deque.binary_search(&1);
     /// assert!(matches!(r, Ok(1..=4)));
@@ -2678,8 +2683,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// let deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     ///
-    /// assert_eq!(deque.binary_search_by(|x| x.cmp(&13)),  Ok(9));
-    /// assert_eq!(deque.binary_search_by(|x| x.cmp(&4)),   Err(7));
+    /// assert_eq!(deque.binary_search_by(|x| x.cmp(&13)), Ok(9));
+    /// assert_eq!(deque.binary_search_by(|x| x.cmp(&4)), Err(7));
     /// assert_eq!(deque.binary_search_by(|x| x.cmp(&100)), Err(13));
     /// let r = deque.binary_search_by(|x| x.cmp(&1));
     /// assert!(matches!(r, Ok(1..=4)));
@@ -2731,12 +2736,25 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let deque: VecDeque<_> = [(0, 0), (2, 1), (4, 1), (5, 1),
-    ///          (3, 1), (1, 2), (2, 3), (4, 5), (5, 8), (3, 13),
-    ///          (1, 21), (2, 34), (4, 55)].into();
+    /// let deque: VecDeque<_> = [
+    ///     (0, 0),
+    ///     (2, 1),
+    ///     (4, 1),
+    ///     (5, 1),
+    ///     (3, 1),
+    ///     (1, 2),
+    ///     (2, 3),
+    ///     (4, 5),
+    ///     (5, 8),
+    ///     (3, 13),
+    ///     (1, 21),
+    ///     (2, 34),
+    ///     (4, 55),
+    /// ]
+    /// .into();
     ///
-    /// assert_eq!(deque.binary_search_by_key(&13, |&(a, b)| b),  Ok(9));
-    /// assert_eq!(deque.binary_search_by_key(&4, |&(a, b)| b),   Err(7));
+    /// assert_eq!(deque.binary_search_by_key(&13, |&(a, b)| b), Ok(9));
+    /// assert_eq!(deque.binary_search_by_key(&4, |&(a, b)| b), Err(7));
     /// assert_eq!(deque.binary_search_by_key(&100, |&(a, b)| b), Err(13));
     /// let r = deque.binary_search_by_key(&1, |&(a, b)| b);
     /// assert!(matches!(r, Ok(1..=4)));

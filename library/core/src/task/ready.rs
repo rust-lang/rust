@@ -13,9 +13,9 @@ use core::task::Poll;
 /// # Examples
 ///
 /// ```
-/// use std::task::{ready, Context, Poll};
 /// use std::future::{self, Future};
 /// use std::pin::Pin;
+/// use std::task::{ready, Context, Poll};
 ///
 /// pub fn do_poll(cx: &mut Context<'_>) -> Poll<()> {
 ///     let mut fut = future::ready(42);

@@ -22,16 +22,8 @@
 //!     phone: u64,
 //! }
 //!
-//! let person1 = Person {
-//!     id: 5,
-//!     name: "Janet".to_string(),
-//!     phone: 555_666_7777,
-//! };
-//! let person2 = Person {
-//!     id: 5,
-//!     name: "Bob".to_string(),
-//!     phone: 555_666_7777,
-//! };
+//! let person1 = Person { id: 5, name: "Janet".to_string(), phone: 555_666_7777 };
+//! let person2 = Person { id: 5, name: "Bob".to_string(), phone: 555_666_7777 };
 //!
 //! assert!(calculate_hash(&person1) != calculate_hash(&person2));
 //!
@@ -63,16 +55,8 @@
 //!     }
 //! }
 //!
-//! let person1 = Person {
-//!     id: 5,
-//!     name: "Janet".to_string(),
-//!     phone: 555_666_7777,
-//! };
-//! let person2 = Person {
-//!     id: 5,
-//!     name: "Bob".to_string(),
-//!     phone: 555_666_7777,
-//! };
+//! let person1 = Person { id: 5, name: "Janet".to_string(), phone: 555_666_7777 };
+//! let person2 = Person { id: 5, name: "Bob".to_string(), phone: 555_666_7777 };
 //!
 //! assert_eq!(calculate_hash(&person1), calculate_hash(&person2));
 //!
@@ -688,14 +672,8 @@ pub trait BuildHasher {
     ///
     /// // Then later, in a `#[test]` for the type...
     /// let bh = std::collections::hash_map::RandomState::new();
-    /// assert_eq!(
-    ///     bh.hash_one(OrderAmbivalentPair(1, 2)),
-    ///     bh.hash_one(OrderAmbivalentPair(2, 1))
-    /// );
-    /// assert_eq!(
-    ///     bh.hash_one(OrderAmbivalentPair(10, 2)),
-    ///     bh.hash_one(&OrderAmbivalentPair(2, 10))
-    /// );
+    /// assert_eq!(bh.hash_one(OrderAmbivalentPair(1, 2)), bh.hash_one(OrderAmbivalentPair(2, 1)));
+    /// assert_eq!(bh.hash_one(OrderAmbivalentPair(10, 2)), bh.hash_one(&OrderAmbivalentPair(2, 10)));
     /// ```
     #[unstable(feature = "build_hasher_simple_hash_one", issue = "86161")]
     fn hash_one<T: Hash>(&self, x: T) -> u64
@@ -735,7 +713,7 @@ pub trait BuildHasher {
 /// impl Hasher for MyHasher {
 ///     fn write(&mut self, bytes: &[u8]) {
 ///         // Your hashing algorithm goes here!
-///        unimplemented!()
+///         unimplemented!()
 ///     }
 ///
 ///     fn finish(&self) -> u64 {

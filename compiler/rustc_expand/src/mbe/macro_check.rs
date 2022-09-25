@@ -13,7 +13,11 @@
 //! ## Meta-variables must not be free
 //!
 //! ```
-//! macro_rules! foo { () => { $x }; }
+//! macro_rules! foo {
+//!     () => {
+//!         $x
+//!     };
+//! }
 //! ```
 //!
 //! This check is also done at macro instantiation but only if the branch is taken.
@@ -21,7 +25,11 @@
 //! ## Meta-variables must repeat at least as many times as their binder
 //!
 //! ```
-//! macro_rules! foo { ($($x:tt)*) => { $x }; }
+//! macro_rules! foo {
+//!     ($($x:tt)*) => {
+//!         $x
+//!     };
+//! }
 //! ```
 //!
 //! This check is also done at macro instantiation but only if the branch is taken.
@@ -59,7 +67,17 @@
 //! a nested macro since it is not evaluated as code by `stringify!`.
 //!
 //! ```
-//! macro_rules! foo { () => { stringify!(macro_rules! bar { () => { $x }; }) }; }
+//! macro_rules! foo {
+//!     () => {
+//!         stringify!(
+//!             macro_rules! bar {
+//!                 () => {
+//!                     $x
+//!                 };
+//!             }
+//!         )
+//!     };
+//! }
 //! ```
 //!
 //! ## Examples of false negative
@@ -71,7 +89,11 @@
 //! of `bar` and would see the issue.
 //!
 //! ```
-//! macro_rules! foo { ($d:tt) => { macro_rules! bar { ($y:tt) => { $d z }; } }; }
+//! macro_rules! foo {
+//!     ($d:tt) => {
+//!         macro_rules! bar { ($y:tt) => { $d z }; }
+//!     };
+//! }
 //! ```
 //!
 //! # How it is checked

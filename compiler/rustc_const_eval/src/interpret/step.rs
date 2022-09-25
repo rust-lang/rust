@@ -163,12 +163,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Use(ref operand) => {
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
-                self.copy_op(&op, &dest, /*allow_transmute*/ false)?;
+                self.copy_op(&op, &dest, /* allow_transmute */ false)?;
             }
 
             CopyForDeref(ref place) => {
                 let op = self.eval_place_to_op(*place, Some(dest.layout))?;
-                self.copy_op(&op, &dest, /* allow_transmute*/ false)?;
+                self.copy_op(&op, &dest, /* allow_transmute */ false)?;
             }
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
@@ -185,7 +185,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
                 self.binop_with_overflow(
-                    bin_op, /*force_overflow_checks*/ false, &left, &right, &dest,
+                    bin_op, /* force_overflow_checks */ false, &left, &right, &dest,
                 )?;
             }
 
@@ -203,7 +203,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 for (field_index, operand) in operands.iter().enumerate() {
                     let op = self.eval_operand(operand, None)?;
                     let field_dest = self.place_field(&dest, field_index)?;
-                    self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
+                    self.copy_op(&op, &field_dest, /* allow_transmute */ false)?;
                 }
             }
 
@@ -219,7 +219,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     // Write the src to the first element.
                     let first = self.mplace_field(&dest, 0)?;
-                    self.copy_op(&src, &first.into(), /*allow_transmute*/ false)?;
+                    self.copy_op(&src, &first.into(), /* allow_transmute */ false)?;
 
                     // This is performance-sensitive code for big static/const arrays! So we
                     // avoid writing each operand individually and instead just make many copies
@@ -238,7 +238,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         first.layout.align.abi,
                         elem_size,
                         length - 1,
-                        /*nonoverlapping:*/ true,
+                        /* nonoverlapping: */ true,
                     )?;
                 }
             }

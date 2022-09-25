@@ -251,7 +251,7 @@ mod continue_keyword {}
 /// ```rust
 /// # #[allow(unused_imports)]
 /// pub(crate) use std::io::Error as IoError;
-/// pub(crate) enum CoolMarkerType { }
+/// pub(crate) enum CoolMarkerType {}
 /// pub struct PublicThing {
 ///     pub(crate) semi_secret_thing: bool,
 /// }
@@ -343,13 +343,10 @@ mod else_keyword {}
 /// enum ComplexEnum {
 ///     Nothing,
 ///     Something(u32),
-///     LotsOfThings {
-///         usual_struct_stuff: bool,
-///         blah: String,
-///     }
+///     LotsOfThings { usual_struct_stuff: bool, blah: String },
 /// }
 ///
-/// enum EmptyEnum { }
+/// enum EmptyEnum {}
 /// ```
 ///
 /// The first enum shown is the usual kind of enum you'd find in a C-style language. The second
@@ -454,9 +451,7 @@ mod false_keyword {}
 ///
 /// impl Thing {
 ///     pub fn new() -> Self {
-///         Self {
-///             foo: 42,
-///         }
+///         Self { foo: 42 }
 ///     }
 /// }
 /// ```
@@ -471,7 +466,8 @@ mod false_keyword {}
 /// }
 ///
 /// fn generic_where<T>(x: T) -> T
-///     where T: std::ops::Add<Output = T> + Copy
+/// where
+///     T: std::ops::Add<Output = T> + Copy,
 /// {
 ///     x + x + x
 /// }
@@ -551,7 +547,9 @@ mod fn_keyword {}
 ///         mut iter => loop {
 ///             match iter.next() {
 ///                 None => break,
-///                 Some(loop_variable) => { code(); },
+///                 Some(loop_variable) => {
+///                     code();
+///                 }
 ///             };
 ///         },
 ///     };
@@ -590,11 +588,7 @@ mod for_keyword {}
 ///     println!("everything's fine!");
 /// }
 ///
-/// let greeting = if rude {
-///     "sup nerd."
-/// } else {
-///     "hello, friend!"
-/// };
+/// let greeting = if rude { "sup nerd." } else { "hello, friend!" };
 ///
 /// if let Ok(x) = "123".parse::<i32>() {
 ///     println!("{} double that and you get {}!", greeting, x * 2);
@@ -619,10 +613,10 @@ mod for_keyword {}
 ///     Some(x) => {
 ///         // code
 ///         # let _ = x;
-///     },
+///     }
 ///     _ => {
 ///         // something else
-///     },
+///     }
 /// }
 /// ```
 ///
@@ -766,10 +760,7 @@ mod in_keyword {}
 ///     b: u64,
 /// }
 ///
-/// let Example { a, b: _ } = Example {
-///     a: true,
-///     b: 10004,
-/// };
+/// let Example { a, b: _ } = Example { a: true, b: 10004 };
 /// assert!(a);
 /// ```
 ///
@@ -851,7 +842,7 @@ mod let_keyword {}
 ///         counter = None;
 ///     } else {
 ///         println!("{i}");
-///         counter = Some (i + 1);
+///         counter = Some(i + 1);
 ///     }
 /// }
 /// ```
@@ -949,7 +940,7 @@ mod loop_keyword {}
 /// enum Outer {
 ///     Double(Option<u8>, Option<String>),
 ///     Single(Option<u8>),
-///     Empty
+///     Empty,
 /// }
 ///
 /// let get_inner = Outer::Double(None, Some(String::new()));
@@ -1027,9 +1018,7 @@ mod mod_keyword {}
 /// ```rust
 /// let data = vec![1, 2, 3];
 ///
-/// std::thread::spawn(move || {
-///     println!("captured {data:?} by value")
-/// }).join().unwrap();
+/// std::thread::spawn(move || println!("captured {data:?} by value")).join().unwrap();
 ///
 /// // data was moved to the spawned thread, so we cannot use it here
 /// ```
@@ -1483,7 +1472,7 @@ mod static_keyword {}
 /// struct Regular {
 ///     field1: f32,
 ///     field2: String,
-///     pub field3: bool
+///     pub field3: bool,
 /// }
 ///
 /// struct Tuple(u32, String);
@@ -1516,11 +1505,7 @@ mod static_keyword {}
 ///
 /// ```rust
 /// # struct Foo { field1: f32, field2: String, etc: bool }
-/// let example = Foo {
-///     field1: 42.0,
-///     field2: "blah".to_string(),
-///     etc: true,
-/// };
+/// let example = Foo { field1: 42.0, field2: "blah".to_string(), etc: true };
 /// ```
 ///
 /// It's only possible to directly instantiate a struct using struct literal syntax when all of its
@@ -1539,10 +1524,7 @@ mod static_keyword {}
 ///
 /// impl User {
 ///     pub fn new(name: String) -> Self {
-///         Self {
-///             name,
-///             admin: false,
-///         }
+///         Self { name, admin: false }
 ///     }
 /// }
 /// ```
@@ -1554,10 +1536,7 @@ mod static_keyword {}
 /// ```rust
 /// # struct Foo { field1: String, field2: () }
 /// # let thing = Foo { field1: "".to_string(), field2: () };
-/// let updated_thing = Foo {
-///     field1: "a new value".to_string(),
-///     ..thing
-/// };
+/// let updated_thing = Foo { field1: "a new value".to_string(), ..thing };
 /// ```
 ///
 /// Tuple structs are instantiated in the same way as tuples themselves, except with the struct's
@@ -1687,7 +1666,10 @@ mod super_keyword {}
 ///
 /// ```rust
 /// # #![allow(dead_code)]
-/// fn debug_iter<I: Iterator>(it: I) where I::Item: std::fmt::Debug {
+/// fn debug_iter<I: Iterator>(it: I)
+/// where
+///     I::Item: std::fmt::Debug,
+/// {
 ///     for elem in it {
 ///         println!("{elem:#?}");
 ///     }
@@ -2000,7 +1982,9 @@ mod type_keyword {}
 /// let b = &a as *const _;
 /// // SAFETY: `a` has not been dropped and references are always aligned,
 /// // so `b` is a valid address.
-/// unsafe { assert_eq!(*b, deref_unchecked(b)); };
+/// unsafe {
+///     assert_eq!(*b, deref_unchecked(b));
+/// };
 /// ```
 ///
 /// Traits marked as `unsafe` must be [`impl`]emented using `unsafe impl`. This

@@ -326,7 +326,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
         // specifically.)
-        self.copy_op(&caller_arg, callee_arg, /*allow_transmute*/ true)
+        self.copy_op(&caller_arg, callee_arg, /* allow_transmute */ true)
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.
@@ -534,7 +534,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let receiver_place = loop {
                     match receiver.layout.ty.kind() {
                         ty::Ref(..) | ty::RawPtr(..) => break self.deref_operand(&receiver)?,
-                        ty::Dynamic(..) => break receiver.assert_mem_place(), // no immediate unsized values
+                        ty::Dynamic(..) => break receiver.assert_mem_place(), /* no immediate unsized values */
                         _ => {
                             // Not there yet, search for the only non-ZST field.
                             let mut non_zst_field = None;

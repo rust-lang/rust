@@ -1336,12 +1336,16 @@ pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
 /// ```rust
 /// struct A;
 /// impl A {
-///     fn foo<const N: usize>(&self) -> [u8; N] { [0; N] }
+///     fn foo<const N: usize>(&self) -> [u8; N] {
+///         [0; N]
+///     }
 ///     //           ^ const parameter
 /// }
 /// struct B;
 /// impl B {
-///     fn foo<const M: u8>(&self) -> usize { 42 }
+///     fn foo<const M: u8>(&self) -> usize {
+///         42
+///     }
 ///     //           ^ const parameter
 /// }
 ///

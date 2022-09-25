@@ -864,7 +864,6 @@ impl AttributesExt for [ast::Attribute] {
     }
 
     /// Returns whether the first doc-comment is an inner attribute.
-    ///
     //// If there are no doc-comments, return true.
     /// FIXME(#78591): Support both inner and outer attributes on the same item.
     fn inner_docs(&self) -> bool {
@@ -2506,7 +2505,9 @@ impl TypeBinding {
 /// ```
 /// type PrivAlias<T> = Vec<T>;
 ///
-/// pub fn public_fn() -> PrivAlias<i32> { vec![] }
+/// pub fn public_fn() -> PrivAlias<i32> {
+///     vec![]
+/// }
 /// ```
 ///
 /// `public_fn`'s docs will show it as returning `Vec<i32>`, since `PrivAlias` is private.

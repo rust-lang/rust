@@ -239,7 +239,7 @@ struct MonoItems<'tcx> {
 
     // The collected mono items. The bool field in each element
     // indicates whether this element should be inlined.
-    items: Vec<(Spanned<MonoItem<'tcx>>, bool /*inlined*/)>,
+    items: Vec<(Spanned<MonoItem<'tcx>>, bool /* inlined */)>,
 }
 
 impl<'tcx> MonoItems<'tcx> {
@@ -1038,9 +1038,9 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
 ///
 /// ```rust
 /// struct ComplexStruct<T: ?Sized> {
-///    a: u32,
-///    b: f64,
-///    c: T
+///     a: u32,
+///     b: f64,
+///     c: T,
 /// }
 /// ```
 ///

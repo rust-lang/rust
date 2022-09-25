@@ -122,7 +122,7 @@ enum Scope<'a> {
 #[derive(Clone, Copy)]
 enum ScopeSet<'a> {
     /// All scopes with the given namespace.
-    All(Namespace, /*is_import*/ bool),
+    All(Namespace, /* is_import */ bool),
     /// Crate root, then extern prelude (used for mixed 2015-2018 mode in macros).
     AbsolutePath(Namespace),
     /// All scopes with macro namespace and the given macro kind restriction.
@@ -409,7 +409,8 @@ enum ModuleKind {
     /// ```
     /// fn main() {
     ///     fn f() {} // (1)
-    ///     { // This is an anonymous module
+    ///     {
+    ///         // This is an anonymous module
     ///         f(); // This resolves to (2) as we are inside the block.
     ///         fn f() {} // (2)
     ///     }

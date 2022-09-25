@@ -104,7 +104,6 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///
     /// ```
     /// #![feature(array_into_iter_constructors)]
-    ///
     /// #![feature(maybe_uninit_array_assume_init)]
     /// #![feature(maybe_uninit_uninit_array)]
     /// use std::array::IntoIter;
@@ -195,11 +194,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// use std::array::IntoIter;
     ///
     /// pub fn get_bytes(b: bool) -> IntoIter<i8, 4> {
-    ///     if b {
-    ///         [1, 2, 3, 4].into_iter()
-    ///     } else {
-    ///         IntoIter::empty()
-    ///     }
+    ///     if b { [1, 2, 3, 4].into_iter() } else { IntoIter::empty() }
     /// }
     ///
     /// assert_eq!(get_bytes(true).collect::<Vec<_>>(), vec![1, 2, 3, 4]);

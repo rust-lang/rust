@@ -44,7 +44,9 @@
 ///
 /// ```
 /// fn call_with_one<F>(func: F) -> usize
-///     where F: Fn(usize) -> usize {
+/// where
+///     F: Fn(usize) -> usize,
+/// {
 ///     func(1)
 /// }
 ///
@@ -125,7 +127,8 @@ pub trait Fn<Args>: FnMut<Args> {
 ///
 /// ```
 /// fn do_twice<F>(mut func: F)
-///     where F: FnMut()
+/// where
+///     F: FnMut(),
 /// {
 ///     func();
 ///     func();
@@ -201,7 +204,8 @@ pub trait FnMut<Args>: FnOnce<Args> {
 ///
 /// ```
 /// fn consume_with_relish<F>(func: F)
-///     where F: FnOnce() -> String
+/// where
+///     F: FnOnce() -> String,
 /// {
 ///     // `func` consumes its captured variables, so it cannot be run more
 ///     // than once.

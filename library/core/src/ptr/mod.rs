@@ -967,9 +967,7 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
 ///
 /// // `mem::replace` would have the same effect without requiring the unsafe
 /// // block.
-/// let b = unsafe {
-///     ptr::replace(&mut rust[0], 'r')
-/// };
+/// let b = unsafe { ptr::replace(&mut rust[0], 'r') };
 ///
 /// assert_eq!(b, 'b');
 /// assert_eq!(rust, &['r', 'u', 's', 't']);
@@ -1164,10 +1162,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///     unaligned: u32,
 /// }
 ///
-/// let packed = Packed {
-///     _padding: 0x00,
-///     unaligned: 0x01020304,
-/// };
+/// let packed = Packed { _padding: 0x00, unaligned: 0x01020304 };
 ///
 /// // Take the address of a 32-bit integer which is not aligned.
 /// // In contrast to `&packed.unaligned as *const _`, this has no undefined behavior.
@@ -1759,7 +1754,9 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 ///
 /// ```
 /// #[repr(transparent)]
-/// struct Wrapper { member: i32 }
+/// struct Wrapper {
+///     member: i32,
+/// }
 ///
 /// trait Trait {}
 /// impl Trait for Wrapper {}
@@ -1774,10 +1771,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 /// ));
 ///
 /// // Objects have equal addresses, but `Trait` has different implementations.
-/// assert!(!std::ptr::eq(
-///     &wrapper as &dyn Trait,
-///     &wrapper.member as &dyn Trait,
-/// ));
+/// assert!(!std::ptr::eq(&wrapper as &dyn Trait, &wrapper.member as &dyn Trait,));
 /// assert!(!std::ptr::eq(
 ///     &wrapper as &dyn Trait as *const dyn Trait,
 ///     &wrapper.member as &dyn Trait as *const dyn Trait,
@@ -2035,7 +2029,7 @@ pub macro addr_of($place:expr) {
 /// **Creating a pointer to uninitialized data:**
 ///
 /// ```rust
-/// use std::{ptr, mem::MaybeUninit};
+/// use std::{mem::MaybeUninit, ptr};
 ///
 /// struct Demo {
 ///     field: bool,
@@ -2045,7 +2039,9 @@ pub macro addr_of($place:expr) {
 /// // `&uninit.as_mut().field` would create a reference to an uninitialized `bool`,
 /// // and thus be Undefined Behavior!
 /// let f1_ptr = unsafe { ptr::addr_of_mut!((*uninit.as_mut_ptr()).field) };
-/// unsafe { f1_ptr.write(true); }
+/// unsafe {
+///     f1_ptr.write(true);
+/// }
 /// let init = unsafe { uninit.assume_init() };
 /// ```
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]

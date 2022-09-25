@@ -386,9 +386,8 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     ///
     ///     // create an owning reference that points at the
     ///     // third element of the array.
-    ///     let owning_ref = owning_ref.try_map(|array| {
-    ///         if array[2] == 3 { Ok(&array[2]) } else { Err(()) }
-    ///     });
+    ///     let owning_ref =
+    ///         owning_ref.try_map(|array| if array[2] == 3 { Ok(&array[2]) } else { Err(()) });
     ///     assert_eq!(*owning_ref.unwrap(), 3);
     /// }
     /// ```
@@ -429,26 +428,24 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     ///
     /// # Example
     /// ```
-    /// use rustc_data_structures::owning_ref::{OwningRef, Erased};
+    /// use rustc_data_structures::owning_ref::{Erased, OwningRef};
     ///
     /// fn main() {
     ///     // N.B., using the concrete types here for explicitness.
     ///     // For less verbose code type aliases like `BoxRef` are provided.
     ///
-    ///     let owning_ref_a: OwningRef<Box<[i32; 4]>, [i32; 4]>
-    ///         = OwningRef::new(Box::new([1, 2, 3, 4]));
+    ///     let owning_ref_a: OwningRef<Box<[i32; 4]>, [i32; 4]> =
+    ///         OwningRef::new(Box::new([1, 2, 3, 4]));
     ///
-    ///     let owning_ref_b: OwningRef<Box<Vec<(i32, bool)>>, Vec<(i32, bool)>>
-    ///         = OwningRef::new(Box::new(vec![(0, false), (1, true)]));
+    ///     let owning_ref_b: OwningRef<Box<Vec<(i32, bool)>>, Vec<(i32, bool)>> =
+    ///         OwningRef::new(Box::new(vec![(0, false), (1, true)]));
     ///
-    ///     let owning_ref_a: OwningRef<Box<[i32; 4]>, i32>
-    ///         = owning_ref_a.map(|a| &a[0]);
+    ///     let owning_ref_a: OwningRef<Box<[i32; 4]>, i32> = owning_ref_a.map(|a| &a[0]);
     ///
-    ///     let owning_ref_b: OwningRef<Box<Vec<(i32, bool)>>, i32>
-    ///         = owning_ref_b.map(|a| &a[1].0);
+    ///     let owning_ref_b: OwningRef<Box<Vec<(i32, bool)>>, i32> = owning_ref_b.map(|a| &a[1].0);
     ///
-    ///     let owning_refs: [OwningRef<Box<dyn Erased>, i32>; 2]
-    ///         = [owning_ref_a.erase_owner(), owning_ref_b.erase_owner()];
+    ///     let owning_refs: [OwningRef<Box<dyn Erased>, i32>; 2] =
+    ///         [owning_ref_a.erase_owner(), owning_ref_b.erase_owner()];
     ///
     ///     assert_eq!(*owning_refs[0], 1);
     ///     assert_eq!(*owning_refs[1], 1);
@@ -599,9 +596,8 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///
     ///     // create an owning reference that points at the
     ///     // third element of the array.
-    ///     let owning_ref = owning_ref_mut.try_map(|array| {
-    ///         if array[2] == 3 { Ok(&array[2]) } else { Err(()) }
-    ///     });
+    ///     let owning_ref =
+    ///         owning_ref_mut.try_map(|array| if array[2] == 3 { Ok(&array[2]) } else { Err(()) });
     ///     assert_eq!(*owning_ref.unwrap(), 3);
     /// }
     /// ```
@@ -628,9 +624,8 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///
     ///     // create an owning reference that points at the
     ///     // third element of the array.
-    ///     let owning_ref_mut = owning_ref_mut.try_map_mut(|array| {
-    ///         if array[2] == 3 { Ok(&mut array[2]) } else { Err(()) }
-    ///     });
+    ///     let owning_ref_mut = owning_ref_mut
+    ///         .try_map_mut(|array| if array[2] == 3 { Ok(&mut array[2]) } else { Err(()) });
     ///     assert_eq!(*owning_ref_mut.unwrap(), 3);
     /// }
     /// ```
@@ -671,26 +666,26 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///
     /// # Example
     /// ```
-    /// use rustc_data_structures::owning_ref::{OwningRefMut, Erased};
+    /// use rustc_data_structures::owning_ref::{Erased, OwningRefMut};
     ///
     /// fn main() {
     ///     // N.B., using the concrete types here for explicitness.
     ///     // For less verbose code type aliases like `BoxRef` are provided.
     ///
-    ///     let owning_ref_mut_a: OwningRefMut<Box<[i32; 4]>, [i32; 4]>
-    ///         = OwningRefMut::new(Box::new([1, 2, 3, 4]));
+    ///     let owning_ref_mut_a: OwningRefMut<Box<[i32; 4]>, [i32; 4]> =
+    ///         OwningRefMut::new(Box::new([1, 2, 3, 4]));
     ///
-    ///     let owning_ref_mut_b: OwningRefMut<Box<Vec<(i32, bool)>>, Vec<(i32, bool)>>
-    ///         = OwningRefMut::new(Box::new(vec![(0, false), (1, true)]));
+    ///     let owning_ref_mut_b: OwningRefMut<Box<Vec<(i32, bool)>>, Vec<(i32, bool)>> =
+    ///         OwningRefMut::new(Box::new(vec![(0, false), (1, true)]));
     ///
-    ///     let owning_ref_mut_a: OwningRefMut<Box<[i32; 4]>, i32>
-    ///         = owning_ref_mut_a.map_mut(|a| &mut a[0]);
+    ///     let owning_ref_mut_a: OwningRefMut<Box<[i32; 4]>, i32> =
+    ///         owning_ref_mut_a.map_mut(|a| &mut a[0]);
     ///
-    ///     let owning_ref_mut_b: OwningRefMut<Box<Vec<(i32, bool)>>, i32>
-    ///         = owning_ref_mut_b.map_mut(|a| &mut a[1].0);
+    ///     let owning_ref_mut_b: OwningRefMut<Box<Vec<(i32, bool)>>, i32> =
+    ///         owning_ref_mut_b.map_mut(|a| &mut a[1].0);
     ///
-    ///     let owning_refs_mut: [OwningRefMut<Box<dyn Erased>, i32>; 2]
-    ///         = [owning_ref_mut_a.erase_owner(), owning_ref_mut_b.erase_owner()];
+    ///     let owning_refs_mut: [OwningRefMut<Box<dyn Erased>, i32>; 2] =
+    ///         [owning_ref_mut_a.erase_owner(), owning_ref_mut_b.erase_owner()];
     ///
     ///     assert_eq!(*owning_refs_mut[0], 1);
     ///     assert_eq!(*owning_refs_mut[1], 1);

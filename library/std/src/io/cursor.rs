@@ -29,9 +29,9 @@ use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 /// [`File`]: crate::fs::File
 ///
 /// ```no_run
+/// use std::fs::File;
 /// use std::io::prelude::*;
 /// use std::io::{self, SeekFrom};
-/// use std::fs::File;
 ///
 /// // a library function we've written
 /// fn write_ten_bytes_at_end<W: Write + Seek>(writer: &mut W) -> io::Result<()> {
@@ -161,8 +161,8 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::io::Cursor;
     /// use std::io::prelude::*;
+    /// use std::io::Cursor;
     /// use std::io::SeekFrom;
     ///
     /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);

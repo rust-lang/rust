@@ -1108,7 +1108,6 @@ impl<'tcx> ExplicitSelf<'tcx> {
     ///     fn method_err3(self: &&T) // ExplicitSelf::ByReference
     /// }
     /// ```
-    ///
     pub fn determine<P>(self_arg_ty: Ty<'tcx>, is_self_ty: P) -> ExplicitSelf<'tcx>
     where
         P: Fn(Ty<'tcx>) -> bool,
@@ -1227,7 +1226,7 @@ pub fn is_trivially_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
 // Does the equivalent of
 // ```
 // let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
-// folder.tcx().intern_*(&v)
+// folder.tcx().intern_ * (&v)
 // ```
 pub fn fold_list<'tcx, F, T>(
     list: &'tcx ty::List<T>,

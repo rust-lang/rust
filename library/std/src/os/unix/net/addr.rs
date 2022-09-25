@@ -75,7 +75,7 @@ enum AddressKind<'a> {
 ///     Ok(sock) => sock,
 ///     Err(e) => {
 ///         println!("Couldn't bind: {e:?}");
-///         return
+///         return;
 ///     }
 /// };
 /// let addr = socket.local_addr().expect("Couldn't get local address");
@@ -231,7 +231,7 @@ impl SocketAddr {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixListener, SocketAddr};
+    /// use std::os::unix::net::{SocketAddr, UnixListener};
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let namespace = b"hidden";
@@ -286,7 +286,7 @@ impl SocketAddr {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixListener, SocketAddr};
+    /// use std::os::unix::net::{SocketAddr, UnixListener};
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let addr = SocketAddr::from_abstract_namespace(b"hidden")?;

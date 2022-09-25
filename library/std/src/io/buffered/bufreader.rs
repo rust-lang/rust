@@ -24,7 +24,6 @@ use buffer::Buffer;
 /// stream can cause data loss. Reading from the underlying reader after
 /// unwrapping the `BufReader<R>` with [`BufReader::into_inner`] can also cause
 /// data loss.
-///
 // HACK(#78696): can't use `crate` for associated items
 /// [`TcpStream::read`]: super::super::super::net::TcpStream::read
 /// [`TcpStream`]: crate::net::TcpStream
@@ -32,9 +31,9 @@ use buffer::Buffer;
 /// # Examples
 ///
 /// ```no_run
+/// use std::fs::File;
 /// use std::io::prelude::*;
 /// use std::io::BufReader;
-/// use std::fs::File;
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let f = File::open("log.txt")?;
@@ -59,8 +58,8 @@ impl<R: Read> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::BufReader;
     /// use std::fs::File;
+    /// use std::io::BufReader;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f = File::open("log.txt")?;
@@ -80,8 +79,8 @@ impl<R: Read> BufReader<R> {
     /// Creating a buffer with ten bytes of capacity:
     ///
     /// ```no_run
-    /// use std::io::BufReader;
     /// use std::fs::File;
+    /// use std::io::BufReader;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f = File::open("log.txt")?;
@@ -103,8 +102,8 @@ impl<R> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::BufReader;
     /// use std::fs::File;
+    /// use std::io::BufReader;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f1 = File::open("log.txt")?;
@@ -126,8 +125,8 @@ impl<R> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::BufReader;
     /// use std::fs::File;
+    /// use std::io::BufReader;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f1 = File::open("log.txt")?;
@@ -151,8 +150,8 @@ impl<R> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::{BufReader, BufRead};
     /// use std::fs::File;
+    /// use std::io::{BufRead, BufReader};
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f = File::open("log.txt")?;
@@ -175,8 +174,8 @@ impl<R> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::{BufReader, BufRead};
     /// use std::fs::File;
+    /// use std::io::{BufRead, BufReader};
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f = File::open("log.txt")?;
@@ -201,8 +200,8 @@ impl<R> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::BufReader;
     /// use std::fs::File;
+    /// use std::io::BufReader;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f1 = File::open("log.txt")?;
@@ -458,8 +457,8 @@ impl<R: Seek> Seek for BufReader<R> {
     ///
     /// ```no_run
     /// use std::{
-    ///     io::{self, BufRead, BufReader, Seek},
     ///     fs::File,
+    ///     io::{self, BufRead, BufReader, Seek},
     /// };
     ///
     /// fn main() -> io::Result<()> {

@@ -792,7 +792,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 .local_to_op(self.frame(), mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
-            let err = self.copy_op(&op, &dest, /*allow_transmute*/ true);
+            let err = self.copy_op(&op, &dest, /* allow_transmute */ true);
             trace!("return value: {:?}", self.dump_place(*dest));
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines

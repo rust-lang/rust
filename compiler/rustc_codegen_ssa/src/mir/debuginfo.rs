@@ -20,7 +20,7 @@ pub struct FunctionDebugContext<S, L> {
 
 #[derive(Copy, Clone)]
 pub enum VariableKind {
-    ArgumentVariable(usize /*index*/),
+    ArgumentVariable(usize /* index */),
     LocalVariable,
 }
 

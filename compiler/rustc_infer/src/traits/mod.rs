@@ -117,7 +117,7 @@ pub enum FulfillmentErrorCode<'tcx> {
     CodeCycle(Vec<Obligation<'tcx, ty::Predicate<'tcx>>>),
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
-    CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
+    CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), /* always comes from a SubtypePredicate */
     CodeConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
     CodeAmbiguity,
 }

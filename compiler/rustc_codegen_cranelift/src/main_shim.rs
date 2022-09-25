@@ -62,7 +62,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                 AbiParam::new(m.target_config().pointer_type()),
                 AbiParam::new(m.target_config().pointer_type()),
             ],
-            returns: vec![AbiParam::new(m.target_config().pointer_type() /*isize*/)],
+            returns: vec![AbiParam::new(m.target_config().pointer_type() /* isize */)],
             call_conv: CallConv::triple_default(m.isa().triple()),
         };
 

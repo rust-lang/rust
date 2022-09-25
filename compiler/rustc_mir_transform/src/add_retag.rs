@@ -72,7 +72,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
             is_stable(place.as_ref())
-                && may_contain_reference(place.ty(&*local_decls, tcx).ty, /*depth*/ 3, tcx)
+                && may_contain_reference(place.ty(&*local_decls, tcx).ty, /* depth */ 3, tcx)
                 && !local_decls[place.local].is_deref_temp()
         };
         let place_base_raw = |place: &Place<'tcx>| {

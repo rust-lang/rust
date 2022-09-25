@@ -296,7 +296,7 @@ pub struct CaptureInfo {
     ///
     /// Eg:
     /// ```rust,no_run
-    /// let mut t = (0,1);
+    /// let mut t = (0, 1);
     ///
     /// let c = || {
     ///     println!("{t:?}"); // L1
@@ -325,7 +325,6 @@ pub struct CaptureInfo {
     /// Expr Id pointing to use that resulted the corresponding place being captured
     ///
     /// See `capture_kind_expr_id` for example.
-    ///
     pub path_expr_id: Option<hir::HirId>,
 
     /// Capture mode that was selected

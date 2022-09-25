@@ -72,7 +72,6 @@ enum DiagnosticBuilderState<'a> {
     /// While this is also used by `.cancel()`, this state is only observed by
     /// the `Drop` `impl` of `DiagnosticBuilderInner`, as `.cancel()` takes
     /// `self` by-value specifically to prevent any attempts to `.emit()`.
-    ///
     // FIXME(eddyb) currently this doesn't prevent extending the `Diagnostic`,
     // despite that being potentially lossy, if important information is added
     // *after* the original `.emit()` call.

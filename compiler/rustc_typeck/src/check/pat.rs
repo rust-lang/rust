@@ -207,9 +207,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // ```
         // fn foo<'x>(x: &'x i32) {
-        //    let a = 1;
-        //    let mut z = x;
-        //    z = &a;
+        //     let a = 1;
+        //     let mut z = x;
+        //     z = &a;
         // }
         // ```
         //

@@ -1207,8 +1207,8 @@ impl<'test> TestCx<'test> {
         //
         // Notable use-cases are: do not add our optimisation flag if
         // `compile-flags: -Copt-level=x` and similar for debug-info level as well.
-        const OPT_FLAGS: &[&str] = &["-O", "-Copt-level=", /*-C<space>*/ "opt-level="];
-        const DEBUG_FLAGS: &[&str] = &["-g", "-Cdebuginfo=", /*-C<space>*/ "debuginfo="];
+        const OPT_FLAGS: &[&str] = &["-O", "-Copt-level=", /* -C<space> */ "opt-level="];
+        const DEBUG_FLAGS: &[&str] = &["-g", "-Cdebuginfo=", /* -C<space> */ "debuginfo="];
 
         // FIXME: ideally we would "just" check the `cmd` itself, but it does not allow inspecting
         // its arguments. They need to be collected separately. For now I cannot be bothered to

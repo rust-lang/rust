@@ -445,7 +445,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// For example:
     /// ```
-    /// fn foo<'a, 'b>( /* ... */ ) where 'a: 'b { /* ... */ }
+    /// fn foo<'a, 'b>(/* ... */)
+    /// where
+    ///     'a: 'b,
+    /// { /* ... */
+    /// }
     /// ```
     /// would initialize two variables like so:
     /// ```ignore (illustrative)

@@ -103,7 +103,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
         CompileTimeInterpreter::new(
             tcx.const_eval_limit(),
             can_access_statics,
-            /*check_alignment:*/ false,
+            /* check_alignment: */ false,
         ),
     )
 }
@@ -211,7 +211,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
         tcx,
         tcx.def_span(key.value.instance.def_id()),
         key.param_env,
-        /*can_access_statics:*/ is_static,
+        /* can_access_statics: */ is_static,
     );
 
     let mplace = ecx.raw_const_to_mplace(constant).expect(
@@ -308,8 +308,8 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         // they do not have to behave "as if" they were evaluated at runtime.
         CompileTimeInterpreter::new(
             tcx.const_eval_limit(),
-            /*can_access_statics:*/ is_static,
-            /*check_alignment:*/ tcx.sess.opts.unstable_opts.extra_const_ub_checks,
+            /* can_access_statics: */ is_static,
+            /* check_alignment: */ tcx.sess.opts.unstable_opts.extra_const_ub_checks,
         ),
     );
 

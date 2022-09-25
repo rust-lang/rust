@@ -28,8 +28,8 @@
 //! slice and start asking questions:
 //!
 //! ```
-//! use std::path::Path;
 //! use std::ffi::OsStr;
+//! use std::path::Path;
 //!
 //! let path = Path::new("/tmp/foo/bar.txt");
 //!
@@ -113,9 +113,9 @@ use crate::sys::path::{is_sep_byte, is_verbatim_sep, parse_prefix, MAIN_SEP_STR}
 /// # Examples
 ///
 /// ```
-/// use std::path::{Component, Path, Prefix};
-/// use std::path::Prefix::*;
 /// use std::ffi::OsStr;
+/// use std::path::Prefix::*;
+/// use std::path::{Component, Path, Prefix};
 ///
 /// fn get_path_prefix(s: &str) -> Prefix {
 ///     let path = Path::new(s);
@@ -126,15 +126,14 @@ use crate::sys::path::{is_sep_byte, is_verbatim_sep, parse_prefix, MAIN_SEP_STR}
 /// }
 ///
 /// # if cfg!(windows) {
-/// assert_eq!(Verbatim(OsStr::new("pictures")),
-///            get_path_prefix(r"\\?\pictures\kittens"));
-/// assert_eq!(VerbatimUNC(OsStr::new("server"), OsStr::new("share")),
-///            get_path_prefix(r"\\?\UNC\server\share"));
+/// assert_eq!(Verbatim(OsStr::new("pictures")), get_path_prefix(r"\\?\pictures\kittens"));
+/// assert_eq!(
+///     VerbatimUNC(OsStr::new("server"), OsStr::new("share")),
+///     get_path_prefix(r"\\?\UNC\server\share")
+/// );
 /// assert_eq!(VerbatimDisk(b'C'), get_path_prefix(r"\\?\c:\"));
-/// assert_eq!(DeviceNS(OsStr::new("BrainInterface")),
-///            get_path_prefix(r"\\.\BrainInterface"));
-/// assert_eq!(UNC(OsStr::new("server"), OsStr::new("share")),
-///            get_path_prefix(r"\\server\share"));
+/// assert_eq!(DeviceNS(OsStr::new("BrainInterface")), get_path_prefix(r"\\.\BrainInterface"));
+/// assert_eq!(UNC(OsStr::new("server"), OsStr::new("share")), get_path_prefix(r"\\server\share"));
 /// assert_eq!(Disk(b'C'), get_path_prefix(r"C:\Users\Rust\Pictures\Ferris"));
 /// # }
 /// ```
@@ -212,8 +211,8 @@ impl<'a> Prefix<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Prefix::*;
     /// use std::ffi::OsStr;
+    /// use std::path::Prefix::*;
     ///
     /// assert!(Verbatim(OsStr::new("pictures")).is_verbatim());
     /// assert!(VerbatimUNC(OsStr::new("server"), OsStr::new("share")).is_verbatim());
@@ -401,8 +400,8 @@ enum State {
 ///
 /// ```
 /// # if cfg!(windows) {
-/// use std::path::{Component, Path, Prefix};
 /// use std::ffi::OsStr;
+/// use std::path::{Component, Path, Prefix};
 ///
 /// let path = Path::new(r"c:\you\later\");
 /// match path.components().next().unwrap() {
@@ -495,12 +494,15 @@ impl Hash for PrefixComponent<'_> {
 ///
 /// let path = Path::new("/tmp/foo/bar.txt");
 /// let components = path.components().collect::<Vec<_>>();
-/// assert_eq!(&components, &[
-///     Component::RootDir,
-///     Component::Normal("tmp".as_ref()),
-///     Component::Normal("foo".as_ref()),
-///     Component::Normal("bar.txt".as_ref()),
-/// ]);
+/// assert_eq!(
+///     &components,
+///     &[
+///         Component::RootDir,
+///         Component::Normal("tmp".as_ref()),
+///         Component::Normal("foo".as_ref()),
+///         Component::Normal("bar.txt".as_ref()),
+///     ]
+/// );
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1901,8 +1903,8 @@ impl AsRef<OsStr> for PathBuf {
 /// # Examples
 ///
 /// ```
-/// use std::path::Path;
 /// use std::ffi::OsStr;
+/// use std::path::Path;
 ///
 /// // Note: this example does work on Windows
 /// let path = Path::new("./foo/bar.txt");
@@ -2214,8 +2216,8 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
     /// use std::ffi::OsStr;
+    /// use std::path::Path;
     ///
     /// assert_eq!(Some(OsStr::new("bin")), Path::new("/usr/bin/").file_name());
     /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("tmp/foo.txt").file_name());
@@ -2360,7 +2362,6 @@ impl Path {
     /// before the *first* `.`
     ///
     /// [`Path::file_prefix`]: Path::file_prefix
-    ///
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub fn file_stem(&self) -> Option<&OsStr> {
@@ -2394,7 +2395,6 @@ impl Path {
     /// before the *last* `.`
     ///
     /// [`Path::file_stem`]: Path::file_stem
-    ///
     #[unstable(feature = "path_file_prefix", issue = "86319")]
     #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
@@ -2525,8 +2525,8 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::{Path, Component};
     /// use std::ffi::OsStr;
+    /// use std::path::{Component, Path};
     ///
     /// let mut components = Path::new("/tmp/foo.txt").components();
     ///
@@ -2561,8 +2561,8 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::{self, Path};
     /// use std::ffi::OsStr;
+    /// use std::path::{self, Path};
     ///
     /// let mut it = Path::new("/tmp/foo.txt").iter();
     /// assert_eq!(it.next(), Some(OsStr::new(&path::MAIN_SEPARATOR.to_string())));
@@ -2751,7 +2751,11 @@ impl Path {
     ///
     /// ```no_run
     /// use std::path::Path;
-    /// assert!(!Path::new("does_not_exist.txt").try_exists().expect("Can't check existence of file does_not_exist.txt"));
+    /// assert!(
+    ///     !Path::new("does_not_exist.txt")
+    ///         .try_exists()
+    ///         .expect("Can't check existence of file does_not_exist.txt")
+    /// );
     /// assert!(Path::new("/root/secret_file.txt").try_exists().is_err());
     /// ```
     ///
@@ -2831,7 +2835,6 @@ impl Path {
     /// permission error, this will return false.
     ///
     /// # Examples
-    ///
     #[cfg_attr(unix, doc = "```no_run")]
     #[cfg_attr(not(unix), doc = "```ignore")]
     /// use std::path::Path;
@@ -3201,16 +3204,16 @@ impl Error for StripPrefixError {
 /// #![feature(absolute_path)]
 /// # #[cfg(unix)]
 /// fn main() -> std::io::Result<()> {
-///   use std::path::{self, Path};
+///     use std::path::{self, Path};
 ///
-///   // Relative to absolute
-///   let absolute = path::absolute("foo/./bar")?;
-///   assert!(absolute.ends_with("foo/bar"));
+///     // Relative to absolute
+///     let absolute = path::absolute("foo/./bar")?;
+///     assert!(absolute.ends_with("foo/bar"));
 ///
-///   // Absolute to absolute
-///   let absolute = path::absolute("/foo//test/.././bar.rs")?;
-///   assert_eq!(absolute, Path::new("/foo/test/../bar.rs"));
-///   Ok(())
+///     // Absolute to absolute
+///     let absolute = path::absolute("/foo//test/.././bar.rs")?;
+///     assert_eq!(absolute, Path::new("/foo/test/../bar.rs"));
+///     Ok(())
 /// }
 /// # #[cfg(not(unix))]
 /// # fn main() {}
@@ -3226,17 +3229,17 @@ impl Error for StripPrefixError {
 /// #![feature(absolute_path)]
 /// # #[cfg(windows)]
 /// fn main() -> std::io::Result<()> {
-///   use std::path::{self, Path};
+///     use std::path::{self, Path};
 ///
-///   // Relative to absolute
-///   let absolute = path::absolute("foo/./bar")?;
-///   assert!(absolute.ends_with(r"foo\bar"));
+///     // Relative to absolute
+///     let absolute = path::absolute("foo/./bar")?;
+///     assert!(absolute.ends_with(r"foo\bar"));
 ///
-///   // Absolute to absolute
-///   let absolute = path::absolute(r"C:\foo//test\..\./bar.rs")?;
+///     // Absolute to absolute
+///     let absolute = path::absolute(r"C:\foo//test\..\./bar.rs")?;
 ///
-///   assert_eq!(absolute, Path::new(r"C:\foo\bar.rs"));
-///   Ok(())
+///     assert_eq!(absolute, Path::new(r"C:\foo\bar.rs"));
+///     Ok(())
 /// }
 /// # #[cfg(not(windows))]
 /// # fn main() {}

@@ -316,7 +316,9 @@ pub enum StructKind {
     /// A struct with nammed fields.
     ///
     /// ```rust
-    /// pub struct PlainStruct { x: i32 }
+    /// pub struct PlainStruct {
+    ///     x: i32,
+    /// }
     /// pub struct EmptyPlainStruct {}
     /// ```
     Plain { fields: Vec<Id>, fields_stripped: bool },

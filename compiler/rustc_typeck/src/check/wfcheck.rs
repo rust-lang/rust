@@ -138,7 +138,9 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
 /// definition itself. For example, this definition would be illegal:
 ///
 /// ```rust
-/// struct Ref<'a, T> { x: &'a T }
+/// struct Ref<'a, T> {
+///     x: &'a T,
+/// }
 /// ```
 ///
 /// because the type did not declare that `T:'a`.

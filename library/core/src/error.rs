@@ -130,8 +130,8 @@ pub trait Error: Debug + Display {
     /// ```rust
     /// #![feature(provide_any)]
     /// #![feature(error_generic_member_access)]
-    /// use core::fmt;
     /// use core::any::Demand;
+    /// use core::fmt;
     ///
     /// #[derive(Debug)]
     /// struct MyBacktrace {

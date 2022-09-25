@@ -2,6 +2,7 @@
 version = "Two"
 use_small_heuristics = "Max"
 merge_derives = false
+# format_code_in_doc_comments = true
 
 # by default we ignore everything in the repository
 # tidy only checks files which are not ignored, each entry follows gitignore style

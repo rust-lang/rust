@@ -222,7 +222,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn cast_from_int_like(
         &self,
-        scalar: Scalar<M::Provenance>, // input value (there is no ScalarTy so we separate data+layout)
+        scalar: Scalar<M::Provenance>, /* input value (there is no ScalarTy so we separate data+layout) */
         src_layout: TyAndLayout<'tcx>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
@@ -366,7 +366,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let src_field = self.operand_field(src, i)?;
                     let dst_field = self.place_field(dest, i)?;
                     if src_field.layout.ty == cast_ty_field.ty {
-                        self.copy_op(&src_field, &dst_field, /*allow_transmute*/ false)?;
+                        self.copy_op(&src_field, &dst_field, /* allow_transmute */ false)?;
                     } else {
                         self.unsize_into(&src_field, cast_ty_field, &dst_field)?;
                     }

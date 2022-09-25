@@ -269,7 +269,9 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
     // ```
     // pub(crate) mod foo {
     //     pub(crate) mod bar {
-    //         pub(crate) trait Double { fn foo(); }
+    //         pub(crate) trait Double {
+    //             fn foo();
+    //         }
     //     }
     // }
     //

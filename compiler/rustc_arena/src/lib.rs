@@ -558,7 +558,6 @@ impl DroplessArena {
 ///   This is odd but harmless, because an empty arena allocates no memory.
 /// - Types that are `!Copy` and `Drop`: these must be specified in the
 ///   arguments. The `TypedArena` will be used for them.
-///
 #[rustc_macro_transparency = "semitransparent"]
 pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     #[derive(Default)]

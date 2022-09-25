@@ -242,7 +242,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             };
 
             let idx = idx_const
-                .try_to_bits(Size::from_bytes(4 /* u32*/))
+                .try_to_bits(Size::from_bytes(4 /* u32 */))
                 .unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
             let (lane_count, _lane_ty) = base.layout().ty.simd_size_and_type(fx.tcx);
             if idx >= lane_count.into() {
@@ -292,7 +292,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             };
 
             let idx = idx_const
-                .try_to_bits(Size::from_bytes(4 /* u32*/))
+                .try_to_bits(Size::from_bytes(4 /* u32 */))
                 .unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
             let (lane_count, _lane_ty) = v.layout().ty.simd_size_and_type(fx.tcx);
             if idx >= lane_count.into() {

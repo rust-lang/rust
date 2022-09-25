@@ -23,15 +23,11 @@
 ///     type Output = Self;
 ///
 ///     fn add(self, other: Self) -> Self {
-///         Self {
-///             x: self.x + other.x,
-///             y: self.y + other.y,
-///         }
+///         Self { x: self.x + other.x, y: self.y + other.y }
 ///     }
 /// }
 ///
-/// assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
-///            Point { x: 3, y: 3 });
+/// assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 }, Point { x: 3, y: 3 });
 /// ```
 ///
 /// ## Implementing `Add` with generics
@@ -53,15 +49,11 @@
 ///     type Output = Self;
 ///
 ///     fn add(self, other: Self) -> Self::Output {
-///         Self {
-///             x: self.x + other.x,
-///             y: self.y + other.y,
-///         }
+///         Self { x: self.x + other.x, y: self.y + other.y }
 ///     }
 /// }
 ///
-/// assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
-///            Point { x: 3, y: 3 });
+/// assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 }, Point { x: 3, y: 3 });
 /// ```
 #[lang = "add"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -134,15 +126,11 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     type Output = Self;
 ///
 ///     fn sub(self, other: Self) -> Self::Output {
-///         Self {
-///             x: self.x - other.x,
-///             y: self.y - other.y,
-///         }
+///         Self { x: self.x - other.x, y: self.y - other.y }
 ///     }
 /// }
 ///
-/// assert_eq!(Point { x: 3, y: 3 } - Point { x: 2, y: 3 },
-///            Point { x: 1, y: 0 });
+/// assert_eq!(Point { x: 3, y: 3 } - Point { x: 2, y: 3 }, Point { x: 1, y: 0 });
 /// ```
 ///
 /// ## Implementing `Sub` with generics
@@ -164,15 +152,11 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     type Output = Self;
 ///
 ///     fn sub(self, other: Self) -> Self::Output {
-///         Point {
-///             x: self.x - other.x,
-///             y: self.y - other.y,
-///         }
+///         Point { x: self.x - other.x, y: self.y - other.y }
 ///     }
 /// }
 ///
-/// assert_eq!(Point { x: 2, y: 3 } - Point { x: 1, y: 0 },
-///            Point { x: 1, y: 3 });
+/// assert_eq!(Point { x: 2, y: 3 } - Point { x: 1, y: 0 }, Point { x: 1, y: 3 });
 /// ```
 #[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -247,10 +231,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///         // Reduce to lowest terms by dividing by the greatest common
 ///         // divisor.
 ///         let gcd = gcd(numerator, denominator);
-///         Self {
-///             numerator: numerator / gcd,
-///             denominator: denominator / gcd,
-///         }
+///         Self { numerator: numerator / gcd, denominator: denominator / gcd }
 ///     }
 /// }
 ///
@@ -279,8 +260,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// }
 ///
 /// assert_eq!(Rational::new(1, 2), Rational::new(2, 4));
-/// assert_eq!(Rational::new(2, 3) * Rational::new(3, 4),
-///            Rational::new(1, 2));
+/// assert_eq!(Rational::new(2, 3) * Rational::new(3, 4), Rational::new(1, 2));
 /// ```
 ///
 /// ## Multiplying vectors by scalars as in linear algebra
@@ -288,10 +268,14 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 /// use std::ops::Mul;
 ///
-/// struct Scalar { value: usize }
+/// struct Scalar {
+///     value: usize,
+/// }
 ///
 /// #[derive(Debug, PartialEq)]
-/// struct Vector { value: Vec<usize> }
+/// struct Vector {
+///     value: Vec<usize>,
+/// }
 ///
 /// impl Mul<Scalar> for Vector {
 ///     type Output = Self;
@@ -377,10 +361,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///         // Reduce to lowest terms by dividing by the greatest common
 ///         // divisor.
 ///         let gcd = gcd(numerator, denominator);
-///         Self {
-///             numerator: numerator / gcd,
-///             denominator: denominator / gcd,
-///         }
+///         Self { numerator: numerator / gcd, denominator: denominator / gcd }
 ///     }
 /// }
 ///
@@ -413,8 +394,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// }
 ///
 /// assert_eq!(Rational::new(1, 2), Rational::new(2, 4));
-/// assert_eq!(Rational::new(1, 2) / Rational::new(3, 4),
-///            Rational::new(2, 3));
+/// assert_eq!(Rational::new(1, 2) / Rational::new(3, 4), Rational::new(2, 3));
 /// ```
 ///
 /// ## Dividing vectors by scalars as in linear algebra
@@ -422,10 +402,14 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 /// use std::ops::Div;
 ///
-/// struct Scalar { value: f32 }
+/// struct Scalar {
+///     value: f32,
+/// }
 ///
 /// #[derive(Debug, PartialEq)]
-/// struct Vector { value: Vec<f32> }
+/// struct Vector {
+///     value: Vec<f32>,
+/// }
 ///
 /// impl Div<Scalar> for Vector {
 ///     type Output = Self;
@@ -533,14 +517,13 @@ div_impl_float! { f32 f64 }
 ///         let len = self.slice.len();
 ///         let rem = len % modulus;
 ///         let start = len - rem;
-///         Self {slice: &self.slice[start..]}
+///         Self { slice: &self.slice[start..] }
 ///     }
 /// }
 ///
 /// // If we were to divide &[0, 1, 2, 3, 4, 5, 6, 7] into slices of size 3,
 /// // the remainder would be &[6, 7].
-/// assert_eq!(SplitSlice { slice: &[0, 1, 2, 3, 4, 5, 6, 7] } % 3,
-///            SplitSlice { slice: &[6, 7] });
+/// assert_eq!(SplitSlice { slice: &[0, 1, 2, 3, 4, 5, 6, 7] } % 3, SplitSlice { slice: &[6, 7] });
 /// ```
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -719,10 +702,7 @@ neg_impl! { isize i8 i16 i32 i64 i128 f32 f64 }
 ///
 /// impl AddAssign for Point {
 ///     fn add_assign(&mut self, other: Self) {
-///         *self = Self {
-///             x: self.x + other.x,
-///             y: self.y + other.y,
-///         };
+///         *self = Self { x: self.x + other.x, y: self.y + other.y };
 ///     }
 /// }
 ///
@@ -787,16 +767,13 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///
 /// impl SubAssign for Point {
 ///     fn sub_assign(&mut self, other: Self) {
-///         *self = Self {
-///             x: self.x - other.x,
-///             y: self.y - other.y,
-///         };
+///         *self = Self { x: self.x - other.x, y: self.y - other.y };
 ///     }
 /// }
 ///
 /// let mut point = Point { x: 3, y: 3 };
 /// point -= Point { x: 2, y: 3 };
-/// assert_eq!(point, Point {x: 1, y: 0});
+/// assert_eq!(point, Point { x: 1, y: 0 });
 /// ```
 #[lang = "sub_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
@@ -845,7 +822,9 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// use std::ops::MulAssign;
 ///
 /// #[derive(Debug, PartialEq)]
-/// struct Frequency { hertz: f64 }
+/// struct Frequency {
+///     hertz: f64,
+/// }
 ///
 /// impl MulAssign<f64> for Frequency {
 ///     fn mul_assign(&mut self, rhs: f64) {
@@ -904,7 +883,9 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// use std::ops::DivAssign;
 ///
 /// #[derive(Debug, PartialEq)]
-/// struct Frequency { hertz: f64 }
+/// struct Frequency {
+///     hertz: f64,
+/// }
 ///
 /// impl DivAssign<f64> for Frequency {
 ///     fn div_assign(&mut self, rhs: f64) {
@@ -961,7 +942,9 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 /// use std::ops::RemAssign;
 ///
-/// struct CookieJar { cookies: u32 }
+/// struct CookieJar {
+///     cookies: u32,
+/// }
 ///
 /// impl RemAssign<u32> for CookieJar {
 ///     fn rem_assign(&mut self, piles: u32) {

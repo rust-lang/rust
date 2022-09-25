@@ -282,7 +282,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             //
             // ```
             // fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b> {
-            //   if condition() { a } else { b }
+            //     if condition() { a } else { b }
             // }
             // ```
             //

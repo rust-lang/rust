@@ -252,7 +252,9 @@ enum LifetimeRibKind {
     /// Note: the error should not trigger when the elided lifetime is in a pattern or
     /// expression-position path:
     /// ```
-    /// struct Foo<'a> { x: &'a () }
+    /// struct Foo<'a> {
+    ///     x: &'a (),
+    /// }
     /// async fn foo(Foo { x: _ }: Foo<'_>) {}
     /// ```
     AnonymousCreateParameter { binder: NodeId, report_in_path: bool },

@@ -212,7 +212,6 @@ pub struct ParseError(pub &'static str);
 /// extended exponent range) (hard).
 ///
 /// New operations: sqrt, nexttoward.
-///
 pub trait Float:
     Copy
     + Default
@@ -538,7 +537,6 @@ pub trait Float:
     ///   NaN -> \c IEK_NAN
     ///   0   -> \c IEK_ZERO
     ///   Inf -> \c IEK_INF
-    ///
     fn ilogb(self) -> ExpInt;
 
     /// Returns: self * 2<sup>exp</sup> for integral exponents.

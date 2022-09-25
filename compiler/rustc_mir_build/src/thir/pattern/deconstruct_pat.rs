@@ -280,9 +280,9 @@ impl IntRange {
             // as overlapping:
             // ```
             // match (0u8, true) {
-            //   (0 ..= 125, false) => {}
-            //   (125 ..= 255, true) => {}
-            //   _ => {}
+            //     (0..=125, false) => {}
+            //     (125..=255, true) => {}
+            //     _ => {}
             // }
             // ```
             return;
@@ -1705,7 +1705,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 write!(f, "{}", end)?;
                 write!(f, "{}", hi)
             }
-            IntRange(range) => write!(f, "{:?}", range), // Best-effort, will render e.g. `false` as `0..=0`
+            IntRange(range) => write!(f, "{:?}", range), /* Best-effort, will render e.g. `false` as `0..=0` */
             Wildcard | Missing { .. } | NonExhaustive => write!(f, "_ : {:?}", self.ty),
             Or => {
                 for pat in self.iter_fields() {

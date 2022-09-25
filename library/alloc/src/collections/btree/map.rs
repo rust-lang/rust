@@ -89,15 +89,14 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// let mut movie_reviews = BTreeMap::new();
 ///
 /// // review some movies.
-/// movie_reviews.insert("Office Space",       "Deals with real issues in the workplace.");
-/// movie_reviews.insert("Pulp Fiction",       "Masterpiece.");
-/// movie_reviews.insert("The Godfather",      "Very enjoyable.");
+/// movie_reviews.insert("Office Space", "Deals with real issues in the workplace.");
+/// movie_reviews.insert("Pulp Fiction", "Masterpiece.");
+/// movie_reviews.insert("The Godfather", "Very enjoyable.");
 /// movie_reviews.insert("The Blues Brothers", "Eye lyked it a lot.");
 ///
 /// // check for a specific one.
 /// if !movie_reviews.contains_key("Les Misérables") {
-///     println!("We've got {} reviews, but Les Misérables ain't one.",
-///              movie_reviews.len());
+///     println!("We've got {} reviews, but Les Misérables ain't one.", movie_reviews.len());
 /// }
 ///
 /// // oops, this review has a lot of spelling mistakes, let's delete it.
@@ -107,8 +106,8 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// let to_find = ["Up!", "Office Space"];
 /// for movie in &to_find {
 ///     match movie_reviews.get(movie) {
-///        Some(review) => println!("{movie}: {review}"),
-///        None => println!("{movie} is unreviewed.")
+///         Some(review) => println!("{movie}: {review}"),
+///         None => println!("{movie} is unreviewed."),
 ///     }
 /// }
 ///
@@ -126,12 +125,8 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// ```
 /// use std::collections::BTreeMap;
 ///
-/// let solar_distance = BTreeMap::from([
-///     ("Mercury", 0.4),
-///     ("Venus", 0.7),
-///     ("Earth", 1.0),
-///     ("Mars", 1.5),
-/// ]);
+/// let solar_distance =
+///     BTreeMap::from([("Mercury", 0.4), ("Venus", 0.7), ("Earth", 1.0), ("Mars", 1.5)]);
 /// ```
 ///
 /// `BTreeMap` implements an [`Entry API`], which allows for complex
@@ -622,8 +617,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     /// # #![feature(allocator_api)]
     /// # #![feature(btreemap_alloc)]
-    /// use std::collections::BTreeMap;
     /// use std::alloc::Global;
+    /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new_in(Global);
     ///
@@ -1082,7 +1077,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     /// use std::collections::BTreeMap;
     ///
-    /// let mut map: BTreeMap<i32, i32> = (0..8).map(|x| (x, x*10)).collect();
+    /// let mut map: BTreeMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
     /// // Keep only the elements with even-numbered keys.
     /// map.retain(|&k, _| k % 2 == 0);
     /// assert!(map.into_iter().eq(vec![(0, 0), (2, 20), (4, 40), (6, 60)]));
@@ -2284,11 +2279,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     /// use std::collections::BTreeMap;
     ///
-    /// let mut map = BTreeMap::from([
-    ///    ("a", 1),
-    ///    ("b", 2),
-    ///    ("c", 3),
-    /// ]);
+    /// let mut map = BTreeMap::from([("a", 1), ("b", 2), ("c", 3)]);
     ///
     /// // add 10 to the value if the key isn't "a"
     /// for (key, value) in map.iter_mut() {
@@ -2368,8 +2359,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     ///
     /// let values: Vec<String> = a.values().cloned().collect();
-    /// assert_eq!(values, [String::from("hello!"),
-    ///                     String::from("goodbye!")]);
+    /// assert_eq!(values, [String::from("hello!"), String::from("goodbye!")]);
     /// ```
     #[stable(feature = "map_values_mut", since = "1.10.0")]
     pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {

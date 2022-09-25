@@ -34,8 +34,8 @@ use crate::iter::{FusedIterator, TrustedLen};
 /// `.foorc`:
 ///
 /// ```no_run
-/// use std::iter;
 /// use std::fs;
+/// use std::iter;
 /// use std::path::PathBuf;
 ///
 /// let dirs = fs::read_dir(".foo").unwrap();

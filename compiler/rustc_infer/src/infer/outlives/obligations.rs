@@ -35,8 +35,8 @@
 //! ```
 //! fn bar<T>(a: T, b: impl for<'a> Fn(&'a T)) {}
 //! fn foo<T>(x: T) {
-//!     bar(x, |y| { /* ... */})
-//!          // ^ closure arg
+//!     bar(x, |y| { /* ... */ })
+//!     // ^ closure arg
 //! }
 //! ```
 //!

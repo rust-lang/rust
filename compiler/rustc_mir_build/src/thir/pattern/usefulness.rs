@@ -37,10 +37,10 @@
 //! ```rust
 //! # fn foo(x: Option<i32>) {
 //! match x {
-//!     Some(_) => {},
-//!     None => {},    // reachable: `None` is matched by this but not the branch above
-//!     Some(0) => {}, // unreachable: all the values this matches are already matched by
-//!                    // `Some(_)` above
+//!     Some(_) => {}
+//!     None => {} // reachable: `None` is matched by this but not the branch above
+//!     Some(0) => {} /* unreachable: all the values this matches are already matched by
+//!                  * `Some(_)` above */
 //! }
 //! # }
 //! ```

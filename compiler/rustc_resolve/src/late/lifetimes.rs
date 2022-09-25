@@ -1445,7 +1445,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // per the rules given in RFCs 599 and 1156. Example:
         //
         // ```rust
-        // struct Foo<'a, T: 'a, U> { }
+        // struct Foo<'a, T: 'a, U> {}
         // ```
         //
         // If you have `Foo<'x, dyn Bar, dyn Baz>`, we want to default
@@ -1557,7 +1557,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         //
         // ```rust
         // trait Foo<'a> {
-        //   type Item: 'a;
+        //     type Item: 'a;
         // }
         // ```
         //

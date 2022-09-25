@@ -41,7 +41,7 @@ impl<'a> Resolver<'a> {
         mut visitor: impl FnMut(
             &mut Self,
             Scope<'a>,
-            /*use_prelude*/ bool,
+            /* use_prelude */ bool,
             SyntaxContext,
         ) -> Option<T>,
     ) -> Option<T> {
@@ -267,10 +267,10 @@ impl<'a> Resolver<'a> {
     /// the items are defined in the block. For example,
     /// ```rust
     /// fn f() {
-    ///    g(); // Since there are no local variables in scope yet, this resolves to the item.
-    ///    let g = || {};
-    ///    fn g() {}
-    ///    g(); // This resolves to the local variable `g` since it shadows the item.
+    ///     g(); // Since there are no local variables in scope yet, this resolves to the item.
+    ///     let g = || {};
+    ///     fn g() {}
+    ///     g(); // This resolves to the local variable `g` since it shadows the item.
     /// }
     /// ```
     ///

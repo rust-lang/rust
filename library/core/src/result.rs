@@ -8,8 +8,8 @@
 //! ```
 //! # #[allow(dead_code)]
 //! enum Result<T, E> {
-//!    Ok(T),
-//!    Err(E),
+//!     Ok(T),
+//!     Err(E),
 //! }
 //! ```
 //!
@@ -22,7 +22,10 @@
 //!
 //! ```
 //! #[derive(Debug)]
-//! enum Version { Version1, Version2 }
+//! enum Version {
+//!     Version1,
+//!     Version2,
+//! }
 //!
 //! fn parse_version(header: &[u8]) -> Result<Version, &'static str> {
 //!     match header.get(0) {
@@ -155,8 +158,8 @@
 //! ```
 //! # #![allow(dead_code)]
 //! use std::fs::File;
-//! use std::io::prelude::*;
 //! use std::io;
+//! use std::io::prelude::*;
 //!
 //! struct Info {
 //!     name: String,
@@ -167,17 +170,17 @@
 //! fn write_info(info: &Info) -> io::Result<()> {
 //!     // Early return on error
 //!     let mut file = match File::create("my_best_friends.txt") {
-//!            Err(e) => return Err(e),
-//!            Ok(f) => f,
+//!         Err(e) => return Err(e),
+//!         Ok(f) => f,
 //!     };
 //!     if let Err(e) = file.write_all(format!("name: {}\n", info.name).as_bytes()) {
-//!         return Err(e)
+//!         return Err(e);
 //!     }
 //!     if let Err(e) = file.write_all(format!("age: {}\n", info.age).as_bytes()) {
-//!         return Err(e)
+//!         return Err(e);
 //!     }
 //!     if let Err(e) = file.write_all(format!("rating: {}\n", info.rating).as_bytes()) {
-//!         return Err(e)
+//!         return Err(e);
 //!     }
 //!     Ok(())
 //! }
@@ -188,8 +191,8 @@
 //! ```
 //! # #![allow(dead_code)]
 //! use std::fs::File;
-//! use std::io::prelude::*;
 //! use std::io;
+//! use std::io::prelude::*;
 //!
 //! struct Info {
 //!     name: String,
@@ -295,7 +298,6 @@
 //!   mapping [`Ok(v)`] to [`Some(v)`] and [`Err(e)`] to [`None`]
 //! * [`transpose`] transposes a [`Result`] of an [`Option`] into an
 //!   [`Option`] of a [`Result`]
-//!
 // Do NOT add link reference definitions for `err` or `ok`, because they
 // will generate numerous incorrect URLs for `Err` and `Ok` elsewhere, due
 // to case folding.
@@ -437,14 +439,14 @@
 //! let mut results = vec![];
 //! let mut errs = vec![];
 //! let nums: Vec<_> = ["17", "not a number", "99", "-27", "768"]
-//!    .into_iter()
-//!    .map(u8::from_str)
-//!    // Save clones of the raw `Result` values to inspect
-//!    .inspect(|x| results.push(x.clone()))
-//!    // Challenge: explain how this captures only the `Err` values
-//!    .inspect(|x| errs.extend(x.clone().err()))
-//!    .flatten()
-//!    .collect();
+//!     .into_iter()
+//!     .map(u8::from_str)
+//!     // Save clones of the raw `Result` values to inspect
+//!     .inspect(|x| results.push(x.clone()))
+//!     // Challenge: explain how this captures only the `Err` values
+//!     .inspect(|x| errs.extend(x.clone().err()))
+//!     .flatten()
+//!     .collect();
 //! assert_eq!(errs.len(), 3);
 //! assert_eq!(nums, [17, 99]);
 //! println!("results {results:?}");
@@ -812,10 +814,10 @@ impl<T, E> Result<T, E> {
     /// ```
     /// let k = 21;
     ///
-    /// let x : Result<_, &str> = Ok("foo");
+    /// let x: Result<_, &str> = Ok("foo");
     /// assert_eq!(x.map_or_else(|e| k * 2, |v| v.len()), 3);
     ///
-    /// let x : Result<&str, _> = Err("bar");
+    /// let x: Result<&str, _> = Err("bar");
     /// assert_eq!(x.map_or_else(|e| k * 2, |v| v.len()), 42);
     /// ```
     #[inline]
@@ -839,7 +841,9 @@ impl<T, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// fn stringify(x: u32) -> String { format!("error code: {x}") }
+    /// fn stringify(x: u32) -> String {
+    ///     format!("error code: {x}")
+    /// }
     ///
     /// let x: Result<u32, u32> = Ok(2);
     /// assert_eq!(x.map_err(stringify), Ok(2));
@@ -889,8 +893,7 @@ impl<T, E> Result<T, E> {
     /// use std::{fs, io};
     ///
     /// fn read() -> io::Result<String> {
-    ///     fs::read_to_string("address.txt")
-    ///         .inspect_err(|e| eprintln!("failed to read file: {e}"))
+    ///     fs::read_to_string("address.txt").inspect_err(|e| eprintln!("failed to read file: {e}"))
     /// }
     /// ```
     #[inline]
@@ -938,12 +941,24 @@ impl<T, E> Result<T, E> {
     /// let mut s = "HELLO".to_string();
     /// let mut x: Result<String, u32> = Ok("hello".to_string());
     /// let y: Result<&mut str, &mut u32> = Ok(&mut s);
-    /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
+    /// assert_eq!(
+    ///     x.as_deref_mut().map(|x| {
+    ///         x.make_ascii_uppercase();
+    ///         x
+    ///     }),
+    ///     y
+    /// );
     ///
     /// let mut i = 42;
     /// let mut x: Result<String, u32> = Err(42);
     /// let y: Result<&mut str, &mut u32> = Err(&mut i);
-    /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
+    /// assert_eq!(
+    ///     x.as_deref_mut().map(|x| {
+    ///         x.make_ascii_uppercase();
+    ///         x
+    ///     }),
+    ///     y
+    /// );
     /// ```
     #[stable(feature = "inner_deref", since = "1.47.0")]
     pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E>
@@ -990,7 +1005,7 @@ impl<T, E> Result<T, E> {
     /// let mut x: Result<u32, &str> = Ok(7);
     /// match x.iter_mut().next() {
     ///     Some(v) => *v = 40,
-    ///     None => {},
+    ///     None => {}
     /// }
     /// assert_eq!(x, Ok(40));
     ///
@@ -1424,8 +1439,12 @@ impl<T, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
-    /// fn err(x: u32) -> Result<u32, u32> { Err(x) }
+    /// fn sq(x: u32) -> Result<u32, u32> {
+    ///     Ok(x * x)
+    /// }
+    /// fn err(x: u32) -> Result<u32, u32> {
+    ///     Err(x)
+    /// }
     ///
     /// assert_eq!(Ok(2).or_else(sq).or_else(sq), Ok(2));
     /// assert_eq!(Ok(2).or_else(err).or_else(sq), Ok(2));
@@ -1485,7 +1504,9 @@ impl<T, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// fn count(x: &str) -> usize { x.len() }
+    /// fn count(x: &str) -> usize {
+    ///     x.len()
+    /// }
     ///
     /// assert_eq!(Ok(2).unwrap_or_else(count), 2);
     /// assert_eq!(Err("foo").unwrap_or_else(count), 3);
@@ -1517,7 +1538,9 @@ impl<T, E> Result<T, E> {
     ///
     /// ```no_run
     /// let x: Result<u32, &str> = Err("emergency failure");
-    /// unsafe { x.unwrap_unchecked(); } // Undefined behavior!
+    /// unsafe {
+    ///     x.unwrap_unchecked();
+    /// } // Undefined behavior!
     /// ```
     #[inline]
     #[track_caller]
@@ -2031,9 +2054,8 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     ///
     /// ```
     /// let v = vec![1, 2];
-    /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|x: &u32|
-    ///     x.checked_add(1).ok_or("Overflow!")
-    /// ).collect();
+    /// let res: Result<Vec<u32>, &'static str> =
+    ///     v.iter().map(|x: &u32| x.checked_add(1).ok_or("Overflow!")).collect();
     /// assert_eq!(res, Ok(vec![2, 3]));
     /// ```
     ///
@@ -2042,9 +2064,8 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     ///
     /// ```
     /// let v = vec![1, 2, 0];
-    /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|x: &u32|
-    ///     x.checked_sub(1).ok_or("Underflow!")
-    /// ).collect();
+    /// let res: Result<Vec<u32>, &'static str> =
+    ///     v.iter().map(|x: &u32| x.checked_sub(1).ok_or("Underflow!")).collect();
     /// assert_eq!(res, Err("Underflow!"));
     /// ```
     ///
@@ -2054,10 +2075,13 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// ```
     /// let v = vec![3, 2, 1, 10];
     /// let mut shared = 0;
-    /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|x: &u32| {
-    ///     shared += x;
-    ///     x.checked_sub(2).ok_or("Underflow!")
-    /// }).collect();
+    /// let res: Result<Vec<u32>, &'static str> = v
+    ///     .iter()
+    ///     .map(|x: &u32| {
+    ///         shared += x;
+    ///         x.checked_sub(2).ok_or("Underflow!")
+    ///     })
+    ///     .collect();
     /// assert_eq!(res, Err("Underflow!"));
     /// assert_eq!(shared, 6);
     /// ```

@@ -80,29 +80,18 @@ use crate::sys;
 /// let mut book_reviews = HashMap::new();
 ///
 /// // Review some books.
-/// book_reviews.insert(
-///     "Adventures of Huckleberry Finn".to_string(),
-///     "My favorite book.".to_string(),
-/// );
-/// book_reviews.insert(
-///     "Grimms' Fairy Tales".to_string(),
-///     "Masterpiece.".to_string(),
-/// );
-/// book_reviews.insert(
-///     "Pride and Prejudice".to_string(),
-///     "Very enjoyable.".to_string(),
-/// );
-/// book_reviews.insert(
-///     "The Adventures of Sherlock Holmes".to_string(),
-///     "Eye lyked it alot.".to_string(),
-/// );
+/// book_reviews
+///     .insert("Adventures of Huckleberry Finn".to_string(), "My favorite book.".to_string());
+/// book_reviews.insert("Grimms' Fairy Tales".to_string(), "Masterpiece.".to_string());
+/// book_reviews.insert("Pride and Prejudice".to_string(), "Very enjoyable.".to_string());
+/// book_reviews
+///     .insert("The Adventures of Sherlock Holmes".to_string(), "Eye lyked it alot.".to_string());
 ///
 /// // Check for a specific one.
 /// // When collections store owned values (String), they can still be
 /// // queried using references (&str).
 /// if !book_reviews.contains_key("Les Misérables") {
-///     println!("We've got {} reviews, but Les Misérables ain't one.",
-///              book_reviews.len());
+///     println!("We've got {} reviews, but Les Misérables ain't one.", book_reviews.len());
 /// }
 ///
 /// // oops, this review has a lot of spelling mistakes, let's delete it.
@@ -113,7 +102,7 @@ use crate::sys;
 /// for &book in &to_find {
 ///     match book_reviews.get(book) {
 ///         Some(review) => println!("{book}: {review}"),
-///         None => println!("{book} is unreviewed.")
+///         None => println!("{book} is unreviewed."),
 ///     }
 /// }
 ///
@@ -131,12 +120,8 @@ use crate::sys;
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let solar_distance = HashMap::from([
-///     ("Mercury", 0.4),
-///     ("Venus", 0.7),
-///     ("Earth", 1.0),
-///     ("Mars", 1.5),
-/// ]);
+/// let solar_distance =
+///     HashMap::from([("Mercury", 0.4), ("Venus", 0.7), ("Earth", 1.0), ("Mars", 1.5)]);
 /// ```
 ///
 /// `HashMap` implements an [`Entry` API](#method.entry), which allows
@@ -272,8 +257,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::RandomState;
+    /// use std::collections::HashMap;
     ///
     /// let s = RandomState::new();
     /// let mut map = HashMap::with_hasher(s);
@@ -303,8 +288,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::RandomState;
+    /// use std::collections::HashMap;
     ///
     /// let s = RandomState::new();
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
@@ -342,11 +327,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
-    ///     ("a", 1),
-    ///     ("b", 2),
-    ///     ("c", 3),
-    /// ]);
+    /// let map = HashMap::from([("a", 1), ("b", 2), ("c", 3)]);
     ///
     /// for key in map.keys() {
     ///     println!("{key}");
@@ -371,11 +352,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
-    ///     ("a", 1),
-    ///     ("b", 2),
-    ///     ("c", 3),
-    /// ]);
+    /// let map = HashMap::from([("a", 1), ("b", 2), ("c", 3)]);
     ///
     /// let mut vec: Vec<&str> = map.into_keys().collect();
     /// // The `IntoKeys` iterator produces keys in arbitrary order, so the
@@ -403,11 +380,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
-    ///     ("a", 1),
-    ///     ("b", 2),
-    ///     ("c", 3),
-    /// ]);
+    /// let map = HashMap::from([("a", 1), ("b", 2), ("c", 3)]);
     ///
     /// for val in map.values() {
     ///     println!("{val}");
@@ -431,11 +404,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map = HashMap::from([
-    ///     ("a", 1),
-    ///     ("b", 2),
-    ///     ("c", 3),
-    /// ]);
+    /// let mut map = HashMap::from([("a", 1), ("b", 2), ("c", 3)]);
     ///
     /// for val in map.values_mut() {
     ///     *val = *val + 10;
@@ -464,11 +433,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
-    ///     ("a", 1),
-    ///     ("b", 2),
-    ///     ("c", 3),
-    /// ]);
+    /// let map = HashMap::from([("a", 1), ("b", 2), ("c", 3)]);
     ///
     /// let mut vec: Vec<i32> = map.into_values().collect();
     /// // The `IntoValues` iterator produces values in arbitrary order, so
@@ -496,11 +461,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
-    ///     ("a", 1),
-    ///     ("b", 2),
-    ///     ("c", 3),
-    /// ]);
+    /// let map = HashMap::from([("a", 1), ("b", 2), ("c", 3)]);
     ///
     /// for (key, val) in map.iter() {
     ///     println!("key: {key} val: {val}");
@@ -526,11 +487,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map = HashMap::from([
-    ///     ("a", 1),
-    ///     ("b", 2),
-    ///     ("c", 3),
-    /// ]);
+    /// let mut map = HashMap::from([("a", 1), ("b", 2), ("c", 3)]);
     ///
     /// // Update all values
     /// for (_, val) in map.iter_mut() {
@@ -672,7 +629,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x*10)).collect();
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
     /// map.retain(|&k, _| k % 2 == 0);
     /// assert_eq!(map.len(), 4);
     /// ```
@@ -715,8 +672,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::RandomState;
+    /// use std::collections::HashMap;
     ///
     /// let hasher = RandomState::new();
     /// let map: HashMap<i32, i32> = HashMap::with_hasher(hasher);
@@ -925,30 +882,15 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
-    /// let got = libraries.get_many_mut([
-    ///     "Athenæum",
-    ///     "Library of Congress",
-    /// ]);
-    /// assert_eq!(
-    ///     got,
-    ///     Some([
-    ///         &mut 1807,
-    ///         &mut 1800,
-    ///     ]),
-    /// );
+    /// let got = libraries.get_many_mut(["Athenæum", "Library of Congress"]);
+    /// assert_eq!(got, Some([&mut 1807, &mut 1800,]),);
     ///
     /// // Missing keys result in None
-    /// let got = libraries.get_many_mut([
-    ///     "Athenæum",
-    ///     "New York Public Library",
-    /// ]);
+    /// let got = libraries.get_many_mut(["Athenæum", "New York Public Library"]);
     /// assert_eq!(got, None);
     ///
     /// // Duplicate keys result in None
-    /// let got = libraries.get_many_mut([
-    ///     "Athenæum",
-    ///     "Athenæum",
-    /// ]);
+    /// let got = libraries.get_many_mut(["Athenæum", "Athenæum"]);
     /// assert_eq!(got, None);
     /// ```
     #[inline]
@@ -988,23 +930,11 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
-    /// let got = libraries.get_many_mut([
-    ///     "Athenæum",
-    ///     "Library of Congress",
-    /// ]);
-    /// assert_eq!(
-    ///     got,
-    ///     Some([
-    ///         &mut 1807,
-    ///         &mut 1800,
-    ///     ]),
-    /// );
+    /// let got = libraries.get_many_mut(["Athenæum", "Library of Congress"]);
+    /// assert_eq!(got, Some([&mut 1807, &mut 1800,]),);
     ///
     /// // Missing keys result in None
-    /// let got = libraries.get_many_mut([
-    ///     "Athenæum",
-    ///     "New York Public Library",
-    /// ]);
+    /// let got = libraries.get_many_mut(["Athenæum", "New York Public Library"]);
     /// assert_eq!(got, None);
     /// ```
     #[inline]
@@ -1384,9 +1314,7 @@ where
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let map = HashMap::from([
-///     ("a", 1),
-/// ]);
+/// let map = HashMap::from([("a", 1)]);
 /// let iter = map.iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1422,9 +1350,7 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::from([
-///     ("a", 1),
-/// ]);
+/// let mut map = HashMap::from([("a", 1)]);
 /// let iter = map.iter_mut();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1453,9 +1379,7 @@ impl<'a, K, V> IterMut<'a, K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let map = HashMap::from([
-///     ("a", 1),
-/// ]);
+/// let map = HashMap::from([("a", 1)]);
 /// let iter = map.into_iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1483,9 +1407,7 @@ impl<K, V> IntoIter<K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let map = HashMap::from([
-///     ("a", 1),
-/// ]);
+/// let map = HashMap::from([("a", 1)]);
 /// let iter_keys = map.keys();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1521,9 +1443,7 @@ impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let map = HashMap::from([
-///     ("a", 1),
-/// ]);
+/// let map = HashMap::from([("a", 1)]);
 /// let iter_values = map.values();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1559,9 +1479,7 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::from([
-///     ("a", 1),
-/// ]);
+/// let mut map = HashMap::from([("a", 1)]);
 /// let iter = map.drain();
 /// ```
 #[stable(feature = "drain", since = "1.6.0")]
@@ -1590,9 +1508,7 @@ impl<'a, K, V> Drain<'a, K, V> {
 ///
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::from([
-///     ("a", 1),
-/// ]);
+/// let mut map = HashMap::from([("a", 1)]);
 /// let iter = map.drain_filter(|_k, v| *v % 2 == 0);
 /// ```
 #[unstable(feature = "hash_drain_filter", issue = "59618")]
@@ -1615,9 +1531,7 @@ where
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::from([
-///     ("a", 1),
-/// ]);
+/// let mut map = HashMap::from([("a", 1)]);
 /// let iter_values = map.values_mut();
 /// ```
 #[stable(feature = "map_values_mut", since = "1.10.0")]
@@ -1637,9 +1551,7 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let map = HashMap::from([
-///     ("a", 1),
-/// ]);
+/// let map = HashMap::from([("a", 1)]);
 /// let iter_keys = map.into_keys();
 /// ```
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
@@ -1659,9 +1571,7 @@ pub struct IntoKeys<K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let map = HashMap::from([
-///     ("a", 1),
-/// ]);
+/// let map = HashMap::from([("a", 1)]);
 /// let iter_keys = map.into_values();
 /// ```
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
@@ -1831,9 +1741,7 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     ///
     /// let mut map: HashMap<&str, String> = HashMap::new();
     ///
-    /// map.raw_entry_mut().from_key("poneyland").or_insert_with(|| {
-    ///     ("poneyland", "hoho".to_string())
-    /// });
+    /// map.raw_entry_mut().from_key("poneyland").or_insert_with(|| ("poneyland", "hoho".to_string()));
     ///
     /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
@@ -1866,15 +1774,12 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
     /// map.raw_entry_mut()
-    ///    .from_key("poneyland")
-    ///    .and_modify(|_k, v| { *v += 1 })
-    ///    .or_insert("poneyland", 42);
+    ///     .from_key("poneyland")
+    ///     .and_modify(|_k, v| *v += 1)
+    ///     .or_insert("poneyland", 42);
     /// assert_eq!(map["poneyland"], 42);
     ///
-    /// map.raw_entry_mut()
-    ///    .from_key("poneyland")
-    ///    .and_modify(|_k, v| { *v += 1 })
-    ///    .or_insert("poneyland", 0);
+    /// map.raw_entry_mut().from_key("poneyland").and_modify(|_k, v| *v += 1).or_insert("poneyland", 0);
     /// assert_eq!(map["poneyland"], 43);
     /// ```
     #[inline]
@@ -2207,11 +2112,7 @@ impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
-    ///     ("a", 1),
-    ///     ("b", 2),
-    ///     ("c", 3),
-    /// ]);
+    /// let map = HashMap::from([("a", 1), ("b", 2), ("c", 3)]);
     ///
     /// // Not possible with .iter()
     /// let vec: Vec<(&str, i32)> = map.into_iter().collect();
@@ -2620,14 +2521,10 @@ impl<'a, K, V> Entry<'a, K, V> {
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
-    /// map.entry("poneyland")
-    ///    .and_modify(|e| { *e += 1 })
-    ///    .or_insert(42);
+    /// map.entry("poneyland").and_modify(|e| *e += 1).or_insert(42);
     /// assert_eq!(map["poneyland"], 42);
     ///
-    /// map.entry("poneyland")
-    ///    .and_modify(|e| { *e += 1 })
-    ///    .or_insert(42);
+    /// map.entry("poneyland").and_modify(|e| *e += 1).or_insert(42);
     /// assert_eq!(map["poneyland"], 43);
     /// ```
     #[inline]
@@ -2720,8 +2617,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
+    /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -2744,8 +2641,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
+    /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -2770,8 +2667,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
+    /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -2803,8 +2700,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
+    /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -2827,8 +2724,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
+    /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -2850,8 +2747,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
+    /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -2887,7 +2784,6 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     ///     // Also replace the key with a handle to our other key.
     ///     let (old_key, old_value): (Rc<String>, u32) = entry.replace_entry(16);
     /// }
-    ///
     /// ```
     #[inline]
     #[unstable(feature = "map_entry_replace", issue = "44286")]
@@ -2911,7 +2807,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     ///
     /// reclaim_memory(&mut map, &known_strings);
     ///
-    /// fn reclaim_memory(map: &mut HashMap<Rc<String>, u32>, known_strings: &[Rc<String>] ) {
+    /// fn reclaim_memory(map: &mut HashMap<Rc<String>, u32>, known_strings: &[Rc<String>]) {
     ///     for s in known_strings {
     ///         if let Entry::Occupied(entry) = map.entry(Rc::clone(s)) {
     ///             // Replaces the entry's key with our version of it in `known_strings`.
@@ -2950,8 +2846,8 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
+    /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
@@ -2971,8 +2867,8 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
+    /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
@@ -2994,8 +2890,8 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     ///
     /// ```
     /// #![feature(entry_insert)]
-    /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
+    /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
@@ -3081,8 +2977,8 @@ where
 /// # Examples
 ///
 /// ```
-/// use std::collections::HashMap;
 /// use std::collections::hash_map::RandomState;
+/// use std::collections::HashMap;
 ///
 /// let s = RandomState::new();
 /// let mut map = HashMap::with_hasher(s);

@@ -567,12 +567,14 @@ impl CString {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::{CString, CStr};
+    /// use std::ffi::{CStr, CString};
     ///
     /// let c_string = CString::new(b"foo".to_vec()).expect("CString::new failed");
     /// let cstr = c_string.as_c_str();
-    /// assert_eq!(cstr,
-    ///            CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed"));
+    /// assert_eq!(
+    ///     cstr,
+    ///     CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed")
+    /// );
     /// ```
     #[inline]
     #[must_use]
@@ -586,12 +588,14 @@ impl CString {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::{CString, CStr};
+    /// use std::ffi::{CStr, CString};
     ///
     /// let c_string = CString::new(b"foo".to_vec()).expect("CString::new failed");
     /// let boxed = c_string.into_boxed_c_str();
-    /// assert_eq!(&*boxed,
-    ///            CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed"));
+    /// assert_eq!(
+    ///     &*boxed,
+    ///     CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed")
+    /// );
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
@@ -622,10 +626,9 @@ impl CString {
     ///
     /// ```
     /// use std::ffi::CString;
-    /// assert_eq!(
-    ///     unsafe { CString::from_vec_with_nul_unchecked(b"abc\0".to_vec()) },
-    ///     unsafe { CString::from_vec_unchecked(b"abc".to_vec()) }
-    /// );
+    /// assert_eq!(unsafe { CString::from_vec_with_nul_unchecked(b"abc\0".to_vec()) }, unsafe {
+    ///     CString::from_vec_unchecked(b"abc".to_vec())
+    /// });
     /// ```
     #[must_use]
     #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
@@ -656,8 +659,7 @@ impl CString {
     /// ```
     /// use std::ffi::CString;
     /// assert_eq!(
-    ///     CString::from_vec_with_nul(b"abc\0".to_vec())
-    ///         .expect("CString::from_vec_with_nul failed"),
+    ///     CString::from_vec_with_nul(b"abc\0".to_vec()).expect("CString::from_vec_with_nul failed"),
     ///     CString::new(b"abc".to_vec()).expect("CString::new failed")
     /// );
     /// ```
@@ -1077,8 +1079,8 @@ impl CStr {
     /// use std::borrow::Cow;
     /// use std::ffi::CStr;
     ///
-    /// let cstr = CStr::from_bytes_with_nul(b"Hello World\0")
-    ///                  .expect("CStr::from_bytes_with_nul failed");
+    /// let cstr =
+    ///     CStr::from_bytes_with_nul(b"Hello World\0").expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(cstr.to_string_lossy(), Cow::Borrowed("Hello World"));
     /// ```
     ///
@@ -1089,11 +1091,8 @@ impl CStr {
     /// use std::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0")
-    ///                  .expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(
-    ///     cstr.to_string_lossy(),
-    ///     Cow::Owned(String::from("Hello �World")) as Cow<'_, str>
-    /// );
+    ///     .expect("CStr::from_bytes_with_nul failed");
+    /// assert_eq!(cstr.to_string_lossy(), Cow::Owned(String::from("Hello �World")) as Cow<'_, str>);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "this returns the result of the operation, \

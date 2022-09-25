@@ -220,7 +220,7 @@ use crate::vec::Vec;
 /// function which takes a [`&str`] by using an ampersand (`&`):
 ///
 /// ```
-/// fn takes_str(s: &str) { }
+/// fn takes_str(s: &str) {}
 ///
 /// let s = String::from("Hello");
 ///
@@ -277,7 +277,6 @@ use crate::vec::Vec;
 /// use std::mem;
 ///
 /// let story = String::from("Once upon a time...");
-///
 // FIXME Update this when vec_into_raw_parts is stabilized
 /// // Prevent automatically dropping the String's data
 /// let mut story = mem::ManuallyDrop::new(story);
@@ -303,7 +302,6 @@ use crate::vec::Vec;
 ///
 /// If a `String` has enough capacity, adding elements to it will not
 /// re-allocate. For example, consider this program:
-///
 /// ```
 /// let mut s = String::new();
 ///
@@ -316,7 +314,6 @@ use crate::vec::Vec;
 /// ```
 ///
 /// This will output the following:
-///
 /// ```text
 /// 0
 /// 8
@@ -329,7 +326,6 @@ use crate::vec::Vec;
 /// At first, we have no memory allocated at all, but as we append to the
 /// string, it increases its capacity appropriately. If we instead use the
 /// [`with_capacity`] method to allocate the correct capacity initially:
-///
 /// ```
 /// let mut s = String::with_capacity(25);
 ///
@@ -344,7 +340,6 @@ use crate::vec::Vec;
 /// [`with_capacity`]: String::with_capacity
 ///
 /// We end up with a different output:
-///
 /// ```text
 /// 25
 /// 25
@@ -421,8 +416,7 @@ pub struct FromUtf8Error {
 ///
 /// ```
 /// // 𝄞mu<invalid>ic
-/// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075,
-///           0xD800, 0x0069, 0x0063];
+/// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075, 0xD800, 0x0069, 0x0063];
 ///
 /// assert!(String::from_utf16(v).is_err());
 /// ```
@@ -668,14 +662,11 @@ impl String {
     ///
     /// ```
     /// // 𝄞music
-    /// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075,
-    ///           0x0073, 0x0069, 0x0063];
-    /// assert_eq!(String::from("𝄞music"),
-    ///            String::from_utf16(v).unwrap());
+    /// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0x0069, 0x0063];
+    /// assert_eq!(String::from("𝄞music"), String::from_utf16(v).unwrap());
     ///
     /// // 𝄞mu<invalid>ic
-    /// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075,
-    ///           0xD800, 0x0069, 0x0063];
+    /// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075, 0xD800, 0x0069, 0x0063];
     /// assert!(String::from_utf16(v).is_err());
     /// ```
     #[cfg(not(no_global_oom_handling))]
@@ -711,12 +702,9 @@ impl String {
     ///
     /// ```
     /// // 𝄞mus<invalid>ic<invalid>
-    /// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075,
-    ///           0x0073, 0xDD1E, 0x0069, 0x0063,
-    ///           0xD834];
+    /// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834];
     ///
-    /// assert_eq!(String::from("𝄞mus\u{FFFD}ic\u{FFFD}"),
-    ///            String::from_utf16_lossy(v));
+    /// assert_eq!(String::from("𝄞mus\u{FFFD}ic\u{FFFD}"), String::from_utf16_lossy(v));
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
@@ -792,7 +780,6 @@ impl String {
     ///
     /// unsafe {
     ///     let s = String::from("hello");
-    ///
     // FIXME Update this when vec_into_raw_parts is stabilized
     ///     // Prevent automatically dropping the String's data
     ///     let mut s = mem::ManuallyDrop::new(s);
@@ -834,9 +821,7 @@ impl String {
     /// // some bytes, in a vector
     /// let sparkle_heart = vec![240, 159, 146, 150];
     ///
-    /// let sparkle_heart = unsafe {
-    ///     String::from_utf8_unchecked(sparkle_heart)
-    /// };
+    /// let sparkle_heart = unsafe { String::from_utf8_unchecked(sparkle_heart) };
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```

@@ -667,11 +667,15 @@ impl [u8] {
 /// pub struct Foo(Vec<u32>, Vec<String>);
 ///
 /// impl std::borrow::Borrow<[u32]> for Foo {
-///     fn borrow(&self) -> &[u32] { &self.0 }
+///     fn borrow(&self) -> &[u32] {
+///         &self.0
+///     }
 /// }
 ///
 /// impl std::borrow::Borrow<[String]> for Foo {
-///     fn borrow(&self) -> &[String] { &self.1 }
+///     fn borrow(&self) -> &[String] {
+///         &self.1
+///     }
 /// }
 /// ```
 #[unstable(feature = "slice_concat_trait", issue = "27747")]

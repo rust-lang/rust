@@ -21,11 +21,7 @@
 //!
 //! ```
 //! fn divide(numerator: f64, denominator: f64) -> Option<f64> {
-//!     if denominator == 0.0 {
-//!         None
-//!     } else {
-//!         Some(numerator / denominator)
-//!     }
+//!     if denominator == 0.0 { None } else { Some(numerator / denominator) }
 //! }
 //!
 //! // The return value of the function is an option
@@ -36,13 +32,11 @@
 //!     // The division was valid
 //!     Some(x) => println!("Result: {x}"),
 //!     // The division was invalid
-//!     None    => println!("Cannot divide by 0"),
+//!     None => println!("Cannot divide by 0"),
 //! }
 //! ```
-//!
 //
 // FIXME: Show how `Option` is used in practice, with lots of methods
-//
 //! # Options and pointers ("nullable" pointers)
 //!
 //! Rust's pointer types must always point to a valid location; there are
@@ -467,7 +461,10 @@
 //! Initialize a result to [`None`] before a loop:
 //!
 //! ```
-//! enum Kingdom { Plant(u32, &'static str), Animal(u32, &'static str) }
+//! enum Kingdom {
+//!     Plant(u32, &'static str),
+//!     Animal(u32, &'static str),
+//! }
 //!
 //! // A list of data to search through.
 //! let all_the_big_things = [
@@ -490,7 +487,7 @@
 //!             size_of_biggest_animal = size;
 //!             name_of_biggest_animal = Some(name);
 //!         }
-//!         Kingdom::Animal(..) | Kingdom::Plant(..) => ()
+//!         Kingdom::Animal(..) | Kingdom::Plant(..) => (),
 //!     }
 //! }
 //!
@@ -638,7 +635,7 @@ impl<T> Option<T> {
     /// let mut x = Some(2);
     /// match x.as_mut() {
     ///     Some(v) => *v = 42,
-    ///     None => {},
+    ///     None => {}
     /// }
     /// assert_eq!(x, Some(42));
     /// ```
@@ -716,8 +713,7 @@ impl<T> Option<T> {
     ///
     /// ```should_panic
     /// # let slice: &[u8] = &[];
-    /// let item = slice.get(0)
-    ///     .expect("slice should not be empty");
+    /// let item = slice.get(0).expect("slice should not be empty");
     /// ```
     ///
     /// **Hint**: If you're having trouble remembering how to phrase expect
@@ -1124,10 +1120,13 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let mut x: Option<String> = Some("hey".to_owned());
-    /// assert_eq!(x.as_deref_mut().map(|x| {
-    ///     x.make_ascii_uppercase();
-    ///     x
-    /// }), Some("HEY".to_owned().as_mut_str()));
+    /// assert_eq!(
+    ///     x.as_deref_mut().map(|x| {
+    ///         x.make_ascii_uppercase();
+    ///         x
+    ///     }),
+    ///     Some("HEY".to_owned().as_mut_str())
+    /// );
     /// ```
     #[stable(feature = "option_deref", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
@@ -1171,7 +1170,7 @@ impl<T> Option<T> {
     /// let mut x = Some(4);
     /// match x.iter_mut().next() {
     ///     Some(v) => *v = 42,
-    ///     None => {},
+    ///     None => {}
     /// }
     /// assert_eq!(x, Some(42));
     ///
@@ -1358,8 +1357,12 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// fn nobody() -> Option<&'static str> { None }
-    /// fn vikings() -> Option<&'static str> { Some("vikings") }
+    /// fn nobody() -> Option<&'static str> {
+    ///     None
+    /// }
+    /// fn vikings() -> Option<&'static str> {
+    ///     Some("vikings")
+    /// }
     ///
     /// assert_eq!(Some("barbarians").or_else(vikings), Some("barbarians"));
     /// assert_eq!(None.or_else(vikings), Some("vikings"));
@@ -2227,10 +2230,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// ```
     /// let items = vec![0_u16, 1, 2];
     ///
-    /// let res: Option<Vec<u16>> = items
-    ///     .iter()
-    ///     .map(|x| x.checked_add(1))
-    ///     .collect();
+    /// let res: Option<Vec<u16>> = items.iter().map(|x| x.checked_add(1)).collect();
     ///
     /// assert_eq!(res, Some(vec![1, 2, 3]));
     /// ```
@@ -2243,10 +2243,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// ```
     /// let items = vec![2_u16, 1, 0];
     ///
-    /// let res: Option<Vec<u16>> = items
-    ///     .iter()
-    ///     .map(|x| x.checked_sub(1))
-    ///     .collect();
+    /// let res: Option<Vec<u16>> = items.iter().map(|x| x.checked_sub(1)).collect();
     ///
     /// assert_eq!(res, None);
     /// ```
@@ -2264,7 +2261,10 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     ///
     /// let res: Option<Vec<u16>> = items
     ///     .iter()
-    ///     .map(|x| { shared += x; x.checked_sub(2) })
+    ///     .map(|x| {
+    ///         shared += x;
+    ///         x.checked_sub(2)
+    ///     })
     ///     .collect();
     ///
     /// assert_eq!(res, None);

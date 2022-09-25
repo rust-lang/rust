@@ -1024,9 +1024,7 @@ extern "rust-intrinsic" {
     /// // This avoids an integer-to-pointer `transmute`, which can be problematic.
     /// // Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
     /// let pointer = foo as *const ();
-    /// let function = unsafe {
-    ///     std::mem::transmute::<*const (), fn() -> i32>(pointer)
-    /// };
+    /// let function = unsafe { std::mem::transmute::<*const (), fn() -> i32>(pointer) };
     /// assert_eq!(function(), 0);
     /// ```
     ///
@@ -1039,8 +1037,7 @@ extern "rust-intrinsic" {
     ///     std::mem::transmute::<R<'b>, R<'static>>(r)
     /// }
     ///
-    /// unsafe fn shorten_invariant_lifetime<'b, 'c>(r: &'b mut R<'static>)
-    ///                                              -> &'b mut R<'c> {
+    /// unsafe fn shorten_invariant_lifetime<'b, 'c>(r: &'b mut R<'static>) -> &'b mut R<'c> {
     ///     std::mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(r)
     /// }
     /// ```
@@ -1056,9 +1053,7 @@ extern "rust-intrinsic" {
     /// ```
     /// let raw_bytes = [0x78, 0x56, 0x34, 0x12];
     ///
-    /// let num = unsafe {
-    ///     std::mem::transmute::<[u8; 4], u32>(raw_bytes)
-    /// };
+    /// let num = unsafe { std::mem::transmute::<[u8; 4], u32>(raw_bytes) };
     ///
     /// // use `u32::from_ne_bytes` instead
     /// let num = u32::from_ne_bytes(raw_bytes);
@@ -1073,9 +1068,7 @@ extern "rust-intrinsic" {
     ///
     /// ```no_run
     /// let ptr = &0;
-    /// let ptr_num_transmute = unsafe {
-    ///     std::mem::transmute::<&i32, usize>(ptr)
-    /// };
+    /// let ptr_num_transmute = unsafe { std::mem::transmute::<&i32, usize>(ptr) };
     ///
     /// // Use an `as` cast instead
     /// let ptr_num_cast = ptr as *const i32 as usize;
@@ -1095,9 +1088,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// let ptr: *mut i32 = &mut 0;
-    /// let ref_transmuted = unsafe {
-    ///     std::mem::transmute::<*mut i32, &mut i32>(ptr)
-    /// };
+    /// let ref_transmuted = unsafe { std::mem::transmute::<*mut i32, &mut i32>(ptr) };
     ///
     /// // Use a reborrow instead
     /// let ref_casted = unsafe { &mut *ptr };
@@ -1107,9 +1098,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// let ptr = &mut 0;
-    /// let val_transmuted = unsafe {
-    ///     std::mem::transmute::<&mut i32, &mut u32>(ptr)
-    /// };
+    /// let val_transmuted = unsafe { std::mem::transmute::<&mut i32, &mut u32>(ptr) };
     ///
     /// // Now, put together `as` and reborrowing - note the chaining of `as`
     /// // `as` is not transitive
@@ -1182,7 +1171,6 @@ extern "rust-intrinsic" {
     /// [`from_raw_parts`]: ../../std/vec/struct.Vec.html#method.from_raw_parts
     ///
     /// Implementing `split_at_mut`:
-    ///
     /// ```
     /// use std::{slice, mem};
     ///

@@ -783,7 +783,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ) -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a Rust function item
         //! into a closure or a `proc`.
-        //!
 
         let b = self.shallow_resolve(b);
         debug!("coerce_from_fn_pointer(a={:?}, b={:?})", a, b);
@@ -864,7 +863,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ) -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a non-capturing closure
         //! into a function pointer.
-        //!
 
         let b = self.shallow_resolve(b);
 

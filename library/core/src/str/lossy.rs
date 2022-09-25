@@ -127,7 +127,10 @@ impl fmt::Debug for Debug<'_> {
 ///
 /// use std::str::Utf8Chunks;
 ///
-/// fn from_utf8_lossy<F>(input: &[u8], mut push: F) where F: FnMut(&str) {
+/// fn from_utf8_lossy<F>(input: &[u8], mut push: F)
+/// where
+///     F: FnMut(&str),
+/// {
 ///     for chunk in Utf8Chunks::new(input) {
 ///         push(chunk.valid());
 ///

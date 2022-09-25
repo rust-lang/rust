@@ -236,8 +236,7 @@ impl<'a> AsRawFd for io::StderrLock<'a> {
 /// # use std::os::unix::io::AsRawFd;
 /// use std::net::UdpSocket;
 /// use std::sync::Arc;
-/// trait MyTrait: AsRawFd {
-/// }
+/// trait MyTrait: AsRawFd {}
 /// impl MyTrait for Arc<UdpSocket> {}
 /// impl MyTrait for Box<UdpSocket> {}
 /// # }

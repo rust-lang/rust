@@ -1526,9 +1526,9 @@ impl<T> [T] {
     /// let v = [1, 2, 3, 4, 5, 6];
     ///
     /// {
-    ///    let (left, right) = v.split_at(0);
-    ///    assert_eq!(left, []);
-    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    ///     let (left, right) = v.split_at(0);
+    ///     assert_eq!(left, []);
+    ///     assert_eq!(right, [1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
@@ -1613,9 +1613,9 @@ impl<T> [T] {
     /// let v = [1, 2, 3, 4, 5, 6];
     ///
     /// unsafe {
-    ///    let (left, right) = v.split_at_unchecked(0);
-    ///    assert_eq!(left, []);
-    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    ///     let (left, right) = v.split_at_unchecked(0);
+    ///     assert_eq!(left, []);
+    ///     assert_eq!(right, [1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// unsafe {
@@ -1715,9 +1715,9 @@ impl<T> [T] {
     /// let v = &[1, 2, 3, 4, 5, 6][..];
     ///
     /// {
-    ///    let (left, right) = v.split_array_ref::<0>();
-    ///    assert_eq!(left, &[]);
-    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    ///     let (left, right) = v.split_array_ref::<0>();
+    ///     assert_eq!(left, &[]);
+    ///     assert_eq!(right, [1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
@@ -1794,9 +1794,9 @@ impl<T> [T] {
     /// let v = &[1, 2, 3, 4, 5, 6][..];
     ///
     /// {
-    ///    let (left, right) = v.rsplit_array_ref::<0>();
-    ///    assert_eq!(left, [1, 2, 3, 4, 5, 6]);
-    ///    assert_eq!(right, &[]);
+    ///     let (left, right) = v.rsplit_array_ref::<0>();
+    ///     assert_eq!(left, [1, 2, 3, 4, 5, 6]);
+    ///     assert_eq!(right, &[]);
     /// }
     ///
     /// {
@@ -1972,7 +1972,7 @@ impl<T> [T] {
     /// let mut v = [10, 40, 30, 20, 60, 50];
     ///
     /// for group in v.split_inclusive_mut(|num| *num % 3 == 0) {
-    ///     let terminator_idx = group.len()-1;
+    ///     let terminator_idx = group.len() - 1;
     ///     group[terminator_idx] = 1;
     /// }
     /// assert_eq!(v, [10, 40, 1, 20, 1, 1]);
@@ -2038,7 +2038,6 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, [3, 400, 300, 2, 600, 1]);
     /// ```
-    ///
     #[stable(feature = "slice_rsplit", since = "1.27.0")]
     #[inline]
     pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<'_, T, F>
@@ -2269,9 +2268,8 @@ impl<T> [T] {
     /// assert_eq!(v.strip_prefix(&[50]), None);
     /// assert_eq!(v.strip_prefix(&[10, 50]), None);
     ///
-    /// let prefix : &str = "he";
-    /// assert_eq!(b"hello".strip_prefix(prefix.as_bytes()),
-    ///            Some(b"llo".as_ref()));
+    /// let prefix: &str = "he";
+    /// assert_eq!(b"hello".strip_prefix(prefix.as_bytes()), Some(b"llo".as_ref()));
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
     #[stable(feature = "slice_strip", since = "1.51.0")]
@@ -2352,11 +2350,14 @@ impl<T> [T] {
     /// ```
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     ///
-    /// assert_eq!(s.binary_search(&13),  Ok(9));
-    /// assert_eq!(s.binary_search(&4),   Err(7));
+    /// assert_eq!(s.binary_search(&13), Ok(9));
+    /// assert_eq!(s.binary_search(&4), Err(7));
     /// assert_eq!(s.binary_search(&100), Err(13));
     /// let r = s.binary_search(&1);
-    /// assert!(match r { Ok(1..=4) => true, _ => false, });
+    /// assert!(match r {
+    ///     Ok(1..=4) => true,
+    ///     _ => false,
+    /// });
     /// ```
     ///
     /// If you want to insert an item to a sorted vector, while maintaining
@@ -2418,7 +2419,10 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search_by(|probe| probe.cmp(&seek)), Err(13));
     /// let seek = 1;
     /// let r = s.binary_search_by(|probe| probe.cmp(&seek));
-    /// assert!(match r { Ok(1..=4) => true, _ => false, });
+    /// assert!(match r {
+    ///     Ok(1..=4) => true,
+    ///     _ => false,
+    /// });
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -2485,15 +2489,30 @@ impl<T> [T] {
     /// fourth could match any position in `[1, 4]`.
     ///
     /// ```
-    /// let s = [(0, 0), (2, 1), (4, 1), (5, 1), (3, 1),
-    ///          (1, 2), (2, 3), (4, 5), (5, 8), (3, 13),
-    ///          (1, 21), (2, 34), (4, 55)];
+    /// let s = [
+    ///     (0, 0),
+    ///     (2, 1),
+    ///     (4, 1),
+    ///     (5, 1),
+    ///     (3, 1),
+    ///     (1, 2),
+    ///     (2, 3),
+    ///     (4, 5),
+    ///     (5, 8),
+    ///     (3, 13),
+    ///     (1, 21),
+    ///     (2, 34),
+    ///     (4, 55),
+    /// ];
     ///
-    /// assert_eq!(s.binary_search_by_key(&13, |&(a, b)| b),  Ok(9));
-    /// assert_eq!(s.binary_search_by_key(&4, |&(a, b)| b),   Err(7));
+    /// assert_eq!(s.binary_search_by_key(&13, |&(a, b)| b), Ok(9));
+    /// assert_eq!(s.binary_search_by_key(&4, |&(a, b)| b), Err(7));
     /// assert_eq!(s.binary_search_by_key(&100, |&(a, b)| b), Err(13));
     /// let r = s.binary_search_by_key(&1, |&(a, b)| b);
-    /// assert!(match r { Ok(1..=4) => true, _ => false, });
+    /// assert!(match r {
+    ///     Ok(1..=4) => true,
+    ///     _ => false,
+    /// });
     /// ```
     // Lint rustdoc::broken_intra_doc_links is allowed as `slice::sort_by_key` is
     // in crate `alloc`, and as such doesn't exists yet when building `core`: #74481.
@@ -2671,10 +2690,12 @@ impl<T> [T] {
     ///
     /// // We are only guaranteed the slice will be one of the following, based on the way we sort
     /// // about the specified index.
-    /// assert!(v == [-3, -5, 1, 2, 4] ||
-    ///         v == [-5, -3, 1, 2, 4] ||
-    ///         v == [-3, -5, 1, 4, 2] ||
-    ///         v == [-5, -3, 1, 4, 2]);
+    /// assert!(
+    ///     v == [-3, -5, 1, 2, 4]
+    ///         || v == [-5, -3, 1, 2, 4]
+    ///         || v == [-3, -5, 1, 4, 2]
+    ///         || v == [-5, -3, 1, 4, 2]
+    /// );
     /// ```
     #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
@@ -2719,10 +2740,12 @@ impl<T> [T] {
     ///
     /// // We are only guaranteed the slice will be one of the following, based on the way we sort
     /// // about the specified index.
-    /// assert!(v == [2, 4, 1, -5, -3] ||
-    ///         v == [2, 4, 1, -3, -5] ||
-    ///         v == [4, 2, 1, -5, -3] ||
-    ///         v == [4, 2, 1, -3, -5]);
+    /// assert!(
+    ///     v == [2, 4, 1, -5, -3]
+    ///         || v == [2, 4, 1, -3, -5]
+    ///         || v == [4, 2, 1, -5, -3]
+    ///         || v == [4, 2, 1, -3, -5]
+    /// );
     /// ```
     #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
@@ -2771,10 +2794,12 @@ impl<T> [T] {
     ///
     /// // We are only guaranteed the slice will be one of the following, based on the way we sort
     /// // about the specified index.
-    /// assert!(v == [1, 2, -3, 4, -5] ||
-    ///         v == [1, 2, -3, -5, 4] ||
-    ///         v == [2, 1, -3, 4, -5] ||
-    ///         v == [2, 1, -3, -5, 4]);
+    /// assert!(
+    ///     v == [1, 2, -3, 4, -5]
+    ///         || v == [1, 2, -3, -5, 4]
+    ///         || v == [2, 1, -3, 4, -5]
+    ///         || v == [2, 1, -3, -5, 4]
+    /// );
     /// ```
     #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
@@ -4055,10 +4080,7 @@ impl<T, const N: usize> [[T; N]] {
     ///
     /// assert_eq!([[1, 2, 3], [4, 5, 6]].flatten(), &[1, 2, 3, 4, 5, 6]);
     ///
-    /// assert_eq!(
-    ///     [[1, 2, 3], [4, 5, 6]].flatten(),
-    ///     [[1, 2], [3, 4], [5, 6]].flatten(),
-    /// );
+    /// assert_eq!([[1, 2, 3], [4, 5, 6]].flatten(), [[1, 2], [3, 4], [5, 6]].flatten(),);
     ///
     /// let slice_of_empty_arrays: &[[i32; 0]] = &[[], [], [], [], []];
     /// assert!(slice_of_empty_arrays.flatten().is_empty());

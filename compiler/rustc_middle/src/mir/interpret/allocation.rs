@@ -526,7 +526,6 @@ impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
     ///
     /// Note: this function exists to allow `range_get_provenance` to be private, in order to somewhat
     /// limit access to provenance outside of the `Allocation` abstraction.
-    ///
     pub fn range_has_provenance(&self, cx: &impl HasDataLayout, range: AllocRange) -> bool {
         !self.range_get_provenance(cx, range).is_empty()
     }

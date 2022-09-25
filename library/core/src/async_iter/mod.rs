@@ -101,11 +101,7 @@
 //!         self.count += 1;
 //!
 //!         // Check to see if we've finished counting or not.
-//!         if self.count < 6 {
-//!             Poll::Ready(Some(self.count))
-//!         } else {
-//!             Poll::Ready(None)
-//!         }
+//!         if self.count < 6 { Poll::Ready(Some(self.count)) } else { Poll::Ready(None) }
 //!     }
 //! }
 //! ```

@@ -4,18 +4,17 @@
 //! suppose we have the following:
 //!
 //! ```rust
-//! struct Bar { /* some data */ }
+//! struct Bar {/* some data */}
 //!
 //! struct Foo {
 //!     /// Some computed data that should never change after construction.
 //!     pub computed: Bar,
-//!
 //!     /* some other fields */
 //! }
 //!
 //! impl Bar {
 //!     /// Mutate the `Bar`.
-//!     pub fn mutate(&mut self) { }
+//!     pub fn mutate(&mut self) {}
 //! }
 //! ```
 //!
@@ -30,7 +29,6 @@
 //! struct Foo {
 //!     /// Some computed data that should never change after construction.
 //!     pub computed: Frozen<Bar>,
-//!
 //!     /* some other fields */
 //! }
 //! ```

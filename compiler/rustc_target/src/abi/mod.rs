@@ -958,7 +958,6 @@ pub enum FieldsShape {
         /// it is easier to operate on the inverse mapping (that is,
         /// from memory order to source order), and that is usually
         /// named `inverse_memory_index`.
-        ///
         // FIXME(eddyb) build a better abstraction for permutations, if possible.
         // FIXME(camlorn) also consider small vector  optimization here.
         memory_index: Vec<u32>,

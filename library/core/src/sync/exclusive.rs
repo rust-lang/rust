@@ -50,7 +50,7 @@ use core::task::{Context, Poll};
 /// async fn other() {}
 /// fn assert_sync<T: Sync>(t: T) {}
 /// struct State<F> {
-///     future: Exclusive<F>
+///     future: Exclusive<F>,
 /// }
 ///
 /// assert_sync(State {
@@ -59,7 +59,7 @@ use core::task::{Context, Poll};
 ///         let cell_ref = &cell;
 ///         other().await;
 ///         let value = cell_ref.get();
-///     })
+///     }),
 /// });
 /// ```
 ///

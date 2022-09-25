@@ -56,8 +56,7 @@ use crate::alloc::{Allocator, Global};
 ///
 /// // Check for a specific one.
 /// if !books.contains("The Winds of Winter") {
-///     println!("We have {} books, but The Winds of Winter ain't one.",
-///              books.len());
+///     println!("We have {} books, but The Winds of Winter ain't one.", books.len());
 /// }
 ///
 /// // Remove a book.
@@ -359,8 +358,8 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # #![allow(unused_mut)]
     /// # #![feature(allocator_api)]
     /// # #![feature(btreemap_alloc)]
-    /// use std::collections::BTreeSet;
     /// use std::alloc::Global;
+    /// use std::collections::BTreeSet;
     ///
     /// let mut set: BTreeSet<i32> = BTreeSet::new_in(Global);
     /// ```

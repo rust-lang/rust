@@ -60,7 +60,6 @@ struct ThreadInner {
     ///                \                       /
     ///                 '--> JOIN_FINALIZE ---'
     ///                          (-1)
-    ///
     lifecycle: AtomicUsize,
 }
 

@@ -342,13 +342,13 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_EXTERN_CRATES,
         ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
         ELIDED_LIFETIMES_IN_PATHS,
-        EXPLICIT_OUTLIVES_REQUIREMENTS // FIXME(#52665, #47816) not always applicable and not all
-                                       // macros are ready for this yet.
-                                       // UNREACHABLE_PUB,
+        EXPLICIT_OUTLIVES_REQUIREMENTS /* FIXME(#52665, #47816) not always applicable and not all
+                                        * macros are ready for this yet.
+                                        * UNREACHABLE_PUB, */
 
-                                       // FIXME macro crates are not up for this yet, too much
-                                       // breakage is seen if we try to encourage this lint.
-                                       // MACRO_USE_EXTERN_CRATE
+                                       /* FIXME macro crates are not up for this yet, too much
+                                        * breakage is seen if we try to encourage this lint.
+                                        * MACRO_USE_EXTERN_CRATE */
     );
 
     // Register renamed and removed lints.

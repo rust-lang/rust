@@ -488,7 +488,10 @@ impl<T, const N: usize> [T; N] {
     ///
     /// let x = [1, 2, 3];
     /// let mut temp = 0;
-    /// let y = x.map(|v| { temp += 1; v * temp });
+    /// let y = x.map(|v| {
+    ///     temp += 1;
+    ///     v * temp
+    /// });
     /// assert_eq!(y, [1, 4, 9]);
     ///
     /// let x = ["Ferris", "Bueller's", "Day", "Off"];
@@ -658,9 +661,9 @@ impl<T, const N: usize> [T; N] {
     /// let v = [1, 2, 3, 4, 5, 6];
     ///
     /// {
-    ///    let (left, right) = v.split_array_ref::<0>();
-    ///    assert_eq!(left, &[]);
-    ///    assert_eq!(right, &[1, 2, 3, 4, 5, 6]);
+    ///     let (left, right) = v.split_array_ref::<0>();
+    ///     assert_eq!(left, &[]);
+    ///     assert_eq!(right, &[1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
@@ -736,9 +739,9 @@ impl<T, const N: usize> [T; N] {
     /// let v = [1, 2, 3, 4, 5, 6];
     ///
     /// {
-    ///    let (left, right) = v.rsplit_array_ref::<0>();
-    ///    assert_eq!(left, &[1, 2, 3, 4, 5, 6]);
-    ///    assert_eq!(right, &[]);
+    ///     let (left, right) = v.rsplit_array_ref::<0>();
+    ///     assert_eq!(left, &[1, 2, 3, 4, 5, 6]);
+    ///     assert_eq!(right, &[]);
     /// }
     ///
     /// {

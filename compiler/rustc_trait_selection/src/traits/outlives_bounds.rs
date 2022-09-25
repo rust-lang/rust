@@ -34,7 +34,7 @@ impl<'a, 'cx, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'cx, 'tcx> {
     /// argument types are well-formed. This may imply certain relationships
     /// between generic parameters. For example:
     /// ```
-    /// fn foo<'a,T>(x: &'a T) {}
+    /// fn foo<'a, T>(x: &'a T) {}
     /// ```
     /// can only be called with a `'a` and `T` such that `&'a T` is WF.
     /// For `&'a T` to be WF, `T: 'a` must hold. So we can assume `T: 'a`.

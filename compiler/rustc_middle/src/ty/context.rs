@@ -466,8 +466,8 @@ pub struct TypeckResults<'tcx> {
     ///
     /// ```
     /// match &&Some(5i32) {
-    ///     Some(n) => {},
-    ///     _ => {},
+    ///     Some(n) => {}
+    ///     _ => {}
     /// }
     /// ```
     /// leads to a `vec![&&Option<i32>, &Option<i32>]`. Empty vectors are not stored.
@@ -494,7 +494,9 @@ pub struct TypeckResults<'tcx> {
     ///
     /// ```rust
     /// # use std::fmt::Debug;
-    /// fn foo(x: &u32) -> impl Debug { *x }
+    /// fn foo(x: &u32) -> impl Debug {
+    ///     *x
+    /// }
     /// ```
     ///
     /// The function signature here would be:

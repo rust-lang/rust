@@ -248,7 +248,6 @@ enum ImplTraitContext {
     /// Treat `impl Trait` as shorthand for a new opaque type.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
     /// equivalent to a new opaque type like `type T = impl Debug; fn foo() -> T`.
-    ///
     ReturnPositionOpaqueTy {
         /// Origin: Either OpaqueTyOrigin::FnReturn or OpaqueTyOrigin::AsyncFn,
         origin: hir::OpaqueTyOrigin,
@@ -1830,10 +1829,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //
         // ```rust
         // impl<'a> Foo<'a> {
-        //   async fn bar<'b>(&self, x: &'b Vec<f64>, y: &str) -> &u32 {
-        //   //               ^ '0                       ^ '1     ^ '2
-        //   // elided lifetimes used below
-        //   }
+        //     async fn bar<'b>(&self, x: &'b Vec<f64>, y: &str) -> &u32 {
+        //         //               ^ '0                       ^ '1     ^ '2
+        //         // elided lifetimes used below
+        //     }
         // }
         // ```
         //

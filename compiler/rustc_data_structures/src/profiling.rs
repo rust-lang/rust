@@ -309,7 +309,6 @@ impl SelfProfilerRef {
     /// Note: recording at least one argument is *required* for the self-profiler to create the
     /// `TimingGuard`. A panic will be triggered if that doesn't happen. This function exists
     /// explicitly to record arguments, so it fails loudly when there are none to record.
-    ///
     #[inline(always)]
     pub fn generic_activity_with_arg_recorder<F>(
         &self,

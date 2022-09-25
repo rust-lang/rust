@@ -2333,7 +2333,7 @@ fn num_decimal_digits(num: usize) -> usize {
 // We replace some characters so the CLI output is always consistent and underlines aligned.
 const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\t', "    "),   // We do our own tab replacement
-    ('\u{200D}', ""), // Replace ZWJ with nothing for consistent terminal output of grapheme clusters.
+    ('\u{200D}', ""), /* Replace ZWJ with nothing for consistent terminal output of grapheme clusters. */
     ('\u{202A}', ""), // The following unicode text flow control characters are inconsistently
     ('\u{202B}', ""), // supported across CLIs and can cause confusion due to the bytes on disk
     ('\u{202D}', ""), // not corresponding to the visible source code, so we replace them always.

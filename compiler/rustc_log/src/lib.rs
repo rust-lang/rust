@@ -17,9 +17,7 @@
 //!     rustc_log::init_rustc_env_logger().unwrap();
 //!
 //!     let edition = rustc_span::edition::Edition::Edition2021;
-//!     rustc_span::create_session_globals_then(edition, || {
-//!         /* ... */
-//!     });
+//!     rustc_span::create_session_globals_then(edition, || { /* ... */ });
 //! }
 //! ```
 //!

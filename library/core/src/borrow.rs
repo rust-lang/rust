@@ -70,7 +70,8 @@
 ///
 /// impl<K, V> HashMap<K, V> {
 ///     pub fn insert(&self, key: K, value: V) -> Option<V>
-///     where K: Hash + Eq
+///     where
+///         K: Hash + Eq,
 ///     {
 ///         # unimplemented!()
 ///         // ...
@@ -79,7 +80,7 @@
 ///     pub fn get<Q>(&self, k: &Q) -> Option<&V>
 ///     where
 ///         K: Borrow<Q>,
-///         Q: Hash + Eq + ?Sized
+///         Q: Hash + Eq + ?Sized,
 ///     {
 ///         # unimplemented!()
 ///         // ...
@@ -124,7 +125,7 @@
 ///     }
 /// }
 ///
-/// impl Eq for CaseInsensitiveString { }
+/// impl Eq for CaseInsensitiveString {}
 /// ```
 ///
 /// Because two equal values need to produce the same hash value, the

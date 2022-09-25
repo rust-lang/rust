@@ -411,7 +411,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
         ) -> bool {
             // We don't just accept all !needs_drop fields, due to semver concerns.
             match ty.kind() {
-                ty::Ref(..) => true, // references never drop (even mutable refs, which are non-Copy and hence fail the later check)
+                ty::Ref(..) => true, /* references never drop (even mutable refs, which are non-Copy and hence fail the later check) */
                 ty::Tuple(tys) => {
                     // allow tuples of allowed types
                     tys.iter().all(|ty| allowed_union_field(ty, tcx, param_env, span))

@@ -41,7 +41,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Consider the example
     ///
     /// ```no_run
-    /// struct Ref<'a> { x: &'a u32 }
+    /// struct Ref<'a> {
+    ///     x: &'a u32,
+    /// }
     /// ```
     ///
     /// ```text

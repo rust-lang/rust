@@ -203,7 +203,9 @@ impl<T: ?Sized> RwLock<T> {
     /// thread::spawn(move || {
     ///     let r = c_lock.read();
     ///     assert!(r.is_ok());
-    /// }).join().unwrap();
+    /// })
+    /// .join()
+    /// .unwrap();
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -369,7 +371,8 @@ impl<T: ?Sized> RwLock<T> {
     /// let _ = thread::spawn(move || {
     ///     let _lock = c_lock.write().unwrap();
     ///     panic!(); // the lock gets poisoned
-    /// }).join();
+    /// })
+    /// .join();
     /// assert_eq!(lock.is_poisoned(), true);
     /// ```
     #[inline]
@@ -400,7 +403,8 @@ impl<T: ?Sized> RwLock<T> {
     /// let _ = thread::spawn(move || {
     ///     let _lock = c_lock.write().unwrap();
     ///     panic!(); // the mutex gets poisoned
-    /// }).join();
+    /// })
+    /// .join();
     ///
     /// assert_eq!(lock.is_poisoned(), true);
     /// let guard = lock.write().unwrap_or_else(|mut e| {

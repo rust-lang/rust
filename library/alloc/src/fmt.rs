@@ -12,19 +12,19 @@
 //! Some examples of the [`format!`] extension are:
 //!
 //! ```
-//! format!("Hello");                 // => "Hello"
-//! format!("Hello, {}!", "world");   // => "Hello, world!"
-//! format!("The number is {}", 1);   // => "The number is 1"
-//! format!("{:?}", (3, 4));          // => "(3, 4)"
-//! format!("{value}", value=4);      // => "4"
+//! format!("Hello"); // => "Hello"
+//! format!("Hello, {}!", "world"); // => "Hello, world!"
+//! format!("The number is {}", 1); // => "The number is 1"
+//! format!("{:?}", (3, 4)); // => "(3, 4)"
+//! format!("{value}", value = 4); // => "4"
 //! let people = "Rustaceans";
-//! format!("Hello {people}!");       // => "Hello Rustaceans!"
-//! format!("{} {}", 1, 2);           // => "1 2"
-//! format!("{:04}", 42);             // => "0042" with leading zeros
-//! format!("{:#?}", (100, 200));     // => "(
-//!                                   //       100,
-//!                                   //       200,
-//!                                   //     )"
+//! format!("Hello {people}!"); // => "Hello Rustaceans!"
+//! format!("{} {}", 1, 2); // => "1 2"
+//! format!("{:04}", 42); // => "0042" with leading zeros
+//! format!("{:#?}", (100, 200)); // => "(
+//! //       100,
+//! //       200,
+//! //     )"
 //! ```
 //!
 //! From these, you can see that the first argument is a format string. It is
@@ -77,9 +77,9 @@
 //! For example, the following [`format!`] expressions all use named arguments:
 //!
 //! ```
-//! format!("{argument}", argument = "test");   // => "test"
-//! format!("{name} {}", 1, name = 2);          // => "2 1"
-//! format!("{a} {c} {b}", a="a", b='b', c=3);  // => "a 3 b"
+//! format!("{argument}", argument = "test"); // => "test"
+//! format!("{name} {}", 1, name = 2); // => "2 1"
+//! format!("{a} {c} {b}", a = "a", b = 'b', c = 3); // => "a 3 b"
 //! ```
 //!
 //! If a named parameter does not appear in the argument list, `format!` will
@@ -87,7 +87,7 @@
 //!
 //! ```
 //! let argument = 2 + 2;
-//! format!("{argument}");   // => "4"
+//! format!("{argument}"); // => "4"
 //!
 //! fn make_string(a: u32, b: &str) -> String {
 //!     format!("{b} {a}")
@@ -133,10 +133,10 @@
 //! ## Fill/Alignment
 //!
 //! ```
-//! assert_eq!(format!("Hello {:<5}!", "x"),  "Hello x    !");
+//! assert_eq!(format!("Hello {:<5}!", "x"), "Hello x    !");
 //! assert_eq!(format!("Hello {:-<5}!", "x"), "Hello x----!");
-//! assert_eq!(format!("Hello {:^5}!", "x"),  "Hello   x  !");
-//! assert_eq!(format!("Hello {:>5}!", "x"),  "Hello     x!");
+//! assert_eq!(format!("Hello {:^5}!", "x"), "Hello   x  !");
+//! assert_eq!(format!("Hello {:>5}!", "x"), "Hello     x!");
 //! ```
 //!
 //! The optional fill character and alignment is provided normally in conjunction with the
@@ -169,7 +169,7 @@
 //! ```
 //! assert_eq!(format!("Hello {:+}!", 5), "Hello +5!");
 //! assert_eq!(format!("{:#x}!", 27), "0x1b!");
-//! assert_eq!(format!("Hello {:05}!", 5),  "Hello 00005!");
+//! assert_eq!(format!("Hello {:05}!", 5), "Hello 00005!");
 //! assert_eq!(format!("Hello {:05}!", -5), "Hello -0005!");
 //! assert_eq!(format!("{:#010x}!", 27), "0x0000001b!");
 //! ```
@@ -242,15 +242,15 @@
 //!
 //! // Hello {next arg -> arg 0 ("x")} is {second of next two args -> arg 2 (0.01) with precision
 //! //                          specified in first of next two args -> arg 1 (5)}
-//! println!("Hello {} is {:.*}",    "x", 5, 0.01);
+//! println!("Hello {} is {:.*}", "x", 5, 0.01);
 //!
 //! // Hello {arg 1 ("x")} is {arg 2 (0.01) with precision
 //! //                          specified in next arg -> arg 0 (5)}
-//! println!("Hello {1} is {2:.*}",  5, "x", 0.01);
+//! println!("Hello {1} is {2:.*}", 5, "x", 0.01);
 //!
 //! // Hello {next arg -> arg 0 ("x")} is {arg 2 (0.01) with precision
 //! //                          specified in next arg -> arg 1 (5)}
-//! println!("Hello {} is {2:.*}",   "x", 5, 0.01);
+//! println!("Hello {} is {2:.*}", "x", 5, 0.01);
 //!
 //! // Hello {next arg -> arg 0 ("x")} is {arg "number" (0.01) with precision specified
 //! //                          in arg "prec" (5)}
@@ -260,9 +260,9 @@
 //! While these:
 //!
 //! ```
-//! println!("{}, `{name:.*}` has 3 fractional digits", "Hello", 3, name=1234.56);
-//! println!("{}, `{name:.*}` has 3 characters", "Hello", 3, name="1234.56");
-//! println!("{}, `{name:>8.*}` has 3 right-aligned characters", "Hello", 3, name="1234.56");
+//! println!("{}, `{name:.*}` has 3 fractional digits", "Hello", 3, name = 1234.56);
+//! println!("{}, `{name:.*}` has 3 characters", "Hello", 3, name = "1234.56");
+//! println!("{}, `{name:>8.*}` has 3 right-aligned characters", "Hello", 3, name = "1234.56");
 //! ```
 //!
 //! print three significantly different things:
@@ -427,8 +427,8 @@
 //! fn main() {
 //!     let myvector = Vector2D { x: 3, y: 4 };
 //!
-//!     println!("{myvector}");       // => "(3, 4)"
-//!     println!("{myvector:?}");     // => "Vector2D {x: 3, y:4}"
+//!     println!("{myvector}"); // => "(3, 4)"
+//!     println!("{myvector:?}"); // => "Vector2D {x: 3, y:4}"
 //!     println!("{myvector:10.3b}"); // => "     5.000"
 //! }
 //! ```

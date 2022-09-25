@@ -12,14 +12,14 @@ use std::iter;
 use super::InferCtxtPrivExt;
 
 pub trait InferCtxtExt<'tcx> {
-    /*private*/
+    /* private */
     fn impl_similar_to(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> Option<(DefId, SubstsRef<'tcx>)>;
 
-    /*private*/
+    /* private */
     fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str>;
 
     fn on_unimplemented_note(

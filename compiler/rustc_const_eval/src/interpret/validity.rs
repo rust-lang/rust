@@ -79,7 +79,6 @@ macro_rules! throw_validation_failure {
 ///     Foo | Bar | Baz => { "{:?}", some_failure } expected { "{}", expected_value },
 /// });
 /// ```
-///
 macro_rules! try_validation {
     ($e:expr, $where:expr,
     $( $( $p:pat_param )|+ => { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? ),+ $(,)?

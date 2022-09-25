@@ -1381,9 +1381,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         //
                         // The "classically useful" case is the following:
                         // ```
-                        //     trait MyTrait: FnMut() -> <Self as MyTrait>::MyOutput {
-                        //         type MyOutput;
-                        //     }
+                        // trait MyTrait: FnMut() -> <Self as MyTrait>::MyOutput {
+                        //     type MyOutput;
+                        // }
                         // ```
                         //
                         // Here, the user could theoretically write `dyn MyTrait<Output = X>`,
@@ -2493,14 +2493,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 //
                 // We do this before normalization as we otherwise allow
                 // ```rust
-                // trait AlwaysApplicable { type Assoc; }
-                // impl<T: ?Sized> AlwaysApplicable for T { type Assoc = usize; }
+                // trait AlwaysApplicable {
+                //     type Assoc;
+                // }
+                // impl<T: ?Sized> AlwaysApplicable for T {
+                //     type Assoc = usize;
+                // }
                 //
                 // trait BindsParam<T> {
                 //     type ArrayTy;
                 // }
                 // impl<T> BindsParam<T> for <T as AlwaysApplicable>::Assoc {
-                //    type ArrayTy = [u8; Self::MAX];
+                //     type ArrayTy = [u8; Self::MAX];
                 // }
                 // ```
                 // Note that the normalization happens in the param env of

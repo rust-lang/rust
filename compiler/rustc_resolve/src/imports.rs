@@ -50,8 +50,8 @@ pub enum ImportKind<'a> {
     },
     Glob {
         is_prelude: bool,
-        max_vis: Cell<Option<ty::Visibility>>, // The visibility of the greatest re-export.
-                                               // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
+        max_vis: Cell<Option<ty::Visibility>>, /* The visibility of the greatest re-export.
+                                                * n.b. `max_vis` is only used in `finalize_import` to check for re-export errors. */
     },
     ExternCrate {
         source: Option<Symbol>,

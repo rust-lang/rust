@@ -426,7 +426,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // ```
                 // let x;
                 // match y {
-                //     _ if { x = 2; true } => {}
+                //     _ if {
+                //         x = 2;
+                //         true
+                //     } => {}
                 //     _ if {
                 //         x; //~ ERROR
                 //         false

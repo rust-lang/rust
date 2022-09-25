@@ -1944,7 +1944,7 @@ impl<'a> Resolver<'a> {
                 // fn f() {
                 //     let Foo: &str = "";
                 //     println!("{}", Foo::Bar); // Name refers to local
-                //                               // variable `Foo`.
+                //     // variable `Foo`.
                 // }
                 // ```
                 Some(LexicalScopeBinding::Res(Res::Local(id))) => {

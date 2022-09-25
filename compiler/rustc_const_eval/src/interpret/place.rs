@@ -681,7 +681,7 @@ where
         }
 
         self.mem_copy(
-            src.ptr, src.align, dest.ptr, dest.align, dest_size, /*nonoverlapping*/ false,
+            src.ptr, src.align, dest.ptr, dest.align, dest_size, /* nonoverlapping */ false,
         )
     }
 

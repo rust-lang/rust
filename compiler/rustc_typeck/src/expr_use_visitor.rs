@@ -742,11 +742,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// is a capture of the nested closure
     ///
     /// ```
-    /// struct P { x: i32 }
+    /// struct P {
+    ///     x: i32,
+    /// }
     /// let mut p = P { x: 4 };
     /// let c = || {
-    ///    let incr = 10;
-    ///    let nested = || p.x += incr;
+    ///     let incr = 10;
+    ///     let nested = || p.x += incr;
     /// };
     /// ```
     ///

@@ -101,7 +101,9 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// ```
     /// # let mut into_iter = Vec::<u8>::with_capacity(10).into_iter();
     /// (&mut into_iter).for_each(core::mem::drop);
-    /// unsafe { core::ptr::write(&mut into_iter, Vec::new().into_iter()); }
+    /// unsafe {
+    ///     core::ptr::write(&mut into_iter, Vec::new().into_iter());
+    /// }
     /// ```
     ///
     /// This method is used by in-place iteration, refer to the vec::in_place_collect

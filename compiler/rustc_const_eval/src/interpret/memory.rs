@@ -261,7 +261,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             new_ptr.into(),
             Align::ONE,
             old_size.min(new_size),
-            /*nonoverlapping*/ true,
+            /* nonoverlapping */ true,
         )?;
         self.deallocate_ptr(ptr, old_size_and_align, kind)?;
 
@@ -530,7 +530,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `get_global_alloc` that we can actually use directly without inserting anything anywhere.
         // So the error type is `InterpResult<'tcx, &Allocation<M::Provenance>>`.
         let a = self.memory.alloc_map.get_or(id, || {
-            let alloc = self.get_global_alloc(id, /*is_write*/ false).map_err(Err)?;
+            let alloc = self.get_global_alloc(id, /* is_write */ false).map_err(Err)?;
             match alloc {
                 Cow::Borrowed(alloc) => {
                     // We got a ref, cheaply return that as an "error" so that the
@@ -611,7 +611,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if self.memory.alloc_map.get_mut(id).is_none() {
             // Slow path.
             // Allocation not found locally, go look global.
-            let alloc = self.get_global_alloc(id, /*is_write*/ true)?;
+            let alloc = self.get_global_alloc(id, /* is_write */ true)?;
             let kind = M::GLOBAL_KIND.expect(
                 "I got a global allocation that I have to copy but the machine does \
                     not expect that to happen",
@@ -941,14 +941,14 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRef<'a, 'tcx, Prov, Extra> {
 
     /// `range` is relative to this allocation reference, not the base of the allocation.
     pub fn read_integer(&self, range: AllocRange) -> InterpResult<'tcx, Scalar<Prov>> {
-        self.read_scalar(range, /*read_provenance*/ false)
+        self.read_scalar(range, /* read_provenance */ false)
     }
 
     /// `offset` is relative to this allocation reference, not the base of the allocation.
     pub fn read_pointer(&self, offset: Size) -> InterpResult<'tcx, Scalar<Prov>> {
         self.read_scalar(
             alloc_range(offset, self.tcx.data_layout().pointer_size),
-            /*read_provenance*/ true,
+            /* read_provenance */ true,
         )
     }
 

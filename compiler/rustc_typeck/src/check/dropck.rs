@@ -25,7 +25,6 @@ use rustc_middle::ty::{self, Predicate, Ty, TyCtxt};
 /// 3. Any bounds on the generic parameters must be reflected in the
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
-///
 pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorGuaranteed> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);

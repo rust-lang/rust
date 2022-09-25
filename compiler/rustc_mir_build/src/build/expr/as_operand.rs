@@ -45,9 +45,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// ```
     /// #![feature(unsized_locals, unsized_fn_params)]
     /// # use core::fmt::Debug;
-    /// fn foo(p: dyn Debug) { dbg!(p); }
+    /// fn foo(p: dyn Debug) {
+    ///     dbg!(p);
+    /// }
     ///
-    /// fn bar(box_p: Box<dyn Debug>) { foo(*box_p); }
+    /// fn bar(box_p: Box<dyn Debug>) {
+    ///     foo(*box_p);
+    /// }
     /// ```
     ///
     /// Ordinarily, for sized types, we would compile the call `foo(*p)` like so:

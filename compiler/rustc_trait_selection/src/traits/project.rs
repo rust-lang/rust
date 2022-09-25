@@ -1718,8 +1718,10 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // associated type. Consider:
                 //
                 // ```
-                // trait SomeTrait { type Foo; }
-                // fn foo<T:SomeTrait>(...) { }
+                // trait SomeTrait {
+                //     type Foo;
+                // }
+                // fn foo<T: SomeTrait>(...) {}
                 // ```
                 //
                 // If the user writes `<T as SomeTrait>::Foo`, then the `T

@@ -147,7 +147,6 @@ fn tag_base_type<'ll, 'tcx>(
 /// This is a helper function and does not register anything in the type map by itself.
 ///
 /// `variants` is an iterator of (discr-value, variant-name).
-///
 // NOTE: Handling of discriminant values is somewhat inconsistent. They can appear as u128,
 //       u64, and i64. Here everything gets mapped to i64 because that's what LLVM's API expects.
 fn build_enumeration_type_di_node<'ll, 'tcx>(
@@ -315,7 +314,6 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
 ///  --->   DW_TAG_structure_type            (type of variant 1)
 ///  --->   DW_TAG_structure_type            (type of variant 2)
 ///  --->   DW_TAG_structure_type            (type of variant 3)
-///
 /// ```
 pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,

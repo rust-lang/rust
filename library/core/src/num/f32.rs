@@ -988,7 +988,6 @@ impl f32 {
     /// ```
     /// assert_ne!((1f32).to_bits(), 1f32 as u32); // to_bits() is not casting!
     /// assert_eq!((12.5f32).to_bits(), 0x41480000);
-    ///
     /// ```
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]

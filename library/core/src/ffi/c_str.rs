@@ -145,7 +145,6 @@ impl FromBytesWithNulError {
 /// within the slice.
 ///
 /// This error is created by the [`CStr::from_bytes_until_nul`] method.
-///
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
 pub struct FromBytesUntilNulError(());
@@ -292,7 +291,6 @@ impl CStr {
     /// let c_str = CStr::from_bytes_until_nul(&buffer[..]).unwrap();
     /// assert_eq!(c_str.to_str().unwrap(), "AAAAAAAA");
     /// ```
-    ///
     #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
     #[rustc_const_unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
     pub const fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {

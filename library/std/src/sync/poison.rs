@@ -80,7 +80,8 @@ pub struct Guard {
 ///     let mut data = c_mutex.lock().unwrap();
 ///     *data = 2;
 ///     panic!();
-/// }).join();
+/// })
+/// .join();
 ///
 /// match mutex.lock() {
 ///     Ok(_) => unreachable!(),
@@ -188,7 +189,8 @@ impl<T> PoisonError<T> {
     ///     let mut data = c_mutex.lock().unwrap();
     ///     data.insert(10);
     ///     panic!();
-    /// }).join();
+    /// })
+    /// .join();
     ///
     /// let p_err = mutex.lock().unwrap_err();
     /// let data = p_err.into_inner();

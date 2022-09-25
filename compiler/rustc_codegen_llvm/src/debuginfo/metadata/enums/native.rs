@@ -126,7 +126,6 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
 ///         DW_TAG_structure_type            (type of variant 1)
 ///         DW_TAG_structure_type            (type of variant 2)
 ///         DW_TAG_structure_type            (type of variant 3)
-///
 /// ```
 pub(super) fn build_generator_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
@@ -302,7 +301,6 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
 ///         DW_TAG_structure_type            (type of variant 1)
 ///         DW_TAG_structure_type            (type of variant 2)
 ///         DW_TAG_structure_type            (type of variant 3)
-///
 /// ```
 fn build_discr_member_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,

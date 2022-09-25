@@ -147,7 +147,7 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::{OsString, OsStr};
+    /// use std::ffi::{OsStr, OsString};
     ///
     /// let os_string = OsString::from("foo");
     /// let os_str = OsStr::new("foo");
@@ -303,8 +303,8 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::{OsStr, OsString};
     /// use std::collections::TryReserveError;
+    /// use std::ffi::{OsStr, OsString};
     ///
     /// fn process_data(data: &str) -> Result<OsString, TryReserveError> {
     ///     let mut s = OsString::new();
@@ -374,8 +374,8 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::{OsStr, OsString};
     /// use std::collections::TryReserveError;
+    /// use std::ffi::{OsStr, OsString};
     ///
     /// fn process_data(data: &str) -> Result<OsString, TryReserveError> {
     ///     let mut s = OsString::new();
@@ -454,7 +454,7 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::{OsString, OsStr};
+    /// use std::ffi::{OsStr, OsString};
     ///
     /// let s = OsString::from("hello");
     ///
@@ -723,7 +723,8 @@ impl OsStr {
     /// // sequences simply through collecting user command line arguments, for
     /// // example.
     ///
-    /// #[cfg(unix)] {
+    /// #[cfg(unix)]
+    /// {
     ///     use std::ffi::OsStr;
     ///     use std::os::unix::ffi::OsStrExt;
     ///
@@ -735,7 +736,8 @@ impl OsStr {
     ///
     ///     assert_eq!(os_str.to_string_lossy(), "fo�o");
     /// }
-    /// #[cfg(windows)] {
+    /// #[cfg(windows)]
+    /// {
     ///     use std::ffi::OsString;
     ///     use std::os::windows::prelude::*;
     ///

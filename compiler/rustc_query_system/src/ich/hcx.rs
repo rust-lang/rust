@@ -83,7 +83,7 @@ impl<'a> StableHashingContext<'a> {
             definitions,
             cstore,
             source_span,
-            /*always_ignore_spans=*/ false,
+            /* always_ignore_spans= */ false,
         )
     }
 

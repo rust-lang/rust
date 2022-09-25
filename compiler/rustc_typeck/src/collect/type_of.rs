@@ -491,7 +491,6 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 /// // Not okay -- `Foo` is applied to a non-generic type.
 /// fn b<T>() -> Foo<T, u32> { .. }
 /// ```
-///
 fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     use rustc_hir::{Expr, ImplItem, Item, TraitItem};
 

@@ -59,7 +59,7 @@ impl DecodableFloat for f64 {
 
 /// Returns a sign (true when negative) and `FullDecoded` value
 /// from given floating point number.
-pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
+pub fn decode<T: DecodableFloat>(v: T) -> (/* negative? */ bool, FullDecoded) {
     let (mant, exp, sign) = v.integer_decode();
     let even = (mant & 1) == 0;
     let decoded = match v.classify() {

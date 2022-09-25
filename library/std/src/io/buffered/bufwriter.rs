@@ -37,7 +37,7 @@ use crate::ptr;
 /// let mut stream = TcpStream::connect("127.0.0.1:34254").unwrap();
 ///
 /// for i in 0..10 {
-///     stream.write(&[i+1]).unwrap();
+///     stream.write(&[i + 1]).unwrap();
 /// }
 /// ```
 ///
@@ -53,7 +53,7 @@ use crate::ptr;
 /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
 ///
 /// for i in 0..10 {
-///     stream.write(&[i+1]).unwrap();
+///     stream.write(&[i + 1]).unwrap();
 /// }
 /// stream.flush().unwrap();
 /// ```
@@ -61,7 +61,6 @@ use crate::ptr;
 /// By wrapping the stream with a `BufWriter<W>`, these ten writes are all grouped
 /// together by the buffer and will all be written out in one system call when
 /// the `stream` is flushed.
-///
 // HACK(#78696): can't use `crate` for associated items
 /// [`TcpStream::write`]: super::super::super::net::TcpStream::write
 /// [`TcpStream`]: crate::net::TcpStream
@@ -455,15 +454,17 @@ impl<W: Write> BufWriter<W> {
 ///
 /// struct PanickingWriter;
 /// impl Write for PanickingWriter {
-///   fn write(&mut self, buf: &[u8]) -> io::Result<usize> { panic!() }
-///   fn flush(&mut self) -> io::Result<()> { panic!() }
+///     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+///         panic!()
+///     }
+///     fn flush(&mut self) -> io::Result<()> {
+///         panic!()
+///     }
 /// }
 ///
 /// let mut stream = BufWriter::new(PanickingWriter);
 /// write!(stream, "some data").unwrap();
-/// let result = catch_unwind(AssertUnwindSafe(|| {
-///     stream.flush().unwrap()
-/// }));
+/// let result = catch_unwind(AssertUnwindSafe(|| stream.flush().unwrap()));
 /// assert!(result.is_err());
 /// let (recovered_writer, buffered_data) = stream.into_parts();
 /// assert!(matches!(recovered_writer, PanickingWriter));

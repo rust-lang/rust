@@ -119,9 +119,11 @@ struct Candidate<'tcx> {
     //
     // For example, if we have this candidate:
     // ```
-    //    trait Foo {
-    //        fn foo(&self) where Self: Sized;
-    //    }
+    // trait Foo {
+    //     fn foo(&self)
+    //     where
+    //         Self: Sized;
+    // }
     // ```
     //
     // Then `xform_self_ty` will be `&'erased ?X` and `kind` will contain

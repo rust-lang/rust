@@ -105,7 +105,9 @@ use crate::slice;
 /// }
 ///
 /// let mut v = MaybeUninit::uninit();
-/// unsafe { make_vec(v.as_mut_ptr()); }
+/// unsafe {
+///     make_vec(v.as_mut_ptr());
+/// }
 /// // Now we know `v` is initialized! This also makes sure the vector gets
 /// // properly dropped.
 /// let v = unsafe { v.assume_init() };
@@ -123,9 +125,8 @@ use crate::slice;
 ///     // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
 ///     // safe because the type we are claiming to have initialized here is a
 ///     // bunch of `MaybeUninit`s, which do not require initialization.
-///     let mut data: [MaybeUninit<Vec<u32>>; 1000] = unsafe {
-///         MaybeUninit::uninit().assume_init()
-///     };
+///     let mut data: [MaybeUninit<Vec<u32>>; 1000] =
+///         unsafe { MaybeUninit::uninit().assume_init() };
 ///
 ///     // Dropping a `MaybeUninit` does nothing, so if there is a panic during this loop,
 ///     // we have a memory leak, but there is no memory safety issue.
@@ -162,7 +163,9 @@ use crate::slice;
 ///
 /// // For each item in the array, drop if we allocated it.
 /// for elem in &mut data[0..data_len] {
-///     unsafe { ptr::drop_in_place(elem.as_mut_ptr()); }
+///     unsafe {
+///         ptr::drop_in_place(elem.as_mut_ptr());
+///     }
 /// }
 /// ```
 ///
@@ -187,23 +190,21 @@ use crate::slice;
 ///     // Initializing the `name` field
 ///     // Using `write` instead of assignment via `=` to not call `drop` on the
 ///     // old, uninitialized value.
-///     unsafe { addr_of_mut!((*ptr).name).write("Bob".to_string()); }
+///     unsafe {
+///         addr_of_mut!((*ptr).name).write("Bob".to_string());
+///     }
 ///
 ///     // Initializing the `list` field
 ///     // If there is a panic here, then the `String` in the `name` field leaks.
-///     unsafe { addr_of_mut!((*ptr).list).write(vec![0, 1, 2]); }
+///     unsafe {
+///         addr_of_mut!((*ptr).list).write(vec![0, 1, 2]);
+///     }
 ///
 ///     // All the fields are initialized, so we call `assume_init` to get an initialized Foo.
 ///     unsafe { uninit.assume_init() }
 /// };
 ///
-/// assert_eq!(
-///     foo,
-///     Foo {
-///         name: "Bob".to_string(),
-///         list: vec![0, 1, 2]
-///     }
-/// );
+/// assert_eq!(foo, Foo { name: "Bob".to_string(), list: vec![0, 1, 2] });
 /// ```
 /// [`std::ptr::addr_of_mut`]: crate::ptr::addr_of_mut
 /// [ub]: ../../reference/behavior-considered-undefined.html
@@ -213,7 +214,7 @@ use crate::slice;
 /// `MaybeUninit<T>` is guaranteed to have the same size, alignment, and ABI as `T`:
 ///
 /// ```rust
-/// use std::mem::{MaybeUninit, size_of, align_of};
+/// use std::mem::{align_of, size_of, MaybeUninit};
 /// assert_eq!(size_of::<MaybeUninit<u64>>(), size_of::<u64>());
 /// assert_eq!(align_of::<MaybeUninit<u64>>(), align_of::<u64>());
 /// ```
@@ -381,7 +382,10 @@ impl<T> MaybeUninit<T> {
     /// ```rust,no_run
     /// use std::mem::MaybeUninit;
     ///
-    /// enum NotZero { One = 1, Two = 2 }
+    /// enum NotZero {
+    ///     One = 1,
+    ///     Two = 2,
+    /// }
     ///
     /// let x = MaybeUninit::<(u8, NotZero)>::zeroed();
     /// let x = unsafe { x.assume_init() };
@@ -461,15 +465,15 @@ impl<T> MaybeUninit<T> {
     /// With `write`, we can avoid the need to write through a raw pointer:
     ///
     /// ```rust
-    /// use core::pin::Pin;
     /// use core::mem::MaybeUninit;
+    /// use core::pin::Pin;
     ///
     /// struct PinArena<T> {
     ///     memory: Box<[MaybeUninit<T>]>,
     ///     len: usize,
     /// }
     ///
-    /// impl <T> PinArena<T> {
+    /// impl<T> PinArena<T> {
     ///     pub fn capacity(&self) -> usize {
     ///         self.memory.len()
     ///     }
@@ -777,8 +781,8 @@ impl<T> MaybeUninit<T> {
     /// // Initialize the `MaybeUninit` using `Cell::set`:
     /// unsafe {
     ///     b.assume_init_ref().set(true);
-    ///    // ^^^^^^^^^^^^^^^
-    ///    // Reference to an uninitialized `Cell<bool>`: UB!
+    ///     // ^^^^^^^^^^^^^^^
+    ///     // Reference to an uninitialized `Cell<bool>`: UB!
     /// }
     /// ```
     #[stable(feature = "maybe_uninit_ref", since = "1.55.0")]
@@ -824,7 +828,9 @@ impl<T> MaybeUninit<T> {
     /// let mut buf = MaybeUninit::<[u8; 1024]>::uninit();
     ///
     /// // Initialize `buf`:
-    /// unsafe { initialize_buffer(buf.as_mut_ptr()); }
+    /// unsafe {
+    ///     initialize_buffer(buf.as_mut_ptr());
+    /// }
     /// // Now we know that `buf` has been initialized, so we could `.assume_init()` it.
     /// // However, using `.assume_init()` may trigger a `memcpy` of the 1024 bytes.
     /// // To assert our buffer has been initialized without copying it, we upgrade
@@ -836,10 +842,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// // Now we can use `buf` as a normal slice:
     /// buf.sort_unstable();
-    /// assert!(
-    ///     buf.windows(2).all(|pair| pair[0] <= pair[1]),
-    ///     "buffer is sorted",
-    /// );
+    /// assert!(buf.windows(2).all(|pair| pair[0] <= pair[1]), "buffer is sorted",);
     /// ```
     ///
     /// ### *Incorrect* usages of this method:
@@ -864,13 +867,12 @@ impl<T> MaybeUninit<T> {
     /// ```rust,no_run
     /// use std::{io, mem::MaybeUninit};
     ///
-    /// fn read_chunk (reader: &'_ mut dyn io::Read) -> io::Result<[u8; 64]>
-    /// {
+    /// fn read_chunk(reader: &'_ mut dyn io::Read) -> io::Result<[u8; 64]> {
     ///     let mut buffer = MaybeUninit::<[u8; 64]>::uninit();
     ///     reader.read_exact(unsafe { buffer.assume_init_mut() })?;
-    ///                             // ^^^^^^^^^^^^^^^^^^^^^^^^
-    ///                             // (mutable) reference to uninitialized memory!
-    ///                             // This is undefined behavior.
+    ///     // ^^^^^^^^^^^^^^^^^^^^^^^^
+    ///     // (mutable) reference to uninitialized memory!
+    ///     // This is undefined behavior.
     ///     Ok(unsafe { buffer.assume_init() })
     /// }
     /// ```
@@ -888,13 +890,13 @@ impl<T> MaybeUninit<T> {
     /// let foo: Foo = unsafe {
     ///     let mut foo = MaybeUninit::<Foo>::uninit();
     ///     ptr::write(&mut foo.assume_init_mut().a as *mut u32, 1337);
-    ///                  // ^^^^^^^^^^^^^^^^^^^^^
-    ///                  // (mutable) reference to uninitialized memory!
-    ///                  // This is undefined behavior.
+    ///     // ^^^^^^^^^^^^^^^^^^^^^
+    ///     // (mutable) reference to uninitialized memory!
+    ///     // This is undefined behavior.
     ///     ptr::write(&mut foo.assume_init_mut().b as *mut u8, 42);
-    ///                  // ^^^^^^^^^^^^^^^^^^^^^
-    ///                  // (mutable) reference to uninitialized memory!
-    ///                  // This is undefined behavior.
+    ///     // ^^^^^^^^^^^^^^^^^^^^^
+    ///     // (mutable) reference to uninitialized memory!
+    ///     // This is undefined behavior.
     ///     foo.assume_init()
     /// };
     /// ```
@@ -930,9 +932,7 @@ impl<T> MaybeUninit<T> {
     /// array[2].write(2);
     ///
     /// // SAFETY: Now safe as we initialised all elements
-    /// let array = unsafe {
-    ///     MaybeUninit::array_assume_init(array)
-    /// };
+    /// let array = unsafe { MaybeUninit::array_assume_init(array) };
     ///
     /// assert_eq!(array, [0, 1, 2]);
     /// ```
@@ -1090,8 +1090,20 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit_write_slice)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let mut dst = [MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit()];
-    /// let src = ["wibbly".to_string(), "wobbly".to_string(), "timey".to_string(), "wimey".to_string(), "stuff".to_string()];
+    /// let mut dst = [
+    ///     MaybeUninit::uninit(),
+    ///     MaybeUninit::uninit(),
+    ///     MaybeUninit::uninit(),
+    ///     MaybeUninit::uninit(),
+    ///     MaybeUninit::uninit(),
+    /// ];
+    /// let src = [
+    ///     "wibbly".to_string(),
+    ///     "wobbly".to_string(),
+    ///     "timey".to_string(),
+    ///     "wimey".to_string(),
+    ///     "stuff".to_string(),
+    /// ];
     ///
     /// let init = MaybeUninit::write_slice_cloned(&mut dst, &src);
     ///

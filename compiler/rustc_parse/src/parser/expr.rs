@@ -566,14 +566,14 @@ impl<'a> Parser<'a> {
 
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
         match this.token.uninterpolate().kind {
-            token::Not => make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Not)), // `!expr`
-            token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)), // `~expr`
+            token::Not => make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Not)), /* `!expr` */
+            token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)), /* `~expr` */
             token::BinOp(token::Minus) => {
                 make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Neg))
-            } // `-expr`
+            } /* `-expr` */
             token::BinOp(token::Star) => {
                 make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Deref))
-            } // `*expr`
+            } /* `*expr` */
             token::BinOp(token::And) | token::AndAnd => {
                 make_it!(this, attrs, |this, _| this.parse_borrow_expr(lo))
             }

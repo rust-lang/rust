@@ -32,8 +32,10 @@ use crate::ops::Try;
 /// ```rust
 /// let mut c = 0;
 ///
-/// for pair in ['a', 'b', 'c'].into_iter()
-///                                .map(|letter| { c += 1; (letter, c) }) {
+/// for pair in ['a', 'b', 'c'].into_iter().map(|letter| {
+///     c += 1;
+///     (letter, c)
+/// }) {
 ///     println!("{pair:?}");
 /// }
 /// ```
@@ -49,9 +51,14 @@ use crate::ops::Try;
 /// ```rust
 /// let mut c = 0;
 ///
-/// for pair in ['a', 'b', 'c'].into_iter()
-///                                .map(|letter| { c += 1; (letter, c) })
-///                                .rev() {
+/// for pair in ['a', 'b', 'c']
+///     .into_iter()
+///     .map(|letter| {
+///         c += 1;
+///         (letter, c)
+///     })
+///     .rev()
+/// {
 ///     println!("{pair:?}");
 /// }
 /// ```

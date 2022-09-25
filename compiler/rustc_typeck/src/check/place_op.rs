@@ -51,7 +51,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_ty: Ty<'tcx>,
         index_expr: &'tcx hir::Expr<'tcx>,
         idx_ty: Ty<'tcx>,
-    ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
+    ) -> Option<(/* index type */ Ty<'tcx>, /* element type */ Ty<'tcx>)> {
         // FIXME(#18741) -- this is almost but not quite the same as the
         // autoderef that normal method probing does. They could likely be
         // consolidated.
@@ -106,7 +106,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         autoderef: &Autoderef<'a, 'tcx>,
         index_ty: Ty<'tcx>,
         index_expr: &hir::Expr<'_>,
-    ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
+    ) -> Option<(/* index type */ Ty<'tcx>, /* element type */ Ty<'tcx>)> {
         let adjusted_ty =
             self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
         debug!(

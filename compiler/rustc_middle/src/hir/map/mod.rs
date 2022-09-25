@@ -670,8 +670,9 @@ impl<'hir> Map<'hir> {
     /// ```
     /// fn foo(x: usize) -> bool {
     ///     if x == 1 {
-    ///         true  // If `get_return_block` gets passed the `id` corresponding
-    ///     } else {  // to this, it will return `foo`'s `HirId`.
+    ///         true // If `get_return_block` gets passed the `id` corresponding
+    ///     } else {
+    ///         // to this, it will return `foo`'s `HirId`.
     ///         false
     ///     }
     /// }

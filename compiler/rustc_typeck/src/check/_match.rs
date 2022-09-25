@@ -435,10 +435,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // struct Bar(u32);
         // impl Deref for Foo {
         //     type Target = Bar;
-        //     fn deref(&self) -> &Bar { &self.0 }
+        //     fn deref(&self) -> &Bar {
+        //         &self.0
+        //     }
         // }
         // impl DerefMut for Foo {
-        //     fn deref_mut(&mut self) -> &mut Bar { &mut self.0 }
+        //     fn deref_mut(&mut self) -> &mut Bar {
+        //         &mut self.0
+        //     }
         // }
         // fn foo(x: &mut Foo) {
         //     {

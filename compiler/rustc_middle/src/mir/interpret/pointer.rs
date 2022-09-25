@@ -171,7 +171,7 @@ impl Provenance for AllocId {
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
 pub struct Pointer<Prov = AllocId> {
-    pub(super) offset: Size, // kept private to avoid accidental misinterpretation (meaning depends on `Prov` type)
+    pub(super) offset: Size, /* kept private to avoid accidental misinterpretation (meaning depends on `Prov` type) */
     pub provenance: Prov,
 }
 

@@ -1048,8 +1048,12 @@ impl LocalKind {
 ///
 /// ```
 /// match 123 {
-///     0..=10 => { println!("match!") },
-///     _ => { println!("no match!") },
+///     0..=10 => {
+///         println!("match!")
+///     }
+///     _ => {
+///         println!("no match!")
+///     }
 /// }
 /// ```
 #[derive(Clone, Encodable, Decodable, Debug)]

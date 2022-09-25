@@ -934,7 +934,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
  * Integrates blocks from the callee function into the calling function.
  * Updates block indices, references to locals and other control flow
  * stuff.
-*/
+ */
 struct Integrator<'a, 'tcx> {
     args: &'a [Local],
     new_locals: RangeFrom<Local>,

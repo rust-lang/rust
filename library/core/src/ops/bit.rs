@@ -20,7 +20,7 @@
 ///     fn not(self) -> Self::Output {
 ///         match self {
 ///             Answer::Yes => Answer::No,
-///             Answer::No => Answer::Yes
+///             Answer::No => Answer::Yes,
 ///         }
 ///     }
 /// }
@@ -123,12 +123,7 @@ impl const Not for ! {
 ///     fn bitand(self, Self(rhs): Self) -> Self::Output {
 ///         let Self(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
-///         Self(
-///             lhs.iter()
-///                 .zip(rhs.iter())
-///                 .map(|(x, y)| *x & *y)
-///                 .collect()
-///         )
+///         Self(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x & *y).collect())
 ///     }
 /// }
 ///
@@ -225,12 +220,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     fn bitor(self, Self(rhs): Self) -> Self::Output {
 ///         let Self(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
-///         Self(
-///             lhs.iter()
-///                 .zip(rhs.iter())
-///                 .map(|(x, y)| *x | *y)
-///                 .collect()
-///         )
+///         Self(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x | *y).collect())
 ///     }
 /// }
 ///
@@ -327,12 +317,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     fn bitxor(self, Self(rhs): Self) -> Self::Output {
 ///         let Self(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
-///         Self(
-///             lhs.iter()
-///                 .zip(rhs.iter())
-///                 .map(|(x, y)| *x ^ *y)
-///                 .collect()
-///         )
+///         Self(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x ^ *y).collect())
 ///     }
 /// }
 ///
@@ -439,8 +424,10 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     }
 /// }
 ///
-/// assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } << 2,
-///            SpinVector { vec: vec![2, 3, 4, 0, 1] });
+/// assert_eq!(
+///     SpinVector { vec: vec![0, 1, 2, 3, 4] } << 2,
+///     SpinVector { vec: vec![2, 3, 4, 0, 1] }
+/// );
 /// ```
 #[lang = "shl"]
 #[doc(alias = "<<")]
@@ -559,8 +546,10 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 ///     }
 /// }
 ///
-/// assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } >> 2,
-///            SpinVector { vec: vec![3, 4, 0, 1, 2] });
+/// assert_eq!(
+///     SpinVector { vec: vec![0, 1, 2, 3, 4] } >> 2,
+///     SpinVector { vec: vec![3, 4, 0, 1, 2] }
+/// );
 /// ```
 #[lang = "shr"]
 #[doc(alias = ">>")]
@@ -676,13 +665,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 ///     // `rhs` is the "right-hand side" of the expression `a &= b`.
 ///     fn bitand_assign(&mut self, rhs: Self) {
 ///         assert_eq!(self.0.len(), rhs.0.len());
-///         *self = Self(
-///             self.0
-///                 .iter()
-///                 .zip(rhs.0.iter())
-///                 .map(|(x, y)| *x & *y)
-///                 .collect()
-///         );
+///         *self = Self(self.0.iter().zip(rhs.0.iter()).map(|(x, y)| *x & *y).collect());
 ///     }
 /// }
 ///
@@ -835,7 +818,7 @@ bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///
 /// let mut personality = Personality { has_soul: false, likes_knitting: true };
 /// personality ^= Personality { has_soul: true, likes_knitting: true };
-/// assert_eq!(personality, Personality { has_soul: true, likes_knitting: false});
+/// assert_eq!(personality, Personality { has_soul: true, likes_knitting: false });
 /// ```
 #[lang = "bitxor_assign"]
 #[doc(alias = "^=")]

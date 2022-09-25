@@ -759,7 +759,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// e.g. given the function:
     ///
     /// ```
-    /// async fn foo() -> i32 { 2 }
+    /// async fn foo() -> i32 {
+    ///     2
+    /// }
     /// ```
     ///
     /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements `Future<Output=i32>`,

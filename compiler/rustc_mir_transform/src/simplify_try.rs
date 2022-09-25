@@ -4,7 +4,7 @@
 //! # fn foo<T, E>(x: Result<T, E>) -> Result<T, E> {
 //! match x {
 //!     Ok(x) => Ok(x),
-//!     Err(x) => Err(x)
+//!     Err(x) => Err(x),
 //! }
 //! # }
 //! ```

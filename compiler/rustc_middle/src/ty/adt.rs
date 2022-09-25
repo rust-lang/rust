@@ -79,7 +79,9 @@ bitflags! {
 /// For example, the following type:
 ///
 /// ```
-/// struct S { x: Box<S> }
+/// struct S {
+///     x: Box<S>,
+/// }
 /// ```
 ///
 /// is essentially represented with [`Ty`] as the following pseudocode:
@@ -384,9 +386,9 @@ impl<'tcx> AdtDef<'tcx> {
         // This would disallow the following kind of enum from being casted into integer.
         // ```
         // enum Enum {
-        //    Foo() = 1,
-        //    Bar{} = 2,
-        //    Baz = 3,
+        //     Foo() = 1,
+        //     Bar {} = 2,
+        //     Baz = 3,
         // }
         // ```
         if self

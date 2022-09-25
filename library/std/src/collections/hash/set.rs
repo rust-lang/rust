@@ -58,8 +58,7 @@ use super::map::{map_try_reserve_error, RandomState};
 ///
 /// // Check for a specific one.
 /// if !books.contains("The Winds of Winter") {
-///     println!("We have {} books, but The Winds of Winter ain't one.",
-///              books.len());
+///     println!("We have {} books, but The Winds of Winter ain't one.", books.len());
 /// }
 ///
 /// // Remove a book.
@@ -367,8 +366,8 @@ impl<T, S> HashSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
+    /// use std::collections::HashSet;
     ///
     /// let s = RandomState::new();
     /// let mut set = HashSet::with_hasher(s);
@@ -398,8 +397,8 @@ impl<T, S> HashSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
+    /// use std::collections::HashSet;
     ///
     /// let s = RandomState::new();
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
@@ -416,8 +415,8 @@ impl<T, S> HashSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
+    /// use std::collections::HashSet;
     ///
     /// let hasher = RandomState::new();
     /// let set: HashSet<i32> = HashSet::with_hasher(hasher);
@@ -740,8 +739,8 @@ where
     ///
     /// use std::collections::HashSet;
     ///
-    /// let mut set: HashSet<String> = ["cat", "dog", "horse"]
-    ///     .iter().map(|&pet| pet.to_owned()).collect();
+    /// let mut set: HashSet<String> =
+    ///     ["cat", "dog", "horse"].iter().map(|&pet| pet.to_owned()).collect();
     ///
     /// assert_eq!(set.len(), 3);
     /// for &pet in &["cat", "dog", "fish"] {
@@ -772,8 +771,8 @@ where
     ///
     /// use std::collections::HashSet;
     ///
-    /// let mut set: HashSet<String> = ["cat", "dog", "horse"]
-    ///     .iter().map(|&pet| pet.to_owned()).collect();
+    /// let mut set: HashSet<String> =
+    ///     ["cat", "dog", "horse"].iter().map(|&pet| pet.to_owned()).collect();
     ///
     /// assert_eq!(set.len(), 3);
     /// for &pet in &["cat", "dog", "fish"] {

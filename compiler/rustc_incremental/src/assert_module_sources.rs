@@ -6,8 +6,8 @@
 //!
 //! ```
 //! # #![feature(rustc_attrs)]
-//! #![rustc_partition_reused(module="spike", cfg="rpass2")]
-//! #![rustc_partition_codegened(module="spike-x", cfg="rpass2")]
+//! #![rustc_partition_reused(module = "spike", cfg = "rpass2")]
+//! #![rustc_partition_codegened(module = "spike-x", cfg = "rpass2")]
 //! ```
 //!
 //! The first indicates (in the cfg `rpass2`) that `spike.o` will be

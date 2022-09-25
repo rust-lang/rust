@@ -445,16 +445,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Eg:
     /// ```
     /// #[derive(Debug)]
-    /// struct Point { x: i32, y: i32 }
+    /// struct Point {
+    ///     x: i32,
+    ///     y: i32,
+    /// }
     ///
-    /// let s = String::from("s");  // hir_id_s
+    /// let s = String::from("s"); // hir_id_s
     /// let mut p = Point { x: 2, y: -2 }; // his_id_p
     /// let c = || {
-    ///        println!("{s:?}");  // L1
-    ///        p.x += 10;  // L2
-    ///        println!("{}" , p.y); // L3
-    ///        println!("{p:?}"); // L4
-    ///        drop(s);   // L5
+    ///     println!("{s:?}"); // L1
+    ///     p.x += 10; // L2
+    ///     println!("{}", p.y); // L3
+    ///     println!("{p:?}"); // L4
+    ///     drop(s); // L5
     /// };
     /// ```
     /// and let hir_id_L1..5 be the expressions pointing to use of a captured variable on
@@ -1257,17 +1260,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// struct FancyInteger(i32); // This implements Drop
     ///
-    /// struct Point { x: FancyInteger, y: FancyInteger }
+    /// struct Point {
+    ///     x: FancyInteger,
+    ///     y: FancyInteger,
+    /// }
     /// struct Color;
     ///
-    /// struct Wrapper { p: Point, c: Color }
+    /// struct Wrapper {
+    ///     p: Point,
+    ///     c: Color,
+    /// }
     ///
     /// fn f(w: Wrapper) {
-    ///   let c = || {
-    ///       // Closure captures w.p.x and w.c by move.
-    ///   };
+    ///     let c = || {
+    ///         // Closure captures w.p.x and w.c by move.
+    ///     };
     ///
-    ///   c();
+    ///     c();
     /// }
     /// ```
     ///
@@ -1727,7 +1736,10 @@ struct InferBorrowKind<'a, 'tcx> {
     /// s.str2 via a MutableBorrow
     ///
     /// ```rust,no_run
-    /// struct SomeStruct { str1: String, str2: String };
+    /// struct SomeStruct {
+    ///     str1: String,
+    ///     str2: String,
+    /// };
     ///
     /// // Assume that the HirId for the variable definition is `V1`
     /// let mut s = SomeStruct { str1: format!("s1"), str2: format!("s2") };
@@ -2078,17 +2090,20 @@ fn migration_suggestion_for_2229(
 /// expressions that occur earlier in the closure body than the current expression are processed before.
 /// Consider the following example
 /// ```rust,no_run
-/// struct Point { x: i32, y: i32 }
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
 /// let mut p = Point { x: 10, y: 10 };
 ///
 /// let c = || {
-///     p.x     += 10;
-/// // ^ E1 ^
+///     p.x += 10;
+///     // ^ E1 ^
 ///     // ...
 ///     // More code
 ///     // ...
 ///     p.x += 10; // E2
-/// // ^ E2 ^
+///     // ^ E2 ^
 /// };
 /// ```
 /// `CaptureKind` associated with both `E1` and `E2` will be ByRef(MutBorrow),
@@ -2230,9 +2245,9 @@ fn determine_place_ancestry_relation<'tcx>(
 /// # struct B {}
 /// # struct C<'a>(&'a i32);
 /// struct MyStruct<'a> {
-///    a: &'static A,
-///    b: B,
-///    c: C<'a>,
+///     a: &'static A,
+///     b: B,
+///     c: C<'a>,
 /// }
 ///
 /// fn foo<'a, 'b>(m: &'a MyStruct<'b>) -> impl FnMut() + 'static {

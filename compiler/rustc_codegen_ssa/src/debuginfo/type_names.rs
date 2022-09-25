@@ -429,7 +429,10 @@ fn push_debuginfo_type_name<'tcx>(
     // rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs.
     fn msvc_enum_fallback<'tcx>(
         ty_and_layout: TyAndLayout<'tcx>,
-        push_inner: &dyn Fn(/*output*/ &mut String, /*visited*/ &mut FxHashSet<Ty<'tcx>>),
+        push_inner: &dyn Fn(
+            /* output */ &mut String,
+            /* visited */ &mut FxHashSet<Ty<'tcx>>,
+        ),
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {

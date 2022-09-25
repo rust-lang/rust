@@ -225,11 +225,11 @@ impl CoverageMapGenerator {
         let version_val = cx.const_u32(version);
         let cov_data_header_val = cx.const_struct(
             &[zero_was_n_records_val, filenames_size_val, zero_was_coverage_size_val, version_val],
-            /*packed=*/ false,
+            /* packed= */ false,
         );
 
         // Create the complete LLVM coverage data value to add to the LLVM IR
-        cx.const_struct(&[cov_data_header_val, filenames_val], /*packed=*/ false)
+        cx.const_struct(&[cov_data_header_val, filenames_val], /* packed= */ false)
     }
 }
 
@@ -261,7 +261,7 @@ fn save_function_record(
             filenames_ref_val,
             coverage_mapping_val,
         ],
-        /*packed=*/ true,
+        /* packed= */ true,
     );
 
     coverageinfo::save_func_record_to_mod(cx, func_name_hash, func_record_val, is_used);

@@ -63,7 +63,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// implemented for a type. For example, if you have
     ///
     /// ```
-    /// struct Foo<T> { data: Box<T> }
+    /// struct Foo<T> {
+    ///     data: Box<T>,
+    /// }
     /// ```
     ///
     /// then this might return that Foo<T>: Send if T: Send (encoded in the AutoTraitResult type).

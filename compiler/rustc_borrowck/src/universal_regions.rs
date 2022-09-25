@@ -2,7 +2,7 @@
 //! function and the relationships between them. For example:
 //!
 //! ```
-//! fn foo<'a, 'b, 'c: 'b>() { }
+//! fn foo<'a, 'b, 'c: 'b>() {}
 //! ```
 //!
 //! here we would return a map assigning each of `{'a, 'b, 'c}`

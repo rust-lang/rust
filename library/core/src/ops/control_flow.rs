@@ -19,7 +19,7 @@ use crate::{convert, ops};
 ///
 /// let r = (2..100).try_for_each(|x| {
 ///     if 403 % x == 0 {
-///         return ControlFlow::Break(x)
+///         return ControlFlow::Break(x);
 ///     }
 ///
 ///     ControlFlow::Continue(())
@@ -38,7 +38,10 @@ use crate::{convert, ops};
 /// }
 ///
 /// impl<T> TreeNode<T> {
-///     pub fn traverse_inorder<B>(&self, f: &mut impl FnMut(&T) -> ControlFlow<B>) -> ControlFlow<B> {
+///     pub fn traverse_inorder<B>(
+///         &self,
+///         f: &mut impl FnMut(&T) -> ControlFlow<B>,
+///     ) -> ControlFlow<B> {
 ///         if let Some(left) = &self.left {
 ///             left.traverse_inorder(f)?;
 ///         }
@@ -60,7 +63,7 @@ use crate::{convert, ops};
 ///         value: -1,
 ///         left: TreeNode::leaf(5),
 ///         right: TreeNode::leaf(2),
-///     }))
+///     })),
 /// };
 /// let mut sum = 0;
 ///
@@ -271,8 +274,7 @@ impl<B> ControlFlow<B, ()> {
     /// let mut partial_sum = 0;
     /// let last_used = (1..10).chain(20..25).try_for_each(|x| {
     ///     partial_sum += x;
-    ///     if partial_sum > 100 { ControlFlow::Break(x) }
-    ///     else { ControlFlow::CONTINUE }
+    ///     if partial_sum > 100 { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
     /// });
     /// assert_eq!(last_used.break_value(), Some(22));
     /// ```
@@ -292,8 +294,12 @@ impl<C> ControlFlow<(), C> {
     ///
     /// let mut partial_sum = 0;
     /// (1..10).chain(20..25).try_for_each(|x| {
-    ///     if partial_sum > 100 { ControlFlow::BREAK }
-    ///     else { partial_sum += x; ControlFlow::CONTINUE }
+    ///     if partial_sum > 100 {
+    ///         ControlFlow::BREAK
+    ///     } else {
+    ///         partial_sum += x;
+    ///         ControlFlow::CONTINUE
+    ///     }
     /// });
     /// assert_eq!(partial_sum, 108);
     /// ```

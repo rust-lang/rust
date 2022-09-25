@@ -8,7 +8,7 @@
 //! extern crate rustc_span;
 //!
 //! use rustc_span::edition::Edition;
-//! use rustdoc::html::markdown::{HeadingOffset, IdMap, Markdown, ErrorCodes};
+//! use rustdoc::html::markdown::{ErrorCodes, HeadingOffset, IdMap, Markdown};
 //!
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();

@@ -83,7 +83,9 @@
 /// }
 ///
 /// impl Default for Kind {
-///     fn default() -> Self { Kind::A }
+///     fn default() -> Self {
+///         Kind::A
+///     }
 /// }
 /// ```
 ///
@@ -127,7 +129,9 @@ pub trait Default: Sized {
     /// }
     ///
     /// impl Default for Kind {
-    ///     fn default() -> Self { Kind::A }
+    ///     fn default() -> Self {
+    ///         Kind::A
+    ///     }
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -163,13 +167,7 @@ pub trait Default: Sized {
 /// }
 ///
 /// fn main() {
-///     let options = AppConfig {
-///         foo: default(),
-///         bar: BarConfig {
-///             bar: 10.1,
-///             ..default()
-///         },
-///     };
+///     let options = AppConfig { foo: default(), bar: BarConfig { bar: 10.1, ..default() } };
 /// }
 /// ```
 #[unstable(feature = "default_free_fn", issue = "73014")]

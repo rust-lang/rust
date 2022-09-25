@@ -319,7 +319,9 @@ impl<T: ?Sized> NonNull<T> {
     /// let x_value = unsafe { *ptr.as_ptr() };
     /// assert_eq!(x_value, 0);
     ///
-    /// unsafe { *ptr.as_ptr() += 2; }
+    /// unsafe {
+    ///     *ptr.as_ptr() += 2;
+    /// }
     /// let x_value = unsafe { *ptr.as_ptr() };
     /// assert_eq!(x_value, 2);
     /// ```
@@ -642,7 +644,7 @@ impl<T> NonNull<[T]> {
     /// ```rust
     /// #![feature(allocator_api, ptr_as_uninit)]
     ///
-    /// use std::alloc::{Allocator, Layout, Global};
+    /// use std::alloc::{Allocator, Global, Layout};
     /// use std::mem::MaybeUninit;
     /// use std::ptr::NonNull;
     ///

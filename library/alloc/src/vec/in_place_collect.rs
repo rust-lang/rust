@@ -98,10 +98,10 @@
 //! # #[allow(dead_code)]
 //! /// Converts a usize vec into an isize one.
 //! pub fn cast(vec: Vec<usize>) -> Vec<isize> {
-//!   // Does not allocate, free or panic. On optlevel>=2 it does not loop.
-//!   // Of course this particular case could and should be written with `into_raw_parts` and
-//!   // `from_raw_parts` instead.
-//!   vec.into_iter().map(|u| u as isize).collect()
+//!     // Does not allocate, free or panic. On optlevel>=2 it does not loop.
+//!     // Of course this particular case could and should be written with `into_raw_parts` and
+//!     // `from_raw_parts` instead.
+//!     vec.into_iter().map(|u| u as isize).collect()
 //! }
 //! ```
 //!
@@ -111,26 +111,27 @@
 //! /// returns an empty Vec backed by the original allocation. Otherwise it returns a new
 //! /// empty vec.
 //! pub fn recycle_allocation<T, U>(src: Vec<T>) -> Vec<U> {
-//!   src.into_iter().filter_map(|_| None).collect()
+//!     src.into_iter().filter_map(|_| None).collect()
 //! }
 //! ```
 //!
 //! ```rust
 //! let vec = vec![13usize; 1024];
-//! let _ = vec.into_iter()
-//!   .enumerate()
-//!   .filter_map(|(idx, val)| if idx % 2 == 0 { Some(val+idx) } else {None})
-//!   .collect::<Vec<_>>();
+//! let _ = vec
+//!     .into_iter()
+//!     .enumerate()
+//!     .filter_map(|(idx, val)| if idx % 2 == 0 { Some(val + idx) } else { None })
+//!     .collect::<Vec<_>>();
 //!
 //! // is equivalent to the following, but doesn't require bounds checks
 //!
 //! let mut vec = vec![13usize; 1024];
 //! let mut write_idx = 0;
 //! for idx in 0..vec.len() {
-//!    if idx % 2 == 0 {
-//!       vec[write_idx] = vec[idx] + idx;
-//!       write_idx += 1;
-//!    }
+//!     if idx % 2 == 0 {
+//!         vec[write_idx] = vec[idx] + idx;
+//!         write_idx += 1;
+//!     }
 //! }
 //! vec.truncate(write_idx);
 //! ```

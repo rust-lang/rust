@@ -30,11 +30,7 @@ use crate::fmt;
 ///     count += 1;
 ///
 ///     // Check to see if we've finished counting or not.
-///     if count < 6 {
-///         Some(count)
-///     } else {
-///         None
-///     }
+///     if count < 6 { Some(count) } else { None }
 /// });
 /// assert_eq!(counter.collect::<Vec<_>>(), &[1, 2, 3, 4, 5]);
 /// ```

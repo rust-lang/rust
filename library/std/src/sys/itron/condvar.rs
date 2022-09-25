@@ -177,7 +177,6 @@ mod waiter_queue {
         ///  - `*waiter_ptr` must be valid until it's removed from the queue.
         ///
         ///  - `*waiter_ptr` must not have been previously inserted to a `WaiterQueue`.
-        ///
         pub unsafe fn insert(&mut self, mut waiter_ptr: NonNull<Waiter>) {
             unsafe {
                 let waiter = waiter_ptr.as_mut();

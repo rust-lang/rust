@@ -1764,7 +1764,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // Imagine we have the following code:
                             //
                             // ```rust
-                            // #[marker] trait MyTrait {}
+                            // #[marker]
+                            // trait MyTrait {}
                             // impl MyTrait for u8 {}
                             // impl MyTrait for bool {}
                             // ```

@@ -28,8 +28,7 @@ mod def_id_forest;
 //     pub struct AlsoSecretlyUninhabited {
 //         _priv: Void,
 //     }
-//     mod d {
-//     }
+//     mod d {}
 // }
 //
 // struct Foo {
@@ -74,8 +73,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///     pub struct AlsoSecretlyUninhabited {
     ///         _priv: Void,
     ///     }
-    ///     mod d {
-    ///     }
+    ///     mod d {}
     /// }
     ///
     /// struct Foo {

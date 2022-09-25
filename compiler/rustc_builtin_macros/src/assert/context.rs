@@ -60,18 +60,17 @@ impl<'cx, 'a> Context<'cx, 'a> {
     /// ```rust
     /// let elem = 1;
     /// {
-    ///   #[allow(unused_imports)]
-    ///   use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
-    ///   let mut __capture0 = ::core::asserting::Capture::new();
-    ///   let __local_bind0 = &elem;
-    ///   if !(
-    ///     *{
-    ///       (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
-    ///       __local_bind0
-    ///     } == 1
-    ///   ) {
-    ///     panic!("Assertion failed: elem == 1\nWith captures:\n  elem = {}", __capture0)
-    ///   }
+    ///     #[allow(unused_imports)]
+    ///     use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
+    ///     let mut __capture0 = ::core::asserting::Capture::new();
+    ///     let __local_bind0 = &elem;
+    ///     if !(*{
+    ///         (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
+    ///         __local_bind0
+    ///     } == 1)
+    ///     {
+    ///         panic!("Assertion failed: elem == 1\nWith captures:\n  elem = {}", __capture0)
+    ///     }
     /// }
     /// ```
     pub(super) fn build(mut self, mut cond_expr: P<Expr>, panic_path: Path) -> P<Expr> {

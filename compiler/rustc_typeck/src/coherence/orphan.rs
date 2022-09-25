@@ -137,11 +137,11 @@ fn do_orphan_check_impl<'tcx>(
     // Now imagine that crate B comes along and does the following:
     //
     // ```
-    // struct A { }
-    // struct B { }
-    // impl Foo for A { }
-    // impl Foo for B { }
-    // impl !Send for (A, B) { }
+    // struct A {}
+    // struct B {}
+    // impl Foo for A {}
+    // impl Foo for B {}
+    // impl !Send for (A, B) {}
     // ```
     //
     // This final impl is legal according to the orphan

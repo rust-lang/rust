@@ -165,7 +165,7 @@ pub fn max_pow10_no_more_than(x: u32) -> (u8, u32) {
 pub fn format_shortest_opt<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
-) -> Option<(/*digits*/ &'a [u8], /*exp*/ i16)> {
+) -> Option<(/* digits */ &'a [u8], /* exp */ i16)> {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);
@@ -458,7 +458,7 @@ pub fn format_shortest_opt<'a>(
 pub fn format_shortest<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
+) -> (/* digits */ &'a [u8], /* exp */ i16) {
     use crate::num::flt2dec::strategy::dragon::format_shortest as fallback;
     // SAFETY: The borrow checker is not smart enough to let us use `buf`
     // in the second branch, so we launder the lifetime here. But we only re-use
@@ -476,7 +476,7 @@ pub fn format_exact_opt<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
     limit: i16,
-) -> Option<(/*digits*/ &'a [u8], /*exp*/ i16)> {
+) -> Option<(/* digits */ &'a [u8], /* exp */ i16)> {
     assert!(d.mant > 0);
     assert!(d.mant < (1 << 61)); // we need at least three bits of additional precision
     assert!(!buf.is_empty());
@@ -752,7 +752,7 @@ pub fn format_exact<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
     limit: i16,
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
+) -> (/* digits */ &'a [u8], /* exp */ i16) {
     use crate::num::flt2dec::strategy::dragon::format_exact as fallback;
     // SAFETY: The borrow checker is not smart enough to let us use `buf`
     // in the second branch, so we launder the lifetime here. But we only re-use

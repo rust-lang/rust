@@ -79,7 +79,7 @@ impl UnixDatagram {
     ///     Ok(sock) => sock,
     ///     Err(e) => {
     ///         println!("Couldn't bind: {e:?}");
-    ///         return
+    ///         return;
     ///     }
     /// };
     /// ```
@@ -101,7 +101,7 @@ impl UnixDatagram {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixDatagram};
+    /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock1 = UnixDatagram::bind("path/to/socket")?;
@@ -141,7 +141,7 @@ impl UnixDatagram {
     ///     Ok(sock) => sock,
     ///     Err(e) => {
     ///         println!("Couldn't unbound: {e:?}");
-    ///         return
+    ///         return;
     ///     }
     /// };
     /// ```
@@ -164,7 +164,7 @@ impl UnixDatagram {
     ///     Ok((sock1, sock2)) => (sock1, sock2),
     ///     Err(e) => {
     ///         println!("Couldn't unbound: {e:?}");
-    ///         return
+    ///         return;
     ///     }
     /// };
     /// ```
@@ -194,7 +194,7 @@ impl UnixDatagram {
     ///         Ok(sock) => sock,
     ///         Err(e) => {
     ///             println!("Couldn't connect: {e:?}");
-    ///             return Err(e)
+    ///             return Err(e);
     ///         }
     ///     };
     ///     Ok(())
@@ -216,7 +216,7 @@ impl UnixDatagram {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixDatagram};
+    /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let bound = UnixDatagram::bind("/path/to/socket")?;
@@ -227,7 +227,7 @@ impl UnixDatagram {
     ///         Ok(sock) => sock,
     ///         Err(e) => {
     ///             println!("Couldn't connect: {e:?}");
-    ///             return Err(e)
+    ///             return Err(e);
     ///         }
     ///     };
     ///     Ok(())
@@ -385,7 +385,6 @@ impl UnixDatagram {
     /// On success, returns the number of bytes read, if the data was truncated and the address from whence the msg came.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -435,7 +434,6 @@ impl UnixDatagram {
     /// On success, returns the number of bytes read and if the data was truncated.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -522,7 +520,7 @@ impl UnixDatagram {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixDatagram};
+    /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let bound = UnixDatagram::bind("/path/to/socket")?;
@@ -577,7 +575,6 @@ impl UnixDatagram {
     /// On success, returns the number of bytes written.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -619,7 +616,6 @@ impl UnixDatagram {
     /// On success, returns the number of bytes written.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -672,8 +668,7 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
-    ///     sock.set_read_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("set_read_timeout function failed");
+    ///     sock.set_read_timeout(Some(Duration::new(1, 0))).expect("set_read_timeout function failed");
     ///     Ok(())
     /// }
     /// ```
@@ -753,8 +748,7 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
-    ///     sock.set_read_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("set_read_timeout function failed");
+    ///     sock.set_read_timeout(Some(Duration::new(1, 0))).expect("set_read_timeout function failed");
     ///     assert_eq!(sock.read_timeout()?, Some(Duration::new(1, 0)));
     ///     Ok(())
     /// }
@@ -808,7 +802,6 @@ impl UnixDatagram {
     /// Set the socket option `SO_PASSCRED`.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -839,7 +832,6 @@ impl UnixDatagram {
     }
 
     /// Set the id of the socket for network filtering purpose
-    ///
     #[cfg_attr(
         any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
         doc = "```no_run"
@@ -890,8 +882,8 @@ impl UnixDatagram {
     /// (see the documentation of [`Shutdown`]).
     ///
     /// ```no_run
-    /// use std::os::unix::net::UnixDatagram;
     /// use std::net::Shutdown;
+    /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;

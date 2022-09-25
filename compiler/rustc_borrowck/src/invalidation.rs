@@ -251,7 +251,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     // Simulates consumption of an rvalue
     fn consume_rvalue(&mut self, location: Location, rvalue: &Rvalue<'tcx>) {
         match *rvalue {
-            Rvalue::Ref(_ /*rgn*/, bk, place) => {
+            Rvalue::Ref(_ /* rgn */, bk, place) => {
                 let access_kind = match bk {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
@@ -288,9 +288,9 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
-            | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
-            | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(ref operand, _ /*ty*/) => {
+            | Rvalue::UnaryOp(_ /* un_op */, ref operand)
+            | Rvalue::Cast(_ /* cast_kind */, ref operand, _ /* ty */)
+            | Rvalue::ShallowInitBox(ref operand, _ /* ty */) => {
                 self.consume_operand(location, operand)
             }
             Rvalue::CopyForDeref(ref place) => {

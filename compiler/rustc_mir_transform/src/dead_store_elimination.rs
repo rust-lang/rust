@@ -10,7 +10,6 @@
 //!  2. This idempotence persists across dest prop's main transform, in other words inserting any
 //!     number of iterations of dest prop between the first and second application of this transform
 //!     will still not cause any further changes.
-//!
 
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;

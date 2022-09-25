@@ -18,9 +18,11 @@
 //! standard example of the situation is:
 //!
 //! ```rust
-//!   fn example() {
-//!       let _a: char = { return; };
-//!   }
+//! fn example() {
+//!     let _a: char = {
+//!         return;
+//!     };
+//! }
 //! ```
 //!
 //! Here the block (`{ return; }`) has the return type `char`, rather than `()`, but the MIR we

@@ -897,7 +897,6 @@ pub(crate) struct Collector {
     // # Title
     //
     // ## Subtitle
-    //
     // ```rust
     // assert!(true);
     // ```

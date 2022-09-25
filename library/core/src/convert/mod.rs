@@ -144,7 +144,7 @@ pub const fn identity<T>(x: T) -> T {
 ///
 /// ```
 /// fn is_hello<T: AsRef<str>>(s: T) {
-///    assert_eq!("hello", s.as_ref());
+///     assert_eq!("hello", s.as_ref());
 /// }
 ///
 /// let s = "hello";
@@ -263,8 +263,8 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// ```
 /// fn is_hello<T: Into<Vec<u8>>>(s: T) {
-///    let bytes = b"hello".to_vec();
-///    assert_eq!(bytes, s.into());
+///     let bytes = b"hello".to_vec();
+///     assert_eq!(bytes, s.into());
 /// }
 ///
 /// let s = "hello".to_string();

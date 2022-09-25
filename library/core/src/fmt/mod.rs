@@ -55,7 +55,7 @@ pub mod rt {
 /// struct Triangle {
 ///     a: f32,
 ///     b: f32,
-///     c: f32
+///     c: f32,
 /// }
 ///
 /// impl fmt::Display for Triangle {
@@ -493,7 +493,8 @@ impl<'a> Arguments<'a> {
     /// ```rust
     /// use std::fmt::Arguments;
     ///
-    /// fn write_str(_: &str) { /* ... */ }
+    /// fn write_str(_: &str) { /* ... */
+    /// }
     ///
     /// fn write_fmt(args: &Arguments) {
     ///     if let Some(s) = args.as_str() {
@@ -589,10 +590,7 @@ impl Display for Arguments<'_> {
 ///
 /// impl fmt::Debug for Point {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         f.debug_struct("Point")
-///          .field("x", &self.x)
-///          .field("y", &self.y)
-///          .finish()
+///         f.debug_struct("Point").field("x", &self.x).field("y", &self.y).finish()
 ///     }
 /// }
 ///
@@ -639,11 +637,13 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {origin:#?}"),
-/// "The origin is: Point {
+/// assert_eq!(
+///     format!("The origin is: {origin:#?}"),
+///     "The origin is: Point {
 ///     x: 0,
 ///     y: 0,
-/// }");
+/// }"
+/// );
 /// ```
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -674,20 +674,20 @@ pub trait Debug {
     ///
     /// impl fmt::Debug for Position {
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         f.debug_tuple("")
-    ///          .field(&self.longitude)
-    ///          .field(&self.latitude)
-    ///          .finish()
+    ///         f.debug_tuple("").field(&self.longitude).field(&self.latitude).finish()
     ///     }
     /// }
     ///
     /// let position = Position { longitude: 1.987, latitude: 2.983 };
     /// assert_eq!(format!("{position:?}"), "(1.987, 2.983)");
     ///
-    /// assert_eq!(format!("{position:#?}"), "(
+    /// assert_eq!(
+    ///     format!("{position:#?}"),
+    ///     "(
     ///     1.987,
     ///     2.983,
-    /// )");
+    /// )"
+    /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -771,8 +771,7 @@ pub trait Display {
     ///     }
     /// }
     ///
-    /// assert_eq!("(1.987, 2.983)",
-    ///            format!("{}", Position { longitude: 1.987, latitude: 2.983, }));
+    /// assert_eq!("(1.987, 2.983)", format!("{}", Position { longitude: 1.987, latitude: 2.983 }));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -1085,10 +1084,7 @@ pub trait Pointer {
 ///
 /// let l = Length(100);
 ///
-/// assert_eq!(
-///     format!("l in scientific notation is: {l:e}"),
-///     "l in scientific notation is: 1e2"
-/// );
+/// assert_eq!(format!("l in scientific notation is: {l:e}"), "l in scientific notation is: 1e2");
 ///
 /// assert_eq!(
 ///     format!("l in scientific notation is: {l:05e}"),
@@ -1136,10 +1132,7 @@ pub trait LowerExp {
 ///
 /// let l = Length(100);
 ///
-/// assert_eq!(
-///     format!("l in scientific notation is: {l:E}"),
-///     "l in scientific notation is: 1E2"
-/// );
+/// assert_eq!(format!("l in scientific notation is: {l:E}"), "l in scientific notation is: 1E2");
 ///
 /// assert_eq!(
 ///     format!("l in scientific notation is: {l:05E}"),
@@ -1325,13 +1318,13 @@ impl<'a> Formatter<'a> {
     /// ```
     /// use std::fmt;
     ///
-    /// struct Foo { nb: i32 }
+    /// struct Foo {
+    ///     nb: i32,
+    /// }
     ///
     /// impl Foo {
     ///     fn new(nb: i32) -> Foo {
-    ///         Foo {
-    ///             nb,
-    ///         }
+    ///         Foo { nb }
     ///     }
     /// }
     ///
@@ -1716,9 +1709,9 @@ impl<'a> Formatter<'a> {
     ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
     ///         let s = if let Some(s) = formatter.align() {
     ///             match s {
-    ///                 Alignment::Left    => "left",
-    ///                 Alignment::Right   => "right",
-    ///                 Alignment::Center  => "center",
+    ///                 Alignment::Left => "left",
+    ///                 Alignment::Right => "right",
+    ///                 Alignment::Center => "center",
     ///             }
     ///         } else {
     ///             "into the void"
@@ -1816,10 +1809,7 @@ impl<'a> Formatter<'a> {
     /// impl fmt::Display for Foo {
     ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
     ///         if formatter.sign_plus() {
-    ///             write!(formatter,
-    ///                    "Foo({}{})",
-    ///                    if self.0 < 0 { '-' } else { '+' },
-    ///                    self.0.abs())
+    ///             write!(formatter, "Foo({}{})", if self.0 < 0 { '-' } else { '+' }, self.0.abs())
     ///         } else {
     ///             write!(formatter, "Foo({})", self.0)
     ///         }
@@ -1958,11 +1948,10 @@ impl<'a> Formatter<'a> {
     ///
     /// assert_eq!(
     ///     "Foo { bar: 10, baz: \"Hello World\", addr: 127.0.0.1 }",
-    ///     format!("{:?}", Foo {
-    ///         bar: 10,
-    ///         baz: "Hello World".to_string(),
-    ///         addr: Ipv4Addr::new(127, 0, 0, 1),
-    ///     })
+    ///     format!(
+    ///         "{:?}",
+    ///         Foo { bar: 10, baz: "Hello World".to_string(), addr: Ipv4Addr::new(127, 0, 0, 1) }
+    ///     )
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -2106,11 +2095,7 @@ impl<'a> Formatter<'a> {
     ///
     /// impl<T> fmt::Debug for Foo<T> {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         fmt.debug_tuple("Foo")
-    ///             .field(&self.0)
-    ///             .field(&self.1)
-    ///             .field(&format_args!("_"))
-    ///             .finish()
+    ///         fmt.debug_tuple("Foo").field(&self.0).field(&self.1).field(&format_args!("_")).finish()
     ///     }
     /// }
     ///
@@ -2281,7 +2266,8 @@ impl<'a> Formatter<'a> {
     ///
     /// impl<'a, L, R> fmt::Debug for Arm<'a, L, R>
     /// where
-    ///     L: 'a + fmt::Debug, R: 'a + fmt::Debug
+    ///     L: 'a + fmt::Debug,
+    ///     R: 'a + fmt::Debug,
     /// {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
     ///         L::fmt(&(self.0).0, fmt)?;
@@ -2292,13 +2278,14 @@ impl<'a> Formatter<'a> {
     ///
     /// impl<'a, K, V> fmt::Debug for Table<'a, K, V>
     /// where
-    ///     K: 'a + fmt::Debug, V: 'a + fmt::Debug
+    ///     K: 'a + fmt::Debug,
+    ///     V: 'a + fmt::Debug,
     /// {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
     ///         fmt.debug_set()
-    ///         .entries(self.0.iter().map(Arm))
-    ///         .entry(&Arm(&(format_args!("_"), &self.1)))
-    ///         .finish()
+    ///             .entries(self.0.iter().map(Arm))
+    ///             .entry(&Arm(&(format_args!("_"), &self.1)))
+    ///             .finish()
     ///     }
     /// }
     /// ```
@@ -2324,9 +2311,9 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// assert_eq!(
-    ///     format!("{:?}",  Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
     ///     r#"{"A": 10, "B": 11}"#
-    ///  );
+    /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {

@@ -410,7 +410,6 @@ pub enum UnsupportedOpInfo {
     PartialPointerCopy(Pointer<AllocId>),
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
-    //
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
     /// Accessing thread local statics

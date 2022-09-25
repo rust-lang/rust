@@ -120,12 +120,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         //
                         // ```rust
                         // mod a {
-                        //   pub type Foo = impl Iterator;
-                        //   pub fn make_foo() -> Foo { .. }
+                        //     pub type Foo = impl Iterator;
+                        //     pub fn make_foo() -> Foo {
+                        //         ..
+                        //     }
                         // }
                         //
                         // mod b {
-                        //   fn foo() -> a::Foo { a::make_foo() }
+                        //     fn foo() -> a::Foo {
+                        //         a::make_foo()
+                        //     }
                         // }
                         // ```
                         //
@@ -136,7 +140,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // today:
                         //
                         // ```rust
-                        // fn foo() -> impl Iterator { .. }
+                        // fn foo() -> impl Iterator {
+                        //     ..
+                        // }
                         // fn bar() {
                         //     let x = || foo(); // returns the Opaque assoc with `foo`
                         // }
@@ -304,14 +310,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// # trait Foo<'a> {}
     /// # impl<'a, T> Foo<'a> for (&'a u32, T) {}
     /// fn foo<'a, T>(x: &'a u32, y: T) -> impl Foo<'a> {
-    ///   (x, y)
+    ///     (x, y)
     /// }
     ///
     /// // Equivalent to:
     /// # mod dummy { use super::*;
     /// type FooReturn<'a, T> = impl Foo<'a>;
     /// fn foo<'a, T>(x: &'a u32, y: T) -> FooReturn<'a, T> {
-    ///   (x, y)
+    ///     (x, y)
     /// }
     /// # }
     /// ```

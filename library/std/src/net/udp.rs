@@ -84,10 +84,8 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::{SocketAddr, UdpSocket};
     ///
-    /// let addrs = [
-    ///     SocketAddr::from(([127, 0, 0, 1], 3400)),
-    ///     SocketAddr::from(([127, 0, 0, 1], 3401)),
-    /// ];
+    /// let addrs =
+    ///     [SocketAddr::from(([127, 0, 0, 1], 3400)), SocketAddr::from(([127, 0, 0, 1], 3401))];
     /// let socket = UdpSocket::bind(&addrs[..]).expect("couldn't bind to address");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -109,8 +107,7 @@ impl UdpSocket {
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
     /// let mut buf = [0; 10];
-    /// let (number_of_bytes, src_addr) = socket.recv_from(&mut buf)
-    ///                                         .expect("Didn't receive data");
+    /// let (number_of_bytes, src_addr) = socket.recv_from(&mut buf).expect("Didn't receive data");
     /// let filled_buf = &mut buf[..number_of_bytes];
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -138,8 +135,7 @@ impl UdpSocket {
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
     /// let mut buf = [0; 10];
-    /// let (number_of_bytes, src_addr) = socket.peek_from(&mut buf)
-    ///                                         .expect("Didn't receive data");
+    /// let (number_of_bytes, src_addr) = socket.peek_from(&mut buf).expect("Didn't receive data");
     /// let filled_buf = &mut buf[..number_of_bytes];
     /// ```
     #[stable(feature = "peek", since = "1.18.0")]
@@ -190,8 +186,10 @@ impl UdpSocket {
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
     /// socket.connect("192.168.0.1:41203").expect("couldn't connect to address");
-    /// assert_eq!(socket.peer_addr().unwrap(),
-    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(192, 168, 0, 1), 41203)));
+    /// assert_eq!(
+    ///     socket.peer_addr().unwrap(),
+    ///     SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(192, 168, 0, 1), 41203))
+    /// );
     /// ```
     ///
     /// If the socket isn't connected, it will return a [`NotConnected`] error.
@@ -202,8 +200,7 @@ impl UdpSocket {
     /// use std::net::UdpSocket;
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
-    /// assert_eq!(socket.peer_addr().unwrap_err().kind(),
-    ///            std::io::ErrorKind::NotConnected);
+    /// assert_eq!(socket.peer_addr().unwrap_err().kind(), std::io::ErrorKind::NotConnected);
     /// ```
     #[stable(feature = "udp_peer_addr", since = "1.40.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -218,8 +215,10 @@ impl UdpSocket {
     /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
-    /// assert_eq!(socket.local_addr().unwrap(),
-    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 34254)));
+    /// assert_eq!(
+    ///     socket.local_addr().unwrap(),
+    ///     SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 34254))
+    /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {

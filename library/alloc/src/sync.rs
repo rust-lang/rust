@@ -185,7 +185,6 @@ macro_rules! acquire {
 /// # Examples
 ///
 /// Sharing some immutable data between threads:
-///
 // Note that we **do not** run these tests here. The windows builders get super
 // unhappy if a thread outlives the main thread and then exits at the same time
 // (something deadlocks) so we just avoid this entirely by not running these
@@ -210,8 +209,8 @@ macro_rules! acquire {
 /// [`AtomicUsize`]: core::sync::atomic::AtomicUsize "sync::atomic::AtomicUsize"
 ///
 /// ```no_run
-/// use std::sync::Arc;
 /// use std::sync::atomic::{AtomicUsize, Ordering};
+/// use std::sync::Arc;
 /// use std::thread;
 ///
 /// let val = Arc::new(AtomicUsize::new(5));
@@ -1409,11 +1408,11 @@ impl<T: Clone> Arc<T> {
     ///
     /// let mut data = Arc::new(5);
     ///
-    /// *Arc::make_mut(&mut data) += 1;         // Won't clone anything
+    /// *Arc::make_mut(&mut data) += 1; // Won't clone anything
     /// let mut other_data = Arc::clone(&data); // Won't clone inner data
-    /// *Arc::make_mut(&mut data) += 1;         // Clones inner data
-    /// *Arc::make_mut(&mut data) += 1;         // Won't clone anything
-    /// *Arc::make_mut(&mut other_data) *= 2;   // Won't clone anything
+    /// *Arc::make_mut(&mut data) += 1; // Clones inner data
+    /// *Arc::make_mut(&mut data) += 1; // Won't clone anything
+    /// *Arc::make_mut(&mut other_data) *= 2; // Won't clone anything
     ///
     /// // Now `data` and `other_data` point to different allocations.
     /// assert_eq!(*data, 8);
@@ -1590,9 +1589,7 @@ impl<T: ?Sized> Arc<T> {
     /// use std::sync::Arc;
     ///
     /// let mut x = Arc::new(String::new());
-    /// unsafe {
-    ///     Arc::get_mut_unchecked(&mut x).push_str("foo")
-    /// }
+    /// unsafe { Arc::get_mut_unchecked(&mut x).push_str("foo") }
     /// assert_eq!(*x, "foo");
     /// ```
     #[inline]
@@ -1653,11 +1650,11 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     ///     }
     /// }
     ///
-    /// let foo  = Arc::new(Foo);
+    /// let foo = Arc::new(Foo);
     /// let foo2 = Arc::clone(&foo);
     ///
-    /// drop(foo);    // Doesn't print anything
-    /// drop(foo2);   // Prints "dropped!"
+    /// drop(foo); // Doesn't print anything
+    /// drop(foo2); // Prints "dropped!"
     /// ```
     #[inline]
     fn drop(&mut self) {
@@ -1818,8 +1815,8 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
     /// use std::ptr;
+    /// use std::sync::Arc;
     ///
     /// let strong = Arc::new("hello".to_owned());
     /// let weak = Arc::downgrade(&strong);
@@ -2193,8 +2190,8 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     /// let weak_foo = Arc::downgrade(&foo);
     /// let other_weak_foo = Weak::clone(&weak_foo);
     ///
-    /// drop(weak_foo);   // Doesn't print anything
-    /// drop(foo);        // Prints "dropped!"
+    /// drop(weak_foo); // Doesn't print anything
+    /// drop(foo); // Prints "dropped!"
     ///
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
@@ -2309,8 +2306,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
     /// use std::cmp::Ordering;
+    /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
     ///
@@ -2397,8 +2394,8 @@ impl<T: ?Sized + Ord> Ord for Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
     /// use std::cmp::Ordering;
+    /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
     ///
@@ -2662,9 +2659,11 @@ impl<T> iter::FromIterator<T> for Arc<[T]> {
     ///
     /// ```rust
     /// # use std::sync::Arc;
-    /// let evens: Arc<[u8]> = (0..10).filter(|&x| x % 2 == 0)
+    /// let evens: Arc<[u8]> = (0..10)
+    ///     .filter(|&x| x % 2 == 0)
     ///     .collect::<Vec<_>>() // The first set of allocations happens here.
     ///     .into(); // A second allocation for `Arc<[T]>` happens here.
+    /// //
     /// # assert_eq!(&*evens, &[0, 2, 4, 6, 8]);
     /// ```
     ///
@@ -2679,6 +2678,7 @@ impl<T> iter::FromIterator<T> for Arc<[T]> {
     /// ```rust
     /// # use std::sync::Arc;
     /// let evens: Arc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
+    /// //
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
     fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {

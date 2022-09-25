@@ -38,13 +38,15 @@
 //!
 //! ```rust
 //! # #![allow(dead_code)]
-//! struct A { x : i32 }
+//! struct A {
+//!     x: i32,
+//! }
 //!
 //! struct B(i32);
 //!
 //! enum C {
 //!     C0(i32),
-//!     C1 { x: i32 }
+//!     C1 { x: i32 },
 //! }
 //! ```
 //!
@@ -254,7 +256,7 @@ pub struct FieldInfo {
 /// Fields for a static method
 pub enum StaticFields {
     /// Tuple and unit structs/enum variants like this.
-    Unnamed(Vec<Span>, bool /*is tuple*/),
+    Unnamed(Vec<Span>, bool /* is tuple */),
     /// Normal structs/struct variants.
     Named(Vec<(Ident, Span)>),
 }
@@ -982,7 +984,10 @@ impl<'a> MethodDef<'a> {
     /// ```
     /// #[derive(PartialEq)]
     /// # struct Dummy;
-    /// struct A { x: u8, y: u8 }
+    /// struct A {
+    ///     x: u8,
+    ///     y: u8,
+    /// }
     ///
     /// // equivalent to:
     /// impl PartialEq for A {
@@ -1105,7 +1110,7 @@ impl<'a> MethodDef<'a> {
     /// # struct Dummy;
     /// enum A {
     ///     A1,
-    ///     A2(i32)
+    ///     A2(i32),
     /// }
     /// ```
     /// is equivalent to:
@@ -1115,10 +1120,9 @@ impl<'a> MethodDef<'a> {
     ///     fn eq(&self, other: &A) -> bool {
     ///         let __self_tag = ::core::intrinsics::discriminant_value(self);
     ///         let __arg1_tag = ::core::intrinsics::discriminant_value(other);
-    ///         __self_tag == __arg1_tag &&
-    ///             match (self, other) {
-    ///                 (A::A2(__self_0), A::A2(__arg1_0)) =>
-    ///                     *__self_0 == *__arg1_0,
+    ///         __self_tag == __arg1_tag
+    ///             && match (self, other) {
+    ///                 (A::A2(__self_0), A::A2(__arg1_0)) => *__self_0 == *__arg1_0,
     ///                 _ => true,
     ///             }
     ///     }
