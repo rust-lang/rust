@@ -64,8 +64,8 @@ jobs:
         if: ${{ steps.cache.outputs.cache-hit == 'false' }}
         shell: bash
         run: |
-          cargo install rustup-toolchain-install-master
-          cargo install xargo
+          cargo install -f rustup-toolchain-install-master
+          cargo install -f xargo
 
       - name: Install "master" toolchain
         shell: bash
