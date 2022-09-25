@@ -82,7 +82,6 @@
     -Z                           mir-opt-level=val -- MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)
     -Z                         move-size-limit=val -- the size at which the `large_assignments` lint starts to be emitted
     -Z                         mutable-noalias=val -- emit noalias metadata for mutable references (default: yes)
-    -Z                   new-llvm-pass-manager=val -- use new LLVM pass manager (default: no)
     -Z                               nll-facts=val -- dump facts from NLL analysis into side files (default: no)
     -Z                           nll-facts-dir=val -- the directory the NLL facts are dumped into (default: `nll-facts`)
     -Z                             no-analysis=val -- parse and expand the source, but run no analysis

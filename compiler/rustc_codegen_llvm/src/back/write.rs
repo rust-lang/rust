@@ -21,7 +21,6 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
-use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
 use rustc_session::Session;
@@ -417,7 +416,7 @@ fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
     }
 }
 
-pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
+pub(crate) unsafe fn llvm_optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
     module: &ModuleCodegen<ModuleLlvm>,
@@ -465,7 +464,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     // FIXME: NewPM doesn't provide a facility to pass custom InlineParams.
     // We would have to add upstream support for this first, before we can support
     // config.inline_threshold and our more aggressive default thresholds.
-    let result = llvm::LLVMRustOptimizeWithNewPassManager(
+    let result = llvm::LLVMRustOptimize(
         module.module_llvm.llmod(),
         &*module.module_llvm.tm,
         to_pass_builder_opt_level(opt_level),
@@ -509,17 +508,10 @@ pub(crate) unsafe fn optimize(
 
     let llmod = module.module_llvm.llmod();
     let llcx = &*module.module_llvm.llcx;
-    let tm = &*module.module_llvm.tm;
     let _handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
 
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);
-
-    if let Some(false) = config.new_llvm_pass_manager && llvm_util::get_version() >= (15, 0, 0) {
-        diag_handler.warn(
-            "ignoring `-Z new-llvm-pass-manager=no`, which is no longer supported with LLVM 15",
-        );
-    }
 
     if config.emit_no_opt_bc {
         let out = cgcx.output_filenames.temp_path_ext("no-opt.bc", module_name);
@@ -528,182 +520,15 @@ pub(crate) unsafe fn optimize(
     }
 
     if let Some(opt_level) = config.opt_level {
-        if llvm_util::should_use_new_llvm_pass_manager(
-            &config.new_llvm_pass_manager,
-            &cgcx.target_arch,
-        ) {
-            let opt_stage = match cgcx.lto {
-                Lto::Fat => llvm::OptStage::PreLinkFatLTO,
-                Lto::Thin | Lto::ThinLocal => llvm::OptStage::PreLinkThinLTO,
-                _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
-                _ => llvm::OptStage::PreLinkNoLTO,
-            };
-            return optimize_with_new_llvm_pass_manager(
-                cgcx,
-                diag_handler,
-                module,
-                config,
-                opt_level,
-                opt_stage,
-            );
-        }
-
-        if cgcx.prof.llvm_recording_enabled() {
-            diag_handler
-                .warn("`-Z self-profile-events = llvm` requires `-Z new-llvm-pass-manager`");
-        }
-
-        // Create the two optimizing pass managers. These mirror what clang
-        // does, and are by populated by LLVM's default PassManagerBuilder.
-        // Each manager has a different set of passes, but they also share
-        // some common passes.
-        let fpm = llvm::LLVMCreateFunctionPassManagerForModule(llmod);
-        let mpm = llvm::LLVMCreatePassManager();
-
-        {
-            let find_pass = |pass_name: &str| {
-                let pass_name = SmallCStr::new(pass_name);
-                llvm::LLVMRustFindAndCreatePass(pass_name.as_ptr())
-            };
-
-            if config.verify_llvm_ir {
-                // Verification should run as the very first pass.
-                llvm::LLVMRustAddPass(fpm, find_pass("verify").unwrap());
-            }
-
-            let mut extra_passes = Vec::new();
-            let mut have_name_anon_globals_pass = false;
-
-            for pass_name in &config.passes {
-                if pass_name == "lint" {
-                    // Linting should also be performed early, directly on the generated IR.
-                    llvm::LLVMRustAddPass(fpm, find_pass("lint").unwrap());
-                    continue;
-                }
-
-                if let Some(pass) = find_pass(pass_name) {
-                    extra_passes.push(pass);
-                } else {
-                    diag_handler.warn(&format!("unknown pass `{}`, ignoring", pass_name));
-                }
-
-                if pass_name == "name-anon-globals" {
-                    have_name_anon_globals_pass = true;
-                }
-            }
-
-            // Instrumentation must be inserted before optimization,
-            // otherwise LLVM may optimize some functions away which
-            // breaks llvm-cov.
-            //
-            // This mirrors what Clang does in lib/CodeGen/BackendUtil.cpp.
-            if config.instrument_gcov {
-                llvm::LLVMRustAddPass(mpm, find_pass("insert-gcov-profiling").unwrap());
-            }
-            if config.instrument_coverage {
-                llvm::LLVMRustAddPass(mpm, find_pass("instrprof").unwrap());
-            }
-            if config.debug_info_for_profiling {
-                llvm::LLVMRustAddPass(mpm, find_pass("add-discriminators").unwrap());
-            }
-
-            add_sanitizer_passes(config, &mut extra_passes);
-
-            // Some options cause LLVM bitcode to be emitted, which uses ThinLTOBuffers, so we need
-            // to make sure we run LLVM's NameAnonGlobals pass when emitting bitcode; otherwise
-            // we'll get errors in LLVM.
-            let using_thin_buffers = config.bitcode_needed();
-            if !config.no_prepopulate_passes {
-                llvm::LLVMAddAnalysisPasses(tm, fpm);
-                llvm::LLVMAddAnalysisPasses(tm, mpm);
-                let opt_level = to_llvm_opt_settings(opt_level).0;
-                let prepare_for_thin_lto = cgcx.lto == Lto::Thin
-                    || cgcx.lto == Lto::ThinLocal
-                    || (cgcx.lto != Lto::Fat && cgcx.opts.cg.linker_plugin_lto.enabled());
-                with_llvm_pmb(llmod, config, opt_level, prepare_for_thin_lto, &mut |b| {
-                    llvm::LLVMRustAddLastExtensionPasses(
-                        b,
-                        extra_passes.as_ptr(),
-                        extra_passes.len() as size_t,
-                    );
-                    llvm::LLVMRustPassManagerBuilderPopulateFunctionPassManager(b, fpm);
-                    llvm::LLVMRustPassManagerBuilderPopulateModulePassManager(b, mpm);
-                });
-
-                have_name_anon_globals_pass = have_name_anon_globals_pass || prepare_for_thin_lto;
-                if using_thin_buffers && !prepare_for_thin_lto {
-                    llvm::LLVMRustAddPass(mpm, find_pass("name-anon-globals").unwrap());
-                    have_name_anon_globals_pass = true;
-                }
-            } else {
-                // If we don't use the standard pipeline, directly populate the MPM
-                // with the extra passes.
-                for pass in extra_passes {
-                    llvm::LLVMRustAddPass(mpm, pass);
-                }
-            }
-
-            if using_thin_buffers && !have_name_anon_globals_pass {
-                // As described above, this will probably cause an error in LLVM
-                if config.no_prepopulate_passes {
-                    diag_handler.err(
-                        "The current compilation is going to use thin LTO buffers \
-                                      without running LLVM's NameAnonGlobals pass. \
-                                      This will likely cause errors in LLVM. Consider adding \
-                                      -C passes=name-anon-globals to the compiler command line.",
-                    );
-                } else {
-                    bug!(
-                        "We are using thin LTO buffers without running the NameAnonGlobals pass. \
-                          This will likely cause errors in LLVM and should never happen."
-                    );
-                }
-            }
-        }
-
-        diag_handler.abort_if_errors();
-
-        // Finally, run the actual optimization passes
-        {
-            let _timer = cgcx.prof.extra_verbose_generic_activity(
-                "LLVM_module_optimize_function_passes",
-                &*module.name,
-            );
-            llvm::LLVMRustRunFunctionPassManager(fpm, llmod);
-        }
-        {
-            let _timer = cgcx.prof.extra_verbose_generic_activity(
-                "LLVM_module_optimize_module_passes",
-                &*module.name,
-            );
-            llvm::LLVMRunPassManager(mpm, llmod);
-        }
-
-        // Deallocate managers that we're now done with
-        llvm::LLVMDisposePassManager(fpm);
-        llvm::LLVMDisposePassManager(mpm);
+        let opt_stage = match cgcx.lto {
+            Lto::Fat => llvm::OptStage::PreLinkFatLTO,
+            Lto::Thin | Lto::ThinLocal => llvm::OptStage::PreLinkThinLTO,
+            _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
+            _ => llvm::OptStage::PreLinkNoLTO,
+        };
+        return llvm_optimize(cgcx, diag_handler, module, config, opt_level, opt_stage);
     }
     Ok(())
-}
-
-unsafe fn add_sanitizer_passes(config: &ModuleConfig, passes: &mut Vec<&'static mut llvm::Pass>) {
-    if config.sanitizer.contains(SanitizerSet::ADDRESS) {
-        let recover = config.sanitizer_recover.contains(SanitizerSet::ADDRESS);
-        passes.push(llvm::LLVMRustCreateAddressSanitizerFunctionPass(recover));
-        passes.push(llvm::LLVMRustCreateModuleAddressSanitizerPass(recover));
-    }
-    if config.sanitizer.contains(SanitizerSet::MEMORY) {
-        let track_origins = config.sanitizer_memory_track_origins as c_int;
-        let recover = config.sanitizer_recover.contains(SanitizerSet::MEMORY);
-        passes.push(llvm::LLVMRustCreateMemorySanitizerPass(track_origins, recover));
-    }
-    if config.sanitizer.contains(SanitizerSet::THREAD) {
-        passes.push(llvm::LLVMRustCreateThreadSanitizerPass());
-    }
-    if config.sanitizer.contains(SanitizerSet::HWADDRESS) {
-        let recover = config.sanitizer_recover.contains(SanitizerSet::HWADDRESS);
-        passes.push(llvm::LLVMRustCreateHWAddressSanitizerPass(recover));
-    }
 }
 
 pub(crate) fn link(
@@ -1070,72 +895,6 @@ unsafe fn embed_bitcode(
         let asm = create_section_with_flags_asm(".llvmcmd", section_flags, cmdline.as_bytes());
         llvm::LLVMRustAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
     }
-}
-
-pub unsafe fn with_llvm_pmb(
-    llmod: &llvm::Module,
-    config: &ModuleConfig,
-    opt_level: llvm::CodeGenOptLevel,
-    prepare_for_thin_lto: bool,
-    f: &mut dyn FnMut(&llvm::PassManagerBuilder),
-) {
-    use std::ptr;
-
-    // Create the PassManagerBuilder for LLVM. We configure it with
-    // reasonable defaults and prepare it to actually populate the pass
-    // manager.
-    let builder = llvm::LLVMRustPassManagerBuilderCreate();
-    let opt_size = config.opt_size.map_or(llvm::CodeGenOptSizeNone, |x| to_llvm_opt_settings(x).1);
-    let inline_threshold = config.inline_threshold;
-    let pgo_gen_path = get_pgo_gen_path(config);
-    let pgo_use_path = get_pgo_use_path(config);
-    let pgo_sample_use_path = get_pgo_sample_use_path(config);
-
-    llvm::LLVMRustConfigurePassManagerBuilder(
-        builder,
-        opt_level,
-        config.merge_functions,
-        config.vectorize_slp,
-        config.vectorize_loop,
-        prepare_for_thin_lto,
-        pgo_gen_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
-        pgo_use_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
-        pgo_sample_use_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
-        opt_size as c_int,
-    );
-
-    llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod, config.no_builtins);
-
-    // Here we match what clang does (kinda). For O0 we only inline
-    // always-inline functions (but don't add lifetime intrinsics), at O1 we
-    // inline with lifetime intrinsics, and O2+ we add an inliner with a
-    // thresholds copied from clang.
-    match (opt_level, opt_size, inline_threshold) {
-        (.., Some(t)) => {
-            llvm::LLVMRustPassManagerBuilderUseInlinerWithThreshold(builder, t);
-        }
-        (llvm::CodeGenOptLevel::Aggressive, ..) => {
-            llvm::LLVMRustPassManagerBuilderUseInlinerWithThreshold(builder, 275);
-        }
-        (_, llvm::CodeGenOptSizeDefault, _) => {
-            llvm::LLVMRustPassManagerBuilderUseInlinerWithThreshold(builder, 75);
-        }
-        (_, llvm::CodeGenOptSizeAggressive, _) => {
-            llvm::LLVMRustPassManagerBuilderUseInlinerWithThreshold(builder, 25);
-        }
-        (llvm::CodeGenOptLevel::None, ..) => {
-            llvm::LLVMRustAddAlwaysInlinePass(builder, config.emit_lifetime_markers);
-        }
-        (llvm::CodeGenOptLevel::Less, ..) => {
-            llvm::LLVMRustAddAlwaysInlinePass(builder, config.emit_lifetime_markers);
-        }
-        (llvm::CodeGenOptLevel::Default, ..) => {
-            llvm::LLVMRustPassManagerBuilderUseInlinerWithThreshold(builder, 225);
-        }
-    }
-
-    f(builder);
-    llvm::LLVMRustPassManagerBuilderDispose(builder);
 }
 
 // Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.
