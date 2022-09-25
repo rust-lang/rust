@@ -318,9 +318,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if !self.type_ascription_suggestion(&mut err, base_error.span) {
             let mut fallback =
                 self.suggest_trait_and_bounds(&mut err, source, res, span, &base_error);
-            if self.suggest_typo(&mut err, source, path, span, &base_error) {
-                fallback = true;
-            }
+            fallback |= self.suggest_typo(&mut err, source, path, span, &base_error);
             if fallback {
                 // Fallback label.
                 err.span_label(base_error.span, &base_error.fallback_label);
