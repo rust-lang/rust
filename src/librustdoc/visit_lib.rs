@@ -1,8 +1,8 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_ID};
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, Visibility};
 
 // FIXME: this may not be exhaustive, but is sufficient for rustdocs current uses
 
@@ -41,7 +41,11 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
         let old_level = self.access_levels.get_access_level(did);
         // Accessibility levels can only grow
         if level > old_level && !is_hidden {
-            self.access_levels.set_access_level(did, level.unwrap());
+            self.access_levels.set_access_level(
+                did,
+                || Visibility::Restricted(CRATE_DEF_ID),
+                level.unwrap(),
+            );
             level
         } else {
             old_level

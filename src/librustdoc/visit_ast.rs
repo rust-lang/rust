@@ -8,7 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::middle::privacy::AccessLevel;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -230,7 +230,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     } else {
                         // All items need to be handled here in case someone wishes to link
                         // to them with intra-doc links
-                        self.cx.cache.access_levels.set_access_level(did, AccessLevel::Public);
+                        self.cx.cache.access_levels.set_access_level(
+                            did,
+                            || Visibility::Restricted(CRATE_DEF_ID),
+                            AccessLevel::Public,
+                        );
                     }
                 }
             }
