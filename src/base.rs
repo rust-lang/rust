@@ -6,6 +6,8 @@ use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
+use cranelift_codegen::ir::UserFuncName;
+
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
@@ -64,7 +66,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let mut func_ctx = FunctionBuilderContext::new();
     let mut func = cached_func;
     func.clear();
-    func.name = ExternalName::user(0, func_id.as_u32());
+    func.name = UserFuncName::user(0, func_id.as_u32());
     func.signature = sig;
     func.collect_debug_info();
 

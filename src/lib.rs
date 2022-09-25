@@ -96,8 +96,8 @@ mod prelude {
     pub(crate) use cranelift_codegen::ir::function::Function;
     pub(crate) use cranelift_codegen::ir::types;
     pub(crate) use cranelift_codegen::ir::{
-        AbiParam, Block, ExternalName, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc,
-        StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value,
+        AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot,
+        StackSlotData, StackSlotKind, TrapCode, Type, Value,
     };
     pub(crate) use cranelift_codegen::isa::{self, CallConv};
     pub(crate) use cranelift_codegen::Context;
