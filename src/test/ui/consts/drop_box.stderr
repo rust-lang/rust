@@ -1,10 +1,10 @@
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `Box<T>` cannot be evaluated at compile-time
   --> $DIR/drop_box.rs:1:15
    |
 LL | const fn f<T>(_: Box<T>) {}
    |               ^           - value is dropped here
    |               |
-   |               constant functions cannot evaluate destructors
+   |               the destructor for this type cannot be evaluated in constant functions
 
 error: aborting due to previous error
 

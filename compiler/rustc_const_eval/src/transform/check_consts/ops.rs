@@ -422,10 +422,11 @@ impl<'tcx> NonConstOp<'tcx> for InlineAsm {
 }
 
 #[derive(Debug)]
-pub struct LiveDrop {
+pub struct LiveDrop<'tcx> {
     pub dropped_at: Option<Span>,
+    pub dropped_ty: Ty<'tcx>,
 }
-impl<'tcx> NonConstOp<'tcx> for LiveDrop {
+impl<'tcx> NonConstOp<'tcx> for LiveDrop<'tcx> {
     fn build_error(
         &self,
         ccx: &ConstCx<'_, 'tcx>,
@@ -435,9 +436,13 @@ impl<'tcx> NonConstOp<'tcx> for LiveDrop {
             ccx.tcx.sess,
             span,
             E0493,
-            "destructors cannot be evaluated at compile-time"
+            "destructor of `{}` cannot be evaluated at compile-time",
+            self.dropped_ty,
         );
-        err.span_label(span, format!("{}s cannot evaluate destructors", ccx.const_kind()));
+        err.span_label(
+            span,
+            format!("the destructor for this type cannot be evaluated in {}s", ccx.const_kind()),
+        );
         if let Some(span) = self.dropped_at {
             err.span_label(span, "value is dropped here");
         }

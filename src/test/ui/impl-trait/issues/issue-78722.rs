@@ -12,7 +12,7 @@ struct Bug {
         }
         let f: F = async { 1 };
         //~^ ERROR `async` blocks are not allowed in constants
-        //~| ERROR destructors cannot be evaluated at compile-time
+        //~| ERROR destructor of
         1
     }],
 }

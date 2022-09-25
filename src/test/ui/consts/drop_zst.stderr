@@ -1,8 +1,8 @@
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `S` cannot be evaluated at compile-time
   --> $DIR/drop_zst.rs:14:9
    |
 LL |     let s = S;
-   |         ^ constant functions cannot evaluate destructors
+   |         ^ the destructor for this type cannot be evaluated in constant functions
 
 error: aborting due to previous error
 
