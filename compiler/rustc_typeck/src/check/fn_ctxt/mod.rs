@@ -276,7 +276,6 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
         let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
             self,
-            self.tcx,
             span,
             item_def_id,
             item_segment,

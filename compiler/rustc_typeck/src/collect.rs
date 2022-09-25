@@ -430,7 +430,6 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
             let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
                 self,
-                self.tcx,
                 span,
                 item_def_id,
                 item_segment,
