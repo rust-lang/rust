@@ -917,7 +917,7 @@ pub(crate) fn codegen_operand<'tcx>(
             let cplace = codegen_place(fx, *place);
             cplace.to_cvalue(fx)
         }
-        Operand::Constant(const_) => crate::constant::codegen_constant(fx, const_),
+        Operand::Constant(const_) => crate::constant::codegen_constant_operand(fx, const_),
     }
 }
 
