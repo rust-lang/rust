@@ -188,6 +188,7 @@ fn build_clif_sysroot_for_triple(
     let mut build_cmd = cargo_command("cargo", "build", Some(triple), Path::new("build_sysroot"));
     let mut rustflags = "-Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
     rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
+    rustflags.push_str(&format!(" --sysroot={}", target_dir.to_str().unwrap()));
     if channel == "release" {
         build_cmd.arg("--release");
         rustflags.push_str(" -Zmir-opt-level=3");
