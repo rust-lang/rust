@@ -92,7 +92,14 @@ borrowck_drop_local_might_cause_borrow =
         [immutable] immutable {""}
         [first] first {""}
         *[other] {""}
-    }borrow might be used here, when `{$local_name}` is dropped and runs the {$dtor_desc} for {$type_desc}
+    }borrow might be used here, when `{$local_name}` is dropped and runs the {$dtor_code ->
+        [0] `Drop` code
+        *[1] destructor
+    } for {$type_code ->
+        [1] closure
+        [2] generator
+        *[0] type
+    }{$type_desc}
 
 borrowck_var_dropped_in_wrong_order =
     values in a scope are dropped in the opposite order they are defined
@@ -110,7 +117,14 @@ borrowck_drop_temporary_might_cause_borrow_use = ... and the {$borrow_desc ->
         [immutable] immutable {""}
         [first] first {""}
         *[other] {""}
-    }borrow might be used here, when that temporary is dropped and runs the {$dtor_desc} for {$type_desc}
+    }borrow might be used here, when that temporary is dropped and runs the {$dtor_code ->
+        [0] `Drop` code
+        *[1] destructor
+    } for {$type_code ->
+        [1] closure
+        [2] generator
+        *[0] type
+    }{$type_desc}
 
 borrowck_consider_add_semicolon =
     consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped

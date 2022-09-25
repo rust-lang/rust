@@ -151,19 +151,19 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         }
                     }
                 }
-                let (dtor_desc, type_desc) = match ty.kind() {
+                let (dtor_code, type_code, type_desc) = match ty.kind() {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
                     ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => {
-                        ("`Drop` code", format!("type `{}`", tcx.def_path_str(adt.did())))
+                        (0, 0, format!(" `{}`", tcx.def_path_str(adt.did()).to_string()))
                     }
 
                     // Otherwise, just report the whole type (and use
                     // the intentionally fuzzy phrase "destructor")
-                    ty::Closure(..) => ("destructor", "closure".to_owned()),
-                    ty::Generator(..) => ("destructor", "generator".to_owned()),
+                    ty::Closure(..) => (1, 1, "".to_owned()),
+                    ty::Generator(..) => (1, 2, "".to_owned()),
 
-                    _ => ("destructor", format!("type `{}`", local_decl.ty)),
+                    _ => (1, 0, format!(" `{}`", local_decl.ty.to_string())),
                 };
 
                 match local_names[dropped_local] {
@@ -171,8 +171,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         err.subdiagnostic(UsedLaterDropped::UsedHere {
                             borrow_desc: br_desc,
                             local_name,
-                            type_desc: &type_desc,
-                            dtor_desc,
+                            type_desc,
+                            type_code,
+                            dtor_code,
                             span: body.source_info(drop_loc).span,
                         });
                         if should_note_order {
@@ -186,8 +187,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         });
                         err.subdiagnostic(UsedLaterDropped::MightUsedHere {
                             borrow_desc: br_desc,
-                            type_desc: &type_desc,
-                            dtor_desc,
+                            type_desc,
+                            type_code,
+                            dtor_code,
                             span: body.source_info(drop_loc).span,
                         });
                         if let Some(info) = &local_decl.is_block_tail {

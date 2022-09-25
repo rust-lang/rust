@@ -189,8 +189,9 @@ pub(crate) enum UsedLaterDropped<'a> {
     UsedHere {
         borrow_desc: &'a str,
         local_name: Symbol,
-        type_desc: &'a str,
-        dtor_desc: &'a str,
+        dtor_code: u8,
+        type_code: u8,
+        type_desc: String,
         #[primary_span]
         span: Span,
     },
@@ -205,8 +206,9 @@ pub(crate) enum UsedLaterDropped<'a> {
     #[label(borrowck::drop_temporary_might_cause_borrow_use)]
     MightUsedHere {
         borrow_desc: &'a str,
-        type_desc: &'a str,
-        dtor_desc: &'a str,
+        dtor_code: u8,
+        type_code: u8,
+        type_desc: String,
         #[primary_span]
         span: Span,
     },
