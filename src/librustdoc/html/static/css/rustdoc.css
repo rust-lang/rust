@@ -1130,10 +1130,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	font-size: 1rem;
 }
 
-.summary {
-	padding-right: 0px;
-}
-
 pre.rust .question-mark {
 	font-weight: bold;
 }
@@ -1915,10 +1911,6 @@ in storage.js plus the media query with (min-width: 701px)
 		position: sticky;
 		border: 0;
 		border-bottom: 1px solid;
-	}
-
-	#main-content > .line-numbers {
-		margin-top: 0;
 	}
 
 	.notable-traits .notable-traits-tooltiptext {

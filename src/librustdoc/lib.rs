@@ -461,7 +461,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "human|json|short",
             )
         }),
-        unstable("diagnostic-width", |o| {
+        stable("diagnostic-width", |o| {
             o.optopt(
                 "",
                 "diagnostic-width",
