@@ -11,9 +11,6 @@ impl<T> GenericAssocMethod<T> {
 fn main() {
     // Test for inferred types
     let x = GenericAssocMethod(33);
-    // This particular case is unfixable without more information by the user,
-    // but `cargo fix --broken-code` reports a bug if
-    // x.default_hello();
     x.self_ty_ref_hello();
     //~^ ERROR no method named `self_ty_ref_hello` found
     x.self_ty_hello();
