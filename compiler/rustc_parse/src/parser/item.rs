@@ -1,4 +1,4 @@
-use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
+use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error, UseEmptyBlockNotSemi};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 
@@ -664,6 +664,14 @@ impl<'a> Parser<'a> {
         mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
     ) -> PResult<'a, Vec<T>> {
         let open_brace_span = self.token.span;
+
+        // Recover `impl Ty;` instead of `impl Ty {}`
+        if self.token == TokenKind::Semi {
+            self.sess.emit_err(UseEmptyBlockNotSemi { span: self.token.span });
+            self.bump();
+            return Ok(vec![]);
+        }
+
         self.expect(&token::OpenDelim(Delimiter::Brace))?;
         attrs.extend(self.parse_inner_attributes()?);
 
@@ -1305,12 +1313,19 @@ impl<'a> Parser<'a> {
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
 
-        let (variants, _) = self
-            .parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant())
-            .map_err(|e| {
-                self.recover_stmt();
-                e
-            })?;
+        // Possibly recover `enum Foo;` instead of `enum Foo {}`
+        let (variants, _) = if self.token == TokenKind::Semi {
+            self.sess.emit_err(UseEmptyBlockNotSemi { span: self.token.span });
+            self.bump();
+            (vec![], false)
+        } else {
+            self.parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant()).map_err(
+                |e| {
+                    self.recover_stmt();
+                    e
+                },
+            )?
+        };
 
         let enum_definition = EnumDef { variants: variants.into_iter().flatten().collect() };
         Ok((id, ItemKind::Enum(enum_definition, generics)))

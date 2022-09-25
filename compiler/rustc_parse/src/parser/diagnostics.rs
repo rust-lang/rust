@@ -745,6 +745,14 @@ pub(crate) struct UseEqInstead {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(parser::use_empty_block_not_semi)]
+pub(crate) struct UseEmptyBlockNotSemi {
+    #[primary_span]
+    #[suggestion_hidden(applicability = "machine-applicable", code = "{{}}")]
+    pub span: Span,
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
