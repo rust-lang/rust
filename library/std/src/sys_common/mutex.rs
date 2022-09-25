@@ -61,6 +61,7 @@ unsafe impl Sync for MovableMutex {}
 impl MovableMutex {
     /// Creates a new mutex.
     #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Self {
         Self(imp::MovableMutex::new())
     }
