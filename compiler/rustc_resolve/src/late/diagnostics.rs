@@ -131,13 +131,13 @@ pub(super) enum LifetimeElisionCandidate {
 }
 
 /// Only used for diagnostics.
-struct BaseError<'a> {
+struct BaseError {
     msg: String,
     fallback_label: String,
     span: Span,
-    span_label: Option<(Span, &'a str)>,
+    span_label: Option<(Span, &'static str)>,
     could_be_expr: bool,
-    suggestion: Option<(Span, &'a str, String)>,
+    suggestion: Option<(Span, &'static str, String)>,
 }
 
 impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
@@ -154,7 +154,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         span: Span,
         source: PathSource<'_>,
         res: Option<Res>,
-    ) -> BaseError<'static> {
+    ) -> BaseError {
         // Make the base error.
         let mut expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
@@ -290,7 +290,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 
-        if let Some((span, label)) = base_error.span_label.clone() {
+        if let Some((span, label)) = base_error.span_label {
             err.span_label(span, label);
         }
 
@@ -303,17 +303,29 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         self.suggest_self_or_self_ref(&mut err, path, span);
         self.detect_assoct_type_constraint_meant_as_path(&mut err, &base_error);
-        if self.suggest_self_ty_or_self_value(&mut err, source, path, span) {
+        if self.suggest_self_ty(&mut err, source, path, span)
+            || self.suggest_self_value(&mut err, source, path, span)
+        {
             return (err, Vec::new());
         }
 
         let (found, candidates) =
-            self.try_lookup_name_with_relex_fashion(&mut err, source, path, span, res, &base_error);
+            self.try_lookup_name_relaxed(&mut err, source, path, span, res, &base_error);
         if found {
             return (err, candidates);
         }
 
-        self.suggest_type_ascription(&mut err, source, path, res, span, &base_error);
+        if !self.type_ascription_suggestion(&mut err, base_error.span) {
+            let mut fallback =
+                self.suggest_trait_and_bounds(&mut err, source, res, span, &base_error);
+            if self.suggest_typo(&mut err, source, path, span, &base_error) {
+                fallback = true;
+            }
+            if fallback {
+                // Fallback label.
+                err.span_label(base_error.span, &base_error.fallback_label);
+            }
+        }
         self.err_code_special_cases(&mut err, source, path, span);
 
         (err, candidates)
@@ -322,7 +334,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     fn detect_assoct_type_constraint_meant_as_path(
         &self,
         err: &mut Diagnostic,
-        base_error: &BaseError<'static>,
+        base_error: &BaseError,
     ) {
         let Some(ty) = self.diagnostic_metadata.current_type_path else { return; };
         let TyKind::Path(_, path) = &ty.kind else { return; };
@@ -355,7 +367,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn suggest_self_or_self_ref(&mut self, err: &mut Diagnostic, path: &[Segment], span: Span) {
         let is_assoc_fn = self.self_type_is_available();
-        let item_str = path.last().unwrap().ident;
+        let Some(path_last_segment) = path.last() else { return };
+        let item_str = path_last_segment.ident;
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
         if ["this", "my"].contains(&item_str.as_str()) && is_assoc_fn {
             err.span_suggestion_short(
@@ -392,14 +405,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
 
-    fn try_lookup_name_with_relex_fashion(
+    fn try_lookup_name_relaxed(
         &mut self,
         err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
         res: Option<Res>,
-        base_error: &BaseError<'static>,
+        base_error: &BaseError,
     ) -> (bool, Vec<ImportSuggestion>) {
         // Try to lookup name in more relaxed fashion for better error reporting.
         let ident = path.last().unwrap().ident;
@@ -563,109 +576,114 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         return (false, candidates);
     }
 
-    fn suggest_type_ascription(
+    fn suggest_trait_and_bounds(
+        &mut self,
+        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        source: PathSource<'_>,
+        res: Option<Res>,
+        span: Span,
+        base_error: &BaseError,
+    ) -> bool {
+        let is_macro =
+            base_error.span.from_expansion() && base_error.span.desugaring_kind().is_none();
+        let mut fallback = false;
+
+        if let (
+            PathSource::Trait(AliasPossibility::Maybe),
+            Some(Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)),
+            false,
+        ) = (source, res, is_macro)
+        {
+            if let Some(bounds @ [_, .., _]) = self.diagnostic_metadata.current_trait_object {
+                fallback = true;
+                let spans: Vec<Span> = bounds
+                    .iter()
+                    .map(|bound| bound.span())
+                    .filter(|&sp| sp != base_error.span)
+                    .collect();
+
+                let start_span = bounds[0].span();
+                // `end_span` is the end of the poly trait ref (Foo + 'baz + Bar><)
+                let end_span = bounds.last().unwrap().span();
+                // `last_bound_span` is the last bound of the poly trait ref (Foo + >'baz< + Bar)
+                let last_bound_span = spans.last().cloned().unwrap();
+                let mut multi_span: MultiSpan = spans.clone().into();
+                for sp in spans {
+                    let msg = if sp == last_bound_span {
+                        format!(
+                            "...because of {these} bound{s}",
+                            these = pluralize!("this", bounds.len() - 1),
+                            s = pluralize!(bounds.len() - 1),
+                        )
+                    } else {
+                        String::new()
+                    };
+                    multi_span.push_span_label(sp, msg);
+                }
+                multi_span.push_span_label(base_error.span, "expected this type to be a trait...");
+                err.span_help(
+                    multi_span,
+                    "`+` is used to constrain a \"trait object\" type with lifetimes or \
+                        auto-traits; structs and enums can't be bound in that way",
+                );
+                if bounds.iter().all(|bound| match bound {
+                    ast::GenericBound::Outlives(_) => true,
+                    ast::GenericBound::Trait(tr, _) => tr.span == base_error.span,
+                }) {
+                    let mut sugg = vec![];
+                    if base_error.span != start_span {
+                        sugg.push((start_span.until(base_error.span), String::new()));
+                    }
+                    if base_error.span != end_span {
+                        sugg.push((base_error.span.shrink_to_hi().to(end_span), String::new()));
+                    }
+
+                    err.multipart_suggestion(
+                        "if you meant to use a type and not a trait here, remove the bounds",
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
+
+        fallback |= self.restrict_assoc_type_in_where_clause(span, err);
+        fallback
+    }
+
+    fn suggest_typo(
         &mut self,
         err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
         source: PathSource<'_>,
         path: &[Segment],
-        res: Option<Res>,
         span: Span,
-        base_error: &BaseError<'static>,
-    ) {
-        let is_macro =
-            base_error.span.from_expansion() && base_error.span.desugaring_kind().is_none();
-        if !self.type_ascription_suggestion(err, base_error.span) {
-            let mut fallback = false;
-            if let (
-                PathSource::Trait(AliasPossibility::Maybe),
-                Some(Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)),
-                false,
-            ) = (source, res, is_macro)
-            {
-                if let Some(bounds @ [_, .., _]) = self.diagnostic_metadata.current_trait_object {
-                    fallback = true;
-                    let spans: Vec<Span> = bounds
-                        .iter()
-                        .map(|bound| bound.span())
-                        .filter(|&sp| sp != base_error.span)
-                        .collect();
-
-                    let start_span = bounds[0].span();
-                    // `end_span` is the end of the poly trait ref (Foo + 'baz + Bar><)
-                    let end_span = bounds.last().unwrap().span();
-                    // `last_bound_span` is the last bound of the poly trait ref (Foo + >'baz< + Bar)
-                    let last_bound_span = spans.last().cloned().unwrap();
-                    let mut multi_span: MultiSpan = spans.clone().into();
-                    for sp in spans {
-                        let msg = if sp == last_bound_span {
-                            format!(
-                                "...because of {these} bound{s}",
-                                these = pluralize!("this", bounds.len() - 1),
-                                s = pluralize!(bounds.len() - 1),
-                            )
-                        } else {
-                            String::new()
-                        };
-                        multi_span.push_span_label(sp, msg);
-                    }
-                    multi_span
-                        .push_span_label(base_error.span, "expected this type to be a trait...");
-                    err.span_help(
-                        multi_span,
-                        "`+` is used to constrain a \"trait object\" type with lifetimes or \
-                         auto-traits; structs and enums can't be bound in that way",
+        base_error: &BaseError,
+    ) -> bool {
+        let is_expected = &|res| source.is_expected(res);
+        let ident_span = path.last().map_or(span, |ident| ident.ident.span);
+        let typo_sugg = self.lookup_typo_candidate(path, source.namespace(), is_expected);
+        let mut fallback = false;
+        if !self.r.add_typo_suggestion(err, typo_sugg, ident_span) {
+            fallback = true;
+            match self.diagnostic_metadata.current_let_binding {
+                Some((pat_sp, Some(ty_sp), None))
+                    if ty_sp.contains(base_error.span) && base_error.could_be_expr =>
+                {
+                    err.span_suggestion_short(
+                        pat_sp.between(ty_sp),
+                        "use `=` if you meant to assign",
+                        " = ",
+                        Applicability::MaybeIncorrect,
                     );
-                    if bounds.iter().all(|bound| match bound {
-                        ast::GenericBound::Outlives(_) => true,
-                        ast::GenericBound::Trait(tr, _) => tr.span == base_error.span,
-                    }) {
-                        let mut sugg = vec![];
-                        if base_error.span != start_span {
-                            sugg.push((start_span.until(base_error.span), String::new()));
-                        }
-                        if base_error.span != end_span {
-                            sugg.push((base_error.span.shrink_to_hi().to(end_span), String::new()));
-                        }
-
-                        err.multipart_suggestion(
-                            "if you meant to use a type and not a trait here, remove the bounds",
-                            sugg,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
                 }
+                _ => {}
             }
 
-            let is_expected = &|res| source.is_expected(res);
-            let ident_span = path.last().map_or(span, |ident| ident.ident.span);
-            fallback |= self.restrict_assoc_type_in_where_clause(span, err);
-
-            let typo_sugg = self.lookup_typo_candidate(path, source.namespace(), is_expected);
-            if !self.r.add_typo_suggestion(err, typo_sugg, ident_span) {
-                fallback = true;
-                match self.diagnostic_metadata.current_let_binding {
-                    Some((pat_sp, Some(ty_sp), None))
-                        if ty_sp.contains(base_error.span) && base_error.could_be_expr =>
-                    {
-                        err.span_suggestion_short(
-                            pat_sp.between(ty_sp),
-                            "use `=` if you meant to assign",
-                            " = ",
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                    _ => {}
-                }
-
-                // If the trait has a single item (which wasn't matched by Levenshtein), suggest it
-                let suggestion = self.get_single_associated_item(&path, &source, is_expected);
-                self.r.add_typo_suggestion(err, suggestion, ident_span);
-            }
-            if fallback {
-                // Fallback label.
-                err.span_label(base_error.span, &base_error.fallback_label);
-            }
+            // If the trait has a single item (which wasn't matched by Levenshtein), suggest it
+            let suggestion = self.get_single_associated_item(&path, &source, is_expected);
+            self.r.add_typo_suggestion(err, suggestion, ident_span);
         }
+        fallback
     }
 
     fn err_code_special_cases(
@@ -713,36 +731,48 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     }
 
     /// Emit special messages for unresolved `Self` and `self`.
-    fn suggest_self_ty_or_self_value(
+    fn suggest_self_ty(
         &mut self,
         err: &mut Diagnostic,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
     ) -> bool {
-        if is_self_type(path, source.namespace()) {
-            err.code(rustc_errors::error_code!(E0411));
+        if !is_self_type(path, source.namespace()) {
+            return false;
+        }
+        err.code(rustc_errors::error_code!(E0411));
+        err.span_label(
+            span,
+            "`Self` is only available in impls, traits, and type definitions".to_string(),
+        );
+        if let Some(item_kind) = self.diagnostic_metadata.current_item {
             err.span_label(
-                span,
-                "`Self` is only available in impls, traits, and type definitions".to_string(),
+                item_kind.ident.span,
+                format!(
+                    "`Self` not allowed in {} {}",
+                    item_kind.kind.article(),
+                    item_kind.kind.descr()
+                ),
             );
-            if let Some(item_kind) = self.diagnostic_metadata.current_item {
-                err.span_label(
-                    item_kind.ident.span,
-                    format!(
-                        "`Self` not allowed in {} {}",
-                        item_kind.kind.article(),
-                        item_kind.kind.descr()
-                    ),
-                );
-            }
-            return true;
+        }
+        true
+    }
+
+    fn suggest_self_value(
+        &mut self,
+        err: &mut Diagnostic,
+        source: PathSource<'_>,
+        path: &[Segment],
+        span: Span,
+    ) -> bool {
+        if !is_self_value(path, source.namespace()) {
+            return false;
         }
 
-        if is_self_value(path, source.namespace()) {
-            debug!("smart_resolve_path_fragment: E0424, source={:?}", source);
-            err.code(rustc_errors::error_code!(E0424));
-            err.span_label(
+        debug!("smart_resolve_path_fragment: E0424, source={:?}", source);
+        err.code(rustc_errors::error_code!(E0424));
+        err.span_label(
             span,
             match source {
                 PathSource::Pat => {
@@ -750,66 +780,64 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 }
                 _ => "`self` value is a keyword only available in methods with a `self` parameter",
             },
-            );
-            let is_assoc_fn = self.self_type_is_available();
-            if let Some((fn_kind, span)) = &self.diagnostic_metadata.current_function {
-                // The current function has a `self' parameter, but we were unable to resolve
-                // a reference to `self`. This can only happen if the `self` identifier we
-                // are resolving came from a different hygiene context.
-                if fn_kind.decl().inputs.get(0).map_or(false, |p| p.is_self()) {
-                    err.span_label(*span, "this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters");
+        );
+        let is_assoc_fn = self.self_type_is_available();
+        if let Some((fn_kind, span)) = &self.diagnostic_metadata.current_function {
+            // The current function has a `self' parameter, but we were unable to resolve
+            // a reference to `self`. This can only happen if the `self` identifier we
+            // are resolving came from a different hygiene context.
+            if fn_kind.decl().inputs.get(0).map_or(false, |p| p.is_self()) {
+                err.span_label(*span, "this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters");
+            } else {
+                let doesnt = if is_assoc_fn {
+                    let (span, sugg) = fn_kind
+                        .decl()
+                        .inputs
+                        .get(0)
+                        .map(|p| (p.span.shrink_to_lo(), "&self, "))
+                        .unwrap_or_else(|| {
+                            // Try to look for the "(" after the function name, if possible.
+                            // This avoids placing the suggestion into the visibility specifier.
+                            let span = fn_kind
+                                .ident()
+                                .map_or(*span, |ident| span.with_lo(ident.span.hi()));
+                            (
+                                self.r
+                                    .session
+                                    .source_map()
+                                    .span_through_char(span, '(')
+                                    .shrink_to_hi(),
+                                "&self",
+                            )
+                        });
+                    err.span_suggestion_verbose(
+                        span,
+                        "add a `self` receiver parameter to make the associated `fn` a method",
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                    "doesn't"
                 } else {
-                    let doesnt = if is_assoc_fn {
-                        let (span, sugg) = fn_kind
-                            .decl()
-                            .inputs
-                            .get(0)
-                            .map(|p| (p.span.shrink_to_lo(), "&self, "))
-                            .unwrap_or_else(|| {
-                                // Try to look for the "(" after the function name, if possible.
-                                // This avoids placing the suggestion into the visibility specifier.
-                                let span = fn_kind
-                                    .ident()
-                                    .map_or(*span, |ident| span.with_lo(ident.span.hi()));
-                                (
-                                    self.r
-                                        .session
-                                        .source_map()
-                                        .span_through_char(span, '(')
-                                        .shrink_to_hi(),
-                                    "&self",
-                                )
-                            });
-                        err.span_suggestion_verbose(
-                            span,
-                            "add a `self` receiver parameter to make the associated `fn` a method",
-                            sugg,
-                            Applicability::MaybeIncorrect,
-                        );
-                        "doesn't"
-                    } else {
-                        "can't"
-                    };
-                    if let Some(ident) = fn_kind.ident() {
-                        err.span_label(
-                            ident.span,
-                            &format!("this function {} have a `self` parameter", doesnt),
-                        );
-                    }
+                    "can't"
+                };
+                if let Some(ident) = fn_kind.ident() {
+                    err.span_label(
+                        ident.span,
+                        &format!("this function {} have a `self` parameter", doesnt),
+                    );
                 }
-            } else if let Some(item_kind) = self.diagnostic_metadata.current_item {
-                err.span_label(
-                    item_kind.ident.span,
-                    format!(
-                        "`self` not allowed in {} {}",
-                        item_kind.kind.article(),
-                        item_kind.kind.descr()
-                    ),
-                );
             }
-            return true;
+        } else if let Some(item_kind) = self.diagnostic_metadata.current_item {
+            err.span_label(
+                item_kind.ident.span,
+                format!(
+                    "`self` not allowed in {} {}",
+                    item_kind.kind.article(),
+                    item_kind.kind.descr()
+                ),
+            );
         }
-        false
+        true
     }
 
     fn suggest_swapping_misplaced_self_ty_and_trait(
@@ -861,7 +889,11 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         span: Span,
     ) {
         if let PathSource::Expr(_) = source &&
-        let Some(Expr { span: expr_span, kind: ExprKind::Assign(lhs, _, _), .. } ) = self.diagnostic_metadata.in_if_condition {
+        let Some(Expr {
+                    span: expr_span,
+                    kind: ExprKind::Assign(lhs, _, _),
+                    ..
+                })  = self.diagnostic_metadata.in_if_condition {
             // Icky heuristic so we don't suggest:
             // `if (i + 2) = 2` => `if let (i + 2) = 2` (approximately pattern)
             // `if 2 = i` => `if let 2 = i` (lhs needs to contain error span)
