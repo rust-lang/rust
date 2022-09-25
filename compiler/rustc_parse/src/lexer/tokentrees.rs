@@ -1,5 +1,4 @@
 use super::{StringReader, UnmatchedBrace};
-
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
@@ -7,24 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{PErr, PResult};
 use rustc_span::Span;
 
-impl<'a> StringReader<'a> {
-    pub(super) fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
-        let mut tt_reader = TokenTreesReader {
-            string_reader: self,
-            token: Token::dummy(),
-            open_braces: Vec::new(),
-            unmatched_braces: Vec::new(),
-            matching_delim_spans: Vec::new(),
-            last_unclosed_found_span: None,
-            last_delim_empty_block_spans: FxHashMap::default(),
-            matching_block_spans: Vec::new(),
-        };
-        let res = tt_reader.parse_all_token_trees();
-        (res, tt_reader.unmatched_braces)
-    }
-}
-
-struct TokenTreesReader<'a> {
+pub(super) struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
     token: Token,
     /// Stack of open delimiters and their spans. Used for error message.
@@ -43,6 +25,23 @@ struct TokenTreesReader<'a> {
 }
 
 impl<'a> TokenTreesReader<'a> {
+    pub(super) fn parse_token_trees(
+        string_reader: StringReader<'a>,
+    ) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
+        let mut tt_reader = TokenTreesReader {
+            string_reader,
+            token: Token::dummy(),
+            open_braces: Vec::new(),
+            unmatched_braces: Vec::new(),
+            matching_delim_spans: Vec::new(),
+            last_unclosed_found_span: None,
+            last_delim_empty_block_spans: FxHashMap::default(),
+            matching_block_spans: Vec::new(),
+        };
+        let res = tt_reader.parse_all_token_trees();
+        (res, tt_reader.unmatched_braces)
+    }
+
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
     fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
         self.token = self.string_reader.next_token().0;

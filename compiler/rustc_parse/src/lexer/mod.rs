@@ -48,7 +48,8 @@ pub(crate) fn parse_token_trees<'a>(
         start_pos = start_pos + BytePos::from_usize(shebang_len);
     }
 
-    StringReader { sess, start_pos, pos: start_pos, src, override_span }.into_token_trees()
+    let string_reader = StringReader { sess, start_pos, pos: start_pos, src, override_span };
+    tokentrees::TokenTreesReader::parse_token_trees(string_reader)
 }
 
 struct StringReader<'a> {
