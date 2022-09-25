@@ -434,7 +434,8 @@ impl<T: Copy> SpecArrayClone for T {
 macro_rules! array_impl_default {
     {$n:expr, $t:ident $($ts:ident)*} => {
         #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] where T: Default {
+        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+        impl<T> const Default for [T; $n] where T: ~const Default {
             fn default() -> [T; $n] {
                 [$t::default(), $($ts::default()),*]
             }
