@@ -1,22 +1,22 @@
-error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+error: Public: pub(crate), Exported: pub(crate), Reachable: pub(crate), ReachableFromImplTrait: pub(crate)
   --> $DIR/access_levels.rs:4:1
    |
 LL | mod outer {
    | ^^^^^^^^^
 
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:6:5
    |
 LL |     pub mod inner1 {
    |     ^^^^^^^^^^^^^^
 
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:9:9
    |
 LL |         extern "C" {}
    |         ^^^^^^^^^^^^^
 
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:12:9
    |
 LL |         pub trait PubTrait {
@@ -28,7 +28,7 @@ error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFr
 LL |         struct PrivStruct;
    |         ^^^^^^^^^^^^^^^^^
 
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:23:9
    |
 LL |         pub union PubUnion {
@@ -40,31 +40,31 @@ error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFr
 LL |             a: u8,
    |             ^^^^^
 
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:27:13
    |
 LL |             pub b: u8,
    |             ^^^^^^^^^
 
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:31:9
    |
 LL |         pub enum Enum {
    |         ^^^^^^^^^^^^^
 
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:33:13
    |
 LL |             A(
    |             ^
 
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:35:17
    |
 LL |                 PubUnion,
    |                 ^^^^^^^^
 
-error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+error: Public: pub(crate), Exported: pub(crate), Reachable: pub(crate), ReachableFromImplTrait: pub(crate)
   --> $DIR/access_levels.rs:41:5
    |
 LL |     macro_rules! none_macro {
@@ -76,13 +76,13 @@ error: Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
 LL |     macro_rules! public_macro {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Public: pub(self), Exported: pub(self), Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub(crate), Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:52:5
    |
 LL |     pub struct ReachableStruct {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Public: pub(self), Exported: pub(self), Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub(crate), Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:54:9
    |
 LL |         pub a: u8,
@@ -94,13 +94,13 @@ error: Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
 LL | pub use outer::inner1;
    |         ^^^^^^^^^^^^^
 
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:65:5
    |
 LL |     pub type HalfPublicImport = u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+error: Public: pub(crate), Exported: pub(crate), Reachable: pub(crate), ReachableFromImplTrait: pub(crate)
   --> $DIR/access_levels.rs:68:5
    |
 LL |     pub(crate) const HalfPublicImport: u8 = 0;
@@ -112,23 +112,17 @@ error: Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
 LL | pub use half_public_import::HalfPublicImport;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
-  --> $DIR/access_levels.rs:72:9
-   |
-LL | pub use half_public_import::HalfPublicImport;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:14:13
    |
 LL |             const A: i32;
    |             ^^^^^^^^^^^^
 
-error: Public: pub(self), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:16:13
    |
 LL |             type B;
    |             ^^^^^^
 
-error: aborting due to 22 previous errors
+error: aborting due to 21 previous errors
 

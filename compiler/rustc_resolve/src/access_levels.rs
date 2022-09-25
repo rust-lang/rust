@@ -1,4 +1,3 @@
-use crate::NameBinding;
 use crate::NameBindingKind;
 use crate::Resolver;
 use rustc_ast::ast;
@@ -6,12 +5,10 @@ use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
 use rustc_ast::Crate;
 use rustc_ast::EnumDef;
-use rustc_ast::NodeId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::privacy::AccessLevel;
-use rustc_middle::ty::DefIdTree;
-use rustc_span::sym;
+use rustc_middle::ty::{DefIdTree, Visibility};
 
 pub struct AccessLevelsVisitor<'r, 'a> {
     r: &'r mut Resolver<'a>,
@@ -25,7 +22,7 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
     pub fn compute_access_levels<'c>(r: &'r mut Resolver<'a>, krate: &'c Crate) {
         let mut visitor = AccessLevelsVisitor { r, changed: false };
 
-        visitor.set_access_level_def_id(CRATE_DEF_ID, Some(AccessLevel::Public));
+        visitor.update(CRATE_DEF_ID, Visibility::Public, CRATE_DEF_ID, AccessLevel::Public);
         visitor.set_bindings_access_level(CRATE_DEF_ID);
 
         while visitor.changed {
@@ -45,67 +42,72 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
     /// This will also follow `use` chains (see PrivacyVisitor::set_import_binding_access_level).
     fn set_bindings_access_level(&mut self, module_id: LocalDefId) {
         assert!(self.r.module_map.contains_key(&&module_id.to_def_id()));
-        let module_level = self.r.access_levels.get_access_level(module_id);
-        if !module_level.is_some() {
-            return;
-        }
-        // Set the given binding access level to `AccessLevel::Public` and
-        // sets the rest of the `use` chain to `AccessLevel::Exported` until
-        // we hit the actual exported item.
-        let set_import_binding_access_level =
-            |this: &mut Self, mut binding: &NameBinding<'a>, mut access_level, ns| {
-                while let NameBindingKind::Import { binding: nested_binding, import, .. } =
-                    binding.kind
-                {
-                    this.set_access_level(this.r.import_id_for_ns(import, ns), access_level);
-
-                    access_level = Some(AccessLevel::Exported);
-                    binding = nested_binding;
-                }
-            };
-
         let module = self.r.get_module(module_id.to_def_id()).unwrap();
         let resolutions = self.r.resolutions(module);
 
         for (key, name_resolution) in resolutions.borrow().iter() {
-            if let Some(binding) = name_resolution.borrow().binding() && binding.vis.is_public() && !binding.is_ambiguity() {
-                let access_level = match binding.is_import() {
-                    true => {
-                        set_import_binding_access_level(self, binding, module_level, key.ns);
-                        Some(AccessLevel::Exported)
-                    },
-                    false => module_level,
-                };
+            if let Some(mut binding) = name_resolution.borrow().binding() && !binding.is_ambiguity() {
+                // Set the given binding access level to `AccessLevel::Public` and
+                // sets the rest of the `use` chain to `AccessLevel::Exported` until
+                // we hit the actual exported item.
+
+                // FIXME: tag and is_public() condition must be deleted,
+                // but assertion fail occurs in import_id_for_ns
+                let tag = if binding.is_import() { AccessLevel::Exported } else { AccessLevel::Public };
+                if binding.vis.is_public() {
+                    let mut prev_parent_id = module_id;
+                    let mut level = AccessLevel::Public;
+                    while let NameBindingKind::Import { binding: nested_binding, import, .. } =
+                        binding.kind
+                    {
+                        let id = self.r.local_def_id(self.r.import_id_for_ns(import, key.ns));
+                        self.update(
+                            id,
+                            binding.vis.expect_local(),
+                            prev_parent_id,
+                            level,
+                        );
+
+                        level = AccessLevel::Exported;
+                        prev_parent_id = id;
+                        binding = nested_binding;
+                    }
+                }
+
                 if let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local()) {
-                    self.set_access_level_def_id(def_id, access_level);
+                    self.update(def_id, binding.vis.expect_local(), module_id, tag);
                 }
             }
         }
     }
 
-    /// Sets the access level of the `LocalDefId` corresponding to the given `NodeId`.
-    /// This function will panic if the `NodeId` does not have a `LocalDefId`
-    fn set_access_level(
-        &mut self,
-        node_id: NodeId,
-        access_level: Option<AccessLevel>,
-    ) -> Option<AccessLevel> {
-        self.set_access_level_def_id(self.r.local_def_id(node_id), access_level)
-    }
-
-    fn set_access_level_def_id(
+    fn update(
         &mut self,
         def_id: LocalDefId,
-        access_level: Option<AccessLevel>,
-    ) -> Option<AccessLevel> {
-        let old_level = self.r.access_levels.get_access_level(def_id);
-        if old_level < access_level {
-            self.r.access_levels.set_access_level(def_id, access_level.unwrap());
-            self.changed = true;
-            access_level
+        nominal_vis: Visibility,
+        parent_id: LocalDefId,
+        tag: AccessLevel,
+    ) {
+        let mut access_levels = std::mem::take(&mut self.r.access_levels);
+        let module_id =
+            self.r.get_nearest_non_block_module(def_id.to_def_id()).def_id().expect_local();
+        let res = access_levels.update(
+            def_id,
+            nominal_vis,
+            || Visibility::Restricted(module_id),
+            parent_id,
+            tag,
+            &*self.r,
+        );
+        if let Ok(changed) = res {
+            self.changed |= changed;
         } else {
-            old_level
+            self.r.session.delay_span_bug(
+                self.r.opt_span(def_id.to_def_id()).unwrap(),
+                "Can't update effective visibility",
+            );
         }
+        self.r.access_levels = access_levels;
     }
 }
 
@@ -125,16 +127,15 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
 
             // Foreign modules inherit level from parents.
             ast::ItemKind::ForeignMod(..) => {
-                let parent_level =
-                    self.r.access_levels.get_access_level(self.r.local_parent(def_id));
-                self.set_access_level(item.id, parent_level);
+                let parent_id = self.r.local_parent(def_id);
+                self.update(def_id, Visibility::Public, parent_id, AccessLevel::Public);
             }
 
             // Only exported `macro_rules!` items are public, but they always are
             ast::ItemKind::MacroDef(ref macro_def) if macro_def.macro_rules => {
-                if item.attrs.iter().any(|attr| attr.has_name(sym::macro_export)) {
-                    self.set_access_level(item.id, Some(AccessLevel::Public));
-                }
+                let parent_id = self.r.local_parent(def_id);
+                let vis = self.r.visibilities[&def_id];
+                self.update(def_id, vis, parent_id, AccessLevel::Public);
             }
 
             ast::ItemKind::Mod(..) => {
@@ -146,19 +147,19 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
                 self.set_bindings_access_level(def_id);
                 for variant in variants {
                     let variant_def_id = self.r.local_def_id(variant.id);
-                    let variant_level = self.r.access_levels.get_access_level(variant_def_id);
                     for field in variant.data.fields() {
-                        self.set_access_level(field.id, variant_level);
+                        let field_def_id = self.r.local_def_id(field.id);
+                        let vis = self.r.visibilities[&field_def_id];
+                        self.update(field_def_id, vis, variant_def_id, AccessLevel::Public);
                     }
                 }
             }
 
             ast::ItemKind::Struct(ref def, _) | ast::ItemKind::Union(ref def, _) => {
-                let inherited_level = self.r.access_levels.get_access_level(def_id);
                 for field in def.fields() {
-                    if field.vis.kind.is_pub() {
-                        self.set_access_level(field.id, inherited_level);
-                    }
+                    let field_def_id = self.r.local_def_id(field.id);
+                    let vis = self.r.visibilities[&field_def_id];
+                    self.update(field_def_id, vis, def_id, AccessLevel::Public);
                 }
             }
 
