@@ -142,6 +142,10 @@ impl<'a, 'tcx> OutlivesEnvironmentBuilder<'tcx> {
                     self.region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Projection(projection_b), r_a));
                 }
+                OutlivesBound::RegionSubOpaque(r_a, def_id, substs) => {
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Opaque(def_id, substs), r_a));
+                }
                 OutlivesBound::RegionSubRegion(r_a, r_b) => {
                     if let (ReEarlyBound(_) | ReFree(_), ReVar(vid_b)) = (r_a.kind(), r_b.kind()) {
                         infcx

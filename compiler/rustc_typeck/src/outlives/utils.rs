@@ -96,6 +96,23 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                             .or_insert(span);
                     }
 
+                    Component::Opaque(def_id, substs) => {
+                        // This would arise from something like:
+                        //
+                        // ```rust
+                        // type Opaque<T> = impl Sized;
+                        // fn defining<T>() -> Opaque<T> {}
+                        // struct Ss<'a, T>(&'a Opaque<T>);
+                        // ```
+                        //
+                        // Here we want to have an implied bound `Opaque<T>: 'a`
+
+                        let ty = tcx.mk_opaque(def_id, substs);
+                        required_predicates
+                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
+                            .or_insert(span);
+                    }
+
                     Component::EscapingProjection(_) => {
                         // As above, but the projection involves
                         // late-bound regions.  Therefore, the WF

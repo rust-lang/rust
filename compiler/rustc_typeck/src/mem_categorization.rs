@@ -265,6 +265,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.cat_expr_adjusted_with(expr, || Ok(previous), adjustment)
     }
 
+    #[instrument(level = "debug", skip(self, previous))]
     fn cat_expr_adjusted_with<F>(
         &self,
         expr: &hir::Expr<'_>,
@@ -274,7 +275,6 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     where
         F: FnOnce() -> McResult<PlaceWithHirId<'tcx>>,
     {
-        debug!("cat_expr_adjusted_with({:?}): {:?}", adjustment, expr);
         let target = self.resolve_vars_if_possible(adjustment.target);
         match adjustment.kind {
             adjustment::Adjust::Deref(overloaded) => {
@@ -299,6 +299,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn cat_expr_unadjusted(
         &self,
         expr: &hir::Expr<'_>,
@@ -387,6 +388,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, span))]
     pub(crate) fn cat_res(
         &self,
         hir_id: hir::HirId,
@@ -394,8 +396,6 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
         res: Res,
     ) -> McResult<PlaceWithHirId<'tcx>> {
-        debug!("cat_res: id={:?} expr={:?} def={:?}", hir_id, expr_ty, res);
-
         match res {
             Res::Def(
                 DefKind::Ctor(..)
@@ -475,13 +475,12 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         ret
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn cat_overloaded_place(
         &self,
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
     ) -> McResult<PlaceWithHirId<'tcx>> {
-        debug!("cat_overloaded_place(expr={:?}, base={:?})", expr, base);
-
         // Reconstruct the output assuming it's a reference with the
         // same region and mutability as the receiver. This holds for
         // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
@@ -497,13 +496,12 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.cat_deref(expr, base)
     }
 
+    #[instrument(level = "debug", skip(self, node))]
     fn cat_deref(
         &self,
         node: &impl HirNode,
         base_place: PlaceWithHirId<'tcx>,
     ) -> McResult<PlaceWithHirId<'tcx>> {
-        debug!("cat_deref: base_place={:?}", base_place);
-
         let base_curr_ty = base_place.place.ty();
         let deref_ty = match base_curr_ty.builtin_deref(true) {
             Some(mt) => mt.ty,

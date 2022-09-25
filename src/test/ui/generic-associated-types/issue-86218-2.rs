@@ -1,7 +1,4 @@
-// check-fail
-// known-bug: #86218
-
-// This should pass, but seems to run into a TAIT issue.
+// check-pass
 
 #![feature(type_alias_impl_trait)]
 
@@ -18,9 +15,9 @@ trait Yay<AdditionalValue> {
     fn foo<'s>() -> Self::InnerStream<'s>;
 }
 
-impl<'a> Yay<&'a ()> for () {
+impl<T> Yay<T> for () {
     type InnerStream<'s> = impl Stream<Item = i32> + 's;
-    fn foo<'s>() -> Self::InnerStream<'s> { todo!() }
+    fn foo<'s>() -> Self::InnerStream<'s> { () }
 }
 
 fn main() {}

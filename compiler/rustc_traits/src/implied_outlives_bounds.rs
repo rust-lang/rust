@@ -156,6 +156,9 @@ fn implied_bounds_from_components<'tcx>(
                 Component::Region(r) => Some(OutlivesBound::RegionSubRegion(sub_region, r)),
                 Component::Param(p) => Some(OutlivesBound::RegionSubParam(sub_region, p)),
                 Component::Projection(p) => Some(OutlivesBound::RegionSubProjection(sub_region, p)),
+                Component::Opaque(def_id, substs) => {
+                    Some(OutlivesBound::RegionSubOpaque(sub_region, def_id, substs))
+                }
                 Component::EscapingProjection(_) =>
                 // If the projection has escaping regions, don't
                 // try to infer any implied bounds even for its
