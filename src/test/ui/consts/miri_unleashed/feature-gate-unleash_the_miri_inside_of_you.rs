@@ -8,7 +8,7 @@ trait Foo<T> {
 }
 
 trait Bar<T, U: Foo<T>> {
-    const F: u32 = (U::X, 42).1; //~ ERROR destructors cannot be evaluated at compile-time
+    const F: u32 = (U::X, 42).1; //~ ERROR destructor of
 }
 
 impl Foo<u32> for () {

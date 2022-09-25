@@ -972,7 +972,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         move_span: Span,
         move_spans: UseSpans<'tcx>,
         moved_place: Place<'tcx>,
-        used_place: Option<PlaceRef<'tcx>>,
         partially_str: &str,
         loop_message: &str,
         move_msg: &str,
@@ -1060,9 +1059,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 place_name, partially_str, loop_message
                             ),
                         );
-                        // If we have a `&mut` ref, we need to reborrow.
-                        if let Some(ty::Ref(_, _, hir::Mutability::Mut)) = used_place
-                            .map(|used_place| used_place.ty(self.body, self.infcx.tcx).ty.kind())
+                        // If the moved place was a `&mut` ref, then we can
+                        // suggest to reborrow it where it was moved, so it
+                        // will still be valid by the time we get to the usage.
+                        if let ty::Ref(_, _, hir::Mutability::Mut) =
+                            moved_place.ty(self.body, self.infcx.tcx).ty.kind()
                         {
                             // If we are in a loop this will be suggested later.
                             if !is_loop_move {

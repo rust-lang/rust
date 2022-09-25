@@ -1409,8 +1409,6 @@ options! {
         "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
-    new_llvm_pass_manager: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "use new LLVM pass manager (default: no)"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
     nll_facts_dir: String = ("nll-facts".to_string(), parse_string, [UNTRACKED],

@@ -7,7 +7,7 @@
 //
 // no-prefer-dynamic
 // revisions: opt0 opt1
-// compile-flags: -Znew-llvm-pass-manager=yes -Zsanitizer=address -Clto=thin
+// compile-flags: -Zsanitizer=address -Clto=thin
 //[opt0]compile-flags: -Copt-level=0
 //[opt1]compile-flags: -Copt-level=1
 // run-fail

@@ -1,14 +1,14 @@
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `Option<Vec<i32>>` cannot be evaluated at compile-time
   --> $DIR/drop-fail.rs:8:9
    |
 LL |     let x = Some(Vec::new());
-   |         ^ constants cannot evaluate destructors
+   |         ^ the destructor for this type cannot be evaluated in constants
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `Option<Vec<i32>>` cannot be evaluated at compile-time
   --> $DIR/drop-fail.rs:39:9
    |
 LL |     let mut tmp = None;
-   |         ^^^^^^^ constants cannot evaluate destructors
+   |         ^^^^^^^ the destructor for this type cannot be evaluated in constants
 
 error: aborting due to 2 previous errors
 
