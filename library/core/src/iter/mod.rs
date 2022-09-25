@@ -364,7 +364,8 @@ macro_rules! impl_fold_via_try_fold {
         #[inline]
         fn $fold<AAA, FFF>(mut self, init: AAA, mut fold: FFF) -> AAA
         where
-            FFF: FnMut(AAA, Self::Item) -> AAA,
+            FFF: ~const FnMut(AAA, Self::Item) -> AAA + ~const crate::marker::Destruct,
+            Self: ~const crate::marker::Destruct,
         {
             use crate::const_closure::ConstFnMutClosure;
             use crate::ops::NeverShortCircuit;

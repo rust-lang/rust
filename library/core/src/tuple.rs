@@ -41,7 +41,8 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T: Eq),+> Eq for ($($T,)+)
+            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+            impl<$($T: ~const Eq),+> const Eq for ($($T,)+)
             where
                 last_type!($($T,)+): ?Sized
             {}

@@ -171,8 +171,9 @@ macro_rules! zip_impl_general_defaults {
         #[inline]
         #[cfg_attr(not(bootstrap), rustc_allow_const_fn_unstable(const_try, const_for))]
         default fn next(&mut self) -> Option<(A::Item, B::Item)> {
-            let x = self.a.next()?;
-            let y = self.b.next()?;
+            // FIXME(const_trait_impl): revert to `?` when we can
+            let Some(x) = self.a.next() else { return None };
+            let Some(y) = self.b.next() else { return None };
             Some((x, y))
         }
 
@@ -586,11 +587,12 @@ pub unsafe trait TrustedRandomAccess: ~const TrustedRandomAccessNoCoerce {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 #[rustc_specialization_trait]
+#[const_trait]
 pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
     // Convenience method.
     fn size(&self) -> usize
     where
-        Self: Iterator,
+        Self: ~const Iterator,
     {
         self.size_hint().0
     }

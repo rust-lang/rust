@@ -1,3 +1,4 @@
+use crate::const_closure::ConstFnMutClosure;
 use crate::fmt;
 use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,

@@ -10,6 +10,7 @@ use crate::num::Wrapping;
 /// [`sum()`]: Iterator::sum
 /// [`FromIterator`]: iter::FromIterator
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+#[const_trait]
 pub trait Sum<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
     /// "summing up" the items.
@@ -27,6 +28,7 @@ pub trait Sum<A = Self>: Sized {
 /// [`product()`]: Iterator::product
 /// [`FromIterator`]: iter::FromIterator
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+#[const_trait]
 pub trait Product<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
     /// multiplying the items.

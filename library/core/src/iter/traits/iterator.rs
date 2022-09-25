@@ -3540,7 +3540,7 @@ pub trait Iterator {
     /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (2 * x).cmp(&y)), Ordering::Greater);
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn cmp_by<I, F>(self, other: I, cmp: F) -> Ordering
+    fn cmp_by<I, F>(self, other: I, mut cmp: F) -> Ordering
     where
         Self: Sized,
         I: ~const IntoIterator,
@@ -3551,17 +3551,17 @@ pub trait Iterator {
         Self: ~const Destruct,
     {
         #[inline]
-        fn compare<X, Y, F>(mut cmp: F) -> impl FnMut(X, Y) -> ControlFlow<Ordering>
+        const fn compare<X, Y, F>(cmp: &mut F, (x, y): (X, Y)) -> ControlFlow<Ordering>
         where
-            F: FnMut(X, Y) -> Ordering,
+            F: ~const FnMut(X, Y) -> Ordering,
         {
-            move |x, y| match cmp(x, y) {
+            match cmp(x, y) {
                 Ordering::Equal => ControlFlow::CONTINUE,
                 non_eq => ControlFlow::Break(non_eq),
             }
         }
 
-        match iter_compare(self, other.into_iter(), compare(cmp)) {
+        match iter_compare(self, other.into_iter(), ConstFnMutClosure::new(&mut cmp, compare)) {
             ControlFlow::Continue(ord) => ord,
             ControlFlow::Break(ord) => ord,
         }
@@ -3628,7 +3628,7 @@ pub trait Iterator {
     /// );
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn partial_cmp_by<I, F>(self, other: I, partial_cmp: F) -> Option<Ordering>
+    fn partial_cmp_by<I, F>(self, other: I, mut partial_cmp: F) -> Option<Ordering>
     where
         Self: Sized,
         I: ~const IntoIterator,
@@ -3639,17 +3639,24 @@ pub trait Iterator {
         Self: ~const Destruct,
     {
         #[inline]
-        fn compare<X, Y, F>(mut partial_cmp: F) -> impl FnMut(X, Y) -> ControlFlow<Option<Ordering>>
+        const fn compare<X, Y, F>(
+            partial_cmp: &mut F,
+            (x, y): (X, Y),
+        ) -> ControlFlow<Option<Ordering>>
         where
-            F: FnMut(X, Y) -> Option<Ordering>,
+            F: ~const FnMut(X, Y) -> Option<Ordering>,
         {
-            move |x, y| match partial_cmp(x, y) {
+            match partial_cmp(x, y) {
                 Some(Ordering::Equal) => ControlFlow::CONTINUE,
                 non_eq => ControlFlow::Break(non_eq),
             }
         }
 
-        match iter_compare(self, other.into_iter(), compare(partial_cmp)) {
+        match iter_compare(
+            self,
+            other.into_iter(),
+            ConstFnMutClosure::new(&mut partial_cmp, compare),
+        ) {
             ControlFlow::Continue(ord) => Some(ord),
             ControlFlow::Break(ord) => ord,
         }
@@ -3700,7 +3707,7 @@ pub trait Iterator {
     /// assert!(xs.iter().eq_by(&ys, |&x, &y| x * x == y));
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn eq_by<I, F>(self, other: I, eq: F) -> bool
+    fn eq_by<I, F>(self, other: I, mut eq: F) -> bool
     where
         Self: Sized,
         I: ~const IntoIterator,
@@ -3711,16 +3718,14 @@ pub trait Iterator {
         Self: ~const Destruct,
     {
         #[inline]
-        fn compare<X, Y, F>(mut eq: F) -> impl FnMut(X, Y) -> ControlFlow<()>
+        const fn compare<X, Y, F>(eq: &mut F, (x, y): (X, Y)) -> ControlFlow<()>
         where
-            F: FnMut(X, Y) -> bool,
+            F: ~const FnMut(X, Y) -> bool,
         {
-            move |x, y| {
-                if eq(x, y) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
-            }
+            if eq(x, y) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
         }
 
-        match iter_compare(self, other.into_iter(), compare(eq)) {
+        match iter_compare(self, other.into_iter(), ConstFnMutClosure::new(&mut eq, compare)) {
             ControlFlow::Continue(ord) => ord == Ordering::Equal,
             ControlFlow::Break(()) => false,
         }
@@ -3981,28 +3986,38 @@ pub trait Iterator {
 /// Isolates the logic shared by ['cmp_by'](Iterator::cmp_by),
 /// ['partial_cmp_by'](Iterator::partial_cmp_by), and ['eq_by'](Iterator::eq_by).
 #[inline]
-fn iter_compare<A, B, F, T>(mut a: A, mut b: B, f: F) -> ControlFlow<T, Ordering>
+const fn iter_compare<A, B, F, T>(mut a: A, b: B, f: F) -> ControlFlow<T, Ordering>
 where
-    A: Iterator,
-    B: Iterator,
-    F: FnMut(A::Item, B::Item) -> ControlFlow<T>,
+    A: ~const Iterator + ~const Destruct,
+    B: ~const Iterator + ~const Destruct,
+    A::Item: ~const Destruct,
+    B::Item: ~const Destruct,
+    F: ~const FnMut(A::Item, B::Item) -> ControlFlow<T> + ~const Destruct,
 {
     #[inline]
-    fn compare<'a, B, X, T>(
-        b: &'a mut B,
-        mut f: impl FnMut(X, B::Item) -> ControlFlow<T> + 'a,
-    ) -> impl FnMut(X) -> ControlFlow<ControlFlow<T, Ordering>> + 'a
+    const fn compare<'a, B, F, X, T>(
+        (b, f): &'a mut (B, F),
+        (x,): (X,),
+    ) -> ControlFlow<ControlFlow<T, Ordering>>
     where
-        B: Iterator,
+        B: ~const Iterator,
+        F: ~const FnMut(X, B::Item) -> ControlFlow<T>,
+        X: ~const Destruct,
     {
-        move |x| match b.next() {
+        match b.next() {
             None => ControlFlow::Break(ControlFlow::Continue(Ordering::Greater)),
-            Some(y) => f(x, y).map_break(ControlFlow::Break),
+            Some(y) => match f(x, y) {
+                ControlFlow::Break(x) => ControlFlow::Break(ControlFlow::Break(x)),
+                ControlFlow::Continue(x) => ControlFlow::Continue(x),
+            },
         }
     }
 
-    match a.try_for_each(compare(&mut b, f)) {
-        ControlFlow::Continue(()) => ControlFlow::Continue(match b.next() {
+    let mut tuple = (b, f);
+    let mut f = ConstFnMutClosure::new(&mut tuple, compare);
+
+    match a.try_for_each(&mut f) {
+        ControlFlow::Continue(()) => ControlFlow::Continue(match f.data.0.next() {
             None => Ordering::Equal,
             Some(_) => Ordering::Less,
         }),

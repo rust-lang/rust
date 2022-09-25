@@ -916,7 +916,7 @@ where
 ///
 /// To minimize indirection fields are still pub but callers should at least use
 /// `push_unchecked` to signal that something unsafe is going on.
-pub(crate) struct Guard<'a, T, const N: usize> {
+pub(crate) struct Guard<'a, T: ~const Destruct, const N: usize> {
     /// The array to be initialized.
     pub array_mut: &'a mut [MaybeUninit<T>; N],
     /// The number of items that have been initialized so far.
@@ -930,7 +930,7 @@ impl<T, const N: usize> Guard<'_, T, N> {
     ///
     /// No more than N elements must be initialized.
     #[inline]
-    pub unsafe fn push_unchecked(&mut self, item: T) {
+    pub const unsafe fn push_unchecked(&mut self, item: T) {
         // SAFETY: If `initialized` was correct before and the caller does not
         // invoke this method more than N times then writes will be in-bounds
         // and slots will not be initialized more than once.
@@ -941,15 +941,33 @@ impl<T, const N: usize> Guard<'_, T, N> {
     }
 }
 
-impl<T, const N: usize> Drop for Guard<'_, T, N> {
+impl<T: ~const Destruct, const N: usize> const Drop for Guard<'_, T, N> {
     fn drop(&mut self) {
         debug_assert!(self.initialized <= N);
 
+        #[inline]
+        const fn drop_ct<T: ~const Destruct>(x: &mut [T]) {
+            let mut i = 0;
+            while i < x.len() {
+                // SAFETY: dropping the value, contains initialized objects
+                unsafe {
+                    crate::ptr::read(&mut x[i]);
+                }
+                i += 1;
+            }
+        }
+        #[inline]
+        fn drop_rt<T>(x: &mut [T]) {
+            // SAFETY: slice contains initialized objects
+            unsafe { crate::ptr::drop_in_place(x) }
+        }
+
         // SAFETY: this slice will contain only initialized objects.
         unsafe {
-            crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
-                &mut self.array_mut.get_unchecked_mut(..self.initialized),
-            ));
+            let to_drop = MaybeUninit::slice_assume_init_mut(
+                self.array_mut.get_unchecked_mut(..self.initialized),
+            );
+            crate::intrinsics::const_eval_select((to_drop,), drop_ct, drop_rt);
         }
     }
 }

@@ -1,3 +1,4 @@
+use crate::const_closure::ConstFnMutClosure;
 use crate::iter::{InPlaceIterable, Iterator};
 use crate::marker::Destruct;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};

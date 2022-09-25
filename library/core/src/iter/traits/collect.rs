@@ -122,6 +122,7 @@ use crate::marker::Destruct;
     label = "value of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`"
 )]
 #[rustc_diagnostic_item = "FromIterator"]
+#[const_trait]
 pub trait FromIterator<A>: Sized {
     /// Creates a value from an iterator.
     ///
@@ -267,7 +268,7 @@ pub trait IntoIterator {
 
 #[rustc_const_unstable(feature = "const_intoiterator_identity", issue = "90603")]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator> const IntoIterator for I {
+impl<I: ~const Iterator> const IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;
 

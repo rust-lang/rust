@@ -25,6 +25,7 @@ pub(crate) struct ConstFnMutClosure<CapturedData, Function> {
     /// The Function of the Closure, must be: Fn(CapturedData, ClosureArgs) -> ClosureReturn
     pub func: Function,
 }
+
 impl<'a, CapturedData: ?Sized, Function> ConstFnMutClosure<&'a mut CapturedData, Function> {
     /// Function for creating a new closure.
     ///
