@@ -23,7 +23,7 @@
 // We want to be able to build this crate with a stable compiler, so no
 // `#![feature]` attributes should be added.
 
-mod cursor;
+pub mod cursor;
 pub mod unescape;
 
 #[cfg(test)]
@@ -219,13 +219,6 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
     None
 }
 
-/// Parses the first token from the provided input string.
-#[inline]
-pub fn first_token(input: &str) -> Token {
-    debug_assert!(!input.is_empty());
-    Cursor::new(input).advance_token()
-}
-
 /// Validates a raw string literal. Used for getting more information about a
 /// problem with a `RawStr`/`RawByteStr` with a `None` field.
 #[inline]
@@ -242,14 +235,7 @@ pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError>
 /// Creates an iterator that produces tokens from the input string.
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     let mut cursor = Cursor::new(input);
-    std::iter::from_fn(move || {
-        if cursor.is_eof() {
-            None
-        } else {
-            cursor.reset_len_consumed();
-            Some(cursor.advance_token())
-        }
-    })
+    std::iter::from_fn(move || cursor.advance_token())
 }
 
 /// True if `c` is considered a whitespace according to Rust language definition.
@@ -311,8 +297,8 @@ pub fn is_ident(string: &str) -> bool {
 
 impl Cursor<'_> {
     /// Parses a token from the input string.
-    fn advance_token(&mut self) -> Token {
-        let first_char = self.bump().unwrap();
+    pub fn advance_token(&mut self) -> Option<Token> {
+        let first_char = self.bump()?;
         let token_kind = match first_char {
             // Slash, comment or block comment.
             '/' => match self.first() {
@@ -433,7 +419,9 @@ impl Cursor<'_> {
             }
             _ => Unknown,
         };
-        Token::new(token_kind, self.len_consumed())
+        let res = Some(Token::new(token_kind, self.len_consumed()));
+        self.reset_len_consumed();
+        res
     }
 
     fn line_comment(&mut self) -> TokenKind {

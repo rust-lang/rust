@@ -4,6 +4,7 @@ use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_lexer::cursor::Cursor;
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_session::lint::builtin::{
@@ -48,7 +49,9 @@ pub(crate) fn parse_token_trees<'a>(
         start_pos = start_pos + BytePos::from_usize(shebang_len);
     }
 
-    let string_reader = StringReader { sess, start_pos, pos: start_pos, src, override_span };
+    let cursor = Cursor::new(src);
+    let string_reader =
+        StringReader { sess, start_pos, pos: start_pos, src, cursor, override_span };
     tokentrees::TokenTreesReader::parse_token_trees(string_reader)
 }
 
@@ -60,6 +63,8 @@ struct StringReader<'a> {
     pos: BytePos,
     /// Source text to tokenize.
     src: &'a str,
+    /// Cursor for getting lexer tokens.
+    cursor: Cursor<'a>,
     override_span: Option<Span>,
 }
 
@@ -75,15 +80,13 @@ impl<'a> StringReader<'a> {
 
         // Skip trivial (whitespace & comments) tokens
         loop {
-            let start_src_index = self.src_index(self.pos);
-            let text: &str = &self.src[start_src_index..];
-
-            if text.is_empty() {
-                let span = self.mk_sp(self.pos, self.pos);
-                return (Token::new(token::Eof, span), preceded_by_whitespace);
-            }
-
-            let token = rustc_lexer::first_token(text);
+            let token = match self.cursor.advance_token() {
+                Some(token) => token,
+                None => {
+                    let span = self.mk_sp(self.pos, self.pos);
+                    return (Token::new(token::Eof, span), preceded_by_whitespace);
+                }
+            };
 
             let start = self.pos;
             self.pos = self.pos + BytePos(token.len);

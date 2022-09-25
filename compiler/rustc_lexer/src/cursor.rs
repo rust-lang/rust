@@ -4,7 +4,7 @@ use std::str::Chars;
 ///
 /// Next characters can be peeked via `first` method,
 /// and position can be shifted forward via `bump` method.
-pub(crate) struct Cursor<'a> {
+pub struct Cursor<'a> {
     initial_len: usize,
     /// Iterator over chars. Slightly faster than a &str.
     chars: Chars<'a>,
@@ -15,7 +15,7 @@ pub(crate) struct Cursor<'a> {
 pub(crate) const EOF_CHAR: char = '\0';
 
 impl<'a> Cursor<'a> {
-    pub(crate) fn new(input: &'a str) -> Cursor<'a> {
+    pub fn new(input: &'a str) -> Cursor<'a> {
         Cursor {
             initial_len: input.len(),
             chars: input.chars(),
