@@ -103,7 +103,6 @@
 #![feature(provide_any)]
 #![feature(utf8_chunks)]
 #![feature(is_ascii_octdigit)]
-#![feature(duration_checked_float)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;
