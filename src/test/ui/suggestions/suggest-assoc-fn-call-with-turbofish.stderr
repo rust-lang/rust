@@ -1,5 +1,5 @@
 error[E0599]: no method named `self_ty_ref_hello` found for struct `GenericAssocMethod<{integer}>` in the current scope
-  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:17:7
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:14:7
    |
 LL | struct GenericAssocMethod<T>(T);
    | ---------------------------- method `self_ty_ref_hello` not found for this struct
@@ -18,7 +18,7 @@ LL |     fn self_ty_ref_hello(_: &Self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `self_ty_hello` found for struct `GenericAssocMethod<{integer}>` in the current scope
-  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:19:7
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:16:7
    |
 LL | struct GenericAssocMethod<T>(T);
    | ---------------------------- method `self_ty_hello` not found for this struct
@@ -37,7 +37,7 @@ LL |     fn self_ty_hello(_: Self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `default_hello` found for struct `GenericAssocMethod<i32>` in the current scope
-  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:23:7
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:20:7
    |
 LL | struct GenericAssocMethod<T>(T);
    | ---------------------------- method `default_hello` not found for this struct
@@ -56,7 +56,7 @@ LL |     fn default_hello() {}
    |     ^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `self_ty_ref_hello` found for struct `GenericAssocMethod<i32>` in the current scope
-  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:25:7
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:22:7
    |
 LL | struct GenericAssocMethod<T>(T);
    | ---------------------------- method `self_ty_ref_hello` not found for this struct
@@ -75,7 +75,7 @@ LL |     fn self_ty_ref_hello(_: &Self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `self_ty_hello` found for struct `GenericAssocMethod<i32>` in the current scope
-  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:27:7
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:24:7
    |
 LL | struct GenericAssocMethod<T>(T);
    | ---------------------------- method `self_ty_hello` not found for this struct
