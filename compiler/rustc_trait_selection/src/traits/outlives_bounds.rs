@@ -46,7 +46,7 @@ impl<'a, 'cx, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'cx, 'tcx> {
     ///   Note that this may cause outlives obligations to be injected
     ///   into the inference context with this body-id.
     /// - `ty`, the type that we are supposed to assume is WF.
-    #[instrument(level = "debug", skip(self, param_env, body_id))]
+    #[instrument(level = "debug", skip(self, param_env, body_id), ret)]
     fn implied_outlives_bounds(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -71,6 +71,7 @@ impl<'a, 'cx, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'cx, 'tcx> {
         let TypeOpOutput { output, constraints, .. } = result;
 
         if let Some(constraints) = constraints {
+            debug!(?constraints);
             // Instantiation may have produced new inference variables and constraints on those
             // variables. Process these constraints.
             let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self.tcx);
