@@ -28,6 +28,9 @@ const RESUME_PENALTY: usize = 45;
 
 const UNKNOWN_SIZE_COST: usize = 10;
 
+const DEFAULT_THRESHOLD: usize = 50;
+const DEFAULT_HINT_THRESHOLD: usize = 100;
+
 pub struct Inline;
 
 #[derive(Copy, Clone, Debug)]
@@ -400,9 +403,14 @@ impl<'tcx> Inliner<'tcx> {
         let tcx = self.tcx;
 
         let mut threshold = if callee_attrs.requests_inline() {
-            self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
+            self.tcx
+                .sess
+                .opts
+                .unstable_opts
+                .inline_mir_hint_threshold
+                .unwrap_or(DEFAULT_HINT_THRESHOLD)
         } else {
-            self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
+            self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(DEFAULT_THRESHOLD)
         };
 
         // Give a bonus functions with a small number of blocks,
