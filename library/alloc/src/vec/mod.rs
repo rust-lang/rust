@@ -64,7 +64,7 @@ use core::iter;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::FromIterator;
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
@@ -2347,7 +2347,7 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
     #[unstable(feature = "slice_flatten", issue = "95629")]
     pub fn into_flattened(self) -> Vec<T, A> {
         let (ptr, len, cap, alloc) = self.into_raw_parts_with_alloc();
-        let (new_len, new_cap) = if mem::size_of::<T>() == 0 {
+        let (new_len, new_cap) = if T::IS_ZST {
             (len.checked_mul(N).expect("vec len overflow"), usize::MAX)
         } else {
             // SAFETY:
@@ -2677,7 +2677,7 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
             let mut me = ManuallyDrop::new(self);
             let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
             let begin = me.as_mut_ptr();
-            let end = if mem::size_of::<T>() == 0 {
+            let end = if T::IS_ZST {
                 begin.wrapping_byte_add(me.len())
             } else {
                 begin.add(me.len()) as *const T
