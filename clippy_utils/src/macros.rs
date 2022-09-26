@@ -545,17 +545,30 @@ fn span_from_inner(base: SpanData, inner: rpf::InnerSpan) -> Span {
     )
 }
 
+/// How a format parameter is used in the format string
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FormatParamKind {
     /// An implicit parameter , such as `{}` or `{:?}`.
     Implicit,
-    /// A parameter with an explicit number, or an asterisk precision. e.g. `{1}`, `{0:?}`,
-    /// `{:.0$}` or `{:.*}`.
+    /// A parameter with an explicit number, e.g. `{1}`, `{0:?}`, or `{:.0$}`
     Numbered,
+    /// A parameter with an asterisk precision. e.g. `{:.*}`.
+    Starred,
     /// A named parameter with a named `value_arg`, such as the `x` in `format!("{x}", x = 1)`.
     Named(Symbol),
     /// An implicit named parameter, such as the `y` in `format!("{y}")`.
     NamedInline(Symbol),
+}
+
+/// Where a format parameter is being used in the format string
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum FormatParamUsage {
+    /// Appears as an argument, e.g. `format!("{}", foo)`
+    Argument,
+    /// Appears as a width, e.g. `format!("{:width$}", foo, width = 1)`
+    Width,
+    /// Appears as a precision, e.g. `format!("{:.precision$}", foo, precision = 1)`
+    Precision,
 }
 
 /// A `FormatParam` is any place in a `FormatArgument` that refers to a supplied value, e.g.
@@ -573,6 +586,8 @@ pub struct FormatParam<'tcx> {
     pub value: &'tcx Expr<'tcx>,
     /// How this parameter refers to its `value`.
     pub kind: FormatParamKind,
+    /// Where this format param is being used - argument/width/precision
+    pub usage: FormatParamUsage,
     /// Span of the parameter, may be zero width. Includes the whitespace of implicit parameters.
     ///
     /// ```text
@@ -585,6 +600,7 @@ pub struct FormatParam<'tcx> {
 impl<'tcx> FormatParam<'tcx> {
     fn new(
         mut kind: FormatParamKind,
+        usage: FormatParamUsage,
         position: usize,
         inner: rpf::InnerSpan,
         values: &FormatArgsValues<'tcx>,
@@ -599,7 +615,12 @@ impl<'tcx> FormatParam<'tcx> {
             kind = FormatParamKind::NamedInline(name);
         }
 
-        Some(Self { value, kind, span })
+        Some(Self {
+            value,
+            kind,
+            usage,
+            span,
+        })
     }
 }
 
@@ -618,6 +639,7 @@ pub enum Count<'tcx> {
 
 impl<'tcx> Count<'tcx> {
     fn new(
+        usage: FormatParamUsage,
         count: rpf::Count<'_>,
         position: Option<usize>,
         inner: Option<rpf::InnerSpan>,
@@ -625,15 +647,27 @@ impl<'tcx> Count<'tcx> {
     ) -> Option<Self> {
         Some(match count {
             rpf::Count::CountIs(val) => Self::Is(val, span_from_inner(values.format_string_span, inner?)),
-            rpf::Count::CountIsName(name, span) => Self::Param(FormatParam::new(
+            rpf::Count::CountIsName(name, _) => Self::Param(FormatParam::new(
                 FormatParamKind::Named(Symbol::intern(name)),
+                usage,
                 position?,
-                span,
+                inner?,
                 values,
             )?),
-            rpf::Count::CountIsParam(_) | rpf::Count::CountIsStar(_) => {
-                Self::Param(FormatParam::new(FormatParamKind::Numbered, position?, inner?, values)?)
-            },
+            rpf::Count::CountIsParam(_) => Self::Param(FormatParam::new(
+                FormatParamKind::Numbered,
+                usage,
+                position?,
+                inner?,
+                values,
+            )?),
+            rpf::Count::CountIsStar(_) => Self::Param(FormatParam::new(
+                FormatParamKind::Starred,
+                usage,
+                position?,
+                inner?,
+                values,
+            )?),
             rpf::Count::CountImplied => Self::Implied,
         })
     }
@@ -676,8 +710,20 @@ impl<'tcx> FormatSpec<'tcx> {
             fill: spec.fill,
             align: spec.align,
             flags: spec.flags,
-            precision: Count::new(spec.precision, positions.precision, spec.precision_span, values)?,
-            width: Count::new(spec.width, positions.width, spec.width_span, values)?,
+            precision: Count::new(
+                FormatParamUsage::Precision,
+                spec.precision,
+                positions.precision,
+                spec.precision_span,
+                values,
+            )?,
+            width: Count::new(
+                FormatParamUsage::Width,
+                spec.width,
+                positions.width,
+                spec.width_span,
+                values,
+            )?,
             r#trait: match spec.ty {
                 "" => sym::Display,
                 "?" => sym::Debug,
@@ -723,7 +769,7 @@ pub struct FormatArg<'tcx> {
 pub struct FormatArgsExpn<'tcx> {
     /// The format string literal.
     pub format_string: FormatString,
-    // The format arguments, such as `{:?}`.
+    /// The format arguments, such as `{:?}`.
     pub args: Vec<FormatArg<'tcx>>,
     /// Has an added newline due to `println!()`/`writeln!()`/etc. The last format string part will
     /// include this added newline.
@@ -797,6 +843,7 @@ impl<'tcx> FormatArgsExpn<'tcx> {
                                 // NamedInline is handled by `FormatParam::new()`
                                 rpf::Position::ArgumentNamed(name) => FormatParamKind::Named(Symbol::intern(name)),
                             },
+                            FormatParamUsage::Argument,
                             position.value,
                             parsed_arg.position_span,
                             &values,

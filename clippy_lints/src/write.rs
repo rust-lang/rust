@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::macros::{root_macro_call_first_node, FormatArgsExpn, MacroCall};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::{expand_past_previous_comma, snippet_opt};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirIdMap, Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, BytePos};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -541,11 +541,4 @@ fn conservative_unescape(literal: &str) -> Result<String, UnescapeErr> {
     }
 
     if err { Err(UnescapeErr::Lint) } else { Ok(unescaped) }
-}
-
-// Expand from `writeln!(o, "")` to `writeln!(o, "")`
-//                          ^^                 ^^^^
-fn expand_past_previous_comma(cx: &LateContext<'_>, span: Span) -> Span {
-    let extended = cx.sess().source_map().span_extend_to_prev_char(span, ',', true);
-    extended.with_lo(extended.lo() - BytePos(1))
 }

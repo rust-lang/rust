@@ -392,6 +392,16 @@ pub fn trim_span(sm: &SourceMap, span: Span) -> Span {
     .span()
 }
 
+/// Expand a span to include a preceding comma
+/// ```rust,ignore
+/// writeln!(o, "")   ->   writeln!(o, "")
+///             ^^                   ^^^^
+/// ```
+pub fn expand_past_previous_comma(cx: &LateContext<'_>, span: Span) -> Span {
+    let extended = cx.sess().source_map().span_extend_to_prev_char(span, ',', true);
+    extended.with_lo(extended.lo() - BytePos(1))
+}
+
 #[cfg(test)]
 mod test {
     use super::{reindent_multiline, without_block_comments};
