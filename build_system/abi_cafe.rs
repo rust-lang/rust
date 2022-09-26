@@ -14,17 +14,17 @@ pub(crate) fn run(
     host_triple: &str,
     target_triple: &str,
 ) {
-    if !config::get_bool("testsuite.abi-checker") {
-        eprintln!("[SKIP] abi-checker");
+    if !config::get_bool("testsuite.abi-cafe") {
+        eprintln!("[SKIP] abi-cafe");
         return;
     }
 
     if host_triple != target_triple {
-        eprintln!("[SKIP] abi-checker (cross-compilation not supported)");
+        eprintln!("[SKIP] abi-cafe (cross-compilation not supported)");
         return;
     }
 
-    eprintln!("Building sysroot for abi-checker");
+    eprintln!("Building sysroot for abi-cafe");
     build_sysroot::build_sysroot(
         channel,
         sysroot_kind,
@@ -34,14 +34,14 @@ pub(crate) fn run(
         target_triple,
     );
 
-    eprintln!("Running abi-checker");
-    let mut abi_checker_path = env::current_dir().unwrap();
-    abi_checker_path.push("abi-checker");
-    env::set_current_dir(&abi_checker_path.clone()).unwrap();
+    eprintln!("Running abi-cafe");
+    let mut abi_cafe_path = env::current_dir().unwrap();
+    abi_cafe_path.push("abi-cafe");
+    env::set_current_dir(&abi_cafe_path.clone()).unwrap();
 
     let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
 
-    let mut cmd = cargo_command("cargo", "run", Some(target_triple), &abi_checker_path);
+    let mut cmd = cargo_command("cargo", "run", Some(target_triple), &abi_cafe_path);
     cmd.arg("--");
     cmd.arg("--pairs");
     cmd.args(pairs);

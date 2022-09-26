@@ -4,7 +4,7 @@ use std::process;
 
 use self::utils::is_ci;
 
-mod abi_checker;
+mod abi_cafe;
 mod build_backend;
 mod build_sysroot;
 mod config;
@@ -143,7 +143,7 @@ pub fn main() {
                 &target_triple,
             );
 
-            abi_checker::run(
+            abi_cafe::run(
                 channel,
                 sysroot_kind,
                 &target_dir,

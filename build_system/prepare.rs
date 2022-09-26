@@ -14,12 +14,12 @@ pub(crate) fn prepare() {
     Command::new("cargo").arg("install").arg("hyperfine").spawn().unwrap().wait().unwrap();
 
     clone_repo_shallow_github(
-        "abi-checker",
+        "abi-cafe",
         "Gankra",
-        "abi-checker",
+        "abi-cafe",
         "4c6dc8c9c687e2b3a760ff2176ce236872b37212",
     );
-    apply_patches("abi-checker", Path::new("abi-checker"));
+    apply_patches("abi-cafe", Path::new("abi-cafe"));
 
     clone_repo_shallow_github(
         "rand",

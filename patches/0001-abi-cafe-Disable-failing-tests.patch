@@ -1,7 +1,7 @@
 From 1a315ba225577dbbd1f449d9609f16f984f68708 Mon Sep 17 00:00:00 2001
 From: Afonso Bordado <afonso360@users.noreply.github.com>
 Date: Fri, 12 Aug 2022 22:51:58 +0000
-Subject: [PATCH] Disable abi-checker tests
+Subject: [PATCH] Disable abi-cafe tests
 
 ---
  src/report.rs | 14 ++++++++++++++

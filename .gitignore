@@ -19,4 +19,5 @@ perf.data.old
 /regex
 /simple-raytracer
 /portable-simd
+/abi-cafe
 /abi-checker
