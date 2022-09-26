@@ -136,10 +136,7 @@ impl ops::Deref for CrateName {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CrateOrigin {
     /// Crates that are from crates.io official registry,
-    CratesIo {
-        repo: Option<String>,
-        name: Option<String>,
-    },
+    CratesIo { repo: Option<String>, name: Option<String> },
     /// Crates that are provided by the language, like std, core, proc-macro, ...
     Lang(LangCrateOrigin),
 }
