@@ -19,7 +19,7 @@ assert-css: (
 )
 assert-css: (
     ".impl .code-header",
-    {"color": "rgb(230, 225, 207)", "background-color": "rgb(15, 20, 25)"},
+    {"color": "rgb(230, 225, 207)", "background-color": "rgba(0, 0, 0, 0)"},
     ALL,
 )
 
@@ -58,7 +58,7 @@ assert-css: (
 )
 assert-css: (
     ".impl .code-header",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(53, 53, 53)"},
+    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
     ALL,
 )
 
@@ -95,7 +95,7 @@ assert-css: (
 )
 assert-css: (
     ".impl .code-header",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(255, 255, 255)"},
+    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
     ALL,
 )
 

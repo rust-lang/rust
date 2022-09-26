@@ -10,8 +10,8 @@ extern crate realcore;
 extern crate real_gimli;
 
 // issue #74672
-// @!has foo/trait.Deref.html '//*[@id="impl-Deref-for-EndianSlice"]//h3[@class="code-header in-band"]' 'impl Deref for EndianSlice'
+// @!has foo/trait.Deref.html '//*[@id="impl-Deref-for-EndianSlice"]//h3[@class="code-header"]' 'impl Deref for EndianSlice'
 pub use realcore::Deref;
 
-// @has foo/trait.Join.html '//*[@id="impl-Join-for-Foo"]//h3[@class="code-header in-band"]' 'impl Join for Foo'
+// @has foo/trait.Join.html '//*[@id="impl-Join-for-Foo"]//h3[@class="code-header"]' 'impl Join for Foo'
 pub use realcore::Join;

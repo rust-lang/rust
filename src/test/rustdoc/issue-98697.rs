@@ -12,6 +12,6 @@ extern crate issue_98697_reexport_with_anonymous_lifetime;
 // @!has issue_98697/fn.repro.html '//pre[@class="rust fn"]/code' 'for<'
 pub use issue_98697_reexport_with_anonymous_lifetime::repro;
 
-// @has issue_98697/struct.Extra.html '//div[@id="trait-implementations-list"]//h3[@class="code-header in-band"]' 'impl MyTrait<&Extra> for Extra'
-// @!has issue_98697/struct.Extra.html '//div[@id="trait-implementations-list"]//h3[@class="code-header in-band"]' 'impl<'
+// @has issue_98697/struct.Extra.html '//div[@id="trait-implementations-list"]//h3[@class="code-header"]' 'impl MyTrait<&Extra> for Extra'
+// @!has issue_98697/struct.Extra.html '//div[@id="trait-implementations-list"]//h3[@class="code-header"]' 'impl<'
 pub use issue_98697_reexport_with_anonymous_lifetime::Extra;

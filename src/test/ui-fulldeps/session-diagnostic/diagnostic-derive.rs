@@ -76,13 +76,15 @@ struct InvalidNestedStructAttr1 {}
 #[derive(Diagnostic)]
 #[diag(nonsense = "...", code = "E0123", slug = "foo")]
 //~^ ERROR `#[diag(nonsense = ...)]` is not a valid attribute
-//~^^ ERROR diagnostic slug not specified
+//~| ERROR `#[diag(slug = ...)]` is not a valid attribute
+//~| ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr2 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = 4, code = "E0123", slug = "foo")]
 //~^ ERROR `#[diag(nonsense = ...)]` is not a valid attribute
-//~^^ ERROR diagnostic slug not specified
+//~| ERROR `#[diag(slug = ...)]` is not a valid attribute
+//~| ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr3 {}
 
 #[derive(Diagnostic)]
@@ -217,6 +219,7 @@ struct Suggest {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithoutCode {
     #[suggestion(typeck::suggestion)]
+    //~^ ERROR suggestion without `code = "..."`
     suggestion: (Span, Applicability),
 }
 
@@ -225,6 +228,7 @@ struct SuggestWithoutCode {
 struct SuggestWithBadKey {
     #[suggestion(nonsense = "bar")]
     //~^ ERROR `#[suggestion(nonsense = ...)]` is not a valid attribute
+    //~| ERROR suggestion without `code = "..."`
     suggestion: (Span, Applicability),
 }
 
@@ -233,6 +237,7 @@ struct SuggestWithBadKey {
 struct SuggestWithShorthandMsg {
     #[suggestion(msg = "bar")]
     //~^ ERROR `#[suggestion(msg = ...)]` is not a valid attribute
+    //~| ERROR suggestion without `code = "..."`
     suggestion: (Span, Applicability),
 }
 
@@ -269,16 +274,16 @@ struct SuggestWithSpanOnly {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithDuplicateSpanAndApplicability {
     #[suggestion(typeck::suggestion, code = "This is suggested code")]
-    //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one `Span`
     suggestion: (Span, Span, Applicability),
+    //~^ ERROR specified multiple times
 }
 
 #[derive(Diagnostic)]
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithDuplicateApplicabilityAndSpan {
     #[suggestion(typeck::suggestion, code = "This is suggested code")]
-    //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one
     suggestion: (Applicability, Applicability, Span),
+    //~^ ERROR specified multiple times
 }
 
 #[derive(Diagnostic)]
@@ -294,7 +299,7 @@ struct WrongKindOfAnnotation {
 struct OptionsInErrors {
     #[label(typeck::label)]
     label: Option<Span>,
-    #[suggestion(typeck::suggestion)]
+    #[suggestion(typeck::suggestion, code = "...")]
     opt_sugg: Option<(Span, Applicability)>,
 }
 
@@ -436,7 +441,7 @@ struct ErrorWithNoteCustomWrongOrder {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ApplicabilityInBoth {
     #[suggestion(typeck::suggestion, code = "...", applicability = "maybe-incorrect")]
-    //~^ ERROR applicability cannot be set in both the field and attribute
+    //~^ ERROR specified multiple times
     suggestion: (Span, Applicability),
 }
 
@@ -507,7 +512,7 @@ struct OptUnitField {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelWithTrailingPath {
     #[label(typeck::label, foo)]
-    //~^ ERROR `#[label(...)]` is not a valid attribute
+    //~^ ERROR `#[label(foo)]` is not a valid attribute
     span: Span,
 }
 
@@ -515,7 +520,7 @@ struct LabelWithTrailingPath {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelWithTrailingNameValue {
     #[label(typeck::label, foo = "...")]
-    //~^ ERROR `#[label(...)]` is not a valid attribute
+    //~^ ERROR `#[label(foo = ...)]` is not a valid attribute
     span: Span,
 }
 
@@ -523,7 +528,7 @@ struct LabelWithTrailingNameValue {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelWithTrailingList {
     #[label(typeck::label, foo("..."))]
-    //~^ ERROR `#[label(...)]` is not a valid attribute
+    //~^ ERROR `#[label(foo(...))]` is not a valid attribute
     span: Span,
 }
 
@@ -581,3 +586,68 @@ struct LintAttributeOnSessionDiag {}
 //~| ERROR diagnostic slug not specified
 //~| ERROR cannot find attribute `lint` in this scope
 struct LintAttributeOnLintDiag {}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct DuplicatedSuggestionCode {
+    #[suggestion(typeck::suggestion, code = "...", code = ",,,")]
+    //~^ ERROR specified multiple times
+    suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct InvalidTypeInSuggestionTuple {
+    #[suggestion(typeck::suggestion, code = "...")]
+    suggestion: (Span, usize),
+    //~^ ERROR wrong types for suggestion
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct MissingApplicabilityInSuggestionTuple {
+    #[suggestion(typeck::suggestion, code = "...")]
+    suggestion: (Span,),
+    //~^ ERROR wrong types for suggestion
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct MissingCodeInSuggestion {
+    #[suggestion(typeck::suggestion)]
+    //~^ ERROR suggestion without `code = "..."`
+    suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[multipart_suggestion(typeck::suggestion)]
+//~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
+//~| ERROR cannot find attribute `multipart_suggestion` in this scope
+#[multipart_suggestion()]
+//~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
+//~| ERROR cannot find attribute `multipart_suggestion` in this scope
+struct MultipartSuggestion {
+    #[multipart_suggestion(typeck::suggestion)]
+    //~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
+    //~| ERROR cannot find attribute `multipart_suggestion` in this scope
+    suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[suggestion(typeck::suggestion, code = "...")]
+//~^ ERROR `#[suggestion(...)]` is not a valid attribute
+struct SuggestionOnStruct {
+    #[primary_span]
+    suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[label]
+//~^ ERROR `#[label]` is not a valid attribute
+struct LabelOnStruct {
+    #[primary_span]
+    suggestion: Span,
+}
