@@ -6,7 +6,6 @@
 
 use std::{
     fmt, io,
-    path::Path,
     process::{ChildStderr, ChildStdout, Command, Stdio},
     time::Duration,
 };
@@ -25,7 +24,6 @@ pub use cargo_metadata::diagnostic::{
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum InvocationStrategy {
     OnceInRoot,
-    PerWorkspaceWithManifestPath,
     #[default]
     PerWorkspace,
 }
@@ -153,7 +151,9 @@ struct FlycheckActor {
     id: usize,
     sender: Box<dyn Fn(Message) + Send>,
     config: FlycheckConfig,
-    workspace_root: AbsPathBuf,
+    /// Either the workspace root of the workspace we are flychecking,
+    /// or the project root of the project.
+    root: AbsPathBuf,
     /// CargoHandle exists to wrap around the communication needed to be able to
     /// run `cargo check` without blocking. Currently the Rust standard library
     /// doesn't provide a way to read sub-process output without blocking, so we
@@ -175,7 +175,7 @@ impl FlycheckActor {
         workspace_root: AbsPathBuf,
     ) -> FlycheckActor {
         tracing::info!(%id, ?workspace_root, "Spawning flycheck");
-        FlycheckActor { id, sender, config, workspace_root, cargo_handle: None }
+        FlycheckActor { id, sender, config, root: workspace_root, cargo_handle: None }
     }
 
     fn report_progress(&self, progress: Progress) {
@@ -210,20 +210,7 @@ impl FlycheckActor {
                         }
                     }
 
-                    let mut command = self.check_command();
-                    let invocation_strategy = self.invocation_strategy();
-                    match invocation_strategy {
-                        InvocationStrategy::OnceInRoot => (),
-                        InvocationStrategy::PerWorkspaceWithManifestPath => {
-                            command.arg("--manifest-path");
-                            command.arg(<_ as AsRef<Path>>::as_ref(
-                                &self.workspace_root.join("Cargo.toml"),
-                            ));
-                        }
-                        InvocationStrategy::PerWorkspace => {
-                            command.current_dir(&self.workspace_root);
-                        }
-                    }
+                    let command = self.check_command();
                     tracing::debug!(?command, "will restart flycheck");
                     match CargoHandle::spawn(command) {
                         Ok(cargo_handle) => {
@@ -265,7 +252,7 @@ impl FlycheckActor {
                     CargoMessage::Diagnostic(msg) => {
                         self.send(Message::AddDiagnostic {
                             id: self.id,
-                            workspace_root: self.workspace_root.clone(),
+                            workspace_root: self.root.clone(),
                             diagnostic: msg,
                         });
                     }
@@ -287,15 +274,8 @@ impl FlycheckActor {
         }
     }
 
-    fn invocation_strategy(&self) -> InvocationStrategy {
-        match self.config {
-            FlycheckConfig::CargoCommand { invocation_strategy, .. }
-            | FlycheckConfig::CustomCommand { invocation_strategy, .. } => invocation_strategy,
-        }
-    }
-
     fn check_command(&self) -> Command {
-        let mut cmd = match &self.config {
+        let (mut cmd, args, invocation_strategy) = match &self.config {
             FlycheckConfig::CargoCommand {
                 command,
                 target_triple,
@@ -305,13 +285,11 @@ impl FlycheckActor {
                 extra_args,
                 features,
                 extra_env,
-                invocation_strategy: _,
+                invocation_strategy,
             } => {
                 let mut cmd = Command::new(toolchain::cargo());
                 cmd.arg(command);
-                cmd.current_dir(&self.workspace_root);
-                cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
-                    .arg(self.workspace_root.join("Cargo.toml").as_os_str());
+                cmd.args(&["--workspace", "--message-format=json"]);
 
                 if let Some(target) = target_triple {
                     cmd.args(&["--target", target.as_str()]);
@@ -330,18 +308,35 @@ impl FlycheckActor {
                         cmd.arg(features.join(" "));
                     }
                 }
-                cmd.args(extra_args);
                 cmd.envs(extra_env);
-                cmd
+                (cmd, extra_args, invocation_strategy)
             }
-            FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy: _ } => {
+            FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy } => {
                 let mut cmd = Command::new(command);
-                cmd.args(args);
                 cmd.envs(extra_env);
-                cmd
+                (cmd, args, invocation_strategy)
             }
         };
-        cmd.current_dir(&self.workspace_root);
+        if let InvocationStrategy::PerWorkspace = invocation_strategy {
+            let mut with_manifest_path = false;
+            for arg in args {
+                if let Some(_) = arg.find("$manifest_path") {
+                    with_manifest_path = true;
+                    cmd.arg(arg.replace(
+                        "$manifest_path",
+                        &self.root.join("Cargo.toml").display().to_string(),
+                    ));
+                } else {
+                    cmd.arg(arg);
+                }
+            }
+
+            if !with_manifest_path {
+                cmd.current_dir(&self.root);
+            }
+        } else {
+            cmd.args(args);
+        }
         cmd
     }
 

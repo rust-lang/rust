@@ -323,9 +323,7 @@ impl ProjectWorkspace {
         config: &CargoConfig,
         progress: &dyn Fn(String),
     ) -> Vec<Result<WorkspaceBuildScripts>> {
-        if let InvocationStrategy::PerWorkspaceWithManifestPath | InvocationStrategy::PerWorkspace =
-            config.invocation_strategy
-        {
+        if let InvocationStrategy::PerWorkspace = config.invocation_strategy {
             return workspaces.iter().map(|it| it.run_build_scripts(config, progress)).collect();
         }
 

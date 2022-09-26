@@ -28,12 +28,15 @@ Run build scripts (`build.rs`) for more precise code analysis.
 +
 --
 Specifies the invocation strategy to use when running the build scripts command.
-If `per_workspace_with_manifest_path` is set, the command will be executed for each
-workspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and
-the command will be executed from the project root.
-If `per_workspace` is set, the command will be executed for each workspace and the
-command will be executed from the corresponding workspace root.
+If `per_workspace` is set, the command will be executed for each workspace and all
+occurrences of `$manifest_path` in the command will be replaced by the corresponding
+manifest path of the workspace that the command is being invoked for. If interpolation
+for the manifest path happens at least once, the commands will be executed from the
+project root, otherwise the commands will be executed from the corresponding workspace
+root.
 If `once_in_root` is set, the command will be executed once in the project root.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
 --
 [[rust-analyzer.cargo.buildScripts.overrideCommand]]rust-analyzer.cargo.buildScripts.overrideCommand (default: `null`)::
 +
@@ -133,12 +136,15 @@ Set to `"all"` to pass `--all-features` to Cargo.
 +
 --
 Specifies the invocation strategy to use when running the checkOnSave command.
-If `per_workspace_with_manifest_path` is set, the command will be executed for each
-workspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and
-the command will be executed from the project root.
-If `per_workspace` is set, the command will be executed for each workspace and the
-command will be executed from the corresponding workspace root.
+If `per_workspace` is set, the command will be executed for each workspace and all
+occurrences of `$manifest_path` in the command will be replaced by the corresponding
+manifest path of the workspace that the command is being invoked for. If interpolation
+for the manifest path happens at least once, the commands will be executed from the
+project root, otherwise the commands will be executed from the corresponding workspace
+root.
 If `once_in_root` is set, the command will be executed once in the project root.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
 --
 [[rust-analyzer.checkOnSave.noDefaultFeatures]]rust-analyzer.checkOnSave.noDefaultFeatures (default: `null`)::
 +

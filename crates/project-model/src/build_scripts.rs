@@ -55,11 +55,37 @@ impl BuildScriptOutput {
 }
 
 impl WorkspaceBuildScripts {
-    fn build_command(config: &CargoConfig) -> io::Result<Command> {
+    fn build_command(
+        config: &CargoConfig,
+        workspace_root: Option<&path::Path>,
+    ) -> io::Result<Command> {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
                 let mut cmd = Command::new(program);
-                cmd.args(args);
+
+                // FIXME: strategy and workspace root are coupled, express that in code
+                if let (InvocationStrategy::PerWorkspace, Some(workspace_root)) =
+                    (config.invocation_strategy, workspace_root)
+                {
+                    let mut with_manifest_path = false;
+                    for arg in args {
+                        if let Some(_) = arg.find("$manifest_path") {
+                            with_manifest_path = true;
+                            cmd.arg(arg.replace(
+                                "$manifest_path",
+                                &workspace_root.join("Cargo.toml").display().to_string(),
+                            ));
+                        } else {
+                            cmd.arg(arg);
+                        }
+                    }
+
+                    if !with_manifest_path {
+                        cmd.current_dir(workspace_root);
+                    }
+                } else {
+                    cmd.args(args);
+                }
                 cmd
             }
             _ => {
@@ -90,9 +116,15 @@ impl WorkspaceBuildScripts {
                         }
                     }
                 }
+
+                if let Some(workspace_root) = workspace_root {
+                    cmd.current_dir(workspace_root);
+                }
+
                 cmd
             }
         };
+
         cmd.envs(&config.extra_env);
         if config.wrap_rustc_in_build_scripts {
             // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
@@ -115,15 +147,21 @@ impl WorkspaceBuildScripts {
     ) -> io::Result<WorkspaceBuildScripts> {
         const RUST_1_62: Version = Version::new(1, 62, 0);
 
-        match Self::run_per_ws(Self::build_command(config)?, config, workspace, progress) {
+        let workspace_root: &path::Path = &workspace.workspace_root().as_ref();
+
+        match Self::run_per_ws(
+            Self::build_command(config, Some(workspace_root))?,
+            workspace,
+            progress,
+        ) {
             Ok(WorkspaceBuildScripts { error: Some(error), .. })
                 if toolchain.as_ref().map_or(false, |it| *it >= RUST_1_62) =>
             {
                 // building build scripts failed, attempt to build with --keep-going so
                 // that we potentially get more build data
-                let mut cmd = Self::build_command(config)?;
+                let mut cmd = Self::build_command(config, Some(workspace_root))?;
                 cmd.args(&["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
-                let mut res = Self::run_per_ws(cmd, config, workspace, progress)?;
+                let mut res = Self::run_per_ws(cmd, workspace, progress)?;
                 res.error = Some(error);
                 Ok(res)
             }
@@ -139,7 +177,7 @@ impl WorkspaceBuildScripts {
         progress: &dyn Fn(String),
     ) -> io::Result<Vec<WorkspaceBuildScripts>> {
         assert_eq!(config.invocation_strategy, InvocationStrategy::OnceInRoot);
-        let cmd = Self::build_command(config)?;
+        let cmd = Self::build_command(config, None)?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.
@@ -187,24 +225,10 @@ impl WorkspaceBuildScripts {
     }
 
     fn run_per_ws(
-        mut cmd: Command,
-        config: &CargoConfig,
+        cmd: Command,
         workspace: &CargoWorkspace,
         progress: &dyn Fn(String),
     ) -> io::Result<WorkspaceBuildScripts> {
-        let workspace_root: &path::Path = &workspace.workspace_root().as_ref();
-
-        match config.invocation_strategy {
-            InvocationStrategy::OnceInRoot => (),
-            InvocationStrategy::PerWorkspaceWithManifestPath => {
-                cmd.arg("--manifest-path");
-                cmd.arg(workspace_root.join("Cargo.toml"));
-            }
-            InvocationStrategy::PerWorkspace => {
-                cmd.current_dir(workspace_root);
-            }
-        }
-
         let mut res = WorkspaceBuildScripts::default();
         let outputs = &mut res.outputs;
         // NB: Cargo.toml could have been modified between `cargo metadata` and

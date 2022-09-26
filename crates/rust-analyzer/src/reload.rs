@@ -483,8 +483,7 @@ impl GlobalState {
                 config.clone(),
                 self.config.root_path().clone(),
             )],
-            flycheck::InvocationStrategy::PerWorkspaceWithManifestPath
-            | flycheck::InvocationStrategy::PerWorkspace => {
+            flycheck::InvocationStrategy::PerWorkspace => {
                 self.workspaces
                     .iter()
                     .enumerate()

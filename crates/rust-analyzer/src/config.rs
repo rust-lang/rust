@@ -70,12 +70,15 @@ config_data! {
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = "true",
         /// Specifies the invocation strategy to use when running the build scripts command.
-        /// If `per_workspace_with_manifest_path` is set, the command will be executed for each
-        /// workspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and
-        /// the command will be executed from the project root.
-        /// If `per_workspace` is set, the command will be executed for each workspace and the
-        /// command will be executed from the corresponding workspace root.
+        /// If `per_workspace` is set, the command will be executed for each workspace and all
+        /// occurrences of `$manifest_path` in the command will be replaced by the corresponding
+        /// manifest path of the workspace that the command is being invoked for. If interpolation
+        /// for the manifest path happens at least once, the commands will be executed from the
+        /// project root, otherwise the commands will be executed from the corresponding workspace
+        /// root.
         /// If `once_in_root` is set, the command will be executed once in the project root.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
         cargo_buildScripts_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Override the command rust-analyzer uses to run build scripts and
         /// build procedural macros. The command is required to output json
@@ -131,12 +134,15 @@ config_data! {
         /// Set to `"all"` to pass `--all-features` to Cargo.
         checkOnSave_features: Option<CargoFeaturesDef>      = "null",
         /// Specifies the invocation strategy to use when running the checkOnSave command.
-        /// If `per_workspace_with_manifest_path` is set, the command will be executed for each
-        /// workspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and
-        /// the command will be executed from the project root.
-        /// If `per_workspace` is set, the command will be executed for each workspace and the
-        /// command will be executed from the corresponding workspace root.
+        /// If `per_workspace` is set, the command will be executed for each workspace and all
+        /// occurrences of `$manifest_path` in the command will be replaced by the corresponding
+        /// manifest path of the workspace that the command is being invoked for. If interpolation
+        /// for the manifest path happens at least once, the commands will be executed from the
+        /// project root, otherwise the commands will be executed from the corresponding workspace
+        /// root.
         /// If `once_in_root` is set, the command will be executed once in the project root.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
         checkOnSave_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Whether to pass `--no-default-features` to Cargo. Defaults to
         /// `#rust-analyzer.cargo.noDefaultFeatures#`.
@@ -1074,9 +1080,6 @@ impl Config {
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
             invocation_strategy: match self.data.cargo_buildScripts_invocationStrategy {
                 InvocationStrategy::OnceInRoot => project_model::InvocationStrategy::OnceInRoot,
-                InvocationStrategy::PerWorkspaceWithManifestPath => {
-                    project_model::InvocationStrategy::PerWorkspaceWithManifestPath
-                }
                 InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
             },
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
@@ -1104,9 +1107,6 @@ impl Config {
         }
         let invocation_strategy = match self.data.checkOnSave_invocationStrategy {
             InvocationStrategy::OnceInRoot => flycheck::InvocationStrategy::OnceInRoot,
-            InvocationStrategy::PerWorkspaceWithManifestPath => {
-                flycheck::InvocationStrategy::PerWorkspaceWithManifestPath
-            }
             InvocationStrategy::PerWorkspace => flycheck::InvocationStrategy::PerWorkspace,
         };
         let flycheck_config = match &self.data.checkOnSave_overrideCommand {
@@ -1623,7 +1623,6 @@ enum CargoFeaturesDef {
 #[serde(rename_all = "snake_case")]
 enum InvocationStrategy {
     OnceInRoot,
-    PerWorkspaceWithManifestPath,
     PerWorkspace,
 }
 
@@ -2043,10 +2042,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         },
         "InvocationStrategy" => set! {
             "type": "string",
-            "enum": ["per_workspace", "per_workspace_with_manifest_path", "once_in_root"],
+            "enum": ["per_workspace", "once_in_root"],
             "enumDescriptions": [
-                "The command will be executed for each workspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and the command will be executed from the project root.",
-                "The command will be executed for each workspace and the command will be executed from the corresponding workspace root.",
+                "The command will be executed for each workspace and `{manifest-path}` usages will be interpolated with the corresponding workspace manifests. If `{manifest-path}` is used, the commands will be executed in the project root, otherwise in the corresponding workspace roots.",
                 "The command will be executed once in the project root."
             ],
         },
