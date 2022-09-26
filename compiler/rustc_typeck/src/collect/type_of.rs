@@ -430,9 +430,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     tcx.adt_def(tcx.hir().get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
                 }
 
-                Node::TypeBinding(binding @ &TypeBinding { hir_id: binding_id, .. })
-                    if let Node::TraitRef(trait_ref) =
-                        tcx.hir().get(tcx.hir().get_parent_node(binding_id)) =>
+                Node::TypeBinding(
+                    binding @ &TypeBinding {
+                        hir_id: binding_id,
+                        kind: TypeBindingKind::Equality { term: Term::Const(ref e) },
+                        ..
+                    },
+                ) if let Node::TraitRef(trait_ref) =
+                    tcx.hir().get(tcx.hir().get_parent_node(binding_id))
+                    && e.hir_id == hir_id =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
                     return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
