@@ -5,7 +5,7 @@ use std::str::Chars;
 /// Next characters can be peeked via `first` method,
 /// and position can be shifted forward via `bump` method.
 pub struct Cursor<'a> {
-    initial_len: usize,
+    len_remaining: usize,
     /// Iterator over chars. Slightly faster than a &str.
     chars: Chars<'a>,
     #[cfg(debug_assertions)]
@@ -17,7 +17,7 @@ pub(crate) const EOF_CHAR: char = '\0';
 impl<'a> Cursor<'a> {
     pub fn new(input: &'a str) -> Cursor<'a> {
         Cursor {
-            initial_len: input.len(),
+            len_remaining: input.len(),
             chars: input.chars(),
             #[cfg(debug_assertions)]
             prev: EOF_CHAR,
@@ -61,13 +61,13 @@ impl<'a> Cursor<'a> {
     }
 
     /// Returns amount of already consumed symbols.
-    pub(crate) fn len_consumed(&self) -> u32 {
-        (self.initial_len - self.chars.as_str().len()) as u32
+    pub(crate) fn pos_within_token(&self) -> u32 {
+        (self.len_remaining - self.chars.as_str().len()) as u32
     }
 
     /// Resets the number of bytes consumed to 0.
-    pub(crate) fn reset_len_consumed(&mut self) {
-        self.initial_len = self.chars.as_str().len();
+    pub(crate) fn reset_pos_within_token(&mut self) {
+        self.len_remaining = self.chars.as_str().len();
     }
 
     /// Moves to the next character.

@@ -315,7 +315,7 @@ impl Cursor<'_> {
                 ('#', c1) if is_id_start(c1) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
                     let res = self.raw_double_quoted_string(1);
-                    let suffix_start = self.len_consumed();
+                    let suffix_start = self.pos_within_token();
                     if res.is_ok() {
                         self.eat_literal_suffix();
                     }
@@ -330,7 +330,7 @@ impl Cursor<'_> {
                 ('\'', _) => {
                     self.bump();
                     let terminated = self.single_quoted_string();
-                    let suffix_start = self.len_consumed();
+                    let suffix_start = self.pos_within_token();
                     if terminated {
                         self.eat_literal_suffix();
                     }
@@ -340,7 +340,7 @@ impl Cursor<'_> {
                 ('"', _) => {
                     self.bump();
                     let terminated = self.double_quoted_string();
-                    let suffix_start = self.len_consumed();
+                    let suffix_start = self.pos_within_token();
                     if terminated {
                         self.eat_literal_suffix();
                     }
@@ -350,7 +350,7 @@ impl Cursor<'_> {
                 ('r', '"') | ('r', '#') => {
                     self.bump();
                     let res = self.raw_double_quoted_string(2);
-                    let suffix_start = self.len_consumed();
+                    let suffix_start = self.pos_within_token();
                     if res.is_ok() {
                         self.eat_literal_suffix();
                     }
@@ -367,7 +367,7 @@ impl Cursor<'_> {
             // Numeric literal.
             c @ '0'..='9' => {
                 let literal_kind = self.number(c);
-                let suffix_start = self.len_consumed();
+                let suffix_start = self.pos_within_token();
                 self.eat_literal_suffix();
                 TokenKind::Literal { kind: literal_kind, suffix_start }
             }
@@ -406,7 +406,7 @@ impl Cursor<'_> {
             // String literal.
             '"' => {
                 let terminated = self.double_quoted_string();
-                let suffix_start = self.len_consumed();
+                let suffix_start = self.pos_within_token();
                 if terminated {
                     self.eat_literal_suffix();
                 }
@@ -419,8 +419,8 @@ impl Cursor<'_> {
             }
             _ => Unknown,
         };
-        let res = Some(Token::new(token_kind, self.len_consumed()));
-        self.reset_len_consumed();
+        let res = Some(Token::new(token_kind, self.pos_within_token()));
+        self.reset_pos_within_token();
         res
     }
 
@@ -606,7 +606,7 @@ impl Cursor<'_> {
 
         if !can_be_a_lifetime {
             let terminated = self.single_quoted_string();
-            let suffix_start = self.len_consumed();
+            let suffix_start = self.pos_within_token();
             if terminated {
                 self.eat_literal_suffix();
             }
@@ -631,7 +631,7 @@ impl Cursor<'_> {
         if self.first() == '\'' {
             self.bump();
             let kind = Char { terminated: true };
-            Literal { kind, suffix_start: self.len_consumed() }
+            Literal { kind, suffix_start: self.pos_within_token() }
         } else {
             Lifetime { starts_with_number }
         }
@@ -712,7 +712,7 @@ impl Cursor<'_> {
 
     fn raw_string_unvalidated(&mut self, prefix_len: u32) -> Result<u32, RawStrError> {
         debug_assert!(self.prev() == 'r');
-        let start_pos = self.len_consumed();
+        let start_pos = self.pos_within_token();
         let mut possible_terminator_offset = None;
         let mut max_hashes = 0;
 
@@ -766,7 +766,7 @@ impl Cursor<'_> {
                 // Keep track of possible terminators to give a hint about
                 // where there might be a missing terminator
                 possible_terminator_offset =
-                    Some(self.len_consumed() - start_pos - n_end_hashes + prefix_len);
+                    Some(self.pos_within_token() - start_pos - n_end_hashes + prefix_len);
                 max_hashes = n_end_hashes;
             }
         }
