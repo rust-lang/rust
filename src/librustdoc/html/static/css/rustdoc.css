@@ -299,11 +299,6 @@ summary {
 
 /* Fix some style changes due to normalize.css 8 */
 
-td,
-th {
-	padding: 0;
-}
-
 table {
 	border-collapse: collapse;
 }
