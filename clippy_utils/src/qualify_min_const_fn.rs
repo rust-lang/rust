@@ -367,10 +367,21 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<RustcVersion>) -> bo
                 // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                 // function could be removed if `rustc` provided a MSRV-aware version of `is_const_fn`.
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
+
+                // HACK(nilstrieb): CURRENT_RUSTC_VERSION can return versions like 1.66.0-dev. `rustc-semver` doesn't accept
+                //                  the `-dev` version number so we have to strip it off.
+                let short_version = since
+                    .as_str()
+                    .split('-')
+                    .next()
+                    .expect("rustc_attr::StabilityLevel::Stable::since` is empty");
+
+                let since = rustc_span::Symbol::intern(short_version);
+
                 crate::meets_msrv(
                     msrv,
                     RustcVersion::parse(since.as_str())
-                        .expect("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted"),
+                        .unwrap_or_else(|err| panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{since}`, {err:?}")),
                 )
             } else {
                 // Unstable const fn with the feature enabled.
