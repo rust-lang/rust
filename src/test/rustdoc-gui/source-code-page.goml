@@ -1,22 +1,22 @@
 // Checks that the interactions with the source code pages are working as expected.
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
 // Check that we can click on the line number.
-click: ".line-numbers > span:nth-child(4)" // This is the span for line 4.
+click: ".src-line-numbers > span:nth-child(4)" // This is the span for line 4.
 // Ensure that the page URL was updated.
 assert-document-property: ({"URL": "lib.rs.html#4"}, ENDS_WITH)
 assert-attribute: ("//*[@id='4']", {"class": "line-highlighted"})
 // We now check that the good spans are highlighted
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html#4-6
-assert-attribute-false: (".line-numbers > span:nth-child(3)", {"class": "line-highlighted"})
-assert-attribute: (".line-numbers > span:nth-child(4)", {"class": "line-highlighted"})
-assert-attribute: (".line-numbers > span:nth-child(5)", {"class": "line-highlighted"})
-assert-attribute: (".line-numbers > span:nth-child(6)", {"class": "line-highlighted"})
-assert-attribute-false: (".line-numbers > span:nth-child(7)", {"class": "line-highlighted"})
+assert-attribute-false: (".src-line-numbers > span:nth-child(3)", {"class": "line-highlighted"})
+assert-attribute: (".src-line-numbers > span:nth-child(4)", {"class": "line-highlighted"})
+assert-attribute: (".src-line-numbers > span:nth-child(5)", {"class": "line-highlighted"})
+assert-attribute: (".src-line-numbers > span:nth-child(6)", {"class": "line-highlighted"})
+assert-attribute-false: (".src-line-numbers > span:nth-child(7)", {"class": "line-highlighted"})
 // This is to ensure that the content is correctly align with the line numbers.
 compare-elements-position: ("//*[@id='1']", ".rust > code > span", ("y"))
 
 // Assert that the line numbers text is aligned to the right.
-assert-css: (".line-numbers", {"text-align": "right"})
+assert-css: (".src-line-numbers", {"text-align": "right"})
 
 // Now let's check that clicking on something else than the line number doesn't
 // do anything (and certainly not add a `#NaN` to the URL!).
@@ -24,7 +24,7 @@ show-text: true
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
 // We use this assert-position to know where we will click.
 assert-position: ("//*[@id='1']", {"x": 104, "y": 103})
-// We click on the left of the "1" span but still in the "line-number" `<pre>`.
+// We click on the left of the "1" span but still in the "src-line-number" `<pre>`.
 click: (103, 103)
 assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
 

@@ -8,7 +8,7 @@
 
     // Scroll code block to the given code location
     function scrollToLoc(elt, loc) {
-        const lines = elt.querySelector(".line-numbers");
+        const lines = elt.querySelector(".src-line-numbers");
         let scrollOffset;
 
         // If the block is greater than the size of the viewer,
