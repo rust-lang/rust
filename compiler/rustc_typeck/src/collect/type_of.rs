@@ -441,8 +441,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     && e.hir_id == hir_id =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
-                    return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
-                  };
+                        return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
+                    };
                     let assoc_items = tcx.associated_items(trait_def_id);
                     let assoc_item = assoc_items.find_by_name_and_kind(
                         tcx,
@@ -452,6 +452,49 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     );
                     if let Some(assoc_item) = assoc_item {
                         tcx.type_of(assoc_item.def_id)
+                    } else {
+                        // FIXME(associated_const_equality): add a useful error message here.
+                        tcx.ty_error_with_message(
+                            DUMMY_SP,
+                            "Could not find associated const on trait",
+                        )
+                    }
+                }
+
+                Node::TypeBinding(
+                    binding @ &TypeBinding { hir_id: binding_id, gen_args, ref kind, .. },
+                ) if let Node::TraitRef(trait_ref) =
+                    tcx.hir().get(tcx.hir().get_parent_node(binding_id))
+                    && let Some((idx, _)) =
+                        gen_args.args.iter().enumerate().find(|(_, arg)| {
+                            if let GenericArg::Const(ct) = arg {
+                                ct.value.hir_id == hir_id
+                            } else {
+                                false
+                            }
+                        }) =>
+                {
+                    let Some(trait_def_id) = trait_ref.trait_def_id() else {
+                        return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
+                    };
+                    let assoc_items = tcx.associated_items(trait_def_id);
+                    let assoc_item = assoc_items.find_by_name_and_kind(
+                        tcx,
+                        binding.ident,
+                        match kind {
+                            // I think `<A: T>` type bindings requires that `A` is a type
+                            TypeBindingKind::Constraint { .. }
+                            | TypeBindingKind::Equality { term: Term::Ty(..) } => {
+                                ty::AssocKind::Type
+                            }
+                            TypeBindingKind::Equality { term: Term::Const(..) } => {
+                                ty::AssocKind::Const
+                            }
+                        },
+                        def_id.to_def_id(),
+                    );
+                    if let Some(assoc_item) = assoc_item {
+                        tcx.type_of(tcx.generics_of(assoc_item.def_id).params[idx].def_id)
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
