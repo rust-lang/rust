@@ -779,6 +779,8 @@ pub fn panicking() -> bool {
     panicking::panicking()
 }
 
+/// Use [`sleep`].
+///
 /// Puts the current thread to sleep for at least the specified amount of time.
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
