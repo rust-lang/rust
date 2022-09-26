@@ -201,28 +201,28 @@ impl<'a> StringReader<'a> {
                 self.cook_doc_comment(content_start, content, CommentKind::Block, doc_style)
             }
             rustc_lexer::TokenKind::Whitespace => return None,
-            rustc_lexer::TokenKind::Ident
-            | rustc_lexer::TokenKind::RawIdent
-            | rustc_lexer::TokenKind::UnknownPrefix => {
-                let is_raw_ident = token == rustc_lexer::TokenKind::RawIdent;
-                let is_unknown_prefix = token == rustc_lexer::TokenKind::UnknownPrefix;
-                let mut ident_start = start;
-                if is_raw_ident {
-                    ident_start = ident_start + BytePos(2);
-                }
-                if is_unknown_prefix {
-                    self.report_unknown_prefix(start);
-                }
-                let sym = nfc_normalize(self.str_from(ident_start));
+            rustc_lexer::TokenKind::Ident => {
+                let sym = nfc_normalize(self.str_from(start));
                 let span = self.mk_sp(start, self.pos);
                 self.sess.symbol_gallery.insert(sym, span);
-                if is_raw_ident {
-                    if !sym.can_be_raw() {
-                        self.err_span(span, &format!("`{}` cannot be a raw identifier", sym));
-                    }
-                    self.sess.raw_identifier_spans.borrow_mut().push(span);
+                token::Ident(sym, false)
+            }
+            rustc_lexer::TokenKind::RawIdent => {
+                let sym = nfc_normalize(self.str_from(start + BytePos(2)));
+                let span = self.mk_sp(start, self.pos);
+                self.sess.symbol_gallery.insert(sym, span);
+                if !sym.can_be_raw() {
+                    self.err_span(span, &format!("`{}` cannot be a raw identifier", sym));
                 }
-                token::Ident(sym, is_raw_ident)
+                self.sess.raw_identifier_spans.borrow_mut().push(span);
+                token::Ident(sym, true)
+            }
+            rustc_lexer::TokenKind::UnknownPrefix => {
+                self.report_unknown_prefix(start);
+                let sym = nfc_normalize(self.str_from(start));
+                let span = self.mk_sp(start, self.pos);
+                self.sess.symbol_gallery.insert(sym, span);
+                token::Ident(sym, false)
             }
             rustc_lexer::TokenKind::InvalidIdent
                 // Do not recover an identifier with emoji if the codepoint is a confusable
