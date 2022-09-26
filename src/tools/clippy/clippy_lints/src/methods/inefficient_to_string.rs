@@ -12,13 +12,19 @@ use rustc_span::symbol::{sym, Symbol};
 use super::INEFFICIENT_TO_STRING;
 
 /// Checks for the `INEFFICIENT_TO_STRING` lint
-pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Symbol, args: &[hir::Expr<'_>]) {
+pub fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &hir::Expr<'_>,
+    method_name: Symbol,
+    receiver: &hir::Expr<'_>,
+    args: &[hir::Expr<'_>],
+) {
     if_chain! {
-        if args.len() == 1 && method_name == sym::to_string;
+        if args.is_empty() && method_name == sym::to_string;
         if let Some(to_string_meth_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if match_def_path(cx, to_string_meth_did, &paths::TO_STRING_METHOD);
         if let Some(substs) = cx.typeck_results().node_substs_opt(expr.hir_id);
-        let arg_ty = cx.typeck_results().expr_ty_adjusted(&args[0]);
+        let arg_ty = cx.typeck_results().expr_ty_adjusted(receiver);
         let self_ty = substs.type_at(0);
         let (deref_self_ty, deref_count) = walk_ptrs_ty_depth(self_ty);
         if deref_count >= 1;
@@ -35,7 +41,7 @@ pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Sy
                         self_ty, deref_self_ty
                     ));
                     let mut applicability = Applicability::MachineApplicable;
-                    let arg_snippet = snippet_with_applicability(cx, args[0].span, "..", &mut applicability);
+                    let arg_snippet = snippet_with_applicability(cx, receiver.span, "..", &mut applicability);
                     diag.span_suggestion(
                         expr.span,
                         "try dereferencing the receiver",

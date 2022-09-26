@@ -68,7 +68,7 @@ error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:85:11
    |
 LL |         [_, _y @ ..] => {}
-   |             ------- value partially moved here
+   |             -- value partially moved here
 LL |     }
 LL |     match a {
    |           ^ value used here after partial move
@@ -79,7 +79,7 @@ error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:96:11
    |
 LL |         [_y @ .., _] => {}
-   |          ------- value partially moved here
+   |          -- value partially moved here
 LL |     }
 LL |     match a {
    |           ^ value used here after partial move
@@ -90,7 +90,7 @@ error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:109:11
    |
 LL |         [x @ .., _, _] => {}
-   |          ------ value partially moved here
+   |          - value partially moved here
 LL |     }
 LL |     match a {
    |           ^ value used here after partial move

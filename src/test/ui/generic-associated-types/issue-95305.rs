@@ -2,7 +2,6 @@
 // Forbid it for now but proper support might be added
 // at some point in the future.
 
-#![feature(generic_associated_types)]
 #![feature(anonymous_lifetime_in_impl_trait)]
 trait Foo {
     type Item<'a>;

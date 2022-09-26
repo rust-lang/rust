@@ -6,13 +6,13 @@
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::{Assume, BikeshedIntrinsicFrom};
     pub struct Context;
 
     pub fn array_like<T, E, const N: usize>()
     where
-        T: BikeshedIntrinsicFrom<[E; N], Context, false, false, false, true>,
-        [E; N]: BikeshedIntrinsicFrom<T, Context, false, false, false, true>
+        T: BikeshedIntrinsicFrom<[E; N], Context, { Assume::SAFETY }>,
+        [E; N]: BikeshedIntrinsicFrom<T, Context, { Assume::SAFETY }>
     {}
 }
 

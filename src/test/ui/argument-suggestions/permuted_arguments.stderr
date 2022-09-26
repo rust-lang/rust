@@ -15,7 +15,7 @@ LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
 help: reorder these arguments
    |
 LL |   three_args(1, 1.0, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/permuted_arguments.rs:12:3
@@ -36,7 +36,7 @@ LL | fn many_args(_a: i32, _b: f32, _c: &str, _d: X, _e: Y) {}
 help: reorder these arguments
    |
 LL |   many_args(1, 1.0, "", X {}, Y {});
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |            ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

@@ -1,8 +1,8 @@
 // check-fail
-// Tests error conditions for specifying subdiagnostics using #[derive(SessionSubdiagnostic)]
+// Tests error conditions for specifying subdiagnostics using #[derive(Subdiagnostic)]
 
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
-// changing the output of this test. Since SessionSubdiagnostic is strictly internal to the compiler
+// changing the output of this test. Since Subdiagnostic is strictly internal to the compiler
 // the test is just ignored on stable and beta:
 // ignore-beta
 // ignore-stable
@@ -17,9 +17,9 @@ extern crate rustc_macros;
 
 use rustc_errors::Applicability;
 use rustc_span::Span;
-use rustc_macros::SessionSubdiagnostic;
+use rustc_macros::Subdiagnostic;
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren)]
 struct A {
     #[primary_span]
@@ -27,7 +27,7 @@ struct A {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum B {
     #[label(parser::add_paren)]
     A {
@@ -43,23 +43,23 @@ enum B {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren)]
 //~^ ERROR label without `#[primary_span]` field
 struct C {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label]
-//~^ ERROR `#[label]` is not a valid attribute
+//~^ ERROR diagnostic slug must be first argument
 struct D {
     #[primary_span]
     span: Span,
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[foo]
 //~^ ERROR `#[foo]` is not a valid attribute
 //~^^ ERROR cannot find attribute `foo` in this scope
@@ -69,7 +69,7 @@ struct E {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label = "..."]
 //~^ ERROR `#[label = ...]` is not a valid attribute
 struct F {
@@ -78,43 +78,47 @@ struct F {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(bug = "...")]
 //~^ ERROR `#[label(bug = ...)]` is not a valid attribute
+//~| ERROR diagnostic slug must be first argument
 struct G {
     #[primary_span]
     span: Span,
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label("...")]
 //~^ ERROR `#[label("...")]` is not a valid attribute
+//~| ERROR diagnostic slug must be first argument
 struct H {
     #[primary_span]
     span: Span,
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(slug = 4)]
 //~^ ERROR `#[label(slug = ...)]` is not a valid attribute
+//~| ERROR diagnostic slug must be first argument
 struct J {
     #[primary_span]
     span: Span,
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(slug("..."))]
 //~^ ERROR `#[label(slug(...))]` is not a valid attribute
+//~| ERROR diagnostic slug must be first argument
 struct K {
     #[primary_span]
     span: Span,
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(slug)]
 //~^ ERROR cannot find value `slug` in module `rustc_errors::fluent`
 //~^^ NOTE not found in `rustc_errors::fluent`
@@ -124,7 +128,7 @@ struct L {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label()]
 //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
 struct M {
@@ -133,25 +137,25 @@ struct M {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren, code = "...")]
-//~^ ERROR `code` is not a valid nested attribute of a `label` attribute
+//~^ ERROR `#[label(code = ...)]` is not a valid attribute
 struct N {
     #[primary_span]
     span: Span,
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren, applicability = "machine-applicable")]
-//~^ ERROR `applicability` is not a valid nested attribute of a `label` attribute
+//~^ ERROR `#[label(applicability = ...)]` is not a valid attribute
 struct O {
     #[primary_span]
     span: Span,
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[foo]
 //~^ ERROR cannot find attribute `foo` in this scope
 //~^^ ERROR unsupported type attribute for subdiagnostic enum
@@ -164,7 +168,7 @@ enum P {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum Q {
     #[bar]
     //~^ ERROR `#[bar]` is not a valid attribute
@@ -176,7 +180,7 @@ enum Q {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum R {
     #[bar = "..."]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
@@ -188,7 +192,7 @@ enum R {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum S {
     #[bar = 4]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
@@ -200,7 +204,7 @@ enum S {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum T {
     #[bar("...")]
     //~^ ERROR `#[bar(...)]` is not a valid attribute
@@ -212,10 +216,11 @@ enum T {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum U {
     #[label(code = "...")]
     //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
+    //~| ERROR `#[label(code = ...)]` is not a valid attribute
     A {
         #[primary_span]
         span: Span,
@@ -223,7 +228,7 @@ enum U {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum V {
     #[label(parser::add_paren)]
     A {
@@ -239,7 +244,7 @@ enum V {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren)]
 //~^ ERROR label without `#[primary_span]` field
 struct W {
@@ -248,7 +253,7 @@ struct W {
     span: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren)]
 struct X {
     #[primary_span]
@@ -258,7 +263,7 @@ struct X {
     applicability: Applicability,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren)]
 struct Y {
     #[primary_span]
@@ -269,7 +274,7 @@ struct Y {
     bar: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren)]
 struct Z {
     #[primary_span]
@@ -280,7 +285,7 @@ struct Z {
     bar: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren)]
 struct AA {
     #[primary_span]
@@ -291,7 +296,7 @@ struct AA {
     bar: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren)]
 struct AB {
     #[primary_span]
@@ -300,24 +305,22 @@ struct AB {
     z: Z
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 union AC {
 //~^ ERROR unexpected unsupported untagged union
     span: u32,
     b: u64
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren)]
-//~^ NOTE previously specified here
 #[label(parser::add_paren)]
-//~^ ERROR specified multiple times
 struct AD {
     #[primary_span]
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren, parser::add_paren)]
 //~^ ERROR `#[label(parser::add_paren)]` is not a valid attribute
 struct AE {
@@ -325,7 +328,7 @@ struct AE {
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label(parser::add_paren)]
 struct AF {
     #[primary_span]
@@ -336,14 +339,14 @@ struct AF {
     span_b: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 struct AG {
     //~^ ERROR subdiagnostic kind not specified
     #[primary_span]
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code = "...")]
 struct AH {
     #[primary_span]
@@ -353,7 +356,7 @@ struct AH {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum AI {
     #[suggestion(parser::add_paren, code = "...")]
     A {
@@ -373,7 +376,7 @@ enum AI {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code = "...", code = "...")]
 //~^ ERROR specified multiple times
 //~^^ NOTE previously specified here
@@ -384,7 +387,7 @@ struct AJ {
     applicability: Applicability,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code = "...")]
 struct AK {
     #[primary_span]
@@ -397,7 +400,7 @@ struct AK {
     applicability_b: Applicability,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code = "...")]
 struct AL {
     #[primary_span]
@@ -407,14 +410,14 @@ struct AL {
     applicability: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code = "...")]
 struct AM {
     #[primary_span]
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren)]
 //~^ ERROR suggestion without `code = "..."`
 struct AN {
@@ -424,7 +427,7 @@ struct AN {
     applicability: Applicability,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code ="...", applicability = "foo")]
 //~^ ERROR invalid applicability
 struct AO {
@@ -432,31 +435,31 @@ struct AO {
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[help(parser::add_paren)]
 struct AP {
     var: String
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[note(parser::add_paren)]
 struct AQ;
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code = "...")]
 //~^ ERROR suggestion without `#[primary_span]` field
 struct AR {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code ="...", applicability = "machine-applicable")]
 struct AS {
     #[primary_span]
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[label]
 //~^ ERROR unsupported type attribute for subdiagnostic enum
 enum AT {
@@ -468,7 +471,7 @@ enum AT {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
 struct AU {
     #[primary_span]
@@ -476,7 +479,7 @@ struct AU {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
 //~^ ERROR `var` doesn't refer to a field on this type
 struct AV {
@@ -484,7 +487,7 @@ struct AV {
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum AW {
     #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
     A {
@@ -494,7 +497,7 @@ enum AW {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum AX {
     #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
 //~^ ERROR `var` doesn't refer to a field on this type
@@ -504,18 +507,18 @@ enum AX {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[warning(parser::add_paren)]
 struct AY {}
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[warning(parser::add_paren)]
 struct AZ {
     #[primary_span]
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[suggestion(parser::add_paren, code = "...")]
 //~^ ERROR suggestion without `#[primary_span]` field
 struct BA {
@@ -530,15 +533,15 @@ struct BA {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren, code = "...", applicability = "machine-applicable")]
 //~^ ERROR multipart suggestion without any `#[suggestion_part(...)]` fields
-//~| ERROR `code` is not a valid nested attribute of a `multipart_suggestion` attribute
+//~| ERROR `#[multipart_suggestion(code = ...)]` is not a valid attribute
 struct BBa {
     var: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
 struct BBb {
     #[suggestion_part]
@@ -546,7 +549,7 @@ struct BBb {
     span1: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
 struct BBc {
     #[suggestion_part()]
@@ -554,7 +557,7 @@ struct BBc {
     span1: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren)]
 //~^ ERROR multipart suggestion without any `#[suggestion_part(...)]` fields
 struct BC {
@@ -563,7 +566,7 @@ struct BC {
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren)]
 struct BD {
     #[suggestion_part]
@@ -583,7 +586,7 @@ struct BD {
     s2: String,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
 struct BE {
     #[suggestion_part(code = "...", code = ",,,")]
@@ -592,7 +595,7 @@ struct BE {
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
 struct BF {
     #[suggestion_part(code = "(")]
@@ -601,7 +604,7 @@ struct BF {
     second: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren)]
 struct BG {
     #[applicability]
@@ -612,12 +615,11 @@ struct BG {
     second: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
-//~^ NOTE previously specified here
 struct BH {
     #[applicability]
-    //~^ ERROR specified multiple times
+    //~^ ERROR `#[applicability]` has no effect
     appl: Applicability,
     #[suggestion_part(code = "(")]
     first: Span,
@@ -625,7 +627,7 @@ struct BH {
     second: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
 struct BI {
     #[suggestion_part(code = "")]

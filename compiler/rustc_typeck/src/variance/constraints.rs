@@ -257,7 +257,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_invariant_substs(current, substs, variance);
             }
 
-            ty::Dynamic(data, r) => {
+            ty::Dynamic(data, r, _) => {
                 // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(current, r, contra);
@@ -271,11 +271,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
 
                 for projection in data.projection_bounds() {
-                    match projection.skip_binder().term {
-                        ty::Term::Ty(ty) => {
+                    match projection.skip_binder().term.unpack() {
+                        ty::TermKind::Ty(ty) => {
                             self.add_constraints_from_ty(current, ty, self.invariant);
                         }
-                        ty::Term::Const(c) => {
+                        ty::TermKind::Const(c) => {
                             self.add_constraints_from_const(current, c, self.invariant)
                         }
                     }
@@ -411,11 +411,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // way early-bound regions do, so we skip them here.
             }
 
-            ty::ReFree(..)
-            | ty::ReVar(..)
-            | ty::RePlaceholder(..)
-            | ty::ReEmpty(_)
-            | ty::ReErased => {
+            ty::ReFree(..) | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReErased => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
                 bug!(

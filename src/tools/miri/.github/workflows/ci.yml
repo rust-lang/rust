@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  push:
+    # Run in PRs and for bors, but not on master.
+    branches:
+      - 'auto'
+      - 'try'
+  pull_request:
+    branches:
+      - 'master'
+  schedule:
+    - cron: '5 15 * * *' # At 15:05 UTC every day.
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    env:
+      RUST_BACKTRACE: 1
+      HOST_TARGET: ${{ matrix.host_target }}
+    strategy:
+      matrix:
+        build: [linux64, macos, win32]
+        include:
+          - build: linux64
+            os: ubuntu-latest
+            host_target: x86_64-unknown-linux-gnu
+          - build: macos
+            os: macos-latest
+            host_target: x86_64-apple-darwin
+          - build: win32
+            os: windows-latest
+            host_target: i686-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set the tag GC interval to 1 on linux
+        if: runner.os == 'Linux'
+        run: echo "MIRIFLAGS=-Zmiri-tag-gc=1" >> $GITHUB_ENV
+
+      # We install gnu-tar because BSD tar is buggy on macOS builders of GHA.
+      # See <https://github.com/actions/cache/issues/403>.
+      - name: Install GNU tar
+        if: runner.os == 'macOS'
+        run: |
+          brew install gnu-tar
+          echo "/usr/local/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
+
+      # Cache the global cargo directory, but NOT the local `target` directory which
+      # we cannot reuse anyway when the nightly changes (and it grows quite large
+      # over time).
+      - name: Add cache for cargo
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            # contains package information of crates installed via `cargo install`.
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', 'cargo-miri/src/version.rs') }}
+          restore-keys: ${{ runner.os }}-cargo
+
+      - name: Install rustup-toolchain-install-master and xargo
+        if: ${{ steps.cache.outputs.cache-hit == 'false' }}
+        shell: bash
+        run: |
+          cargo install rustup-toolchain-install-master
+          cargo install xargo
+
+      - name: Install "master" toolchain
+        shell: bash
+        run: |
+          if [[ ${{ github.event_name }} == 'schedule' ]]; then
+            ./rustup-toolchain HEAD --host ${{ matrix.host_target }}
+          else
+            ./rustup-toolchain "" --host ${{ matrix.host_target }}
+          fi
+
+      - name: Show Rust version
+        run: |
+          rustup show
+          rustc -Vv
+          cargo -V
+
+      - name: Test
+        run: bash ./ci.sh
+
+  style:
+    name: style checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install required toolchain
+        # We need a toolchain that can actually build Miri, just a nightly won't do.
+        run: |
+          cargo install rustup-toolchain-install-master # TODO: cache this?
+          ./rustup-toolchain "" -c clippy
+      - name: rustfmt
+        run: ./miri fmt --check
+      - name: clippy
+        run: ./miri clippy -- -D warnings
+      - name: rustdoc
+        run: RUSTDOCFLAGS="-Dwarnings" cargo doc --document-private-items
+
+  # These jobs doesn't actually test anything, but they're only used to tell
+  # bors the build completed, as there is no practical way to detect when a
+  # workflow is successful listening to webhooks only.
+  #
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+  # (`fmt` is deliberately not listed, we want bors to ignore it.)
+  end-success:
+    name: bors build finished
+    runs-on: ubuntu-latest
+    needs: [build, style]
+    if: github.event.pusher.name == 'bors' && success()
+    steps:
+      - name: mark the job as a success
+        run: exit 0
+  end-failure:
+    name: bors build finished
+    runs-on: ubuntu-latest
+    needs: [build, style]
+    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
+    steps:
+      - name: mark the job as a failure
+        run: exit 1
+
+  # Send a Zulip notification when a cron job fails
+  cron-fail-notify:
+    name: cronjob failure notification
+    runs-on: ubuntu-latest
+    needs: [build, style]
+    if: github.event_name == 'schedule' && (failure() || cancelled())
+    steps:
+      - name: Install zulip-send
+        run: pip3 install zulip
+      - name: Send Zulip notification
+        shell: bash
+        env:
+          ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
+          ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}
+        run: |
+          ~/.local/bin/zulip-send --stream miri --subject "Cron Job Failure (miri, $(date -u +%Y-%m))" \
+            --message 'Dear @*T-miri*,
+
+          It would appear that the Miri cron job build failed. Would you mind investigating this issue?
+
+          Thanks in advance!
+          Sincerely,
+          The Miri Cronjobs Bot' \
+            --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com

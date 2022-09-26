@@ -5,7 +5,7 @@ use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use rustc_errors::LanguageIdentifier;
-use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy, SanitizerSet};
+use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
     RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
 };
@@ -382,7 +382,7 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
     pub const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
     pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
-    pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavor::one_of();
+    pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
     pub const parse_instrument_coverage: &str =
@@ -763,8 +763,8 @@ mod parse {
         true
     }
 
-    pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavor>, v: Option<&str>) -> bool {
-        match v.and_then(LinkerFlavor::from_str) {
+    pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavorCli>, v: Option<&str>) -> bool {
+        match v.and_then(LinkerFlavorCli::from_str) {
             Some(lf) => *slot = Some(lf),
             _ => return false,
         }
@@ -1139,7 +1139,7 @@ options! {
         on C toolchain installed in the system"),
     linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "system linker to link outputs with"),
-    linker_flavor: Option<LinkerFlavor> = (None, parse_linker_flavor, [UNTRACKED],
+    linker_flavor: Option<LinkerFlavorCli> = (None, parse_linker_flavor, [UNTRACKED],
         "linker flavor"),
     linker_plugin_lto: LinkerPluginLto = (LinkerPluginLto::Disabled,
         parse_linker_plugin_lto, [TRACKED],
@@ -1345,6 +1345,8 @@ options! {
         "hash spans relative to their parent item for incr. comp. (default: no)"),
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
         "verify incr. comp. hashes of green query instances (default: no)"),
+    inline_llvm: bool = (true, parse_bool, [TRACKED],
+        "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable MIR inlining (default: no)"),
     inline_mir_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
@@ -1407,8 +1409,6 @@ options! {
         "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
-    new_llvm_pass_manager: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "use new LLVM pass manager (default: no)"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
     nll_facts_dir: String = ("nll-facts".to_string(), parse_string, [UNTRACKED],
@@ -1439,6 +1439,8 @@ options! {
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     diagnostic_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "set the current output width for diagnostic truncation"),
+    packed_bundled_libs: bool = (false, parse_bool, [TRACKED],
+        "change rlib format to store native libraries as archives"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
         "support compiling tests with panic=abort (default: no)"),
     panic_in_drop: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy, [TRACKED],

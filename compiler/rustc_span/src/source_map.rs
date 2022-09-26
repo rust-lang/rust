@@ -23,7 +23,6 @@ use std::{convert::TryFrom, unreachable};
 
 use std::fs;
 use std::io;
-use tracing::debug;
 
 #[cfg(test)]
 mod tests;
@@ -1060,13 +1059,13 @@ impl FilePathMapping {
 
         return remap_path_prefix(&self.mapping, path);
 
-        #[instrument(level = "debug", skip(mapping))]
+        #[instrument(level = "debug", skip(mapping), ret)]
         fn remap_path_prefix(mapping: &[(PathBuf, PathBuf)], path: PathBuf) -> (PathBuf, bool) {
             // NOTE: We are iterating over the mapping entries from last to first
             //       because entries specified later on the command line should
             //       take precedence.
             for &(ref from, ref to) in mapping.iter().rev() {
-                debug!("Trying to apply {:?} => {:?}", from, to);
+                debug!("Trying to apply {from:?} => {to:?}");
 
                 if let Ok(rest) = path.strip_prefix(from) {
                     let remapped = if rest.as_os_str().is_empty() {
@@ -1080,15 +1079,15 @@ impl FilePathMapping {
                     } else {
                         to.join(rest)
                     };
-                    debug!("Match - remapped {:?} => {:?}", path, remapped);
+                    debug!("Match - remapped");
 
                     return (remapped, true);
                 } else {
-                    debug!("No match - prefix {:?} does not match {:?}", from, path);
+                    debug!("No match - prefix {from:?} does not match");
                 }
             }
 
-            debug!("Path {:?} was not remapped", path);
+            debug!("not remapped");
             (path, false)
         }
     }

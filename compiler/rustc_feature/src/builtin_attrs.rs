@@ -345,6 +345,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(no_mangle, Normal, template!(Word), WarnFollowing, @only_local: true),
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, @only_local: true),
+    ungated!(link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding),
 
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
@@ -359,6 +360,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Entry point:
+    gated!(unix_sigpipe, Normal, template!(Word, NameValueStr: "inherit|sig_ign|sig_dfl"), ErrorFollowing, experimental!(unix_sigpipe)),
     ungated!(start, Normal, template!(Word), WarnFollowing),
     ungated!(no_start, CrateLevel, template!(Word), WarnFollowing),
     ungated!(no_main, CrateLevel, template!(Word), WarnFollowing),
@@ -405,10 +407,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Linking:
     gated!(naked, Normal, template!(Word), WarnFollowing, @only_local: true, naked_functions, experimental!(naked)),
-    gated!(
-        link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding, raw_dylib,
-        experimental!(link_ordinal)
-    ),
 
     // Plugins:
     BuiltinAttribute {
@@ -470,7 +468,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // RFC 2632
     gated!(
         const_trait, Normal, template!(Word), WarnFollowing, const_trait_impl,
-        "`const` is a temporary placeholder for marking a trait that is suitable for `const` \
+        "`const_trait` is a temporary placeholder for marking a trait that is suitable for `const` \
         `impls` and all default bodies as `const`, which may be removed or renamed in the \
         future."
     ),
@@ -478,6 +476,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(
         deprecated_safe, Normal, template!(List: r#"since = "version", note = "...""#), ErrorFollowing,
         experimental!(deprecated_safe),
+    ),
+
+    // `#[collapse_debuginfo]`
+    gated!(
+        collapse_debuginfo, Normal, template!(Word), WarnFollowing,
+        experimental!(collapse_debuginfo)
     ),
 
     // ==========================================================================
@@ -758,6 +762,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Testing:
     // ==========================================================================
 
+    rustc_attr!(TEST, rustc_effective_visibility, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_outlives, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_capture_analysis, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word), WarnFollowing),
@@ -819,6 +824,14 @@ pub fn is_builtin_attr_name(name: Symbol) -> bool {
 
 pub fn is_builtin_only_local(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| attr.only_local)
+}
+
+pub fn is_valid_for_get_attr(name: Symbol) -> bool {
+    BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| match attr.duplicates {
+        WarnFollowing | ErrorFollowing | ErrorPreceding | FutureWarnFollowing
+        | FutureWarnPreceding => true,
+        DuplicatesOk | WarnFollowingWordOnly => false,
+    })
 }
 
 pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>> =

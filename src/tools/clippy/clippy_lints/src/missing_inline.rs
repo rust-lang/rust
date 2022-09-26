@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             return;
         }
 
-        if !cx.access_levels.is_exported(it.def_id) {
+        if !cx.access_levels.is_exported(it.def_id.def_id) {
             return;
         }
         match it.kind {
@@ -142,7 +142,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         }
 
         // If the item being implemented is not exported, then we don't need #[inline]
-        if !cx.access_levels.is_exported(impl_item.def_id) {
+        if !cx.access_levels.is_exported(impl_item.def_id.def_id) {
             return;
         }
 
@@ -159,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         };
 
         if let Some(trait_def_id) = trait_def_id {
-            if trait_def_id.is_local() && !cx.access_levels.is_exported(impl_item.def_id) {
+            if trait_def_id.is_local() && !cx.access_levels.is_exported(impl_item.def_id.def_id) {
                 // If a trait is being implemented for an item, and the
                 // trait is not exported, we don't need #[inline]
                 return;

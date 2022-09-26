@@ -37,12 +37,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// only generates a single switch. If this happens this method returns
     /// `true`.
+    #[instrument(skip(self, candidate), level = "debug")]
     pub(super) fn simplify_candidate<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
-        debug!(?candidate, "simplify_candidate");
+        debug!("{candidate:#?}");
 
         // existing_bindings and new_bindings exists to keep the semantics in order.
         // Reversing the binding order for bindings after `@` changes the binding order in places
@@ -67,7 +68,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
 
-            if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, place }] =
+            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
                 &*match_pairs
             {
                 existing_bindings.extend_from_slice(&new_bindings);
@@ -113,7 +114,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // late as possible.
                 candidate
                     .match_pairs
-                    .sort_by_key(|pair| matches!(*pair.pattern.kind, PatKind::Or { .. }));
+                    .sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
                 debug!(simplified = ?candidate, "simplify_candidate");
                 return false; // if we were not able to simplify any, done.
             }
@@ -127,11 +128,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: &Candidate<'pat, 'tcx>,
         place: PlaceBuilder<'tcx>,
-        pats: &'pat [Pat<'tcx>],
+        pats: &'pat [Box<Pat<'tcx>>],
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
-            .map(|pat| {
-                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard);
+            .map(|box pat| {
+                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard, self);
                 self.simplify_candidate(&mut candidate);
                 candidate
             })
@@ -149,23 +150,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.tcx;
-        match *match_pair.pattern.kind {
+        match match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
                 ascription: thir::Ascription { ref annotation, variance },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
-                if let Ok(place_resolved) =
-                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                {
+                if let Ok(place_resolved) = match_pair.place.clone().try_upvars_resolved(self) {
                     candidate.ascriptions.push(Ascription {
                         annotation: annotation.clone(),
-                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        source: place_resolved.into_place(self),
                         variance,
                     });
                 }
 
-                candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
+                candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
 
                 Ok(())
             }
@@ -184,12 +183,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ref subpattern,
                 is_primary: _,
             } => {
-                if let Ok(place_resolved) =
-                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                {
+                if let Ok(place_resolved) = match_pair.place.clone().try_upvars_resolved(self) {
                     candidate.bindings.push(Binding {
                         span: match_pair.pattern.span,
-                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        source: place_resolved.into_place(self),
                         var_id: var,
                         binding_mode: mode,
                     });
@@ -197,7 +194,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
+                    candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
                 }
 
                 Ok(())
@@ -208,7 +205,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Err(match_pair)
             }
 
-            PatKind::Range(PatRange { lo, hi, end }) => {
+            PatKind::Range(box PatRange { lo, hi, end }) => {
                 let (range, bias) = match *lo.ty().kind() {
                     ty::Char => {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
@@ -254,7 +251,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         &mut candidate.match_pairs,
                         &match_pair.place,
                         prefix,
-                        slice.as_ref(),
+                        slice,
                         suffix,
                     );
                     Ok(())
@@ -294,7 +291,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     &mut candidate.match_pairs,
                     &match_pair.place,
                     prefix,
-                    slice.as_ref(),
+                    slice,
                     suffix,
                 );
                 Ok(())
@@ -308,7 +305,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::Deref { ref subpattern } => {
                 let place_builder = match_pair.place.deref();
-                candidate.match_pairs.push(MatchPair::new(place_builder, subpattern));
+                candidate.match_pairs.push(MatchPair::new(place_builder, subpattern, self));
                 Ok(())
             }
 

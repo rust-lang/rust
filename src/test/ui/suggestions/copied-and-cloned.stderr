@@ -1,0 +1,83 @@
+error[E0308]: mismatched types
+  --> $DIR/copied-and-cloned.rs:7:26
+   |
+LL |     expect::<Option<()>>(x);
+   |     -------------------- ^ expected `()`, found `&()`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected enum `Option<()>`
+              found enum `Option<&()>`
+note: function defined here
+  --> $DIR/copied-and-cloned.rs:3:4
+   |
+LL | fn expect<T>(_: T) {}
+   |    ^^^^^^    ----
+help: use `Option::copied` to copy the value inside the `Option`
+   |
+LL |     expect::<Option<()>>(x.copied());
+   |                           +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/copied-and-cloned.rs:11:30
+   |
+LL |     expect::<Result<(), ()>>(x);
+   |     ------------------------ ^ expected `()`, found `&()`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected enum `Result<(), ()>`
+              found enum `Result<&(), _>`
+note: function defined here
+  --> $DIR/copied-and-cloned.rs:3:4
+   |
+LL | fn expect<T>(_: T) {}
+   |    ^^^^^^    ----
+help: use `Result::copied` to copy the value inside the `Result`
+   |
+LL |     expect::<Result<(), ()>>(x.copied());
+   |                               +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/copied-and-cloned.rs:16:30
+   |
+LL |     expect::<Option<String>>(x);
+   |     ------------------------ ^ expected struct `String`, found `&String`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected enum `Option<String>`
+              found enum `Option<&String>`
+note: function defined here
+  --> $DIR/copied-and-cloned.rs:3:4
+   |
+LL | fn expect<T>(_: T) {}
+   |    ^^^^^^    ----
+help: use `Option::cloned` to clone the value inside the `Option`
+   |
+LL |     expect::<Option<String>>(x.cloned());
+   |                               +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/copied-and-cloned.rs:20:34
+   |
+LL |     expect::<Result<String, ()>>(x);
+   |     ---------------------------- ^ expected struct `String`, found `&String`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected enum `Result<String, ()>`
+              found enum `Result<&String, _>`
+note: function defined here
+  --> $DIR/copied-and-cloned.rs:3:4
+   |
+LL | fn expect<T>(_: T) {}
+   |    ^^^^^^    ----
+help: use `Result::cloned` to clone the value inside the `Result`
+   |
+LL |     expect::<Result<String, ()>>(x.cloned());
+   |                                   +++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

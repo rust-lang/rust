@@ -19,7 +19,7 @@ LL |     <i32 as Add<u32>>::add(1, 2);
            and 48 others
 
 error[E0308]: mismatched types
-  --> $DIR/ufcs-qpath-self-mismatch.rs:6:28
+  --> $DIR/ufcs-qpath-self-mismatch.rs:7:28
    |
 LL |     <i32 as Add<i32>>::add(1u32, 2);
    |     ---------------------- ^^^^ expected `i32`, found `u32`
@@ -37,7 +37,7 @@ LL |     <i32 as Add<i32>>::add(1i32, 2);
    |                             ~~~
 
 error[E0308]: mismatched types
-  --> $DIR/ufcs-qpath-self-mismatch.rs:8:31
+  --> $DIR/ufcs-qpath-self-mismatch.rs:9:31
    |
 LL |     <i32 as Add<i32>>::add(1, 2u32);
    |     ----------------------    ^^^^ expected `i32`, found `u32`
@@ -54,7 +54,25 @@ help: change the type of the numeric literal from `u32` to `i32`
 LL |     <i32 as Add<i32>>::add(1, 2i32);
    |                                ~~~
 
-error: aborting due to 3 previous errors
+error[E0277]: cannot add `u32` to `i32`
+  --> $DIR/ufcs-qpath-self-mismatch.rs:4:5
+   |
+LL |     <i32 as Add<u32>>::add(1, 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^ no implementation for `i32 + u32`
+   |
+   = help: the trait `Add<u32>` is not implemented for `i32`
+   = help: the following other types implement trait `Add<Rhs>`:
+             <&'a f32 as Add<f32>>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
+             <&'a i64 as Add<i64>>
+             <&'a i8 as Add<i8>>
+             <&'a isize as Add<isize>>
+           and 48 others
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

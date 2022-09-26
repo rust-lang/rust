@@ -27,9 +27,8 @@ LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL -     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
-LL +     let _: Box<dyn (Obj) + (?Sized) + (for<'a> Trait<'a>)>;
-   |
+LL |     let _: Box<dyn (Obj) + (?Sized) + (for<'a> Trait<'a>)>;
+   |                +++
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/trait-object-trait-parens.rs:8:35
@@ -52,9 +51,8 @@ LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL -     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
-LL +     let _: Box<dyn ?Sized + (for<'a> Trait<'a>) + (Obj)>;
-   |
+LL |     let _: Box<dyn ?Sized + (for<'a> Trait<'a>) + (Obj)>;
+   |                +++
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/trait-object-trait-parens.rs:13:47
@@ -77,9 +75,8 @@ LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL -     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
-LL +     let _: Box<dyn for<'a> Trait<'a> + (Obj) + (?Sized)>;
-   |
+LL |     let _: Box<dyn for<'a> Trait<'a> + (Obj) + (?Sized)>;
+   |                +++
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/trait-object-trait-parens.rs:18:36

@@ -62,93 +62,18 @@ use crate::ty::TyCtxt;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::DefPathHash;
-use rustc_hir::HirId;
+use rustc_hir::{HirId, OwnerId};
 use rustc_query_system::dep_graph::FingerprintStyle;
 use rustc_span::symbol::Symbol;
 use std::hash::Hash;
 
 pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 
-/// This struct stores metadata about each DepKind.
-///
-/// Information is retrieved by indexing the `DEP_KINDS` array using the integer value
-/// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
-/// jump table instead of large matches.
-pub struct DepKindStruct {
-    /// Anonymous queries cannot be replayed from one compiler invocation to the next.
-    /// When their result is needed, it is recomputed. They are useful for fine-grained
-    /// dependency tracking, and caching within one compiler invocation.
-    pub is_anon: bool,
-
-    /// Eval-always queries do not track their dependencies, and are always recomputed, even if
-    /// their inputs have not changed since the last compiler invocation. The result is still
-    /// cached within one compiler invocation.
-    pub is_eval_always: bool,
-
-    /// Whether the query key can be recovered from the hashed fingerprint.
-    /// See [DepNodeParams] trait for the behaviour of each key type.
-    pub fingerprint_style: FingerprintStyle,
-
-    /// The red/green evaluation system will try to mark a specific DepNode in the
-    /// dependency graph as green by recursively trying to mark the dependencies of
-    /// that `DepNode` as green. While doing so, it will sometimes encounter a `DepNode`
-    /// where we don't know if it is red or green and we therefore actually have
-    /// to recompute its value in order to find out. Since the only piece of
-    /// information that we have at that point is the `DepNode` we are trying to
-    /// re-evaluate, we need some way to re-run a query from just that. This is what
-    /// `force_from_dep_node()` implements.
-    ///
-    /// In the general case, a `DepNode` consists of a `DepKind` and an opaque
-    /// GUID/fingerprint that will uniquely identify the node. This GUID/fingerprint
-    /// is usually constructed by computing a stable hash of the query-key that the
-    /// `DepNode` corresponds to. Consequently, it is not in general possible to go
-    /// back from hash to query-key (since hash functions are not reversible). For
-    /// this reason `force_from_dep_node()` is expected to fail from time to time
-    /// because we just cannot find out, from the `DepNode` alone, what the
-    /// corresponding query-key is and therefore cannot re-run the query.
-    ///
-    /// The system deals with this case letting `try_mark_green` fail which forces
-    /// the root query to be re-evaluated.
-    ///
-    /// Now, if `force_from_dep_node()` would always fail, it would be pretty useless.
-    /// Fortunately, we can use some contextual information that will allow us to
-    /// reconstruct query-keys for certain kinds of `DepNode`s. In particular, we
-    /// enforce by construction that the GUID/fingerprint of certain `DepNode`s is a
-    /// valid `DefPathHash`. Since we also always build a huge table that maps every
-    /// `DefPathHash` in the current codebase to the corresponding `DefId`, we have
-    /// everything we need to re-run the query.
-    ///
-    /// Take the `mir_promoted` query as an example. Like many other queries, it
-    /// just has a single parameter: the `DefId` of the item it will compute the
-    /// validated MIR for. Now, when we call `force_from_dep_node()` on a `DepNode`
-    /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
-    /// is actually a `DefPathHash`, and can therefore just look up the corresponding
-    /// `DefId` in `tcx.def_path_hash_to_def_id`.
-    pub force_from_dep_node: Option<fn(tcx: TyCtxt<'_>, dep_node: DepNode) -> bool>,
-
-    /// Invoke a query to put the on-disk cached value in memory.
-    pub try_load_from_on_disk_cache: Option<fn(TyCtxt<'_>, DepNode)>,
-}
-
-impl DepKind {
-    #[inline(always)]
-    pub fn fingerprint_style(self, tcx: TyCtxt<'_>) -> FingerprintStyle {
-        // Only fetch the DepKindStruct once.
-        let data = tcx.query_kind(self);
-        if data.is_anon {
-            return FingerprintStyle::Opaque;
-        }
-        data.fingerprint_style
-    }
-}
-
 macro_rules! define_dep_nodes {
     (
-    $(
-        [$($attrs:tt)*]
-        $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
-      ,)*
-    ) => (
+     $($(#[$attr:meta])*
+        [$($modifiers:tt)*] fn $variant:ident($($K:tt)*) -> $V:ty,)*) => {
+
         #[macro_export]
         macro_rules! make_dep_kind_array {
             ($mod:ident) => {[ $($mod::$variant()),* ]};
@@ -158,10 +83,10 @@ macro_rules! define_dep_nodes {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
         #[allow(non_camel_case_types)]
         pub enum DepKind {
-            $($variant),*
+            $( $( #[$attr] )* $variant),*
         }
 
-        fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
+        pub(super) fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {
                 $(stringify!($variant) => Ok(DepKind::$variant),)*
                 _ => Err(()),
@@ -176,24 +101,17 @@ macro_rules! define_dep_nodes {
                 pub const $variant: &str = stringify!($variant);
             )*
         }
-    );
+    };
 }
 
-rustc_dep_node_append!(define_dep_nodes![
-    // We use this for most things when incr. comp. is turned off.
-    [] Null,
-
-    // We use this to create a forever-red node.
-    [] Red,
-
-    [anon] TraitSelect,
-
-    // WARNING: if `Symbol` is changed, make sure you update `make_compile_codegen_unit` below.
-    [] CompileCodegenUnit(Symbol),
-
-    // WARNING: if `MonoItem` is changed, make sure you update `make_compile_mono_item` below.
-    // Only used by rustc_codegen_cranelift
-    [] CompileMonoItem(MonoItem),
+rustc_query_append!(define_dep_nodes![
+    /// We use this for most things when incr. comp. is turned off.
+    [] fn Null() -> (),
+    /// We use this to create a forever-red node.
+    [] fn Red() -> (),
+    [] fn TraitSelect() -> (),
+    [] fn CompileCodegenUnit() -> (),
+    [] fn CompileMonoItem() -> (),
 ]);
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
@@ -223,11 +141,6 @@ static_assert_size!(DepNode, 18);
 static_assert_size!(DepNode, 24);
 
 pub trait DepNodeExt: Sized {
-    /// Construct a DepNode from the given DepKind and DefPathHash. This
-    /// method will assert that the given DepKind actually requires a
-    /// single DefId/DefPathHash parameter.
-    fn from_def_path_hash(tcx: TyCtxt<'_>, def_path_hash: DefPathHash, kind: DepKind) -> Self;
-
     /// Extracts the DefId corresponding to this DepNode. This will work
     /// if two conditions are met:
     ///
@@ -252,14 +165,6 @@ pub trait DepNodeExt: Sized {
 }
 
 impl DepNodeExt for DepNode {
-    /// Construct a DepNode from the given DepKind and DefPathHash. This
-    /// method will assert that the given DepKind actually requires a
-    /// single DefId/DefPathHash parameter.
-    fn from_def_path_hash(tcx: TyCtxt<'_>, def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
-        debug_assert!(kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash);
-        DepNode { kind, hash: def_path_hash.0.into() }
-    }
-
     /// Extracts the DefId corresponding to this DepNode. This will work
     /// if two conditions are met:
     ///
@@ -271,7 +176,7 @@ impl DepNodeExt for DepNode {
     /// refers to something from the previous compilation session that
     /// has been removed.
     fn extract_def_id<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
-        if self.kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash {
+        if tcx.fingerprint_style(self.kind) == FingerprintStyle::DefPathHash {
             Some(tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into()), &mut || {
                 panic!("Failed to extract DefId: {:?} {}", self.kind, self.hash)
             }))
@@ -288,7 +193,7 @@ impl DepNodeExt for DepNode {
     ) -> Result<DepNode, ()> {
         let kind = dep_kind_from_label_string(label)?;
 
-        match kind.fingerprint_style(tcx) {
+        match tcx.fingerprint_style(kind) {
             FingerprintStyle::Opaque => Err(()),
             FingerprintStyle::Unit => Ok(DepNode::new_no_params(tcx, kind)),
             FingerprintStyle::DefPathHash => {
@@ -361,6 +266,28 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
     #[inline(always)]
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
         dep_node.extract_def_id(tcx).map(|id| id.expect_local())
+    }
+}
+
+impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for OwnerId {
+    #[inline(always)]
+    fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::DefPathHash
+    }
+
+    #[inline(always)]
+    fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
+        self.to_def_id().to_fingerprint(tcx)
+    }
+
+    #[inline(always)]
+    fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
+        self.to_def_id().to_debug_str(tcx)
+    }
+
+    #[inline(always)]
+    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+        dep_node.extract_def_id(tcx).map(|id| OwnerId { def_id: id.expect_local() })
     }
 }
 

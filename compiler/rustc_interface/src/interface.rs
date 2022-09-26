@@ -176,7 +176,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                         let ident = arg.ident().expect("multi-segment cfg key");
                                         names_valid.insert(ident.name.to_string());
                                     } else {
-                                        error!("`names()` arguments must be simple identifers");
+                                        error!("`names()` arguments must be simple identifiers");
                                     }
                                 }
                                 continue 'specs;
@@ -204,7 +204,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                         continue 'specs;
                                     } else {
                                         error!(
-                                            "`values()` first argument must be a simple identifer"
+                                            "`values()` first argument must be a simple identifier"
                                         );
                                     }
                                 } else if args.is_empty() {
@@ -332,7 +332,7 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
 // JUSTIFICATION: before session exists, only config
 #[allow(rustc::bad_opt_access)]
 pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
-    tracing::trace!("run_compiler");
+    trace!("run_compiler");
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.unstable_opts.threads,

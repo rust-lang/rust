@@ -29,7 +29,7 @@
 -         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:+4:5: +4:17
 -                                          // mir::Constant
 -                                          // + span: $DIR/issue-78442.rs:11:5: 11:15
--                                          // + literal: Const { ty: for<'r> extern "rust-call" fn(&'r fn() {foo}, ()) -> <fn() {foo} as FnOnce<()>>::Output {<fn() {foo} as Fn<()>>::call}, val: Value(<ZST>) }
+-                                          // + literal: Const { ty: for<'a> extern "rust-call" fn(&'a fn() {foo}, ()) -> <fn() {foo} as FnOnce<()>>::Output {<fn() {foo} as Fn<()>>::call}, val: Value(<ZST>) }
 +         _2 = move (*_3)() -> [return: bb5, unwind: bb3]; // scope 1 at $SRC_DIR/core/src/ops/function.rs:LL:COL
       }
   

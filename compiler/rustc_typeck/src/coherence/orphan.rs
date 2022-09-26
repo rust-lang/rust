@@ -5,7 +5,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IgnoreRegions;
@@ -43,7 +42,7 @@ fn do_orphan_check_impl<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let trait_def_id = trait_ref.def_id;
 
-    let item = tcx.hir().item(hir::ItemId { def_id });
+    let item = tcx.hir().expect_item(def_id);
     let hir::ItemKind::Impl(ref impl_) = item.kind else {
         bug!("{:?} is not an impl: {:?}", def_id, item);
     };
@@ -229,12 +228,8 @@ fn emit_orphan_check_error<'tcx>(
                 "only traits defined in the current crate {msg}"
             );
             err.span_label(sp, "impl doesn't use only types from inside the current crate");
-            for (ty, is_target_ty) in &tys {
-                let mut ty = *ty;
-                tcx.infer_ctxt().enter(|infcx| {
-                    // Remove the lifetimes unnecessary for this error.
-                    ty = infcx.freshen(ty);
-                });
+            for &(mut ty, is_target_ty) in &tys {
+                ty = tcx.erase_regions(ty);
                 ty = match ty.kind() {
                     // Remove the type arguments from the output, as they are not relevant.
                     // You can think of this as the reverse of `resolve_vars_if_possible`.
@@ -264,7 +259,7 @@ fn emit_orphan_check_error<'tcx>(
                 };
 
                 let msg = format!("{} is not defined in the current crate{}", ty, postfix);
-                if *is_target_ty {
+                if is_target_ty {
                     // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
                     err.span_label(self_ty_span, &msg);
                 } else {

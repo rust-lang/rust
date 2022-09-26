@@ -2,6 +2,7 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
+use hir::def::DefKind;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, Diagnostic, MultiSpan};
 use rustc_hir as hir;
@@ -13,7 +14,7 @@ use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable, Lift)]
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
@@ -30,7 +31,7 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
 #[rustc_pass_by_value]
 pub enum TypeError<'tcx> {
     Mismatch,
@@ -538,7 +539,7 @@ impl<T> Trait<T> for X {
                             diag.span_label(p_span, "this type parameter");
                         }
                     }
-                    (ty::Projection(proj_ty), _) => {
+                    (ty::Projection(proj_ty), _) if self.def_kind(proj_ty.item_def_id) != DefKind::ImplTraitPlaceholder => {
                         self.expected_projection(
                             diag,
                             proj_ty,
@@ -547,7 +548,7 @@ impl<T> Trait<T> for X {
                             cause.code(),
                         );
                     }
-                    (_, ty::Projection(proj_ty)) => {
+                    (_, ty::Projection(proj_ty)) if self.def_kind(proj_ty.item_def_id) != DefKind::ImplTraitPlaceholder => {
                         let msg = format!(
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,
@@ -860,7 +861,7 @@ fn foo(&self) -> Self::T { String::new() }
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let parent_id = self.hir().get_parent_item(hir_id);
-        let item = self.hir().find_by_def_id(parent_id);
+        let item = self.hir().find_by_def_id(parent_id.def_id);
         debug!("expected_projection parent item {:?}", item);
         match item {
             Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. })) => {

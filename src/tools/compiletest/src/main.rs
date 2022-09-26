@@ -5,9 +5,7 @@
 
 extern crate test;
 
-use crate::common::{
-    expected_output_path, output_base_dir, output_relative_path, PanicStrategy, UI_EXTENSIONS,
-};
+use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
 use getopts::Options;
@@ -64,6 +62,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "rust-demangler-path", "path to rust-demangler to use in tests", "PATH")
         .reqopt("", "python", "path to python to use for doc tests", "PATH")
         .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
+        .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
         .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
         .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
@@ -104,7 +103,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
         .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
         .optflag("", "optimize-tests", "run tests with optimizations enabled")
-        .optopt("", "target-panic", "what panic strategy the target supports", "unwind | abort")
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
             "",
@@ -226,6 +224,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         rust_demangler_path: matches.opt_str("rust-demangler-path").map(PathBuf::from),
         python: matches.opt_str("python").unwrap(),
         jsondocck_path: matches.opt_str("jsondocck-path"),
+        jsondoclint_path: matches.opt_str("jsondoclint-path"),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
@@ -256,11 +255,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         host_rustcflags: Some(matches.opt_strs("host-rustcflags").join(" ")),
         target_rustcflags: Some(matches.opt_strs("target-rustcflags").join(" ")),
         optimize_tests: matches.opt_present("optimize-tests"),
-        target_panic: match matches.opt_str("target-panic").as_deref() {
-            Some("unwind") | None => PanicStrategy::Unwind,
-            Some("abort") => PanicStrategy::Abort,
-            _ => panic!("unknown `--target-panic` option `{}` given", mode),
-        },
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,

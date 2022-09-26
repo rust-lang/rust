@@ -12,7 +12,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc_middle::middle::privacy;
+use rustc_middle::middle::privacy::{self, AccessLevel};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::config::CrateType;
@@ -153,7 +153,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 hir::ImplItemKind::Fn(..) => {
                     let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                     let impl_did = self.tcx.hir().get_parent_item(hir_id);
-                    method_might_be_inlined(self.tcx, impl_item, impl_did)
+                    method_might_be_inlined(self.tcx, impl_item, impl_did.def_id)
                 }
                 hir::ImplItemKind::TyAlias(_) => false,
             },
@@ -305,8 +305,8 @@ fn check_item<'tcx>(
     worklist: &mut Vec<LocalDefId>,
     access_levels: &privacy::AccessLevels,
 ) {
-    if has_custom_linkage(tcx, id.def_id) {
-        worklist.push(id.def_id);
+    if has_custom_linkage(tcx, id.def_id.def_id) {
+        worklist.push(id.def_id.def_id);
     }
 
     if !matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
@@ -318,8 +318,8 @@ fn check_item<'tcx>(
     if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
         item.kind
     {
-        if !access_levels.is_reachable(item.def_id) {
-            worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
+        if !access_levels.is_reachable(item.def_id.def_id) {
+            worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id.def_id));
 
             let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res else {
                 unreachable!();
@@ -373,7 +373,13 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
     //         If other crates link to us, they're going to expect to be able to
     //         use the lang items, so we need to be sure to mark them as
     //         exported.
-    reachable_context.worklist.extend(access_levels.map.keys());
+    reachable_context.worklist = access_levels
+        .iter()
+        .filter_map(|(&id, effective_vis)| {
+            effective_vis.is_public_at_level(AccessLevel::ReachableFromImplTrait).then_some(id)
+        })
+        .collect::<Vec<_>>();
+
     for item in tcx.lang_items().items().iter() {
         if let Some(def_id) = *item {
             if let Some(def_id) = def_id.as_local() {
@@ -397,8 +403,8 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
         }
 
         for id in crate_items.impl_items() {
-            if has_custom_linkage(tcx, id.def_id) {
-                reachable_context.worklist.push(id.def_id);
+            if has_custom_linkage(tcx, id.def_id.def_id) {
+                reachable_context.worklist.push(id.def_id.def_id);
             }
         }
     }

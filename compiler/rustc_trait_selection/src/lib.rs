@@ -16,9 +16,7 @@
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(hash_drain_filter)]
-#![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(type_alias_impl_trait)]
@@ -37,5 +35,6 @@ extern crate rustc_middle;
 extern crate smallvec;
 
 pub mod autoderef;
+pub mod errors;
 pub mod infer;
 pub mod traits;

@@ -3,7 +3,7 @@
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
-use crate::rustc_middle::ty::subst::Subst;
+use hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -29,7 +29,12 @@ struct ExpectedSig<'tcx> {
 }
 
 struct ClosureSignatures<'tcx> {
+    /// The signature users of the closure see.
     bound_sig: ty::PolyFnSig<'tcx>,
+    /// The signature within the function body.
+    /// This mostly differs in the sense that lifetimes are now early bound and any
+    /// opaque types from the signature expectation are overriden in case there are
+    /// explicit hidden types written by the user in the closure signature.
     liberated_sig: ty::FnSig<'tcx>,
 }
 
@@ -58,7 +63,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_closure(expr, expected_kind, decl, body, gen, expected_sig)
     }
 
-    #[instrument(skip(self, expr, body, decl), level = "debug")]
+    #[instrument(skip(self, expr, body, decl), level = "debug", ret)]
     fn check_closure(
         &self,
         expr: &hir::Expr<'_>,
@@ -158,11 +163,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         );
 
-        let closure_type = self.tcx.mk_closure(expr_def_id.to_def_id(), closure_substs.substs);
-
-        debug!(?expr.hir_id, ?closure_type);
-
-        closure_type
+        self.tcx.mk_closure(expr_def_id.to_def_id(), closure_substs.substs)
     }
 
     /// Given the expected type, figures out what it can about this closure we
@@ -262,7 +263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// The `cause_span` should be the span that caused us to
     /// have this expected signature, or `None` if we can't readily
     /// know that.
-    #[instrument(level = "debug", skip(self, cause_span))]
+    #[instrument(level = "debug", skip(self, cause_span), ret)]
     fn deduce_sig_from_projection(
         &self,
         cause_span: Option<Span>,
@@ -317,7 +318,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::Unsafety::Normal,
             Abi::Rust,
         ));
-        debug!(?sig);
 
         Some(ExpectedSig { cause_span, sig })
     }
@@ -448,18 +448,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Along the way, it also writes out entries for types that the user
         // wrote into our typeck results, which are then later used by the privacy
         // check.
-        match self.check_supplied_sig_against_expectation(
+        match self.merge_supplied_sig_with_expectation(
             hir_id,
             expr_def_id,
             decl,
             body,
-            &closure_sigs,
+            closure_sigs,
         ) {
             Ok(infer_ok) => self.register_infer_ok_obligations(infer_ok),
-            Err(_) => return self.sig_of_closure_no_expectation(hir_id, expr_def_id, decl, body),
+            Err(_) => self.sig_of_closure_no_expectation(hir_id, expr_def_id, decl, body),
         }
-
-        closure_sigs
     }
 
     fn sig_of_closure_with_mismatched_number_of_arguments(
@@ -501,21 +499,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Enforce the user's types against the expectation. See
     /// `sig_of_closure_with_expectation` for details on the overall
     /// strategy.
-    fn check_supplied_sig_against_expectation(
+    #[instrument(level = "debug", skip(self, hir_id, expr_def_id, decl, body, expected_sigs))]
+    fn merge_supplied_sig_with_expectation(
         &self,
         hir_id: hir::HirId,
         expr_def_id: DefId,
         decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
-        expected_sigs: &ClosureSignatures<'tcx>,
-    ) -> InferResult<'tcx, ()> {
+        mut expected_sigs: ClosureSignatures<'tcx>,
+    ) -> InferResult<'tcx, ClosureSignatures<'tcx>> {
         // Get the signature S that the user gave.
         //
         // (See comment on `sig_of_closure_with_expectation` for the
         // meaning of these letters.)
         let supplied_sig = self.supplied_sig_of_closure(hir_id, expr_def_id, decl, body);
 
-        debug!("check_supplied_sig_against_expectation: supplied_sig={:?}", supplied_sig);
+        debug!(?supplied_sig);
 
         // FIXME(#45727): As discussed in [this comment][c1], naively
         // forcing equality here actually results in suboptimal error
@@ -533,23 +532,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // [c2]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341096796
         self.commit_if_ok(|_| {
             let mut all_obligations = vec![];
+            let inputs: Vec<_> = iter::zip(
+                decl.inputs,
+                supplied_sig.inputs().skip_binder(), // binder moved to (*) below
+            )
+            .map(|(hir_ty, &supplied_ty)| {
+                // Instantiate (this part of..) S to S', i.e., with fresh variables.
+                self.replace_bound_vars_with_fresh_vars(
+                    hir_ty.span,
+                    LateBoundRegionConversionTime::FnCall,
+                    // (*) binder moved to here
+                    supplied_sig.inputs().rebind(supplied_ty),
+                )
+            })
+            .collect();
 
             // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.
             for ((hir_ty, &supplied_ty), expected_ty) in iter::zip(
-                iter::zip(
-                    decl.inputs,
-                    supplied_sig.inputs().skip_binder(), // binder moved to (*) below
-                ),
+                iter::zip(decl.inputs, &inputs),
                 expected_sigs.liberated_sig.inputs(), // `liberated_sig` is E'.
             ) {
-                // Instantiate (this part of..) S to S', i.e., with fresh variables.
-                let supplied_ty = self.replace_bound_vars_with_fresh_vars(
-                    hir_ty.span,
-                    LateBoundRegionConversionTime::FnCall,
-                    supplied_sig.inputs().rebind(supplied_ty),
-                ); // recreated from (*) above
-
                 // Check that E' = S'.
                 let cause = self.misc(hir_ty.span);
                 let InferOk { value: (), obligations } =
@@ -568,7 +571,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .eq(expected_sigs.liberated_sig.output(), supplied_output_ty)?;
             all_obligations.extend(obligations);
 
-            Ok(InferOk { value: (), obligations: all_obligations })
+            let inputs = inputs.into_iter().map(|ty| self.resolve_vars_if_possible(ty));
+
+            expected_sigs.liberated_sig = self.tcx.mk_fn_sig(
+                inputs,
+                supplied_output_ty,
+                expected_sigs.liberated_sig.c_variadic,
+                hir::Unsafety::Normal,
+                Abi::RustCall,
+            );
+
+            Ok(InferOk { value: expected_sigs, obligations: all_obligations })
         })
     }
 
@@ -576,7 +589,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// types that the user gave into a signature.
     ///
     /// Also, record this closure signature for later.
-    #[instrument(skip(self, decl, body), level = "debug")]
+    #[instrument(skip(self, decl, body), level = "debug", ret)]
     fn supplied_sig_of_closure(
         &self,
         hir_id: hir::HirId,
@@ -628,8 +641,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
             bound_vars,
         );
-
-        debug!(?result);
+        // Astconv can't normalize inputs or outputs with escaping bound vars,
+        // so normalize them here, after we've wrapped them in a binder.
+        let result = self.normalize_associated_types_in(self.tcx.hir().span(hir_id), result);
 
         let c_result = self.inh.infcx.canonicalize_response(result);
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
@@ -643,7 +657,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// user specified. The "desugared" return type is an `impl
     /// Future<Output = T>`, so we do this by searching through the
     /// obligations to extract the `T`.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     fn deduce_future_output_from_obligations(
         &self,
         expr_def_id: DefId,
@@ -687,9 +701,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .map(|e| e.map_bound(|e| *e).transpose_tuple2())
                 .find_map(|(p, s)| get_future_output(p.subst(self.tcx, substs), s.0))?,
             ty::Error(_) => return None,
+            ty::Projection(proj)
+                if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
+            {
+                self.tcx
+                    .bound_explicit_item_bounds(proj.item_def_id)
+                    .transpose_iter()
+                    .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+                    .find_map(|(p, s)| get_future_output(p.subst(self.tcx, proj.substs), s.0))?
+            }
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
-                "async fn generator return type not an inference variable"
+                "async fn generator return type not an inference variable: {ret_ty}"
             ),
         };
 
@@ -704,7 +727,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         self.register_predicates(obligations);
 
-        debug!("deduce_future_output_from_obligations: output_ty={:?}", output_ty);
         Some(output_ty)
     }
 

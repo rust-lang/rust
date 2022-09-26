@@ -7,7 +7,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(hash_raw_entry)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(extern_types)]
 #![feature(once_cell)]
 #![feature(iter_intersperse)]
@@ -16,6 +15,8 @@
 
 #[macro_use]
 extern crate rustc_macros;
+#[macro_use]
+extern crate tracing;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 

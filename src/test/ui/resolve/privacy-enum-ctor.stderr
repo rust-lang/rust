@@ -19,7 +19,7 @@ help: you might have meant to use the following enum variant
    |
 LL |         m::Z::Unit;
    |         ~~~~~~~~~~
-help: the following enum variants are available
+help: alternatively, the following enum variants are also available
    |
 LL |         (m::Z::Fn(/* fields */));
    |         ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,7 +47,7 @@ help: you might have meant to use the following enum variant
    |
 LL |         m::Z::Unit;
    |         ~~~~~~~~~~
-help: the following enum variants are available
+help: alternatively, the following enum variants are also available
    |
 LL |         (m::Z::Fn(/* fields */));
    |         ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,7 +89,7 @@ help: you might have meant to use the following enum variant
    |
 LL |     let _: E = E::Unit;
    |                ~~~~~~~
-help: the following enum variants are available
+help: alternatively, the following enum variants are also available
    |
 LL |     let _: E = (E::Fn(/* fields */));
    |                ~~~~~~~~~~~~~~~~~~~~~
@@ -143,7 +143,7 @@ help: you might have meant to use the following enum variant
    |
 LL |     let _: E = E::Unit;
    |                ~~~~~~~
-help: the following enum variants are available
+help: alternatively, the following enum variants are also available
    |
 LL |     let _: E = (E::Fn(/* fields */));
    |                ~~~~~~~~~~~~~~~~~~~~~
@@ -203,7 +203,7 @@ help: you might have meant to use the following enum variant
    |
 LL |     let _: Z = m::Z::Unit;
    |                ~~~~~~~~~~
-help: the following enum variants are available
+help: alternatively, the following enum variants are also available
    |
 LL |     let _: Z = (m::Z::Fn(/* fields */));
    |                ~~~~~~~~~~~~~~~~~~~~~~~~

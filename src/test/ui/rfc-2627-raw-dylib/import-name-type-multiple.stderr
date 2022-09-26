@@ -1,17 +1,8 @@
-warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/import-name-type-multiple.rs:4:12
-   |
-LL | #![feature(raw_dylib)]
-   |            ^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
-
 error: multiple `import_name_type` arguments in a single `#[link]` attribute
-  --> $DIR/import-name-type-multiple.rs:7:74
+  --> $DIR/import-name-type-multiple.rs:6:74
    |
 LL | #[link(name = "foo", kind = "raw-dylib", import_name_type = "decorated", import_name_type = "decorated")]
    |                                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 

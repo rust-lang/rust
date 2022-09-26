@@ -53,7 +53,8 @@ impl<'tcx> LateLintPass<'tcx> for PartialeqToNone {
 
         // If the expression is a literal `Option::None`
         let is_none_ctor = |expr: &Expr<'_>| {
-            matches!(&peel_hir_expr_refs(expr).0.kind,
+            !expr.span.from_expansion()
+                && matches!(&peel_hir_expr_refs(expr).0.kind,
             ExprKind::Path(p) if is_lang_ctor(cx, p, LangItem::OptionNone))
         };
 

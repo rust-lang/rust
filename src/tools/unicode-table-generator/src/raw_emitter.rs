@@ -76,7 +76,7 @@ impl RawEmitter {
 
         writeln!(
             &mut self.file,
-            "static BITSET_CANONICAL: [u64; {}] = [{}];",
+            "const BITSET_CANONICAL: &'static [u64; {}] = &[{}];",
             canonicalized.canonical_words.len(),
             fmt_list(canonicalized.canonical_words.iter().map(|v| Bits(*v))),
         )
@@ -84,7 +84,7 @@ impl RawEmitter {
         self.bytes_used += 8 * canonicalized.canonical_words.len();
         writeln!(
             &mut self.file,
-            "static BITSET_MAPPING: [(u8, u8); {}] = [{}];",
+            "const BITSET_MAPPING: &'static [(u8, u8); {}] = &[{}];",
             canonicalized.canonicalized_words.len(),
             fmt_list(&canonicalized.canonicalized_words),
         )
@@ -96,7 +96,12 @@ impl RawEmitter {
 
         self.blank_line();
 
-        writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
+        writeln!(
+            &mut self.file,
+            r#"#[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]"#
+        )
+        .unwrap();
+        writeln!(&mut self.file, "pub const fn lookup(c: char) -> bool {{").unwrap();
         writeln!(&mut self.file, "    super::bitset_search(",).unwrap();
         writeln!(&mut self.file, "        c as u32,").unwrap();
         writeln!(&mut self.file, "        &BITSET_CHUNKS_MAP,").unwrap();
@@ -130,7 +135,7 @@ impl RawEmitter {
 
         writeln!(
             &mut self.file,
-            "static BITSET_CHUNKS_MAP: [u8; {}] = [{}];",
+            "const BITSET_CHUNKS_MAP: &'static [u8; {}] = &[{}];",
             chunk_indices.len(),
             fmt_list(&chunk_indices),
         )
@@ -138,7 +143,7 @@ impl RawEmitter {
         self.bytes_used += chunk_indices.len();
         writeln!(
             &mut self.file,
-            "static BITSET_INDEX_CHUNKS: [[u8; {}]; {}] = [{}];",
+            "const BITSET_INDEX_CHUNKS: &'static [[u8; {}]; {}] = &[{}];",
             chunk_length,
             chunks.len(),
             fmt_list(chunks.iter()),

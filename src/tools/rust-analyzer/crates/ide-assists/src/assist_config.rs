@@ -13,4 +13,5 @@ pub struct AssistConfig {
     pub snippet_cap: Option<SnippetCap>,
     pub allowed: Option<Vec<AssistKind>>,
     pub insert_use: InsertUseConfig,
+    pub prefer_no_std: bool,
 }

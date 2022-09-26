@@ -138,7 +138,7 @@ impl<'tcx> ConstUnifyCtxt<'tcx> {
 #[instrument(skip(tcx), level = "debug")]
 pub fn try_unify_abstract_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (a, b): (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>),
+    (a, b): (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>),
     param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
     (|| {
@@ -161,7 +161,7 @@ pub fn try_unify_abstract_consts<'tcx>(
 #[instrument(skip(infcx), level = "debug")]
 pub fn is_const_evaluatable<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    uv: ty::Unevaluated<'tcx, ()>,
+    uv: ty::UnevaluatedConst<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
@@ -183,7 +183,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                 FailureKind::Concrete => {}
             }
         }
-        let concrete = infcx.const_eval_resolve(param_env, uv.expand(), Some(span));
+        let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));
         match concrete {
             Err(ErrorHandled::TooGeneric) => {
                 Err(NotConstEvaluatable::Error(infcx.tcx.sess.delay_span_bug(
@@ -210,7 +210,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
         // and hopefully soon change this to an error.
         //
         // See #74595 for more details about this.
-        let concrete = infcx.const_eval_resolve(param_env, uv.expand(), Some(span));
+        let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));
 
         match concrete {
           // If we're evaluating a foreign constant, under a nightly compiler without generic

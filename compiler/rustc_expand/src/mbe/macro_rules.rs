@@ -32,7 +32,6 @@ use rustc_span::Span;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::{mem, slice};
-use tracing::debug;
 
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -594,7 +593,7 @@ pub fn compile_declarative_macro(
     (mk_syn_ext(expander), rule_spans)
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 enum ExplainDocComment {
     #[label(expand::explain_doc_comment_inner)]
     Inner {
@@ -976,7 +975,7 @@ impl<'tt> TokenSet<'tt> {
         self.maybe_empty = false;
     }
 
-    // Adds `tok` to the set for `self`, marking sequence as non-empy.
+    // Adds `tok` to the set for `self`, marking sequence as non-empty.
     fn add_one(&mut self, tt: TtHandle<'tt>) {
         if !self.tokens.contains(&tt) {
             self.tokens.push(tt);

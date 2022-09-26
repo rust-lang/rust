@@ -6,7 +6,7 @@
     6|      1|
     7|      1|    let f = |x: bool| {
     8|       |        debug_assert!(
-    9|       |            x
+    9|      0|            x
    10|       |        );
    11|      1|    };
    12|      1|    f(false);

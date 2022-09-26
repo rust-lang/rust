@@ -112,8 +112,8 @@ use rustc_hir::{HirIdMap, ImplicitSelfKind, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt, UserType};
+use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::config;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -132,6 +132,7 @@ use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
 
 use self::coercion::DynamicCoerceMany;
+use self::compare_method::collect_trait_impl_trait_tys;
 use self::region::region_scope_tree;
 pub use self::Expectation::*;
 
@@ -249,6 +250,7 @@ pub fn provide(providers: &mut Providers) {
         used_trait_imports,
         check_mod_item_types,
         region_scope_tree,
+        collect_trait_impl_trait_tys,
         ..*providers
     };
 }
@@ -341,7 +343,6 @@ fn diagnostic_only_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::T
     typeck_with_fallback(tcx, def_id, fallback)
 }
 
-#[instrument(skip(tcx, fallback))]
 fn typeck_with_fallback<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -365,7 +366,7 @@ fn typeck_with_fallback<'tcx>(
 
     let typeck_results = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
-        let fcx = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
+        let mut fcx = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
                 <dyn AstConv<'_>>::ty_of_fn(&fcx, id, header.unsafety, header.abi, decl, None, None)
@@ -458,12 +459,21 @@ fn typeck_with_fallback<'tcx>(
 
         // Closure and generator analysis may run after fallback
         // because they don't constrain other type variables.
+        // Closure analysis only runs on closures. Therefore they only need to fulfill non-const predicates (as of now)
+        let prev_constness = fcx.param_env.constness();
+        fcx.param_env = fcx.param_env.without_const();
         fcx.closure_analyze(body);
+        fcx.param_env = fcx.param_env.with_constness(prev_constness);
         assert!(fcx.deferred_call_resolutions.borrow().is_empty());
         // Before the generator analysis, temporary scopes shall be marked to provide more
         // precise information on types to be captured.
         fcx.resolve_rvalue_scopes(def_id.to_def_id());
         fcx.resolve_generator_interiors(def_id.to_def_id());
+
+        for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
+            let ty = fcx.normalize_ty(span, ty);
+            fcx.require_type_is_sized(ty, span, code);
+        }
 
         fcx.select_all_obligations_or_error();
 
@@ -509,7 +519,7 @@ fn get_owner_return_paths<'tcx>(
     def_id: LocalDefId,
 ) -> Option<(LocalDefId, ReturnsVisitor<'tcx>)> {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let parent_id = tcx.hir().get_parent_item(hir_id);
+    let parent_id = tcx.hir().get_parent_item(hir_id).def_id;
     tcx.hir().find_by_def_id(parent_id).and_then(|node| node.body_id()).map(|body_id| {
         let body = tcx.hir().body(body_id);
         let mut visitor = ReturnsVisitor::default();

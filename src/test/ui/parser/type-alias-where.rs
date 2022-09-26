@@ -1,7 +1,5 @@
 // check-fail
 
-#![feature(generic_associated_types)]
-
 // Fine, but lints as unused
 type Foo where u32: Copy = ();
 // Not fine.

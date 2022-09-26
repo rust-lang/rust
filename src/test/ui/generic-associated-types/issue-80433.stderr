@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `TestMut::Output`
-  --> $DIR/issue-80433.rs:23:47
+  --> $DIR/issue-80433.rs:21:47
    |
 LL | fn test_simpler<'a>(dst: &'a mut impl TestMut<Output = &'a mut f32>)
    |                                               ^^^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-80433.rs:9:10
+  --> $DIR/issue-80433.rs:7:10
    |
 LL |     type Output<'a>;
    |          ^^^^^^ --

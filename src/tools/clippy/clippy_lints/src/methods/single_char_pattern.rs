@@ -10,37 +10,43 @@ use rustc_span::symbol::Symbol;
 use super::SINGLE_CHAR_PATTERN;
 
 const PATTERN_METHODS: [(&str, usize); 24] = [
-    ("contains", 1),
-    ("starts_with", 1),
-    ("ends_with", 1),
-    ("find", 1),
-    ("rfind", 1),
-    ("split", 1),
-    ("split_inclusive", 1),
-    ("rsplit", 1),
-    ("split_terminator", 1),
-    ("rsplit_terminator", 1),
-    ("splitn", 2),
-    ("rsplitn", 2),
-    ("split_once", 1),
-    ("rsplit_once", 1),
-    ("matches", 1),
-    ("rmatches", 1),
-    ("match_indices", 1),
-    ("rmatch_indices", 1),
-    ("strip_prefix", 1),
-    ("strip_suffix", 1),
-    ("trim_start_matches", 1),
-    ("trim_end_matches", 1),
-    ("replace", 1),
-    ("replacen", 1),
+    ("contains", 0),
+    ("starts_with", 0),
+    ("ends_with", 0),
+    ("find", 0),
+    ("rfind", 0),
+    ("split", 0),
+    ("split_inclusive", 0),
+    ("rsplit", 0),
+    ("split_terminator", 0),
+    ("rsplit_terminator", 0),
+    ("splitn", 1),
+    ("rsplitn", 1),
+    ("split_once", 0),
+    ("rsplit_once", 0),
+    ("matches", 0),
+    ("rmatches", 0),
+    ("match_indices", 0),
+    ("rmatch_indices", 0),
+    ("strip_prefix", 0),
+    ("strip_suffix", 0),
+    ("trim_start_matches", 0),
+    ("trim_end_matches", 0),
+    ("replace", 0),
+    ("replacen", 0),
 ];
 
 /// lint for length-1 `str`s for methods in `PATTERN_METHODS`
-pub(super) fn check(cx: &LateContext<'_>, _expr: &hir::Expr<'_>, method_name: Symbol, args: &[hir::Expr<'_>]) {
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    _expr: &hir::Expr<'_>,
+    method_name: Symbol,
+    receiver: &hir::Expr<'_>,
+    args: &[hir::Expr<'_>],
+) {
     for &(method, pos) in &PATTERN_METHODS {
         if_chain! {
-            if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(&args[0]).kind();
+            if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(receiver).kind();
             if *ty.kind() == ty::Str;
             if method_name.as_str() == method && args.len() > pos;
             let arg = &args[pos];

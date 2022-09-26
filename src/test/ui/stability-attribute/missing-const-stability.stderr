@@ -5,7 +5,7 @@ LL | pub const fn foo() {}
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation has missing const stability attribute
-  --> $DIR/missing-const-stability.rs:27:1
+  --> $DIR/missing-const-stability.rs:28:1
    |
 LL | / impl const Bar for Foo {
 LL | |

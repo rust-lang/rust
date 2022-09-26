@@ -44,6 +44,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
+use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
@@ -121,8 +122,8 @@ macro_rules! query_storage {
     ([][$K:ty, $V:ty]) => {
         <DefaultCacheSelector as CacheSelector<$K, $V>>::Cache
     };
-    ([(storage $ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
-        <$ty as CacheSelector<$K, $V>>::Cache
+    ([(arena_cache) $($rest:tt)*][$K:ty, $V:ty]) => {
+        <ArenaCacheSelector<'tcx> as CacheSelector<$K, $V>>::Cache
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         query_storage!([$($modifiers)*][$($args)*])
@@ -275,8 +276,9 @@ macro_rules! define_callbacks {
             fn default() -> Self {
                 Providers {
                     $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` unsupported by its crate; \
-                         perhaps the `{}` query was never assigned a provider function",
+                        "`tcx.{}({:?})` is not supported for external or local crate;\n
+                        hint: Queries can be either made to the local crate, or the external crate. This error means you tried to use it for one that's not supported (likely the local crate).\n
+                        If that's not the case, {} was likely never assigned to a provider function.\n",
                         stringify!($name),
                         key,
                         stringify!($name),
@@ -335,7 +337,7 @@ macro_rules! define_callbacks {
 rustc_query_append! { define_callbacks! }
 
 mod sealed {
-    use super::{DefId, LocalDefId};
+    use super::{DefId, LocalDefId, OwnerId};
 
     /// An analogue of the `Into` trait that's intended only for query parameters.
     ///
@@ -360,6 +362,13 @@ mod sealed {
     }
 
     impl IntoQueryParam<DefId> for LocalDefId {
+        #[inline(always)]
+        fn into_query_param(self) -> DefId {
+            self.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<DefId> for OwnerId {
         #[inline(always)]
         fn into_query_param(self) -> DefId {
             self.to_def_id()

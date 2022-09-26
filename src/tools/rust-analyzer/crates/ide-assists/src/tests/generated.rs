@@ -473,6 +473,26 @@ impl Point {
 }
 
 #[test]
+fn doctest_convert_two_arm_bool_match_to_matches_macro() {
+    check_doc_test(
+        "convert_two_arm_bool_match_to_matches_macro",
+        r#####"
+fn main() {
+    match scrutinee$0 {
+        Some(val) if val.cond() => true,
+        _ => false,
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    matches!(scrutinee, Some(val) if val.cond())
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_while_to_loop() {
     check_doc_test(
         "convert_while_to_loop",
@@ -1370,7 +1390,7 @@ fn foo() {
 }
 "#####,
         r#####"
-type A = i32;
+
 fn id(x: i32) -> i32 {
     x
 };
@@ -1566,6 +1586,37 @@ fn apply<T, U, $0F: FnOnce(T) -> U>(f: F, x: T) -> U {
         r#####"
 fn apply<T, U, F>(f: F, x: T) -> U where F: FnOnce(T) -> U {
     f(x)
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_move_format_string_arg() {
+    check_doc_test(
+        "move_format_string_arg",
+        r#####"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
+}
+
+fn main() {
+    print!("{x + 1}$0");
+}
+"#####,
+        r#####"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
+}
+
+fn main() {
+    print!("{}"$0, x + 1);
 }
 "#####,
     )
@@ -2010,6 +2061,46 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_replace_or_else_with_or() {
+    check_doc_test(
+        "replace_or_else_with_or",
+        r#####"
+//- minicore:option
+fn foo() {
+    let a = Some(1);
+    a.unwra$0p_or_else(|| 2);
+}
+"#####,
+        r#####"
+fn foo() {
+    let a = Some(1);
+    a.unwrap_or(2);
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_or_with_or_else() {
+    check_doc_test(
+        "replace_or_with_or_else",
+        r#####"
+//- minicore:option
+fn foo() {
+    let a = Some(1);
+    a.unwra$0p_or(2);
+}
+"#####,
+        r#####"
+fn foo() {
+    let a = Some(1);
+    a.unwrap_or_else(|| 2);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_qualified_name_with_use() {
     check_doc_test(
         "replace_qualified_name_with_use",
@@ -2202,6 +2293,32 @@ fn arithmetics {
 #[ignore]
 fn arithmetics {
     assert_eq!(2 + 2, 5);
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_unmerge_match_arm() {
+    check_doc_test(
+        "unmerge_match_arm",
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move(..) $0| Action::Stop => foo(),
+    }
+}
+"#####,
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move(..) => foo(),
+        Action::Stop => foo(),
+    }
 }
 "#####,
     )

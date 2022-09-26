@@ -1,8 +1,8 @@
-use rustc_errors::{fluent, AddSubdiagnostic, Applicability, Diagnostic, DiagnosticArgFromDisplay};
-use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
+use rustc_errors::{fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgFromDisplay};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::generic_type_with_parentheses, code = "E0214")]
 pub struct GenericTypeWithParentheses {
     #[primary_span]
@@ -18,7 +18,7 @@ pub struct UseAngleBrackets {
     pub close_param: Span,
 }
 
-impl AddSubdiagnostic for UseAngleBrackets {
+impl AddToDiagnostic for UseAngleBrackets {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         diag.multipart_suggestion(
             fluent::ast_lowering::use_angle_brackets,
@@ -28,18 +28,32 @@ impl AddSubdiagnostic for UseAngleBrackets {
     }
 }
 
-#[derive(SessionDiagnostic)]
-#[help]
+#[derive(Diagnostic)]
 #[diag(ast_lowering::invalid_abi, code = "E0703")]
+#[note]
 pub struct InvalidAbi {
     #[primary_span]
     #[label]
     pub span: Span,
     pub abi: Symbol,
-    pub valid_abis: String,
+    pub command: String,
+    #[subdiagnostic]
+    pub suggestion: Option<InvalidAbiSuggestion>,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Subdiagnostic)]
+#[suggestion(
+    ast_lowering::invalid_abi_suggestion,
+    code = "{suggestion}",
+    applicability = "maybe-incorrect"
+)]
+pub struct InvalidAbiSuggestion {
+    #[primary_span]
+    pub span: Span,
+    pub suggestion: String,
+}
+
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::assoc_ty_parentheses)]
 pub struct AssocTyParentheses {
     #[primary_span]
@@ -54,7 +68,7 @@ pub enum AssocTyParenthesesSub {
     NotEmpty { open_param: Span, close_param: Span },
 }
 
-impl AddSubdiagnostic for AssocTyParenthesesSub {
+impl AddToDiagnostic for AssocTyParenthesesSub {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         match self {
             Self::Empty { parentheses_span } => diag.multipart_suggestion(
@@ -71,7 +85,7 @@ impl AddSubdiagnostic for AssocTyParenthesesSub {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_lowering::misplaced_impl_trait, code = "E0562")]
 pub struct MisplacedImplTrait<'a> {
     #[primary_span]
@@ -79,14 +93,14 @@ pub struct MisplacedImplTrait<'a> {
     pub position: DiagnosticArgFromDisplay<'a>,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::rustc_box_attribute_error)]
 pub struct RustcBoxAttributeError {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::underscore_expr_lhs_assign)]
 pub struct UnderscoreExprLhsAssign {
     #[primary_span]
@@ -94,7 +108,7 @@ pub struct UnderscoreExprLhsAssign {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::base_expression_double_dot)]
 pub struct BaseExpressionDoubleDot {
     #[primary_span]
@@ -102,7 +116,7 @@ pub struct BaseExpressionDoubleDot {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::await_only_in_async_fn_and_blocks, code = "E0728")]
 pub struct AwaitOnlyInAsyncFnAndBlocks {
     #[primary_span]
@@ -112,21 +126,21 @@ pub struct AwaitOnlyInAsyncFnAndBlocks {
     pub item_span: Option<Span>,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::generator_too_many_parameters, code = "E0628")]
 pub struct GeneratorTooManyParameters {
     #[primary_span]
     pub fn_decl_span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::closure_cannot_be_static, code = "E0697")]
 pub struct ClosureCannotBeStatic {
     #[primary_span]
     pub fn_decl_span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[help]
 #[diag(ast_lowering::async_non_move_closure_not_supported, code = "E0708")]
 pub struct AsyncNonMoveClosureNotSupported {
@@ -134,7 +148,7 @@ pub struct AsyncNonMoveClosureNotSupported {
     pub fn_decl_span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::functional_record_update_destructuring_assignment)]
 pub struct FunctionalRecordUpdateDestructuringAssignemnt {
     #[primary_span]
@@ -142,28 +156,28 @@ pub struct FunctionalRecordUpdateDestructuringAssignemnt {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::async_generators_not_supported, code = "E0727")]
 pub struct AsyncGeneratorsNotSupported {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::inline_asm_unsupported_target, code = "E0472")]
 pub struct InlineAsmUnsupportedTarget {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::att_syntax_only_x86)]
 pub struct AttSyntaxOnlyX86 {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::abi_specified_multiple_times)]
 pub struct AbiSpecifiedMultipleTimes {
     #[primary_span]
@@ -175,14 +189,14 @@ pub struct AbiSpecifiedMultipleTimes {
     pub equivalent: Option<()>,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::clobber_abi_not_supported)]
 pub struct ClobberAbiNotSupported {
     #[primary_span]
     pub abi_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[note]
 #[diag(ast_lowering::invalid_abi_clobber_abi)]
 pub struct InvalidAbiClobberAbi {
@@ -191,7 +205,7 @@ pub struct InvalidAbiClobberAbi {
     pub supported_abis: String,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::invalid_register)]
 pub struct InvalidRegister<'a> {
     #[primary_span]
@@ -200,7 +214,7 @@ pub struct InvalidRegister<'a> {
     pub error: &'a str,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::invalid_register_class)]
 pub struct InvalidRegisterClass<'a> {
     #[primary_span]
@@ -209,7 +223,7 @@ pub struct InvalidRegisterClass<'a> {
     pub error: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_lowering::invalid_asm_template_modifier_reg_class)]
 pub struct InvalidAsmTemplateModifierRegClass {
     #[primary_span]
@@ -221,7 +235,7 @@ pub struct InvalidAsmTemplateModifierRegClass {
     pub sub: InvalidAsmTemplateModifierRegClassSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum InvalidAsmTemplateModifierRegClassSub {
     #[note(ast_lowering::support_modifiers)]
     SupportModifier { class_name: Symbol, modifiers: String },
@@ -229,7 +243,7 @@ pub enum InvalidAsmTemplateModifierRegClassSub {
     DoesNotSupportModifier { class_name: Symbol },
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::invalid_asm_template_modifier_const)]
 pub struct InvalidAsmTemplateModifierConst {
     #[primary_span]
@@ -239,7 +253,7 @@ pub struct InvalidAsmTemplateModifierConst {
     pub op_span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::invalid_asm_template_modifier_sym)]
 pub struct InvalidAsmTemplateModifierSym {
     #[primary_span]
@@ -249,7 +263,7 @@ pub struct InvalidAsmTemplateModifierSym {
     pub op_span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::register_class_only_clobber)]
 pub struct RegisterClassOnlyClobber {
     #[primary_span]
@@ -257,7 +271,7 @@ pub struct RegisterClassOnlyClobber {
     pub reg_class_name: Symbol,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::register_conflict)]
 pub struct RegisterConflict<'a> {
     #[primary_span]
@@ -271,7 +285,7 @@ pub struct RegisterConflict<'a> {
     pub in_out: Option<Span>,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[help]
 #[diag(ast_lowering::sub_tuple_binding)]
 pub struct SubTupleBinding<'a> {
@@ -288,7 +302,7 @@ pub struct SubTupleBinding<'a> {
     pub ctx: &'a str,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::extra_double_dot)]
 pub struct ExtraDoubleDot<'a> {
     #[primary_span]
@@ -299,7 +313,7 @@ pub struct ExtraDoubleDot<'a> {
     pub ctx: &'a str,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[note]
 #[diag(ast_lowering::misplaced_double_dot)]
 pub struct MisplacedDoubleDot {
@@ -307,30 +321,41 @@ pub struct MisplacedDoubleDot {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::misplaced_relax_trait_bound)]
 pub struct MisplacedRelaxTraitBound {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::not_supported_for_lifetime_binder_async_closure)]
 pub struct NotSupportedForLifetimeBinderAsyncClosure {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::arbitrary_expression_in_pattern)]
 pub struct ArbitraryExpressionInPattern {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic, Clone, Copy)]
+#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering::inclusive_range_with_no_end)]
 pub struct InclusiveRangeWithNoEnd {
     #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic, Clone, Copy)]
+#[diag(ast_lowering::trait_fn_async, code = "E0706")]
+#[note]
+#[note(ast_lowering::note2)]
+pub struct TraitFnAsync {
+    #[primary_span]
+    pub fn_span: Span,
+    #[label]
     pub span: Span,
 }

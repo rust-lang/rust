@@ -5,8 +5,8 @@
 //! subtyping, type equality, etc.
 
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use crate::ty::{self, ImplSubject, Term, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
 use rustc_span::DUMMY_SP;
@@ -441,7 +441,9 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 
         (&ty::Foreign(a_id), &ty::Foreign(b_id)) if a_id == b_id => Ok(tcx.mk_foreign(a_id)),
 
-        (&ty::Dynamic(a_obj, a_region), &ty::Dynamic(b_obj, b_region)) => {
+        (&ty::Dynamic(a_obj, a_region, a_repr), &ty::Dynamic(b_obj, b_region, b_repr))
+            if a_repr == b_repr =>
+        {
             let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
                 relation.relate_with_variance(
                     ty::Contravariant,
@@ -450,7 +452,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
                     b_region,
                 )
             })?;
-            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
+            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
 
         (&ty::Generator(a_id, a_substs, movability), &ty::Generator(b_id, b_substs, _))
@@ -594,10 +596,6 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         );
     }
 
-    let eagerly_eval = |x: ty::Const<'tcx>| x.eval(tcx, relation.param_env());
-    let a = eagerly_eval(a);
-    let b = eagerly_eval(b);
-
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
     // to structural-match types.
@@ -617,15 +615,13 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if tcx.features().generic_const_exprs =>
         {
-            tcx.try_unify_abstract_consts(relation.param_env().and((au.shrink(), bu.shrink())))
+            tcx.try_unify_abstract_consts(relation.param_env().and((au, bu)))
         }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
-        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
-            if au.def == bu.def && au.promoted == bu.promoted =>
-        {
+        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.def == bu.def => {
             let substs = relation.relate_with_variance(
                 ty::Variance::Invariant,
                 ty::VarianceDiagInfo::default(),
@@ -633,11 +629,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                 bu.substs,
             )?;
             return Ok(tcx.mk_const(ty::ConstS {
-                kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
-                    def: au.def,
-                    substs,
-                    promoted: au.promoted,
-                }),
+                kind: ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def: au.def, substs }),
                 ty: a.ty(),
             }));
         }
@@ -803,15 +795,15 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::Term<'tcx> {
+impl<'tcx> Relate<'tcx> for Term<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
         b: Self,
     ) -> RelateResult<'tcx, Self> {
-        Ok(match (a, b) {
-            (Term::Ty(a), Term::Ty(b)) => relation.relate(a, b)?.into(),
-            (Term::Const(a), Term::Const(b)) => relation.relate(a, b)?.into(),
+        Ok(match (a.unpack(), b.unpack()) {
+            (TermKind::Ty(a), TermKind::Ty(b)) => relation.relate(a, b)?.into(),
+            (TermKind::Const(a), TermKind::Const(b)) => relation.relate(a, b)?.into(),
             _ => return Err(TypeError::Mismatch),
         })
     }

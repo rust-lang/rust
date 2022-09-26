@@ -1,0 +1,26 @@
+thread 'main' panicked at '42-panicking from libstd', $DIR/panic_abort2.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: abnormal termination: the program aborted execution
+  --> RUSTLIB/panic_abort/src/lib.rs:LL:CC
+   |
+LL |                 ABORT();
+   | ^ the program aborted execution
+   |
+   = note: inside `panic_abort::__rust_start_panic::abort` at RUSTLIB/panic_abort/src/lib.rs:LL:CC
+   = note: inside `panic_abort::__rust_start_panic` at RUSTLIB/panic_abort/src/lib.rs:LL:CC
+   = note: inside `std::panicking::rust_panic` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::rust_panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::sys_common::backtrace::__rust_end_short_backtrace::<[closure@std::panicking::begin_panic_handler::{closure#0}], !>` at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
+   = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
+note: inside `main` at RUSTLIB/std/src/panic.rs:LL:CC
+  --> $DIR/panic_abort2.rs:LL:CC
+   |
+LL |     std::panic!("{}-panicking from libstd", 42);
+   | ^
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `std::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

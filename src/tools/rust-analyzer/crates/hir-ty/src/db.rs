@@ -150,6 +150,14 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         id: chalk_db::AssociatedTyValueId,
     ) -> Arc<chalk_db::AssociatedTyValue>;
 
+    #[salsa::invoke(crate::traits::normalize_projection_query)]
+    #[salsa::transparent]
+    fn normalize_projection(
+        &self,
+        projection: crate::ProjectionTy,
+        env: Arc<crate::TraitEnvironment>,
+    ) -> Ty;
+
     #[salsa::invoke(trait_solve_wait)]
     #[salsa::transparent]
     fn trait_solve(

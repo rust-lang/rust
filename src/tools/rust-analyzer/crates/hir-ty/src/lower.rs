@@ -1,8 +1,8 @@
 //! Methods for lowering the HIR to types. There are two main cases here:
 //!
 //!  - Lowering a type reference like `&usize` or `Option<foo::bar::Baz>` to a
-//!    type: The entry point for this is `Ty::from_hir`.
-//!  - Building the type for an item: This happens through the `type_for_def` query.
+//!    type: The entry point for this is `TyLoweringContext::lower_ty`.
+//!  - Building the type for an item: This happens through the `ty` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
 use std::{
@@ -47,7 +47,7 @@ use crate::{
     consteval::{intern_const_scalar, path_to_const, unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     make_binders,
-    mapping::ToChalk,
+    mapping::{from_chalk_trait_id, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::Generics,
     utils::{all_super_trait_refs, associated_type_by_name_including_super_traits, generics},
@@ -332,7 +332,10 @@ impl<'a> TyLoweringContext<'a> {
             TypeRef::Macro(macro_call) => {
                 let (mut expander, recursion_start) = {
                     match RefMut::filter_map(self.expander.borrow_mut(), Option::as_mut) {
+                        // There already is an expander here, this means we are already recursing
                         Ok(expander) => (expander, false),
+                        // No expander was created yet, so we are at the start of the expansion recursion
+                        // and therefore have to create an expander.
                         Err(expander) => (
                             RefMut::map(expander, |it| {
                                 it.insert(Expander::new(
@@ -362,9 +365,14 @@ impl<'a> TyLoweringContext<'a> {
                                 .exit(self.db.upcast(), mark);
                             Some(ty)
                         }
-                        _ => None,
+                        _ => {
+                            drop(expander);
+                            None
+                        }
                     }
                 };
+
+                // drop the expander, resetting it to pre-recursion state
                 if recursion_start {
                     *self.expander.borrow_mut() = None;
                 }
@@ -973,14 +981,74 @@ impl<'a> TyLoweringContext<'a> {
 
     fn lower_dyn_trait(&self, bounds: &[Interned<TypeBound>]) -> Ty {
         let self_ty = TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
+        // INVARIANT: The principal trait bound must come first. Others may be in any order but
+        // should be in the same order for the same set but possibly different order of bounds in
+        // the input.
+        // This invariant is used by `TyExt::dyn_trait()` and chalk.
         let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-            QuantifiedWhereClauses::from_iter(
-                Interner,
-                bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false)),
-            )
+            let mut bounds: Vec<_> = bounds
+                .iter()
+                .flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false))
+                .collect();
+
+            let mut multiple_regular_traits = false;
+            let mut multiple_same_projection = false;
+            bounds.sort_unstable_by(|lhs, rhs| {
+                use std::cmp::Ordering;
+                match (lhs.skip_binders(), rhs.skip_binders()) {
+                    (WhereClause::Implemented(lhs), WhereClause::Implemented(rhs)) => {
+                        let lhs_id = lhs.trait_id;
+                        let lhs_is_auto = ctx.db.trait_data(from_chalk_trait_id(lhs_id)).is_auto;
+                        let rhs_id = rhs.trait_id;
+                        let rhs_is_auto = ctx.db.trait_data(from_chalk_trait_id(rhs_id)).is_auto;
+
+                        if !lhs_is_auto && !rhs_is_auto {
+                            multiple_regular_traits = true;
+                        }
+                        // Note that the ordering here is important; this ensures the invariant
+                        // mentioned above.
+                        (lhs_is_auto, lhs_id).cmp(&(rhs_is_auto, rhs_id))
+                    }
+                    (WhereClause::Implemented(_), _) => Ordering::Less,
+                    (_, WhereClause::Implemented(_)) => Ordering::Greater,
+                    (WhereClause::AliasEq(lhs), WhereClause::AliasEq(rhs)) => {
+                        match (&lhs.alias, &rhs.alias) {
+                            (AliasTy::Projection(lhs_proj), AliasTy::Projection(rhs_proj)) => {
+                                // We only compare the `associated_ty_id`s. We shouldn't have
+                                // multiple bounds for an associated type in the correct Rust code,
+                                // and if we do, we error out.
+                                if lhs_proj.associated_ty_id == rhs_proj.associated_ty_id {
+                                    multiple_same_projection = true;
+                                }
+                                lhs_proj.associated_ty_id.cmp(&rhs_proj.associated_ty_id)
+                            }
+                            // We don't produce `AliasTy::Opaque`s yet.
+                            _ => unreachable!(),
+                        }
+                    }
+                    // We don't produce `WhereClause::{TypeOutlives, LifetimeOutlives}` yet.
+                    _ => unreachable!(),
+                }
+            });
+
+            if multiple_regular_traits || multiple_same_projection {
+                return None;
+            }
+
+            // As multiple occurrences of the same auto traits *are* permitted, we dedulicate the
+            // bounds. We shouldn't have repeated elements besides auto traits at this point.
+            bounds.dedup();
+
+            Some(QuantifiedWhereClauses::from_iter(Interner, bounds))
         });
-        let bounds = crate::make_single_type_binders(bounds);
-        TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
+
+        if let Some(bounds) = bounds {
+            let bounds = crate::make_single_type_binders(bounds);
+            TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
+        } else {
+            // FIXME: report error (additional non-auto traits or associated type rebound)
+            TyKind::Error.intern(Interner)
+        }
     }
 
     fn lower_impl_trait(

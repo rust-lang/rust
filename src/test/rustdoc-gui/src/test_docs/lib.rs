@@ -6,6 +6,24 @@
 #![feature(rustdoc_internals)]
 #![feature(doc_cfg)]
 
+/*!
+Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
+this crate even more!
+Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
+this crate even more!
+Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
+this crate even more!
+
+Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated</span>.
+Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated</span>.
+Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated</span>.
+
+Finally, you can use `quz` only on <span class="stab portability"><code>Unix or x86-64</code>
+</span>.
+Finally, you can use `quz` only on <span class="stab portability"><code>Unix or x86-64</code>
+</span>.
+*/
+
 use std::convert::AsRef;
 use std::fmt;
 
@@ -26,6 +44,12 @@ use std::fmt;
 ///
 /// ```ignore (it's a test)
 /// Let's say I'm just some text will ya?
+/// ```
+///
+/// A failing to run one:
+///
+/// ```should_panic
+/// panic!("tadam");
 /// ```
 ///
 /// An inlined `code`!
@@ -318,4 +342,16 @@ pub mod doc_block_table {
         }
     }
 
+}
+
+pub struct NotableStructWithLongName<R>(R);
+
+impl<R: std::io::Read> NotableStructWithLongName<R> {
+    pub fn create_an_iterator_from_read(r: R) -> NotableStructWithLongName<R> { Self(r) }
+}
+
+impl<R: std::io::Read> std::iter::Iterator for NotableStructWithLongName<R> {
+    type Item = ();
+
+    fn next(&mut self) -> Option<Self::Item> { () }
 }

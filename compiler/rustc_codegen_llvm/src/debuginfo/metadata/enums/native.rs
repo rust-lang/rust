@@ -378,7 +378,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
 ///
 /// The DW_AT_discr_value is optional, and is omitted if
 ///   - This is the only variant of a univariant enum (i.e. their is no discriminant)
-///   - This is the "dataful" variant of a niche-layout enum
+///   - This is the "untagged" variant of a niche-layout enum
 ///     (where only the other variants are identified by a single value)
 ///
 /// There is only ever a single member, the type of which is a struct that describes the

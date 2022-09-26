@@ -165,7 +165,11 @@ pub(crate) fn complete_expr_path(
                     hir::Adt::Struct(strukt) => {
                         let path = ctx
                             .module
-                            .find_use_path(ctx.db, hir::ModuleDef::from(strukt))
+                            .find_use_path(
+                                ctx.db,
+                                hir::ModuleDef::from(strukt),
+                                ctx.config.prefer_no_std,
+                            )
                             .filter(|it| it.len() > 1);
 
                         acc.add_struct_literal(ctx, path_ctx, strukt, path, None);
@@ -183,7 +187,11 @@ pub(crate) fn complete_expr_path(
                     hir::Adt::Union(un) => {
                         let path = ctx
                             .module
-                            .find_use_path(ctx.db, hir::ModuleDef::from(un))
+                            .find_use_path(
+                                ctx.db,
+                                hir::ModuleDef::from(un),
+                                ctx.config.prefer_no_std,
+                            )
                             .filter(|it| it.len() > 1);
 
                         acc.add_union_literal(ctx, un, path, None);
@@ -282,14 +290,26 @@ pub(crate) fn complete_expr_path(
                         }
                     }
 
-                    if let Some(ty) = innermost_ret_ty {
+                    if let Some(ret_ty) = innermost_ret_ty {
                         add_keyword(
                             "return",
-                            match (in_block_expr, ty.is_unit()) {
-                                (true, true) => "return ;",
-                                (true, false) => "return;",
-                                (false, true) => "return $0",
-                                (false, false) => "return",
+                            match (ret_ty.is_unit(), in_block_expr) {
+                                (true, true) => {
+                                    cov_mark::hit!(return_unit_block);
+                                    "return;"
+                                }
+                                (true, false) => {
+                                    cov_mark::hit!(return_unit_no_block);
+                                    "return"
+                                }
+                                (false, true) => {
+                                    cov_mark::hit!(return_value_block);
+                                    "return $0;"
+                                }
+                                (false, false) => {
+                                    cov_mark::hit!(return_value_no_block);
+                                    "return $0"
+                                }
                             },
                         );
                     }

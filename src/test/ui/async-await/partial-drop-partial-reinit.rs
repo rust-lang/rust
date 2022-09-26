@@ -1,4 +1,7 @@
 // edition:2021
+// revisions: no_drop_tracking drop_tracking
+// [drop_tracking] compile-flags: -Zdrop-tracking=yes
+// [no_drop_tracking] compile-flags: -Zdrop-tracking=no
 #![feature(negative_impls)]
 #![allow(unused)]
 
@@ -12,8 +15,8 @@ fn main() {
 }
 
 fn gimme_send<T: Send>(t: T) {
-//~^ NOTE required by this bound
-//~| NOTE required by a bound
+    //~^ NOTE required by this bound
+    //~| NOTE required by a bound
     drop(t);
 }
 
@@ -26,8 +29,8 @@ impl Drop for NotSend {
 impl !Send for NotSend {}
 
 async fn foo() {
-//~^ NOTE used within this `async fn` body
-//~| NOTE within this `impl Future
+    //~^ NOTE used within this `async fn` body
+    //~| NOTE within this `impl Future
     let mut x = (NotSend {},);
     drop(x.0);
     x.0 = NotSend {};

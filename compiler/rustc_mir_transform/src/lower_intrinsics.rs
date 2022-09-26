@@ -46,12 +46,31 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         let mut args = args.drain(..);
                         block.statements.push(Statement {
                             source_info: terminator.source_info,
-                            kind: StatementKind::CopyNonOverlapping(Box::new(
-                                rustc_middle::mir::CopyNonOverlapping {
-                                    src: args.next().unwrap(),
-                                    dst: args.next().unwrap(),
-                                    count: args.next().unwrap(),
-                                },
+                            kind: StatementKind::Intrinsic(Box::new(
+                                NonDivergingIntrinsic::CopyNonOverlapping(
+                                    rustc_middle::mir::CopyNonOverlapping {
+                                        src: args.next().unwrap(),
+                                        dst: args.next().unwrap(),
+                                        count: args.next().unwrap(),
+                                    },
+                                ),
+                            )),
+                        });
+                        assert_eq!(
+                            args.next(),
+                            None,
+                            "Extra argument for copy_non_overlapping intrinsic"
+                        );
+                        drop(args);
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
+                    sym::assume => {
+                        let target = target.unwrap();
+                        let mut args = args.drain(..);
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Intrinsic(Box::new(
+                                NonDivergingIntrinsic::Assume(args.next().unwrap()),
                             )),
                         });
                         assert_eq!(

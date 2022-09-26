@@ -145,8 +145,8 @@
 //! abstracting over differences in common platforms, most notably Windows and
 //! Unix derivatives.
 //!
-//! Common types of I/O, including [files], [TCP], [UDP], are defined in the
-//! [`io`], [`fs`], and [`net`] modules.
+//! Common types of I/O, including [files], [TCP], and [UDP], are defined in
+//! the [`io`], [`fs`], and [`net`] modules.
 //!
 //! The [`thread`] module contains Rust's threading abstractions. [`sync`]
 //! contains further primitive shared memory types, including [`atomic`] and
@@ -252,10 +252,8 @@
 #![feature(dropck_eyepatch)]
 #![feature(exhaustive_patterns)]
 #![feature(intra_doc_pointers)]
-#![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(lang_items)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(linkage)]
 #![feature(link_cfg)]
 #![feature(min_specialization)]
@@ -282,9 +280,9 @@
 #![feature(cstr_internals)]
 #![feature(duration_checked_float)]
 #![feature(duration_constants)]
-#![cfg_attr(not(bootstrap), feature(error_generic_member_access))]
-#![cfg_attr(not(bootstrap), feature(error_in_core))]
-#![cfg_attr(not(bootstrap), feature(error_iter))]
+#![feature(error_generic_member_access)]
+#![feature(error_in_core)]
+#![feature(error_iter)]
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
 #![feature(extend_one)]
@@ -315,6 +313,7 @@
 #![feature(strict_provenance)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_uninit_array)]
+#![feature(const_waker)]
 //
 // Library features (alloc):
 #![feature(alloc_layout_extra)]

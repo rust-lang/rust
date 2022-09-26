@@ -3,6 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait MyTrait {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn func();

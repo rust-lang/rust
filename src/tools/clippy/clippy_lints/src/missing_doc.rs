@@ -131,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             hir::ItemKind::Fn(..) => {
                 // ignore main()
                 if it.ident.name == sym::main {
-                    let at_root = cx.tcx.local_parent(it.def_id) == CRATE_DEF_ID;
+                    let at_root = cx.tcx.local_parent(it.def_id.def_id) == CRATE_DEF_ID;
                     if at_root {
                         return;
                     }

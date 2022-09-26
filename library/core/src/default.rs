@@ -99,6 +99,7 @@
 /// ```
 #[cfg_attr(not(test), rustc_diagnostic_item = "Default")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait Default: Sized {
     /// Returns the "default value" for a type.
     ///

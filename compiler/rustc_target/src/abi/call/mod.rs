@@ -685,7 +685,14 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     }
                 }
             },
-            "aarch64" => aarch64::compute_abi_info(cx, self),
+            "aarch64" => {
+                let param_policy = if cx.target_spec().is_like_osx {
+                    aarch64::ParamExtension::ExtendTo32Bits
+                } else {
+                    aarch64::ParamExtension::NoExtension
+                };
+                aarch64::compute_abi_info(cx, self, param_policy)
+            }
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
             "avr" => avr::compute_abi_info(self),

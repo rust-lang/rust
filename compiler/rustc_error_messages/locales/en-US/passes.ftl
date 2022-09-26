@@ -265,3 +265,9 @@ passes_rustc_lint_opt_deny_field_access = `#[rustc_lint_opt_deny_field_access]` 
 
 passes_link_ordinal = attribute should be applied to a foreign function or static
     .label = not a foreign function or static
+
+passes_collapse_debuginfo = `collapse_debuginfo` attribute should be applied to macro definitions
+    .label = not a macro definition
+
+passes_deprecated_annotation_has_no_effect = this `#[deprecated]` annotation has no effect
+    .suggestion = remove the unnecessary deprecation attribute

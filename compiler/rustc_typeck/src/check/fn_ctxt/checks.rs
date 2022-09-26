@@ -31,7 +31,7 @@ use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty, TypeSuperVisitable, TypeVisitor};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
-use rustc_span::{self, Span};
+use rustc_span::{self, sym, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
@@ -153,7 +153,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        // Conceptually, we've got some number of expected inputs, and some number of provided aguments
+        // Conceptually, we've got some number of expected inputs, and some number of provided arguments
         // and we can form a grid of whether each argument could satisfy a given input:
         //      in1 | in2 | in3 | ...
         // arg1  ?  |     |     |
@@ -224,6 +224,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let minimum_input_count = expected_input_tys.len();
         let provided_arg_count = provided_args.len();
 
+        let is_const_eval_select = matches!(fn_def_id, Some(def_id) if
+            self.tcx.def_kind(def_id) == hir::def::DefKind::Fn
+            && self.tcx.is_intrinsic(def_id)
+            && self.tcx.item_name(def_id) == sym::const_eval_select);
+
         // We introduce a helper function to demand that a given argument satisfy a given input
         // This is more complicated than just checking type equality, as arguments could be coerced
         // This version writes those types back so further type checking uses the narrowed types
@@ -257,6 +262,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if coerce_error.is_some() {
                 return Compatibility::Incompatible(coerce_error);
+            }
+
+            // Check that second and third argument of `const_eval_select` must be `FnDef`, and additionally that
+            // the second argument must be `const fn`. The first argument must be a tuple, but this is already expressed
+            // in the function signature (`F: FnOnce<ARG>`), so I did not bother to add another check here.
+            //
+            // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
+            if is_const_eval_select && (1..=2).contains(&idx) {
+                if let ty::FnDef(def_id, _) = checked_ty.kind() {
+                    if idx == 1 && !self.tcx.is_const_fn_raw(*def_id) {
+                        self.tcx
+                            .sess
+                            .struct_span_err(provided_arg.span, "this argument must be a `const fn`")
+                            .help("consult the documentation on `const_eval_select` for more information")
+                            .emit();
+                    }
+                } else {
+                    self.tcx
+                        .sess
+                        .struct_span_err(provided_arg.span, "this argument must be a function item")
+                        .note(format!("expected a function item, found {checked_ty}"))
+                        .help(
+                            "consult the documentation on `const_eval_select` for more information",
+                        )
+                        .emit();
+                }
             }
 
             // 3. Check if the formal type is a supertype of the checked one
@@ -447,7 +478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None, false),
-            hir::ExprKind::MethodCall(path_segment, _, span) => {
+            hir::ExprKind::MethodCall(path_segment, _, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
                     ident_span.with_hi(args.span_ext.hi())
@@ -499,13 +530,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect();
         let callee_expr = match &call_expr.peel_blocks().kind {
             hir::ExprKind::Call(callee, _) => Some(*callee),
-            hir::ExprKind::MethodCall(_, callee, _) => {
+            hir::ExprKind::MethodCall(_, receiver, ..) => {
                 if let Some((DefKind::AssocFn, def_id)) =
                     self.typeck_results.borrow().type_dependent_def(call_expr.hir_id)
                     && let Some(assoc) = tcx.opt_associated_item(def_id)
                     && assoc.fn_has_self_parameter
                 {
-                    Some(&callee[0])
+                    Some(*receiver)
                 } else {
                     None
                 }
@@ -1056,11 +1087,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let Some(suggestion_text) = suggestion_text {
             let source_map = self.sess().source_map();
-            let mut suggestion = format!(
-                "{}(",
-                source_map.span_to_snippet(full_call_span).unwrap_or_else(|_| fn_def_id
-                    .map_or("".to_string(), |fn_def_id| tcx.item_name(fn_def_id).to_string()))
-            );
+            let (mut suggestion, suggestion_span) =
+                if let Some(call_span) = full_call_span.find_ancestor_inside(error_span) {
+                    ("(".to_string(), call_span.shrink_to_hi().to(error_span.shrink_to_hi()))
+                } else {
+                    (
+                        format!(
+                            "{}(",
+                            source_map.span_to_snippet(full_call_span).unwrap_or_else(|_| {
+                                fn_def_id.map_or("".to_string(), |fn_def_id| {
+                                    tcx.item_name(fn_def_id).to_string()
+                                })
+                            })
+                        ),
+                        error_span,
+                    )
+                };
             let mut needs_comma = false;
             for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
                 if needs_comma {
@@ -1088,7 +1130,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             suggestion += ")";
             err.span_suggestion_verbose(
-                error_span,
+                suggestion_span,
                 &suggestion_text,
                 suggestion,
                 Applicability::HasPlaceholders,
@@ -1501,7 +1543,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn parent_item_span(&self, id: hir::HirId) -> Option<Span> {
-        let node = self.tcx.hir().get_by_def_id(self.tcx.hir().get_parent_item(id));
+        let node = self.tcx.hir().get_by_def_id(self.tcx.hir().get_parent_item(id).def_id);
         match node {
             Node::Item(&hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body_id), .. }) => {
@@ -1517,7 +1559,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
     fn get_parent_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident)> {
-        let parent = self.tcx.hir().get_by_def_id(self.tcx.hir().get_parent_item(blk_id));
+        let parent = self.tcx.hir().get_by_def_id(self.tcx.hir().get_parent_item(blk_id).def_id);
         self.get_node_fn_decl(parent).map(|(fn_decl, ident, _)| (fn_decl, ident))
     }
 
@@ -1763,25 +1805,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 param,
                                 *call_hir_id,
                                 callee.span,
+                                None,
                                 args,
                             )
                         {
                             return true;
                         }
                     }
-                    // Notably, we only point to params that are local to the
-                    // item we're checking, since those are the ones we are able
-                    // to look in the final `hir::PathSegment` for. Everything else
-                    // would require a deeper search into the `qpath` than I think
-                    // is worthwhile.
-                    if let Some(param_to_point_at) = param_to_point_at
-                        && self.point_at_path_if_possible(error, def_id, param_to_point_at, qpath)
-                    {
-                        return true;
-                    }
+                }
+                // Notably, we only point to params that are local to the
+                // item we're checking, since those are the ones we are able
+                // to look in the final `hir::PathSegment` for. Everything else
+                // would require a deeper search into the `qpath` than I think
+                // is worthwhile.
+                if let Some(param_to_point_at) = param_to_point_at
+                    && self.point_at_path_if_possible(error, def_id, param_to_point_at, qpath)
+                {
+                    return true;
                 }
             }
-            hir::ExprKind::MethodCall(segment, args, ..) => {
+            hir::ExprKind::MethodCall(segment, receiver, args, ..) => {
                 for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                     .into_iter()
                     .flatten()
@@ -1792,6 +1835,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         param,
                         hir_id,
                         segment.ident.span,
+                        Some(receiver),
                         args,
                     ) {
                         return true;
@@ -1859,7 +1903,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         param_to_point_at: ty::GenericArg<'tcx>,
         call_hir_id: hir::HirId,
         callee_span: Span,
-        args: &[hir::Expr<'tcx>],
+        receiver: Option<&'tcx hir::Expr<'tcx>>,
+        args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
         let sig = self.tcx.fn_sig(def_id).skip_binder();
         let args_referencing_param: Vec<_> = sig
@@ -1868,9 +1913,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .enumerate()
             .filter(|(_, ty)| find_param_in_ty(**ty, param_to_point_at))
             .collect();
-
         // If there's one field that references the given generic, great!
-        if let [(idx, _)] = args_referencing_param.as_slice() && let Some(arg) = args.get(*idx) {
+        if let [(idx, _)] = args_referencing_param.as_slice()
+            && let Some(arg) = receiver
+                .map_or(args.get(*idx), |rcvr| if *idx == 0 { Some(rcvr) } else { args.get(*idx - 1) }) {
             error.obligation.cause.span = arg.span.find_ancestor_in_same_ctxt(error.obligation.cause.span).unwrap_or(arg.span);
             error.obligation.cause.map_code(|parent_code| {
                 ObligationCauseCode::FunctionArgumentObligation {

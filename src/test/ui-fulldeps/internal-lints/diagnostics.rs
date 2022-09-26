@@ -1,6 +1,7 @@
 // compile-flags: -Z unstable-options
 
 #![crate_type = "lib"]
+#![feature(rustc_attrs)]
 #![feature(rustc_private)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -10,64 +11,73 @@ extern crate rustc_macros;
 extern crate rustc_session;
 extern crate rustc_span;
 
-use rustc_errors::{AddSubdiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, fluent};
-use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
-use rustc_session::{parse::ParseSess, SessionDiagnostic};
+use rustc_errors::{
+    AddToDiagnostic, IntoDiagnostic, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, Handler, fluent
+};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(parser::expect_path)]
-struct DeriveSessionDiagnostic {
+struct DeriveDiagnostic {
     #[primary_span]
     span: Span,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 #[note(parser::add_paren)]
 struct Note {
     #[primary_span]
     span: Span,
 }
 
-pub struct UntranslatableInSessionDiagnostic;
+pub struct UntranslatableInIntoDiagnostic;
 
-impl<'a> SessionDiagnostic<'a, ErrorGuaranteed> for UntranslatableInSessionDiagnostic {
-    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        sess.struct_err("untranslatable diagnostic")
+impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for UntranslatableInIntoDiagnostic {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        handler.struct_err("untranslatable diagnostic")
         //~^ ERROR diagnostics should be created using translatable messages
     }
 }
 
-pub struct TranslatableInSessionDiagnostic;
+pub struct TranslatableInIntoDiagnostic;
 
-impl<'a> SessionDiagnostic<'a, ErrorGuaranteed> for TranslatableInSessionDiagnostic {
-    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        sess.struct_err(fluent::parser::expect_path)
+impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for TranslatableInIntoDiagnostic {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        handler.struct_err(fluent::parser::expect_path)
     }
 }
 
-pub struct UntranslatableInAddSubdiagnostic;
+pub struct UntranslatableInAddToDiagnostic;
 
-impl AddSubdiagnostic for UntranslatableInAddSubdiagnostic {
+impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         diag.note("untranslatable diagnostic");
         //~^ ERROR diagnostics should be created using translatable messages
     }
 }
 
-pub struct TranslatableInAddSubdiagnostic;
+pub struct TranslatableInAddToDiagnostic;
 
-impl AddSubdiagnostic for TranslatableInAddSubdiagnostic {
+impl AddToDiagnostic for TranslatableInAddToDiagnostic {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         diag.note(fluent::typeck::note);
     }
 }
 
-pub fn make_diagnostics<'a>(sess: &'a ParseSess) {
-    let _diag = sess.struct_err(fluent::parser::expect_path);
-    //~^ ERROR diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
+pub fn make_diagnostics<'a>(handler: &'a Handler) {
+    let _diag = handler.struct_err(fluent::parser::expect_path);
+    //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
 
-    let _diag = sess.struct_err("untranslatable diagnostic");
-    //~^ ERROR diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
+    let _diag = handler.struct_err("untranslatable diagnostic");
+    //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
     //~^^ ERROR diagnostics should be created using translatable messages
+}
+
+// Check that `rustc_lint_diagnostics`-annotated functions aren't themselves linted.
+
+#[rustc_lint_diagnostics]
+pub fn skipped_because_of_annotation<'a>(handler: &'a Handler) {
+    let _diag = handler.struct_err("untranslatable diagnostic"); // okay!
 }

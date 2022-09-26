@@ -13,7 +13,6 @@
 #![feature(cell_leak)]
 #![feature(control_flow_enum)]
 #![feature(extend_one)]
-#![feature(let_else)]
 #![feature(hash_raw_entry)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(maybe_uninit_uninit_array)]
@@ -75,7 +74,6 @@ pub mod profiling;
 pub mod sharded;
 pub mod stack;
 pub mod sync;
-pub mod thin_vec;
 pub mod tiny_list;
 pub mod transitive_relation;
 pub mod vec_linked_list;

@@ -120,15 +120,17 @@ fn add_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
 
     let new_lint = if enable_msrv {
         format!(
-            "store.register_{lint_pass}_pass(move || Box::new({module_name}::{camel_name}::new(msrv)));\n    ",
+            "store.register_{lint_pass}_pass(move |{ctor_arg}| Box::new({module_name}::{camel_name}::new(msrv)));\n    ",
             lint_pass = lint.pass,
+            ctor_arg = if lint.pass == "late" { "_" } else { "" },
             module_name = lint.name,
             camel_name = to_camel_case(lint.name),
         )
     } else {
         format!(
-            "store.register_{lint_pass}_pass(|| Box::new({module_name}::{camel_name}));\n    ",
+            "store.register_{lint_pass}_pass(|{ctor_arg}| Box::new({module_name}::{camel_name}));\n    ",
             lint_pass = lint.pass,
+            ctor_arg = if lint.pass == "late" { "_" } else { "" },
             module_name = lint.name,
             camel_name = to_camel_case(lint.name),
         )
@@ -155,7 +157,7 @@ fn to_camel_case(name: &str) -> String {
     name.split('_')
         .map(|s| {
             if s.is_empty() {
-                String::from("")
+                String::new()
             } else {
                 [&s[0..1].to_uppercase(), &s[1..]].concat()
             }
@@ -186,6 +188,7 @@ pub(crate) fn get_stabilization_version() -> String {
 fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {
     let mut contents = format!(
         indoc! {"
+            #![allow(unused)]
             #![warn(clippy::{})]
 
             fn main() {{

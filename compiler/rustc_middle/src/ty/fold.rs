@@ -128,7 +128,17 @@ pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
         c.super_fold_with(self)
     }
 
-    fn fold_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ty::Unevaluated<'tcx> {
+    fn fold_ty_unevaluated(
+        &mut self,
+        uv: ty::UnevaluatedConst<'tcx>,
+    ) -> ty::UnevaluatedConst<'tcx> {
+        uv.super_fold_with(self)
+    }
+
+    fn fold_mir_unevaluated(
+        &mut self,
+        uv: mir::UnevaluatedConst<'tcx>,
+    ) -> mir::UnevaluatedConst<'tcx> {
         uv.super_fold_with(self)
     }
 
@@ -172,10 +182,17 @@ pub trait FallibleTypeFolder<'tcx>: Sized {
         c.try_super_fold_with(self)
     }
 
-    fn try_fold_unevaluated(
+    fn try_fold_ty_unevaluated(
         &mut self,
-        c: ty::Unevaluated<'tcx>,
-    ) -> Result<ty::Unevaluated<'tcx>, Self::Error> {
+        c: ty::UnevaluatedConst<'tcx>,
+    ) -> Result<ty::UnevaluatedConst<'tcx>, Self::Error> {
+        c.try_super_fold_with(self)
+    }
+
+    fn try_fold_mir_unevaluated(
+        &mut self,
+        c: mir::UnevaluatedConst<'tcx>,
+    ) -> Result<mir::UnevaluatedConst<'tcx>, Self::Error> {
         c.try_super_fold_with(self)
     }
 
@@ -225,11 +242,18 @@ where
         Ok(self.fold_const(c))
     }
 
-    fn try_fold_unevaluated(
+    fn try_fold_ty_unevaluated(
         &mut self,
-        c: ty::Unevaluated<'tcx>,
-    ) -> Result<ty::Unevaluated<'tcx>, !> {
-        Ok(self.fold_unevaluated(c))
+        c: ty::UnevaluatedConst<'tcx>,
+    ) -> Result<ty::UnevaluatedConst<'tcx>, !> {
+        Ok(self.fold_ty_unevaluated(c))
+    }
+
+    fn try_fold_mir_unevaluated(
+        &mut self,
+        c: mir::UnevaluatedConst<'tcx>,
+    ) -> Result<mir::UnevaluatedConst<'tcx>, !> {
+        Ok(self.fold_mir_unevaluated(c))
     }
 
     fn try_fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> Result<ty::Predicate<'tcx>, !> {
@@ -302,6 +326,17 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         value.fold_with(&mut RegionFolder::new(self, &mut f))
     }
+
+    pub fn super_fold_regions<T>(
+        self,
+        value: T,
+        mut f: impl FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
+    ) -> T
+    where
+        T: TypeSuperFoldable<'tcx>,
+    {
+        value.super_fold_with(&mut RegionFolder::new(self, &mut f))
+    }
 }
 
 /// Folds over the substructure of a type, visiting its component
@@ -353,7 +388,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
         t
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             ty::ReLateBound(debruijn, _) if debruijn < self.current_index => {
@@ -377,17 +412,13 @@ pub trait BoundVarReplacerDelegate<'tcx> {
     fn replace_const(&mut self, bv: ty::BoundVar, ty: Ty<'tcx>) -> ty::Const<'tcx>;
 }
 
-pub struct FnMutDelegate<R, T, C> {
-    pub regions: R,
-    pub types: T,
-    pub consts: C,
+pub struct FnMutDelegate<'a, 'tcx> {
+    pub regions: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
+    pub types: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
+    pub consts: &'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx> + 'a),
 }
-impl<'tcx, R, T, C> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<R, T, C>
-where
-    R: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
-    T: FnMut(ty::BoundTy) -> Ty<'tcx>,
-    C: FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx>,
-{
+
+impl<'a, 'tcx> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<'a, 'tcx> {
     fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx> {
         (self.regions)(br)
     }
@@ -511,7 +542,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn replace_late_bound_regions_uncached<T, F>(
         self,
         value: Binder<'tcx, T>,
-        replace_regions: F,
+        mut replace_regions: F,
     ) -> T
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
@@ -522,9 +553,9 @@ impl<'tcx> TyCtxt<'tcx> {
             value
         } else {
             let delegate = FnMutDelegate {
-                regions: replace_regions,
-                types: |b| bug!("unexpected bound ty in binder: {b:?}"),
-                consts: |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),
+                regions: &mut replace_regions,
+                types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
+                consts: &mut |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),
             };
             let mut replacer = BoundVarReplacer::new(self, delegate);
             value.fold_with(&mut replacer)
@@ -584,19 +615,19 @@ impl<'tcx> TyCtxt<'tcx> {
         self.replace_escaping_bound_vars_uncached(
             value,
             FnMutDelegate {
-                regions: |r: ty::BoundRegion| {
+                regions: &mut |r: ty::BoundRegion| {
                     self.mk_region(ty::ReLateBound(
                         ty::INNERMOST,
                         ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
                     ))
                 },
-                types: |t: ty::BoundTy| {
+                types: &mut |t: ty::BoundTy| {
                     self.mk_ty(ty::Bound(
                         ty::INNERMOST,
                         ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
                     ))
                 },
-                consts: |c, ty: Ty<'tcx>| {
+                consts: &mut |c, ty: Ty<'tcx>| {
                     self.mk_const(ty::ConstS {
                         kind: ty::ConstKind::Bound(ty::INNERMOST, shift_bv(c)),
                         ty,

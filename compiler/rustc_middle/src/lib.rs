@@ -31,7 +31,6 @@
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
 #![feature(get_mut_unchecked)]
-#![feature(generic_associated_types)]
 #![feature(if_let_guard)]
 #![feature(map_first_last)]
 #![feature(negative_impls)]
@@ -40,7 +39,6 @@
 #![feature(new_uninit)]
 #![feature(once_cell)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(type_alias_impl_trait)]
@@ -86,6 +84,7 @@ pub mod query;
 pub mod arena;
 #[macro_use]
 pub mod dep_graph;
+pub(crate) mod error;
 pub mod hir;
 pub mod infer;
 pub mod lint;
@@ -95,6 +94,7 @@ pub mod mir;
 pub mod thir;
 pub mod traits;
 pub mod ty;
+mod values;
 
 pub mod util {
     pub mod bug;

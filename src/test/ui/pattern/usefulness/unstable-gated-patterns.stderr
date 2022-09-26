@@ -1,8 +1,8 @@
-error[E0004]: non-exhaustive patterns: `Unstable` not covered
+error[E0004]: non-exhaustive patterns: `UnstableEnum::Unstable` not covered
   --> $DIR/unstable-gated-patterns.rs:10:11
    |
 LL |     match UnstableEnum::Stable {
-   |           ^^^^^^^^^^^^^^^^^^^^ pattern `Unstable` not covered
+   |           ^^^^^^^^^^^^^^^^^^^^ pattern `UnstableEnum::Unstable` not covered
    |
 note: `UnstableEnum` defined here
   --> $DIR/auxiliary/unstable.rs:11:5
@@ -16,7 +16,7 @@ LL |     Unstable,
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         UnstableEnum::Stable2 => {}
-LL +         Unstable => todo!()
+LL +         UnstableEnum::Unstable => todo!()
    |
 
 error: aborting due to previous error

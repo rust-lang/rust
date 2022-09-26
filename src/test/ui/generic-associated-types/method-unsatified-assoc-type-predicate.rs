@@ -1,8 +1,6 @@
 // Test that the predicate printed in an unresolved method error prints the
 // generics for a generic associated type.
 
-#![feature(generic_associated_types)]
-
 trait X {
     type Y<T>;
 }

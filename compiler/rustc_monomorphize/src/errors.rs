@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_macros::{LintDiagnostic, SessionDiagnostic};
-use rustc_session::SessionDiagnostic;
+use rustc_errors::IntoDiagnostic;
+use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_span::Span;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(monomorphize::recursion_limit)]
 pub struct RecursionLimit {
     #[primary_span]
@@ -19,7 +19,7 @@ pub struct RecursionLimit {
     pub path: PathBuf,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(monomorphize::type_length_limit)]
 #[help(monomorphize::consider_type_length_limit)]
 pub struct TypeLengthLimit {
@@ -32,7 +32,7 @@ pub struct TypeLengthLimit {
     pub type_length: usize,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(monomorphize::requires_lang_item)]
 pub struct RequiresLangItem {
     pub lang_item: String,
@@ -44,12 +44,13 @@ pub struct UnusedGenericParams {
     pub param_names: Vec<String>,
 }
 
-impl SessionDiagnostic<'_> for UnusedGenericParams {
+impl IntoDiagnostic<'_> for UnusedGenericParams {
     fn into_diagnostic(
         self,
-        sess: &'_ rustc_session::parse::ParseSess,
+        handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = sess.struct_err(rustc_errors::fluent::monomorphize::unused_generic_params);
+        let mut diag =
+            handler.struct_err(rustc_errors::fluent::monomorphize::unused_generic_params);
         diag.set_span(self.span);
         for (span, name) in self.param_spans.into_iter().zip(self.param_names) {
             // FIXME: I can figure out how to do a label with a fluent string with a fixed message,
@@ -71,11 +72,11 @@ pub struct LargeAssignmentsLint {
     pub limit: u64,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(monomorphize::unknown_partition_strategy)]
 pub struct UnknownPartitionStrategy;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(monomorphize::symbol_already_defined)]
 pub struct SymbolAlreadyDefined {
     #[primary_span]

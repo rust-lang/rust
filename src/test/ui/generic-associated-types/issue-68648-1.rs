@@ -1,8 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
-
 trait Fun {
     type F<'a>;
 

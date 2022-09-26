@@ -1,8 +1,10 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
+use crate::errors;
 use rustc_attr::{
-    self as attr, ConstStability, Stability, StabilityLevel, Unstable, UnstableReason,
+    self as attr, rust_version_symbol, ConstStability, Stability, StabilityLevel, Unstable,
+    UnstableReason, VERSION_PLACEHOLDER,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{struct_span_err, Applicability};
@@ -121,16 +123,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
             if kind == AnnotationKind::Prohibited || kind == AnnotationKind::DeprecationProhibited {
                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                self.tcx.struct_span_lint_hir(USELESS_DEPRECATED, hir_id, *span, |lint| {
-                    lint.build("this `#[deprecated]` annotation has no effect")
-                        .span_suggestion_short(
-                            *span,
-                            "remove the unnecessary deprecation attribute",
-                            "",
-                            rustc_errors::Applicability::MachineApplicable,
-                        )
-                        .emit();
-                });
+                self.tcx.emit_spanned_lint(
+                    USELESS_DEPRECATED,
+                    hir_id,
+                    *span,
+                    errors::DeprecatedAnnotationHasNoEffect { span: *span },
+                );
             }
 
             // `Deprecation` is just two pointers, no need to intern it
@@ -387,7 +385,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         }
 
         self.annotate(
-            i.def_id,
+            i.def_id.def_id,
             i.span,
             fn_sig,
             kind,
@@ -406,7 +404,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         };
 
         self.annotate(
-            ti.def_id,
+            ti.def_id.def_id,
             ti.span,
             fn_sig,
             AnnotationKind::Required,
@@ -429,7 +427,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         };
 
         self.annotate(
-            ii.def_id,
+            ii.def_id.def_id,
             ii.span,
             fn_sig,
             kind,
@@ -487,7 +485,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
         self.annotate(
-            i.def_id,
+            i.def_id.def_id,
             i.span,
             None,
             AnnotationKind::Required,
@@ -575,25 +573,25 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
             hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })
                 | hir::ItemKind::ForeignMod { .. }
         ) {
-            self.check_missing_stability(i.def_id, i.span);
+            self.check_missing_stability(i.def_id.def_id, i.span);
         }
 
         // Ensure stable `const fn` have a const stability attribute.
-        self.check_missing_const_stability(i.def_id, i.span);
+        self.check_missing_const_stability(i.def_id.def_id, i.span);
 
         intravisit::walk_item(self, i)
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
-        self.check_missing_stability(ti.def_id, ti.span);
+        self.check_missing_stability(ti.def_id.def_id, ti.span);
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         let impl_def_id = self.tcx.hir().get_parent_item(ii.hir_id());
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
-            self.check_missing_stability(ii.def_id, ii.span);
-            self.check_missing_const_stability(ii.def_id, ii.span);
+            self.check_missing_stability(ii.def_id.def_id, ii.span);
+            self.check_missing_const_stability(ii.def_id.def_id, ii.span);
         }
         intravisit::walk_impl_item(self, ii);
     }
@@ -612,7 +610,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
-        self.check_missing_stability(i.def_id, i.span);
+        self.check_missing_stability(i.def_id.def_id, i.span);
         intravisit::walk_foreign_item(self, i);
     }
     // Note that we don't need to `check_missing_stability` for default generic parameters,
@@ -718,7 +716,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     return;
                 }
 
-                let Some(cnum) = self.tcx.extern_mod_stmt_cnum(item.def_id) else {
+                let Some(cnum) = self.tcx.extern_mod_stmt_cnum(item.def_id.def_id) else {
                     return;
                 };
                 let def_id = cnum.as_def_id();
@@ -832,7 +830,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 // added, such as `core::intrinsics::transmute`
                 let parents = path.segments.iter().rev().skip(1);
                 for path_segment in parents {
-                    if let Some(def_id) = path_segment.res.as_ref().and_then(Res::opt_def_id) {
+                    if let Some(def_id) = path_segment.res.opt_def_id() {
                         // use `None` for id to prevent deprecation check
                         self.tcx.check_stability_allow_unstable(
                             def_id,
@@ -871,7 +869,7 @@ fn is_unstable_reexport<'tcx>(tcx: TyCtxt<'tcx>, id: hir::HirId) -> bool {
     }
 
     // If this is a path that isn't a use, we don't need to do anything special
-    if !matches!(tcx.hir().item(hir::ItemId { def_id }).kind, ItemKind::Use(..)) {
+    if !matches!(tcx.hir().expect_item(def_id).kind, ItemKind::Use(..)) {
         return false;
     }
 
@@ -1106,7 +1104,15 @@ fn unnecessary_partially_stable_feature_lint(
     });
 }
 
-fn unnecessary_stable_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol, since: Symbol) {
+fn unnecessary_stable_feature_lint(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    feature: Symbol,
+    mut since: Symbol,
+) {
+    if since.as_str() == VERSION_PLACEHOLDER {
+        since = rust_version_symbol();
+    }
     tcx.struct_span_lint_hir(lint::builtin::STABLE_FEATURES, hir::CRATE_HIR_ID, span, |lint| {
         lint.build(&format!(
             "the feature `{feature}` has been stable since {since} and no longer requires an \

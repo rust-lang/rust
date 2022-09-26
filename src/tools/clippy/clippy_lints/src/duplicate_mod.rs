@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// // a.rs
     /// use crate::b;
     /// ```
-    #[clippy::version = "1.62.0"]
+    #[clippy::version = "1.63.0"]
     pub DUPLICATE_MOD,
     suspicious,
     "file loaded as module multiple times"

@@ -222,7 +222,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     }
                     has_emitted
                 }
-                ty::Dynamic(binder, _) => {
+                ty::Dynamic(binder, _, _) => {
                     let mut has_emitted = false;
                     for predicate in binder.iter() {
                         if let ty::ExistentialPredicate::Trait(ref trait_ref) =
@@ -268,7 +268,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 },
                 ty::Closure(..) => {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        // FIXME(davidtwco): this isn't properly translatable becauses of the
+                        // FIXME(davidtwco): this isn't properly translatable because of the
                         // pre/post strings
                         lint.build(fluent::lint::unused_closure)
                             .set_arg("count", plural_len)
@@ -281,7 +281,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Generator(..) => {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        // FIXME(davidtwco): this isn't properly translatable becauses of the
+                        // FIXME(davidtwco): this isn't properly translatable because of the
                         // pre/post strings
                         lint.build(fluent::lint::unused_generator)
                             .set_arg("count", plural_len)
@@ -310,7 +310,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         ) -> bool {
             if let Some(attr) = cx.tcx.get_attr(def_id, sym::must_use) {
                 cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                    // FIXME(davidtwco): this isn't properly translatable becauses of the pre/post
+                    // FIXME(davidtwco): this isn't properly translatable because of the pre/post
                     // strings
                     let mut err = lint.build(fluent::lint::unused_def);
                     err.set_arg("pre", descr_pre_path);
@@ -751,7 +751,7 @@ impl UnusedParens {
         avoid_or: bool,
         avoid_mut: bool,
     ) {
-        use ast::{BindingMode, Mutability, PatKind};
+        use ast::{BindingAnnotation, PatKind};
 
         if let PatKind::Paren(inner) = &value.kind {
             match inner.kind {
@@ -763,7 +763,9 @@ impl UnusedParens {
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
                 // Avoid `mut x` and `mut x @ p` if we should:
-                PatKind::Ident(BindingMode::ByValue(Mutability::Mut), ..) if avoid_mut => return,
+                PatKind::Ident(BindingAnnotation::MUT, ..) if avoid_mut => {
+                    return;
+                }
                 // Otherwise proceed with linting.
                 _ => {}
             }

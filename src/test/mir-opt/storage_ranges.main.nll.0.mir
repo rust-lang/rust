@@ -7,16 +7,15 @@
 | Inferred Region Values
 | '_#0r | U0 | {bb0[0..=22], '_#0r, '_#1r}
 | '_#1r | U0 | {bb0[0..=22], '_#1r}
-| '_#2r | U0 | {}
-| '_#3r | U0 | {bb0[10..=11]}
-| '_#4r | U0 | {bb0[11]}
+| '_#2r | U0 | {bb0[10..=11]}
+| '_#3r | U0 | {bb0[11]}
 |
 | Inference Constraints
 | '_#0r live at {bb0[0..=22]}
 | '_#1r live at {bb0[0..=22]}
-| '_#3r live at {bb0[10]}
-| '_#4r live at {bb0[11]}
-| '_#3r: '_#4r due to Assignment at Single(bb0[10]) ($DIR/storage_ranges.rs:6:17: 6:25 (#0)
+| '_#2r live at {bb0[10]}
+| '_#3r live at {bb0[11]}
+| '_#2r: '_#3r due to Assignment at Single(bb0[10]) ($DIR/storage_ranges.rs:6:17: 6:25 (#0)
 |
 fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/storage_ranges.rs:+0:11: +0:11

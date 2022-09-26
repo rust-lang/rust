@@ -456,6 +456,8 @@ tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InT
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
 tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
+// Miri on the other hand is treated as out of tree, since InTree also causes it to
+// be run as part of `check`, which can fail on platforms which libffi-sys has no support for.
 tool_check_step!(Miri, "src/tools/miri", SourceType::Submodule);
 tool_check_step!(Rls, "src/tools/rls", SourceType::InTree);
 tool_check_step!(Rustfmt, "src/tools/rustfmt", SourceType::InTree);

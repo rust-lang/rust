@@ -141,10 +141,6 @@ h1, h2, h3, h4 {
 h1.fqn {
 	margin: 0;
 	padding: 0;
-	border-bottom-color: var(--headings-border-bottom-color);
-}
-h2, h3, h4 {
-	border-bottom-color: var(--headings-border-bottom-color);
 }
 .main-heading {
 	display: flex;
@@ -180,8 +176,8 @@ h4.code-header {
 	border-bottom-style: none;
 	margin: 0;
 	padding: 0;
-	margin-top: 0.6em;
-	margin-bottom: 0.4em;
+	margin-top: 0.6rem;
+	margin-bottom: 0.4rem;
 }
 .impl,
 .impl-items .method,
@@ -197,26 +193,17 @@ h4.code-header {
 	position: relative;
 }
 
-div.impl-items > div {
-	padding-left: 0;
-}
-
 h1, h2, h3, h4, h5, h6,
 .sidebar,
 .mobile-topbar,
 a.source,
 .search-input,
 .search-results .result-name,
-.content table td:first-child > a,
 .item-left > a,
 .out-of-band,
 span.since,
-#source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
-div.impl-items > div:not(.docblock):not(.item-info),
-.content ul.crate a.crate,
 a.srclink,
-#main-content > .since,
 #help-button > button,
 details.rustdoc-toggle.top-doc > summary,
 details.rustdoc-toggle.top-doc > summary::before,
@@ -226,11 +213,10 @@ details.rustdoc-toggle.non-exhaustive > summary::before,
 .more-examples-toggle summary, .more-examples-toggle .hide-more,
 .example-links a,
 /* This selector is for the items listed in the "all items" page. */
-#main-content > ul.docblock > li > a {
+ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
-h1, h2, h3, h4,
 a#toggle-all-docs,
 a.anchor,
 .small-section-header a,
@@ -248,6 +234,49 @@ pre.rust a,
 .content .fn .where,
 .content .where.fmt-newline {
 	color: var(--main-color);
+}
+
+.content span.enum, .content a.enum,
+.content span.struct, .content a.struct,
+.content span.union, .content a.union,
+.content span.primitive, .content a.primitive,
+.content span.type, .content a.type,
+.content span.foreigntype, .content a.foreigntype {
+	color: var(--type-link-color);
+}
+
+.content span.trait, .content a.trait,
+.content span.traitalias, .content a.traitalias {
+	color: var(--trait-link-color);
+}
+
+.content span.associatedtype, .content a.associatedtype,
+.content span.constant, .content a.constant,
+.content span.static, .content a.static {
+	color: var(--assoc-item-link-color);
+}
+
+.content span.fn, .content a.fn,
+.content .fnname {
+	color: var(--function-link-color);
+}
+
+.content span.attr, .content a.attr,
+.content span.derive, .content a.derive,
+.content span.macro, .content a.macro {
+	color: var(--macro-link-color);
+}
+
+.content span.mod, .content a.mod, .block a.current.mod {
+	color: var(--mod-link-color);
+}
+
+.content span.keyword, .content a.keyword {
+	color: var(--keyword-link-color);
+}
+
+a {
+	color: var(--link-color);
 }
 
 ol, ul {
@@ -339,9 +368,6 @@ code, pre, a.test-arrow, .code-header {
 pre {
 	padding: 14px;
 }
-.docblock.item-decl {
-	margin-left: 0;
-}
 .item-decl pre {
 	overflow-x: auto;
 }
@@ -354,14 +380,8 @@ img {
 	max-width: 100%;
 }
 
-li {
-	position: relative;
-}
-
 .source .content {
-	max-width: none;
 	overflow: visible;
-	margin-left: 0px;
 }
 
 .sub-container {
@@ -391,7 +411,7 @@ li {
 
 .sidebar {
 	font-size: 0.875rem;
-	width: 250px;
+	width: 200px;
 	min-width: 200px;
 	overflow-y: scroll;
 	position: sticky;
@@ -502,17 +522,6 @@ li {
 	width: 100px;
 }
 
-.location:empty {
-	border: none;
-}
-
-.location a:first-of-type {
-	font-weight: 500;
-}
-
-.block {
-	padding: 0;
-}
 .block ul, .block li {
 	padding: 0;
 	margin: 0;
@@ -564,13 +573,9 @@ h2.location a {
 }
 
 .rustdoc .example-wrap {
-	display: inline-flex;
+	display: flex;
 	margin-bottom: 10px;
-}
-
-.example-wrap {
 	position: relative;
-	width: 100%;
 }
 
 .example-wrap > pre.line-number {
@@ -603,17 +608,8 @@ h2.location a {
 	margin: 0;
 }
 
-#search {
-	position: relative;
-}
-
 .search-loading {
 	text-align: center;
-}
-
-#results > table {
-	width: 100%;
-	table-layout: fixed;
 }
 
 .content > .example-wrap pre.line-numbers {
@@ -630,16 +626,12 @@ h2.location a {
 .docblock-short {
 	overflow-wrap: break-word;
 	overflow-wrap: anywhere;
-}
-.docblock-short p {
-	display: inline;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	margin: 0;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
 .docblock > :not(pre) > code,
-.docblock-short > :not(pre) > code {
+.docblock-short > code {
 	white-space: pre-wrap;
 }
 
@@ -655,33 +647,28 @@ h2.location a {
 
 .docblock h5 { font-size: 1rem; }
 .docblock h6 { font-size: 0.875rem; }
-.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
-	border-bottom-color: var(--headings-border-bottom-color);
-}
 
 .docblock {
 	margin-left: 24px;
 	position: relative;
 }
 
-.docblock > :not(.information):not(.more-examples-toggle) {
+.docblock > :not(.more-examples-toggle):not(.example-wrap) {
 	max-width: 100%;
 	overflow-x: auto;
 }
 
-.content .out-of-band {
+.out-of-band {
 	flex-grow: 0;
 	font-size: 1.125rem;
 	font-weight: normal;
-	float: right;
 }
 
 .method > .code-header, .trait-impl > .code-header {
-	max-width: calc(100% - 41px);
 	display: block;
 }
 
-.content .in-band {
+.in-band {
 	flex-grow: 1;
 	margin: 0px;
 	padding: 0px;
@@ -694,10 +681,6 @@ h2.location a {
 	background-color: var(--main-background-color);
 }
 
-.in-band > code, .in-band > .code-header {
-	display: inline-block;
-}
-
 .docblock code, .docblock-short code,
 pre, .rustdoc.source .example-wrap {
 	background-color: var(--code-block-background-color);
@@ -706,18 +689,6 @@ pre, .rustdoc.source .example-wrap {
 #main-content {
 	position: relative;
 }
-#main-content > .since {
-	top: inherit;
-}
-
-.content table {
-	border-spacing: 0 5px;
-}
-.content td { vertical-align: top; }
-.content td:first-child { padding-right: 20px; }
-.content td p:first-child { margin-top: 0; }
-.content td h1, .content td h2 { margin-left: 0; font-size: 1.125rem; }
-.content tr:first-child td { border-top: 0; }
 
 .docblock table {
 	margin: .5em 0;
@@ -729,6 +700,7 @@ pre, .rustdoc.source .example-wrap {
 .docblock table td {
 	padding: .5em;
 	border: 1px dashed var(--border-color);
+	vertical-align: top;
 }
 
 .docblock table th {
@@ -742,29 +714,12 @@ pre, .rustdoc.source .example-wrap {
 	padding: 0;
 }
 
-.content > .methods > .method {
-	font-size: 1rem;
-	position: relative;
-}
 /* Shift "where ..." part of method or fn definition down a line */
 .content .method .where,
 .content .fn .where,
 .content .where.fmt-newline {
 	display: block;
 	font-size: 0.875rem;
-}
-
-.content .methods > div:not(.notable-traits):not(.method) {
-	margin-left: 40px;
-	margin-bottom: 15px;
-}
-
-.content .docblock > .impl-items {
-	margin-left: 20px;
-	margin-top: -34px;
-}
-.content .docblock >.impl-items table td {
-	padding: 0;
 }
 
 .item-info {
@@ -776,28 +731,11 @@ pre, .rustdoc.source .example-wrap {
 }
 
 .content .item-info {
-	position: relative;
 	margin-left: 24px;
-}
-
-.sub-variant > div > .item-info {
-	margin-top: initial;
 }
 
 .content .impl-items .docblock, .content .impl-items .item-info {
 	margin-bottom: .6em;
-}
-
-.content .impl-items > .item-info {
-	margin-left: 40px;
-}
-
-.methods > .item-info, .content .impl-items > .item-info {
-	margin-top: -8px;
-}
-
-.impl-items {
-	flex-basis: 100%;
 }
 
 #main-content > .item-info {
@@ -819,7 +757,6 @@ nav.sub form { display: inline; }
 
 a {
 	text-decoration: none;
-	background: transparent;
 }
 
 .small-section-header {
@@ -858,6 +795,7 @@ h2.small-section-header > .anchor {
 	content: '§';
 }
 
+.all-items a:hover,
 .docblock a:not(.srclink):not(.test-arrow):not(.scrape-help):hover,
 .docblock-short a:not(.srclink):not(.test-arrow):not(.scrape-help):hover, .item-info a {
 	text-decoration: underline;
@@ -997,6 +935,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	width: 100%;
 	background-color: var(--button-background-color);
 }
+.search-input:focus {
+	border-color: var(--search-input-focused-border-color);
+}
 
 .search-results {
 	display: none;
@@ -1018,7 +959,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results > a {
 	display: block;
-	width: 100%;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
@@ -1035,12 +975,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 .search-results .result-name {
 	padding-right: 1em;
-}
-
-.search-results .result-name > span {
-	display: inline-block;
-	margin: 0;
-	font-weight: normal;
 }
 
 .popover {
@@ -1129,14 +1063,16 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	font-size: 0.875rem;
 	font-weight: normal;
 }
-.stab p {
-	display: inline;
-	margin: 0;
-}
 
 .stab .emoji {
 	font-size: 1.25rem;
 	margin-right: 0.3rem;
+}
+
+/* This is to prevent the `.stab` elements to overflow the .docblock elements. */
+.docblock .stab {
+	padding: 0 0.125em;
+	margin-bottom: 0;
 }
 
 /* Black one-pixel outline around emoji shapes */
@@ -1177,22 +1113,114 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	float: right;
 }
 
+.rightside:not(a),
+.out-of-band {
+	color: var(--right-side-color);
+}
+
+
 .impl-items .srclink, .impl .srclink, .methods .srclink {
 	/* Override header settings otherwise it's too bold */
 	font-weight: normal;
 	font-size: 1rem;
 }
 
-td.summary-column {
-	width: 100%;
-}
-
-.summary {
-	padding-right: 0px;
-}
-
 pre.rust .question-mark {
 	font-weight: bold;
+}
+
+.example-wrap.compile_fail,
+.example-wrap.should_panic {
+	border-left: 2px solid var(--codeblock-error-color);
+}
+
+.ignore.example-wrap {
+	border-left: 2px solid var(--codeblock-ignore-color);
+}
+
+.example-wrap.compile_fail:hover,
+.example-wrap.should_panic:hover {
+	border-left: 2px solid var(--codeblock-error-hover-color);
+}
+
+.example-wrap.ignore:hover {
+	border-left: 2px solid var(--codeblock-ignore-hover-color);
+}
+
+.example-wrap.compile_fail .tooltip,
+.example-wrap.should_panic .tooltip {
+	color: var(--codeblock-error-color);
+}
+
+.example-wrap.ignore .tooltip {
+	color:  var(--codeblock-ignore-color);
+}
+
+.example-wrap.compile_fail:hover .tooltip,
+.example-wrap.should_panic:hover .tooltip {
+	color: var(--codeblock-error-hover-color);
+}
+
+.example-wrap.ignore:hover .tooltip {
+	color: var(--codeblock-ignore-hover-color);
+}
+
+.example-wrap .tooltip {
+	position: absolute;
+	display: block;
+	cursor: pointer;
+	left: -25px;
+	top: 5px;
+}
+
+.example-wrap .tooltip::after {
+	display: none;
+	text-align: center;
+	padding: 5px 3px 3px 3px;
+	border-radius: 6px;
+	margin-left: 5px;
+	font-size: 1rem;
+	border: 1px solid var(--border-color);
+	position: absolute;
+	width: max-content;
+	top: -2px;
+	z-index: 1;
+}
+
+.example-wrap .tooltip::before {
+	content: " ";
+	position: absolute;
+	top: 50%;
+	left: 16px;
+	margin-top: -5px;
+	border-width: 5px;
+	border-style: solid;
+	display: none;
+	z-index: 1;
+}
+
+.example-wrap.ignore .tooltip::after {
+	content: "This example is not tested";
+}
+.example-wrap.compile_fail .tooltip::after {
+	content: "This example deliberately fails to compile";
+}
+.example-wrap.should_panic .tooltip::after {
+	content: "This example panics";
+}
+.example-wrap.edition .tooltip::after {
+	content: "This code runs with edition " attr(data-edition);
+}
+
+.example-wrap .tooltip:hover::before, .example-wrap .tooltip:hover::after {
+	display: inline;
+}
+
+.example-wrap.compile_fail .tooltip,
+.example-wrap.should_panic .tooltip,
+.example-wrap.ignore .tooltip {
+	font-weight: bold;
+	font-size: 1.25rem;
 }
 
 a.test-arrow {
@@ -1215,6 +1243,7 @@ a.test-arrow:hover {
 
 .code-attribute {
 	font-weight: 300;
+	color: var(--code-attribute-color);
 }
 
 .item-spacer {
@@ -1223,7 +1252,6 @@ a.test-arrow:hover {
 }
 
 .out-of-band > span.since {
-	position: initial;
 	font-size: 1.25rem;
 }
 
@@ -1251,74 +1279,12 @@ h3.variant {
 	margin-left: 24px;
 }
 
-.toggle-label {
-	display: inline-block;
-	margin-left: 4px;
-	margin-top: 3px;
-}
-
 :target > code, :target > .code-header {
 	opacity: 1;
 }
 
 :target {
 	padding-right: 3px;
-}
-
-.information {
-	position: absolute;
-	left: -25px;
-	margin-top: 7px;
-	z-index: 1;
-}
-
-.tooltip {
-	position: relative;
-	display: inline-block;
-	cursor: pointer;
-}
-
-.tooltip::after {
-	display: none;
-	text-align: center;
-	padding: 5px 3px 3px 3px;
-	border-radius: 6px;
-	margin-left: 5px;
-	font-size: 1rem;
-	border: 1px solid var(--border-color);
-}
-
-.tooltip.ignore::after {
-	content: "This example is not tested";
-}
-.tooltip.compile_fail::after {
-	content: "This example deliberately fails to compile";
-}
-.tooltip.should_panic::after {
-	content: "This example panics";
-}
-.tooltip.edition::after {
-	content: "This code runs with edition " attr(data-edition);
-}
-
-.tooltip::before {
-	content: " ";
-	position: absolute;
-	top: 50%;
-	left: 16px;
-	margin-top: -5px;
-	border-width: 5px;
-	border-style: solid;
-	display: none;
-}
-
-.tooltip:hover::before, .tooltip:hover::after {
-	display: inline;
-}
-
-.tooltip.compile_fail, .tooltip.should_panic, .tooltip.ignore {
-	font-weight: bold;
-	font-size: 1.25rem;
 }
 
 .notable-traits-tooltip {
@@ -1362,7 +1328,7 @@ h3.variant {
 	display: block;
 }
 
-.notable-traits .docblock code.content{
+.notable-traits .docblock code.content {
 	margin: 0;
 	padding: 0;
 	font-size: 1.25rem;
@@ -1396,27 +1362,19 @@ pre.rust {
 }
 
 #titles {
-	height: 35px;
+	display: flex;
+	flex-direction: row;
+	gap: 1px;
+	margin-bottom: 4px;
 }
 
 #titles > button {
-	float: left;
-	width: 33.3%;
 	text-align: center;
 	font-size: 1.125rem;
 	cursor: pointer;
 	border: 0;
 	border-top: 2px solid;
-}
-
-#titles > button:first-child:last-child {
-	margin-right: 1px;
-	width: calc(100% - 1px);
-}
-
-#titles > button:not(:last-child) {
-	margin-right: 1px;
-	width: calc(33.3% - 1px);
+	flex: 1;
 }
 
 #titles > button > div.count {
@@ -1445,7 +1403,6 @@ pre.rust {
 }
 #source-sidebar {
 	width: 100%;
-	z-index: 1;
 	overflow: auto;
 }
 #source-sidebar > .title {
@@ -1484,14 +1441,22 @@ pre.rust {
 	border-radius: 2px;
 	cursor: pointer;
 }
-#settings-menu {
-	padding: 0;
-}
+
 #settings-menu > a, #help-button > button {
 	padding: 5px;
 	height: 100%;
 	display: block;
 	background-color: var(--button-background-color);
+}
+
+#copy-path {
+	color: var(--copy-path-button-color);
+}
+#copy-path > img {
+	filter: var(--copy-path-img-filter);
+}
+#copy-path:hover > img {
+	filter: var(--copy-path-img-hover-filter);
 }
 
 @keyframes rotating {
@@ -1553,19 +1518,8 @@ kbd {
 	cursor: default;
 }
 
-#implementations-list > h3 > span.in-band {
-	width: 100%;
-}
-
-#main-content > ul {
-	padding-left: 10px;
-}
-#main-content > ul > li {
+ul.all-items > li {
 	list-style: none;
-}
-
-.non-exhaustive {
-	margin-bottom: 1em;
 }
 
 details.dir-entry {
@@ -1615,6 +1569,12 @@ details.rustdoc-toggle > summary::before {
 	display: inline-block;
 	vertical-align: middle;
 	opacity: .5;
+}
+
+details.rustdoc-toggle > summary.hideme > span,
+details.rustdoc-toggle > summary::before,
+.more-examples-toggle summary, .more-examples-toggle .hide-more {
+	color: var(--toggles-color);
 }
 
 /* Screen readers see the text version at the end the line.
@@ -1721,7 +1681,7 @@ in storage.js plus the media query with (max-width: 700px)
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
 	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.docblock > .information:first-child > .tooltip {
+	.docblock > .example-wrap:first-child .tooltip {
 		margin-top: 16px;
 	}
 
@@ -1762,18 +1722,17 @@ in storage.js plus the media query with (min-width: 701px)
 		padding-top: 0px;
 	}
 
-	.rustdoc,
 	.main-heading {
 		flex-direction: column;
 	}
 
-	.content .out-of-band {
+	.out-of-band {
 		text-align: left;
 		margin-left: initial;
 		padding: initial;
 	}
 
-	.content .out-of-band .since::before {
+	.out-of-band .since::before {
 		content: "Since ";
 	}
 
@@ -1885,10 +1844,6 @@ in storage.js plus the media query with (min-width: 701px)
 		background-color: var(--sidebar-background-color);
 	}
 
-	.source nav:not(.sidebar).sub {
-		margin-left: 32px;
-	}
-
 	.content {
 		margin-left: 0px;
 	}
@@ -1897,28 +1852,12 @@ in storage.js plus the media query with (min-width: 701px)
 		margin-top: 10px;
 	}
 
-	#search {
-		margin-left: 0;
-		padding: 0;
-	}
-
 	.anchor {
 		display: none !important;
 	}
 
-	.notable-traits {
-		position: absolute;
-		left: -22px;
-		top: 24px;
-	}
-
 	#titles > button > div.count {
-		float: left;
-		width: 100%;
-	}
-
-	#titles {
-		height: 50px;
+		display: block;
 	}
 
 	/* Because of ios, we need to actually have a full height sidebar title so the
@@ -1969,14 +1908,6 @@ in storage.js plus the media query with (min-width: 701px)
 		border-bottom: 1px solid;
 	}
 
-	#source-sidebar {
-		z-index: 11;
-	}
-
-	#main-content > .line-numbers {
-		margin-top: 0;
-	}
-
 	.notable-traits .notable-traits-tooltiptext {
 		left: 0;
 		top: 100%;
@@ -2025,10 +1956,15 @@ in storage.js plus the media query with (min-width: 701px)
 	#main-content > div > details.rustdoc-toggle > summary::before {
 		left: -11px;
 	}
+
+	/* Align summary-nested and unnested item-info gizmos. */
+	.content .impl-items > .item-info {
+		margin-left: 34px;
+	}
 }
 
 @media print {
-	nav.sidebar, nav.sub, .content .out-of-band, a.srclink, #copy-path,
+	nav.sidebar, nav.sub, .out-of-band, a.srclink, #copy-path,
 	details.rustdoc-toggle[open] > summary::before, details.rustdoc-toggle > summary::before,
 	details.rustdoc-toggle.top-doc > summary {
 		display: none;
@@ -2044,15 +1980,6 @@ in storage.js plus the media query with (min-width: 701px)
 }
 
 @media (max-width: 464px) {
-	#titles, #titles > button {
-		height: 73px;
-	}
-
-	#main-content > table td {
-		word-break: break-word;
-		width: 50%;
-	}
-
 	#crate-search {
 		border-radius: 4px;
 	}

@@ -8,8 +8,8 @@ LL |     n + 10
    |
 help: consider restricting type parameter `N`
    |
-LL | fn add_ten<N: std::ops::Add<i32, Output=N>>(n: N) -> N {
-   |             ++++++++++++++++++++++++++++++
+LL | fn add_ten<N: std::ops::Add<i32, Output = N>>(n: N) -> N {
+   |             ++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

@@ -155,9 +155,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     return true;
                 }
 
-                match pat.kind.as_ref() {
+                match pat.kind {
                     thir::PatKind::Constant { value } => value.has_param_types_or_consts(),
-                    thir::PatKind::Range(thir::PatRange { lo, hi, .. }) => {
+                    thir::PatKind::Range(box thir::PatRange { lo, hi, .. }) => {
                         lo.has_param_types_or_consts() || hi.has_param_types_or_consts()
                     }
                     _ => false,
@@ -222,17 +222,6 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         debug!("AbstractConstBuilder::build: body={:?}", &*self.body);
         self.recurse_build(self.body_id)?;
 
-        for n in self.nodes.iter() {
-            if let Node::Leaf(ct) = n {
-                if let ty::ConstKind::Unevaluated(ct) = ct.kind() {
-                    // `AbstractConst`s should not contain any promoteds as they require references which
-                    // are not allowed.
-                    assert_eq!(ct.promoted, None);
-                    assert_eq!(ct, self.tcx.erase_regions(ct));
-                }
-            }
-        }
-
         Ok(self.tcx.arena.alloc_from_iter(self.nodes.into_iter()))
     }
 
@@ -269,7 +258,8 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node.ty)))
             }
             &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
-                let uneval = ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);
+                let uneval =
+                    ty::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
 
                 let constant = self
                     .tcx

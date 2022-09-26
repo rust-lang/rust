@@ -47,6 +47,7 @@ use crate::ich::StableHashingContext;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::definitions::DefPathHash;
 use std::fmt;
 use std::hash::Hash;
 
@@ -87,6 +88,17 @@ impl<K: DepKind> DepNode<K> {
         }
 
         dep_node
+    }
+
+    /// Construct a DepNode from the given DepKind and DefPathHash. This
+    /// method will assert that the given DepKind actually requires a
+    /// single DefId/DefPathHash parameter.
+    pub fn from_def_path_hash<Ctxt>(tcx: Ctxt, def_path_hash: DefPathHash, kind: K) -> Self
+    where
+        Ctxt: super::DepContext<DepKind = K>,
+    {
+        debug_assert!(tcx.fingerprint_style(kind) == FingerprintStyle::DefPathHash);
+        DepNode { kind, hash: def_path_hash.0.into() }
     }
 }
 
@@ -147,6 +159,67 @@ where
     default fn recover(_: Ctxt, _: &DepNode<Ctxt::DepKind>) -> Option<Self> {
         None
     }
+}
+
+/// This struct stores metadata about each DepKind.
+///
+/// Information is retrieved by indexing the `DEP_KINDS` array using the integer value
+/// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
+/// jump table instead of large matches.
+pub struct DepKindStruct<CTX: DepContext> {
+    /// Anonymous queries cannot be replayed from one compiler invocation to the next.
+    /// When their result is needed, it is recomputed. They are useful for fine-grained
+    /// dependency tracking, and caching within one compiler invocation.
+    pub is_anon: bool,
+
+    /// Eval-always queries do not track their dependencies, and are always recomputed, even if
+    /// their inputs have not changed since the last compiler invocation. The result is still
+    /// cached within one compiler invocation.
+    pub is_eval_always: bool,
+
+    /// Whether the query key can be recovered from the hashed fingerprint.
+    /// See [DepNodeParams] trait for the behaviour of each key type.
+    pub fingerprint_style: FingerprintStyle,
+
+    /// The red/green evaluation system will try to mark a specific DepNode in the
+    /// dependency graph as green by recursively trying to mark the dependencies of
+    /// that `DepNode` as green. While doing so, it will sometimes encounter a `DepNode`
+    /// where we don't know if it is red or green and we therefore actually have
+    /// to recompute its value in order to find out. Since the only piece of
+    /// information that we have at that point is the `DepNode` we are trying to
+    /// re-evaluate, we need some way to re-run a query from just that. This is what
+    /// `force_from_dep_node()` implements.
+    ///
+    /// In the general case, a `DepNode` consists of a `DepKind` and an opaque
+    /// GUID/fingerprint that will uniquely identify the node. This GUID/fingerprint
+    /// is usually constructed by computing a stable hash of the query-key that the
+    /// `DepNode` corresponds to. Consequently, it is not in general possible to go
+    /// back from hash to query-key (since hash functions are not reversible). For
+    /// this reason `force_from_dep_node()` is expected to fail from time to time
+    /// because we just cannot find out, from the `DepNode` alone, what the
+    /// corresponding query-key is and therefore cannot re-run the query.
+    ///
+    /// The system deals with this case letting `try_mark_green` fail which forces
+    /// the root query to be re-evaluated.
+    ///
+    /// Now, if `force_from_dep_node()` would always fail, it would be pretty useless.
+    /// Fortunately, we can use some contextual information that will allow us to
+    /// reconstruct query-keys for certain kinds of `DepNode`s. In particular, we
+    /// enforce by construction that the GUID/fingerprint of certain `DepNode`s is a
+    /// valid `DefPathHash`. Since we also always build a huge table that maps every
+    /// `DefPathHash` in the current codebase to the corresponding `DefId`, we have
+    /// everything we need to re-run the query.
+    ///
+    /// Take the `mir_promoted` query as an example. Like many other queries, it
+    /// just has a single parameter: the `DefId` of the item it will compute the
+    /// validated MIR for. Now, when we call `force_from_dep_node()` on a `DepNode`
+    /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
+    /// is actually a `DefPathHash`, and can therefore just look up the corresponding
+    /// `DefId` in `tcx.def_path_hash_to_def_id`.
+    pub force_from_dep_node: Option<fn(tcx: CTX, dep_node: DepNode<CTX::DepKind>) -> bool>,
+
+    /// Invoke a query to put the on-disk cached value in memory.
+    pub try_load_from_on_disk_cache: Option<fn(CTX, DepNode<CTX::DepKind>)>,
 }
 
 /// A "work product" corresponds to a `.o` (or other) file that we

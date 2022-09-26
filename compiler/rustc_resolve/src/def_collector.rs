@@ -1,6 +1,5 @@
 use crate::{ImplTraitContext, Resolver};
 use rustc_ast::visit::{self, FnKind};
-use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def_id::LocalDefId;
@@ -8,7 +7,6 @@ use rustc_hir::definitions::*;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use tracing::debug;
 
 pub(crate) fn collect_definitions(
     resolver: &mut Resolver<'_>,
@@ -149,13 +147,18 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 self.with_parent(return_impl_trait_id, |this| {
                     this.visit_fn_ret_ty(&sig.decl.output)
                 });
-                let closure_def = self.create_def(closure_id, DefPathData::ClosureExpr, span);
-                self.with_parent(closure_def, |this| walk_list!(this, visit_block, body));
+                // If this async fn has no body (i.e. it's an async fn signature in a trait)
+                // then the closure_def will never be used, and we should avoid generating a
+                // def-id for it.
+                if let Some(body) = body {
+                    let closure_def = self.create_def(closure_id, DefPathData::ClosureExpr, span);
+                    self.with_parent(closure_def, |this| this.visit_block(body));
+                }
                 return;
             }
         }
 
-        visit::walk_fn(self, fn_kind, span);
+        visit::walk_fn(self, fn_kind);
     }
 
     fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {

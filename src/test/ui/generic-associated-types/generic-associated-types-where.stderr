@@ -1,5 +1,5 @@
 error[E0277]: `T` doesn't implement `std::fmt::Display`
-  --> $DIR/generic-associated-types-where.rs:20:22
+  --> $DIR/generic-associated-types-where.rs:18:22
    |
 LL |     type Assoc2<T> = Vec<T>;
    |                      ^^^^^^ `T` cannot be formatted with the default formatter
@@ -11,7 +11,7 @@ LL |     type Assoc2<T: std::fmt::Display> = Vec<T>;
    |                  +++++++++++++++++++
 
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/generic-associated-types-where.rs:22:38
+  --> $DIR/generic-associated-types-where.rs:20:38
    |
 LL |     type Assoc3<T>;
    |     -------------- definition of `Assoc3` from trait

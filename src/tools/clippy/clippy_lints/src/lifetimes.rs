@@ -10,7 +10,7 @@ use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
     ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin,
-    TraitBoundModifier, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
+    TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(ref sig, id) = item.kind {
-            let report_extra_lifetimes = trait_ref_of_method(cx, item.def_id).is_none();
+            let report_extra_lifetimes = trait_ref_of_method(cx, item.def_id.def_id).is_none();
             check_fn_inner(
                 cx,
                 sig.decl,
@@ -422,7 +422,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
         self.record(&Some(*lifetime));
     }
 
-    fn visit_poly_trait_ref(&mut self, poly_tref: &'tcx PolyTraitRef<'tcx>, tbm: TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, poly_tref: &'tcx PolyTraitRef<'tcx>) {
         let trait_ref = &poly_tref.trait_ref;
         if CLOSURE_TRAIT_BOUNDS.iter().any(|&item| {
             self.cx
@@ -435,13 +435,13 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
             sub_visitor.visit_trait_ref(trait_ref);
             self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
         } else {
-            walk_poly_trait_ref(self, poly_tref, tbm);
+            walk_poly_trait_ref(self, poly_tref);
         }
     }
 
     fn visit_ty(&mut self, ty: &'tcx Ty<'_>) {
         match ty.kind {
-            TyKind::OpaqueDef(item, bounds) => {
+            TyKind::OpaqueDef(item, bounds, _) => {
                 let map = self.cx.tcx.hir();
                 let item = map.item(item);
                 let len = self.lts.len();
@@ -466,7 +466,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                     self.unelided_trait_object_lifetime = true;
                 }
                 for bound in bounds {
-                    self.visit_poly_trait_ref(bound, TraitBoundModifier::None);
+                    self.visit_poly_trait_ref(bound);
                 }
             },
             _ => walk_ty(self, ty),

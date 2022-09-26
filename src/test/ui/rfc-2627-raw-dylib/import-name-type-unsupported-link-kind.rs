@@ -1,7 +1,6 @@
 // only-windows
 // only-x86
 #![feature(raw_dylib)]
-//~^ WARN the feature `raw_dylib` is incomplete
 
 #[link(name = "foo", import_name_type = "decorated")]
 //~^ ERROR import name type can only be used with link kind `raw-dylib`

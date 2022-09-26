@@ -164,6 +164,24 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                 );
                 Ok(ga)
             }
+            // Optimization of GeneratorWitness relation since we know that all
+            // free regions are replaced with bound regions during construction.
+            // This greatly speeds up subtyping of GeneratorWitness.
+            (&ty::GeneratorWitness(a_types), &ty::GeneratorWitness(b_types)) => {
+                let a_types = infcx.tcx.anonymize_bound_vars(a_types);
+                let b_types = infcx.tcx.anonymize_bound_vars(b_types);
+                if a_types.bound_vars() == b_types.bound_vars() {
+                    let (a_types, b_types) = infcx.replace_bound_vars_with_placeholders(
+                        a_types.map_bound(|a_types| (a_types, b_types.skip_binder())),
+                    );
+                    for (a, b) in std::iter::zip(a_types, b_types) {
+                        self.relate(a, b)?;
+                    }
+                    Ok(a)
+                } else {
+                    Err(ty::error::TypeError::Sorts(ty::relate::expected_found(self, a, b)))
+                }
+            }
 
             _ => {
                 self.fields.infcx.super_combine_tys(self, a, b)?;

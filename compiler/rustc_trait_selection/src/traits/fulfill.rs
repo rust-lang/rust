@@ -25,10 +25,9 @@ use super::Unimplemented;
 use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
-use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::project::PolyProjectionObligation;
 use crate::traits::project::ProjectionCacheKeyExt as _;
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     /// Note that we include both the `ParamEnv` and the `Predicate`,
@@ -135,7 +134,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     /// `SomeTrait` or a where-clause that lets us unify `$0` with
     /// something concrete. If this fails, we'll unify `$0` with
     /// `projection_ty` again.
-    #[tracing::instrument(level = "debug", skip(self, infcx, param_env, cause))]
+    #[instrument(level = "debug", skip(self, infcx, param_env, cause))]
     fn normalize_projection_type(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -224,6 +223,7 @@ fn mk_pending(os: Vec<PredicateObligation<'_>>) -> Vec<PendingPredicateObligatio
 impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     type Obligation = PendingPredicateObligation<'tcx>;
     type Error = FulfillmentErrorCode<'tcx>;
+    type OUT = Outcome<Self::Obligation, Self::Error>;
 
     /// Identifies whether a predicate obligation needs processing.
     ///
@@ -427,16 +427,14 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         obligation.param_env,
                         Binder::dummy(subtype),
                     ) {
-                        None => {
+                        Err((a, b)) => {
                             // None means that both are unresolved.
-                            pending_obligation.stalled_on = vec![
-                                TyOrConstInferVar::maybe_from_ty(subtype.a).unwrap(),
-                                TyOrConstInferVar::maybe_from_ty(subtype.b).unwrap(),
-                            ];
+                            pending_obligation.stalled_on =
+                                vec![TyOrConstInferVar::Ty(a), TyOrConstInferVar::Ty(b)];
                             ProcessResult::Unchanged
                         }
-                        Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
-                        Some(Err(err)) => {
+                        Ok(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                        Ok(Err(err)) => {
                             let expected_found =
                                 ExpectedFound::new(subtype.a_is_expected, subtype.a, subtype.b);
                             ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
@@ -453,16 +451,14 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         obligation.param_env,
                         Binder::dummy(coerce),
                     ) {
-                        None => {
+                        Err((a, b)) => {
                             // None means that both are unresolved.
-                            pending_obligation.stalled_on = vec![
-                                TyOrConstInferVar::maybe_from_ty(coerce.a).unwrap(),
-                                TyOrConstInferVar::maybe_from_ty(coerce.b).unwrap(),
-                            ];
+                            pending_obligation.stalled_on =
+                                vec![TyOrConstInferVar::Ty(a), TyOrConstInferVar::Ty(b)];
                             ProcessResult::Unchanged
                         }
-                        Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
-                        Some(Err(err)) => {
+                        Ok(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                        Ok(Err(err)) => {
                             let expected_found = ExpectedFound::new(false, coerce.a, coerce.b);
                             ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
                                 expected_found,
@@ -509,11 +505,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.kind(), c2.kind())
                         {
-                            if infcx.try_unify_abstract_consts(
-                                a.shrink(),
-                                b.shrink(),
-                                obligation.param_env,
-                            ) {
+                            if infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
                                 return ProcessResult::Changed(vec![]);
                             }
                         }
@@ -602,14 +594,16 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         &mut self,
         cycle: I,
         _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>,
-    ) where
+    ) -> Result<(), FulfillmentErrorCode<'tcx>>
+    where
         I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
     {
         if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
             debug!("process_child_obligations: coinductive match");
+            Ok(())
         } else {
             let cycle: Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
-            self.selcx.infcx().report_overflow_error_cycle(&cycle);
+            Err(FulfillmentErrorCode::CodeCycle(cycle))
         }
     }
 }

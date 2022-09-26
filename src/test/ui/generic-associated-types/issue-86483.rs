@@ -4,8 +4,6 @@
 //
 // check-pass
 
-#![feature(generic_associated_types)]
-
 pub trait IceIce<T>
 where
     for<'a> T: 'a,

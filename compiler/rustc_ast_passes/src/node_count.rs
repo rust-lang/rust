@@ -63,9 +63,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_generics(self, g)
     }
-    fn visit_fn(&mut self, fk: visit::FnKind<'_>, s: Span, _: NodeId) {
+    fn visit_fn(&mut self, fk: visit::FnKind<'_>, _: Span, _: NodeId) {
         self.count += 1;
-        walk_fn(self, fk, s)
+        walk_fn(self, fk)
     }
     fn visit_assoc_item(&mut self, ti: &AssocItem, ctxt: AssocCtxt) {
         self.count += 1;
@@ -115,9 +115,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_use_tree(self, use_tree, id)
     }
-    fn visit_generic_args(&mut self, path_span: Span, generic_args: &GenericArgs) {
+    fn visit_generic_args(&mut self, generic_args: &GenericArgs) {
         self.count += 1;
-        walk_generic_args(self, path_span, generic_args)
+        walk_generic_args(self, generic_args)
     }
     fn visit_assoc_constraint(&mut self, constraint: &AssocConstraint) {
         self.count += 1;

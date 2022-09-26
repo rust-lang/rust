@@ -8,6 +8,10 @@ use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+use crate::errors::{
+    EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
+};
+
 #[derive(Clone, Debug)]
 pub struct OnUnimplementedFormatString(Symbol);
 
@@ -18,7 +22,7 @@ pub struct OnUnimplementedDirective {
     pub message: Option<OnUnimplementedFormatString>,
     pub label: Option<OnUnimplementedFormatString>,
     pub note: Option<OnUnimplementedFormatString>,
-    pub enclosing_scope: Option<OnUnimplementedFormatString>,
+    pub parent_label: Option<OnUnimplementedFormatString>,
     pub append_const_msg: Option<Option<Symbol>>,
 }
 
@@ -27,27 +31,12 @@ pub struct OnUnimplementedNote {
     pub message: Option<String>,
     pub label: Option<String>,
     pub note: Option<String>,
-    pub enclosing_scope: Option<String>,
+    pub parent_label: Option<String>,
     /// Append a message for `~const Trait` errors. `None` means not requested and
     /// should fallback to a generic message, `Some(None)` suggests using the default
     /// appended message, `Some(Some(s))` suggests use the `s` message instead of the
     /// default one..
     pub append_const_msg: Option<Option<Symbol>>,
-}
-
-fn parse_error(
-    tcx: TyCtxt<'_>,
-    span: Span,
-    message: &str,
-    label: &str,
-    note: Option<&str>,
-) -> ErrorGuaranteed {
-    let mut diag = struct_span_err!(tcx.sess, span, E0232, "{}", message);
-    diag.span_label(span, label);
-    if let Some(note) = note {
-        diag.note(note);
-    }
-    diag.emit()
 }
 
 impl<'tcx> OnUnimplementedDirective {
@@ -70,25 +59,9 @@ impl<'tcx> OnUnimplementedDirective {
         } else {
             let cond = item_iter
                 .next()
-                .ok_or_else(|| {
-                    parse_error(
-                        tcx,
-                        span,
-                        "empty `on`-clause in `#[rustc_on_unimplemented]`",
-                        "empty on-clause here",
-                        None,
-                    )
-                })?
+                .ok_or_else(|| tcx.sess.emit_err(EmptyOnClauseInOnUnimplemented { span }))?
                 .meta_item()
-                .ok_or_else(|| {
-                    parse_error(
-                        tcx,
-                        span,
-                        "invalid `on`-clause in `#[rustc_on_unimplemented]`",
-                        "invalid on-clause here",
-                        None,
-                    )
-                })?;
+                .ok_or_else(|| tcx.sess.emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
             attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |cfg| {
                 if let Some(value) = cfg.value && let Err(guar) = parse_value(value) {
                     errored = Some(guar);
@@ -101,7 +74,7 @@ impl<'tcx> OnUnimplementedDirective {
         let mut message = None;
         let mut label = None;
         let mut note = None;
-        let mut enclosing_scope = None;
+        let mut parent_label = None;
         let mut subcommands = vec![];
         let mut append_const_msg = None;
 
@@ -121,9 +94,9 @@ impl<'tcx> OnUnimplementedDirective {
                     note = parse_value(note_)?;
                     continue;
                 }
-            } else if item.has_name(sym::enclosing_scope) && enclosing_scope.is_none() {
-                if let Some(enclosing_scope_) = item.value_str() {
-                    enclosing_scope = parse_value(enclosing_scope_)?;
+            } else if item.has_name(sym::parent_label) && parent_label.is_none() {
+                if let Some(parent_label_) = item.value_str() {
+                    parent_label = parse_value(parent_label_)?;
                     continue;
                 }
             } else if item.has_name(sym::on)
@@ -150,13 +123,7 @@ impl<'tcx> OnUnimplementedDirective {
             }
 
             // nothing found
-            parse_error(
-                tcx,
-                item.span(),
-                "this attribute must have a valid value",
-                "expected value here",
-                Some(r#"eg `#[rustc_on_unimplemented(message="foo")]`"#),
-            );
+            tcx.sess.emit_err(NoValueInOnUnimplemented { span: item.span() });
         }
 
         if let Some(reported) = errored {
@@ -168,7 +135,7 @@ impl<'tcx> OnUnimplementedDirective {
                 message,
                 label,
                 note,
-                enclosing_scope,
+                parent_label,
                 append_const_msg,
             })
         }
@@ -193,7 +160,7 @@ impl<'tcx> OnUnimplementedDirective {
                     attr.span,
                 )?),
                 note: None,
-                enclosing_scope: None,
+                parent_label: None,
                 append_const_msg: None,
             }))
         } else {
@@ -214,7 +181,7 @@ impl<'tcx> OnUnimplementedDirective {
         let mut message = None;
         let mut label = None;
         let mut note = None;
-        let mut enclosing_scope = None;
+        let mut parent_label = None;
         let mut append_const_msg = None;
         info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
 
@@ -250,8 +217,8 @@ impl<'tcx> OnUnimplementedDirective {
                 note = Some(note_.clone());
             }
 
-            if let Some(ref enclosing_scope_) = command.enclosing_scope {
-                enclosing_scope = Some(enclosing_scope_.clone());
+            if let Some(ref parent_label_) = command.parent_label {
+                parent_label = Some(parent_label_.clone());
             }
 
             append_const_msg = command.append_const_msg;
@@ -261,7 +228,7 @@ impl<'tcx> OnUnimplementedDirective {
             label: label.map(|l| l.format(tcx, trait_ref, &options_map)),
             message: message.map(|m| m.format(tcx, trait_ref, &options_map)),
             note: note.map(|n| n.format(tcx, trait_ref, &options_map)),
-            enclosing_scope: enclosing_scope.map(|e_s| e_s.format(tcx, trait_ref, &options_map)),
+            parent_label: parent_label.map(|e_s| e_s.format(tcx, trait_ref, &options_map)),
             append_const_msg,
         }
     }

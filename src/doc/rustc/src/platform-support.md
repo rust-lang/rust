@@ -125,17 +125,17 @@ target | std | notes
 `aarch64-apple-ios` | ✓ | ARM64 iOS
 [`aarch64-apple-ios-sim`](platform-support/aarch64-apple-ios-sim.md) | ✓ | Apple iOS Simulator on ARM64
 `aarch64-fuchsia` | ✓ | ARM64 Fuchsia
-`aarch64-linux-android` | ✓ | ARM64 Android
+[`aarch64-linux-android`](platform-support/android.md) | ✓ | ARM64 Android
 `aarch64-unknown-none-softfloat` | * | Bare ARM64, softfloat
 `aarch64-unknown-none` | * | Bare ARM64, hardfloat
-`arm-linux-androideabi` | ✓ | ARMv7 Android
+[`arm-linux-androideabi`](platform-support/android.md) | ✓ | ARMv7 Android
 `arm-unknown-linux-musleabi` | ✓ | ARMv6 Linux with MUSL
 `arm-unknown-linux-musleabihf` | ✓ | ARMv6 Linux with MUSL, hardfloat
 `armebv7r-none-eabi` | * | Bare ARMv7-R, Big Endian
 `armebv7r-none-eabihf` | * | Bare ARMv7-R, Big Endian, hardfloat
 `armv5te-unknown-linux-gnueabi` | ✓ | ARMv5TE Linux (kernel 4.4, glibc 2.23)
 `armv5te-unknown-linux-musleabi` | ✓ | ARMv5TE Linux with MUSL
-`armv7-linux-androideabi` | ✓ | ARMv7a Android
+[`armv7-linux-androideabi`](platform-support/android.md) | ✓ | ARMv7a Android
 `armv7-unknown-linux-gnueabi` | ✓ |ARMv7 Linux (kernel 4.15, glibc 2.27)
 `armv7-unknown-linux-musleabi` | ✓ |ARMv7 Linux with MUSL
 `armv7-unknown-linux-musleabihf` | ✓ | ARMv7 Linux with MUSL, hardfloat
@@ -146,7 +146,7 @@ target | std | notes
 `i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 4.4, glibc 2.23)
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL
-`i686-linux-android` | ✓ | 32-bit x86 Android
+[`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android
 `i686-unknown-freebsd` | ✓ | 32-bit FreeBSD
 `i686-unknown-linux-musl` | ✓ | 32-bit Linux with MUSL
 `mips-unknown-linux-musl` | ✓ | MIPS Linux with MUSL
@@ -165,7 +165,7 @@ target | std | notes
 `thumbv7em-none-eabi` | * | Bare Cortex-M4, M7
 `thumbv7em-none-eabihf` | * | Bare Cortex-M4F, M7F, FPU, hardfloat
 `thumbv7m-none-eabi` | * | Bare Cortex-M3
-`thumbv7neon-linux-androideabi` | ✓ | Thumb2-mode ARMv7a Android with NEON
+[`thumbv7neon-linux-androideabi`](platform-support/android.md) | ✓ | Thumb2-mode ARMv7a Android with NEON
 `thumbv7neon-unknown-linux-gnueabihf` | ✓ | Thumb2-mode ARMv7a Linux with NEON (kernel 4.4, glibc 2.23)
 `thumbv8m.base-none-eabi` | * | ARMv8-M Baseline
 `thumbv8m.main-none-eabi` | * | ARMv8-M Mainline
@@ -174,9 +174,9 @@ target | std | notes
 `wasm32-unknown-unknown` | ✓ | WebAssembly
 `wasm32-wasi` | ✓ | WebAssembly with WASI
 `x86_64-apple-ios` | ✓ | 64-bit x86 iOS
-`x86_64-fortanix-unknown-sgx` | ✓ | [Fortanix ABI] for 64-bit Intel SGX
+[`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX
 `x86_64-fuchsia` | ✓ | 64-bit Fuchsia
-`x86_64-linux-android` | ✓ | 64-bit x86 Android
+[`x86_64-linux-android`](platform-support/android.md) | ✓ | 64-bit x86 Android
 `x86_64-pc-solaris` | ✓ | 64-bit Solaris 10/11, illumos
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
@@ -213,7 +213,7 @@ target | std | host | notes
 [`aarch64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ✓ |  | ARM64 HermitCore
-`aarch64-unknown-uefi` | * |  | ARM64 UEFI
+[`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | * |  | ARM64 UEFI
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 `aarch64-unknown-netbsd` | ✓ | ✓ |
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
@@ -223,8 +223,10 @@ target | std | host | notes
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 [`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ | | ARM Apple WatchOS 64-bit with 32-bit pointers
+[`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | ARM BE8 the default ARM big-endian architecture since [ARMv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
 `armv4t-none-eabi` | * |  | ARMv4T A32
 `armv4t-unknown-linux-gnueabi` | ? |  |
+[`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | ARMv5TE A32
 `armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
 `armv6-unknown-netbsd-eabihf` | ? |  |
@@ -250,7 +252,7 @@ target | std | host | notes
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
 `i686-unknown-netbsd` | ✓ | ✓ | NetBSD/i386 with SSE2
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD
-`i686-unknown-uefi` | * |  | 32-bit UEFI
+[`i686-unknown-uefi`](platform-support/unknown-uefi.md) | * |  | 32-bit UEFI
 `i686-uwp-windows-gnu` | ? |  |
 `i686-uwp-windows-msvc` | ? |  |
 `i686-wrs-vxworks` | ? |  |
@@ -291,6 +293,7 @@ target | std | host | notes
 `sparc64-unknown-netbsd` | ✓ | ✓ | NetBSD/sparc64
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
 `thumbv4t-none-eabi` | * |  | ARMv4T T32
+[`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | ARMv5TE T32
 `thumbv7a-pc-windows-msvc` | ? |  |
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7a Linux with NEON, MUSL
@@ -307,7 +310,7 @@ target | std | host | notes
 `x86_64-unknown-l4re-uclibc` | ? |  |
 `x86_64-unknown-none-linuxkernel` | * |  | Linux kernel modules
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
-`x86_64-unknown-uefi` | * |  | 64-bit UEFI
+[`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | * |  | 64-bit UEFI
 `x86_64-uwp-windows-gnu` | ✓ |  |
 `x86_64-uwp-windows-msvc` | ✓ |  |
 `x86_64-wrs-vxworks` | ? |  |

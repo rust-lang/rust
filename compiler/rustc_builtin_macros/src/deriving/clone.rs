@@ -1,12 +1,12 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
-
 use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
+use thin_vec::thin_vec;
 
 pub fn expand_deriving_clone(
     cx: &mut ExtCtxt<'_>,
@@ -68,7 +68,7 @@ pub fn expand_deriving_clone(
     }
 
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)].into();
+    let attrs = thin_vec![cx.attribute(inline)];
     let trait_def = TraitDef {
         span,
         path: path_std!(clone::Clone),

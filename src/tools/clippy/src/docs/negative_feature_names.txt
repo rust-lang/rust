@@ -1,0 +1,22 @@
+### What it does
+Checks for negative feature names with prefix `no-` or `not-`
+
+### Why is this bad?
+Features are supposed to be additive, and negatively-named features violate it.
+
+### Example
+```
+[features]
+default = []
+no-abc = []
+not-def = []
+
+```
+Use instead:
+```
+[features]
+default = ["abc", "def"]
+abc = []
+def = []
+
+```

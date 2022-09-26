@@ -17,8 +17,8 @@ use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
-    collect_spans_and_sources, print_sidebar, scrape_examples_help, AllTypes, LinkFromSrc, NameDoc,
-    StylePath, BASIC_KEYWORDS,
+    collect_spans_and_sources, print_sidebar, scrape_examples_help, sidebar_module_like, AllTypes,
+    LinkFromSrc, NameDoc, StylePath, BASIC_KEYWORDS,
 };
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
@@ -31,6 +31,7 @@ use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
 use crate::html::format::{join_with_double_colon, Buffer};
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
+use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
@@ -370,6 +371,35 @@ impl<'tcx> Context<'tcx> {
             anchor = anchor
         ))
     }
+
+    pub(crate) fn href_from_span_relative(
+        &self,
+        span: clean::Span,
+        relative_to: &str,
+    ) -> Option<String> {
+        self.href_from_span(span, false).map(|s| {
+            let mut url = UrlPartsBuilder::new();
+            let mut dest_href_parts = s.split('/');
+            let mut cur_href_parts = relative_to.split('/');
+            for (cur_href_part, dest_href_part) in (&mut cur_href_parts).zip(&mut dest_href_parts) {
+                if cur_href_part != dest_href_part {
+                    url.push(dest_href_part);
+                    break;
+                }
+            }
+            for dest_href_part in dest_href_parts {
+                url.push(dest_href_part);
+            }
+            let loline = span.lo(self.sess()).line;
+            let hiline = span.hi(self.sess()).line;
+            format!(
+                "{}{}#{}",
+                "../".repeat(cur_href_parts.count()),
+                url.finish(),
+                if loline == hiline { loline.to_string() } else { format!("{loline}-{hiline}") }
+            )
+        })
+    }
 }
 
 /// Generates the documentation for `crate` into the directory `dst`
@@ -567,16 +597,24 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             keywords: BASIC_KEYWORDS,
             resource_suffix: &shared.resource_suffix,
         };
-        let sidebar = if shared.cache.crate_version.is_some() {
-            format!("<h2 class=\"location\">Crate {}</h2>", crate_name)
-        } else {
-            String::new()
-        };
         let all = shared.all.replace(AllTypes::new());
+        let mut sidebar = Buffer::html();
+        if shared.cache.crate_version.is_some() {
+            write!(sidebar, "<h2 class=\"location\">Crate {}</h2>", crate_name)
+        };
+
+        let mut items = Buffer::html();
+        sidebar_module_like(&mut items, all.item_sections());
+        if !items.is_empty() {
+            sidebar.push_str("<div class=\"sidebar-elems\">");
+            sidebar.push_buffer(items);
+            sidebar.push_str("</div>");
+        }
+
         let v = layout::render(
             &shared.layout,
             &page,
-            sidebar,
+            sidebar.into_inner(),
             |buf: &mut Buffer| all.print(buf),
             &shared.style_files,
         );

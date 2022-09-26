@@ -3,8 +3,6 @@
 
 // This should pass, but we need an extension of implied bounds (probably).
 
-#![feature(generic_associated_types)]
-
 pub trait AsRef2 {
   type Output<'a> where Self: 'a;
 

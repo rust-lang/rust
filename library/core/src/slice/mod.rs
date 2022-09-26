@@ -9,7 +9,7 @@
 use crate::cmp::Ordering::{self, Greater, Less};
 use crate::intrinsics::{assert_unsafe_precondition, exact_div};
 use crate::marker::Copy;
-use crate::mem;
+use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ops::{Bound, FnMut, OneSidedRange, Range, RangeBounds};
 use crate::option::Option;
@@ -656,10 +656,11 @@ impl<T> [T] {
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
     #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
-        let ptr = self.as_mut_ptr();
+        let this = self;
+        let ptr = this.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
-            assert_unsafe_precondition!(a < self.len() && b < self.len());
+            assert_unsafe_precondition!([T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len());
             ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
@@ -972,9 +973,10 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
+        let this = self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!(N != 0 && self.len() % N == 0);
+            assert_unsafe_precondition!([T](this: &[T], N: usize) => N != 0 && this.len() % N == 0);
             exact_div(self.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
@@ -1111,10 +1113,11 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
+        let this = &*self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!(N != 0 && self.len() % N == 0);
-            exact_div(self.len(), N)
+            assert_unsafe_precondition!([T](this: &[T], N: usize) => N != 0 && this.len() % N == 0);
+            exact_div(this.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
@@ -1577,7 +1580,8 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
+    pub const fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         assert!(mid <= self.len());
         // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
         // fulfills the requirements of `from_raw_parts_mut`.
@@ -1676,9 +1680,10 @@ impl<T> [T] {
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
     #[inline]
     #[must_use]
-    pub unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    pub const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
@@ -1687,7 +1692,7 @@ impl<T> [T] {
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
         unsafe {
-            assert_unsafe_precondition!(mid <= len);
+            assert_unsafe_precondition!((mid: usize, len: usize) => mid <= len);
             (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
         }
     }
@@ -2321,7 +2326,7 @@ impl<T> [T] {
     }
 
     /// Binary searches this slice for a given element.
-    /// This behaves similary to [`contains`] if this slice is sorted.
+    /// This behaves similarly to [`contains`] if this slice is sorted.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2537,7 +2542,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        sort::quicksort(self, |a, b| a.lt(b));
+        sort::quicksort(self, T::lt);
     }
 
     /// Sorts the slice with a comparator function, but might not preserve the order of equal
@@ -2640,9 +2645,10 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
     /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
     /// (i.e. does not allocate), and *O*(*n*) worst-case. This function is also/ known as "kth
-    /// element" in other libraries. It returns a triplet of the following values: all elements less
-    /// than the one at the given index, the value at the given index, and all elements greater than
-    /// the one at the given index.
+    /// element" in other libraries. It returns a triplet of the following from the reordered slice:
+    /// the subslice prior to `index`, the element at `index`, and the subslice after `index`;
+    /// accordingly, the values in those two subslices will respectively all be less-than-or-equal-to
+    /// and greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -2676,8 +2682,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        let mut f = |a: &T, b: &T| a.lt(b);
-        sort::partition_at_index(self, index, &mut f)
+        sort::partition_at_index(self, index, T::lt)
     }
 
     /// Reorder the slice with a comparator function such that the element at `index` is at its
@@ -2687,10 +2692,11 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index` using the comparator function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
     /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following
-    /// values: all elements less than the one at the given index, the value at the given index,
-    /// and all elements greater than the one at the given index, using the provided comparator
-    /// function.
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following from
+    /// the slice reordered according to the provided comparator function: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
+    /// the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -2728,8 +2734,7 @@ impl<T> [T] {
     where
         F: FnMut(&T, &T) -> Ordering,
     {
-        let mut f = |a: &T, b: &T| compare(a, b) == Less;
-        sort::partition_at_index(self, index, &mut f)
+        sort::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
     }
 
     /// Reorder the slice with a key extraction function such that the element at `index` is at its
@@ -2739,10 +2744,11 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index` using the key extraction function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
     /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following
-    /// values: all elements less than the one at the given index, the value at the given index, and
-    /// all elements greater than the one at the given index, using the provided key extraction
-    /// function.
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following from
+    /// the slice reordered according to the provided key extraction function: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
+    /// the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -2781,8 +2787,7 @@ impl<T> [T] {
         F: FnMut(&T) -> K,
         K: Ord,
     {
-        let mut g = |a: &T, b: &T| f(a).lt(&f(b));
-        sort::partition_at_index(self, index, &mut g)
+        sort::partition_at_index(self, index, |a: &T, b: &T| f(a).lt(&f(b)))
     }
 
     /// Moves all consecutive repeated elements to the end of the slice according to the
@@ -3456,7 +3461,7 @@ impl<T> [T] {
     #[must_use]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
+        if U::IS_ZST || T::IS_ZST {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &[], &[]);
         }
@@ -3517,7 +3522,7 @@ impl<T> [T] {
     #[must_use]
     pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
         // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
+        if U::IS_ZST || T::IS_ZST {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &mut [], &mut []);
         }
@@ -3530,7 +3535,7 @@ impl<T> [T] {
         // alignment targeted for U.
         // `crate::ptr::align_offset` is called with a correctly aligned and
         // valid pointer `ptr` (it comes from a reference to `self`) and with
-        // a size that is a power of two (since it comes from the alignement for U),
+        // a size that is a power of two (since it comes from the alignment for U),
         // satisfying its safety constraints.
         let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
         if offset > self.len() {
@@ -4063,7 +4068,7 @@ impl<T, const N: usize> [[T; N]] {
     /// ```
     #[unstable(feature = "slice_flatten", issue = "95629")]
     pub fn flatten(&self) -> &[T] {
-        let len = if crate::mem::size_of::<T>() == 0 {
+        let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
         } else {
             // SAFETY: `self.len() * N` cannot overflow because `self` is
@@ -4101,7 +4106,7 @@ impl<T, const N: usize> [[T; N]] {
     /// ```
     #[unstable(feature = "slice_flatten", issue = "95629")]
     pub fn flatten_mut(&mut self) -> &mut [T] {
-        let len = if crate::mem::size_of::<T>() == 0 {
+        let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
         } else {
             // SAFETY: `self.len() * N` cannot overflow because `self` is

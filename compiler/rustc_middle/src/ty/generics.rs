@@ -1,6 +1,5 @@
 use crate::ty;
-use crate::ty::subst::{Subst, SubstsRef};
-use crate::ty::EarlyBinder;
+use crate::ty::{EarlyBinder, SubstsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
@@ -27,8 +26,9 @@ impl GenericParamDefKind {
     pub fn to_ord(&self) -> ast::ParamKindOrd {
         match self {
             GenericParamDefKind::Lifetime => ast::ParamKindOrd::Lifetime,
-            GenericParamDefKind::Type { .. } => ast::ParamKindOrd::Type,
-            GenericParamDefKind::Const { .. } => ast::ParamKindOrd::Const,
+            GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+                ast::ParamKindOrd::TypeOrConst
+            }
         }
     }
 
@@ -266,7 +266,7 @@ impl<'tcx> Generics {
         // Filter the default arguments.
         //
         // This currently uses structural equality instead
-        // of semantic equivalance. While not ideal, that's
+        // of semantic equivalence. While not ideal, that's
         // good enough for now as this should only be used
         // for diagnostics anyways.
         own_params.end -= self
@@ -328,6 +328,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, tcx))]
     fn instantiate_into(
         &self,
         tcx: TyCtxt<'tcx>,

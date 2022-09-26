@@ -22,6 +22,7 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::MemberConstraint;
+use crate::mir::ConstraintCategory;
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
 use rustc_index::vec::IndexVec;
@@ -42,6 +43,15 @@ pub struct Canonical<'tcx, V> {
 }
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
+
+impl<'tcx> ty::TypeFoldable<'tcx> for CanonicalVarInfos<'tcx> {
+    fn try_fold_with<F: ty::FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_canonical_var_infos(v))
+    }
+}
 
 /// A set of values corresponding to the canonical variables from some
 /// `Canonical`. You can give these values to
@@ -89,6 +99,7 @@ impl<'tcx> Default for OriginalQueryValues<'tcx> {
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct CanonicalVarInfo<'tcx> {
     pub kind: CanonicalVarKind<'tcx>,
 }
@@ -114,6 +125,7 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum CanonicalVarKind<'tcx> {
     /// Some kind of type inference variable.
     Ty(CanonicalTyVarKind),
@@ -290,20 +302,15 @@ impl<'tcx, V> Canonical<'tcx, V> {
     }
 }
 
-pub type QueryOutlivesConstraint<'tcx> =
-    ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>;
+pub type QueryOutlivesConstraint<'tcx> = (
+    ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>,
+    ConstraintCategory<'tcx>,
+);
 
 TrivialTypeTraversalAndLiftImpls! {
     for <'tcx> {
         crate::infer::canonical::Certainty,
-        crate::infer::canonical::CanonicalVarInfo<'tcx>,
-        crate::infer::canonical::CanonicalVarKind<'tcx>,
-    }
-}
-
-TrivialTypeTraversalImpls! {
-    for <'tcx> {
-        crate::infer::canonical::CanonicalVarInfos<'tcx>,
+        crate::infer::canonical::CanonicalTyVarKind,
     }
 }
 

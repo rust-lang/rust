@@ -9,14 +9,12 @@
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(test)]
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(type_ascription)]
 #![feature(iter_intersperse)]
 #![feature(type_alias_impl_trait)]
-#![feature(generic_associated_types)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
@@ -461,7 +459,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "human|json|short",
             )
         }),
-        unstable("diagnostic-width", |o| {
+        stable("diagnostic-width", |o| {
             o.optopt(
                 "",
                 "diagnostic-width",

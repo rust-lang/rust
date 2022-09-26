@@ -44,7 +44,7 @@ fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId>
     if_chain! {
         if let Some(hir_id) = path_to_local(bound);
         if let Node::Pat(pat) = cx.tcx.hir().get(hir_id);
-        if let PatKind::Binding(BindingAnnotation::Mutable, ..) = pat.kind;
+        if let PatKind::Binding(BindingAnnotation::MUT, ..) = pat.kind;
         then {
             return Some(hir_id);
         }
@@ -69,7 +69,7 @@ fn check_for_mutation<'tcx>(
         ExprUseVisitor::new(
             &mut delegate,
             &infcx,
-            body.hir_id.owner,
+            body.hir_id.owner.def_id,
             cx.param_env,
             cx.typeck_results(),
         )

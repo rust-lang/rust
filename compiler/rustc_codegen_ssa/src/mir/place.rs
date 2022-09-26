@@ -4,7 +4,6 @@ use super::{FunctionCx, LocalRef};
 use crate::common::IntPredicate;
 use crate::glue;
 use crate::traits::*;
-use crate::MemFlags;
 
 use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
@@ -245,7 +244,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 };
                 bx.intcast(tag.immediate(), cast_to, signed)
             }
-            TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
+            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
                 // Rebase from niche values to discriminants, and check
                 // whether the result is in range for the niche variants.
                 let niche_llty = bx.cx().immediate_backend_type(tag.layout);
@@ -303,7 +302,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 bx.select(
                     is_niche,
                     niche_discr,
-                    bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64),
+                    bx.cx().const_uint(cast_to, untagged_variant.as_u32() as u64),
                 )
             }
         }
@@ -338,21 +337,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             }
             Variants::Multiple {
                 tag_encoding:
-                    TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start },
+                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
                 tag_field,
                 ..
             } => {
-                if variant_index != dataful_variant {
-                    if bx.cx().sess().target.arch == "arm"
-                        || bx.cx().sess().target.arch == "aarch64"
-                    {
-                        // FIXME(#34427): as workaround for LLVM bug on ARM,
-                        // use memset of 0 before assigning niche value.
-                        let fill_byte = bx.cx().const_u8(0);
-                        let size = bx.cx().const_usize(self.layout.size.bytes());
-                        bx.memset(self.llval, fill_byte, size, self.align, MemFlags::empty());
-                    }
-
+                if variant_index != untagged_variant {
                     let niche = self.project_field(bx, tag_field);
                     let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                     let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
@@ -411,6 +400,21 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         downcast
     }
 
+    pub fn project_type<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        &self,
+        bx: &mut Bx,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        let mut downcast = *self;
+        downcast.layout = bx.cx().layout_of(ty);
+
+        // Cast to the appropriate type.
+        let variant_ty = bx.cx().backend_type(downcast.layout);
+        downcast.llval = bx.pointercast(downcast.llval, bx.cx().type_ptr_to(variant_ty));
+
+        downcast
+    }
+
     pub fn storage_live<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) {
         bx.lifetime_start(self.llval, self.layout.size);
     }
@@ -453,6 +457,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::ProjectionElem::Field(ref field, _) => {
                     cg_base.project_field(bx, field.index())
                 }
+                mir::ProjectionElem::OpaqueCast(ty) => cg_base.project_type(bx, ty),
                 mir::ProjectionElem::Index(index) => {
                     let index = &mir::Operand::Copy(mir::Place::from(index));
                     let index = self.codegen_operand(bx, index);

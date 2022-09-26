@@ -265,7 +265,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// *user* has a name for. In that case, we'll be able to map
     /// `fr` to a `Region<'tcx>`, and that region will be one of
     /// named variants.
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn give_name_from_error_region(&self, fr: RegionVid) -> Option<RegionName> {
         let error_region = self.to_error_region(fr)?;
 
@@ -357,11 +357,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ty::BoundRegionKind::BrAnon(_) => None,
             },
 
-            ty::ReLateBound(..)
-            | ty::ReVar(..)
-            | ty::RePlaceholder(..)
-            | ty::ReEmpty(_)
-            | ty::ReErased => None,
+            ty::ReLateBound(..) | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReErased => None,
         }
     }
 
@@ -373,7 +369,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///  | fn foo(x: &u32) { .. }
     ///           ------- fully elaborated type of `x` is `&'1 u32`
     /// ```
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_arguments(
         &self,
         fr: RegionVid,
@@ -662,7 +658,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///  | let x = Some(&22);
     ///        - fully elaborated type of `x` is `Option<&'1 u32>`
     /// ```
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_upvars(&self, fr: RegionVid) -> Option<RegionName> {
         let upvar_index = self.regioncx.get_upvar_index_for_region(self.infcx.tcx, fr)?;
         let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
@@ -682,7 +678,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// must be a closure since, in a free fn, such an argument would
     /// have to either also appear in an argument (if using elision)
     /// or be early bound (named, not in argument).
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_output(&self, fr: RegionVid) -> Option<RegionName> {
         let tcx = self.infcx.tcx;
         let hir = tcx.hir();
@@ -711,7 +707,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         hir::AsyncGeneratorKind::Block => " of async block",
                         hir::AsyncGeneratorKind::Closure => " of async closure",
                         hir::AsyncGeneratorKind::Fn => {
-                            let parent_item = hir.get_by_def_id(hir.get_parent_item(mir_hir_id));
+                            let parent_item =
+                                hir.get_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
                             let output = &parent_item
                                 .fn_decl()
                                 .expect("generator lowered from async fn should be in fn")
@@ -772,7 +769,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     fn get_future_inner_return_ty(&self, hir_ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
         let hir = self.infcx.tcx.hir();
 
-        let hir::TyKind::OpaqueDef(id, _) = hir_ty.kind else {
+        let hir::TyKind::OpaqueDef(id, _, _) = hir_ty.kind else {
             span_bug!(
                 hir_ty.span,
                 "lowered return type of async fn is not OpaqueDef: {:?}",
@@ -814,7 +811,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_yield_ty(
         &self,
         fr: RegionVid,

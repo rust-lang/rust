@@ -1,5 +1,5 @@
 use crate::cmp;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::ptr;
 
 /// Rotates the range `[mid-left, mid+right)` such that the element at `mid` becomes the first
@@ -63,7 +63,7 @@ use crate::ptr;
 /// when `left < right` the swapping happens from the left instead.
 pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) {
     type BufType = [usize; 32];
-    if mem::size_of::<T>() == 0 {
+    if T::IS_ZST {
         return;
     }
     loop {

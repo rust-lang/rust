@@ -1,23 +1,14 @@
-warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/import-name-type-unsupported-link-kind.rs:3:12
-   |
-LL | #![feature(raw_dylib)]
-   |            ^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
-
 error: import name type can only be used with link kind `raw-dylib`
-  --> $DIR/import-name-type-unsupported-link-kind.rs:6:22
+  --> $DIR/import-name-type-unsupported-link-kind.rs:5:22
    |
 LL | #[link(name = "foo", import_name_type = "decorated")]
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: import name type can only be used with link kind `raw-dylib`
-  --> $DIR/import-name-type-unsupported-link-kind.rs:10:39
+  --> $DIR/import-name-type-unsupported-link-kind.rs:9:39
    |
 LL | #[link(name = "bar", kind = "static", import_name_type = "decorated")]
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 

@@ -1,5 +1,4 @@
 #![crate_name = "foo"]
-#![feature(generic_associated_types)]
 
 pub trait Trait {
     type Gat<'a>;

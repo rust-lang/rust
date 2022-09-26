@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
     ) {
         if !span.from_expansion() && fn_kind.asyncness() == IsAsync::Async {
             let mut visitor = AsyncFnVisitor { cx, found_await: false };
-            walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), span, hir_id);
+            walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), hir_id);
             if !visitor.found_await {
                 span_lint_and_help(
                     cx,

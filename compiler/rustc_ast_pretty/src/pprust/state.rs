@@ -11,8 +11,8 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser;
-use rustc_ast::{self as ast, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use rustc_ast::{attr, Term};
+use rustc_ast::{self as ast, BlockCheckMode, Mutability, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::{attr, BindingAnnotation, ByRef, Term};
 use rustc_ast::{GenericArg, MacArgs, MacArgsEq};
 use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
@@ -22,6 +22,7 @@ use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
 use rustc_span::{BytePos, FileName, Span};
 
+use rustc_ast::attr::AttrIdGenerator;
 use std::borrow::Cow;
 
 pub use self::delimited::IterDelimited;
@@ -107,6 +108,7 @@ pub fn print_crate<'a>(
     ann: &'a dyn PpAnn,
     is_expanded: bool,
     edition: Edition,
+    g: &AttrIdGenerator,
 ) -> String {
     let mut s =
         State { s: pp::Printer::new(), comments: Some(Comments::new(sm, filename, input)), ann };
@@ -120,7 +122,7 @@ pub fn print_crate<'a>(
         // `#![feature(prelude_import)]`
         let pi_nested = attr::mk_nested_word_item(Ident::with_dummy_span(sym::prelude_import));
         let list = attr::mk_list_item(Ident::with_dummy_span(sym::feature), vec![pi_nested]);
-        let fake_attr = attr::mk_attr_inner(list);
+        let fake_attr = attr::mk_attr_inner(g, list);
         s.print_attribute(&fake_attr);
 
         // Currently, in Rust 2018 we don't have `extern crate std;` at the crate
@@ -128,7 +130,7 @@ pub fn print_crate<'a>(
         if edition == Edition::Edition2015 {
             // `#![no_std]`
             let no_std_meta = attr::mk_word_item(Ident::with_dummy_span(sym::no_std));
-            let fake_attr = attr::mk_attr_inner(no_std_meta);
+            let fake_attr = attr::mk_attr_inner(g, no_std_meta);
             s.print_attribute(&fake_attr);
         }
     }
@@ -1399,16 +1401,12 @@ impl<'a> State<'a> {
         is that it doesn't matter */
         match pat.kind {
             PatKind::Wild => self.word("_"),
-            PatKind::Ident(binding_mode, ident, ref sub) => {
-                match binding_mode {
-                    ast::BindingMode::ByRef(mutbl) => {
-                        self.word_nbsp("ref");
-                        self.print_mutability(mutbl, false);
-                    }
-                    ast::BindingMode::ByValue(ast::Mutability::Not) => {}
-                    ast::BindingMode::ByValue(ast::Mutability::Mut) => {
-                        self.word_nbsp("mut");
-                    }
+            PatKind::Ident(BindingAnnotation(by_ref, mutbl), ident, ref sub) => {
+                if by_ref == ByRef::Yes {
+                    self.word_nbsp("ref");
+                }
+                if mutbl == Mutability::Mut {
+                    self.word_nbsp("mut");
                 }
                 self.print_ident(ident);
                 if let Some(ref p) = *sub {
@@ -1487,12 +1485,10 @@ impl<'a> State<'a> {
             }
             PatKind::Ref(ref inner, mutbl) => {
                 self.word("&");
-                if mutbl == ast::Mutability::Mut {
+                if mutbl == Mutability::Mut {
                     self.word("mut ");
                 }
-                if let PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Mut), ..) =
-                    inner.kind
-                {
+                if let PatKind::Ident(ast::BindingAnnotation::MUT, ..) = inner.kind {
                     self.popen();
                     self.print_pat(inner);
                     self.pclose();

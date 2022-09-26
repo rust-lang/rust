@@ -1,5 +1,4 @@
-#![feature(raw_dylib)]
-//~^ WARN the feature `raw_dylib` is incomplete
+#![cfg_attr(target_arch = "x86", feature(raw_dylib))]
 
 #[link_ordinal(123)]
 //~^ ERROR attribute should be applied to a foreign function or static

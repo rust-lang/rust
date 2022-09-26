@@ -46,8 +46,8 @@ impl_lint_pass!(RedundantPubCrate => [REDUNDANT_PUB_CRATE]);
 impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if_chain! {
-            if cx.tcx.visibility(item.def_id) == ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id());
-            if !cx.access_levels.is_exported(item.def_id) && self.is_exported.last() == Some(&false);
+            if cx.tcx.visibility(item.def_id.def_id) == ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id());
+            if !cx.access_levels.is_exported(item.def_id.def_id) && self.is_exported.last() == Some(&false);
             if is_not_macro_export(item);
             then {
                 let span = item.span.with_hi(item.ident.span.hi());
@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
         }
 
         if let ItemKind::Mod { .. } = item.kind {
-            self.is_exported.push(cx.access_levels.is_exported(item.def_id));
+            self.is_exported.push(cx.access_levels.is_exported(item.def_id.def_id));
         }
     }
 

@@ -68,7 +68,10 @@ pub use alloc_crate::alloc::*;
 /// The default memory allocator provided by the operating system.
 ///
 /// This is based on `malloc` on Unix platforms and `HeapAlloc` on Windows,
-/// plus related functions.
+/// plus related functions. However, it is not valid to mix use of the backing
+/// system allocator with `System`, as this implementation may include extra
+/// work, such as to serve alignment requests greater than the alignment
+/// provided directly by the backing system allocator.
 ///
 /// This type implements the `GlobalAlloc` trait and Rust programs by default
 /// work as if they had this definition:

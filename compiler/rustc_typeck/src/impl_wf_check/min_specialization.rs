@@ -423,13 +423,10 @@ fn trait_predicate_kind<'tcx>(
     predicate: ty::Predicate<'tcx>,
 ) -> Option<TraitSpecializationKind> {
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Trait(ty::TraitPredicate {
-            trait_ref,
-            constness: ty::BoundConstness::NotConst,
-            polarity: _,
-        }) => Some(tcx.trait_def(trait_ref.def_id).specialization_kind),
-        ty::PredicateKind::Trait(_)
-        | ty::PredicateKind::RegionOutlives(_)
+        ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref, constness: _, polarity: _ }) => {
+            Some(tcx.trait_def(trait_ref.def_id).specialization_kind)
+        }
+        ty::PredicateKind::RegionOutlives(_)
         | ty::PredicateKind::TypeOutlives(_)
         | ty::PredicateKind::Projection(_)
         | ty::PredicateKind::WellFormed(_)

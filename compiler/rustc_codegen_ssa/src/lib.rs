@@ -1,7 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
 #![feature(try_blocks)]
-#![feature(let_else)]
 #![feature(once_cell)]
 #![feature(associated_type_bounds)]
 #![feature(strict_provenance)]
@@ -25,7 +24,6 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::CrateNum;
-use rustc_hir::LangItem;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -113,6 +111,7 @@ bitflags::bitflags! {
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Option<Symbol>,
+    pub filename: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
     pub verbatim: Option<bool>,
     pub dll_imports: Vec<cstore::DllImport>,
@@ -122,6 +121,7 @@ impl From<&cstore::NativeLib> for NativeLib {
     fn from(lib: &cstore::NativeLib) -> Self {
         NativeLib {
             kind: lib.kind,
+            filename: lib.filename,
             name: lib.name,
             cfg: lib.cfg.clone(),
             verbatim: lib.verbatim,
@@ -152,8 +152,6 @@ pub struct CrateInfo {
     pub used_libraries: Vec<NativeLib>,
     pub used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
     pub used_crates: Vec<CrateNum>,
-    pub lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
-    pub missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
     pub dependency_formats: Lrc<Dependencies>,
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,

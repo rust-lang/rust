@@ -1,41 +1,41 @@
 error: `T` does not live long enough
-  --> $DIR/issue-91139.rs:16:12
+  --> $DIR/issue-91139.rs:14:12
    |
 LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `T` does not live long enough
-  --> $DIR/issue-91139.rs:16:12
+  --> $DIR/issue-91139.rs:14:12
    |
 LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `T` does not live long enough
-  --> $DIR/issue-91139.rs:16:12
+  --> $DIR/issue-91139.rs:14:12
    |
 LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `T` does not live long enough
-  --> $DIR/issue-91139.rs:16:12
+  --> $DIR/issue-91139.rs:14:12
    |
 LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `T` does not live long enough
-  --> $DIR/issue-91139.rs:16:58
+  --> $DIR/issue-91139.rs:14:58
    |
 LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
    |                                                          ^^^^^^^^^
 
 error: `T` does not live long enough
-  --> $DIR/issue-91139.rs:16:58
+  --> $DIR/issue-91139.rs:14:58
    |
 LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
    |                                                          ^^^^^^^^^
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/issue-91139.rs:16:58
+  --> $DIR/issue-91139.rs:14:58
    |
 LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
    |                                                          ^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
@@ -46,13 +46,13 @@ LL | fn foo<T: 'static>() {
    |         +++++++++
 
 error: `T` does not live long enough
-  --> $DIR/issue-91139.rs:16:58
+  --> $DIR/issue-91139.rs:14:58
    |
 LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
    |                                                          ^^^^^^^^^
 
 error: `T` does not live long enough
-  --> $DIR/issue-91139.rs:16:58
+  --> $DIR/issue-91139.rs:14:58
    |
 LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
    |                                                          ^^^^^^^^^

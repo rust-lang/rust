@@ -45,7 +45,7 @@ check cc_plus_one_cxx cc_plus_one_cxx.checks
 check cc_plus_one_cxx_asm cc_plus_one_cxx_asm.checks
 check cc_plus_one_asm cc_plus_one_asm.checks \
   || echo "warning: the cc crate forwards assembly files to the CC compiler." \
-           "Clang uses its own intergrated assembler, which does not include the LVI passes."
+           "Clang uses its own integrated assembler, which does not include the LVI passes."
 
 check cmake_plus_one_c cmake_plus_one_c.checks
 check cmake_plus_one_c_asm cmake_plus_one_c_asm.checks

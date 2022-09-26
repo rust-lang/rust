@@ -89,7 +89,7 @@ error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
 LL |     assert_eq!(Foo::Bar, i);
    |     ^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
+   = help: the trait `Debug` is not implemented for fn item `fn(usize) -> Foo {Foo::Bar}`
    = help: the following other types implement trait `Debug`:
              extern "C" fn() -> Ret
              extern "C" fn(A, B) -> Ret
@@ -108,7 +108,7 @@ error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
 LL |     assert_eq!(Foo::Bar, i);
    |     ^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
+   = help: the trait `Debug` is not implemented for fn item `fn(usize) -> Foo {Foo::Bar}`
    = help: the following other types implement trait `Debug`:
              extern "C" fn() -> Ret
              extern "C" fn(A, B) -> Ret

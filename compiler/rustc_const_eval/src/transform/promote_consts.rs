@@ -13,6 +13,7 @@
 //! move analysis runs after promotion on broken MIR.
 
 use rustc_hir as hir;
+use rustc_middle::mir;
 use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -361,7 +362,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             return Err(Unpromotable);
                         }
                     }
-                    ProjectionElem::Downcast(..) => {
+                    ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
                         return Err(Unpromotable);
                     }
 
@@ -840,21 +841,15 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
                 let substs = tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def.did));
-                let _const = tcx.mk_const(ty::ConstS {
-                    ty,
-                    kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
-                        def,
-                        substs,
-                        promoted: Some(promoted_id),
-                    }),
-                });
+                let uneval = mir::UnevaluatedConst { def, substs, promoted: Some(promoted_id) };
 
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: ConstantKind::from_const(_const, tcx),
+                    literal: ConstantKind::Unevaluated(uneval, ty),
                 }))
             };
+
             let blocks = self.source.basic_blocks.as_mut();
             let local_decls = &mut self.source.local_decls;
             let loc = candidate.location;

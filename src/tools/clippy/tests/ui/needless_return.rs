@@ -1,7 +1,6 @@
 // run-rustfix
 
 #![feature(lint_reasons)]
-#![feature(let_else)]
 #![allow(unused)]
 #![allow(
     clippy::if_same_then_else,
@@ -228,13 +227,9 @@ fn needless_return_macro() -> String {
     return format!("Hello {}", "world!");
 }
 
-fn check_expect() -> bool {
-    if true {
-        // no error!
-        return true;
-    }
-    #[expect(clippy::needless_return)]
-    return true;
+fn issue_9361() -> i32 {
+    #[allow(clippy::integer_arithmetic)]
+    return 1 + 2;
 }
 
 fn main() {}

@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `SuperTrait::SubType`
-  --> $DIR/issue-76535.rs:40:33
+  --> $DIR/issue-76535.rs:39:33
    |
 LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
    |                                 ^^^^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-76535.rs:10:10
+  --> $DIR/issue-76535.rs:9:10
    |
 LL |     type SubType<'a>: SubTrait where Self: 'a;
    |          ^^^^^^^ --

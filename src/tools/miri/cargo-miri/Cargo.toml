@@ -1,0 +1,32 @@
+[package]
+authors = ["Miri Team"]
+description = "An experimental interpreter for Rust MIR (cargo wrapper)."
+license = "MIT OR Apache-2.0"
+name = "cargo-miri"
+repository = "https://github.com/rust-lang/miri"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "cargo-miri"
+path = "src/main.rs"
+test = false # we have no unit tests
+doctest = false # and no doc tests
+
+[dependencies]
+directories = "3"
+rustc_version = "0.4"
+serde_json = "1.0.40"
+cargo_metadata = "0.15.0"
+
+# A noop dependency that changes in the Rust repository, it's a bit of a hack.
+# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
+# for more information.
+rustc-workspace-hack = "1.0.0"
+
+# Enable some feature flags that dev-dependencies need but dependencies
+# do not.  This makes `./miri install` after `./miri build` faster.
+serde = { version = "*", features = ["derive"] }
+
+[build-dependencies]
+vergen = { version = "5", default_features = false, features = ["git"] }

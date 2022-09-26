@@ -152,7 +152,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             ty::Projection(data) => {
                 stack.extend(data.substs.iter().rev());
             }
-            ty::Dynamic(obj, lt) => {
+            ty::Dynamic(obj, lt, _) => {
                 stack.push(lt.into());
                 stack.extend(obj.iter().rev().flat_map(|predicate| {
                     let (substs, opt_ty) = match predicate.skip_binder() {
@@ -165,9 +165,9 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                         }
                     };
 
-                    substs.iter().rev().chain(opt_ty.map(|term| match term {
-                        ty::Term::Ty(ty) => ty.into(),
-                        ty::Term::Const(ct) => ct.into(),
+                    substs.iter().rev().chain(opt_ty.map(|term| match term.unpack() {
+                        ty::TermKind::Ty(ty) => ty.into(),
+                        ty::TermKind::Const(ct) => ct.into(),
                     }))
                 }));
             }

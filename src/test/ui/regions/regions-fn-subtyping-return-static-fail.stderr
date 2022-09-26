@@ -7,7 +7,7 @@ LL |     want_G(baz);
    |     arguments to this function are incorrect
    |
    = note: expected fn pointer `for<'cx> fn(&'cx S) -> &'static S`
-                 found fn item `for<'r> fn(&'r S) -> &'r S {baz}`
+                 found fn item `for<'a> fn(&'a S) -> &'a S {baz}`
 note: function defined here
   --> $DIR/regions-fn-subtyping-return-static-fail.rs:20:4
    |

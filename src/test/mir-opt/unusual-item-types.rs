@@ -1,7 +1,7 @@
 // Test that we don't ICE when trying to dump MIR for unusual item types and
 // that we don't create filenames containing `<` and `>`
 // compile-flags: -Zmir-opt-level=0
-// EMIT_MIR_FOR_EACH_BIT_WIDTH
+
 
 struct A;
 

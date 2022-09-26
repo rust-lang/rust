@@ -2,6 +2,13 @@ use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use crate::config::{self, CrateType, InstrumentCoverage, OptLevel, OutputType, SwitchWithOptPath};
+use crate::errors::{
+    CannotEnableCrtStaticLinux, CannotMixAndMatchSanitizers, LinkerPluginToWindowsNotSupported,
+    NotCircumventFeature, ProfileSampleUseFileDoesNotExist, ProfileUseFileDoesNotExist,
+    SanitizerCfiEnabled, SanitizerNotSupported, SanitizersNotSupported,
+    SplitDebugInfoUnstablePlatform, StackProtectorNotSupportedForTarget,
+    TargetRequiresUnwindTables, UnstableVirtualFunctionElimination, UnsupportedDwarfVersion,
+};
 use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
 use crate::{filesearch, lint};
@@ -21,7 +28,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    EmissionGuarantee, ErrorGuaranteed, FluentBundle, LazyFallbackBundle, MultiSpan,
+    ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -107,6 +114,12 @@ impl Mul<usize> for Limit {
 
     fn mul(self, rhs: usize) -> Self::Output {
         Limit::new(self.0 * rhs)
+    }
+}
+
+impl rustc_errors::IntoDiagnosticArg for Limit {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
     }
 }
 
@@ -210,15 +223,6 @@ pub struct PerfStats {
     pub normalize_projection_ty: AtomicUsize,
 }
 
-/// Trait implemented by error types. This should not be implemented manually. Instead, use
-/// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
-#[rustc_diagnostic_item = "SessionDiagnostic"]
-pub trait SessionDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
-    /// Write out as a diagnostic out of `sess`.
-    #[must_use]
-    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, T>;
-}
-
 impl Session {
     pub fn miri_unleashed_feature(&self, span: Span, feature_gate: Option<Symbol>) {
         self.miri_unleashed_features.lock().push((span, feature_gate));
@@ -229,6 +233,9 @@ impl Session {
         if !unleashed_features.is_empty() {
             let mut must_err = false;
             // Create a diagnostic pointing at where things got unleashed.
+            // FIXME(#100717): needs eager translation/lists
+            #[allow(rustc::untranslatable_diagnostic)]
+            #[allow(rustc::diagnostic_outside_of_impl)]
             let mut diag = self.struct_warn("skipping const checks");
             for &(span, feature_gate) in unleashed_features.iter() {
                 // FIXME: `span_label` doesn't do anything, so we use "help" as a hack.
@@ -244,10 +251,7 @@ impl Session {
             // If we should err, make sure we did.
             if must_err && self.has_errors().is_none() {
                 // We have skipped a feature gate, and not run into other errors... reject.
-                self.err(
-                    "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
-                     gates, except when testing error paths in the CTFE engine",
-                );
+                self.emit_err(NotCircumventFeature);
             }
         }
     }
@@ -284,6 +288,8 @@ impl Session {
     }
 
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_warn<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -292,6 +298,8 @@ impl Session {
         self.diagnostic().struct_span_warn(sp, msg)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_warn_with_expectation<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -301,6 +309,8 @@ impl Session {
         self.diagnostic().struct_span_warn_with_expectation(sp, msg, id)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -310,10 +320,14 @@ impl Session {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_warn(msg)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_warn_with_expectation(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -322,6 +336,8 @@ impl Session {
         self.diagnostic().struct_warn_with_expectation(msg, id)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_allow<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -330,10 +346,14 @@ impl Session {
         self.diagnostic().struct_span_allow(sp, msg)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_allow(msg)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_expect(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -342,6 +362,8 @@ impl Session {
         self.diagnostic().struct_expect(msg, id)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -350,6 +372,8 @@ impl Session {
         self.diagnostic().struct_span_err(sp, msg)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -360,6 +384,8 @@ impl Session {
     }
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -367,6 +393,8 @@ impl Session {
         self.parse_sess.struct_err(msg)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_err_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -375,6 +403,8 @@ impl Session {
         self.diagnostic().struct_err_with_code(msg, code)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_warn_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -383,6 +413,8 @@ impl Session {
         self.diagnostic().struct_warn_with_code(msg, code)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_fatal<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -391,6 +423,8 @@ impl Session {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -400,15 +434,21 @@ impl Session {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         self.diagnostic().struct_fatal(msg)
     }
 
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
         self.diagnostic().span_fatal(sp, msg)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -418,10 +458,14 @@ impl Session {
         self.diagnostic().span_fatal_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
         self.diagnostic().fatal(msg).raise()
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_err_or_warn<S: Into<MultiSpan>>(
         &self,
         is_warning: bool,
@@ -435,6 +479,8 @@ impl Session {
         }
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -443,6 +489,8 @@ impl Session {
         self.diagnostic().span_err(sp, msg)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -457,13 +505,13 @@ impl Session {
     }
     pub fn create_err<'a>(
         &'a self,
-        err: impl SessionDiagnostic<'a>,
+        err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.parse_sess.create_err(err)
     }
     pub fn create_feature_err<'a>(
         &'a self,
-        err: impl SessionDiagnostic<'a>,
+        err: impl IntoDiagnostic<'a>,
         feature: Symbol,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = self.parse_sess.create_err(err);
@@ -473,25 +521,25 @@ impl Session {
         add_feature_diagnostics(&mut err, &self.parse_sess, feature);
         err
     }
-    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
+    pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
         self.parse_sess.emit_err(err)
     }
     pub fn create_warning<'a>(
         &'a self,
-        err: impl SessionDiagnostic<'a, ()>,
+        err: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
         self.parse_sess.create_warning(err)
     }
-    pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
+    pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
         self.parse_sess.emit_warning(warning)
     }
     pub fn create_fatal<'a>(
         &'a self,
-        fatal: impl SessionDiagnostic<'a, !>,
+        fatal: impl IntoDiagnostic<'a, !>,
     ) -> DiagnosticBuilder<'a, !> {
         self.parse_sess.create_fatal(fatal)
     }
-    pub fn emit_fatal<'a>(&'a self, fatal: impl SessionDiagnostic<'a, !>) -> ! {
+    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
         self.parse_sess.emit_fatal(fatal)
     }
     #[inline]
@@ -528,9 +576,13 @@ impl Session {
             Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         }
     }
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().span_warn(sp, msg)
     }
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_warn_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -579,6 +631,8 @@ impl Session {
     ) {
         self.diagnostic().span_note_without_error(sp, msg)
     }
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_note_without_error(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -1290,10 +1344,8 @@ pub fn build_session(
     let warnings_allow = sopts
         .lint_opts
         .iter()
-        .filter(|&&(ref key, _)| *key == "warnings")
-        .map(|&(_, ref level)| *level == lint::Allow)
-        .last()
-        .unwrap_or(false);
+        .rfind(|&&(ref key, _)| *key == "warnings")
+        .map_or(false, |&(_, level)| level == lint::Allow);
     let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
@@ -1463,40 +1515,28 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && sess.opts.cg.prefer_dynamic
         && sess.target.is_like_windows
     {
-        sess.err(
-            "Linker plugin based LTO is not supported together with \
-                  `-C prefer-dynamic` when targeting Windows-like targets",
-        );
+        sess.emit_err(LinkerPluginToWindowsNotSupported);
     }
 
     // Make sure that any given profiling data actually exists so LLVM can't
     // decide to silently skip PGO.
     if let Some(ref path) = sess.opts.cg.profile_use {
         if !path.exists() {
-            sess.err(&format!(
-                "File `{}` passed to `-C profile-use` does not exist.",
-                path.display()
-            ));
+            sess.emit_err(ProfileUseFileDoesNotExist { path });
         }
     }
 
     // Do the same for sample profile data.
     if let Some(ref path) = sess.opts.unstable_opts.profile_sample_use {
         if !path.exists() {
-            sess.err(&format!(
-                "File `{}` passed to `-C profile-sample-use` does not exist.",
-                path.display()
-            ));
+            sess.emit_err(ProfileSampleUseFileDoesNotExist { path });
         }
     }
 
     // Unwind tables cannot be disabled if the target requires them.
     if let Some(include_uwtables) = sess.opts.cg.force_unwind_tables {
         if sess.target.requires_uwtable && !include_uwtables {
-            sess.err(
-                "target requires unwind tables, they cannot be disabled with \
-                     `-C force-unwind-tables=no`.",
-            );
+            sess.emit_err(TargetRequiresUnwindTables);
         }
     }
 
@@ -1506,64 +1546,55 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     match unsupported_sanitizers.into_iter().count() {
         0 => {}
         1 => {
-            sess.err(&format!(
-                "{} sanitizer is not supported for this target",
-                unsupported_sanitizers
-            ));
+            sess.emit_err(SanitizerNotSupported { us: unsupported_sanitizers.to_string() });
         }
         _ => {
-            sess.err(&format!(
-                "{} sanitizers are not supported for this target",
-                unsupported_sanitizers
-            ));
+            sess.emit_err(SanitizersNotSupported { us: unsupported_sanitizers.to_string() });
         }
     }
     // Cannot mix and match sanitizers.
     let mut sanitizer_iter = sess.opts.unstable_opts.sanitizer.into_iter();
     if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
-        sess.err(&format!("`-Zsanitizer={first}` is incompatible with `-Zsanitizer={second}`"));
+        sess.emit_err(CannotMixAndMatchSanitizers {
+            first: first.to_string(),
+            second: second.to_string(),
+        });
     }
 
     // Cannot enable crt-static with sanitizers on Linux
     if sess.crt_static(None) && !sess.opts.unstable_opts.sanitizer.is_empty() {
-        sess.err(
-            "sanitizer is incompatible with statically linked libc, \
-                                disable it using `-C target-feature=-crt-static`",
-        );
+        sess.emit_err(CannotEnableCrtStaticLinux);
     }
 
     // LLVM CFI and VFE both require LTO.
     if sess.lto() != config::Lto::Fat {
         if sess.is_sanitizer_cfi_enabled() {
-            sess.err("`-Zsanitizer=cfi` requires `-Clto`");
+            sess.emit_err(SanitizerCfiEnabled);
         }
         if sess.opts.unstable_opts.virtual_function_elimination {
-            sess.err("`-Zvirtual-function-elimination` requires `-Clto`");
+            sess.emit_err(UnstableVirtualFunctionElimination);
         }
     }
 
     if sess.opts.unstable_opts.stack_protector != StackProtector::None {
         if !sess.target.options.supports_stack_protector {
-            sess.warn(&format!(
-                "`-Z stack-protector={}` is not supported for target {} and will be ignored",
-                sess.opts.unstable_opts.stack_protector, sess.opts.target_triple
-            ))
+            sess.emit_warning(StackProtectorNotSupportedForTarget {
+                stack_protector: sess.opts.unstable_opts.stack_protector,
+                target_triple: &sess.opts.target_triple,
+            });
         }
     }
 
     if let Some(dwarf_version) = sess.opts.unstable_opts.dwarf_version {
         if dwarf_version > 5 {
-            sess.err(&format!("requested DWARF version {} is greater than 5", dwarf_version));
+            sess.emit_err(UnsupportedDwarfVersion { dwarf_version });
         }
     }
 
     if !sess.target.options.supported_split_debuginfo.contains(&sess.split_debuginfo())
         && !sess.opts.unstable_opts.unstable_options
     {
-        sess.err(&format!(
-            "`-Csplit-debuginfo={}` is unstable on this platform",
-            sess.split_debuginfo()
-        ));
+        sess.emit_err(SplitDebugInfoUnstablePlatform { debuginfo: sess.split_debuginfo() });
     }
 }
 
@@ -1608,14 +1639,20 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
     rustc_errors::Handler::with_emitter(true, None, emitter)
 }
 
+#[allow(rustc::untranslatable_diagnostic)]
+#[allow(rustc::diagnostic_outside_of_impl)]
 pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) -> ErrorGuaranteed {
     early_error_handler(output).struct_err(msg).emit()
 }
 
+#[allow(rustc::untranslatable_diagnostic)]
+#[allow(rustc::diagnostic_outside_of_impl)]
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     early_error_handler(output).struct_fatal(msg).emit()
 }
 
+#[allow(rustc::untranslatable_diagnostic)]
+#[allow(rustc::diagnostic_outside_of_impl)]
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     early_error_handler(output).struct_warn(msg).emit()
 }

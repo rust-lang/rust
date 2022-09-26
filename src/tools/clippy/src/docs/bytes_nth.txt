@@ -1,0 +1,16 @@
+### What it does
+Checks for the use of `.bytes().nth()`.
+
+### Why is this bad?
+`.as_bytes().get()` is more efficient and more
+readable.
+
+### Example
+```
+"Hello".bytes().nth(3);
+```
+
+Use instead:
+```
+"Hello".as_bytes().get(3);
+```

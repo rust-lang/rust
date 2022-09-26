@@ -19,7 +19,7 @@ all:
 	# Dump all the symbols from the staticlib into `syms`
 	"$(LLVM_BIN_DIR)"/llvm-objdump -t $(TMPDIR)/libdownstream.a > $(TMPDIR)/syms
 	# Count the global instances of `issue64153_test_function`. There'll be 2
-	# if the `upstream` object file got erronously included twice.
+	# if the `upstream` object file got erroneously included twice.
 	# The line we are testing for with the regex looks something like:
 	# 0000000000000000 g     F .text.issue64153_test_function	00000023 issue64153_test_function
 	grep -c -e "[[:space:]]g[[:space:]]*F[[:space:]].*issue64153_test_function" $(TMPDIR)/syms > $(TMPDIR)/count

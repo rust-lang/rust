@@ -16,35 +16,51 @@ const USIZE_BYTES: usize = mem::size_of::<usize>();
 /// bytes where the borrow propagated all the way to the most significant
 /// bit."
 #[inline]
-fn contains_zero_byte(x: usize) -> bool {
+const fn contains_zero_byte(x: usize) -> bool {
     x.wrapping_sub(LO_USIZE) & !x & HI_USIZE != 0
 }
 
 #[cfg(target_pointer_width = "16")]
 #[inline]
-fn repeat_byte(b: u8) -> usize {
+const fn repeat_byte(b: u8) -> usize {
     (b as usize) << 8 | b as usize
 }
 
 #[cfg(not(target_pointer_width = "16"))]
 #[inline]
-fn repeat_byte(b: u8) -> usize {
+const fn repeat_byte(b: u8) -> usize {
     (b as usize) * (usize::MAX / 255)
 }
 
 /// Returns the first index matching the byte `x` in `text`.
 #[must_use]
 #[inline]
-pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
-    // Fast path for small slices
+pub const fn memchr(x: u8, text: &[u8]) -> Option<usize> {
+    // Fast path for small slices.
     if text.len() < 2 * USIZE_BYTES {
-        return text.iter().position(|elt| *elt == x);
+        return memchr_naive(x, text);
     }
 
-    memchr_general_case(x, text)
+    memchr_aligned(x, text)
 }
 
-fn memchr_general_case(x: u8, text: &[u8]) -> Option<usize> {
+#[inline]
+const fn memchr_naive(x: u8, text: &[u8]) -> Option<usize> {
+    let mut i = 0;
+
+    // FIXME(const-hack): Replace with `text.iter().pos(|c| *c == x)`.
+    while i < text.len() {
+        if text[i] == x {
+            return Some(i);
+        }
+
+        i += 1;
+    }
+
+    None
+}
+
+const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
     // Scan for a single byte value by reading two `usize` words at a time.
     //
     // Split `text` in three parts
@@ -59,7 +75,7 @@ fn memchr_general_case(x: u8, text: &[u8]) -> Option<usize> {
 
     if offset > 0 {
         offset = cmp::min(offset, len);
-        if let Some(index) = text[..offset].iter().position(|elt| *elt == x) {
+        if let Some(index) = memchr_naive(x, &text[..offset]) {
             return Some(index);
         }
     }
@@ -84,7 +100,8 @@ fn memchr_general_case(x: u8, text: &[u8]) -> Option<usize> {
     }
 
     // Find the byte after the point the body loop stopped.
-    text[offset..].iter().position(|elt| *elt == x).map(|i| offset + i)
+    // FIXME(const-hack): Use `?` instead.
+    if let Some(i) = memchr_naive(x, &text[offset..]) { Some(offset + i) } else { None }
 }
 
 /// Returns the last index matching the byte `x` in `text`.
@@ -124,8 +141,8 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
         // SAFETY: offset starts at len - suffix.len(), as long as it is greater than
         // min_aligned_offset (prefix.len()) the remaining distance is at least 2 * chunk_bytes.
         unsafe {
-            let u = *(ptr.offset(offset as isize - 2 * chunk_bytes as isize) as *const Chunk);
-            let v = *(ptr.offset(offset as isize - chunk_bytes as isize) as *const Chunk);
+            let u = *(ptr.add(offset - 2 * chunk_bytes) as *const Chunk);
+            let v = *(ptr.add(offset - chunk_bytes) as *const Chunk);
 
             // Break if there is a matching byte.
             let zu = contains_zero_byte(u ^ repeated_x);

@@ -333,10 +333,10 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         let mut err = lint.build(msg);
                         err.span_label(expr.span, "for this argument");
                         err.help(&format!(
-                            "use the `{suggested_modifier}` modifier to have the register formatted as `{suggested_result}`",
+                            "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}`",
                         ));
                         err.help(&format!(
-                            "or use the `{default_modifier}` modifier to keep the default formatting of `{default_result}`",
+                            "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}`",
                         ));
                         err.emit();
                     },

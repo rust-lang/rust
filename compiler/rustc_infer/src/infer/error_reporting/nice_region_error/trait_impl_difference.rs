@@ -154,16 +154,11 @@ impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
             }
             hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
                 [segment]
-                    if segment
-                        .res
-                        .map(|res| {
-                            matches!(
-                                res,
-                                Res::SelfTy { trait_: _, alias_to: _ }
-                                    | Res::Def(hir::def::DefKind::TyParam, _)
-                            )
-                        })
-                        .unwrap_or(false) =>
+                    if matches!(
+                        segment.res,
+                        Res::SelfTy { trait_: _, alias_to: _ }
+                            | Res::Def(hir::def::DefKind::TyParam, _)
+                    ) =>
                 {
                     self.types.push(path.span);
                 }

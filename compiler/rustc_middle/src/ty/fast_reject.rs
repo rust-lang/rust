@@ -384,14 +384,7 @@ impl DeepRejectCtxt {
             // they might unify with any value.
             ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => true,
             ty::ConstKind::Value(obl) => match k {
-                ty::ConstKind::Value(imp) => {
-                    // FIXME(valtrees): Once we have valtrees, we can just
-                    // compare them directly here.
-                    match (obl.try_to_scalar_int(), imp.try_to_scalar_int()) {
-                        (Some(obl), Some(imp)) => obl == imp,
-                        _ => true,
-                    }
-                }
+                ty::ConstKind::Value(imp) => obl == imp,
                 _ => true,
             },
 

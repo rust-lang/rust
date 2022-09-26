@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `CollectionFamily::Member`
-  --> $DIR/issue-78671.rs:11:47
+  --> $DIR/issue-78671.rs:10:47
    |
 LL |     Box::new(Family) as &dyn CollectionFamily<Member=usize>
    |                                               ^^^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-78671.rs:8:10
+  --> $DIR/issue-78671.rs:7:10
    |
 LL |     type Member<T>;
    |          ^^^^^^ -

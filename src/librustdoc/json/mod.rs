@@ -101,6 +101,7 @@ impl<'tcx> JsonRenderer<'tcx> {
     }
 
     fn get_trait_items(&mut self) -> Vec<(types::Id, types::Item)> {
+        debug!("Adding foreign trait items");
         Rc::clone(&self.cache)
             .traits
             .iter()
@@ -109,6 +110,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                 if !id.is_local() {
                     let trait_item = &trait_item.trait_;
                     for item in &trait_item.items {
+                        trace!("Adding subitem to {id:?}: {:?}", item.item_id);
                         self.item(item.clone()).unwrap();
                     }
                     let item_id = from_item_id(id.into(), self.tcx);
@@ -184,7 +186,9 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     /// the hashmap because certain items (traits and types) need to have their mappings for trait
     /// implementations filled out before they're inserted.
     fn item(&mut self, item: clean::Item) -> Result<(), Error> {
-        trace!("rendering {} {:?}", item.type_(), item.name);
+        let item_type = item.type_();
+        let item_name = item.name;
+        trace!("rendering {} {:?}", item_type, item_name);
 
         // Flatten items that recursively store other items. We include orphaned items from
         // stripped modules and etc that are otherwise reachable.
@@ -253,6 +257,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             }
         }
 
+        trace!("done rendering {} {:?}", item_type, item_name);
         Ok(())
     }
 
@@ -263,14 +268,20 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn after_krate(&mut self) -> Result<(), Error> {
         debug!("Done with crate");
 
+        debug!("Adding Primitve impls");
         for primitive in Rc::clone(&self.cache).primitive_locations.values() {
             self.get_impls(*primitive);
         }
 
         let e = ExternalCrate { crate_num: LOCAL_CRATE };
 
+        // FIXME(adotinthevoid): Remove this, as it's not consistant with not
+        // inlining foreign items.
+        let foreign_trait_items = self.get_trait_items();
         let mut index = (*self.index).clone().into_inner();
-        index.extend(self.get_trait_items());
+        index.extend(foreign_trait_items);
+
+        debug!("Constructing Output");
         // This needs to be the default HashMap for compatibility with the public interface for
         // rustdoc-json-types
         #[allow(rustc::default_hash_types)]

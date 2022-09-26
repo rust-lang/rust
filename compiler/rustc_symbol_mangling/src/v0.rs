@@ -7,10 +7,10 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
     self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, UintTy,
 };
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::kw;
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
@@ -479,8 +479,12 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 })?;
             }
 
-            ty::Dynamic(predicates, r) => {
-                self.push("D");
+            ty::Dynamic(predicates, r, kind) => {
+                self.push(match kind {
+                    ty::Dyn => "D",
+                    // FIXME(dyn-star): need to update v0 mangling docs
+                    ty::DynStar => "D*",
+                });
                 self = self.print_dyn_existential(predicates)?;
                 self = r.print(self)?;
             }
@@ -543,9 +547,9 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                         let name = cx.tcx.associated_item(projection.item_def_id).name;
                         cx.push("p");
                         cx.push_ident(name.as_str());
-                        cx = match projection.term {
-                            ty::Term::Ty(ty) => ty.print(cx),
-                            ty::Term::Const(c) => c.print(cx),
+                        cx = match projection.term.unpack() {
+                            ty::TermKind::Ty(ty) => ty.print(cx),
+                            ty::TermKind::Const(c) => c.print(cx),
                         }?;
                     }
                     ty::ExistentialPredicate::AutoTrait(def_id) => {

@@ -33,8 +33,6 @@ use rustc_span::{BytePos, Span};
 use std::iter;
 use std::ops::Deref;
 
-use tracing::debug;
-
 type Res = def::Res<ast::NodeId>;
 
 /// A field or associated item from self type suggested in case of resolution failure.
@@ -175,7 +173,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 span,
                 span_label: match res {
                     Res::Def(kind, def_id) if kind == DefKind::TyParam => {
-                        self.def_span(def_id).map(|span| (span, "found this type pararmeter"))
+                        self.def_span(def_id).map(|span| (span, "found this type parameter"))
                     }
                     _ => None,
                 },
@@ -619,9 +617,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         .filter(|&sp| sp != base_error.span)
                         .collect();
 
-                    let start_span = bounds.iter().map(|bound| bound.span()).next().unwrap();
+                    let start_span = bounds[0].span();
                     // `end_span` is the end of the poly trait ref (Foo + 'baz + Bar><)
-                    let end_span = bounds.iter().map(|bound| bound.span()).last().unwrap();
+                    let end_span = bounds.last().unwrap().span();
                     // `last_bound_span` is the last bound of the poly trait ref (Foo + >'baz< + Bar)
                     let last_bound_span = spans.last().cloned().unwrap();
                     let mut multi_span: MultiSpan = spans.clone().into();
@@ -1792,7 +1790,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 }
             };
 
-            let mut suggestable_variants = variants
+            let suggestable_variants = variants
                 .iter()
                 .filter(|(_, def_id, kind)| !needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
@@ -1802,8 +1800,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     CtorKind::Fictive => format!("({} {{}})", variant),
                 })
                 .collect::<Vec<_>>();
+            let no_suggestable_variant = suggestable_variants.is_empty();
 
-            if !suggestable_variants.is_empty() {
+            if !no_suggestable_variant {
                 let msg = if suggestable_variants.len() == 1 {
                     "you might have meant to use the following enum variant"
                 } else {
@@ -1813,7 +1812,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants.drain(..),
+                    suggestable_variants.into_iter(),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1830,15 +1829,15 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 .collect::<Vec<_>>();
 
             if !suggestable_variants_with_placeholders.is_empty() {
-                let msg = match (
-                    suggestable_variants.is_empty(),
-                    suggestable_variants_with_placeholders.len(),
-                ) {
-                    (true, 1) => "the following enum variant is available",
-                    (true, _) => "the following enum variants are available",
-                    (false, 1) => "alternatively, the following enum variant is available",
-                    (false, _) => "alternatively, the following enum variants are also available",
-                };
+                let msg =
+                    match (no_suggestable_variant, suggestable_variants_with_placeholders.len()) {
+                        (true, 1) => "the following enum variant is available",
+                        (true, _) => "the following enum variants are available",
+                        (false, 1) => "alternatively, the following enum variant is available",
+                        (false, _) => {
+                            "alternatively, the following enum variants are also available"
+                        }
+                    };
 
                 err.span_suggestions(
                     span,

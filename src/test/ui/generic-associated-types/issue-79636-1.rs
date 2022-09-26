@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 trait Monad {
     type Unwrapped;
     type Wrapped<B>;

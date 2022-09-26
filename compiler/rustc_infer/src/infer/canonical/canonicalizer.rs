@@ -180,11 +180,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         match *r {
-            ty::ReFree(_)
-            | ty::ReErased
-            | ty::ReStatic
-            | ty::ReEmpty(ty::UniverseIndex::ROOT)
-            | ty::ReEarlyBound(..) => r,
+            ty::ReFree(_) | ty::ReErased | ty::ReStatic | ty::ReEarlyBound(..) => r,
 
             ty::RePlaceholder(placeholder) => canonicalizer.canonical_var_for_region(
                 CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderRegion(placeholder) },
@@ -197,10 +193,6 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
                     CanonicalVarInfo { kind: CanonicalVarKind::Region(universe) },
                     r,
                 )
-            }
-
-            ty::ReEmpty(ui) => {
-                bug!("canonicalizing 'empty in universe {:?}", ui) // FIXME
             }
 
             _ => {
@@ -381,7 +373,6 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             ty::ReStatic
             | ty::ReEarlyBound(..)
             | ty::ReFree(_)
-            | ty::ReEmpty(_)
             | ty::RePlaceholder(..)
             | ty::ReErased => self.canonicalize_mode.canonicalize_free_region(self, r),
         }

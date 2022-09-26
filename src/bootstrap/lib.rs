@@ -112,6 +112,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
+use config::Target;
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
 
@@ -186,6 +187,9 @@ const LLVM_TOOLS: &[&str] = &[
     "opt",           // used to optimize LLVM bytecode
 ];
 
+/// LLD file names for all flavors.
+const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
+
 pub const VERSION: usize = 2;
 
 /// Extra --check-cfg to add when building
@@ -194,9 +198,12 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "parallel_compiler", None),
+    (Some(Mode::Codegen), "parallel_compiler", None),
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
     (Some(Mode::Std), "no_global_oom_handling", None),
+    (Some(Mode::Std), "no_rc", None),
+    (Some(Mode::Std), "no_sync", None),
     (Some(Mode::Std), "freebsd12", None),
     (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
@@ -395,13 +402,18 @@ impl Build {
         let src = config.src.clone();
         let out = config.out.clone();
 
+        #[cfg(unix)]
+        // keep this consistent with the equivalent check in x.py:
+        // https://github.com/rust-lang/rust/blob/a8a33cf27166d3eabaffc58ed3799e054af3b0c6/src/bootstrap/bootstrap.py#L796-L797
         let is_sudo = match env::var_os("SUDO_USER") {
-            Some(sudo_user) => match env::var_os("USER") {
-                Some(user) => user != sudo_user,
-                None => false,
-            },
+            Some(_sudo_user) => {
+                let uid = unsafe { libc::getuid() };
+                uid == 0
+            }
             None => false,
         };
+        #[cfg(not(unix))]
+        let is_sudo = false;
 
         let ignore_git = config.ignore_git;
         let rust_info = channel::GitInfo::new(ignore_git, &src);
@@ -447,19 +459,18 @@ impl Build {
             .expect("failed to read src/version");
         let version = version.trim();
 
-        let bootstrap_out = if std::env::var("BOOTSTRAP_PYTHON").is_ok() {
-            out.join("bootstrap").join("debug")
-        } else {
-            let workspace_target_dir = std::env::var("CARGO_TARGET_DIR")
-                .map(PathBuf::from)
-                .unwrap_or_else(|_| src.join("target"));
-            let bootstrap_out = workspace_target_dir.join("debug");
-            if !bootstrap_out.join("rustc").exists() && !cfg!(test) {
-                // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
-                panic!("run `cargo build --bins` before `cargo run`")
-            }
-            bootstrap_out
-        };
+        let bootstrap_out = std::env::current_exe()
+            .expect("could not determine path to running process")
+            .parent()
+            .unwrap()
+            .to_path_buf();
+        if !bootstrap_out.join(exe("rustc", config.build)).exists() && !cfg!(test) {
+            // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
+            panic!(
+                "`rustc` not found in {}, run `cargo build --bins` before `cargo run`",
+                bootstrap_out.display()
+            )
+        }
 
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
@@ -531,13 +542,8 @@ impl Build {
 
         // Make sure we update these before gathering metadata so we don't get an error about missing
         // Cargo.toml files.
-        let rust_submodules = [
-            "src/tools/rust-installer",
-            "src/tools/cargo",
-            "src/tools/miri",
-            "library/backtrace",
-            "library/stdarch",
-        ];
+        let rust_submodules =
+            ["src/tools/rust-installer", "src/tools/cargo", "library/backtrace", "library/stdarch"];
         for s in rust_submodules {
             build.update_submodule(Path::new(s));
         }
@@ -816,6 +822,11 @@ impl Build {
         self.out.join(&*target.triple).join("doc")
     }
 
+    /// Output directory for all JSON-formatted documentation for a target
+    fn json_doc_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("json-doc")
+    }
+
     fn test_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(&*target.triple).join("test")
     }
@@ -834,12 +845,13 @@ impl Build {
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
     fn is_rust_llvm(&self, target: TargetSelection) -> bool {
-        if self.config.llvm_from_ci && target == self.config.build {
-            return true;
-        }
-
         match self.config.target_config.get(&target) {
-            Some(ref c) => c.llvm_config.is_none(),
+            Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
+            Some(Target { llvm_config, .. }) => {
+                // If the user set llvm-config we assume Rust is not patched,
+                // but first check to see if it was configured by llvm-from-ci.
+                (self.config.llvm_from_ci && target == self.config.build) || llvm_config.is_none()
+            }
             None => true,
         }
     }
@@ -1297,10 +1309,6 @@ impl Build {
         self.package_vers(&self.version)
     }
 
-    fn llvm_link_tools_dynamically(&self, target: TargetSelection) -> bool {
-        target.contains("linux-gnu") || target.contains("apple-darwin")
-    }
-
     /// Returns the `version` string associated with this compiler for Rust
     /// itself.
     ///
@@ -1629,7 +1637,7 @@ fn chmod(_path: &Path, _perms: u32) {}
 /// If code is not 0 (successful exit status), exit status is 101 (rust's default error code.)
 /// If the test is running and code is an error code, it will cause a panic.
 fn detail_exit(code: i32) -> ! {
-    // if in test and code is an error code, panic with staus code provided
+    // if in test and code is an error code, panic with status code provided
     if cfg!(test) && code != 0 {
         panic!("status code: {}", code);
     } else {

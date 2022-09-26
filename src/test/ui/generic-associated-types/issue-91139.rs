@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 trait Foo<T> {
     type Type<'a>
     where

@@ -29,6 +29,8 @@ pub(crate) struct HrefContext<'a, 'b, 'c> {
     /// This field is used to know "how far" from the top of the directory we are to link to either
     /// documentation pages or other source pages.
     pub(crate) root_path: &'c str,
+    /// This field is used to calculate precise local URLs.
+    pub(crate) current_href: &'c str,
 }
 
 /// Decorations are represented as a map from CSS class to vector of character ranges.
@@ -52,35 +54,14 @@ pub(crate) fn render_example_with_highlighting(
     tooltip: Tooltip,
     playground_button: Option<&str>,
 ) {
-    let class = match tooltip {
-        Tooltip::Ignore => " ignore",
-        Tooltip::CompileFail => " compile_fail",
-        Tooltip::ShouldPanic => " should_panic",
-        Tooltip::Edition(_) => " edition",
-        Tooltip::None => "",
-    };
-
-    if tooltip != Tooltip::None {
-        write!(
-            out,
-            "<div class='information'><div class='tooltip{}'{}>ⓘ</div></div>",
-            class,
-            if let Tooltip::Edition(edition_info) = tooltip {
-                format!(" data-edition=\"{}\"", edition_info)
-            } else {
-                String::new()
-            },
-        );
-    }
-
-    write_header(out, &format!("rust-example-rendered{}", class), None);
+    write_header(out, "rust-example-rendered", None, tooltip);
     write_code(out, src, None, None);
     write_footer(out, playground_button);
 }
 
 /// Highlights `src` as a macro, returning the HTML output.
 pub(crate) fn render_macro_with_highlighting(src: &str, out: &mut Buffer) {
-    write_header(out, "macro", None);
+    write_header(out, "macro", None, Tooltip::None);
     write_code(out, src, None, None);
     write_footer(out, None);
 }
@@ -93,20 +74,43 @@ pub(crate) fn render_source_with_highlighting(
     href_context: HrefContext<'_, '_, '_>,
     decoration_info: DecorationInfo,
 ) {
-    write_header(out, "", Some(line_numbers));
+    write_header(out, "", Some(line_numbers), Tooltip::None);
     write_code(out, src, Some(href_context), Some(decoration_info));
     write_footer(out, None);
 }
 
-fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>) {
-    write!(out, "<div class=\"example-wrap\">");
+fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>, tooltip: Tooltip) {
+    write!(
+        out,
+        "<div class=\"example-wrap{}\">",
+        match tooltip {
+            Tooltip::Ignore => " ignore",
+            Tooltip::CompileFail => " compile_fail",
+            Tooltip::ShouldPanic => " should_panic",
+            Tooltip::Edition(_) => " edition",
+            Tooltip::None => "",
+        },
+    );
+
+    if tooltip != Tooltip::None {
+        write!(
+            out,
+            "<div class='tooltip'{}>ⓘ</div>",
+            if let Tooltip::Edition(edition_info) = tooltip {
+                format!(" data-edition=\"{}\"", edition_info)
+            } else {
+                String::new()
+            },
+        );
+    }
+
     if let Some(extra) = extra_content {
         out.push_buffer(extra);
     }
     if class.is_empty() {
         write!(out, "<pre class=\"rust\">");
     } else {
-        write!(out, "<pre class=\"rust {}\">", class);
+        write!(out, "<pre class=\"rust {class}\">");
     }
     write!(out, "<code>");
 }
@@ -450,7 +454,7 @@ impl<'a> PeekIter<'a> {
     fn new(iter: TokenIter<'a>) -> Self {
         Self { stored: VecDeque::new(), peek_pos: 0, iter }
     }
-    /// Returns the next item after the current one. It doesn't interfer with `peek_next` output.
+    /// Returns the next item after the current one. It doesn't interfere with `peek_next` output.
     fn peek(&mut self) -> Option<&(TokenKind, &'a str)> {
         if self.stored.is_empty() {
             if let Some(next) = self.iter.next() {
@@ -459,7 +463,7 @@ impl<'a> PeekIter<'a> {
         }
         self.stored.front()
     }
-    /// Returns the next item after the last one peeked. It doesn't interfer with `peek` output.
+    /// Returns the next item after the last one peeked. It doesn't interfere with `peek` output.
     fn peek_next(&mut self) -> Option<&(TokenKind, &'a str)> {
         self.peek_pos += 1;
         if self.peek_pos - 1 < self.stored.len() {
@@ -975,9 +979,9 @@ fn string_without_closing_tag<T: Display>(
                 // a link to their definition can be generated using this:
                 // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
                 match href {
-                    LinkFromSrc::Local(span) => context
-                        .href_from_span(*span, true)
-                        .map(|s| format!("{}{}", href_context.root_path, s)),
+                    LinkFromSrc::Local(span) => {
+                        context.href_from_span_relative(*span, href_context.current_href)
+                    }
                     LinkFromSrc::External(def_id) => {
                         format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .ok()

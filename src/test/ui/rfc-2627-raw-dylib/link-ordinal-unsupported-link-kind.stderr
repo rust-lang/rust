@@ -1,23 +1,14 @@
-warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/link-ordinal-unsupported-link-kind.rs:1:12
-   |
-LL | #![feature(raw_dylib)]
-   |            ^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
-
 error: `#[link_ordinal]` is only supported if link kind is `raw-dylib`
-  --> $DIR/link-ordinal-unsupported-link-kind.rs:6:5
+  --> $DIR/link-ordinal-unsupported-link-kind.rs:5:5
    |
 LL |     #[link_ordinal(3)]
    |     ^^^^^^^^^^^^^^^^^^
 
 error: `#[link_ordinal]` is only supported if link kind is `raw-dylib`
-  --> $DIR/link-ordinal-unsupported-link-kind.rs:13:5
+  --> $DIR/link-ordinal-unsupported-link-kind.rs:12:5
    |
 LL |     #[link_ordinal(3)]
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 

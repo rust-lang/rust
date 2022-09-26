@@ -223,11 +223,9 @@ impl<'a> AstValidator<'a> {
                 for (i, segment) in path.segments.iter().enumerate() {
                     // Allow `impl Trait` iff we're on the final path segment
                     if i == path.segments.len() - 1 {
-                        self.visit_path_segment(path.span, segment);
+                        self.visit_path_segment(segment);
                     } else {
-                        self.with_banned_impl_trait(|this| {
-                            this.visit_path_segment(path.span, segment)
-                        });
+                        self.with_banned_impl_trait(|this| this.visit_path_segment(segment));
                     }
                 }
             }
@@ -281,18 +279,12 @@ impl<'a> AstValidator<'a> {
     fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
         for Param { pat, .. } in &decl.inputs {
             match pat.kind {
-                PatKind::Ident(BindingMode::ByValue(Mutability::Not), _, None) | PatKind::Wild => {}
-                PatKind::Ident(BindingMode::ByValue(Mutability::Mut), ident, None) => {
+                PatKind::Ident(BindingAnnotation::NONE, _, None) | PatKind::Wild => {}
+                PatKind::Ident(BindingAnnotation::MUT, ident, None) => {
                     report_err(pat.span, Some(ident), true)
                 }
                 _ => report_err(pat.span, None, false),
             }
-        }
-    }
-
-    fn check_trait_fn_not_async(&self, fn_span: Span, asyncness: Async) {
-        if let Async::Yes { span, .. } = asyncness {
-            self.session.emit_err(TraitFnAsync { fn_span, span });
         }
     }
 
@@ -845,10 +837,10 @@ fn validate_generic_param_order(
         let (kind, bounds, span) = (&param.kind, &param.bounds, ident.span);
         let (ord_kind, ident) = match &param.kind {
             GenericParamKind::Lifetime => (ParamKindOrd::Lifetime, ident.to_string()),
-            GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident.to_string()),
+            GenericParamKind::Type { default: _ } => (ParamKindOrd::TypeOrConst, ident.to_string()),
             GenericParamKind::Const { ref ty, kw_span: _, default: _ } => {
                 let ty = pprust::ty_to_string(ty);
-                (ParamKindOrd::Const, format!("const {}: {}", ident, ty))
+                (ParamKindOrd::TypeOrConst, format!("const {}: {}", ident, ty))
             }
         };
         param_idents.push((kind, ord_kind, bounds, idx, ident));
@@ -1299,7 +1291,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     // Mirrors `visit::walk_generic_args`, but tracks relevant state.
-    fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
+    fn visit_generic_args(&mut self, generic_args: &'a GenericArgs) {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
                 self.check_generic_args_before_constraints(data);
@@ -1423,7 +1415,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if !self.is_tilde_const_allowed {
                         self.err_handler()
                             .struct_span_err(bound.span(), "`~const` is not allowed here")
-                            .note("only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions")
+                            .note("only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions")
                             .emit();
                     }
                 }
@@ -1531,11 +1523,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             });
         }
 
-        let tilde_const_allowed =
-            matches!(fk.header(), Some(FnHeader { constness: Const::Yes(_), .. }))
-                || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
+        let tilde_const_allowed = matches!(fk.header(), Some(FnHeader { .. }))
+            || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
 
-        self.with_tilde_const(tilde_const_allowed, |this| visit::walk_fn(this, fk, span));
+        self.with_tilde_const(tilde_const_allowed, |this| visit::walk_fn(this, fk));
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
@@ -1596,7 +1587,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.invalid_visibility(&item.vis, None);
             if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
                 self.check_trait_fn_not_const(sig.header.constness);
-                self.check_trait_fn_not_async(item.span, sig.header.asyncness);
             }
         }
 
@@ -1800,7 +1790,7 @@ pub(crate) enum ForbiddenLetReason {
     NotSupportedOr(Span),
     /// A let chain with invalid parentheses
     ///
-    /// For exemple, `let 1 = 1 && (expr && expr)` is allowed
+    /// For example, `let 1 = 1 && (expr && expr)` is allowed
     /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
     NotSupportedParentheses(Span),
 }

@@ -7,6 +7,8 @@ use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVTable};
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
+use crate::values::Value;
+use crate::HandleCycleError;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 #[cfg(parallel_compiler)]
@@ -14,7 +16,6 @@ use rustc_data_structures::profiling::TimingGuard;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
@@ -24,6 +25,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 use std::ptr;
+use thin_vec::ThinVec;
 
 pub struct QueryState<K> {
     #[cfg(parallel_compiler)]
@@ -118,17 +120,44 @@ where
 fn mk_cycle<CTX, V, R>(
     tcx: CTX,
     error: CycleError,
-    handle_cycle_error: fn(CTX, DiagnosticBuilder<'_, ErrorGuaranteed>) -> V,
+    handler: HandleCycleError,
     cache: &dyn crate::query::QueryStorage<Value = V, Stored = R>,
 ) -> R
 where
     CTX: QueryContext,
-    V: std::fmt::Debug,
+    V: std::fmt::Debug + Value<CTX::DepContext>,
     R: Clone,
 {
     let error = report_cycle(tcx.dep_context().sess(), error);
-    let value = handle_cycle_error(tcx, error);
+    let value = handle_cycle_error(*tcx.dep_context(), error, handler);
     cache.store_nocache(value)
+}
+
+fn handle_cycle_error<CTX, V>(
+    tcx: CTX,
+    mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
+    handler: HandleCycleError,
+) -> V
+where
+    CTX: DepContext,
+    V: Value<CTX>,
+{
+    use HandleCycleError::*;
+    match handler {
+        Error => {
+            error.emit();
+            Value::from_cycle_error(tcx)
+        }
+        Fatal => {
+            error.emit();
+            tcx.sess().abort_if_errors();
+            unreachable!()
+        }
+        DelayBug => {
+            error.delay_as_bug();
+            Value::from_cycle_error(tcx)
+        }
+    }
 }
 
 impl<'tcx, K> JobOwner<'tcx, K>
@@ -336,6 +365,7 @@ fn try_execute_query<CTX, C>(
 where
     C: QueryCache,
     C::Key: Clone + DepNodeParams<CTX::DepContext>,
+    C::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
 {
     match JobOwner::<'_, C::Key>::try_start(&tcx, state, span, key.clone()) {
@@ -458,14 +488,14 @@ where
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if query.cache_on_disk {
+    if let Some(try_load_from_disk) = query.try_load_from_disk {
         let prof_timer = tcx.dep_context().profiler().incr_cache_loading();
 
         // The call to `with_query_deserialization` enforces that no new `DepNodes`
         // are created during deserialization. See the docs of that method for more
         // details.
-        let result = dep_graph
-            .with_query_deserialization(|| query.try_load_from_disk(tcx, prev_dep_node_index));
+        let result =
+            dep_graph.with_query_deserialization(|| try_load_from_disk(tcx, prev_dep_node_index));
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -618,16 +648,12 @@ fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: D
     let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
 
     if old_in_panic {
-        sess.struct_err(
-            "internal compiler error: re-entrant incremental verify failure, suppressing message",
-        )
-        .emit();
+        sess.emit_err(crate::error::Reentrant);
     } else {
-        sess.struct_err(&format!("internal compiler error: encountered incremental compilation error with {:?}", dep_node))
-                .help(&format!("This is a known issue with the compiler. Run {} to allow your project to compile", run_cmd))
-                .note("Please follow the instructions below to create a bug report with the provided information")
-                .note("See <https://github.com/rust-lang/rust/issues/84970> for more information")
-                .emit();
+        sess.emit_err(crate::error::IncrementCompilation {
+            run_cmd,
+            dep_node: format!("{:?}", dep_node),
+        });
         panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
     }
 
@@ -690,6 +716,7 @@ pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> 
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
+    Q::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
 {
     let query = Q::make_vtable(tcx, &key);
@@ -722,6 +749,7 @@ pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, dep_node: DepNode<CTX::DepKind
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
+    Q::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
 {
     // We may be concurrently trying both execute and force a query.

@@ -1,6 +1,5 @@
 use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
@@ -19,7 +18,6 @@ use crate::errors::UnconstrainedOpaqueType;
 /// Computes the relevant generic parameter for a potential generic const argument.
 ///
 /// This should be called using the query `tcx.opt_const_param_of`.
-#[instrument(level = "debug", skip(tcx))]
 pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DefId> {
     use hir::*;
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
@@ -67,8 +65,8 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             let ty = item_ctxt.ast_ty_to_ty(hir_ty);
 
             // Iterate through the generics of the projection to find the one that corresponds to
-            // the def_id that this query was called with. We filter to only const args here as a
-            // precaution for if it's ever allowed to elide lifetimes in GAT's. It currently isn't
+            // the def_id that this query was called with. We filter to only type and const args here
+            // as a precaution for if it's ever allowed to elide lifetimes in GAT's. It currently isn't
             // but it can't hurt to be safe ^^
             if let ty::Projection(projection) = ty.kind() {
                 let generics = tcx.generics_of(projection.item_def_id);
@@ -79,7 +77,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         args.args
                             .iter()
                             .filter(|arg| arg.is_ty_or_const())
-                            .position(|arg| arg.id() == hir_id)
+                            .position(|arg| arg.hir_id() == hir_id)
                     })
                     .unwrap_or_else(|| {
                         bug!("no arg matching AnonConst in segment");
@@ -112,7 +110,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     args.args
                         .iter()
                         .filter(|arg| arg.is_ty_or_const())
-                        .position(|arg| arg.id() == hir_id)
+                        .position(|arg| arg.hir_id() == hir_id)
                 })
                 .unwrap_or_else(|| {
                     bug!("no arg matching AnonConst in segment");
@@ -166,7 +164,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 args.args
                 .iter()
                 .filter(|arg| arg.is_ty_or_const())
-                .position(|arg| arg.id() == hir_id)
+                .position(|arg| arg.hir_id() == hir_id)
                 .map(|index| (index, seg)).or_else(|| args.bindings
                     .iter()
                     .filter_map(TypeBinding::opt_const)
@@ -180,15 +178,12 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 return None;
             };
 
-            // Try to use the segment resolution if it is valid, otherwise we
-            // default to the path resolution.
-            let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
-            let generics = match tcx.res_generics_def_id(res) {
+            let generics = match tcx.res_generics_def_id(segment.res) {
                 Some(def_id) => tcx.generics_of(def_id),
                 None => {
                     tcx.sess.delay_span_bug(
                         tcx.def_span(def_id),
-                        &format!("unexpected anon const res {:?} in path: {:?}", res, path),
+                        &format!("unexpected anon const res {:?} in path: {:?}", segment.res, path),
                     );
                     return None;
                 }
@@ -229,7 +224,7 @@ fn get_path_containing_arg_in_pat<'hir>(
             .iter()
             .filter_map(|seg| seg.args)
             .flat_map(|args| args.args)
-            .any(|arg| arg.id() == arg_id)
+            .any(|arg| arg.hir_id() == arg_id)
     };
     let mut arg_path = None;
     pat.walk(|pat| match pat.kind {
@@ -338,8 +333,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     find_opaque_ty_constraints_for_tait(tcx, def_id)
                 }
                 // Opaque types desugared from `impl Trait`.
-                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner), .. }) => {
-                    find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
+                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner), in_trait, .. }) => {
+                    if in_trait {
+                        span_bug!(item.span, "impl-trait in trait has no default")
+                    } else {
+                        find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
+                    }
                 }
                 ItemKind::Trait(..)
                 | ItemKind::TraitAlias(..)
@@ -570,22 +569,22 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
             trace!(?it.def_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id != self.def_id {
-                self.check(it.def_id);
+            if it.def_id.def_id != self.def_id {
+                self.check(it.def_id.def_id);
                 intravisit::walk_item(self, it);
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
             trace!(?it.def_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id != self.def_id {
-                self.check(it.def_id);
+            if it.def_id.def_id != self.def_id {
+                self.check(it.def_id.def_id);
                 intravisit::walk_impl_item(self, it);
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
             trace!(?it.def_id);
-            self.check(it.def_id);
+            self.check(it.def_id.def_id);
             intravisit::walk_trait_item(self, it);
         }
     }
@@ -689,22 +688,22 @@ fn find_opaque_ty_constraints_for_rpit(
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
             trace!(?it.def_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id != self.def_id {
-                self.check(it.def_id);
+            if it.def_id.def_id != self.def_id {
+                self.check(it.def_id.def_id);
                 intravisit::walk_item(self, it);
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
             trace!(?it.def_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id != self.def_id {
-                self.check(it.def_id);
+            if it.def_id.def_id != self.def_id {
+                self.check(it.def_id.def_id);
                 intravisit::walk_impl_item(self, it);
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
             trace!(?it.def_id);
-            self.check(it.def_id);
+            self.check(it.def_id.def_id);
             intravisit::walk_trait_item(self, it);
         }
     }

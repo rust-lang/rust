@@ -97,7 +97,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         }
 
         // Raw pointers are not allowed in type level constants, as we cannot properly test them for
-        // equality at compile-time (see `ptr_guaranteed_eq`/`_ne`).
+        // equality at compile-time (see `ptr_guaranteed_cmp`).
         // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
         // agree with runtime equality tests.
         ty::FnPtr(_) | ty::RawPtr(_) => Err(ValTreeCreationError::NonSupportedType),
@@ -204,7 +204,7 @@ fn get_info_on_unsized_field<'tcx>(
     (unsized_inner_ty, num_elems)
 }
 
-#[instrument(skip(ecx), level = "debug")]
+#[instrument(skip(ecx), level = "debug", ret)]
 fn create_pointee_place<'tcx>(
     ecx: &mut CompileTimeEvalContext<'tcx, 'tcx>,
     ty: Ty<'tcx>,
@@ -237,14 +237,11 @@ fn create_pointee_place<'tcx>(
         let ptr = ecx.allocate_ptr(size, align, MemoryKind::Stack).unwrap();
         debug!(?ptr);
 
-        let place = MPlaceTy::from_aligned_ptr_with_meta(
+        MPlaceTy::from_aligned_ptr_with_meta(
             ptr.into(),
             layout,
             MemPlaceMeta::Meta(Scalar::from_machine_usize(num_elems as u64, &tcx)),
-        );
-        debug!(?place);
-
-        place
+        )
     } else {
         create_mplace_from_layout(ecx, ty)
     }
@@ -253,7 +250,7 @@ fn create_pointee_place<'tcx>(
 /// Converts a `ValTree` to a `ConstValue`, which is needed after mir
 /// construction has finished.
 // FIXME Merge `valtree_to_const_value` and `valtree_into_mplace` into one function
-#[instrument(skip(tcx), level = "debug")]
+#[instrument(skip(tcx), level = "debug", ret)]
 pub fn valtree_to_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
@@ -294,7 +291,7 @@ pub fn valtree_to_const_value<'tcx>(
             dump_place(&ecx, place.into());
             intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &place).unwrap();
 
-            let const_val = match ty.kind() {
+            match ty.kind() {
                 ty::Ref(_, _, _) => {
                     let ref_place = place.to_ref(&tcx);
                     let imm =
@@ -303,10 +300,7 @@ pub fn valtree_to_const_value<'tcx>(
                     op_to_const(&ecx, &imm.into())
                 }
                 _ => op_to_const(&ecx, &place.into()),
-            };
-            debug!(?const_val);
-
-            const_val
+            }
         }
         ty::Never
         | ty::Error(_)

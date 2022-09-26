@@ -104,7 +104,8 @@ impl BorrowedFd<'_> {
         #[cfg(target_os = "espidf")]
         let cmd = libc::F_DUPFD;
 
-        let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 0) })?;
+        // Avoid using file descriptors below 3 as they are used for stdio
+        let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 3) })?;
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 

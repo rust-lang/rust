@@ -8,7 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
     interpret::{ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar},
-    BinOp,
+    BinOp, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf as _;
@@ -79,9 +79,9 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             ty::Projection(_)
             | ty::Opaque(_, _)
             | ty::Param(_)
-            | ty::Bound(_, _)
             | ty::Placeholder(_)
             | ty::Infer(_) => throw_inval!(TooGeneric),
+            ty::Bound(_, _) => bug!("bound ty during ctfe"),
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -95,7 +95,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
-            | ty::Dynamic(_, _)
+            | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::Generator(_, _, _)
             | ty::GeneratorWitness(_)
@@ -320,7 +320,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (a_offset, b_offset) =
                     match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
                         (Err(a), Err(b)) => {
-                            // Neither poiner points to an allocation.
+                            // Neither pointer points to an allocation.
                             // If these are inequal or null, this *will* fail the deref check below.
                             (a, b)
                         }
@@ -506,12 +506,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // These just return their argument
                 self.copy_op(&args[0], dest, /*allow_transmute*/ false)?;
             }
-            sym::assume => {
-                let cond = self.read_scalar(&args[0])?.to_bool()?;
-                if !cond {
-                    throw_ub_format!("`assume` intrinsic called with `false`");
-                }
-            }
             sym::raw_eq => {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
@@ -534,6 +528,32 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("{:?}", self.dump_place(**dest));
         self.go_to_block(ret);
         Ok(true)
+    }
+
+    pub(super) fn emulate_nondiverging_intrinsic(
+        &mut self,
+        intrinsic: &NonDivergingIntrinsic<'tcx>,
+    ) -> InterpResult<'tcx> {
+        match intrinsic {
+            NonDivergingIntrinsic::Assume(op) => {
+                let op = self.eval_operand(op, None)?;
+                let cond = self.read_scalar(&op)?.to_bool()?;
+                if !cond {
+                    throw_ub_format!("`assume` called with `false`");
+                }
+                Ok(())
+            }
+            NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {
+                count,
+                src,
+                dst,
+            }) => {
+                let src = self.eval_operand(src, None)?;
+                let dst = self.eval_operand(dst, None)?;
+                let count = self.eval_operand(count, None)?;
+                self.copy_intrinsic(&src, &dst, &count, /* nonoverlapping */ true)
+            }
+        }
     }
 
     pub fn exact_div(

@@ -7,7 +7,7 @@
       bb0: {
 -         _0 = std::intrinsics::min_align_of::<T>() -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:42
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:19:5: 19:40
+-                                          // + span: $DIR/lower_intrinsics.rs:21:5: 21:40
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn() -> usize {std::intrinsics::min_align_of::<T>}, val: Value(<ZST>) }
 +         _0 = AlignOf(T);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:42
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:42

@@ -31,7 +31,7 @@ use crate::session_diagnostics::{
 };
 
 use super::{OutlivesSuggestionBuilder, RegionName};
-use crate::region_infer::BlameConstraint;
+use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::{
     nll::ConstraintDescription,
     region_infer::{values::RegionElement, TypeTest},
@@ -234,7 +234,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                     // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
                     let (_, cause) = self.regioncx.find_outlives_blame_span(
-                        &self.body,
                         longer_fr,
                         NllRegionVariableOrigin::Placeholder(placeholder),
                         error_vid,
@@ -282,7 +281,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let tcx = self.infcx.tcx;
         match tcx.hir().get_if_local(def_id) {
             Some(Node::ImplItem(impl_item)) => {
-                match tcx.hir().find_by_def_id(tcx.hir().get_parent_item(impl_item.hir_id())) {
+                match tcx.hir().find_by_def_id(tcx.hir().get_parent_item(impl_item.hir_id()).def_id)
+                {
                     Some(Node::Item(Item {
                         kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
                         ..
@@ -292,7 +292,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             Some(Node::TraitItem(trait_item)) => {
                 let trait_did = tcx.hir().get_parent_item(trait_item.hir_id());
-                match tcx.hir().find_by_def_id(trait_did) {
+                match tcx.hir().find_by_def_id(trait_did.def_id) {
                     Some(Node::Item(Item { kind: ItemKind::Trait(..), .. })) => {
                         // The method being called is defined in the `trait`, but the `'static`
                         // obligation comes from the `impl`. Find that `impl` so that we can point
@@ -355,10 +355,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let BlameConstraint { category, cause, variance_info, from_closure: _ } =
-            self.regioncx.best_blame_constraint(&self.body, fr, fr_origin, |r| {
+        let (blame_constraint, extra_info) =
+            self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
                 self.regioncx.provides_universal_region(r, fr, outlived_fr)
             });
+        let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
 
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
 
@@ -467,6 +468,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         }
 
+        for extra in extra_info {
+            match extra {
+                ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
+                    diag.span_note(span, format!("due to current limitations in the borrow checker, this implies a `'static` lifetime"));
+                }
+            }
+        }
+
         self.buffer_error(diag);
     }
 
@@ -558,6 +567,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// LL |     ref_obj(x)
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
     /// ```
+    #[instrument(level = "debug", skip(self))]
     fn report_escaping_data_error(
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
@@ -900,10 +910,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut closure_span = None::<rustc_span::Span>;
         match expr.kind {
             hir::ExprKind::MethodCall(.., args, _) => {
-                // only the first closre parameter of the method. args[0] is MethodCall PathSegment
-                for i in 1..args.len() {
-                    if let hir::ExprKind::Closure(..) = args[i].kind {
-                        closure_span = Some(args[i].span.shrink_to_lo());
+                for arg in args {
+                    if let hir::ExprKind::Closure(hir::Closure {
+                        capture_clause: hir::CaptureBy::Ref,
+                        ..
+                    }) = arg.kind
+                    {
+                        closure_span = Some(arg.span.shrink_to_lo());
                         break;
                     }
                 }
@@ -911,7 +924,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             hir::ExprKind::Block(blk, _) => {
                 if let Some(ref expr) = blk.expr {
                     // only when the block is a closure
-                    if let hir::ExprKind::Closure(..) = expr.kind {
+                    if let hir::ExprKind::Closure(hir::Closure {
+                        capture_clause: hir::CaptureBy::Ref,
+                        ..
+                    }) = expr.kind
+                    {
                         closure_span = Some(expr.span.shrink_to_lo());
                     }
                 }
@@ -921,7 +938,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let Some(closure_span) = closure_span {
             diag.span_suggestion_verbose(
                 closure_span,
-                format!("consider adding 'move' keyword before the nested closure"),
+                "consider adding 'move' keyword before the nested closure",
                 "move ",
                 Applicability::MaybeIncorrect,
             );

@@ -1,7 +1,6 @@
 // Regression test for #90400,
 // taken from https://github.com/rust-lang/rust/issues/90400#issuecomment-954927836
 
-#![feature(generic_associated_types)]
 #![feature(type_alias_impl_trait)]
 
 trait Bar {

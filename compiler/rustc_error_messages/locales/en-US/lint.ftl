@@ -51,7 +51,7 @@ lint_non_existant_doc_keyword = found non-existing keyword `{$keyword}` used in 
     .help = only existing keywords are allowed in core/std
 
 lint_diag_out_of_impl =
-    diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
+    diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
 
 lint_untranslatable_diag = diagnostics should be created using translatable messages
 
@@ -353,6 +353,12 @@ lint_builtin_unstable_features = unstable feature
 lint_builtin_unreachable_pub = unreachable `pub` {$what}
     .suggestion = consider restricting its visibility
     .help = or consider exporting it for use by other crates
+
+lint_builtin_unexpected_cli_config_name = unexpected `{$name}` as condition name
+    .help = was set with `--cfg` but isn't in the `--check-cfg` expected names
+
+lint_builtin_unexpected_cli_config_value = unexpected condition value `{$value}` for condition name `{$name}`
+    .help = was set with `--cfg` but isn't in the `--check-cfg` expected values
 
 lint_builtin_type_alias_bounds_help = use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to associated types in type aliases
 

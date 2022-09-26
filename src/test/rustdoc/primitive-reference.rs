@@ -14,7 +14,7 @@
 
 // There should be only one implementation listed.
 // @count - '//*[@class="impl has-srclink"]' 1
-// @has - '//*[@id="impl-Foo%3C%26A%3E-for-%26B"]/*[@class="code-header in-band"]' \
+// @has - '//*[@id="impl-Foo%3C%26A%3E-for-%26B"]/*[@class="code-header"]' \
 //        'impl<A, B> Foo<&A> for &B'
 #[doc(primitive = "reference")]
 /// this is a test!

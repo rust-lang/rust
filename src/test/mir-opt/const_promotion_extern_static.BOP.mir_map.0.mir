@@ -12,6 +12,6 @@ static BOP: &i32 = {
         _1 = &_2;                        // scope 0 at $DIR/const-promotion-extern-static.rs:+0:20: +0:23
         _0 = &(*_1);                     // scope 0 at $DIR/const-promotion-extern-static.rs:+0:20: +0:23
         StorageDead(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:22: +0:23
-        return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:+0:1: +0:23
+        return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:+0:1: +0:24
     }
 }

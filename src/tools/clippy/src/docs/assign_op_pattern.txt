@@ -1,0 +1,28 @@
+### What it does
+Checks for `a = a op b` or `a = b commutative_op a`
+patterns.
+
+### Why is this bad?
+These can be written as the shorter `a op= b`.
+
+### Known problems
+While forbidden by the spec, `OpAssign` traits may have
+implementations that differ from the regular `Op` impl.
+
+### Example
+```
+let mut a = 5;
+let b = 0;
+// ...
+
+a = a + b;
+```
+
+Use instead:
+```
+let mut a = 5;
+let b = 0;
+// ...
+
+a += b;
+```

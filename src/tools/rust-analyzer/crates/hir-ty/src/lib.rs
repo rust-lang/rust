@@ -14,6 +14,7 @@ mod chalk_db;
 mod chalk_ext;
 pub mod consteval;
 mod infer;
+mod inhabitedness;
 mod interner;
 mod lower;
 mod mapping;
@@ -193,20 +194,6 @@ pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
     value: T,
 ) -> Binders<T> {
     make_binders_with_count(db, usize::MAX, generics, value)
-}
-
-// FIXME: get rid of this
-pub fn make_canonical<T: HasInterner<Interner = Interner>>(
-    value: T,
-    kinds: impl IntoIterator<Item = TyVariableKind>,
-) -> Canonical<T> {
-    let kinds = kinds.into_iter().map(|tk| {
-        chalk_ir::CanonicalVarKind::new(
-            chalk_ir::VariableKind::Ty(tk),
-            chalk_ir::UniverseIndex::ROOT,
-        )
-    });
-    Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(Interner, kinds) }
 }
 
 // FIXME: get rid of this, just replace it by FnPointer

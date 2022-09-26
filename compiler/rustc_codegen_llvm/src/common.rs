@@ -21,7 +21,6 @@ use rustc_target::spec::Target;
 
 use libc::{c_char, c_uint};
 use std::fmt::Write;
-use tracing::debug;
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
@@ -216,7 +215,11 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_to_opt_uint(&self, v: &'ll Value) -> Option<u64> {
-        try_as_const_integral(v).map(|v| unsafe { llvm::LLVMConstIntGetZExtValue(v) })
+        try_as_const_integral(v).and_then(|v| unsafe {
+            let mut i = 0u64;
+            let success = llvm::LLVMRustConstIntGetZExtValue(v, &mut i);
+            success.then_some(i)
+        })
     }
 
     fn const_to_opt_u128(&self, v: &'ll Value, sign_ext: bool) -> Option<u128> {
@@ -225,10 +228,6 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let success = llvm::LLVMRustConstInt128Get(v, sign_ext, &mut hi, &mut lo);
             success.then_some(hi_lo_to_u128(lo, hi))
         })
-    }
-
-    fn zst_to_backend(&self, _llty: &'ll Type) -> &'ll Value {
-        self.const_undef(self.type_ix(0))
     }
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: &'ll Type) -> &'ll Value {

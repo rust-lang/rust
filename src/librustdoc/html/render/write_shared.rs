@@ -312,7 +312,7 @@ pub(super) fn write_shared(
                 if line.starts_with(&prefix) {
                     continue;
                 }
-                if line.ends_with(",") {
+                if line.ends_with(',') {
                     ret.push(line[..line.len() - 1].to_string());
                 } else {
                     // No comma (it's the case for the last added crate line)
@@ -519,12 +519,12 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
             let content = format!(
                 "<h1 class=\"fqn\">\
                      <span class=\"in-band\">List of all crates</span>\
-                </h1><ul class=\"crate mod\">{}</ul>",
+                </h1><ul class=\"all-items\">{}</ul>",
                 krates
                     .iter()
                     .map(|s| {
                         format!(
-                            "<li><a class=\"crate mod\" href=\"{}index.html\">{}</a></li>",
+                            "<li><a href=\"{}index.html\">{}</a></li>",
                             ensure_trailing_slash(s),
                             s
                         )

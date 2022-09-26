@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `MapLike::VRefCont`
-  --> $DIR/issue-79422.rs:48:36
+  --> $DIR/issue-79422.rs:47:36
    |
 LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
    |                                    ^^^^^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-79422.rs:24:10
+  --> $DIR/issue-79422.rs:23:10
    |
 LL |     type VRefCont<'a>: RefCont<'a, V> where Self: 'a;
    |          ^^^^^^^^ --
@@ -15,13 +15,13 @@ LL |         as Box<dyn MapLike<u8, u8, VRefCont<'a> = dyn RefCont<'_, u8>>>;
    |                                    ~~~~~~~~~~~~
 
 error[E0038]: the trait `MapLike` cannot be made into an object
-  --> $DIR/issue-79422.rs:48:12
+  --> $DIR/issue-79422.rs:47:12
    |
 LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `MapLike` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/issue-79422.rs:24:10
+  --> $DIR/issue-79422.rs:23:10
    |
 LL | trait MapLike<K, V> {
    |       ------- this trait cannot be made into an object...
@@ -30,13 +30,13 @@ LL |     type VRefCont<'a>: RefCont<'a, V> where Self: 'a;
    = help: consider moving `VRefCont` to another trait
 
 error[E0038]: the trait `MapLike` cannot be made into an object
-  --> $DIR/issue-79422.rs:45:13
+  --> $DIR/issue-79422.rs:44:13
    |
 LL |     let m = Box::new(std::collections::BTreeMap::<u8, u8>::new())
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `MapLike` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/issue-79422.rs:24:10
+  --> $DIR/issue-79422.rs:23:10
    |
 LL | trait MapLike<K, V> {
    |       ------- this trait cannot be made into an object...

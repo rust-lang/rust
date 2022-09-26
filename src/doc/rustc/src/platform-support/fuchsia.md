@@ -42,6 +42,11 @@ authoritative if this occurs. Instead of pinging individual members, use
 1. [Testing](#testing)
     1. [Running unit tests](#running-unit-tests)
     1. [Running the compiler test suite](#running-the-compiler-test-suite)
+1. [Debugging](#debugging)
+    1. [`zxdb`](#zxdb)
+    1. [Attaching `zxdb`](#attaching-zxdb)
+    1. [Using `zxdb`](#using-zxdb)
+    1. [Displaying source code in `zxdb`](#displaying-source-code-in-zxdb)
 
 ## Requirements
 
@@ -79,7 +84,7 @@ the following commands:
 
 ```sh
 rustup target add x86_64-fuchsia
-rustup target add aarch_64-fuchsia
+rustup target add aarch64-fuchsia
 ```
 
 After installing our Fuchsia targets, we can now compile a Rust binary that targets
@@ -125,12 +130,19 @@ during compilation:
 [target.x86_64-fuchsia]
 
 rustflags = [
-    "-Lnative", "<SDK_PATH>/arch/x64/sysroot/lib",
-    "-Lnative", "<SDK_PATH>/arch/x64/lib"
+    "-Lnative=<SDK_PATH>/arch/x64/lib",
+    "-Lnative=<SDK_PATH>/arch/x64/sysroot/lib"
 ]
 ```
 
 *Note: Make sure to fill out `<SDK_PATH>` with the path to the downloaded [Fuchsia SDK].*
+
+These options configure the following:
+
+* `-Lnative=${SDK_PATH}/arch/${ARCH}/lib`: Link against Fuchsia libraries from
+  the SDK
+* `-Lnative=${SDK_PATH}/arch/${ARCH}/sysroot/lib`: Link against Fuchsia sysroot
+  libraries from the SDK
 
 In total, our new project will look like:
 
@@ -246,7 +258,7 @@ the following options:
   platform of your choice
 * `-Lnative ${SDK_PATH}/arch/${ARCH}/lib`: Link against Fuchsia libraries from
   the SDK
-* `-Lnative ${SDK_PATH}/arch/${ARCH}/sysroot/lib`: Link against Fuchsia kernel
+* `-Lnative ${SDK_PATH}/arch/${ARCH}/sysroot/lib`: Link against Fuchsia sysroot
   libraries from the SDK
 
 Putting it all together:
@@ -323,10 +335,18 @@ Now, create the following files inside:
 The `package` file describes our package's name and version number. Every
 package must contain one.
 
-**`pkg/hello_fuchsia.manifest`**
+**`pkg/hello_fuchsia.manifest` if using cargo**
 ```txt
-bin/hello_fuchsia=target/x86_64-fuchsia/debug/hello_fuchsia     # If using cargo...
-bin/hello_fuchsia=bin/hello_fuchsia                             # If using rustc...
+bin/hello_fuchsia=target/x86_64-fuchsia/debug/hello_fuchsia
+lib/ld.so.1=<SDK_PATH>/arch/x64/sysroot/dist/lib/ld.so.1
+lib/libfdio.so=<SDK_PATH>/arch/x64/dist/libfdio.so
+meta/package=pkg/meta/package
+meta/hello_fuchsia.cm=pkg/meta/hello_fuchsia.cm
+```
+
+**`pkg/hello_fuchsia.manifest` if using rustc**
+```txt
+bin/hello_fuchsia=bin/hello_fuchsia
 lib/ld.so.1=<SDK_PATH>/arch/x64/sysroot/dist/lib/ld.so.1
 lib/libfdio.so=<SDK_PATH>/arch/x64/dist/libfdio.so
 meta/package=pkg/meta/package
@@ -368,6 +388,7 @@ language called CML. The Fuchsia devsite contains an [overview of CML] and a
 }
 ```
 
+**Current directory structure**
 ```txt
 hello_fuchsia/
 ┗━ pkg/
@@ -386,6 +407,9 @@ ${SDK_PATH}/tools/${ARCH}/cmc compile \
     -o pkg/meta/hello_fuchsia.cm
 ```
 
+*Note: `--includepath` tells the compiler where to look for `include`s from our CML.
+In our case, we're only using `syslog/client.shard.cml`.*
+
 **Current directory structure**
 ```txt
 hello_fuchsia/
@@ -397,19 +421,17 @@ hello_fuchsia/
    ┗━ hello_fuchsia.cml
 ```
 
-*Note: `--includepath` tells the compiler where to look for `include`s from our CML.
-In our case, we're only using `syslog/client.shard.cml`.*
-
 ### Building a Fuchsia package
 
 Next, we'll build a package manifest as defined by our manifest:
 
 ```sh
 ${SDK_PATH}/tools/${ARCH}/pm \
-    -o hello_fuchsia_manifest \
+    -api-level $(${SDK_PATH}/tools/${ARCH}/ffx version -v | grep "api-level" | head -1 |  awk -F ' ' '{print $2}') \
+    -o pkg/hello_fuchsia_manifest \
     -m pkg/hello_fuchsia.manifest \
     build \
-    -output-package-manifest hello_fuchsia_package_manifest
+    -output-package-manifest pkg/hello_fuchsia_package_manifest
 ```
 
 This will produce `pkg/hello_fuchsia_manifest/` which is a package manifest we can
@@ -469,15 +491,15 @@ We can publish our new package to that repository with:
 
 ```sh
 ${SDK_PATH}/tools/${ARCH}/pm publish \
-    -repo repo \
-    -lp -f <(echo "hello_fuchsia_package_manifest")
+    -repo pkg/repo \
+    -lp -f <(echo "pkg/hello_fuchsia_package_manifest")
 ```
 
 Then we can add the repository to `ffx`'s package server as `hello-fuchsia` using:
 
 ```sh
 ${SDK_PATH}/tools/${ARCH}/ffx repository add-from-pm \
-    repo \
+    pkg/repo \
     -r hello-fuchsia
 ```
 
@@ -554,6 +576,7 @@ Finally, run the component:
 
 ```sh
 ${SDK_PATH}/tools/${ARCH}/ffx component run \
+    /core/ffx-laboratory:hello_fuchsia \
     fuchsia-pkg://hello-fuchsia/hello_fuchsia_manifest#meta/hello_fuchsia.cm
 ```
 
@@ -563,6 +586,7 @@ passed.
 ```sh
 ${SDK_PATH}/tools/${ARCH}/ffx component run \
     --recreate \
+    /core/ffx-laboratory:hello_fuchsia \
     fuchsia-pkg://hello-fuchsia/hello_fuchsia_manifest#meta/hello_fuchsia.cm
 ```
 
@@ -620,6 +644,130 @@ available on the [Fuchsia devsite].
 Running the Rust test suite on Fuchsia is [not currently supported], but work is
 underway to enable it.
 
+## Debugging
+
+### `zxdb`
+
+Debugging components running on a Fuchsia emulator can be done using the
+console-mode debugger: [zxdb]. We will demonstrate attaching necessary symbol
+paths to debug our `hello-fuchsia` component.
+
+### Attaching `zxdb`
+
+In a separate terminal, issue the following command from our `hello_fuchsia`
+directory to launch `zxdb`:
+
+**In separate terminal**
+```sh
+${SDK_PATH}/tools/${ARCH}/ffx debug connect -- \
+    --symbol-path target/x86_64-fuchsia/debug
+```
+
+* `--symbol-path` gets required symbol paths, which are
+necessary for stepping through your program.
+
+The "[displaying source code in `zxdb`](#displaying-source-code-in-zxdb)" section describes how you can
+display Rust and/or Fuchsia source code in your debugging session.
+
+### Using `zxdb`
+
+Once launched, you will be presented with the window:
+
+```sh
+Connecting (use "disconnect" to cancel)...
+Connected successfully.
+👉 To get started, try "status" or "help".
+[zxdb]
+```
+
+To attach to our program, we can run:
+
+```sh
+[zxdb] attach hello_fuchsia
+```
+
+**Expected output**
+```sh
+Waiting for process matching "hello_fuchsia".
+Type "filter" to see the current filters.
+```
+
+Next, we can create a breakpoint at main using "b main":
+
+```sh
+[zxdb] b main
+```
+
+**Expected output**
+```sh
+Created Breakpoint 1 @ main
+```
+
+Finally, we can re-run the "hello_fuchsia" component from our original
+terminal:
+
+```sh
+${SDK_PATH}/tools/${ARCH}/ffx component run \
+    --recreate \
+    fuchsia-pkg://hello-fuchsia/hello_fuchsia_manifest#meta/hello_fuchsia.cm
+```
+
+Once our component is running, our `zxdb` window will stop execution
+in our main as desired:
+
+**Expected output**
+```txt
+Breakpoint 1 now matching 1 addrs for main
+🛑 on bp 1 hello_fuchsia::main() • main.rs:2
+   1 fn main() {
+ ▶ 2     println!("Hello Fuchsia!");
+   3 }
+   4
+[zxdb]
+```
+
+`zxdb` has similar commands to other debuggers like [gdb].
+To list the available commands, run "help" in the
+`zxdb` window or visit [the zxdb documentation].
+
+```sh
+[zxdb] help
+```
+
+**Expected output**
+```sh
+Help!
+
+  Type "help <command>" for command-specific help.
+
+Other help topics (see "help <topic>")
+...
+```
+
+### Displaying source code in `zxdb`
+
+By default, the debugger will not be able to display
+source code while debugging. For our user code, we displayed
+source code by pointing our debugger to our debug binary via
+the `--symbol-path` arg. To display library source code in
+the debugger, you must provide paths to the source using
+`--build-dir`. For example, to display the Rust and Fuchsia
+source code:
+
+```sh
+${SDK_PATH}/tools/${ARCH}/ffx debug connect -- \
+    --symbol-path target/x86_64-fuchsia/debug \
+    --build-dir ${RUST_SRC_PATH}/rust \
+    --build-dir ${FUCHSIA_SRC_PATH}/fuchsia/out/default
+```
+
+ * `--build-dir` links against source code paths, which
+ are not strictly necessary for debugging, but is a nice-to-have
+ for displaying source code in `zxdb`.
+
+ Linking to a Fuchsia checkout can help with debugging Fuchsia libraries,
+ such as [fdio].
+
 [Fuchsia team]: https://team-api.infra.rust-lang.org/v1/teams/fuchsia.json
 [Fuchsia]: https://fuchsia.dev/
 [source tree]: https://fuchsia.dev/fuchsia-src/get-started/learn/build
@@ -630,3 +778,7 @@ underway to enable it.
 [reference for the file format]: https://fuchsia.dev/reference/cml
 [Fuchsia devsite]: https://fuchsia.dev/reference/cml
 [not currently supported]: https://fxbug.dev/105393
+[zxdb]: https://fuchsia.dev/fuchsia-src/development/debugger
+[gdb]: https://www.sourceware.org/gdb/
+[the zxdb documentation]: https://fuchsia.dev/fuchsia-src/development/debugger
+[fdio]: https://cs.opensource.google/fuchsia/fuchsia/+/main:sdk/lib/fdio/

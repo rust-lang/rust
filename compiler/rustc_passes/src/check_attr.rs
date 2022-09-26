@@ -11,9 +11,11 @@ use rustc_errors::{fluent, struct_span_err, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID};
+use rustc_hir::{
+    self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
+};
 use rustc_hir::{MethodKind, Target};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
@@ -35,8 +37,8 @@ pub(crate) fn target_from_impl_item<'tcx>(
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {
-            let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id());
-            let containing_item = tcx.hir().expect_item(parent_hir_id);
+            let parent_def_id = tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
+            let containing_item = tcx.hir().expect_item(parent_def_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
                 hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
                 _ => bug!("parent of an ImplItem must be an Impl"),
@@ -131,6 +133,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_if_this_changed
                 | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(&attr),
                 sym::cmse_nonsecure_entry => self.check_cmse_nonsecure_entry(attr, span, target),
+                sym::collapse_debuginfo => self.check_collapse_debuginfo(attr, span, target),
                 sym::const_trait => self.check_const_trait(attr, span, target),
                 sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
                 sym::must_use => self.check_must_use(hir_id, &attr, span, target),
@@ -173,9 +176,7 @@ impl CheckAttrVisitor<'_> {
                 sym::no_implicit_prelude => {
                     self.check_generic_attr(hir_id, attr, target, &[Target::Mod])
                 }
-                sym::rustc_object_lifetime_default => {
-                    self.check_object_lifetime_default(hir_id, span)
-                }
+                sym::rustc_object_lifetime_default => self.check_object_lifetime_default(hir_id),
                 _ => {}
             }
 
@@ -415,26 +416,34 @@ impl CheckAttrVisitor<'_> {
     }
 
     /// Debugging aid for `object_lifetime_default` query.
-    fn check_object_lifetime_default(&self, hir_id: HirId, span: Span) {
+    fn check_object_lifetime_default(&self, hir_id: HirId) {
         let tcx = self.tcx;
         if let Some(generics) = tcx.hir().get_generics(tcx.hir().local_def_id(hir_id)) {
-            let object_lifetime_default_reprs: String = generics
-                .params
-                .iter()
-                .filter_map(|p| {
-                    let param_id = tcx.hir().local_def_id(p.hir_id);
-                    let default = tcx.object_lifetime_default(param_id)?;
-                    Some(match default {
-                        ObjectLifetimeDefault::Empty => "BaseDefault".to_owned(),
-                        ObjectLifetimeDefault::Static => "'static".to_owned(),
-                        ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
-                        ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
-                    })
-                })
-                .collect::<Vec<String>>()
-                .join(",");
+            for p in generics.params {
+                let hir::GenericParamKind::Type { .. } = p.kind else { continue };
+                let param_id = tcx.hir().local_def_id(p.hir_id);
+                let default = tcx.object_lifetime_default(param_id);
+                let repr = match default {
+                    ObjectLifetimeDefault::Empty => "BaseDefault".to_owned(),
+                    ObjectLifetimeDefault::Static => "'static".to_owned(),
+                    ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
+                    ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
+                };
+                tcx.sess.span_err(p.span, &repr);
+            }
+        }
+    }
 
-            tcx.sess.span_err(span, &object_lifetime_default_reprs);
+    /// Checks if `#[collapse_debuginfo]` is applied to a macro.
+    fn check_collapse_debuginfo(&self, attr: &Attribute, span: Span, target: Target) -> bool {
+        match target {
+            Target::MacroDef => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .emit_err(errors::CollapseDebuginfo { attr_span: attr.span, defn_span: span });
+                false
+            }
         }
     }
 
@@ -633,8 +642,8 @@ impl CheckAttrVisitor<'_> {
         let span = meta.span();
         if let Some(location) = match target {
             Target::AssocTy => {
-                let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
-                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
+                let parent_def_id = self.tcx.hir().get_parent_item(hir_id).def_id;
+                let containing_item = self.tcx.hir().expect_item(parent_def_id);
                 if Target::from_item(containing_item) == Target::Impl {
                     Some("type alias in implementation block")
                 } else {
@@ -642,8 +651,8 @@ impl CheckAttrVisitor<'_> {
                 }
             }
             Target::AssocConst => {
-                let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
-                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
+                let parent_def_id = self.tcx.hir().get_parent_item(hir_id).def_id;
+                let containing_item = self.tcx.hir().expect_item(parent_def_id);
                 // We can't link to trait impl's consts.
                 let err = "associated constant in trait implementation block";
                 match containing_item.kind {
@@ -668,6 +677,7 @@ impl CheckAttrVisitor<'_> {
             | Target::GlobalAsm
             | Target::TyAlias
             | Target::OpaqueTy
+            | Target::ImplTraitPlaceholder
             | Target::Enum
             | Target::Variant
             | Target::Struct
@@ -870,7 +880,7 @@ impl CheckAttrVisitor<'_> {
             self.tcx.struct_span_lint_hir(INVALID_DOC_ATTRIBUTES, hir_id, meta.span(), |lint| {
                 let mut err = lint.build(fluent::passes::attr_crate_level);
                 if attr.style == AttrStyle::Outer
-                    && self.tcx.hir().get_parent_item(hir_id) == CRATE_DEF_ID
+                    && self.tcx.hir().get_parent_item(hir_id) == CRATE_OWNER_ID
                 {
                     if let Ok(mut src) = self.tcx.sess.source_map().span_to_snippet(attr.span) {
                         src.insert(1, '!');
@@ -1658,6 +1668,8 @@ impl CheckAttrVisitor<'_> {
                         E0552,
                         "unrecognized representation hint"
                     )
+                    .help("valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, \
+                          `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`")
                     .emit();
 
                     continue;
@@ -2145,6 +2157,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         sym::automatically_derived,
         sym::start,
         sym::rustc_main,
+        sym::unix_sigpipe,
         sym::derive,
         sym::test,
         sym::test_case,

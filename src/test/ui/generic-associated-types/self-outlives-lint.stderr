@@ -1,5 +1,5 @@
 error: missing required bound on `Item`
-  --> $DIR/self-outlives-lint.rs:9:5
+  --> $DIR/self-outlives-lint.rs:7:5
    |
 LL |     type Item<'x>;
    |     ^^^^^^^^^^^^^-
@@ -10,7 +10,7 @@ LL |     type Item<'x>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Out`
-  --> $DIR/self-outlives-lint.rs:25:5
+  --> $DIR/self-outlives-lint.rs:23:5
    |
 LL |     type Out<'x>;
    |     ^^^^^^^^^^^^-
@@ -21,7 +21,7 @@ LL |     type Out<'x>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Out`
-  --> $DIR/self-outlives-lint.rs:39:5
+  --> $DIR/self-outlives-lint.rs:37:5
    |
 LL |     type Out<'x>;
    |     ^^^^^^^^^^^^-
@@ -32,7 +32,7 @@ LL |     type Out<'x>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bounds on `Out`
-  --> $DIR/self-outlives-lint.rs:46:5
+  --> $DIR/self-outlives-lint.rs:44:5
    |
 LL |     type Out<'x, 'y>;
    |     ^^^^^^^^^^^^^^^^-
@@ -43,7 +43,7 @@ LL |     type Out<'x, 'y>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Out`
-  --> $DIR/self-outlives-lint.rs:61:5
+  --> $DIR/self-outlives-lint.rs:59:5
    |
 LL |     type Out<'x, D>;
    |     ^^^^^^^^^^^^^^^-
@@ -54,7 +54,7 @@ LL |     type Out<'x, D>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Out`
-  --> $DIR/self-outlives-lint.rs:77:5
+  --> $DIR/self-outlives-lint.rs:75:5
    |
 LL |     type Out<'x, D>;
    |     ^^^^^^^^^^^^^^^-
@@ -65,7 +65,7 @@ LL |     type Out<'x, D>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Out`
-  --> $DIR/self-outlives-lint.rs:92:5
+  --> $DIR/self-outlives-lint.rs:90:5
    |
 LL |     type Out<'x, D>;
    |     ^^^^^^^^^^^^^^^-
@@ -76,7 +76,7 @@ LL |     type Out<'x, D>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bounds on `Bar`
-  --> $DIR/self-outlives-lint.rs:114:5
+  --> $DIR/self-outlives-lint.rs:112:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
@@ -87,7 +87,7 @@ LL |     type Bar<'b>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Bar`
-  --> $DIR/self-outlives-lint.rs:122:5
+  --> $DIR/self-outlives-lint.rs:120:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
@@ -98,7 +98,7 @@ LL |     type Bar<'b>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Bar`
-  --> $DIR/self-outlives-lint.rs:129:5
+  --> $DIR/self-outlives-lint.rs:127:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
@@ -109,7 +109,7 @@ LL |     type Bar<'b>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Item`
-  --> $DIR/self-outlives-lint.rs:142:5
+  --> $DIR/self-outlives-lint.rs:140:5
    |
 LL |     type Item<'a>;
    |     ^^^^^^^^^^^^^-
@@ -120,7 +120,7 @@ LL |     type Item<'a>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Iterator`
-  --> $DIR/self-outlives-lint.rs:144:5
+  --> $DIR/self-outlives-lint.rs:142:5
    |
 LL |     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -131,7 +131,7 @@ LL |     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Item`
-  --> $DIR/self-outlives-lint.rs:150:5
+  --> $DIR/self-outlives-lint.rs:148:5
    |
 LL |     type Item<'a>;
    |     ^^^^^^^^^^^^^-
@@ -142,7 +142,7 @@ LL |     type Item<'a>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Bar`
-  --> $DIR/self-outlives-lint.rs:159:5
+  --> $DIR/self-outlives-lint.rs:157:5
    |
 LL |     type Bar<'a, 'b>;
    |     ^^^^^^^^^^^^^^^^-
@@ -153,7 +153,7 @@ LL |     type Bar<'a, 'b>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Fut`
-  --> $DIR/self-outlives-lint.rs:175:5
+  --> $DIR/self-outlives-lint.rs:173:5
    |
 LL |     type Fut<'out>;
    |     ^^^^^^^^^^^^^^-
@@ -164,7 +164,7 @@ LL |     type Fut<'out>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Item`
-  --> $DIR/self-outlives-lint.rs:215:5
+  --> $DIR/self-outlives-lint.rs:213:5
    |
 LL |     type Item<'a>;
    |     ^^^^^^^^^^^^^-

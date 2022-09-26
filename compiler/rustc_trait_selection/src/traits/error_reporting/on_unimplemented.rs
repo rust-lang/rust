@@ -4,7 +4,7 @@ use super::{
 use crate::infer::InferCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, GenericParamDefKind};
 use rustc_span::symbol::sym;
 use std::iter;
@@ -256,7 +256,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
             }
-            if let ty::Dynamic(traits, _) = self_ty.kind() {
+            if let ty::Dynamic(traits, _, _) = self_ty.kind() {
                 for t in traits.iter() {
                     if let ty::ExistentialPredicate::Trait(trait_ref) = t.skip_binder() {
                         flags.push((sym::_Self, Some(self.tcx.def_path_str(trait_ref.def_id))))

@@ -22,7 +22,7 @@ Read ["Installation"] from [The Book].
 ## Installing from Source
 
 The Rust build system uses a Python script called `x.py` to build the compiler,
-which manages the bootstrapping process. It lives in the root of the project.
+which manages the bootstrapping process. It lives at the root of the project.
 
 The `x.py` command can be run directly on most systems in the following format:
 
@@ -32,7 +32,7 @@ The `x.py` command can be run directly on most systems in the following format:
 
 This is how the documentation and examples assume you are running `x.py`.
 
-Systems such as Ubuntu 20.04 LTS do not create the necessary `python` command by default when Python is installed that allows `x.py` to be run directly. In that case you can either create a symlink for `python` (Ubuntu provides the `python-is-python3` package for this), or run `x.py` using Python itself:
+Systems such as Ubuntu 20.04 LTS do not create the necessary `python` command by default when Python is installed that allows `x.py` to be run directly. In that case, you can either create a symlink for `python` (Ubuntu provides the `python-is-python3` package for this), or run `x.py` using Python itself:
 
 ```sh
 # Python 3
@@ -103,11 +103,10 @@ by running it with the `--help` flag or reading the [rustc dev guide][rustcguide
 ### Building on Windows
 
 There are two prominent ABIs in use on Windows: the native (MSVC) ABI used by
-Visual Studio, and the GNU ABI used by the GCC toolchain. Which version of Rust
-you need depends largely on what C/C++ libraries you want to interoperate with:
-for interop with software produced by Visual Studio use the MSVC build of Rust;
-for interop with GNU software built using the MinGW/MSYS2 toolchain use the GNU
-build.
+Visual Studio and the GNU ABI used by the GCC toolchain. Which version of Rust
+you need depends largely on what C/C++ libraries you want to interoperate with.
+Use the MSVC build of Rust to interop with software produced by Visual Studio and
+the GNU build to interop with GNU software built using the MinGW/MSYS2 toolchain.
 
 #### MinGW
 
@@ -115,10 +114,10 @@ build.
 
 [msys2]: https://www.msys2.org/
 
-1. Grab the latest [MSYS2 installer][msys2] and go through the installer.
+1. Download the latest [MSYS2 installer][msys2] and go through the installer.
 
-2. Run `mingw32_shell.bat` or `mingw64_shell.bat` from wherever you installed
-   MSYS2 (i.e. `C:\msys64`), depending on whether you want 32-bit or 64-bit
+2. Run `mingw32_shell.bat` or `mingw64_shell.bat` from the MSYS2 installation
+   directory (e.g. `C:\msys64`), depending on whether you want 32-bit or 64-bit
    Rust. (As of the latest version of MSYS2 you have to run `msys2_shell.cmd
    -mingw32` or `msys2_shell.cmd -mingw64` from the command line instead)
 
@@ -168,7 +167,7 @@ shell with:
 python x.py build
 ```
 
-Currently, building Rust only works with some known versions of Visual Studio. If
+Right now, building Rust only works with some known versions of Visual Studio. If
 you have a more recent version installed and the build system doesn't understand,
 you may need to force rustbuild to use an older version. This can be done
 by manually calling the appropriate vcvars file before running the bootstrap.
@@ -225,7 +224,7 @@ the ABI used. I.e., if the ABI was `x86_64-pc-windows-msvc`, the directory will 
 
 Since the Rust compiler is written in Rust, it must be built by a
 precompiled "snapshot" version of itself (made in an earlier stage of
-development). As such, source builds require a connection to the Internet, to
+development). As such, source builds require an Internet connection to
 fetch snapshots, and an OS that can execute the available snapshot binaries.
 
 Snapshot binaries are currently built and tested on several platforms:

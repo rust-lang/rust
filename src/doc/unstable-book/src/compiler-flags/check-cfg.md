@@ -143,7 +143,7 @@ fn do_features() {}
 
 #[cfg(has_feathers = "zapping")] // This is expected as "has_feathers" was provided in names()
                                  // and because no value checking was enable for "has_feathers"
-                                 // no warning is emited for the value "zapping"
+                                 // no warning is emitted for the value "zapping"
 fn do_zapping() {}
 
 #[cfg(has_mumble_frotz)]    // This is UNEXPECTED because names checking is enable and

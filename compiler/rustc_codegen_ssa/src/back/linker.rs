@@ -1,4 +1,3 @@
-use super::archive;
 use super::command::Command;
 use super::symbol_export;
 use rustc_span::symbol::sym;
@@ -11,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::{env, mem, str};
 
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_metadata::find_native_static_library;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
@@ -126,29 +126,26 @@ pub fn get_linker<'a>(
     // to the linker args construction.
     assert!(cmd.get_args().is_empty() || sess.target.vendor == "uwp");
     match flavor {
-        LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
-            Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>
-        }
-        LinkerFlavor::Em => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::Gcc => {
             Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: false })
                 as Box<dyn Linker>
         }
-
+        LinkerFlavor::Ld if sess.target.os == "l4re" => {
+            Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
+        }
         LinkerFlavor::Lld(LldFlavor::Ld)
         | LinkerFlavor::Lld(LldFlavor::Ld64)
         | LinkerFlavor::Ld => {
             Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: true })
                 as Box<dyn Linker>
         }
-
+        LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
+            Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>
+        }
         LinkerFlavor::Lld(LldFlavor::Wasm) => Box::new(WasmLd::new(cmd, sess)) as Box<dyn Linker>,
-
-        LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
-
-        LinkerFlavor::BpfLinker => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
-
-        LinkerFlavor::L4Bender => Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>,
+        LinkerFlavor::EmCc => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::Bpf => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::Ptx => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
     }
 }
 
@@ -186,8 +183,6 @@ pub trait Linker {
     fn no_default_libraries(&mut self);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]);
     fn subsystem(&mut self, subsystem: &str);
-    fn group_start(&mut self);
-    fn group_end(&mut self);
     fn linker_plugin_lto(&mut self);
     fn add_eh_frame_header(&mut self) {}
     fn add_no_exec(&mut self) {}
@@ -444,7 +439,10 @@ impl<'a> Linker for GccLinker<'a> {
             }
         }
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}{}", if verbatim { ":" } else { "" }, lib));
+        self.cmd.arg(format!(
+            "-l{}{lib}",
+            if verbatim && self.sess.target.linker_is_gnu { ":" } else { "" },
+        ));
         if !as_needed {
             if self.sess.target.is_like_osx {
                 // See above FIXME comment
@@ -455,7 +453,10 @@ impl<'a> Linker for GccLinker<'a> {
     }
     fn link_staticlib(&mut self, lib: &str, verbatim: bool) {
         self.hint_static();
-        self.cmd.arg(format!("-l{}{}", if verbatim { ":" } else { "" }, lib));
+        self.cmd.arg(format!(
+            "-l{}{lib}",
+            if verbatim && self.sess.target.linker_is_gnu { ":" } else { "" },
+        ));
     }
     fn link_rlib(&mut self, lib: &Path) {
         self.hint_static();
@@ -509,17 +510,17 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         let target = &self.sess.target;
         if !target.is_like_osx {
-            self.linker_arg("--whole-archive").cmd.arg(format!(
-                "-l{}{}",
-                if verbatim { ":" } else { "" },
-                lib
+            self.linker_arg("--whole-archive");
+            self.cmd.arg(format!(
+                "-l{}{lib}",
+                if verbatim && self.sess.target.linker_is_gnu { ":" } else { "" },
             ));
             self.linker_arg("--no-whole-archive");
         } else {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib = archive::find_library(lib, verbatim, search_path, &self.sess);
+            let lib = find_native_static_library(lib, Some(verbatim), search_path, &self.sess);
             self.linker_arg(&lib);
         }
     }
@@ -731,18 +732,6 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn reset_per_library_state(&mut self) {
         self.hint_dynamic(); // Reset to default before returning the composed command line.
-    }
-
-    fn group_start(&mut self) {
-        if self.takes_hints() {
-            self.linker_arg("--start-group");
-        }
-    }
-
-    fn group_end(&mut self) {
-        if self.takes_hints() {
-            self.linker_arg("--end-group");
-        }
     }
 
     fn linker_plugin_lto(&mut self) {
@@ -1022,10 +1011,6 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    // MSVC doesn't need group indicators
-    fn group_start(&mut self) {}
-    fn group_end(&mut self) {}
-
     fn linker_plugin_lto(&mut self) {
         // Do nothing
     }
@@ -1167,10 +1152,6 @@ impl<'a> Linker for EmLinker<'a> {
     fn subsystem(&mut self, _subsystem: &str) {
         // noop
     }
-
-    // Appears not necessary on Emscripten
-    fn group_start(&mut self) {}
-    fn group_end(&mut self) {}
 
     fn linker_plugin_lto(&mut self) {
         // Do nothing
@@ -1347,10 +1328,6 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
-    // Not needed for now with LLD
-    fn group_start(&mut self) {}
-    fn group_end(&mut self) {}
-
     fn linker_plugin_lto(&mut self) {
         // Do nothing for now
     }
@@ -1477,14 +1454,6 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn reset_per_library_state(&mut self) {
         self.hint_static(); // Reset to default before returning the composed command line.
-    }
-
-    fn group_start(&mut self) {
-        self.cmd.arg("--start-group");
-    }
-
-    fn group_end(&mut self) {
-        self.cmd.arg("--end-group");
     }
 
     fn linker_plugin_lto(&mut self) {}
@@ -1667,10 +1636,6 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
-    fn group_start(&mut self) {}
-
-    fn group_end(&mut self) {}
-
     fn linker_plugin_lto(&mut self) {}
 }
 
@@ -1779,10 +1744,6 @@ impl<'a> Linker for BpfLinker<'a> {
     }
 
     fn subsystem(&mut self, _subsystem: &str) {}
-
-    fn group_start(&mut self) {}
-
-    fn group_end(&mut self) {}
 
     fn linker_plugin_lto(&mut self) {}
 }

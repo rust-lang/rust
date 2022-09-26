@@ -66,12 +66,9 @@ pub const INDEX_MUT: [&str; 3] = ["core", "ops", "IndexMut"];
 pub const INSERT_STR: [&str; 4] = ["alloc", "string", "String", "insert_str"];
 pub const IO_READ: [&str; 3] = ["std", "io", "Read"];
 pub const IO_WRITE: [&str; 3] = ["std", "io", "Write"];
-pub const IPADDR_V4: [&str; 5] = ["std", "net", "ip", "IpAddr", "V4"];
-pub const IPADDR_V6: [&str; 5] = ["std", "net", "ip", "IpAddr", "V6"];
 pub const ITER_COUNT: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "count"];
 pub const ITER_EMPTY: [&str; 5] = ["core", "iter", "sources", "empty", "Empty"];
 pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat"];
-#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
 #[cfg(feature = "internal")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
@@ -96,6 +93,7 @@ pub const PARKING_LOT_RWLOCK_READ_GUARD: [&str; 3] = ["lock_api", "rwlock", "RwL
 pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 3] = ["lock_api", "rwlock", "RwLockWriteGuard"];
 pub const PATH_BUF_AS_PATH: [&str; 4] = ["std", "path", "PathBuf", "as_path"];
 pub const PATH_TO_PATH_BUF: [&str; 4] = ["std", "path", "Path", "to_path_buf"];
+pub const PEEKABLE: [&str; 5] = ["core", "iter", "adapters", "peekable", "Peekable"];
 pub const PERMISSIONS: [&str; 3] = ["std", "fs", "Permissions"];
 #[cfg_attr(not(unix), allow(clippy::invalid_paths))]
 pub const PERMISSIONS_FROM_MODE: [&str; 6] = ["std", "os", "unix", "fs", "PermissionsExt", "from_mode"];

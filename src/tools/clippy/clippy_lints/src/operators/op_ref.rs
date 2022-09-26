@@ -185,7 +185,7 @@ fn in_impl<'tcx>(
         if let ItemKind::Impl(item) = &item.kind;
         if let Some(of_trait) = &item.of_trait;
         if let Some(seg) = of_trait.path.segments.last();
-        if let Some(Res::Def(_, trait_id)) = seg.res;
+        if let Res::Def(_, trait_id) = seg.res;
         if trait_id == bin_op;
         if let Some(generic_args) = seg.args;
         if let Some(GenericArg::Type(other_ty)) = generic_args.args.last();

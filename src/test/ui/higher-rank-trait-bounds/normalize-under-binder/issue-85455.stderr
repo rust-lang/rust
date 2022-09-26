@@ -1,12 +1,12 @@
-error[E0277]: the trait bound `for<'r> T: SomeTrait<'r>` is not satisfied
+error[E0277]: the trait bound `for<'a> T: SomeTrait<'a>` is not satisfied
   --> $DIR/issue-85455.rs:8:5
    |
 LL |     callee::<fn(&()) -> <T as SomeTrait<'_>>::Associated>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'r> SomeTrait<'r>` is not implemented for `T`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> SomeTrait<'a>` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |
-LL | fn give_me_ice<T: for<'r> SomeTrait<'r>>() {
+LL | fn give_me_ice<T: for<'a> SomeTrait<'a>>() {
    |                 +++++++++++++++++++++++
 
 error: aborting due to previous error

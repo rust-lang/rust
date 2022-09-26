@@ -16,10 +16,12 @@ use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::hir_id::OwnerId;
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
+use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
 use rustc_middle::ty::abstract_const::{AbstractConst, FailureKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -353,12 +355,11 @@ pub enum ValuePairs<'tcx> {
 
 impl<'tcx> ValuePairs<'tcx> {
     pub fn ty(&self) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
-        if let ValuePairs::Terms(ExpectedFound {
-            expected: ty::Term::Ty(expected),
-            found: ty::Term::Ty(found),
-        }) = self
+        if let ValuePairs::Terms(ExpectedFound { expected, found }) = self
+            && let Some(expected) = expected.ty()
+            && let Some(found) = found.ty()
         {
-            Some((*expected, *found))
+            Some((expected, found))
         } else {
             None
         }
@@ -409,7 +410,11 @@ pub enum SubregionOrigin<'tcx> {
 
     /// Comparing the signature and requirements of an impl method against
     /// the containing trait.
-    CompareImplItemObligation { span: Span, impl_item_def_id: LocalDefId, trait_item_def_id: DefId },
+    CompareImplItemObligation {
+        span: Span,
+        impl_item_def_id: LocalDefId,
+        trait_item_def_id: DefId,
+    },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
@@ -417,11 +422,23 @@ pub enum SubregionOrigin<'tcx> {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
+
+    AscribeUserTypeProvePredicate(Span),
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(SubregionOrigin<'_>, 32);
+
+impl<'tcx> SubregionOrigin<'tcx> {
+    pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
+        match self {
+            Self::Subtype(type_trace) => type_trace.cause.to_constraint_category(),
+            Self::AscribeUserTypeProvePredicate(span) => ConstraintCategory::Predicate(*span),
+            _ => ConstraintCategory::BoringNoLocation,
+        }
+    }
+}
 
 /// Times when we replace late-bound regions with variables:
 #[derive(Clone, Copy, Debug)]
@@ -567,9 +584,9 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
     /// will initialize `in_progress_typeck_results` with fresh `TypeckResults`.
     /// Will also change the scope for opaque type defining use checks to the given owner.
-    pub fn with_fresh_in_progress_typeck_results(mut self, table_owner: LocalDefId) -> Self {
+    pub fn with_fresh_in_progress_typeck_results(mut self, table_owner: OwnerId) -> Self {
         self.fresh_typeck_results = Some(RefCell::new(ty::TypeckResults::new(table_owner)));
-        self.with_opaque_type_inference(DefiningAnchor::Bind(table_owner))
+        self.with_opaque_type_inference(DefiningAnchor::Bind(table_owner.def_id))
     }
 
     /// Whenever the `InferCtxt` should be able to handle defining uses of opaque types,
@@ -689,8 +706,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn try_unify_abstract_consts(
         &self,
-        a: ty::Unevaluated<'tcx, ()>,
-        b: ty::Unevaluated<'tcx, ()>,
+        a: ty::UnevaluatedConst<'tcx>,
+        b: ty::UnevaluatedConst<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
         // Reject any attempt to unify two unevaluated constants that contain inference
@@ -1006,7 +1023,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         predicate: ty::PolyCoercePredicate<'tcx>,
-    ) -> Option<InferResult<'tcx, ()>> {
+    ) -> Result<InferResult<'tcx, ()>, (TyVid, TyVid)> {
         let subtype_predicate = predicate.map_bound(|p| ty::SubtypePredicate {
             a_is_expected: false, // when coercing from `a` to `b`, `b` is expected
             a: p.a,
@@ -1020,7 +1037,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         predicate: ty::PolySubtypePredicate<'tcx>,
-    ) -> Option<InferResult<'tcx, ()>> {
+    ) -> Result<InferResult<'tcx, ()>, (TyVid, TyVid)> {
         // Check for two unresolved inference variables, in which case we can
         // make no progress. This is partly a micro-optimization, but it's
         // also an opportunity to "sub-unify" the variables. This isn't
@@ -1039,12 +1056,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match (r_a.kind(), r_b.kind()) {
             (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                 self.inner.borrow_mut().type_variables().sub(a_vid, b_vid);
-                return None;
+                return Err((a_vid, b_vid));
             }
             _ => {}
         }
 
-        Some(self.commit_if_ok(|_snapshot| {
+        Ok(self.commit_if_ok(|_snapshot| {
             let ty::SubtypePredicate { a_is_expected, a, b } =
                 self.replace_bound_vars_with_placeholders(predicate);
 
@@ -1333,7 +1350,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
     ///
     /// Make sure to call [`InferCtxt::process_registered_region_obligations`]
-    /// first, or preferrably use [`InferCtxt::check_region_obligations_and_report_errors`]
+    /// first, or preferably use [`InferCtxt::check_region_obligations_and_report_errors`]
     /// to do both of these operations together.
     pub fn resolve_regions_and_report_errors(
         &self,
@@ -1674,7 +1691,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn try_const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::Unevaluated<'tcx>,
+        unevaluated: ty::UnevaluatedConst<'tcx>,
         ty: Ty<'tcx>,
         span: Option<Span>,
     ) -> Result<ty::Const<'tcx>, ErrorHandled> {
@@ -1709,7 +1726,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn const_eval_resolve(
         &self,
         mut param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::Unevaluated<'tcx>,
+        unevaluated: ty::UnevaluatedConst<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
         let mut substs = self.resolve_vars_if_possible(unevaluated.substs);
@@ -1718,7 +1735,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
         if substs.has_infer_types_or_consts() {
-            let ac = AbstractConst::new(self.tcx, unevaluated.shrink());
+            let ac = AbstractConst::new(self.tcx, unevaluated);
             match ac {
                 Ok(None) => {
                     substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
@@ -1740,11 +1757,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!(?param_env_erased);
         debug!(?substs_erased);
 
-        let unevaluated = ty::Unevaluated {
-            def: unevaluated.def,
-            substs: substs_erased,
-            promoted: unevaluated.promoted,
-        };
+        let unevaluated = ty::UnevaluatedConst { def: unevaluated.def, substs: substs_erased };
 
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.
@@ -1832,7 +1845,7 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
 
     /// Tries to extract an inference variable from a type, returns `None`
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
-    pub fn maybe_from_ty(ty: Ty<'tcx>) -> Option<Self> {
+    fn maybe_from_ty(ty: Ty<'tcx>) -> Option<Self> {
         match *ty.kind() {
             ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
             ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
@@ -1843,7 +1856,7 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
 
     /// Tries to extract an inference variable from a constant, returns `None`
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    pub fn maybe_from_const(ct: ty::Const<'tcx>) -> Option<Self> {
+    fn maybe_from_const(ct: ty::Const<'tcx>) -> Option<Self> {
         match ct.kind() {
             ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
             _ => None,
@@ -1992,6 +2005,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             DataBorrowed(_, a) => a,
             ReferenceOutlivesReferent(_, a) => a,
             CompareImplItemObligation { span, .. } => span,
+            AscribeUserTypeProvePredicate(span) => span,
             CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
         }
     }
@@ -2023,6 +2037,10 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 trait_item_def_id,
                 parent: Box::new(default()),
             },
+
+            traits::ObligationCauseCode::AscribeUserTypeProvePredicate(span) => {
+                SubregionOrigin::AscribeUserTypeProvePredicate(span)
+            }
 
             _ => default(),
         }

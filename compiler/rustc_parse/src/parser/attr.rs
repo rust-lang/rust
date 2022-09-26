@@ -7,8 +7,6 @@ use rustc_errors::{error_code, Diagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use std::convert::TryInto;
 
-use tracing::debug;
-
 // Public for rustfmt usage
 #[derive(Debug)]
 pub enum InnerAttrPolicy<'a> {
@@ -89,6 +87,7 @@ impl<'a> Parser<'a> {
                 // Always make an outer attribute - this allows us to recover from a misplaced
                 // inner attribute.
                 Some(attr::mk_doc_comment(
+                    &self.sess.attr_id_generator,
                     comment_kind,
                     ast::AttrStyle::Outer,
                     data,
@@ -140,7 +139,13 @@ impl<'a> Parser<'a> {
                     this.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
                 }
 
-                Ok(attr::mk_attr_from_item(item, None, style, attr_sp))
+                Ok(attr::mk_attr_from_item(
+                    &self.sess.attr_id_generator,
+                    item,
+                    None,
+                    style,
+                    attr_sp,
+                ))
             } else {
                 let token_str = pprust::token_to_string(&this.token);
                 let msg = &format!("expected `#`, found `{token_str}`");
@@ -293,7 +298,13 @@ impl<'a> Parser<'a> {
             } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
                 if attr_style == ast::AttrStyle::Inner {
                     self.bump();
-                    Some(attr::mk_doc_comment(comment_kind, attr_style, data, self.prev_token.span))
+                    Some(attr::mk_doc_comment(
+                        &self.sess.attr_id_generator,
+                        comment_kind,
+                        attr_style,
+                        data,
+                        self.prev_token.span,
+                    ))
                 } else {
                     None
                 }
@@ -303,9 +314,9 @@ impl<'a> Parser<'a> {
             if let Some(attr) = attr {
                 let end_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
                 // If we are currently capturing tokens, mark the location of this inner attribute.
-                // If capturing ends up creating a `LazyTokenStream`, we will include
+                // If capturing ends up creating a `LazyAttrTokenStream`, we will include
                 // this replace range with it, removing the inner attribute from the final
-                // `AttrAnnotatedTokenStream`. Inner attributes are stored in the parsed AST note.
+                // `AttrTokenStream`. Inner attributes are stored in the parsed AST note.
                 // During macro expansion, they are selectively inserted back into the
                 // token stream (the first inner attribute is removed each time we invoke the
                 // corresponding macro).

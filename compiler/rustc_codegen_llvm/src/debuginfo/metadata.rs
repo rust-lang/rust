@@ -42,7 +42,6 @@ use rustc_span::{self, FileNameDisplayPreference, SourceFile};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
 use smallvec::smallvec;
-use tracing::debug;
 
 use libc::{c_char, c_longlong, c_uint};
 use std::borrow::Cow;
@@ -51,7 +50,6 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::ptr;
-use tracing::instrument;
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {

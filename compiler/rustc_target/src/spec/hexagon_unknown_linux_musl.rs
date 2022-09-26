@@ -10,7 +10,6 @@ pub fn target() -> Target {
     base.crt_static_default = false;
     base.has_rpath = true;
     base.linker_is_gnu = false;
-    base.dynamic_linking = true;
 
     base.c_enum_min_bits = 8;
 

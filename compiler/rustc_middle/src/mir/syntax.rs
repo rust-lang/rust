@@ -82,9 +82,10 @@ pub enum MirPhase {
     ///    access to. This occurs in generator bodies. Such locals do not behave like other locals,
     ///    because they eg may be aliased in surprising ways. Runtime MIR has no such special locals -
     ///    all generator bodies are lowered and so all places that look like locals really are locals.
-    ///  - Const prop lints: The lint pass which reports eg `200_u8 + 200_u8` as an error is run as a
-    ///    part of analysis to runtime MIR lowering. This means that transformations which may supress
-    ///    such errors may not run on analysis MIR.
+    ///
+    /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a part
+    /// of analysis to runtime MIR lowering. To ensure lints are reported reliably, this means that
+    /// transformations which may supress such errors should not run on analysis MIR.
     Runtime(RuntimePhase),
 }
 
@@ -327,12 +328,40 @@ pub enum StatementKind<'tcx> {
     /// executed.
     Coverage(Box<Coverage>),
 
+    /// Denotes a call to an intrinsic that does not require an unwind path and always returns.
+    /// This avoids adding a new block and a terminator for simple intrinsics.
+    Intrinsic(Box<NonDivergingIntrinsic<'tcx>>),
+
+    /// No-op. Useful for deleting instructions without affecting statement indices.
+    Nop,
+}
+
+#[derive(
+    Clone,
+    TyEncodable,
+    TyDecodable,
+    Debug,
+    PartialEq,
+    Hash,
+    HashStable,
+    TypeFoldable,
+    TypeVisitable
+)]
+pub enum NonDivergingIntrinsic<'tcx> {
+    /// Denotes a call to the intrinsic function `assume`.
+    ///
+    /// The operand must be a boolean. Optimizers may use the value of the boolean to backtrack its
+    /// computation to infer information about other variables. So if the boolean came from a
+    /// `x < y` operation, subsequent operations on `x` and `y` could elide various bound checks.
+    /// If the argument is `false`, this operation is equivalent to `TerminatorKind::Unreachable`.
+    Assume(Operand<'tcx>),
+
     /// Denotes a call to the intrinsic function `copy_nonoverlapping`.
     ///
     /// First, all three operands are evaluated. `src` and `dest` must each be a reference, pointer,
     /// or `Box` pointing to the same type `T`. `count` must evaluate to a `usize`. Then, `src` and
     /// `dest` are dereferenced, and `count * size_of::<T>()` bytes beginning with the first byte of
-    /// the `src` place are copied to the continguous range of bytes beginning with the first byte
+    /// the `src` place are copied to the contiguous range of bytes beginning with the first byte
     /// of `dest`.
     ///
     /// **Needs clarification**: In what order are operands computed and dereferenced? It should
@@ -340,10 +369,18 @@ pub enum StatementKind<'tcx> {
     ///
     /// **Needs clarification**: Is this typed or not, ie is there a typed load and store involved?
     /// I vaguely remember Ralf saying somewhere that he thought it should not be.
-    CopyNonOverlapping(Box<CopyNonOverlapping<'tcx>>),
+    CopyNonOverlapping(CopyNonOverlapping<'tcx>),
+}
 
-    /// No-op. Useful for deleting instructions without affecting statement indices.
-    Nop,
+impl std::fmt::Display for NonDivergingIntrinsic<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Assume(op) => write!(f, "assume({op:?})"),
+            Self::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
+                write!(f, "copy_nonoverlapping(dst = {dst:?}, src = {src:?}, count = {count:?})")
+            }
+        }
+    }
 }
 
 /// Describes what kind of retag is to be performed.
@@ -378,7 +415,7 @@ pub enum FakeReadCause {
     /// Some(closure_def_id).
     /// Otherwise, the value of the optional LocalDefId will be None.
     //
-    // We can use LocaDefId here since fake read statements are removed
+    // We can use LocalDefId here since fake read statements are removed
     // before codegen in the `CleanupNonCodegenStatements` pass.
     ForMatchedPlace(Option<LocalDefId>),
 
@@ -452,7 +489,7 @@ pub struct CopyNonOverlapping<'tcx> {
 ///     must also be `cleanup`. This is a part of the type system and checked statically, so it is
 ///     still an error to have such an edge in the CFG even if it's known that it won't be taken at
 ///     runtime.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum TerminatorKind<'tcx> {
     /// Block has one successor; we continue execution there.
     Goto { target: BasicBlock },
@@ -705,7 +742,7 @@ pub enum TerminatorKind<'tcx> {
 }
 
 /// Information about an assertion failure.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, PartialOrd)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum AssertKind<O> {
     BoundsCheck { len: O, index: O },
     Overflow(BinOp, O, O),
@@ -793,6 +830,9 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///    generator has more than one variant, the parent place's variant index must be set, indicating
 ///    which variant is being used. If it has just one variant, the variant index may or may not be
 ///    included - the single possible variant is inferred if it is not included.
+///  - [`OpaqueCast`](ProjectionElem::OpaqueCast): This projection changes the place's type to the
+///    given one, and makes no other changes. A `OpaqueCast` projection on any type other than an
+///    opaque type from the current crate is not well-formed.
 ///  - [`ConstantIndex`](ProjectionElem::ConstantIndex): Computes an offset in units of `T` into the
 ///    place as described in the documentation for the `ProjectionElem`. The resulting address is
 ///    the parent's address plus that offset, and the type is `T`. This is only legal if the parent
@@ -827,7 +867,7 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///
 /// Rust currently requires that every place obey those two rules. This is checked by MIRI and taken
 /// advantage of by codegen (via `gep inbounds`). That is possibly subject to change.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Place<'tcx> {
     pub local: Local,
 
@@ -836,7 +876,7 @@ pub struct Place<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum ProjectionElem<V, T> {
     Deref,
     Field(Field, T),
@@ -892,6 +932,10 @@ pub enum ProjectionElem<V, T> {
     ///
     /// The included Symbol is the name of the variant, used for printing MIR.
     Downcast(Option<Symbol>, VariantIdx),
+
+    /// Like an explicit cast from an opaque type to a concrete type, but without
+    /// requiring an intermediate variable.
+    OpaqueCast(T),
 }
 
 /// Alias for projections as they appear in places, where the base is a place
@@ -919,7 +963,7 @@ pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 /// **Needs clarifiation:** Is loading a place that has its variant index set well-formed? Miri
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum Operand<'tcx> {
     /// Creates a value by loading the given place.
     ///
@@ -950,7 +994,7 @@ pub enum Operand<'tcx> {
 /// Computing any rvalue begins by evaluating the places and operands in some order (**Needs
 /// clarification**: Which order?). These are then used to produce a "value" - the same kind of
 /// value that an [`Operand`] produces.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum Rvalue<'tcx> {
     /// Yields the operand unchanged
     Use(Operand<'tcx>),
@@ -1103,11 +1147,14 @@ pub enum CastKind {
     /// All sorts of pointer-to-pointer casts. Note that reference-to-raw-ptr casts are
     /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
     Pointer(PointerCast),
+    /// Cast into a dyn* object.
+    DynStar,
     /// Remaining unclassified casts.
     Misc,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum AggregateKind<'tcx> {
     /// The type is of the element
     Array(Ty<'tcx>),
@@ -1195,7 +1242,7 @@ pub enum BinOp {
 mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(AggregateKind<'_>, 48);
+    static_assert_size!(AggregateKind<'_>, 40);
     static_assert_size!(Operand<'_>, 24);
     static_assert_size!(Place<'_>, 16);
     static_assert_size!(PlaceElem<'_>, 24);

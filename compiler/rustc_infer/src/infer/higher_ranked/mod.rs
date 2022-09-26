@@ -69,7 +69,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// For more details visit the relevant sections of the [rustc dev guide].
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn replace_bound_vars_with_placeholders<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx> + Copy,
@@ -81,19 +81,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let next_universe = self.create_next_universe();
 
         let delegate = FnMutDelegate {
-            regions: |br: ty::BoundRegion| {
+            regions: &mut |br: ty::BoundRegion| {
                 self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
                     universe: next_universe,
                     name: br.kind,
                 }))
             },
-            types: |bound_ty: ty::BoundTy| {
+            types: &mut |bound_ty: ty::BoundTy| {
                 self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                     universe: next_universe,
                     name: bound_ty.var,
                 }))
             },
-            consts: |bound_var: ty::BoundVar, ty| {
+            consts: &mut |bound_var: ty::BoundVar, ty| {
                 self.tcx.mk_const(ty::ConstS {
                     kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
                         universe: next_universe,
@@ -104,9 +104,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             },
         };
 
-        let result = self.tcx.replace_bound_vars_uncached(binder, delegate);
-        debug!(?next_universe, ?result);
-        result
+        debug!(?next_universe);
+        self.tcx.replace_bound_vars_uncached(binder, delegate)
     }
 
     /// See [RegionConstraintCollector::leak_check][1].

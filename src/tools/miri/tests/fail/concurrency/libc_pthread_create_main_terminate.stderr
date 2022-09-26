@@ -1,0 +1,6 @@
+error: the main thread terminated without waiting for all remaining threads
+
+note: pass `-Zmiri-ignore-leaks` to disable this check
+
+error: aborting due to previous error
+

@@ -4,10 +4,12 @@
 // general routines.
 
 use crate::infer::{DefiningAnchor, TyCtxtInferExt};
+use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::{
     ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
     Unimplemented,
 };
+use rustc_infer::traits::FulfillmentErrorCode;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -18,8 +20,7 @@ use rustc_middle::ty::{self, TyCtxt};
 /// obligations *could be* resolved if we wanted to.
 ///
 /// This also expects that `trait_ref` is fully normalized.
-#[instrument(level = "debug", skip(tcx))]
-pub fn codegen_fulfill_obligation<'tcx>(
+pub fn codegen_select_candidate<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
 ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
@@ -63,6 +64,14 @@ pub fn codegen_fulfill_obligation<'tcx>(
         // optimization to stop iterating early.
         let errors = fulfill_cx.select_all_or_error(&infcx);
         if !errors.is_empty() {
+            // `rustc_monomorphize::collector` assumes there are no type errors.
+            // Cycle errors are the only post-monomorphization errors possible; emit them now so
+            // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
+            for err in errors {
+                if let FulfillmentErrorCode::CodeCycle(cycle) = err.code {
+                    infcx.report_overflow_error_cycle(&cycle);
+                }
+            }
             return Err(CodegenObligationError::FulfillmentError);
         }
 
@@ -74,7 +83,6 @@ pub fn codegen_fulfill_obligation<'tcx>(
         // (ouz-a) This is required for `type-alias-impl-trait/assoc-projection-ice.rs` to pass
         let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 
-        debug!("Cache miss: {trait_ref:?} => {impl_source:?}");
         Ok(&*tcx.arena.alloc(impl_source))
     })
 }

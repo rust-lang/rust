@@ -1,5 +1,5 @@
 error[E0403]: the name `T1` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/gat-trait-path-generic-type-arg.rs:11:12
+  --> $DIR/gat-trait-path-generic-type-arg.rs:9:12
    |
 LL | impl <T, T1> Foo for T {
    |          -- first use of `T1`
@@ -8,13 +8,13 @@ LL |     type F<T1> = &[u8];
    |            ^^ already used
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/gat-trait-path-generic-type-arg.rs:11:18
+  --> $DIR/gat-trait-path-generic-type-arg.rs:9:18
    |
 LL |     type F<T1> = &[u8];
    |                  ^ explicit lifetime name needed here
 
 error[E0207]: the type parameter `T1` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/gat-trait-path-generic-type-arg.rs:9:10
+  --> $DIR/gat-trait-path-generic-type-arg.rs:7:10
    |
 LL | impl <T, T1> Foo for T {
    |          ^^ unconstrained type parameter

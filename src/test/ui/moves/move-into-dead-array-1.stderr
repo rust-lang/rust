@@ -5,6 +5,11 @@ LL |     let mut a: [D; 4];
    |         ----- binding declared here but left uninitialized
 LL |     a[i] = d();
    |     ^^^^ `a` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let mut a: [D; 4] = todo!();
+   |                       +++++++++
 
 error: aborting due to previous error
 

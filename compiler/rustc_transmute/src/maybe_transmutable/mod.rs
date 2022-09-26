@@ -105,12 +105,12 @@ where
     #[inline(always)]
     #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
-        let assume_visibility = self.assume.visibility;
+        let assume_visibility = self.assume.safety;
         let query_or_answer = self.map_layouts(|src, dst, scope, context| {
             // Remove all `Def` nodes from `src`, without checking their visibility.
             let src = src.prune(&|def| true);
 
-            tracing::trace!(?src, "pruned src");
+            trace!(?src, "pruned src");
 
             // Remove all `Def` nodes from `dst`, additionally...
             let dst = if assume_visibility {
@@ -121,7 +121,7 @@ where
                 dst.prune(&|def| context.is_accessible_from(def, scope))
             };
 
-            tracing::trace!(?dst, "pruned dst");
+            trace!(?dst, "pruned dst");
 
             // Convert `src` from a tree-based representation to an NFA-based representation.
             // If the conversion fails because `src` is uninhabited, conclude that the transmutation

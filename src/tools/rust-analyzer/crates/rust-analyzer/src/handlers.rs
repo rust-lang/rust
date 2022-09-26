@@ -10,8 +10,8 @@ use std::{
 use anyhow::Context;
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, FileId, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SingleResolve,
-    SourceChange, TextEdit,
+    HoverAction, HoverGotoTypeData, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
+    SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use lsp_server::ErrorCode;
@@ -1012,6 +1012,8 @@ pub(crate) fn handle_references(
     let _p = profile::span("handle_references");
     let position = from_proto::file_position(&snap, params.text_document_position)?;
 
+    let exclude_imports = snap.config.find_all_refs_exclude_imports();
+
     let refs = match snap.analysis.find_all_refs(position, None)? {
         None => return Ok(None),
         Some(refs) => refs,
@@ -1032,7 +1034,11 @@ pub(crate) fn handle_references(
             refs.references
                 .into_iter()
                 .flat_map(|(file_id, refs)| {
-                    refs.into_iter().map(move |(range, _)| FileRange { file_id, range })
+                    refs.into_iter()
+                        .filter(|&(_, category)| {
+                            !exclude_imports || category != Some(ReferenceCategory::Import)
+                        })
+                        .map(move |(range, _)| FileRange { file_id, range })
                 })
                 .chain(decl)
         })
@@ -1234,6 +1240,7 @@ pub(crate) fn handle_code_lens(
             annotate_references: lens_config.refs_adt,
             annotate_method_references: lens_config.method_refs,
             annotate_enum_variant_references: lens_config.enum_variant_refs,
+            location: lens_config.location.into(),
         },
         file_id,
     )?;
@@ -1283,7 +1290,7 @@ pub(crate) fn handle_document_highlight(
         .into_iter()
         .map(|ide::HighlightedRange { range, category }| lsp_types::DocumentHighlight {
             range: to_proto::range(&line_index, range),
-            kind: category.map(to_proto::document_highlight_kind),
+            kind: category.and_then(to_proto::document_highlight_kind),
         })
         .collect();
     Ok(Some(res))
@@ -1362,7 +1369,7 @@ pub(crate) fn handle_inlay_hints(
             .map(|it| {
                 to_proto::inlay_hint(&snap, &line_index, inlay_hints_config.render_colons, it)
             })
-            .collect(),
+            .collect::<Result<Vec<_>>>()?,
     ))
 }
 
@@ -1504,7 +1511,11 @@ pub(crate) fn handle_semantic_tokens_full(
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
 
-    let highlights = snap.analysis.highlight(snap.config.highlighting_config(), file_id)?;
+    let mut highlight_config = snap.config.highlighting_config();
+    // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
+    highlight_config.syntactic_name_ref_highlighting = !snap.proc_macros_loaded;
+
+    let highlights = snap.analysis.highlight(highlight_config, file_id)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
 
     // Unconditionally cache the tokens
@@ -1523,7 +1534,11 @@ pub(crate) fn handle_semantic_tokens_full_delta(
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
 
-    let highlights = snap.analysis.highlight(snap.config.highlighting_config(), file_id)?;
+    let mut highlight_config = snap.config.highlighting_config();
+    // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
+    highlight_config.syntactic_name_ref_highlighting = !snap.proc_macros_loaded;
+
+    let highlights = snap.analysis.highlight(highlight_config, file_id)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
 
     let mut cache = snap.semantic_tokens_cache.lock();
@@ -1774,6 +1789,7 @@ fn run_rustfmt(
     let mut command = match snap.config.rustfmt() {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             let mut cmd = process::Command::new(toolchain::rustfmt());
+            cmd.envs(snap.config.extra_env());
             cmd.args(extra_args);
             // try to chdir to the file so we can respect `rustfmt.toml`
             // FIXME: use `rustfmt --config-path` once
@@ -1831,6 +1847,7 @@ fn run_rustfmt(
         }
         RustfmtConfig::CustomCommand { command, args } => {
             let mut cmd = process::Command::new(command);
+            cmd.envs(snap.config.extra_env());
             cmd.args(args);
             cmd
         }

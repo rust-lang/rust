@@ -108,6 +108,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout.ty),
                 }
             }
+
+            DynStar => {
+                if let ty::Dynamic(data, _, ty::DynStar) = cast_ty.kind() {
+                    // Initial cast from sized to dyn trait
+                    let vtable = self.get_vtable_ptr(src.layout.ty, data.principal())?;
+                    let vtable = Scalar::from_maybe_pointer(vtable, self);
+                    let data = self.read_immediate(src)?.to_scalar();
+                    let _assert_pointer_sized = data.to_pointer(self)?;
+                    let val = Immediate::ScalarPair(data, vtable);
+                    self.write_immediate(val, dest)?;
+                } else {
+                    bug!()
+                }
+            }
         }
         Ok(())
     }
@@ -312,7 +326,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
-            (_, &ty::Dynamic(ref data, _)) => {
+            (_, &ty::Dynamic(ref data, _, ty::Dyn)) => {
                 // Initial cast from sized to dyn trait
                 let vtable = self.get_vtable_ptr(src_pointee_ty, data.principal())?;
                 let ptr = self.read_scalar(src)?;

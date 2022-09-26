@@ -1,7 +1,7 @@
 //! Completion tests for expressions.
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
+use crate::tests::{check_edit, completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(&format!("{}{}", BASE_ITEMS_FIXTURE, ra_fixture));
@@ -668,5 +668,80 @@ fn main() {
         expect![[r#"
             fn test() fn() -> Zulu
         "#]],
+    );
+}
+
+#[test]
+fn varaiant_with_struct() {
+    check_empty(
+        r#"
+pub struct YoloVariant {
+    pub f: usize
+}
+
+pub enum HH {
+    Yolo(YoloVariant),
+}
+
+fn brr() {
+    let t = HH::Yolo(Y$0);
+}
+"#,
+        expect![[r#"
+            en HH
+            fn brr()           fn()
+            st YoloVariant
+            st YoloVariant {…} YoloVariant { f: usize }
+            bt u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
+
+#[test]
+fn return_unit_block() {
+    cov_mark::check!(return_unit_block);
+    check_edit("return", r#"fn f() { if true { $0 } }"#, r#"fn f() { if true { return; } }"#);
+}
+
+#[test]
+fn return_unit_no_block() {
+    cov_mark::check!(return_unit_no_block);
+    check_edit(
+        "return",
+        r#"fn f() { match () { () => $0 } }"#,
+        r#"fn f() { match () { () => return } }"#,
+    );
+}
+
+#[test]
+fn return_value_block() {
+    cov_mark::check!(return_value_block);
+    check_edit(
+        "return",
+        r#"fn f() -> i32 { if true { $0 } }"#,
+        r#"fn f() -> i32 { if true { return $0; } }"#,
+    );
+}
+
+#[test]
+fn return_value_no_block() {
+    cov_mark::check!(return_value_no_block);
+    check_edit(
+        "return",
+        r#"fn f() -> i32 { match () { () => $0 } }"#,
+        r#"fn f() -> i32 { match () { () => return $0 } }"#,
     );
 }

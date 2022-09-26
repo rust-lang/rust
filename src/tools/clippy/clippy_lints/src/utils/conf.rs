@@ -208,7 +208,7 @@ define_Conf! {
     /// Lint: Arithmetic.
     ///
     /// Suppress checking of the passed type names.
-    (arithmetic_allowed: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
+    (arithmetic_side_effects_allowed: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
     /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX.
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
@@ -350,7 +350,7 @@ define_Conf! {
     /// Lint: DISALLOWED_SCRIPT_IDENTS.
     ///
     /// The list of unicode scripts allowed to be used in the scope.
-    (allowed_scripts: Vec<String> = ["Latin"].iter().map(ToString::to_string).collect()),
+    (allowed_scripts: Vec<String> = vec!["Latin".to_string()]),
     /// Lint: NON_SEND_FIELDS_IN_SEND_TY.
     ///
     /// Whether to apply the raw pointer heuristic to determine if a type is `Send`.
@@ -379,6 +379,10 @@ define_Conf! {
     ///
     /// Whether `dbg!` should be allowed in test functions
     (allow_dbg_in_tests: bool = false),
+    /// Lint: RESULT_LARGE_ERR
+    ///
+    /// The maximum size of the `Err`-variant in a `Result` returned from a function
+    (large_error_threshold: u64 = 128),
 }
 
 /// Search for the configuration file.
@@ -472,7 +476,7 @@ pub fn format_error(error: Box<dyn Error>) -> String {
 
             let mut msg = String::from(prefix);
             for row in 0..rows {
-                write!(msg, "\n").unwrap();
+                writeln!(msg).unwrap();
                 for (column, column_width) in column_widths.iter().copied().enumerate() {
                     let index = column * rows + row;
                     let field = fields.get(index).copied().unwrap_or_default();

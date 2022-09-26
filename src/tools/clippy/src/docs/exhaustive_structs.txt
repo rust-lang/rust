@@ -1,0 +1,23 @@
+### What it does
+Warns on any exported `structs`s that are not tagged `#[non_exhaustive]`
+
+### Why is this bad?
+Exhaustive structs are typically fine, but a project which does
+not wish to make a stability commitment around exported structs may wish to
+disable them by default.
+
+### Example
+```
+struct Foo {
+    bar: u8,
+    baz: String,
+}
+```
+Use instead:
+```
+#[non_exhaustive]
+struct Foo {
+    bar: u8,
+    baz: String,
+}
+```

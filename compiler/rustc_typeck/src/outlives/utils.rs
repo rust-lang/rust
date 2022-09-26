@@ -96,6 +96,23 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                             .or_insert(span);
                     }
 
+                    Component::Opaque(def_id, substs) => {
+                        // This would arise from something like:
+                        //
+                        // ```rust
+                        // type Opaque<T> = impl Sized;
+                        // fn defining<T>() -> Opaque<T> {}
+                        // struct Ss<'a, T>(&'a Opaque<T>);
+                        // ```
+                        //
+                        // Here we want to have an implied bound `Opaque<T>: 'a`
+
+                        let ty = tcx.mk_opaque(def_id, substs);
+                        required_predicates
+                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
+                            .or_insert(span);
+                    }
+
                     Component::EscapingProjection(_) => {
                         // As above, but the projection involves
                         // late-bound regions.  Therefore, the WF
@@ -160,12 +177,6 @@ fn is_free_region(region: Region<'_>) -> bool {
         // The type above might generate a `T: 'b` bound, but we can
         // ignore it.  We can't put it on the struct header anyway.
         ty::ReLateBound(..) => false,
-
-        // This can appear in `where Self: ` bounds (#64855):
-        //
-        //     struct Bar<T>(<Self as Foo>::Type) where Self: ;
-        //     struct Baz<'a>(&'a Self) where Self: ;
-        ty::ReEmpty(_) => false,
 
         // These regions don't appear in types from type declarations:
         ty::ReErased | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReFree(..) => {

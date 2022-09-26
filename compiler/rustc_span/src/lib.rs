@@ -15,7 +15,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
-#![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(negative_impls)]
 #![feature(min_specialization)]
@@ -75,8 +74,6 @@ use md5::Digest;
 use md5::Md5;
 use sha1::Sha1;
 use sha2::Sha256;
-
-use tracing::debug;
 
 #[cfg(test)]
 mod tests;
@@ -535,9 +532,6 @@ impl Span {
         self.data().with_hi(hi)
     }
     #[inline]
-    pub fn ctxt(self) -> SyntaxContext {
-        self.data_untracked().ctxt
-    }
     pub fn eq_ctxt(self, other: Span) -> bool {
         self.data_untracked().ctxt == other.data_untracked().ctxt
     }
@@ -564,6 +558,13 @@ impl Span {
     #[inline]
     pub fn from_expansion(self) -> bool {
         self.ctxt() != SyntaxContext::root()
+    }
+
+    /// Returns `true` if `span` originates in a macro's expansion where debuginfo should be
+    /// collapsed.
+    pub fn in_macro_expansion_with_collapse_debuginfo(self) -> bool {
+        let outer_expn = self.ctxt().outer_expn_data();
+        matches!(outer_expn.kind, ExpnKind::Macro(..)) && outer_expn.collapse_debuginfo
     }
 
     /// Returns `true` if `span` originates in a derive-macro's expansion.
@@ -1626,10 +1627,9 @@ impl SourceFile {
     /// number. If the source_file is empty or the position is located before the
     /// first line, `None` is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
-        self.lines(|lines| match lines.binary_search(&pos) {
-            Ok(idx) => Some(idx),
-            Err(0) => None,
-            Err(idx) => Some(idx - 1),
+        self.lines(|lines| match lines.partition_point(|x| x <= &pos) {
+            0 => None,
+            i => Some(i - 1),
         })
     }
 

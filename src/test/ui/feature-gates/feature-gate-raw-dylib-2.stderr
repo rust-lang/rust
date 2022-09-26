@@ -1,5 +1,5 @@
-error[E0658]: the `#[link_ordinal]` attribute is an experimental feature
-  --> $DIR/feature-gate-raw-dylib-2.rs:3:5
+error[E0658]: `#[link_ordinal]` is unstable on x86
+  --> $DIR/feature-gate-raw-dylib-2.rs:4:5
    |
 LL |     #[link_ordinal(42)]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -7,8 +7,8 @@ LL |     #[link_ordinal(42)]
    = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
    = help: add `#![feature(raw_dylib)]` to the crate attributes to enable
 
-error[E0658]: the `#[link_ordinal]` attribute is an experimental feature
-  --> $DIR/feature-gate-raw-dylib-2.rs:6:5
+error[E0658]: `#[link_ordinal]` is unstable on x86
+  --> $DIR/feature-gate-raw-dylib-2.rs:7:5
    |
 LL |     #[link_ordinal(5)]
    |     ^^^^^^^^^^^^^^^^^^

@@ -1,6 +1,8 @@
 //! Support for serializing the dep-graph and reloading it.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// this shouldn't be necessary, but the check for `&mut _` is too naive and denies returning a function pointer that takes a mut ref
+#![feature(const_mut_refs)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(once_cell)]
@@ -17,7 +19,7 @@ extern crate rustc_middle;
 
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
-use rustc_middle::dep_graph::{self, DepKindStruct, SerializedDepNodeIndex};
+use rustc_middle::dep_graph::{self, DepKindStruct};
 use rustc_middle::ty::query::{query_keys, query_storage, query_stored, query_values};
 use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine};
 use rustc_middle::ty::{self, TyCtxt};
@@ -33,9 +35,6 @@ pub use rustc_query_system::query::{deadlock, QueryContext};
 
 mod keys;
 use keys::Key;
-
-mod values;
-use self::values::Value;
 
 pub use rustc_query_system::query::QueryConfig;
 pub(crate) use rustc_query_system::query::{QueryDescription, QueryVTable};

@@ -15,6 +15,18 @@ use std::num::NonZeroU32;
 
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
+/// The version placeholder that recently stabilized features contain inside the
+/// `since` field of the `#[stable]` attribute.
+///
+/// For more, see [this pull request](https://github.com/rust-lang/rust/pull/100591).
+pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
+
+pub fn rust_version_symbol() -> Symbol {
+    let version = option_env!("CFG_VERSION").unwrap_or("<current>");
+    let version = version.split(' ').next().unwrap();
+    Symbol::intern(&version)
+}
+
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
 }
@@ -57,7 +69,12 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
             sess.emit_err(session_diagnostics::MultipleStabilityLevels { span });
         }
         AttrError::UnsupportedLiteral(reason, is_bytestr) => {
-            sess.emit_err(session_diagnostics::UnsupportedLiteral { span, reason, is_bytestr });
+            sess.emit_err(session_diagnostics::UnsupportedLiteral {
+                span,
+                reason,
+                is_bytestr,
+                start_point_span: sess.source_map().start_point(span),
+            });
         }
     }
 }
@@ -481,6 +498,10 @@ where
                                 continue 'outer;
                             }
                         }
+                    }
+
+                    if let Some(s) = since && s.as_str() == VERSION_PLACEHOLDER {
+                        since = Some(rust_version_symbol());
                     }
 
                     match (feature, since) {
@@ -1028,18 +1049,16 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                                 &name,
                             ),
                         });
-                    } else {
-                        if matches!(
-                            meta_item.name_or_empty(),
-                            sym::C | sym::simd | sym::transparent
-                        ) || int_type_of_word(meta_item.name_or_empty()).is_some()
-                        {
-                            recognised = true;
-                            sess.emit_err(session_diagnostics::InvalidReprHintNoValue {
-                                span: meta_item.span,
-                                name: meta_item.name_or_empty().to_ident_string(),
-                            });
-                        }
+                    } else if matches!(
+                        meta_item.name_or_empty(),
+                        sym::C | sym::simd | sym::transparent
+                    ) || int_type_of_word(meta_item.name_or_empty()).is_some()
+                    {
+                        recognised = true;
+                        sess.emit_err(session_diagnostics::InvalidReprHintNoValue {
+                            span: meta_item.span,
+                            name: meta_item.name_or_empty().to_ident_string(),
+                        });
                     }
                 } else if let MetaItemKind::List(_) = meta_item.kind {
                     if meta_item.has_name(sym::align) {

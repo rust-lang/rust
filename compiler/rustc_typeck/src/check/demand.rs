@@ -42,6 +42,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
         self.suggest_missing_parentheses(err, expr);
         self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected);
+        self.suggest_copied_or_cloned(err, expr, expr_ty, expected);
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
@@ -130,7 +131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// N.B., this code relies on `self.diverges` to be accurate. In particular, assignments to `!`
     /// will be permitted if the diverges flag is currently "always".
-    #[tracing::instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
+    #[instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
     pub fn demand_coerce_diag(
         &self,
         expr: &hir::Expr<'tcx>,
@@ -374,7 +375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let field_is_local = sole_field.did.is_local();
                     let field_is_accessible =
-                        sole_field.vis.is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx)
+                        sole_field.vis.is_accessible_from(expr.hir_id.owner.def_id, self.tcx)
                         // Skip suggestions for unstable public fields (for example `Pin::pointer`)
                         && matches!(self.tcx.eval_stability(sole_field.did, None, expr.span, None), EvalResult::Allow | EvalResult::Unmarked);
 
@@ -415,6 +416,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // unit variants don't have fields
                     hir::def::CtorKind::Const => unreachable!(),
                 };
+
+                // Suggest constructor as deep into the block tree as possible.
+                // This fixes https://github.com/rust-lang/rust/issues/101065,
+                // and also just helps make the most minimal suggestions.
+                let mut expr = expr;
+                while let hir::ExprKind::Block(block, _) = &expr.kind
+                    && let Some(expr_) = &block.expr
+                {
+                    expr = expr_
+                }
 
                 vec![
                     (expr.span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
@@ -589,7 +600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let closure_params_len = closure_fn_decl.inputs.len();
         let (
             Some(Node::Expr(hir::Expr {
-                kind: hir::ExprKind::MethodCall(method_path, method_expr, _),
+                kind: hir::ExprKind::MethodCall(method_path, receiver, ..),
                 ..
             })),
             1,
@@ -597,7 +608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let self_ty = self.typeck_results.borrow().expr_ty(&method_expr[0]);
+        let self_ty = self.typeck_results.borrow().expr_ty(receiver);
         let name = method_path.ident.name;
         let is_as_ref_able = match self_ty.peel_refs().kind() {
             ty::Adt(def, _) => {
@@ -766,22 +777,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 if self.can_coerce(ref_ty, expected) {
                     let mut sugg_sp = sp;
-                    if let hir::ExprKind::MethodCall(ref segment, ref args, _) = expr.kind {
+                    if let hir::ExprKind::MethodCall(ref segment, receiver, args, _) = expr.kind {
                         let clone_trait =
                             self.tcx.require_lang_item(LangItem::Clone, Some(segment.ident.span));
-                        if let ([arg], Some(true), sym::clone) = (
-                            &args[..],
-                            self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
+                        if args.is_empty()
+                            && self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
                                 |did| {
                                     let ai = self.tcx.associated_item(did);
                                     ai.trait_container(self.tcx) == Some(clone_trait)
                                 },
-                            ),
-                            segment.ident.name,
-                        ) {
+                            ) == Some(true)
+                            && segment.ident.name == sym::clone
+                        {
                             // If this expression had a clone call when suggesting borrowing
                             // we want to suggest removing it because it'd now be unnecessary.
-                            sugg_sp = arg.span;
+                            sugg_sp = receiver.span;
                         }
                     }
                     if let Ok(src) = sm.span_to_snippet(sugg_sp) {

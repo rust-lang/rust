@@ -3,7 +3,6 @@
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
@@ -26,8 +25,8 @@ use rustc_index::bit_set::ChunkedBitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::{
-    traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
-    PlaceRef, VarDebugInfoContents,
+    traversal, Body, ClearCrossCrate, Local, Location, Mutability, NonDivergingIntrinsic, Operand,
+    Place, PlaceElem, PlaceRef, VarDebugInfoContents,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
@@ -134,7 +133,7 @@ fn mir_borrowck<'tcx>(
 
     let opt_closure_req = tcx
         .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner))
+        .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id))
         .enter(|infcx| {
             let input_body: &Body<'_> = &input_body.borrow();
             let promoted: &IndexVec<_, _> = &promoted.borrow();
@@ -591,22 +590,19 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     flow_state,
                 );
             }
-            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
-                ..
-            }) => {
-                span_bug!(
+            StatementKind::Intrinsic(box ref kind) => match kind {
+                NonDivergingIntrinsic::Assume(op) => self.consume_operand(location, (op, span), flow_state),
+                NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     span,
                     "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
                 )
             }
-            StatementKind::Nop
+            // Only relevant for mir typeck
+            StatementKind::AscribeUserType(..)
+            // Doesn't have any language semantics
             | StatementKind::Coverage(..)
-            | StatementKind::AscribeUserType(..)
-            | StatementKind::Retag { .. }
-            | StatementKind::StorageLive(..) => {
-                // `Nop`, `AscribeUserType`, `Retag`, and `StorageLive` are irrelevant
-                // to borrow check.
-            }
+            // Does not actually affect borrowck
+            | StatementKind::StorageLive(..) => {}
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     location,
@@ -616,7 +612,10 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     flow_state,
                 );
             }
-            StatementKind::Deinit(..) | StatementKind::SetDiscriminant { .. } => {
+            StatementKind::Nop
+            | StatementKind::Retag { .. }
+            | StatementKind::Deinit(..)
+            | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }
         }
@@ -1781,6 +1780,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         for (place_base, elem) in place.iter_projections().rev() {
             match elem {
                 ProjectionElem::Index(_/*operand*/) |
+                ProjectionElem::OpaqueCast(_) |
                 ProjectionElem::ConstantIndex { .. } |
                 // assigning to P[i] requires P to be valid.
                 ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
@@ -2172,6 +2172,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ProjectionElem::Index(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
+                    | ProjectionElem::OpaqueCast { .. }
                     | ProjectionElem::Downcast(..) => {
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {

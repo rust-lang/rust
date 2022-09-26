@@ -159,8 +159,8 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         bk: rustc_middle::ty::BorrowKind,
     ) {
         debug!(
-            "borrow: place_with_id = {place_with_id:?}, diag_expr_id={diag_expr_id:?}, \
-            borrow_kind={bk:?}"
+            "borrow: place_with_id = {place_with_id:#?}, diag_expr_id={diag_expr_id:#?}, \
+            borrow_kind={bk:#?}"
         );
 
         self.borrow_place(place_with_id);

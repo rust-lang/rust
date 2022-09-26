@@ -19,7 +19,6 @@ use rustc_target::spec::abi::Abi as SpecAbi;
 use std::cmp;
 use std::iter;
 use std::ops::ControlFlow;
-use tracing::debug;
 
 declare_lint! {
     /// The `unused_comparisons` lint detects comparisons made useless by
@@ -720,7 +719,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
     Some(match *ty.kind() {
         ty::Adt(field_def, field_substs) => {
             let inner_field_ty = {
-                let first_non_zst_ty = field_def
+                let mut first_non_zst_ty = field_def
                     .variants()
                     .iter()
                     .filter_map(|v| transparent_newtype_field(cx.tcx, v));
@@ -730,7 +729,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
                     "Wrong number of fields for transparent type"
                 );
                 first_non_zst_ty
-                    .last()
+                    .next_back()
                     .expect("No non-zst fields in transparent type.")
                     .ty(tcx, field_substs)
             };
@@ -1459,7 +1458,7 @@ impl InvalidAtomicOrdering {
             sym::AtomicI64,
             sym::AtomicI128,
         ];
-        if let ExprKind::MethodCall(ref method_path, args, _) = &expr.kind
+        if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind
             && recognized_names.contains(&method_path.ident.name)
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
             && let Some(impl_did) = cx.tcx.impl_of_method(m_def_id)
@@ -1495,8 +1494,8 @@ impl InvalidAtomicOrdering {
     fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::load, sym::store])
             && let Some((ordering_arg, invalid_ordering)) = match method {
-                sym::load => Some((&args[1], sym::Release)),
-                sym::store => Some((&args[2], sym::Acquire)),
+                sym::load => Some((&args[0], sym::Release)),
+                sym::store => Some((&args[1], sym::Acquire)),
                 _ => None,
             }
             && let Some(ordering) = Self::match_ordering(cx, ordering_arg)
@@ -1537,8 +1536,8 @@ impl InvalidAtomicOrdering {
             else {return };
 
         let fail_order_arg = match method {
-            sym::fetch_update => &args[2],
-            sym::compare_exchange | sym::compare_exchange_weak => &args[4],
+            sym::fetch_update => &args[1],
+            sym::compare_exchange | sym::compare_exchange_weak => &args[3],
             _ => return,
         };
 

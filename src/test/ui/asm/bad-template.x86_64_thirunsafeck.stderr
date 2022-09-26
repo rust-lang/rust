@@ -190,8 +190,8 @@ LL |         asm!("{:foo}", in(reg) foo);
    |               ^^^^^^           --- for this argument
    |
    = note: `#[warn(asm_sub_register)]` on by default
-   = help: use the `e` modifier to have the register formatted as `eax`
-   = help: or use the `r` modifier to keep the default formatting of `rax`
+   = help: use `{0:e}` to have the register formatted as `eax`
+   = help: or use `{0:r}` to keep the default formatting of `rax`
 
 error: aborting due to 21 previous errors; 1 warning emitted
 

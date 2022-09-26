@@ -3,8 +3,6 @@
 
 // This should pass, but it requires `Sized` to be coinductive.
 
-#![feature(generic_associated_types)]
-
 trait Allocator {
     type Allocated<T>;
 }

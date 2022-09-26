@@ -4,6 +4,7 @@ use crate::errors::{
 };
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
+use rustc_errors::IntoDiagnostic;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -15,10 +16,9 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, InferConst};
+use rustc_middle::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeckResults};
-use rustc_session::SessionDiagnostic;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span};
 use std::borrow::Cow;
@@ -199,7 +199,7 @@ fn ty_to_string<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String {
 }
 
 /// We don't want to directly use `ty_to_string` for closures as their type isn't really
-/// something users are familar with. Directly printing the `fn_sig` of closures also
+/// something users are familiar with. Directly printing the `fn_sig` of closures also
 /// doesn't work as they actually use the "rust-call" API.
 fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String {
     let ty::Closure(_, substs) = ty.kind() else { unreachable!() };
@@ -341,7 +341,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
             TypeAnnotationNeeded::E0283 => AmbigousImpl {
                 span,
                 source_kind,
@@ -351,7 +351,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
             TypeAnnotationNeeded::E0284 => AmbigousReturn {
                 span,
                 source_kind,
@@ -361,7 +361,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
         }
     }
 
@@ -511,20 +511,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     _ => "",
                 };
 
-                multi_suggestions.push(SourceKindMultiSuggestion::FullyQualified {
-                    span: receiver.span,
+                multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
+                    receiver.span,
                     def_path,
                     adjustment,
                     successor,
-                });
+                ));
             }
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
                 let ty_info = ty_to_string(self, ty);
-                multi_suggestions.push(SourceKindMultiSuggestion::ClosureReturn {
+                multi_suggestions.push(SourceKindMultiSuggestion::new_closure_return(
                     ty_info,
                     data,
                     should_wrap_expr,
-                });
+                ));
             }
         }
         match error_code {
@@ -537,7 +537,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
             TypeAnnotationNeeded::E0283 => AmbigousImpl {
                 span,
                 source_kind,
@@ -547,7 +547,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
             TypeAnnotationNeeded::E0284 => AmbigousReturn {
                 span,
                 source_kind,
@@ -557,7 +557,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
         }
     }
 
@@ -575,7 +575,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             span,
             generator_kind: GeneratorKindAsDiagArg(kind),
         }
-        .into_diagnostic(&self.tcx.sess.parse_sess)
+        .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
     }
 }
 
@@ -901,7 +901,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     }
                 }
             }
-            hir::ExprKind::MethodCall(segment, _, _) => {
+            hir::ExprKind::MethodCall(segment, ..) => {
                 if let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id) {
                     let generics = tcx.generics_of(def_id);
                     let insertable: Option<_> = try {
@@ -909,7 +909,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                             None?
                         }
                         let substs = self.node_substs_opt(expr.hir_id)?;
-                        let span = tcx.hir().span(segment.hir_id?);
+                        let span = tcx.hir().span(segment.hir_id);
                         let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                         InsertableGenericArgs {
                             insert_span,
@@ -957,13 +957,13 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         path.segments
             .iter()
             .filter_map(move |segment| {
-                let res = segment.res?;
+                let res = segment.res;
                 let generics_def_id = tcx.res_generics_def_id(res)?;
                 let generics = tcx.generics_of(generics_def_id);
                 if generics.has_impl_trait() {
                     return None;
                 }
-                let span = tcx.hir().span(segment.hir_id?);
+                let span = tcx.hir().span(segment.hir_id);
                 let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                 Some(InsertableGenericArgs {
                     insert_span,
@@ -996,7 +996,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     if !segment.infer_args || generics.has_impl_trait() {
                         None?;
                     }
-                    let span = tcx.hir().span(segment.hir_id?);
+                    let span = tcx.hir().span(segment.hir_id);
                     let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                     InsertableGenericArgs { insert_span, substs, generics_def_id: def_id, def_id }
                 };
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 let generic_args = &generics.own_substs_no_defaults(tcx, substs)
                     [generics.own_counts().lifetimes..];
                 let span = match expr.kind {
-                    ExprKind::MethodCall(path, _, _) => path.ident.span,
+                    ExprKind::MethodCall(path, ..) => path.ident.span,
                     _ => expr.span,
                 };
 
@@ -1181,7 +1181,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             })
             .any(|generics| generics.has_impl_trait())
         };
-        if let ExprKind::MethodCall(path, args, span) = expr.kind
+        if let ExprKind::MethodCall(path, receiver, args, span) = expr.kind
             && let Some(substs) = self.node_substs_opt(expr.hir_id)
             && substs.iter().any(|arg| self.generic_arg_contains_target(arg))
             && let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id)
@@ -1189,12 +1189,12 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             && !has_impl_trait(def_id)
         {
             let successor =
-                args.get(1).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));
+                args.get(0).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));
             let substs = self.infcx.resolve_vars_if_possible(substs);
             self.update_infer_source(InferSource {
                 span: path.ident.span,
                 kind: InferSourceKind::FullyQualifiedMethodCall {
-                    receiver: args.first().unwrap(),
+                    receiver,
                     successor,
                     substs,
                     def_id,

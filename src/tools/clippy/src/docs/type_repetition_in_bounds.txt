@@ -1,0 +1,16 @@
+### What it does
+This lint warns about unnecessary type repetitions in trait bounds
+
+### Why is this bad?
+Repeating the type for every bound makes the code
+less readable than combining the bounds
+
+### Example
+```
+pub fn foo<T>(t: T) where T: Copy, T: Clone {}
+```
+
+Use instead:
+```
+pub fn foo<T>(t: T) where T: Copy + Clone {}
+```

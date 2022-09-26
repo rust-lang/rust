@@ -534,7 +534,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-                self.mir_const_to_op(&val, layout)?
+                self.const_to_op(&val, layout)?
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
@@ -549,43 +549,47 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ops.iter().map(|op| self.eval_operand(op, None)).collect()
     }
 
-    // Used when the miri-engine runs into a constant and for extracting information from constants
-    // in patterns via the `const_eval` module
-    /// The `val` and `layout` are assumed to already be in our interpreter
-    /// "universe" (param_env).
     pub fn const_to_op(
-        &self,
-        c: ty::Const<'tcx>,
-        layout: Option<TyAndLayout<'tcx>>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        match c.kind() {
-            ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
-            ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => {
-                throw_inval!(AlreadyReported(reported))
-            }
-            ty::ConstKind::Unevaluated(uv) => {
-                let instance = self.resolve(uv.def, uv.substs)?;
-                Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
-            }
-            ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
-                span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", c)
-            }
-            ty::ConstKind::Value(valtree) => {
-                let ty = c.ty();
-                let const_val = self.tcx.valtree_to_const_val((ty, valtree));
-                self.const_val_to_op(const_val, ty, layout)
-            }
-        }
-    }
-
-    pub fn mir_const_to_op(
         &self,
         val: &mir::ConstantKind<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         match val {
-            mir::ConstantKind::Ty(ct) => self.const_to_op(*ct, layout),
+            mir::ConstantKind::Ty(ct) => {
+                match ct.kind() {
+                    ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
+                        throw_inval!(TooGeneric)
+                    }
+                    ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => {
+                        throw_inval!(AlreadyReported(reported))
+                    }
+                    ty::ConstKind::Unevaluated(uv) => {
+                        // NOTE: We evaluate to a `ValTree` here as a check to ensure
+                        // we're working with valid constants, even though we never need it.
+                        let instance = self.resolve(uv.def, uv.substs)?;
+                        let cid = GlobalId { instance, promoted: None };
+                        let _valtree = self
+                            .tcx
+                            .eval_to_valtree(self.param_env.and(cid))?
+                            .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"));
+
+                        Ok(self.eval_to_allocation(cid)?.into())
+                    }
+                    ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
+                        span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {ct:?}")
+                    }
+                    ty::ConstKind::Value(valtree) => {
+                        let ty = ct.ty();
+                        let const_val = self.tcx.valtree_to_const_val((ty, valtree));
+                        self.const_val_to_op(const_val, ty, layout)
+                    }
+                }
+            }
             mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, *ty, layout),
+            mir::ConstantKind::Unevaluated(uv, _) => {
+                let instance = self.resolve(uv.def, uv.substs)?;
+                Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
+            }
         }
     }
 
@@ -718,7 +722,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Return the cast value, and the index.
                 (discr_val, index.0)
             }
-            TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
+            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
                 let tag_val = tag_val.to_scalar();
                 // Compute the variant this niche value/"tag" corresponds to. With niche layout,
                 // discriminant (encoded in niche/tag) and variant index are the same.
@@ -736,7 +740,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if !ptr_valid {
                             throw_ub!(InvalidTag(dbg_val))
                         }
-                        dataful_variant
+                        untagged_variant
                     }
                     Ok(tag_bits) => {
                         let tag_bits = tag_bits.assert_bits(tag_layout.size);
@@ -766,7 +770,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             assert!(usize::try_from(variant_index).unwrap() < variants_len);
                             VariantIdx::from_u32(variant_index)
                         } else {
-                            dataful_variant
+                            untagged_variant
                         }
                     }
                 };
@@ -785,8 +789,8 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(Immediate, 56);
-    static_assert_size!(ImmTy<'_>, 72);
-    static_assert_size!(Operand, 64);
-    static_assert_size!(OpTy<'_>, 88);
+    static_assert_size!(Immediate, 48);
+    static_assert_size!(ImmTy<'_>, 64);
+    static_assert_size!(Operand, 56);
+    static_assert_size!(OpTy<'_>, 80);
 }

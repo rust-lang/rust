@@ -1,0 +1,21 @@
+error: Undefined Behavior: deallocating ALLOC, which is Rust heap memory, using PLATFORM heap deallocation operation
+  --> RUSTLIB/std/src/sys/PLATFORM/alloc.rs:LL:CC
+   |
+LL |         FREE();
+   | ^ deallocating ALLOC, which is Rust heap memory, using PLATFORM heap deallocation operation
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `std::sys::PLATFORM::alloc::<impl std::alloc::GlobalAlloc for std::alloc::System>::dealloc` at RUSTLIB/std/src/sys/PLATFORM/alloc.rs:LL:CC
+   = note: inside `<std::alloc::System as std::alloc::Allocator>::deallocate` at RUSTLIB/std/src/alloc.rs:LL:CC
+note: inside `main` at $DIR/global_system_mixup.rs:LL:CC
+  --> $DIR/global_system_mixup.rs:LL:CC
+   |
+LL |         System.deallocate(ptr, l);
+   | ^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

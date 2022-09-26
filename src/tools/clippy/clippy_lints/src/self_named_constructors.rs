@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::return_ty;
-use clippy_utils::ty::{contains_adt_constructor, contains_ty};
+use clippy_utils::ty::contains_adt_constructor;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -51,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
             _ => return,
         }
 
-        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
+        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
         let item = cx.tcx.hir().expect_item(parent);
         let self_ty = cx.tcx.type_of(item.def_id);
         let ret_ty = return_ty(cx, impl_item.hir_id());
@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
             if !contains_adt_constructor(ret_ty, self_adt) {
                 return;
             }
-        } else if !contains_ty(ret_ty, self_ty) {
+        } else if !ret_ty.contains(self_ty) {
             return;
         }
 

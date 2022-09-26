@@ -112,12 +112,6 @@
 //! method in operand position, we treat it as a neighbor of the current
 //! mono item. Calls are just a special case of that.
 //!
-//! #### Closures
-//! In a way, closures are a simple case. Since every closure object needs to be
-//! constructed somewhere, we can reliably discover them by observing
-//! `RValue::Aggregate` expressions with `AggregateKind::Closure`. This is also
-//! true for closures inlined from other crates.
-//!
 //! #### Drop glue
 //! Drop glue mono items are introduced by MIR drop-statements. The
 //! generated mono item will again have drop-glue item neighbors if the
@@ -419,7 +413,6 @@ fn collect_items_rec<'tcx>(
         // We've been here already, no need to search again.
         return;
     }
-    debug!("BEGIN collect_items_rec({})", starting_point.node);
 
     let mut neighbors = MonoItems { compute_inlining: true, tcx, items: Vec::new() };
     let recursion_depth_reset;
@@ -545,8 +538,6 @@ fn collect_items_rec<'tcx>(
     if let Some((def_id, depth)) = recursion_depth_reset {
         recursion_depths.insert(def_id, depth);
     }
-
-    debug!("END collect_items_rec({})", starting_point.node);
 }
 
 /// Format instance name that is already known to be too long for rustc.
@@ -698,7 +689,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 mir::CastKind::Pointer(PointerCast::Unsize),
                 ref operand,
                 target_ty,
-            ) => {
+            )
+            | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
                 let target_ty = self.monomorphize(target_ty);
                 let source_ty = operand.ty(self.body, self.tcx);
                 let source_ty = self.monomorphize(source_ty);
@@ -707,7 +699,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 // This could also be a different Unsize instruction, like
                 // from a fixed sized array to a slice. But we are only
                 // interested in things that produce a vtable.
-                if target_ty.is_trait() && !source_ty.is_trait() {
+                if (target_ty.is_trait() && !source_ty.is_trait())
+                    || (target_ty.is_dyn_star() && !source_ty.is_dyn_star())
+                {
                     create_mono_items_for_vtable_methods(
                         self.tcx,
                         target_ty,
@@ -776,7 +770,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 ty::ConstKind::Unevaluated(ct) => {
                     debug!(?ct);
                     let param_env = ty::ParamEnv::reveal_all();
-                    match self.tcx.const_eval_resolve(param_env, ct, None) {
+                    match self.tcx.const_eval_resolve(param_env, ct.expand(), None) {
                         // The `monomorphize` call should have evaluated that constant already.
                         Ok(val) => val,
                         Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
@@ -789,44 +783,22 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 }
                 _ => return,
             },
-        };
-        collect_const_value(self.tcx, val, self.output);
-        self.visit_ty(literal.ty(), TyContext::Location(location));
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    fn visit_const(&mut self, constant: ty::Const<'tcx>, location: Location) {
-        debug!("visiting const {:?} @ {:?}", constant, location);
-
-        let substituted_constant = self.monomorphize(constant);
-        let param_env = ty::ParamEnv::reveal_all();
-
-        match substituted_constant.kind() {
-            ty::ConstKind::Value(val) => {
-                let const_val = self.tcx.valtree_to_const_val((constant.ty(), val));
-                collect_const_value(self.tcx, const_val, self.output)
-            }
-            ty::ConstKind::Unevaluated(unevaluated) => {
-                match self.tcx.const_eval_resolve(param_env, unevaluated, None) {
+            mir::ConstantKind::Unevaluated(uv, _) => {
+                let param_env = ty::ParamEnv::reveal_all();
+                match self.tcx.const_eval_resolve(param_env, uv, None) {
                     // The `monomorphize` call should have evaluated that constant already.
-                    Ok(val) => span_bug!(
-                        self.body.source_info(location).span,
-                        "collection encountered the unevaluated constant {} which evaluated to {:?}",
-                        substituted_constant,
-                        val
-                    ),
-                    Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => {}
+                    Ok(val) => val,
+                    Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
                     Err(ErrorHandled::TooGeneric) => span_bug!(
                         self.body.source_info(location).span,
-                        "collection encountered polymorphic constant: {}",
-                        substituted_constant
+                        "collection encountered polymorphic constant: {:?}",
+                        literal
                     ),
                 }
             }
-            _ => {}
-        }
-
-        self.super_const(constant);
+        };
+        collect_const_value(self.tcx, val, self.output);
+        MirVisitor::visit_ty(self, literal.ty(), TyContext::Location(location));
     }
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
@@ -838,7 +810,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
-                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output);
+                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
             }
             mir::TerminatorKind::Drop { ref place, .. }
             | mir::TerminatorKind::DropAndReplace { ref place, .. } => {
@@ -1121,6 +1093,9 @@ fn find_vtable_types_for_unsizing<'tcx>(
             ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
         }
 
+        // T as dyn* Trait
+        (_, &ty::Dynamic(_, _, ty::DynStar)) => ptr_vtable(source_ty, target_ty),
+
         (&ty::Adt(source_adt_def, source_substs), &ty::Adt(target_adt_def, target_substs)) => {
             assert_eq!(source_adt_def, target_adt_def);
 
@@ -1148,23 +1123,18 @@ fn find_vtable_types_for_unsizing<'tcx>(
     }
 }
 
-#[instrument(skip(tcx), level = "debug")]
+#[instrument(skip(tcx), level = "debug", ret)]
 fn create_fn_mono_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     source: Span,
 ) -> Spanned<MonoItem<'tcx>> {
-    debug!("create_fn_mono_item(instance={})", instance);
-
     let def_id = instance.def_id();
     if tcx.sess.opts.unstable_opts.profile_closures && def_id.is_local() && tcx.is_closure(def_id) {
         crate::util::dump_closure_profile(tcx, instance);
     }
 
-    let respanned = respan(source, MonoItem::Fn(instance.polymorphize(tcx)));
-    debug!(?respanned);
-
-    respanned
+    respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
 }
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
@@ -1276,7 +1246,7 @@ impl<'v> RootCollector<'_, 'v> {
                 }
             }
             DefKind::Fn => {
-                self.push_if_root(id.def_id);
+                self.push_if_root(id.def_id.def_id);
             }
             _ => {}
         }
@@ -1284,7 +1254,7 @@ impl<'v> RootCollector<'_, 'v> {
 
     fn process_impl_item(&mut self, id: hir::ImplItemId) {
         if matches!(self.tcx.def_kind(id.def_id), DefKind::AssocFn) {
-            self.push_if_root(id.def_id);
+            self.push_if_root(id.def_id.def_id);
         }
     }
 
@@ -1309,7 +1279,7 @@ impl<'v> RootCollector<'_, 'v> {
     #[instrument(skip(self), level = "debug")]
     fn push_if_root(&mut self, def_id: LocalDefId) {
         if self.is_root(def_id) {
-            debug!("RootCollector::push_if_root: found root def_id={:?}", def_id);
+            debug!("found root");
 
             let instance = Instance::mono(self.tcx, def_id.to_def_id());
             self.output.push(create_fn_mono_item(self.tcx, instance, DUMMY_SP));
@@ -1322,7 +1292,7 @@ impl<'v> RootCollector<'_, 'v> {
     /// the return type of `main`. This is not needed when
     /// the user writes their own `start` manually.
     fn push_extra_entry_roots(&mut self) {
-        let Some((main_def_id, EntryFnType::Main)) = self.entry_fn else {
+        let Some((main_def_id, EntryFnType::Main { .. })) = self.entry_fn else {
             return;
         };
 

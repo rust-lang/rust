@@ -1,5 +1,5 @@
 error[E0195]: lifetime parameters or bounds on method `scan` do not match the trait declaration
-  --> $DIR/issue-87803.rs:22:12
+  --> $DIR/issue-87803.rs:20:12
    |
 LL |     fn scan<'a>(&mut self, i : Self::Input<'a>) -> Self::Token<'a>;
    |            ---- lifetimes in impl do not match this method in trait

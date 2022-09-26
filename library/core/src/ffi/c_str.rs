@@ -1,7 +1,6 @@
-use crate::ascii;
 use crate::cmp::Ordering;
 use crate::ffi::c_char;
-use crate::fmt::{self, Write};
+use crate::fmt;
 use crate::intrinsics;
 use crate::ops;
 use crate::slice;
@@ -121,10 +120,10 @@ enum FromBytesWithNulErrorKind {
 }
 
 impl FromBytesWithNulError {
-    fn interior_nul(pos: usize) -> FromBytesWithNulError {
+    const fn interior_nul(pos: usize) -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::InteriorNul(pos) }
     }
-    fn not_nul_terminated() -> FromBytesWithNulError {
+    const fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
     }
 
@@ -161,11 +160,7 @@ impl fmt::Display for FromBytesUntilNulError {
 #[stable(feature = "cstr_debug", since = "1.3.0")]
 impl fmt::Debug for CStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\"")?;
-        for byte in self.to_bytes().iter().flat_map(|&b| ascii::escape_default(b)) {
-            f.write_char(byte as char)?;
-        }
-        write!(f, "\"")
+        write!(f, "\"{}\"", self.to_bytes().escape_ascii())
     }
 }
 
@@ -299,7 +294,8 @@ impl CStr {
     /// ```
     ///
     #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
-    pub fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
+    #[rustc_const_unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+    pub const fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
             Some(nul_pos) => {
@@ -348,7 +344,8 @@ impl CStr {
     /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    pub fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
             Some(nul_pos) if nul_pos + 1 == bytes.len() => {
@@ -498,7 +495,8 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_bytes(&self) -> &[u8] {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
         // SAFETY: to_bytes_with_nul returns slice with length at least 1
         unsafe { bytes.get_unchecked(..bytes.len() - 1) }
@@ -525,7 +523,8 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_bytes_with_nul(&self) -> &[u8] {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
         unsafe { &*(&self.inner as *const [c_char] as *const [u8]) }
@@ -548,7 +547,8 @@ impl CStr {
     /// assert_eq!(cstr.to_str(), Ok("foo"));
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn to_str(&self) -> Result<&str, str::Utf8Error> {
         // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
         // instead of in `from_ptr()`, it may be worth considering if this should
         // be rewritten to do the UTF-8 check inline with the length calculation

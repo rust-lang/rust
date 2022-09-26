@@ -38,7 +38,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
-use tracing::{info, warn};
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -69,7 +68,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     }
 
     if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS");
+        hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
     }
 
     Ok(krate)
@@ -165,7 +164,7 @@ pub fn create_resolver(
     krate: &ast::Crate,
     crate_name: &str,
 ) -> BoxedResolver {
-    tracing::trace!("create_resolver");
+    trace!("create_resolver");
     BoxedResolver::new(sess, move |sess, resolver_arenas| {
         Resolver::new(sess, krate, crate_name, metadata_loader, resolver_arenas)
     })
@@ -279,7 +278,7 @@ pub fn configure_and_expand(
     crate_name: &str,
     resolver: &mut Resolver<'_>,
 ) -> Result<ast::Crate> {
-    tracing::trace!("configure_and_expand");
+    trace!("configure_and_expand");
     pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
@@ -416,7 +415,7 @@ pub fn configure_and_expand(
     }
 
     if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS");
+        hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS", "ast-stats-2");
     }
 
     resolver.resolve_crate(&krate);
@@ -574,12 +573,23 @@ fn write_out_deps(
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.parse_sess.file_depinfo.borrow();
-        let extra_tracked_files = file_depinfo.iter().map(|path_sym| {
-            let path = PathBuf::from(path_sym.as_str());
+
+        let normalize_path = |path: PathBuf| {
             let file = FileName::from(path);
             escape_dep_filename(&file.prefer_local().to_string())
-        });
+        };
+
+        let extra_tracked_files =
+            file_depinfo.iter().map(|path_sym| normalize_path(PathBuf::from(path_sym.as_str())));
         files.extend(extra_tracked_files);
+
+        // We also need to track used PGO profile files
+        if let Some(ref profile_instr) = sess.opts.cg.profile_use {
+            files.push(normalize_path(profile_instr.as_path().to_path_buf()));
+        }
+        if let Some(ref profile_sample) = sess.opts.unstable_opts.profile_sample_use {
+            files.push(normalize_path(profile_sample.as_path().to_path_buf()));
+        }
 
         if sess.binary_dep_depinfo() {
             if let Some(ref backend) = sess.opts.unstable_opts.codegen_backend {

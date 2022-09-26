@@ -423,12 +423,7 @@ impl Step for Llvm {
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
         // equally well everywhere.
-        //
-        // If we're not linking rustc to a dynamic LLVM, though, then don't link
-        // tools to it.
-        let llvm_link_shared =
-            builder.llvm_link_tools_dynamically(target) && builder.llvm_link_shared();
-        if llvm_link_shared {
+        if builder.llvm_link_shared() {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
@@ -553,7 +548,7 @@ impl Step for Llvm {
         // libLLVM.dylib will be built. However, llvm-config will still look
         // for a versioned path like libLLVM-14.dylib. Manually create a symbolic
         // link to make llvm-config happy.
-        if llvm_link_shared && target.contains("apple-darwin") {
+        if builder.llvm_link_shared() && target.contains("apple-darwin") {
             let mut cmd = Command::new(&build_llvm_config);
             let version = output(cmd.arg("--version"));
             let major = version.split('.').next().unwrap();
@@ -638,7 +633,7 @@ fn configure_cmake(
 
         if target.contains("darwin") {
             // Make sure that CMake does not build universal binaries on macOS.
-            // Explicitly specifiy the one single target architecture.
+            // Explicitly specify the one single target architecture.
             if target.starts_with("aarch64") {
                 // macOS uses a different name for building arm64
                 cfg.define("CMAKE_OSX_ARCHITECTURES", "arm64");

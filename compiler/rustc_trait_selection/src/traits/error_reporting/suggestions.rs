@@ -25,8 +25,7 @@ use rustc_middle::hir::map;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, IsSuggestable,
-    ProjectionPredicate, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitable,
+    ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_session::Limit;
@@ -174,7 +173,7 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-        proj_pred: Option<ty::PolyProjectionPredicate<'tcx>>,
+        associated_item: Option<(&'static str, Ty<'tcx>)>,
         body_id: hir::HirId,
     );
 
@@ -467,7 +466,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         mut err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-        proj_pred: Option<ty::PolyProjectionPredicate<'tcx>>,
+        associated_ty: Option<(&'static str, Ty<'tcx>)>,
         body_id: hir::HirId,
     ) {
         let trait_pred = self.resolve_numeric_literals_with_default(trait_pred);
@@ -604,21 +603,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         trait_pred.print_modifiers_and_trait_path().to_string()
                     );
 
-                    if let Some(proj_pred) = proj_pred {
-                        let ProjectionPredicate { projection_ty, term } = proj_pred.skip_binder();
-                        let item = self.tcx.associated_item(projection_ty.item_def_id);
-
+                    if let Some((name, term)) = associated_ty {
                         // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
                         // That should be extracted into a helper function.
                         if constraint.ends_with('>') {
                             constraint = format!(
-                                "{}, {}={}>",
+                                "{}, {} = {}>",
                                 &constraint[..constraint.len() - 1],
-                                item.name,
+                                name,
                                 term
                             );
                         } else {
-                            constraint.push_str(&format!("<{}={}>", item.name, term));
+                            constraint.push_str(&format!("<{} = {}>", name, term));
                         }
                     }
 
@@ -648,7 +644,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     ..
                 }) if !param_ty => {
                     // Missing generic type parameter bound.
-                    if suggest_arbitrary_trait_bound(self.tcx, generics, &mut err, trait_pred) {
+                    if suggest_arbitrary_trait_bound(
+                        self.tcx,
+                        generics,
+                        &mut err,
+                        trait_pred,
+                        associated_ty,
+                    ) {
                         return;
                     }
                 }
@@ -657,7 +659,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 _ => {}
             }
 
-            hir_id = self.tcx.hir().local_def_id_to_hir_id(self.tcx.hir().get_parent_item(hir_id));
+            hir_id = self.tcx.hir().get_parent_item(hir_id).into();
         }
     }
 
@@ -774,7 +776,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // Get the local name of this closure. This can be inaccurate because
             // of the possibility of reassignment, but this should be good enough.
             match &kind {
-                hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, None) => {
+                hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, ident, None) => {
                     Some(ident.name)
                 }
                 _ => {
@@ -1065,7 +1067,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         object_ty: Ty<'tcx>,
     ) {
-        let ty::Dynamic(predicates, _) = object_ty.kind() else { return; };
+        let ty::Dynamic(predicates, _, ty::Dyn) = object_ty.kind() else { return; };
         let self_ref_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, self_ty);
 
         for predicate in predicates.iter() {
@@ -1158,8 +1160,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // and if not maybe suggest doing something else? If we kept the expression around we
                     // could also check if it is an fn call (very likely) and suggest changing *that*, if
                     // it is from the local crate.
-                    err.span_suggestion_verbose(
-                        expr.span.shrink_to_hi().with_hi(span.hi()),
+                    err.span_suggestion(
+                        span,
                         "remove the `.await`",
                         "",
                         Applicability::MachineApplicable,
@@ -1363,7 +1365,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let trait_pred = self.resolve_vars_if_possible(trait_pred);
         let ty = trait_pred.skip_binder().self_ty();
         let is_object_safe = match ty.kind() {
-            ty::Dynamic(predicates, _) => {
+            ty::Dynamic(predicates, _, ty::Dyn) => {
                 // If the `dyn Trait` is not object safe, do not suggest `Box<dyn Trait>`.
                 predicates
                     .principal_def_id()
@@ -1423,7 +1425,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut spans_and_needs_box = vec![];
 
         match liberated_sig.output().kind() {
-            ty::Dynamic(predicates, _) => {
+            ty::Dynamic(predicates, _, _) => {
                 let cause = ObligationCause::misc(ret_ty.span, fn_hir_id);
                 let param_env = ty::ParamEnv::empty();
 
@@ -2254,7 +2256,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::QuestionMark
             | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
-            | ObligationCauseCode::BinOp { .. } => {}
+            | ObligationCauseCode::BinOp { .. }
+            | ObligationCauseCode::AscribeUserTypeProvePredicate(..) => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
@@ -2709,14 +2712,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     let parent_id = hir.get_parent_item(arg_hir_id);
                     let typeck_results: &TypeckResults<'tcx> = match &in_progress_typeck_results {
                         Some(t) if t.hir_owner == parent_id => t,
-                        _ => self.tcx.typeck(parent_id),
+                        _ => self.tcx.typeck(parent_id.def_id),
                     };
-                    let ty = typeck_results.expr_ty_adjusted(expr);
-                    let span = expr.peel_blocks().span;
+                    let expr = expr.peel_blocks();
+                    let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error());
+                    let span = expr.span;
                     if Some(span) != err.span.primary_span() {
                         err.span_label(
                             span,
-                            &if ty.references_error() {
+                            if ty.references_error() {
                                 String::new()
                             } else {
                                 format!("this tail expression is of type `{:?}`", ty)

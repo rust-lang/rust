@@ -74,7 +74,7 @@ use syntax::SourceFile;
 use crate::navigation_target::{ToNav, TryToNav};
 
 pub use crate::{
-    annotations::{Annotation, AnnotationConfig, AnnotationKind},
+    annotations::{Annotation, AnnotationConfig, AnnotationKind, AnnotationLocation},
     call_hierarchy::CallItem,
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
@@ -82,8 +82,8 @@ pub use crate::{
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{
-        ClosureReturnTypeHints, InlayHint, InlayHintsConfig, InlayKind, InlayTooltip,
-        LifetimeElisionHints, ReborrowHints,
+        ClosureReturnTypeHints, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
+        InlayTooltip, LifetimeElisionHints, ReborrowHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,

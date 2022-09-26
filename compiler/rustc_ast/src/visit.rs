@@ -156,8 +156,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
         walk_where_predicate(self, p)
     }
-    fn visit_fn(&mut self, fk: FnKind<'ast>, s: Span, _: NodeId) {
-        walk_fn(self, fk, s)
+    fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) {
+        walk_fn(self, fk)
     }
     fn visit_assoc_item(&mut self, i: &'ast AssocItem, ctxt: AssocCtxt) {
         walk_assoc_item(self, i, ctxt)
@@ -201,11 +201,11 @@ pub trait Visitor<'ast>: Sized {
     fn visit_use_tree(&mut self, use_tree: &'ast UseTree, id: NodeId, _nested: bool) {
         walk_use_tree(self, use_tree, id)
     }
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'ast PathSegment) {
-        walk_path_segment(self, path_span, path_segment)
+    fn visit_path_segment(&mut self, path_segment: &'ast PathSegment) {
+        walk_path_segment(self, path_segment)
     }
-    fn visit_generic_args(&mut self, path_span: Span, generic_args: &'ast GenericArgs) {
-        walk_generic_args(self, path_span, generic_args)
+    fn visit_generic_args(&mut self, generic_args: &'ast GenericArgs) {
+        walk_generic_args(self, generic_args)
     }
     fn visit_generic_arg(&mut self, generic_arg: &'ast GenericArg) {
         walk_generic_arg(self, generic_arg)
@@ -435,7 +435,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
 
 pub fn walk_path<'a, V: Visitor<'a>>(visitor: &mut V, path: &'a Path) {
     for segment in &path.segments {
-        visitor.visit_path_segment(path.span, segment);
+        visitor.visit_path_segment(segment);
     }
 }
 
@@ -457,18 +457,14 @@ pub fn walk_use_tree<'a, V: Visitor<'a>>(visitor: &mut V, use_tree: &'a UseTree,
     }
 }
 
-pub fn walk_path_segment<'a, V: Visitor<'a>>(
-    visitor: &mut V,
-    path_span: Span,
-    segment: &'a PathSegment,
-) {
+pub fn walk_path_segment<'a, V: Visitor<'a>>(visitor: &mut V, segment: &'a PathSegment) {
     visitor.visit_ident(segment.ident);
     if let Some(ref args) = segment.args {
-        visitor.visit_generic_args(path_span, args);
+        visitor.visit_generic_args(args);
     }
 }
 
-pub fn walk_generic_args<'a, V>(visitor: &mut V, _path_span: Span, generic_args: &'a GenericArgs)
+pub fn walk_generic_args<'a, V>(visitor: &mut V, generic_args: &'a GenericArgs)
 where
     V: Visitor<'a>,
 {
@@ -502,7 +498,7 @@ where
 pub fn walk_assoc_constraint<'a, V: Visitor<'a>>(visitor: &mut V, constraint: &'a AssocConstraint) {
     visitor.visit_ident(constraint.ident);
     if let Some(ref gen_args) = constraint.gen_args {
-        visitor.visit_generic_args(gen_args.span(), gen_args);
+        visitor.visit_generic_args(gen_args);
     }
     match constraint.kind {
         AssocConstraintKind::Equality { ref term } => match term {
@@ -659,7 +655,7 @@ pub fn walk_fn_decl<'a, V: Visitor<'a>>(visitor: &mut V, function_declaration: &
     visitor.visit_fn_ret_ty(&function_declaration.output);
 }
 
-pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>, _span: Span) {
+pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) {
     match kind {
         FnKind::Fn(_, _, sig, _, generics, body) => {
             visitor.visit_generics(generics);
@@ -800,7 +796,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             walk_list!(visitor, visit_expr, arguments);
         }
         ExprKind::MethodCall(ref segment, ref receiver, ref arguments, _span) => {
-            visitor.visit_path_segment(expression.span, segment);
+            visitor.visit_path_segment(segment);
             visitor.visit_expr(receiver);
             walk_list!(visitor, visit_expr, arguments);
         }

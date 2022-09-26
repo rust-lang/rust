@@ -1,0 +1,21 @@
+### What it does
+Detects uses of `Vec::sort_by` passing in a closure
+which compares the two arguments, either directly or indirectly.
+
+### Why is this bad?
+It is more clear to use `Vec::sort_by_key` (or `Vec::sort` if
+possible) than to use `Vec::sort_by` and a more complicated
+closure.
+
+### Known problems
+If the suggested `Vec::sort_by_key` uses Reverse and it isn't already
+imported by a use statement, then it will need to be added manually.
+
+### Example
+```
+vec.sort_by(|a, b| a.foo().cmp(&b.foo()));
+```
+Use instead:
+```
+vec.sort_by_key(|a| a.foo());
+```

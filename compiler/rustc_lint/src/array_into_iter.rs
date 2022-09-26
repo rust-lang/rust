@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
         }
 
         // We only care about method call expressions.
-        if let hir::ExprKind::MethodCall(call, args, _) = &expr.kind {
+        if let hir::ExprKind::MethodCall(call, receiver_arg, ..) = &expr.kind {
             if call.ident.name != sym::into_iter {
                 return;
             }
@@ -75,7 +75,6 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             };
 
             // As this is a method call expression, we have at least one argument.
-            let receiver_arg = &args[0];
             let receiver_ty = cx.typeck_results().expr_ty(receiver_arg);
             let adjustments = cx.typeck_results().expr_adjustments(receiver_arg);
 

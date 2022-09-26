@@ -13,11 +13,10 @@
 | '_#2r | U0 | {bb0[0..=1], '_#2r}
 | '_#3r | U0 | {bb0[0..=1], '_#3r}
 | '_#4r | U0 | {bb0[0..=1], '_#4r}
-| '_#5r | U0 | {}
-| '_#6r | U0 | {bb0[0..=1], '_#1r}
-| '_#7r | U0 | {bb0[0..=1], '_#2r}
-| '_#8r | U0 | {bb0[0..=1], '_#1r}
-| '_#9r | U0 | {bb0[0..=1], '_#3r}
+| '_#5r | U0 | {bb0[0..=1], '_#1r}
+| '_#6r | U0 | {bb0[0..=1], '_#2r}
+| '_#7r | U0 | {bb0[0..=1], '_#1r}
+| '_#8r | U0 | {bb0[0..=1], '_#3r}
 |
 | Inference Constraints
 | '_#0r live at {bb0[0..=1]}
@@ -25,16 +24,16 @@
 | '_#2r live at {bb0[0..=1]}
 | '_#3r live at {bb0[0..=1]}
 | '_#4r live at {bb0[0..=1]}
-| '_#1r: '_#6r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:26: 12:27) ($DIR/named-lifetimes-basic.rs:12:26: 12:27 (#0)
-| '_#1r: '_#8r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:54: 12:55) ($DIR/named-lifetimes-basic.rs:12:54: 12:55 (#0)
-| '_#2r: '_#7r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:42: 12:43) ($DIR/named-lifetimes-basic.rs:12:42: 12:43 (#0)
-| '_#3r: '_#9r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:66: 12:67) ($DIR/named-lifetimes-basic.rs:12:66: 12:67 (#0)
-| '_#6r: '_#1r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:26: 12:27) ($DIR/named-lifetimes-basic.rs:12:26: 12:27 (#0)
-| '_#7r: '_#2r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:42: 12:43) ($DIR/named-lifetimes-basic.rs:12:42: 12:43 (#0)
-| '_#8r: '_#1r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:54: 12:55) ($DIR/named-lifetimes-basic.rs:12:54: 12:55 (#0)
-| '_#9r: '_#3r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:66: 12:67) ($DIR/named-lifetimes-basic.rs:12:66: 12:67 (#0)
+| '_#1r: '_#5r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:26: 12:27) ($DIR/named-lifetimes-basic.rs:12:26: 12:27 (#0)
+| '_#1r: '_#7r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:54: 12:55) ($DIR/named-lifetimes-basic.rs:12:54: 12:55 (#0)
+| '_#2r: '_#6r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:42: 12:43) ($DIR/named-lifetimes-basic.rs:12:42: 12:43 (#0)
+| '_#3r: '_#8r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:66: 12:67) ($DIR/named-lifetimes-basic.rs:12:66: 12:67 (#0)
+| '_#5r: '_#1r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:26: 12:27) ($DIR/named-lifetimes-basic.rs:12:26: 12:27 (#0)
+| '_#6r: '_#2r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:42: 12:43) ($DIR/named-lifetimes-basic.rs:12:42: 12:43 (#0)
+| '_#7r: '_#1r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:54: 12:55) ($DIR/named-lifetimes-basic.rs:12:54: 12:55 (#0)
+| '_#8r: '_#3r due to BoringNoLocation at All($DIR/named-lifetimes-basic.rs:12:66: 12:67) ($DIR/named-lifetimes-basic.rs:12:66: 12:67 (#0)
 |
-fn use_x(_1: &'_#6r mut i32, _2: &'_#7r u32, _3: &'_#8r u32, _4: &'_#9r u32) -> bool {
+fn use_x(_1: &'_#5r mut i32, _2: &'_#6r u32, _3: &'_#7r u32, _4: &'_#8r u32) -> bool {
     debug w => _1;                       // in scope 0 at $DIR/named-lifetimes-basic.rs:+0:26: +0:27
     debug x => _2;                       // in scope 0 at $DIR/named-lifetimes-basic.rs:+0:42: +0:43
     debug y => _3;                       // in scope 0 at $DIR/named-lifetimes-basic.rs:+0:54: +0:55

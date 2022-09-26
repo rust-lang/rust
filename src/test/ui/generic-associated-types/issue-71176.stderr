@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `Provider::A`
-  --> $DIR/issue-71176.rs:12:27
+  --> $DIR/issue-71176.rs:10:27
    |
 LL |   inner: Box<dyn Provider<A = B>>,
    |                           ^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-71176.rs:4:10
+  --> $DIR/issue-71176.rs:2:10
    |
 LL |     type A<'a>;
    |          ^ --

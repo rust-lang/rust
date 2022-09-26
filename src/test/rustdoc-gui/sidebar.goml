@@ -1,5 +1,6 @@
 // Checks multiple things on the sidebar display (width of its elements, colors, etc).
 goto: file://|DOC_PATH|/test_docs/index.html
+assert-property: (".sidebar", {"clientWidth": "200"})
 show-text: true
 local-storage: {"rustdoc-theme": "light"}
 // We reload the page so the local storage settings are being used.
@@ -39,11 +40,13 @@ assert-property: ("html", {"scrollTop": "0"})
 
 // We now go back to the crate page to click on the "lib2" crate link.
 goto: file://|DOC_PATH|/test_docs/index.html
+assert-property: (".sidebar", {"clientWidth": "200"})
 assert-css: (".sidebar-elems .crate > ul > li:first-child > a", {"color": "rgb(53, 109, 164)"})
 click: ".sidebar-elems .crate > ul > li:first-child > a"
 
 // PAGE: lib2/index.html
 goto: file://|DOC_PATH|/lib2/index.html
+assert-property: (".sidebar", {"clientWidth": "200"})
 assert-text: (".sidebar > .location", "Crate lib2")
 // We check that we have the crates list and that the "current" on is now "lib2".
 assert-text: (".sidebar-elems .crate > ul > li > a.current", "lib2")
@@ -65,11 +68,13 @@ assert-text: (".sidebar .sidebar-elems .location", "In lib2")
 assert-false: ".sidebar-elems > .crate"
 
 goto: ./module/index.html
+assert-property: (".sidebar", {"clientWidth": "200"})
 assert-text: (".sidebar > .location", "Module module")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems > .crate"
 
 goto: ./sub_module/sub_sub_module/index.html
+assert-property: (".sidebar", {"clientWidth": "200"})
 assert-text: (".sidebar > .location", "Module sub_sub_module")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems .crate"
@@ -78,11 +83,21 @@ assert-text: ("#functions + .item-table .item-left > a", "foo")
 
 // Links to trait implementations in the sidebar should not wrap even if they are long.
 goto: file://|DOC_PATH|/lib2/struct.HasALongTraitWithParams.html
+assert-property: (".sidebar", {"clientWidth": "200"})
 assert-property: (".sidebar-elems section .block li > a", {"offsetHeight": 29})
 
 // Test that clicking on of the "In <module>" headings in the sidebar links to the
 // appropriate anchor in index.html.
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+assert-property: (".sidebar", {"clientWidth": "200"})
 click: ".block.mod h3 a"
 // PAGE: index.html
 assert-css: ("#modules", {"background-color": "rgb(253, 255, 211)"})
+
+// Finally, assert that the `[+]/[−]` toggle doesn't affect sidebar width.
+click: "#toggle-all-docs"
+assert-text: ("#toggle-all-docs", "[+]")
+assert-property: (".sidebar", {"clientWidth": "200"})
+click: "#toggle-all-docs"
+assert-text: ("#toggle-all-docs", "[−]")
+assert-property: (".sidebar", {"clientWidth": "200"})

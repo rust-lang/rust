@@ -1,6 +1,6 @@
 // from rfc2005 test suite
 
-#![feature(let_else)]
+
 
 // Verify the binding mode shifts - only when no `&` are auto-dereferenced is the
 // final default binding mode mutable.

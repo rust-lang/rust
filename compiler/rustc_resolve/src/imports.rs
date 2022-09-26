@@ -2,7 +2,7 @@
 
 use crate::diagnostics::Suggestion;
 use crate::Determinacy::{self, *};
-use crate::Namespace::{MacroNS, TypeNS};
+use crate::Namespace::{self, *};
 use crate::{module_to_string, names_to_string};
 use crate::{AmbiguityKind, BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
@@ -22,8 +22,6 @@ use rustc_span::hygiene::LocalExpnId;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
-
-use tracing::*;
 
 use std::cell::Cell;
 use std::{mem, ptr};
@@ -216,7 +214,7 @@ impl<'a> Resolver<'a> {
         binding: &'a NameBinding<'a>,
         import: &'a Import<'a>,
     ) -> &'a NameBinding<'a> {
-        let import_vis = import.expect_vis();
+        let import_vis = import.expect_vis().to_def_id();
         let vis = if binding.vis.is_at_least(import_vis, self)
             || pub_use_of_private_extern_crate_hack(import, binding)
         {
@@ -229,7 +227,7 @@ impl<'a> Resolver<'a> {
             if vis == import_vis
                 || max_vis.get().map_or(true, |max_vis| vis.is_at_least(max_vis, self))
             {
-                max_vis.set(Some(vis))
+                max_vis.set(Some(vis.expect_local()))
             }
         }
 
@@ -372,6 +370,31 @@ impl<'a> Resolver<'a> {
             import.used.set(true);
             self.used_imports.insert(import.id);
         }
+    }
+
+    /// Take primary and additional node IDs from an import and select one that corresponds to the
+    /// given namespace. The logic must match the corresponding logic from `fn lower_use_tree` that
+    /// assigns resolutons to IDs.
+    pub(crate) fn import_id_for_ns(&self, import: &Import<'_>, ns: Namespace) -> NodeId {
+        if let ImportKind::Single { additional_ids: (id1, id2), .. } = import.kind {
+            if let Some(resolutions) = self.import_res_map.get(&import.id) {
+                assert!(resolutions[ns].is_some(), "incorrectly finalized import");
+                return match ns {
+                    TypeNS => import.id,
+                    ValueNS => match resolutions.type_ns {
+                        Some(_) => id1,
+                        None => import.id,
+                    },
+                    MacroNS => match (resolutions.type_ns, resolutions.value_ns) {
+                        (Some(_), Some(_)) => id2,
+                        (Some(_), None) | (None, Some(_)) => id1,
+                        (None, None) => import.id,
+                    },
+                };
+            }
+        }
+
+        import.id
     }
 }
 
@@ -1135,24 +1158,15 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         if let Some(def_id) = module.opt_def_id() {
             let mut reexports = Vec::new();
 
-            module.for_each_child(self.r, |_, ident, _, binding| {
-                // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
-                // into the crate root to actual `NameBindingKind::Import`.
-                if binding.is_import()
-                    || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
-                {
-                    let res = binding.res().expect_non_local();
-                    // Ambiguous imports are treated as errors at this point and are
-                    // not exposed to other crates (see #36837 for more details).
-                    if res != def::Res::Err && !binding.is_ambiguity() {
-                        reexports.push(ModChild {
-                            ident,
-                            res,
-                            vis: binding.vis,
-                            span: binding.span,
-                            macro_rules: false,
-                        });
-                    }
+            module.for_each_child(self.r, |this, ident, _, binding| {
+                if let Some(res) = this.is_reexport(binding) {
+                    reexports.push(ModChild {
+                        ident,
+                        res,
+                        vis: binding.vis,
+                        span: binding.span,
+                        macro_rules: false,
+                    });
                 }
             });
 

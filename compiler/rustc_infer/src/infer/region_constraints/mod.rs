@@ -12,8 +12,10 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion};
+use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReLateBound, ReVar};
@@ -168,6 +170,7 @@ pub struct Verify<'tcx> {
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
     Projection(ty::ProjectionTy<'tcx>),
+    Opaque(DefId, SubstsRef<'tcx>),
 }
 
 /// Describes the things that some `GenericKind` value `G` is known to
@@ -426,21 +429,21 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         data
     }
 
-    pub fn data(&self) -> &RegionConstraintData<'tcx> {
+    pub(super) fn data(&self) -> &RegionConstraintData<'tcx> {
         &self.data
     }
 
-    pub fn start_snapshot(&mut self) -> RegionSnapshot {
+    pub(super) fn start_snapshot(&mut self) -> RegionSnapshot {
         debug!("RegionConstraintCollector: start_snapshot");
         RegionSnapshot { any_unifications: self.any_unifications }
     }
 
-    pub fn rollback_to(&mut self, snapshot: RegionSnapshot) {
+    pub(super) fn rollback_to(&mut self, snapshot: RegionSnapshot) {
         debug!("RegionConstraintCollector: rollback_to({:?})", snapshot);
         self.any_unifications = snapshot.any_unifications;
     }
 
-    pub fn new_region_var(
+    pub(super) fn new_region_var(
         &mut self,
         universe: ty::UniverseIndex,
         origin: RegionVariableOrigin,
@@ -455,12 +458,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     /// Returns the universe for the given variable.
-    pub fn var_universe(&self, vid: RegionVid) -> ty::UniverseIndex {
+    pub(super) fn var_universe(&self, vid: RegionVid) -> ty::UniverseIndex {
         self.var_infos[vid].universe
     }
 
     /// Returns the origin for the given variable.
-    pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
+    pub(super) fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
         self.var_infos[vid].origin
     }
 
@@ -492,7 +495,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         self.undo_log.push(AddVerify(index));
     }
 
-    pub fn add_given(&mut self, sub: Region<'tcx>, sup: ty::RegionVid) {
+    pub(super) fn add_given(&mut self, sub: Region<'tcx>, sup: ty::RegionVid) {
         // cannot add givens once regions are resolved
         if self.data.givens.insert((sub, sup)) {
             debug!("add_given({:?} <= {:?})", sub, sup);
@@ -501,7 +504,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn make_eqregion(
+    pub(super) fn make_eqregion(
         &mut self,
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
@@ -530,7 +533,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn member_constraint(
+    pub(super) fn member_constraint(
         &mut self,
         key: ty::OpaqueTypeKey<'tcx>,
         definition_span: Span,
@@ -554,7 +557,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     #[instrument(skip(self, origin), level = "debug")]
-    pub fn make_subregion(
+    pub(super) fn make_subregion(
         &mut self,
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
@@ -585,7 +588,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn verify_generic_bound(
+    pub(super) fn verify_generic_bound(
         &mut self,
         origin: SubregionOrigin<'tcx>,
         kind: GenericKind<'tcx>,
@@ -595,7 +598,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         self.add_verify(Verify { kind, origin, region: sub, bound });
     }
 
-    pub fn lub_regions(
+    pub(super) fn lub_regions(
         &mut self,
         tcx: TyCtxt<'tcx>,
         origin: SubregionOrigin<'tcx>,
@@ -613,7 +616,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn glb_regions(
+    pub(super) fn glb_regions(
         &mut self,
         tcx: TyCtxt<'tcx>,
         origin: SubregionOrigin<'tcx>,
@@ -634,7 +637,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     /// Resolves the passed RegionVid to the root RegionVid in the unification table
-    pub fn opportunistic_resolve_var(&mut self, rid: ty::RegionVid) -> ty::RegionVid {
+    pub(super) fn opportunistic_resolve_var(&mut self, rid: ty::RegionVid) -> ty::RegionVid {
         self.unification_table().find(rid).vid
     }
 
@@ -699,7 +702,6 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             ty::ReStatic | ty::ReErased | ty::ReFree(..) | ty::ReEarlyBound(..) => {
                 ty::UniverseIndex::ROOT
             }
-            ty::ReEmpty(ui) => ui,
             ty::RePlaceholder(placeholder) => placeholder.universe,
             ty::ReVar(vid) => self.var_universe(vid),
             ty::ReLateBound(..) => bug!("universe(): encountered bound region {:?}", region),
@@ -748,6 +750,9 @@ impl<'tcx> fmt::Debug for GenericKind<'tcx> {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{:?}", p),
             GenericKind::Projection(ref p) => write!(f, "{:?}", p),
+            GenericKind::Opaque(def_id, substs) => ty::tls::with(|tcx| {
+                write!(f, "{}", tcx.def_path_str_with_substs(def_id, tcx.lift(substs).unwrap()))
+            }),
         }
     }
 }
@@ -757,6 +762,9 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{}", p),
             GenericKind::Projection(ref p) => write!(f, "{}", p),
+            GenericKind::Opaque(def_id, substs) => ty::tls::with(|tcx| {
+                write!(f, "{}", tcx.def_path_str_with_substs(def_id, tcx.lift(substs).unwrap()))
+            }),
         }
     }
 }
@@ -766,6 +774,7 @@ impl<'tcx> GenericKind<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
             GenericKind::Projection(ref p) => tcx.mk_projection(p.item_def_id, p.substs),
+            GenericKind::Opaque(def_id, substs) => tcx.mk_opaque(def_id, substs),
         }
     }
 }

@@ -30,10 +30,10 @@ pub trait Tr<T> {
 }
 
 // @has - '//section[@id="impl-Tr%3CT%3E-for-T"]' ''
-// @!has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header in-band"]' '~const'
-// @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header in-band"]/a[@class="trait"]' 'Clone'
-// @!has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header in-band"]/span[@class="where"]' '~const'
-// @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header in-band"]/span[@class="where fmt-newline"]' ': Clone'
+// @!has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]' '~const'
+// @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/a[@class="trait"]' 'Clone'
+// @!has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/span[@class="where"]' '~const'
+// @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
 impl<T: ~const Clone + ~const Destruct> const Tr<T> for T
 where
     Option<T>: ~const Clone + ~const Destruct,

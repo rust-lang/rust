@@ -6,14 +6,13 @@ use crate::errors::{FeatureDiagnosticForIssue, FeatureDiagnosticHelp, FeatureGat
 use crate::lint::{
     builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId,
 };
-use crate::SessionDiagnostic;
 use rustc_ast::node_id::NodeId;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
     fallback_fluent_bundle, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
-    DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, MultiSpan, StashKey,
+    DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, IntoDiagnostic, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -21,11 +20,12 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{Span, Symbol};
 
+use rustc_ast::attr::AttrIdGenerator;
 use std::str;
 
 /// The set of keys (and, optionally, values) that define the compilation
 /// environment of the crate, used to drive conditional compilation.
-pub type CrateConfig = FxHashSet<(Symbol, Option<Symbol>)>;
+pub type CrateConfig = FxIndexSet<(Symbol, Option<Symbol>)>;
 pub type CrateCheckConfig = CheckCfg<Symbol>;
 
 /// Collected spans during parsing for places where a certain feature was
@@ -219,6 +219,8 @@ pub struct ParseSess {
     /// Spans passed to `proc_macro::quote_span`. Each span has a numerical
     /// identifier represented by its position in the vector.
     pub proc_macro_quoted_spans: Lock<Vec<Span>>,
+    /// Used to generate new `AttrId`s. Every `AttrId` is unique.
+    pub attr_id_generator: AttrIdGenerator,
 }
 
 impl ParseSess {
@@ -241,7 +243,7 @@ impl ParseSess {
         Self {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(None),
-            config: FxHashSet::default(),
+            config: FxIndexSet::default(),
             check_config: CrateCheckConfig::default(),
             edition: ExpnId::root().expn_data().edition,
             raw_identifier_spans: Lock::new(Vec::new()),
@@ -257,6 +259,7 @@ impl ParseSess {
             type_ascription_path_suggestions: Default::default(),
             assume_incomplete_release: false,
             proc_macro_quoted_spans: Default::default(),
+            attr_id_generator: AttrIdGenerator::new(),
         }
     }
 
@@ -341,34 +344,34 @@ impl ParseSess {
 
     pub fn create_err<'a>(
         &'a self,
-        err: impl SessionDiagnostic<'a>,
+        err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        err.into_diagnostic(self)
+        err.into_diagnostic(&self.span_diagnostic)
     }
 
-    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
+    pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
         self.create_err(err).emit()
     }
 
     pub fn create_warning<'a>(
         &'a self,
-        warning: impl SessionDiagnostic<'a, ()>,
+        warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        warning.into_diagnostic(self)
+        warning.into_diagnostic(&self.span_diagnostic)
     }
 
-    pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
+    pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
         self.create_warning(warning).emit()
     }
 
     pub fn create_fatal<'a>(
         &'a self,
-        fatal: impl SessionDiagnostic<'a, !>,
+        fatal: impl IntoDiagnostic<'a, !>,
     ) -> DiagnosticBuilder<'a, !> {
-        fatal.into_diagnostic(self)
+        fatal.into_diagnostic(&self.span_diagnostic)
     }
 
-    pub fn emit_fatal<'a>(&'a self, fatal: impl SessionDiagnostic<'a, !>) -> ! {
+    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
         self.create_fatal(fatal).emit()
     }
 

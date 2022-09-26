@@ -157,17 +157,6 @@ impl Versions {
         Ok(VersionInfo { version, git_commit, present: true })
     }
 
-    pub(crate) fn disable_version(&mut self, package: &PkgType) {
-        match self.versions.get_mut(package) {
-            Some(version) => {
-                *version = VersionInfo::default();
-            }
-            None => {
-                self.versions.insert(package.clone(), VersionInfo::default());
-            }
-        }
-    }
-
     pub(crate) fn archive_name(
         &self,
         package: &PkgType,

@@ -1,0 +1,20 @@
+error: Undefined Behavior: dereferencing pointer failed: $HEX[noalloc] is a dangling pointer (it has no provenance)
+  --> $DIR/provenance_transmute.rs:LL:CC
+   |
+LL |         let _val = *left_ptr;
+   |                    ^^^^^^^^^ dereferencing pointer failed: $HEX[noalloc] is a dangling pointer (it has no provenance)
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `deref` at $DIR/provenance_transmute.rs:LL:CC
+note: inside `main` at $DIR/provenance_transmute.rs:LL:CC
+  --> $DIR/provenance_transmute.rs:LL:CC
+   |
+LL |         deref(ptr1, ptr2.with_addr(ptr1.addr()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

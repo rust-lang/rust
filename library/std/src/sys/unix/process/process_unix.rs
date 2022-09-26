@@ -822,14 +822,14 @@ impl crate::os::linux::process::ChildExt for crate::process::Child {
         self.handle
             .pidfd
             .as_ref()
-            .ok_or_else(|| Error::new(ErrorKind::Other, "No pidfd was created."))
+            .ok_or_else(|| Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
     }
 
     fn take_pidfd(&mut self) -> io::Result<PidFd> {
         self.handle
             .pidfd
             .take()
-            .ok_or_else(|| Error::new(ErrorKind::Other, "No pidfd was created."))
+            .ok_or_else(|| Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
     }
 }
 

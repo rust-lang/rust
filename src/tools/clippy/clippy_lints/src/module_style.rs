@@ -2,7 +2,7 @@ use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{FileName, RealFileName, SourceFile, Span, SyntaxContext};
+use rustc_span::{FileName, SourceFile, Span, SyntaxContext};
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 
@@ -79,7 +79,7 @@ impl EarlyLintPass for ModStyle {
 
         let files = cx.sess().source_map().files();
 
-        let RealFileName::LocalPath(trim_to_src) = &cx.sess().opts.working_dir else { return };
+        let Some(trim_to_src) = cx.sess().opts.working_dir.local_path() else { return };
 
         // `folder_segments` is all unique folder path segments `path/to/foo.rs` gives
         // `[path, to]` but not foo
@@ -90,7 +90,7 @@ impl EarlyLintPass for ModStyle {
         // `{ foo => path/to/foo.rs, .. }
         let mut file_map = FxHashMap::default();
         for file in files.iter() {
-            if let FileName::Real(RealFileName::LocalPath(lp)) = &file.name {
+            if let FileName::Real(name) = &file.name && let Some(lp) = name.local_path() {
                 let path = if lp.is_relative() {
                     lp
                 } else if let Ok(relative) = lp.strip_prefix(trim_to_src) {

@@ -93,7 +93,7 @@ pub struct ParentOwnerIterator<'hir> {
 }
 
 impl<'hir> Iterator for ParentOwnerIterator<'hir> {
-    type Item = (LocalDefId, OwnerNode<'hir>);
+    type Item = (OwnerId, OwnerNode<'hir>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_id.local_id.index() != 0 {
@@ -107,13 +107,13 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
         }
         loop {
             // There are nodes that do not have entries, so we need to skip them.
-            let parent_id = self.map.def_key(self.current_id.owner).parent;
+            let parent_id = self.map.def_key(self.current_id.owner.def_id).parent;
 
-            let parent_id = parent_id.map_or(CRATE_HIR_ID.owner, |local_def_index| {
+            let parent_id = parent_id.map_or(CRATE_OWNER_ID, |local_def_index| {
                 let def_id = LocalDefId { local_def_index };
                 self.map.local_def_id_to_hir_id(def_id).owner
             });
-            self.current_id = HirId::make_owner(parent_id);
+            self.current_id = HirId::make_owner(parent_id.def_id);
 
             // If this `HirId` doesn't have an entry, skip it and look for its `parent_id`.
             if let Some(node) = self.map.tcx.hir_owner(self.current_id.owner) {
@@ -131,7 +131,7 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn root_module(self) -> &'hir Mod<'hir> {
-        match self.tcx.hir_owner(CRATE_DEF_ID).map(|o| o.node) {
+        match self.tcx.hir_owner(CRATE_OWNER_ID).map(|o| o.node) {
             Some(OwnerNode::Crate(item)) => item,
             _ => bug!(),
         }
@@ -186,7 +186,7 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn opt_local_def_id(self, hir_id: HirId) -> Option<LocalDefId> {
         if hir_id.local_id == ItemLocalId::new(0) {
-            Some(hir_id.owner)
+            Some(hir_id.owner.def_id)
         } else {
             self.tcx
                 .hir_owner_nodes(hir_id.owner)
@@ -212,7 +212,13 @@ impl<'hir> Map<'hir> {
                 ItemKind::Fn(..) => DefKind::Fn,
                 ItemKind::Macro(_, macro_kind) => DefKind::Macro(macro_kind),
                 ItemKind::Mod(..) => DefKind::Mod,
-                ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
+                ItemKind::OpaqueTy(ref opaque) => {
+                    if opaque.in_trait {
+                        DefKind::ImplTraitPlaceholder
+                    } else {
+                        DefKind::OpaqueTy
+                    }
+                }
                 ItemKind::TyAlias(..) => DefKind::TyAlias,
                 ItemKind::Enum(..) => DefKind::Enum,
                 ItemKind::Struct(..) => DefKind::Struct,
@@ -291,6 +297,9 @@ impl<'hir> Map<'hir> {
         Some(def_kind)
     }
 
+    /// Finds the id of the parent node to this one.
+    ///
+    /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
     pub fn find_parent_node(self, id: HirId) -> Option<HirId> {
         if id.local_id == ItemLocalId::from_u32(0) {
             Some(self.tcx.hir_owner_parent(id.owner))
@@ -298,6 +307,8 @@ impl<'hir> Map<'hir> {
             let owner = self.tcx.hir_owner_nodes(id.owner).as_owner()?;
             let node = owner.nodes[id.local_id].as_ref()?;
             let hir_id = HirId { owner: id.owner, local_id: node.parent };
+            // HIR indexing should have checked that.
+            debug_assert_ne!(id.local_id, node.parent);
             Some(hir_id)
         }
     }
@@ -341,7 +352,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_generics(self, id: LocalDefId) -> Option<&'hir Generics<'hir>> {
-        let node = self.tcx.hir_owner(id)?;
+        let node = self.tcx.hir_owner(OwnerId { def_id: id })?;
         node.node.generics()
     }
 
@@ -521,7 +532,7 @@ impl<'hir> Map<'hir> {
 
     pub fn get_module(self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
         let hir_id = HirId::make_owner(module);
-        match self.tcx.hir_owner(module).map(|o| o.node) {
+        match self.tcx.hir_owner(hir_id.owner).map(|o| o.node) {
             Some(OwnerNode::Item(&Item { span, kind: ItemKind::Mod(ref m), .. })) => {
                 (m, span, hir_id)
             }
@@ -611,14 +622,14 @@ impl<'hir> Map<'hir> {
     pub fn for_each_module(self, mut f: impl FnMut(LocalDefId)) {
         let crate_items = self.tcx.hir_crate_items(());
         for module in crate_items.submodules.iter() {
-            f(*module)
+            f(module.def_id)
         }
     }
 
     #[inline]
     pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync + Send) {
         let crate_items = self.tcx.hir_crate_items(());
-        par_for_each_in(&crate_items.submodules[..], |module| f(*module))
+        par_for_each_in(&crate_items.submodules[..], |module| f(module.def_id))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
@@ -710,27 +721,27 @@ impl<'hir> Map<'hir> {
         None
     }
 
-    /// Retrieves the `HirId` for `id`'s parent item, or `id` itself if no
+    /// Retrieves the `OwnerId` for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
-    pub fn get_parent_item(self, hir_id: HirId) -> LocalDefId {
+    pub fn get_parent_item(self, hir_id: HirId) -> OwnerId {
         if let Some((def_id, _node)) = self.parent_owner_iter(hir_id).next() {
             def_id
         } else {
-            CRATE_DEF_ID
+            CRATE_OWNER_ID
         }
     }
 
-    /// Returns the `HirId` of `id`'s nearest module parent, or `id` itself if no
+    /// Returns the `OwnerId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
-    pub(super) fn get_module_parent_node(self, hir_id: HirId) -> LocalDefId {
+    pub(super) fn get_module_parent_node(self, hir_id: HirId) -> OwnerId {
         for (def_id, node) in self.parent_owner_iter(hir_id) {
             if let OwnerNode::Item(&Item { kind: ItemKind::Mod(_), .. }) = node {
                 return def_id;
             }
         }
-        CRATE_DEF_ID
+        CRATE_OWNER_ID
     }
 
     /// When on an if expression, a match arm tail expression or a match arm, give back
@@ -803,30 +814,30 @@ impl<'hir> Map<'hir> {
         }
         bug!(
             "expected foreign mod or inlined parent, found {}",
-            self.node_to_string(HirId::make_owner(parent))
+            self.node_to_string(HirId::make_owner(parent.def_id))
         )
     }
 
-    pub fn expect_owner(self, id: LocalDefId) -> OwnerNode<'hir> {
+    pub fn expect_owner(self, id: OwnerId) -> OwnerNode<'hir> {
         self.tcx.hir_owner(id).unwrap_or_else(|| bug!("expected owner for {:?}", id)).node
     }
 
     pub fn expect_item(self, id: LocalDefId) -> &'hir Item<'hir> {
-        match self.tcx.hir_owner(id) {
+        match self.tcx.hir_owner(OwnerId { def_id: id }) {
             Some(Owner { node: OwnerNode::Item(item), .. }) => item,
             _ => bug!("expected item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
     pub fn expect_impl_item(self, id: LocalDefId) -> &'hir ImplItem<'hir> {
-        match self.tcx.hir_owner(id) {
+        match self.tcx.hir_owner(OwnerId { def_id: id }) {
             Some(Owner { node: OwnerNode::ImplItem(item), .. }) => item,
             _ => bug!("expected impl item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
     pub fn expect_trait_item(self, id: LocalDefId) -> &'hir TraitItem<'hir> {
-        match self.tcx.hir_owner(id) {
+        match self.tcx.hir_owner(OwnerId { def_id: id }) {
             Some(Owner { node: OwnerNode::TraitItem(item), .. }) => item,
             _ => bug!("expected trait item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
@@ -839,11 +850,14 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_foreign_item(self, id: LocalDefId) -> &'hir ForeignItem<'hir> {
+    pub fn expect_foreign_item(self, id: OwnerId) -> &'hir ForeignItem<'hir> {
         match self.tcx.hir_owner(id) {
             Some(Owner { node: OwnerNode::ForeignItem(item), .. }) => item,
             _ => {
-                bug!("expected foreign item, found {}", self.node_to_string(HirId::make_owner(id)))
+                bug!(
+                    "expected foreign item, found {}",
+                    self.node_to_string(HirId::make_owner(id.def_id))
+                )
             }
         }
     }
@@ -1184,7 +1198,13 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ItemKind::ForeignMod { .. } => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
                 ItemKind::TyAlias(..) => "ty",
-                ItemKind::OpaqueTy(..) => "opaque type",
+                ItemKind::OpaqueTy(ref opaque) => {
+                    if opaque.in_trait {
+                        "opaque type in trait"
+                    } else {
+                        "opaque type"
+                    }
+                }
                 ItemKind::Enum(..) => "enum",
                 ItemKind::Struct(..) => "struct",
                 ItemKind::Union(..) => "union",
@@ -1273,7 +1293,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
     // A "crate collector" and "module collector" start at a
     // module item (the former starts at the crate root) but only
     // the former needs to collect it. ItemCollector does not do this for us.
-    collector.submodules.push(CRATE_DEF_ID);
+    collector.submodules.push(CRATE_OWNER_ID);
     tcx.hir().walk_toplevel_module(&mut collector);
 
     let ItemCollector {
@@ -1301,7 +1321,7 @@ struct ItemCollector<'tcx> {
     // otherwise it collects items in some module.
     crate_collector: bool,
     tcx: TyCtxt<'tcx>,
-    submodules: Vec<LocalDefId>,
+    submodules: Vec<OwnerId>,
     items: Vec<ItemId>,
     trait_items: Vec<TraitItemId>,
     impl_items: Vec<ImplItemId>,
@@ -1333,7 +1353,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_item(&mut self, item: &'hir Item<'hir>) {
         if associated_body(Node::Item(item)).is_some() {
-            self.body_owners.push(item.def_id);
+            self.body_owners.push(item.def_id.def_id);
         }
 
         self.items.push(item.item_id());
@@ -1369,7 +1389,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
         if associated_body(Node::TraitItem(item)).is_some() {
-            self.body_owners.push(item.def_id);
+            self.body_owners.push(item.def_id.def_id);
         }
 
         self.trait_items.push(item.trait_item_id());
@@ -1378,7 +1398,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
         if associated_body(Node::ImplItem(item)).is_some() {
-            self.body_owners.push(item.def_id);
+            self.body_owners.push(item.def_id.def_id);
         }
 
         self.impl_items.push(item.impl_item_id());

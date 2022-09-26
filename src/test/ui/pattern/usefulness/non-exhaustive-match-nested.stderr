@@ -11,11 +11,11 @@ LL ~         (None, Ok(&[_, _, ..])) => "None, Ok(at least two elements)",
 LL +         (Some(&[]), Err(_)) => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `A(C)` not covered
+error[E0004]: non-exhaustive patterns: `T::A(U::C)` not covered
   --> $DIR/non-exhaustive-match-nested.rs:15:11
    |
 LL |     match x {
-   |           ^ pattern `A(C)` not covered
+   |           ^ pattern `T::A(U::C)` not covered
    |
 note: `T` defined here
   --> $DIR/non-exhaustive-match-nested.rs:1:10
@@ -26,7 +26,7 @@ LL | enum T { A(U), B }
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         T::B => { panic!("goodbye"); }
-LL +         A(C) => todo!()
+LL +         T::A(U::C) => todo!()
    |
 
 error: aborting due to 2 previous errors

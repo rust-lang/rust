@@ -1,7 +1,7 @@
 //! A subset of a mir body used for const evaluatability checking.
 use crate::mir;
 use crate::ty::visit::TypeVisitable;
-use crate::ty::{self, subst::Subst, DelaySpanBugEmitted, EarlyBinder, SubstsRef, Ty, TyCtxt};
+use crate::ty::{self, DelaySpanBugEmitted, EarlyBinder, SubstsRef, Ty, TyCtxt};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use std::cmp;
@@ -30,7 +30,7 @@ pub struct AbstractConst<'tcx> {
 impl<'tcx> AbstractConst<'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        uv: ty::Unevaluated<'tcx, ()>,
+        uv: ty::UnevaluatedConst<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
         let inner = tcx.thir_abstract_const_opt_const_arg(uv.def)?;
         debug!("AbstractConst::new({:?}) = {:?}", uv, inner);
@@ -42,7 +42,7 @@ impl<'tcx> AbstractConst<'tcx> {
         ct: ty::Const<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
         match ct.kind() {
-            ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv.shrink()),
+            ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv),
             ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => Err(reported),
             _ => Ok(None),
         }

@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 }
             },
 
-            ExprKind::MethodCall(name, .., [recv, ..], _) => {
+            ExprKind::MethodCall(name, recv, ..) => {
                 if is_trait_method(cx, e, sym::Into) && name.ident.as_str() == "into" {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);

@@ -100,7 +100,9 @@ macro_rules! arena_types {
             [decode] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::def_id::LocalDefId>,
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
-            [] dep_kind: rustc_middle::dep_graph::DepKindStruct,
+            [] dep_kind: rustc_middle::dep_graph::DepKindStruct<'tcx>,
+
+            [decode] trait_impl_trait_tys: rustc_data_structures::fx::FxHashMap<rustc_hir::def_id::DefId, rustc_middle::ty::Ty<'tcx>>,
         ]);
     )
 }

@@ -569,7 +569,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         // Determine the binding mode...
         let bm = match ba {
-            hir::BindingAnnotation::Unannotated => def_bm,
+            hir::BindingAnnotation::NONE => def_bm,
             _ => BindingMode::convert(ba),
         };
         // ...and store it in a side table:
@@ -655,7 +655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ba: hir::BindingAnnotation,
     ) {
         match (expected.kind(), actual.kind(), ba) {
-            (ty::Ref(_, inner_ty, _), _, hir::BindingAnnotation::Unannotated)
+            (ty::Ref(_, inner_ty, _), _, hir::BindingAnnotation::NONE)
                 if self.can_eq(self.param_env, *inner_ty, actual).is_ok() =>
             {
                 err.span_suggestion_verbose(
@@ -665,7 +665,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            (_, ty::Ref(_, inner_ty, _), hir::BindingAnnotation::Ref)
+            (_, ty::Ref(_, inner_ty, _), hir::BindingAnnotation::REF)
                 if self.can_eq(self.param_env, expected, *inner_ty).is_ok() =>
             {
                 err.span_suggestion_verbose(
@@ -981,7 +981,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         qpath: &'tcx hir::QPath<'tcx>,
         subpats: &'tcx [Pat<'tcx>],
-        ddpos: Option<usize>,
+        ddpos: hir::DotDotPos,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
@@ -1066,7 +1066,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check subpatterns.
         if subpats.len() == variant.fields.len()
-            || subpats.len() < variant.fields.len() && ddpos.is_some()
+            || subpats.len() < variant.fields.len() && ddpos.as_opt_usize().is_some()
         {
             let ty::Adt(_, substs) = pat_ty.kind() else {
                 bug!("unexpected pattern type {:?}", pat_ty);
@@ -1254,14 +1254,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         elements: &'tcx [Pat<'tcx>],
-        ddpos: Option<usize>,
+        ddpos: hir::DotDotPos,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let mut expected_len = elements.len();
-        if ddpos.is_some() {
+        if ddpos.as_opt_usize().is_some() {
             // Require known type only when `..` is present.
             if let ty::Tuple(tys) = self.structurally_resolved_type(span, expected).kind() {
                 expected_len = tys.len();
@@ -1397,7 +1397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .iter()
                 .copied()
                 .filter(|(field, _)| {
-                    field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
+                    field.vis.is_accessible_from(tcx.parent_module(pat.hir_id), tcx)
                         && !matches!(
                             tcx.eval_stability(field.did, None, DUMMY_SP, None),
                             EvalResult::Deny { .. }

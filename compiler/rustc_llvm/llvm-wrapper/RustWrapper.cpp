@@ -12,7 +12,7 @@
 #include "llvm/Object/COFFImportFile.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Pass.h"
-#include "llvm/Bitcode/BitcodeWriterPass.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/ADT/Optional.h"
 
@@ -404,45 +404,6 @@ extern "C" LLVMValueRef LLVMRustBuildAtomicStore(LLVMBuilderRef B,
   StoreInst *SI = unwrap(B)->CreateStore(unwrap(V), unwrap(Target));
   SI->setAtomic(fromRust(Order));
   return wrap(SI);
-}
-
-// FIXME: Use the C-API LLVMBuildAtomicCmpXchg and LLVMSetWeak
-// once we raise our minimum support to LLVM 10.
-extern "C" LLVMValueRef
-LLVMRustBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Target,
-                           LLVMValueRef Old, LLVMValueRef Source,
-                           LLVMAtomicOrdering Order,
-                           LLVMAtomicOrdering FailureOrder, LLVMBool Weak) {
-  // Rust probably knows the alignment of the target value and should be able to
-  // specify something more precise than MaybeAlign here. See also
-  // https://reviews.llvm.org/D97224 which may be a useful reference.
-  AtomicCmpXchgInst *ACXI = unwrap(B)->CreateAtomicCmpXchg(
-      unwrap(Target), unwrap(Old), unwrap(Source), llvm::MaybeAlign(), fromRust(Order),
-      fromRust(FailureOrder));
-  ACXI->setWeak(Weak);
-  return wrap(ACXI);
-}
-
-enum class LLVMRustSynchronizationScope {
-  SingleThread,
-  CrossThread,
-};
-
-static SyncScope::ID fromRust(LLVMRustSynchronizationScope Scope) {
-  switch (Scope) {
-  case LLVMRustSynchronizationScope::SingleThread:
-    return SyncScope::SingleThread;
-  case LLVMRustSynchronizationScope::CrossThread:
-    return SyncScope::System;
-  default:
-    report_fatal_error("bad SynchronizationScope.");
-  }
-}
-
-extern "C" LLVMValueRef
-LLVMRustBuildAtomicFence(LLVMBuilderRef B, LLVMAtomicOrdering Order,
-                         LLVMRustSynchronizationScope Scope) {
-  return wrap(unwrap(B)->CreateFence(fromRust(Order), fromRust(Scope)));
 }
 
 enum class LLVMRustAsmDialect {
@@ -1618,6 +1579,14 @@ extern "C" LLVMValueRef LLVMRustConstInBoundsGEP2(LLVMTypeRef Ty,
   return wrap(ConstantExpr::getInBoundsGetElementPtr(unwrap(Ty), Val, IdxList));
 }
 
+extern "C" bool LLVMRustConstIntGetZExtValue(LLVMValueRef CV, uint64_t *value) {
+    auto C = unwrap<llvm::ConstantInt>(CV);
+    if (C->getBitWidth() > 64)
+      return false;
+    *value = C->getZExtValue();
+    return true;
+}
+
 // Returns true if both high and low were successfully set. Fails in case constant wasn’t any of
 // the common sizes (1, 8, 16, 32, 64, 128 bits)
 extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *high, uint64_t *low)
@@ -1701,11 +1670,7 @@ LLVMRustModuleBufferCreate(LLVMModuleRef M) {
   auto Ret = std::make_unique<LLVMRustModuleBuffer>();
   {
     raw_string_ostream OS(Ret->data);
-    {
-      legacy::PassManager PM;
-      PM.add(createBitcodeWriterPass(OS));
-      PM.run(*unwrap(M));
-    }
+    WriteBitcodeToFile(*unwrap(M), OS);
   }
   return Ret.release();
 }

@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `StreamingIterator::Item`
-  --> $DIR/issue-81862.rs:5:40
+  --> $DIR/issue-81862.rs:3:40
    |
 LL |     fn next(&mut self) -> Option<Self::Item>;
    |                                        ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-81862.rs:4:10
+  --> $DIR/issue-81862.rs:2:10
    |
 LL |     type Item<'a>;
    |          ^^^^ --

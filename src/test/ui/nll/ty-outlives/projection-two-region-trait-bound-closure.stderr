@@ -19,11 +19,7 @@ note: no external requirements
 LL | / fn no_relationships_late<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'c>,
-LL | | {
-LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | |
-LL | | }
-   | |_^
+   | |________________________^
    |
    = note: defining type: no_relationships_late::<'_#1r, '_#2r, T>
 
@@ -57,10 +53,7 @@ LL | / fn no_relationships_early<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | |     'a: 'a,
-...  |
-LL | |
-LL | | }
-   | |_^
+   | |___________^
    |
    = note: defining type: no_relationships_early::<'_#1r, '_#2r, '_#3r, T>
 
@@ -94,10 +87,7 @@ LL | / fn projection_outlives<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | |     T::AssocType: 'a,
-...  |
-LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | | }
-   | |_^
+   | |_____________________^
    |
    = note: defining type: projection_outlives::<'_#1r, '_#2r, '_#3r, T>
 
@@ -122,10 +112,7 @@ LL | / fn elements_outlive1<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | |     'b: 'a,
-LL | | {
-LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | | }
-   | |_^
+   | |___________^
    |
    = note: defining type: elements_outlive1::<'_#1r, '_#2r, '_#3r, T>
 
@@ -150,10 +137,7 @@ LL | / fn elements_outlive2<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | |     'c: 'a,
-LL | | {
-LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | | }
-   | |_^
+   | |___________^
    |
    = note: defining type: elements_outlive2::<'_#1r, '_#2r, '_#3r, T>
 
@@ -178,11 +162,7 @@ note: no external requirements
 LL | / fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'b>,
-LL | | {
-LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | |
-LL | | }
-   | |_^
+   | |________________________^
    |
    = note: defining type: two_regions::<'_#1r, T>
 
@@ -220,10 +200,7 @@ LL | / fn two_regions_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'b>,
 LL | |     'b: 'a,
-LL | | {
-LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | | }
-   | |_^
+   | |___________^
    |
    = note: defining type: two_regions_outlive::<'_#1r, '_#2r, T>
 
@@ -247,11 +224,7 @@ note: no external requirements
 LL | / fn one_region<'a, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'a, 'a>,
-LL | | {
-...  |
-LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | | }
-   | |_^
+   | |________________________^
    |
    = note: defining type: one_region::<'_#1r, T>
 

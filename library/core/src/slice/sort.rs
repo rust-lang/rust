@@ -7,7 +7,7 @@
 //! stable sorting implementation.
 
 use crate::cmp;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::ptr;
 
 /// When dropped, copies from `src` into `dest`.
@@ -365,12 +365,12 @@ where
         if count > 0 {
             macro_rules! left {
                 () => {
-                    l.add(*start_l as usize)
+                    l.add(usize::from(*start_l))
                 };
             }
             macro_rules! right {
                 () => {
-                    r.sub((*start_r as usize) + 1)
+                    r.sub(usize::from(*start_r) + 1)
                 };
             }
 
@@ -458,7 +458,7 @@ where
             //    the last block, so the `l.offset` calls are valid.
             unsafe {
                 end_l = end_l.sub(1);
-                ptr::swap(l.add(*end_l as usize), r.sub(1));
+                ptr::swap(l.add(usize::from(*end_l)), r.sub(1));
                 r = r.sub(1);
             }
         }
@@ -471,7 +471,7 @@ where
             // SAFETY: See the reasoning in [remaining-elements-safety].
             unsafe {
                 end_r = end_r.sub(1);
-                ptr::swap(l, r.sub((*end_r as usize) + 1));
+                ptr::swap(l, r.sub(usize::from(*end_r) + 1));
                 l = l.add(1);
             }
         }
@@ -813,7 +813,7 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     // Sorting has no meaningful behavior on zero-sized types.
-    if mem::size_of::<T>() == 0 {
+    if T::IS_ZST {
         return;
     }
 
@@ -898,7 +898,7 @@ where
         panic!("partition_at_index index {} greater than length of slice {}", index, v.len());
     }
 
-    if mem::size_of::<T>() == 0 {
+    if T::IS_ZST {
         // Sorting has no meaningful behavior on zero-sized types. Do nothing.
     } else if index == v.len() - 1 {
         // Find max element and place it in the last position of the array. We're free to use

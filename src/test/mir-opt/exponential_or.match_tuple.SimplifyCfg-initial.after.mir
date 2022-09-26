@@ -8,13 +8,13 @@ fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
     let mut _4: bool;                    // in scope 0 at $DIR/exponential-or.rs:+2:70: +2:77
     let mut _5: bool;                    // in scope 0 at $DIR/exponential-or.rs:+2:62: +2:67
     let mut _6: bool;                    // in scope 0 at $DIR/exponential-or.rs:+2:62: +2:67
-    let _7: u32;                         // in scope 0 at $DIR/exponential-or.rs:+2:10: +2:21
-    let _8: u32;                         // in scope 0 at $DIR/exponential-or.rs:+2:57: +2:78
+    let _7: u32;                         // in scope 0 at $DIR/exponential-or.rs:+2:10: +2:11
+    let _8: u32;                         // in scope 0 at $DIR/exponential-or.rs:+2:57: +2:58
     let mut _9: u32;                     // in scope 0 at $DIR/exponential-or.rs:+2:83: +2:84
     let mut _10: u32;                    // in scope 0 at $DIR/exponential-or.rs:+2:87: +2:88
     scope 1 {
-        debug y => _7;                   // in scope 1 at $DIR/exponential-or.rs:+2:10: +2:21
-        debug z => _8;                   // in scope 1 at $DIR/exponential-or.rs:+2:57: +2:78
+        debug y => _7;                   // in scope 1 at $DIR/exponential-or.rs:+2:10: +2:11
+        debug z => _8;                   // in scope 1 at $DIR/exponential-or.rs:+2:57: +2:58
     }
 
     bb0: {
@@ -61,10 +61,10 @@ fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
     }
 
     bb9: {
-        StorageLive(_7);                 // scope 0 at $DIR/exponential-or.rs:+2:10: +2:21
-        _7 = (_1.0: u32);                // scope 0 at $DIR/exponential-or.rs:+2:10: +2:21
-        StorageLive(_8);                 // scope 0 at $DIR/exponential-or.rs:+2:57: +2:78
-        _8 = (_1.3: u32);                // scope 0 at $DIR/exponential-or.rs:+2:57: +2:78
+        StorageLive(_7);                 // scope 0 at $DIR/exponential-or.rs:+2:10: +2:11
+        _7 = (_1.0: u32);                // scope 0 at $DIR/exponential-or.rs:+2:10: +2:11
+        StorageLive(_8);                 // scope 0 at $DIR/exponential-or.rs:+2:57: +2:58
+        _8 = (_1.3: u32);                // scope 0 at $DIR/exponential-or.rs:+2:57: +2:58
         StorageLive(_9);                 // scope 1 at $DIR/exponential-or.rs:+2:83: +2:84
         _9 = _7;                         // scope 1 at $DIR/exponential-or.rs:+2:83: +2:84
         StorageLive(_10);                // scope 1 at $DIR/exponential-or.rs:+2:87: +2:88

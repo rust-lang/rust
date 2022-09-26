@@ -5,6 +5,7 @@ use hir::{Adt, Crate, HasAttrs, HasSource, ModuleDef, Semantics};
 use ide_db::RootDatabase;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
+use syntax::ast::edit_in_place::Removable;
 use syntax::ast::{self, make, AstNode, HasName, MatchArmList, MatchExpr, Pat};
 
 use crate::{
@@ -86,7 +87,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             .into_iter()
             .filter_map(|variant| {
                 Some((
-                    build_pat(ctx.db(), module, variant)?,
+                    build_pat(ctx.db(), module, variant, ctx.config.prefer_no_std)?,
                     variant.should_be_hidden(ctx.db(), module.krate()),
                 ))
             })
@@ -131,8 +132,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 let is_hidden = variants
                     .iter()
                     .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
-                let patterns =
-                    variants.into_iter().filter_map(|variant| build_pat(ctx.db(), module, variant));
+                let patterns = variants.into_iter().filter_map(|variant| {
+                    build_pat(ctx.db(), module, variant, ctx.config.prefer_no_std)
+                });
 
                 (ast::Pat::from(make::tuple_pat(patterns)), is_hidden)
             })
@@ -348,10 +350,16 @@ fn resolve_tuple_of_enum_def(
         .collect()
 }
 
-fn build_pat(db: &RootDatabase, module: hir::Module, var: ExtendedVariant) -> Option<ast::Pat> {
+fn build_pat(
+    db: &RootDatabase,
+    module: hir::Module,
+    var: ExtendedVariant,
+    prefer_no_std: bool,
+) -> Option<ast::Pat> {
     match var {
         ExtendedVariant::Variant(var) => {
-            let path = mod_path_to_ast(&module.find_use_path(db, ModuleDef::from(var))?);
+            let path =
+                mod_path_to_ast(&module.find_use_path(db, ModuleDef::from(var), prefer_no_std)?);
 
             // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though
             let pat: ast::Pat = match var.source(db)?.value.kind() {

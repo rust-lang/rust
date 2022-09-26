@@ -7,12 +7,12 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, CastKind, Local, Location,
-    MirPass, MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, RuntimePhase, Rvalue,
-    SourceScope, Statement, StatementKind, Terminator, TerminatorKind, UnOp, START_BLOCK,
+    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, CastKind, CopyNonOverlapping,
+    Local, Location, MirPass, MirPhase, NonDivergingIntrinsic, Operand, Place, PlaceElem, PlaceRef,
+    ProjectionElem, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind, Terminator,
+    TerminatorKind, UnOp, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
@@ -89,20 +89,21 @@ pub fn equal_up_to_regions<'tcx>(
 
     // Normalize lifetimes away on both sides, then compare.
     let normalize = |ty: Ty<'tcx>| {
-        let ty = ty.fold_with(&mut BottomUpFolder {
-            tcx,
-            // FIXME: We erase all late-bound lifetimes, but this is not fully correct.
-            // If you have a type like `<for<'a> fn(&'a u32) as SomeTrait>::Assoc`,
-            // this is not necessarily equivalent to `<fn(&'static u32) as SomeTrait>::Assoc`,
-            // since one may have an `impl SomeTrait for fn(&32)` and
-            // `impl SomeTrait for fn(&'static u32)` at the same time which
-            // specify distinct values for Assoc. (See also #56105)
-            lt_op: |_| tcx.lifetimes.re_erased,
-            // Leave consts and types unchanged.
-            ct_op: |ct| ct,
-            ty_op: |ty| ty,
-        });
-        tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty)
+        tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty).fold_with(
+            &mut BottomUpFolder {
+                tcx,
+                // FIXME: We erase all late-bound lifetimes, but this is not fully correct.
+                // If you have a type like `<for<'a> fn(&'a u32) as SomeTrait>::Assoc`,
+                // this is not necessarily equivalent to `<fn(&'static u32) as SomeTrait>::Assoc`,
+                // since one may have an `impl SomeTrait for fn(&32)` and
+                // `impl SomeTrait for fn(&'static u32)` at the same time which
+                // specify distinct values for Assoc. (See also #56105)
+                lt_op: |_| tcx.lifetimes.re_erased,
+                // Leave consts and types unchanged.
+                ct_op: |ct| ct,
+                ty_op: |ty| ty,
+            },
+        )
     };
     tcx.infer_ctxt().enter(|infcx| infcx.can_eq(param_env, normalize(src), normalize(dest)).is_ok())
 }
@@ -181,16 +182,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if (src, dest).has_opaque_types() {
             return true;
         }
-        // Normalize projections and things like that.
-        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
-        let src = self.tcx.normalize_erasing_regions(param_env, src);
-        let dest = self.tcx.normalize_erasing_regions(param_env, dest);
 
+        // Normalize projections and things like that.
         // Type-changing assignments can happen when subtyping is used. While
         // all normal lifetimes are erased, higher-ranked types with their
         // late-bound lifetimes are still around and can lead to type
         // differences. So we compare ignoring lifetimes.
-        equal_up_to_regions(self.tcx, param_env, src, dest)
+
+        // First, try with reveal_all. This might not work in some cases, as the predicates
+        // can be cleared in reveal_all mode. We try the reveal first anyways as it is used
+        // by some other passes like inlining as well.
+        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
+        if equal_up_to_regions(self.tcx, param_env, src, dest) {
+            return true;
+        }
+
+        // If this fails, we can try it without the reveal.
+        equal_up_to_regions(self.tcx, self.param_env, src, dest)
     }
 }
 
@@ -560,6 +568,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
+                    CastKind::DynStar => {
+                        // FIXME(dyn-star): make sure nothing needs to be done here.
+                    }
                     // Nothing to check here
                     CastKind::PointerFromExposedAddress
                     | CastKind::PointerExposeAddress
@@ -629,11 +640,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
-                ref src,
-                ref dst,
-                ref count,
-            }) => {
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
+                let ty = op.ty(&self.body.local_decls, self.tcx);
+                if !ty.is_bool() {
+                    self.fail(
+                        location,
+                        format!("`assume` argument must be `bool`, but got: `{}`", ty),
+                    );
+                }
+            }
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+                CopyNonOverlapping { src, dst, count },
+            )) => {
                 let src_ty = src.ty(&self.body.local_decls, self.tcx);
                 let op_src_ty = if let Some(src_deref) = src_ty.builtin_deref(true) {
                     src_deref.ty

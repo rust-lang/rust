@@ -5,6 +5,11 @@ LL |     let x;
    |         - binding declared here but left uninitialized
 LL |     &x
    |     ^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x = 0;
+   |           +++
 
 error: could not evaluate constant pattern
   --> $DIR/issue-78655.rs:7:9

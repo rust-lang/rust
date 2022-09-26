@@ -1,11 +1,11 @@
 error[E0107]: this associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
-  --> $DIR/missing_lifetime_const.rs:8:24
+  --> $DIR/missing_lifetime_const.rs:6:24
    |
 LL |     let _: <T as Foo>::Assoc<3>;
    |                        ^^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/missing_lifetime_const.rs:4:10
+  --> $DIR/missing_lifetime_const.rs:2:10
    |
 LL |     type Assoc<'a, const N: usize>;
    |          ^^^^^ --

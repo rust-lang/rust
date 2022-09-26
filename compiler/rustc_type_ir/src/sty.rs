@@ -5,18 +5,46 @@ use std::{fmt, hash};
 
 use crate::DebruijnIndex;
 use crate::FloatTy;
+use crate::HashStableContext;
 use crate::IntTy;
 use crate::Interner;
 use crate::TyDecoder;
 use crate::TyEncoder;
 use crate::UintTy;
-use crate::UniverseIndex;
 
 use self::RegionKind::*;
 use self::TyKind::*;
 
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_serialize::{Decodable, Decoder, Encodable};
+
+/// Specifies how a trait object is represented.
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Debug,
+    Encodable,
+    Decodable,
+    HashStable_Generic
+)]
+pub enum DynKind {
+    /// An unsized `dyn Trait` object
+    Dyn,
+    /// A sized `dyn* Trait` object
+    ///
+    /// These objects are represented as a `(data, vtable)` pair where `data` is a ptr-sized value
+    /// (often a pointer to the real object, but not necessarily) and `vtable` is a pointer to
+    /// the vtable for `dyn* Trait`. The representation is essentially the same as `&dyn Trait`
+    /// or similar, but the drop function included in the vtable is responsible for freeing the
+    /// underlying storage if needed. This allows a `dyn*` object to be treated agnostically with
+    /// respect to whether it points to a `Box<T>`, `Rc<T>`, etc.
+    DynStar,
+}
 
 /// Defines the kinds of types used by the type system.
 ///
@@ -95,7 +123,7 @@ pub enum TyKind<I: Interner> {
     FnPtr(I::PolyFnSig),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
-    Dynamic(I::ListBinderExistentialPredicate, I::Region),
+    Dynamic(I::ListBinderExistentialPredicate, I::Region, DynKind),
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
@@ -218,7 +246,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Ref(_, _, _) => 11,
         FnDef(_, _) => 12,
         FnPtr(_) => 13,
-        Dynamic(_, _) => 14,
+        Dynamic(..) => 14,
         Closure(_, _) => 15,
         Generator(_, _, _) => 16,
         GeneratorWitness(_) => 17,
@@ -252,7 +280,7 @@ impl<I: Interner> Clone for TyKind<I> {
             Ref(r, t, m) => Ref(r.clone(), t.clone(), m.clone()),
             FnDef(d, s) => FnDef(d.clone(), s.clone()),
             FnPtr(s) => FnPtr(s.clone()),
-            Dynamic(p, r) => Dynamic(p.clone(), r.clone()),
+            Dynamic(p, r, repr) => Dynamic(p.clone(), r.clone(), repr.clone()),
             Closure(d, s) => Closure(d.clone(), s.clone()),
             Generator(d, s, m) => Generator(d.clone(), s.clone(), m.clone()),
             GeneratorWitness(g) => GeneratorWitness(g.clone()),
@@ -297,9 +325,10 @@ impl<I: Interner> PartialEq for TyKind<I> {
                     __self_0 == __arg_1_0 && __self_1 == __arg_1_1
                 }
                 (&FnPtr(ref __self_0), &FnPtr(ref __arg_1_0)) => __self_0 == __arg_1_0,
-                (&Dynamic(ref __self_0, ref __self_1), &Dynamic(ref __arg_1_0, ref __arg_1_1)) => {
-                    __self_0 == __arg_1_0 && __self_1 == __arg_1_1
-                }
+                (
+                    &Dynamic(ref __self_0, ref __self_1, ref self_repr),
+                    &Dynamic(ref __arg_1_0, ref __arg_1_1, ref arg_repr),
+                ) => __self_0 == __arg_1_0 && __self_1 == __arg_1_1 && self_repr == arg_repr,
                 (&Closure(ref __self_0, ref __self_1), &Closure(ref __arg_1_0, ref __arg_1_1)) => {
                     __self_0 == __arg_1_0 && __self_1 == __arg_1_1
                 }
@@ -384,12 +413,16 @@ impl<I: Interner> Ord for TyKind<I> {
                     }
                 }
                 (&FnPtr(ref __self_0), &FnPtr(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
-                (&Dynamic(ref __self_0, ref __self_1), &Dynamic(ref __arg_1_0, ref __arg_1_1)) => {
-                    match Ord::cmp(__self_0, __arg_1_0) {
-                        Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                (
+                    &Dynamic(ref __self_0, ref __self_1, ref self_repr),
+                    &Dynamic(ref __arg_1_0, ref __arg_1_1, ref arg_repr),
+                ) => match Ord::cmp(__self_0, __arg_1_0) {
+                    Ordering::Equal => match Ord::cmp(__self_1, __arg_1_1) {
+                        Ordering::Equal => Ord::cmp(self_repr, arg_repr),
                         cmp => cmp,
-                    }
-                }
+                    },
+                    cmp => cmp,
+                },
                 (&Closure(ref __self_0, ref __self_1), &Closure(ref __arg_1_0, ref __arg_1_1)) => {
                     match Ord::cmp(__self_0, __arg_1_0) {
                         Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
@@ -492,10 +525,11 @@ impl<I: Interner> hash::Hash for TyKind<I> {
                 hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
-            (&Dynamic(ref __self_0, ref __self_1),) => {
+            (&Dynamic(ref __self_0, ref __self_1, ref repr),) => {
                 hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
-                hash::Hash::hash(__self_1, state)
+                hash::Hash::hash(__self_1, state);
+                hash::Hash::hash(repr, state)
             }
             (&Closure(ref __self_0, ref __self_1),) => {
                 hash::Hash::hash(&tykind_discriminant(self), state);
@@ -570,7 +604,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Ref(f0, f1, f2) => Formatter::debug_tuple_field3_finish(f, "Ref", f0, f1, f2),
             FnDef(f0, f1) => Formatter::debug_tuple_field2_finish(f, "FnDef", f0, f1),
             FnPtr(f0) => Formatter::debug_tuple_field1_finish(f, "FnPtr", f0),
-            Dynamic(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Dynamic", f0, f1),
+            Dynamic(f0, f1, f2) => Formatter::debug_tuple_field3_finish(f, "Dynamic", f0, f1, f2),
             Closure(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Closure", f0, f1),
             Generator(f0, f1, f2) => {
                 Formatter::debug_tuple_field3_finish(f, "Generator", f0, f1, f2)
@@ -659,9 +693,10 @@ where
             FnPtr(polyfnsig) => e.emit_enum_variant(disc, |e| {
                 polyfnsig.encode(e);
             }),
-            Dynamic(l, r) => e.emit_enum_variant(disc, |e| {
+            Dynamic(l, r, repr) => e.emit_enum_variant(disc, |e| {
                 l.encode(e);
                 r.encode(e);
+                repr.encode(e);
             }),
             Closure(def_id, substs) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
@@ -748,7 +783,7 @@ where
             11 => Ref(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
             12 => FnDef(Decodable::decode(d), Decodable::decode(d)),
             13 => FnPtr(Decodable::decode(d)),
-            14 => Dynamic(Decodable::decode(d), Decodable::decode(d)),
+            14 => Dynamic(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
             15 => Closure(Decodable::decode(d), Decodable::decode(d)),
             16 => Generator(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
             17 => GeneratorWitness(Decodable::decode(d)),
@@ -774,7 +809,7 @@ where
 
 // This is not a derived impl because a derive would require `I: HashStable`
 #[allow(rustc::usage_of_ty_tykind)]
-impl<CTX, I: Interner> HashStable<CTX> for TyKind<I>
+impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for TyKind<I>
 where
     I::AdtDef: HashStable<CTX>,
     I::DefId: HashStable<CTX>,
@@ -845,9 +880,10 @@ where
             FnPtr(polyfnsig) => {
                 polyfnsig.hash_stable(__hcx, __hasher);
             }
-            Dynamic(l, r) => {
+            Dynamic(l, r, repr) => {
                 l.hash_stable(__hcx, __hasher);
                 r.hash_stable(__hcx, __hasher);
+                repr.hash_stable(__hcx, __hasher);
             }
             Closure(def_id, substs) => {
                 def_id.hash_stable(__hcx, __hasher);
@@ -1023,14 +1059,6 @@ pub enum RegionKind<I: Interner> {
     /// Should not exist outside of type inference.
     RePlaceholder(I::PlaceholderRegion),
 
-    /// Empty lifetime is for data that is never accessed.  We tag the
-    /// empty lifetime with a universe -- the idea is that we don't
-    /// want `exists<'a> { forall<'b> { 'b: 'a } }` to be satisfiable.
-    /// Therefore, the `'empty` in a universe `U` is less than all
-    /// regions visible from `U`, but not less than regions not visible
-    /// from `U`.
-    ReEmpty(UniverseIndex),
-
     /// Erased region, used by trait selection, in MIR and during codegen.
     ReErased,
 }
@@ -1046,8 +1074,7 @@ const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
         ReStatic => 3,
         ReVar(_) => 4,
         RePlaceholder(_) => 5,
-        ReEmpty(_) => 6,
-        ReErased => 7,
+        ReErased => 6,
     }
 }
 
@@ -1072,7 +1099,6 @@ impl<I: Interner> Clone for RegionKind<I> {
             ReStatic => ReStatic,
             ReVar(a) => ReVar(a.clone()),
             RePlaceholder(a) => RePlaceholder(a.clone()),
-            ReEmpty(a) => ReEmpty(a.clone()),
             ReErased => ReErased,
         }
     }
@@ -1099,7 +1125,6 @@ impl<I: Interner> PartialEq for RegionKind<I> {
                 (&RePlaceholder(ref __self_0), &RePlaceholder(ref __arg_1_0)) => {
                     __self_0 == __arg_1_0
                 }
-                (&ReEmpty(ref __self_0), &ReEmpty(ref __arg_1_0)) => __self_0 == __arg_1_0,
                 (&ReErased, &ReErased) => true,
                 _ => true,
             }
@@ -1144,7 +1169,6 @@ impl<I: Interner> Ord for RegionKind<I> {
                 (&RePlaceholder(ref __self_0), &RePlaceholder(ref __arg_1_0)) => {
                     Ord::cmp(__self_0, __arg_1_0)
                 }
-                (&ReEmpty(ref __self_0), &ReEmpty(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
                 (&ReErased, &ReErased) => Ordering::Equal,
                 _ => Ordering::Equal,
             }
@@ -1182,10 +1206,6 @@ impl<I: Interner> hash::Hash for RegionKind<I> {
                 hash::Hash::hash(&regionkind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
-            (&ReEmpty(ref __self_0),) => {
-                hash::Hash::hash(&regionkind_discriminant(self), state);
-                hash::Hash::hash(__self_0, state)
-            }
             (&ReErased,) => {
                 hash::Hash::hash(&regionkind_discriminant(self), state);
             }
@@ -1210,8 +1230,6 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
             ReVar(ref vid) => vid.fmt(f),
 
             RePlaceholder(placeholder) => write!(f, "RePlaceholder({:?})", placeholder),
-
-            ReEmpty(ui) => write!(f, "ReEmpty({:?})", ui),
 
             ReErased => write!(f, "ReErased"),
         }
@@ -1247,9 +1265,6 @@ where
             RePlaceholder(a) => e.emit_enum_variant(disc, |e| {
                 a.encode(e);
             }),
-            ReEmpty(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
             ReErased => e.emit_enum_variant(disc, |_| {}),
         }
     }
@@ -1272,8 +1287,7 @@ where
             3 => ReStatic,
             4 => ReVar(Decodable::decode(d)),
             5 => RePlaceholder(Decodable::decode(d)),
-            6 => ReEmpty(Decodable::decode(d)),
-            7 => ReErased,
+            6 => ReErased,
             _ => panic!(
                 "{}",
                 format!(
@@ -1286,7 +1300,7 @@ where
 }
 
 // This is not a derived impl because a derive would require `I: HashStable`
-impl<CTX, I: Interner> HashStable<CTX> for RegionKind<I>
+impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for RegionKind<I>
 where
     I::EarlyBoundRegion: HashStable<CTX>,
     I::BoundRegion: HashStable<CTX>,
@@ -1304,9 +1318,6 @@ where
         match self {
             ReErased | ReStatic => {
                 // No variant fields to hash for these ...
-            }
-            ReEmpty(universe) => {
-                universe.hash_stable(hcx, hasher);
             }
             ReLateBound(db, br) => {
                 db.hash_stable(hcx, hasher);

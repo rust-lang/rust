@@ -41,7 +41,6 @@ use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::hash::Hash;
-use tracing::*;
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -945,12 +944,6 @@ pub struct ExpnData {
     /// internally without forcing the whole crate to opt-in
     /// to them.
     pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
-    /// Whether the macro is allowed to use `unsafe` internally
-    /// even if the user crate has `#![forbid(unsafe_code)]`.
-    pub allow_internal_unsafe: bool,
-    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`)
-    /// for a given macro.
-    pub local_inner_macros: bool,
     /// Edition of the crate in which the macro is defined.
     pub edition: Edition,
     /// The `DefId` of the macro being invoked,
@@ -958,6 +951,13 @@ pub struct ExpnData {
     pub macro_def_id: Option<DefId>,
     /// The normal module (`mod`) in which the expanded macro was defined.
     pub parent_module: Option<DefId>,
+    /// Suppresses the `unsafe_code` lint for code produced by this macro.
+    pub allow_internal_unsafe: bool,
+    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
+    pub local_inner_macros: bool,
+    /// Should debuginfo for the macro be collapsed to the outermost expansion site (in other
+    /// words, was the macro definition annotated with `#[collapse_debuginfo]`)?
+    pub collapse_debuginfo: bool,
 }
 
 impl !PartialEq for ExpnData {}
@@ -970,11 +970,12 @@ impl ExpnData {
         call_site: Span,
         def_site: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
-        allow_internal_unsafe: bool,
-        local_inner_macros: bool,
         edition: Edition,
         macro_def_id: Option<DefId>,
         parent_module: Option<DefId>,
+        allow_internal_unsafe: bool,
+        local_inner_macros: bool,
+        collapse_debuginfo: bool,
     ) -> ExpnData {
         ExpnData {
             kind,
@@ -982,12 +983,13 @@ impl ExpnData {
             call_site,
             def_site,
             allow_internal_unstable,
-            allow_internal_unsafe,
-            local_inner_macros,
             edition,
             macro_def_id,
             parent_module,
             disambiguator: 0,
+            allow_internal_unsafe,
+            local_inner_macros,
+            collapse_debuginfo,
         }
     }
 
@@ -1005,12 +1007,13 @@ impl ExpnData {
             call_site,
             def_site: DUMMY_SP,
             allow_internal_unstable: None,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
             edition,
             macro_def_id,
             parent_module,
             disambiguator: 0,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            collapse_debuginfo: false,
         }
     }
 

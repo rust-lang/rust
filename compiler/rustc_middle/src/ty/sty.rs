@@ -3,7 +3,7 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 use crate::infer::canonical::Canonical;
-use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
+use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
@@ -11,6 +11,7 @@ use crate::ty::{
     TypeVisitor,
 };
 use crate::ty::{List, ParamEnv};
+use hir::def::DefKind;
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
@@ -18,7 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
@@ -83,6 +84,17 @@ impl BoundRegionKind {
             BoundRegionKind::BrNamed(_, name) => name != kw::UnderscoreLifetime,
             _ => false,
         }
+    }
+
+    pub fn get_name(&self) -> Option<Symbol> {
+        if self.is_named() {
+            match *self {
+                BoundRegionKind::BrNamed(_, name) => return Some(name),
+                _ => unreachable!(),
+            }
+        }
+
+        None
     }
 }
 
@@ -201,7 +213,7 @@ static_assert_size!(TyKind<'_>, 32);
 /// * `GR`: The "return type", which is the type of value returned upon
 ///   completion of the generator.
 /// * `GW`: The "generator witness".
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
     /// concatenated with a tuple containing the types of the upvars.
@@ -332,7 +344,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
 }
 
 /// Similar to `ClosureSubsts`; see the above documentation for more.
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
 pub struct GeneratorSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
@@ -550,7 +562,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         layout.variant_fields.iter().map(move |variant| {
             variant
                 .iter()
-                .map(move |field| EarlyBinder(layout.field_tys[*field]).subst(tcx, self.substs))
+                .map(move |field| ty::EarlyBinder(layout.field_tys[*field]).subst(tcx, self.substs))
         })
     }
 
@@ -659,7 +671,7 @@ impl<'tcx> InlineConstSubsts<'tcx> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum ExistentialPredicate<'tcx> {
     /// E.g., `Iterator`.
     Trait(ExistentialTraitRef<'tcx>),
@@ -691,6 +703,9 @@ impl<'tcx> ExistentialPredicate<'tcx> {
 }
 
 impl<'tcx> Binder<'tcx, ExistentialPredicate<'tcx>> {
+    /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn PartialEq<u32>`),
+    /// and a concrete type `self_ty`, returns a full predicate where the existentially quantified variable `?Self`
+    /// has been replaced with `self_ty` (e.g., `self_ty: PartialEq<u32>`, in our example).
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
         match self.skip_binder() {
@@ -785,7 +800,7 @@ impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
 /// Trait references also appear in object types like `Foo<U>`, but in
 /// that case the `Self` parameter is absent from the substitutions.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -849,6 +864,12 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
+impl rustc_errors::IntoDiagnosticArg for PolyTraitRef<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 /// An existential reference to a trait, where `Self` is erased.
 /// For example, the trait object `Trait<'a, 'b, X, Y>` is:
 /// ```ignore (illustrative)
@@ -857,7 +878,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 /// The substitutions don't include the erased `Self`, only trait
 /// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct ExistentialTraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -905,73 +926,6 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable, HashStable)]
-pub struct EarlyBinder<T>(pub T);
-
-impl<T> EarlyBinder<T> {
-    pub fn as_ref(&self) -> EarlyBinder<&T> {
-        EarlyBinder(&self.0)
-    }
-
-    pub fn map_bound_ref<F, U>(&self, f: F) -> EarlyBinder<U>
-    where
-        F: FnOnce(&T) -> U,
-    {
-        self.as_ref().map_bound(f)
-    }
-
-    pub fn map_bound<F, U>(self, f: F) -> EarlyBinder<U>
-    where
-        F: FnOnce(T) -> U,
-    {
-        let value = f(self.0);
-        EarlyBinder(value)
-    }
-
-    pub fn try_map_bound<F, U, E>(self, f: F) -> Result<EarlyBinder<U>, E>
-    where
-        F: FnOnce(T) -> Result<U, E>,
-    {
-        let value = f(self.0)?;
-        Ok(EarlyBinder(value))
-    }
-
-    pub fn rebind<U>(&self, value: U) -> EarlyBinder<U> {
-        EarlyBinder(value)
-    }
-}
-
-impl<T> EarlyBinder<Option<T>> {
-    pub fn transpose(self) -> Option<EarlyBinder<T>> {
-        self.0.map(|v| EarlyBinder(v))
-    }
-}
-
-impl<T, U> EarlyBinder<(T, U)> {
-    pub fn transpose_tuple2(self) -> (EarlyBinder<T>, EarlyBinder<U>) {
-        (EarlyBinder(self.0.0), EarlyBinder(self.0.1))
-    }
-}
-
-pub struct EarlyBinderIter<T> {
-    t: T,
-}
-
-impl<T: IntoIterator> EarlyBinder<T> {
-    pub fn transpose_iter(self) -> EarlyBinderIter<T::IntoIter> {
-        EarlyBinderIter { t: self.0.into_iter() }
-    }
-}
-
-impl<T: Iterator> Iterator for EarlyBinderIter<T> {
-    type Item = EarlyBinder<T::Item>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.t.next().map(|i| EarlyBinder(i))
-    }
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum BoundVariableKind {
@@ -1013,7 +967,7 @@ impl BoundVariableKind {
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(HashStable)]
+#[derive(HashStable, Lift)]
 pub struct Binder<'tcx, T>(T, &'tcx List<BoundVariableKind>);
 
 impl<'tcx, T> Binder<'tcx, T>
@@ -1175,7 +1129,7 @@ impl<'tcx, T> Binder<'tcx, Option<T>> {
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct ProjectionTy<'tcx> {
     /// The parameters of the associated item.
     pub substs: SubstsRef<'tcx>,
@@ -1190,7 +1144,13 @@ pub struct ProjectionTy<'tcx> {
 
 impl<'tcx> ProjectionTy<'tcx> {
     pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
-        tcx.parent(self.item_def_id)
+        match tcx.def_kind(self.item_def_id) {
+            DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.item_def_id),
+            DefKind::ImplTraitPlaceholder => {
+                tcx.parent(tcx.impl_trait_in_trait_parent(self.item_def_id))
+            }
+            kind => bug!("unexpected DefKind in ProjectionTy: {kind:?}"),
+        }
     }
 
     /// Extracts the underlying trait reference and own substs from this projection.
@@ -1225,7 +1185,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
 pub struct GenSig<'tcx> {
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
@@ -1241,7 +1201,7 @@ pub type PolyGenSig<'tcx> = Binder<'tcx, GenSig<'tcx>>;
 /// - `output`: is the return type.
 /// - `c_variadic`: indicates whether this is a C-variadic function.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct FnSig<'tcx> {
     pub inputs_and_output: &'tcx List<Ty<'tcx>>,
     pub c_variadic: bool,
@@ -1423,7 +1383,7 @@ impl From<BoundVar> for BoundTy {
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct ExistentialProjection<'tcx> {
     pub item_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -1496,6 +1456,23 @@ impl<'tcx> Region<'tcx> {
         *self.0.0
     }
 
+    pub fn get_name(self) -> Option<Symbol> {
+        if self.has_name() {
+            let name = match *self {
+                ty::ReEarlyBound(ebr) => Some(ebr.name),
+                ty::ReLateBound(_, br) => br.kind.get_name(),
+                ty::ReFree(fr) => fr.bound_region.get_name(),
+                ty::ReStatic => Some(kw::StaticLifetime),
+                ty::RePlaceholder(placeholder) => placeholder.name.get_name(),
+                _ => None,
+            };
+
+            return name;
+        }
+
+        None
+    }
+
     /// Is this region named by the user?
     pub fn has_name(self) -> bool {
         match *self {
@@ -1505,7 +1482,6 @@ impl<'tcx> Region<'tcx> {
             ty::ReStatic => true,
             ty::ReVar(..) => false,
             ty::RePlaceholder(placeholder) => placeholder.name.is_named(),
-            ty::ReEmpty(_) => false,
             ty::ReErased => false,
         }
     }
@@ -1528,11 +1504,6 @@ impl<'tcx> Region<'tcx> {
     #[inline]
     pub fn is_placeholder(self) -> bool {
         matches!(*self, ty::RePlaceholder(..))
-    }
-
-    #[inline]
-    pub fn is_empty(self) -> bool {
-        matches!(*self, ty::ReEmpty(..))
     }
 
     #[inline]
@@ -1566,7 +1537,7 @@ impl<'tcx> Region<'tcx> {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
             }
-            ty::ReEmpty(_) | ty::ReStatic => {
+            ty::ReStatic => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReLateBound(..) => {
@@ -1846,7 +1817,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_trait(self) -> bool {
-        matches!(self.kind(), Dynamic(..))
+        matches!(self.kind(), Dynamic(_, _, ty::Dyn))
+    }
+
+    #[inline]
+    pub fn is_dyn_star(self) -> bool {
+        matches!(self.kind(), Dynamic(_, _, ty::DynStar))
     }
 
     #[inline]
@@ -2261,6 +2237,35 @@ impl<'tcx> Ty<'tcx> {
             ty::Bound(..) | ty::Placeholder(..) => {
                 bug!("`is_trivially_pure_clone_copy` applied to unexpected type: {:?}", self);
             }
+        }
+    }
+
+    // If `self` is a primitive, return its [`Symbol`].
+    pub fn primitive_symbol(self) -> Option<Symbol> {
+        match self.kind() {
+            ty::Bool => Some(sym::bool),
+            ty::Char => Some(sym::char),
+            ty::Float(f) => match f {
+                ty::FloatTy::F32 => Some(sym::f32),
+                ty::FloatTy::F64 => Some(sym::f64),
+            },
+            ty::Int(f) => match f {
+                ty::IntTy::Isize => Some(sym::isize),
+                ty::IntTy::I8 => Some(sym::i8),
+                ty::IntTy::I16 => Some(sym::i16),
+                ty::IntTy::I32 => Some(sym::i32),
+                ty::IntTy::I64 => Some(sym::i64),
+                ty::IntTy::I128 => Some(sym::i128),
+            },
+            ty::Uint(f) => match f {
+                ty::UintTy::Usize => Some(sym::usize),
+                ty::UintTy::U8 => Some(sym::u8),
+                ty::UintTy::U16 => Some(sym::u16),
+                ty::UintTy::U32 => Some(sym::u32),
+                ty::UintTy::U64 => Some(sym::u64),
+                ty::UintTy::U128 => Some(sym::u128),
+            },
+            _ => None,
         }
     }
 }

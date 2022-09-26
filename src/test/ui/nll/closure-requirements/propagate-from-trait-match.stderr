@@ -18,11 +18,7 @@ note: no external requirements
 LL | / fn supply<'a, T>(value: T)
 LL | | where
 LL | |     T: Trait<'a>,
-LL | | {
-...  |
-LL | |     });
-LL | | }
-   | |_^
+   | |_________________^
    |
    = note: defining type: supply::<'_#1r, T>
 

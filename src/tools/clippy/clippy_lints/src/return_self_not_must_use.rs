@@ -128,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for ReturnSelfNotMustUse {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'tcx>) {
         if let TraitItemKind::Fn(ref sig, _) = item.kind {
-            check_method(cx, sig.decl, item.def_id, item.span, item.hir_id());
+            check_method(cx, sig.decl, item.def_id.def_id, item.span, item.hir_id());
         }
     }
 }

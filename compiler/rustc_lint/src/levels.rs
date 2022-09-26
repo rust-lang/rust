@@ -21,7 +21,6 @@ use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use tracing::debug;
 
 use crate::errors::{
     MalformedAttribute, MalformedAttributeSub, OverruledAttribute, OverruledAttributeSub,
@@ -441,8 +440,10 @@ impl<'s> LintLevelsBuilder<'s> {
                                     sp,
                                     reason,
                                 );
-                                for id in ids {
-                                    self.insert_spec(*id, (level, src));
+                                for &id in ids {
+                                    if self.check_gated_lint(id, attr.span) {
+                                        self.insert_spec(id, (level, src));
+                                    }
                                 }
                                 if let Level::Expect(expect_id) = level {
                                     self.lint_expectations.push((

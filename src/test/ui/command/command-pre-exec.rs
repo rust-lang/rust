@@ -6,6 +6,7 @@
 // ignore-windows - this is a unix-specific test
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-fuchsia no execvp syscall
 #![feature(process_exec, rustc_private)]
 
 extern crate libc;

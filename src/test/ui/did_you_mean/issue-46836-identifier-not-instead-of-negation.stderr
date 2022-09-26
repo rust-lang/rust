@@ -4,7 +4,7 @@ error: unexpected `for_you` after identifier
 LL |     if not for_you {
    |        ----^^^^^^^
    |        |
-   |        help: use `!` to perform logical negation
+   |        help: use `!` to perform logical negation or bitwise not
 
 error: unexpected `the_worst` after identifier
   --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:11:15
@@ -12,13 +12,13 @@ error: unexpected `the_worst` after identifier
 LL |     while not the_worst {
    |           ----^^^^^^^^^
    |           |
-   |           help: use `!` to perform logical negation
+   |           help: use `!` to perform logical negation or bitwise not
 
 error: unexpected `println` after identifier
   --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:20:9
    |
 LL |     if not  // lack of braces is [sic]
-   |        ----- help: use `!` to perform logical negation
+   |        ----- help: use `!` to perform logical negation or bitwise not
 LL |         println!("Then when?");
    |         ^^^^^^^
 
@@ -42,7 +42,7 @@ error: unexpected `2` after identifier
 LL |     let resource = not 2;
    |                    ----^
    |                    |
-   |                    help: use `!` to perform logical negation
+   |                    help: use `!` to perform bitwise not
 
 error: unexpected `be_smothered_out_before` after identifier
   --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:32:27
@@ -50,7 +50,7 @@ error: unexpected `be_smothered_out_before` after identifier
 LL |     let young_souls = not be_smothered_out_before;
    |                       ----^^^^^^^^^^^^^^^^^^^^^^^
    |                       |
-   |                       help: use `!` to perform logical negation
+   |                       help: use `!` to perform logical negation or bitwise not
 
 error: aborting due to 6 previous errors
 

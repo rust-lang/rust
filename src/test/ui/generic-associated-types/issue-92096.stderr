@@ -1,5 +1,5 @@
 error: `C` does not live long enough
-  --> $DIR/issue-92096.rs:19:5
+  --> $DIR/issue-92096.rs:17:5
    |
 LL |     async move { c.connect().await }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

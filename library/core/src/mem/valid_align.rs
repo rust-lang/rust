@@ -28,7 +28,7 @@ impl ValidAlign {
     #[inline]
     pub(crate) const unsafe fn new_unchecked(align: usize) -> Self {
         // SAFETY: Precondition passed to the caller.
-        unsafe { assert_unsafe_precondition!(align.is_power_of_two()) };
+        unsafe { assert_unsafe_precondition!((align: usize) => align.is_power_of_two()) };
 
         // SAFETY: By precondition, this must be a power of two, and
         // our variants encompass all possible powers of two.

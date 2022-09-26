@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 pub trait LendingIterator {
     type Item<'a>
     where

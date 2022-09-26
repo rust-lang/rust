@@ -17,7 +17,7 @@
           _2 = <impl Fn() as Fn<()>>::call(move _3, move _4) -> [return: bb1, unwind: bb3]; // scope 0 at $DIR/cycle.rs:+1:5: +1:8
                                            // mir::Constant
                                            // + span: $DIR/cycle.rs:6:5: 6:6
-                                           // + literal: Const { ty: for<'r> extern "rust-call" fn(&'r impl Fn(), ()) -> <impl Fn() as FnOnce<()>>::Output {<impl Fn() as Fn<()>>::call}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: for<'a> extern "rust-call" fn(&'a impl Fn(), ()) -> <impl Fn() as FnOnce<()>>::Output {<impl Fn() as Fn<()>>::call}, val: Value(<ZST>) }
       }
   
       bb1: {

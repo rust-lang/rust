@@ -3,18 +3,15 @@
 //! See `mod.rs` for more context on type checking in general.
 
 use crate::astconv::AstConv as _;
-use crate::check::cast;
+use crate::check::cast::{self, CastCheckResult};
 use crate::check::coercion::CoerceMany;
 use crate::check::fatally_break_rust;
 use crate::check::method::SelfSource;
-use crate::check::report_unexpected_variant_res;
-use crate::check::BreakableCtxt;
-use crate::check::Diverges;
-use crate::check::DynamicCoerceMany;
 use crate::check::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
-use crate::check::FnCtxt;
-use crate::check::Needs;
-use crate::check::TupleArgumentsFlag::DontTupleArguments;
+use crate::check::{
+    report_unexpected_variant_res, BreakableCtxt, Diverges, DynamicCoerceMany, FnCtxt, Needs,
+    TupleArgumentsFlag::DontTupleArguments,
+};
 use crate::errors::{
     FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
     YieldExprOutsideOfGenerator,
@@ -324,8 +321,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Block(body, _) => self.check_block_with_expected(&body, expected),
             ExprKind::Call(callee, args) => self.check_call(expr, &callee, args, expected),
-            ExprKind::MethodCall(segment, args, _) => {
-                self.check_method_call(expr, segment, args, expected)
+            ExprKind::MethodCall(segment, receiver, args, _) => {
+                self.check_method_call(expr, segment, receiver, args, expected)
             }
             ExprKind::Cast(e, t) => self.check_expr_cast(e, t, expr),
             ExprKind::Type(e, t) => {
@@ -560,17 +557,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We just want to check sizedness, so instead of introducing
                     // placeholder lifetimes with probing, we just replace higher lifetimes
                     // with fresh vars.
-                    let arg_span = args.get(i).map(|a| a.span);
-                    let span = arg_span.unwrap_or(expr.span);
+                    let span = args.get(i).map(|a| a.span).unwrap_or(expr.span);
                     let input = self.replace_bound_vars_with_fresh_vars(
                         span,
                         infer::LateBoundRegionConversionTime::FnCall,
                         fn_sig.input(i),
                     );
-                    self.require_type_is_sized(
-                        self.normalize_associated_types_in(span, input),
+                    self.require_type_is_sized_deferred(
+                        input,
                         span,
-                        traits::SizedArgumentType(arg_span),
+                        traits::SizedArgumentType(None),
                     );
                 }
             }
@@ -585,11 +581,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 infer::LateBoundRegionConversionTime::FnCall,
                 fn_sig.output(),
             );
-            self.require_type_is_sized(
-                self.normalize_associated_types_in(expr.span, output),
-                expr.span,
-                traits::SizedReturnType,
-            );
+            self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
         }
 
         // We always require that the type provided as the value for
@@ -760,7 +752,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: hir::ImplItemKind::Fn(..),
                 span: encl_fn_span,
                 ..
-            })) = self.tcx.hir().find_by_def_id(encl_item_id)
+            })) = self.tcx.hir().find_by_def_id(encl_item_id.def_id)
             {
                 // We are inside a function body, so reporting "return statement
                 // outside of function body" needs an explanation.
@@ -769,7 +761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // If this didn't hold, we would not have to report an error in
                 // the first place.
-                assert_ne!(encl_item_id, encl_body_owner_id);
+                assert_ne!(encl_item_id.def_id, encl_body_owner_id);
 
                 let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
                 let encl_body = self.tcx.hir().body(encl_body_id);
@@ -889,7 +881,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        // FIXME: Make this use SessionDiagnostic once error codes can be dynamically set.
+        // FIXME: Make this use Diagnostic once error codes can be dynamically set.
         let mut err = self.tcx.sess.struct_span_err_with_code(
             op_span,
             "invalid left-hand side of assignment",
@@ -1200,13 +1192,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         segment: &hir::PathSegment<'_>,
+        rcvr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let rcvr = &args[0];
         let rcvr_t = self.check_expr(&rcvr);
         // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
+        let rcvr_t = self.structurally_resolved_type(rcvr.span, rcvr_t);
         let span = segment.ident.span;
 
         let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr, args) {
@@ -1223,9 +1215,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         rcvr_t,
                         segment.ident,
-                        SelfSource::MethodCall(&args[0]),
+                        SelfSource::MethodCall(rcvr),
                         error,
-                        Some(args),
+                        Some((rcvr, args)),
                     ) {
                         err.emit();
                     }
@@ -1235,14 +1227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Call the generic checker.
-        self.check_method_argument_types(
-            span,
-            expr,
-            method,
-            &args[1..],
-            DontTupleArguments,
-            expected,
-        )
+        self.check_method_argument_types(span, expr, method, &args, DontTupleArguments, expected)
     }
 
     fn check_expr_cast(
@@ -1264,8 +1249,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-            match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
-                Ok(cast_check) => {
+            match cast::check_cast(self, e, t_expr, t_cast, t.span, expr.span) {
+                CastCheckResult::Ok => t_cast,
+                CastCheckResult::Deferred(cast_check) => {
                     debug!(
                         "check_expr_cast: deferring cast from {:?} to {:?}: {:?}",
                         t_cast, t_expr, cast_check,
@@ -1273,7 +1259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     deferred_cast_checks.push(cast_check);
                     t_cast
                 }
-                Err(_) => self.tcx.ty_error(),
+                CastCheckResult::Err(ErrorGuaranteed { .. }) => self.tcx.ty_error(),
             }
         }
     }
@@ -1317,31 +1303,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn suggest_array_len(&self, expr: &'tcx hir::Expr<'tcx>, array_len: u64) {
-        if let Some(parent_hir_id) = self.tcx.hir().find_parent_node(expr.hir_id) {
-            let ty = match self.tcx.hir().find(parent_hir_id) {
-                Some(
-                    hir::Node::Local(hir::Local { ty: Some(ty), .. })
-                    | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. }),
-                ) => Some(ty),
-                _ => None,
-            };
-            if let Some(ty) = ty
-                && let hir::TyKind::Array(_, length) = ty.kind
-                && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
-                && let Some(span) = self.tcx.hir().opt_span(hir_id)
-            {
-                match self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::UnderscoreForArrayLengths) {
-                    Some(mut err) => {
-                        err.span_suggestion(
-                            span,
-                            "consider specifying the array length",
-                            array_len,
-                            Applicability::MaybeIncorrect,
-                        );
-                        err.emit();
-                    }
-                    None => ()
+        let parent_node = self.tcx.hir().parent_iter(expr.hir_id).find(|(_, node)| {
+            !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }))
+        });
+        let Some((_,
+            hir::Node::Local(hir::Local { ty: Some(ty), .. })
+            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. }))
+        ) = parent_node else {
+            return
+        };
+        if let hir::TyKind::Array(_, length) = ty.peel_refs().kind
+            && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
+            && let Some(span) = self.tcx.hir().opt_span(hir_id)
+        {
+            match self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::UnderscoreForArrayLengths) {
+                Some(mut err) => {
+                    err.span_suggestion(
+                        span,
+                        "consider specifying the array length",
+                        array_len,
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.emit();
                 }
+                None => ()
             }
         }
     }
@@ -1741,9 +1726,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let private_fields: Vec<&ty::FieldDef> = variant
                 .fields
                 .iter()
-                .filter(|field| {
-                    !field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
-                })
+                .filter(|field| !field.vis.is_accessible_from(tcx.parent_module(expr_id), tcx))
                 .collect();
 
             if !private_fields.is_empty() {
@@ -2355,7 +2338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Adt(def, _) = output_ty.kind() && !def.is_enum() {
                 def.non_enum_variant().fields.iter().any(|field| {
                     field.ident(self.tcx) == ident
-                        && field.vis.is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx)
+                        && field.vis.is_accessible_from(expr.hir_id.owner.def_id, self.tcx)
                 })
             } else if let ty::Tuple(tys) = output_ty.kind()
                 && let Ok(idx) = ident.as_str().parse::<usize>()

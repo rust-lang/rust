@@ -94,6 +94,34 @@ fn extract_path_backwards(text: &str, end_pos: usize) -> Option<usize> {
     if current_pos == end_pos { None } else { Some(current_pos) }
 }
 
+fn extract_path_forward(text: &str, start_pos: usize) -> Option<usize> {
+    use rustc_lexer::{is_id_continue, is_id_start};
+    let mut current_pos = start_pos;
+    loop {
+        if current_pos < text.len() && text[current_pos..].starts_with("::") {
+            current_pos += 2;
+        } else {
+            break;
+        }
+        let mut chars = text[current_pos..].chars();
+        if let Some(c) = chars.next() {
+            if is_id_start(c) {
+                current_pos += c.len_utf8();
+            } else {
+                break;
+            }
+        }
+        while let Some(c) = chars.next() {
+            if is_id_continue(c) {
+                current_pos += c.len_utf8();
+            } else {
+                break;
+            }
+        }
+    }
+    if current_pos == start_pos { None } else { Some(current_pos) }
+}
+
 fn is_valid_for_html_tag_name(c: char, is_empty: bool) -> bool {
     // https://spec.commonmark.org/0.30/#raw-html
     //
@@ -218,19 +246,68 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                     // If a tag looks like `<this>`, it might actually be a generic.
                     // We don't try to detect stuff `<like, this>` because that's not valid HTML,
                     // and we don't try to detect stuff `<like this>` because that's not valid Rust.
-                    if let Some(Some(generics_start)) = (is_open_tag
-                        && dox[..range.end].ends_with('>'))
+                    let mut generics_end = range.end;
+                    if let Some(Some(mut generics_start)) = (is_open_tag
+                        && dox[..generics_end].ends_with('>'))
                     .then(|| extract_path_backwards(&dox, range.start))
                     {
+                        while generics_start != 0
+                            && generics_end < dox.len()
+                            && dox.as_bytes()[generics_start - 1] == b'<'
+                            && dox.as_bytes()[generics_end] == b'>'
+                        {
+                            generics_end += 1;
+                            generics_start -= 1;
+                            if let Some(new_start) = extract_path_backwards(&dox, generics_start) {
+                                generics_start = new_start;
+                            }
+                            if let Some(new_end) = extract_path_forward(&dox, generics_end) {
+                                generics_end = new_end;
+                            }
+                        }
+                        if let Some(new_end) = extract_path_forward(&dox, generics_end) {
+                            generics_end = new_end;
+                        }
                         let generics_sp = match super::source_span_for_markdown_range(
                             tcx,
                             &dox,
-                            &(generics_start..range.end),
+                            &(generics_start..generics_end),
                             &item.attrs,
                         ) {
                             Some(sp) => sp,
                             None => item.attr_span(tcx),
                         };
+                        // Sometimes, we only extract part of a path. For example, consider this:
+                        //
+                        //     <[u32] as IntoIter<u32>>::Item
+                        //                       ^^^^^ unclosed HTML tag `u32`
+                        //
+                        // We don't have any code for parsing fully-qualified trait paths.
+                        // In theory, we could add it, but doing it correctly would require
+                        // parsing the entire path grammar, which is problematic because of
+                        // overlap between the path grammar and Markdown.
+                        //
+                        // The example above shows that ambiguity. Is `[u32]` intended to be an
+                        // intra-doc link to the u32 primitive, or is it intended to be a slice?
+                        //
+                        // If the below conditional were removed, we would suggest this, which is
+                        // not what the user probably wants.
+                        //
+                        //     <[u32] as `IntoIter<u32>`>::Item
+                        //
+                        // We know that the user actually wants to wrap the whole thing in a code
+                        // block, but the only reason we know that is because `u32` does not, in
+                        // fact, implement IntoIter. If the example looks like this:
+                        //
+                        //     <[Vec<i32>] as IntoIter<i32>::Item
+                        //
+                        // The ideal fix would be significantly different.
+                        if (generics_start > 0 && dox.as_bytes()[generics_start - 1] == b'<')
+                            || (generics_end < dox.len() && dox.as_bytes()[generics_end] == b'>')
+                        {
+                            diag.emit();
+                            return;
+                        }
                         // multipart form is chosen here because ``Vec<i32>`` would be confusing.
                         diag.multipart_suggestion(
                             "try marking as source code",
@@ -278,7 +355,7 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
             for (event, range) in p {
                 match event {
                     Event::Start(Tag::CodeBlock(_)) => in_code_block = true,
-                    Event::Html(text) | Event::Text(text) if !in_code_block => {
+                    Event::Html(text) if !in_code_block => {
                         extract_tags(&mut tags, &text, range, &mut is_in_comment, &report_diag)
                     }
                     Event::End(Tag::CodeBlock(_)) => in_code_block = false,

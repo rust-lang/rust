@@ -2,13 +2,13 @@ error[E0391]: cycle detected when const-evaluating + checking `Tr::A`
   --> $DIR/defaults-cyclic-fail.rs:5:5
    |
 LL |     const A: u8 = Self::B;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires const-evaluating + checking `Tr::B`...
   --> $DIR/defaults-cyclic-fail.rs:8:5
    |
 LL |     const B: u8 = Self::A;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires const-evaluating + checking `Tr::A`, completing the cycle
 note: cycle used when const-evaluating + checking `main::promoted[1]`
   --> $DIR/defaults-cyclic-fail.rs:16:16

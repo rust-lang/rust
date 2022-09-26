@@ -14,7 +14,7 @@ use std::slice;
 
 pub use super::query::*;
 
-#[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 pub struct SwitchTargets {
     /// Possible values. The locations to branch to in each case
     /// are found in the corresponding indices from the `targets` vector.
@@ -102,7 +102,7 @@ impl<'a> Iterator for SwitchTargetsIter<'a> {
 
 impl<'a> ExactSizeIterator for SwitchTargetsIter<'a> {}
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Terminator<'tcx> {
     pub source_info: SourceInfo,
     pub kind: TerminatorKind<'tcx>,

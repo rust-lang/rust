@@ -4,7 +4,7 @@
 // (yes, that's a thing), rustdoc lists both of them on the index page,
 // but only documents the first one on the page for the macro.
 // Fortunately, this can only happen in document private items mode,
-// but it still isn't ideal beahvior.
+// but it still isn't ideal behavior.
 //
 // See https://github.com/rust-lang/rust/pull/88019#discussion_r693920453
 //

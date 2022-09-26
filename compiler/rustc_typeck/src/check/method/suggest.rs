@@ -16,8 +16,8 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
 use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
@@ -30,7 +30,7 @@ use rustc_trait_selection::traits::{
 use std::cmp::Ordering;
 use std::iter;
 
-use super::probe::{Mode, ProbeScope};
+use super::probe::{IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -95,7 +95,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
-        args: Option<&'tcx [hir::Expr<'tcx>]>,
+        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
@@ -537,7 +537,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 bound_spans.push((self.tcx.def_span(def.did()), msg))
                             }
                             // Point at the trait object that couldn't satisfy the bound.
-                            ty::Dynamic(preds, _) => {
+                            ty::Dynamic(preds, _, _) => {
                                 for pred in preds.iter() {
                                     match pred.skip_binder() {
                                         ty::ExistentialPredicate::Trait(tr) => bound_spans
@@ -998,7 +998,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         rcvr_ty,
                         item_name,
-                        args.map(|args| args.len()),
+                        args.map(|(_, args)| args.len() + 1),
                         source,
                         out_of_scope_traits,
                         &unsatisfied_predicates,
@@ -1068,6 +1068,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
+
+                self.check_for_deref_method(&mut err, source, rcvr_ty, item_name);
 
                 return Some(err);
             }
@@ -1159,7 +1161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         });
         if let Some((field, field_ty)) = field_receiver {
-            let scope = tcx.parent_module(self.body_id).to_def_id();
+            let scope = tcx.parent_module(self.body_id);
             let is_accessible = field.vis.is_accessible_from(scope, tcx);
 
             if is_accessible {
@@ -1651,6 +1653,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn check_for_deref_method(
+        &self,
+        err: &mut Diagnostic,
+        self_source: SelfSource<'tcx>,
+        rcvr_ty: Ty<'tcx>,
+        item_name: Ident,
+    ) {
+        let SelfSource::QPath(ty) = self_source else { return; };
+        for (deref_ty, _) in self.autoderef(rustc_span::DUMMY_SP, rcvr_ty).skip(1) {
+            if let Ok(pick) = self.probe_for_name(
+                ty.span,
+                Mode::Path,
+                item_name,
+                IsSuggestion(true),
+                deref_ty,
+                ty.hir_id,
+                ProbeScope::TraitsInScope,
+            ) {
+                if deref_ty.is_suggestable(self.tcx, true)
+                    // If this method receives `&self`, then the provided
+                    // argument _should_ coerce, so it's valid to suggest
+                    // just changing the path.
+                    && pick.item.fn_has_self_parameter
+                    && let Some(self_ty) =
+                        self.tcx.fn_sig(pick.item.def_id).inputs().skip_binder().get(0)
+                    && self_ty.is_ref()
+                {
+                    let suggested_path = match deref_ty.kind() {
+                        ty::Bool
+                        | ty::Char
+                        | ty::Int(_)
+                        | ty::Uint(_)
+                        | ty::Float(_)
+                        | ty::Adt(_, _)
+                        | ty::Str
+                        | ty::Projection(_)
+                        | ty::Param(_) => format!("{deref_ty}"),
+                        _ => format!("<{deref_ty}>"),
+                    };
+                    err.span_suggestion_verbose(
+                        ty.span,
+                        format!("the function `{item_name}` is implemented on `{deref_ty}`"),
+                        suggested_path,
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.span_note(
+                        ty.span,
+                        format!("the function `{item_name}` is implemented on `{deref_ty}`"),
+                    );
+                }
+                return;
+            }
+        }
+    }
+
     /// Print out the type for use in value namespace.
     fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
         match ty.kind() {
@@ -2019,7 +2077,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Colon,
                                 Nothing,
                             }
-                            let ast_generics = hir.get_generics(id.owner).unwrap();
+                            let ast_generics = hir.get_generics(id.owner.def_id).unwrap();
                             let (sp, mut introducer) = if let Some(span) =
                                 ast_generics.bounds_span_for_suggestions(def_id)
                             {
@@ -2252,7 +2310,7 @@ pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
 
 fn print_disambiguation_help<'tcx>(
     item_name: Ident,
-    args: Option<&'tcx [hir::Expr<'tcx>]>,
+    args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     err: &mut Diagnostic,
     trait_name: String,
     rcvr_ty: Ty<'_>,
@@ -2264,7 +2322,7 @@ fn print_disambiguation_help<'tcx>(
     fn_has_self_parameter: bool,
 ) {
     let mut applicability = Applicability::MachineApplicable;
-    let (span, sugg) = if let (ty::AssocKind::Fn, Some(args)) = (kind, args) {
+    let (span, sugg) = if let (ty::AssocKind::Fn, Some((receiver, args))) = (kind, args) {
         let args = format!(
             "({}{})",
             if rcvr_ty.is_region_ptr() {
@@ -2272,7 +2330,8 @@ fn print_disambiguation_help<'tcx>(
             } else {
                 ""
             },
-            args.iter()
+            std::iter::once(receiver)
+                .chain(args.iter())
                 .map(|arg| source_map.span_to_snippet(arg.span).unwrap_or_else(|_| {
                     applicability = Applicability::HasPlaceholders;
                     "_".to_owned()

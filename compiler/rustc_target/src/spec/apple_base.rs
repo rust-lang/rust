@@ -1,40 +1,37 @@
 use std::{borrow::Cow, env};
 
-use crate::spec::{cvs, DebuginfoKind, FramePointer, SplitDebuginfo, TargetOptions};
+use crate::spec::{cvs, DebuginfoKind, FramePointer, SplitDebuginfo, StaticCow, TargetOptions};
 use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor};
 
 fn pre_link_args(os: &'static str, arch: &'static str, abi: &'static str) -> LinkArgs {
-    let mut args = LinkArgs::new();
-
-    let platform_name = match abi {
-        "sim" => format!("{}-simulator", os),
-        "macabi" => "mac-catalyst".to_string(),
-        _ => os.to_string(),
+    let platform_name: StaticCow<str> = match abi {
+        "sim" => format!("{}-simulator", os).into(),
+        "macabi" => "mac-catalyst".into(),
+        _ => os.into(),
     };
 
-    let platform_version = match os.as_ref() {
+    let platform_version: StaticCow<str> = match os.as_ref() {
         "ios" => ios_lld_platform_version(),
         "tvos" => tvos_lld_platform_version(),
         "watchos" => watchos_lld_platform_version(),
         "macos" => macos_lld_platform_version(arch),
         _ => unreachable!(),
-    };
-
-    if abi != "macabi" {
-        args.insert(LinkerFlavor::Gcc, vec!["-arch".into(), arch.into()]);
     }
+    .into();
 
-    args.insert(
+    let mut args = TargetOptions::link_args(
         LinkerFlavor::Lld(LldFlavor::Ld64),
-        vec![
-            "-arch".into(),
-            arch.into(),
-            "-platform_version".into(),
-            platform_name.into(),
-            platform_version.clone().into(),
-            platform_version.into(),
-        ],
+        &["-arch", arch, "-platform_version"],
     );
+    // Manually add owned args unsupported by link arg building helpers.
+    args.entry(LinkerFlavor::Lld(LldFlavor::Ld64)).or_default().extend([
+        platform_name,
+        platform_version.clone(),
+        platform_version,
+    ]);
+    if abi != "macabi" {
+        super::add_link_args(&mut args, LinkerFlavor::Gcc, &["-arch", arch]);
+    }
 
     args
 }
@@ -127,7 +124,7 @@ pub fn macos_llvm_target(arch: &str) -> String {
     format!("{}-apple-macosx{}.{}.0", arch, major, minor)
 }
 
-pub fn macos_link_env_remove() -> Vec<Cow<'static, str>> {
+pub fn macos_link_env_remove() -> Vec<StaticCow<str>> {
     let mut env_remove = Vec::with_capacity(2);
     // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
     // may occur when we're linking a custom build script while targeting iOS for example.

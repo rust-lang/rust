@@ -11,7 +11,6 @@ use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
 use smallvec::{smallvec, SmallVec};
-use tracing::debug;
 
 use std::fmt::Write;
 

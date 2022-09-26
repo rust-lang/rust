@@ -5,9 +5,7 @@ use std::fmt::Debug;
 // @set sync_int_gen = "$.index[*][?(@.name=='SyncIntGen')].id"
 // @set ref_fn       = "$.index[*][?(@.name=='RefFn')].id"
 // @set weird_order  = "$.index[*][?(@.name=='WeirdOrder')].id"
-// @has "$.index[*][?(@.name=='dyn')].inner.items[*]" $sync_int_gen
-// @has "$.index[*][?(@.name=='dyn')].inner.items[*]" $ref_fn
-// @has "$.index[*][?(@.name=='dyn')].inner.items[*]" $weird_order
+// @ismany "$.index[*][?(@.name=='dyn')].inner.items[*]" $sync_int_gen $ref_fn $weird_order
 
 // @is    "$.index[*][?(@.name=='SyncIntGen')].kind" \"typedef\"
 // @is    "$.index[*][?(@.name=='SyncIntGen')].inner.generics" '{"params": [], "where_predicates": []}'

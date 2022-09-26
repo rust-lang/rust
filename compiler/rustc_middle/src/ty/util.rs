@@ -3,11 +3,11 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
-use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use crate::ty::{
     self, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitable,
 };
+use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
@@ -627,7 +627,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     pub fn try_expand_impl_trait_type(
         self,
         def_id: DefId,
@@ -644,12 +644,18 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let expanded_type = visitor.expand_opaque_ty(def_id, substs).unwrap();
-        trace!(?expanded_type);
         if visitor.found_recursion { Err(expanded_type) } else { Ok(expanded_type) }
     }
 
     pub fn bound_type_of(self, def_id: DefId) -> ty::EarlyBinder<Ty<'tcx>> {
         ty::EarlyBinder(self.type_of(def_id))
+    }
+
+    pub fn bound_trait_impl_trait_tys(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>> {
+        ty::EarlyBinder(self.collect_trait_impl_trait_tys(def_id))
     }
 
     pub fn bound_fn_sig(self, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'tcx>> {

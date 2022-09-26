@@ -9,3 +9,5 @@ driver_rlink_encoding_version_mismatch = .rlink file was produced with encoding 
 driver_rlink_rustc_version_mismatch = .rlink file was produced by rustc version `{$rustc_version}`, but the current version is `{$current_version}`
 
 driver_rlink_no_a_file = rlink must be a file
+
+driver_unpretty_dump_fail = pretty-print failed to write `{$path}` due to error `{$err}`

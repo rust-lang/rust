@@ -16,7 +16,7 @@ error: some variants are not matched explicitly
   --> $DIR/stable-omitted-patterns.rs:23:9
    |
 LL |         _ => {}
-   |         ^ pattern `Stable2` not covered
+   |         ^ pattern `UnstableEnum::Stable2` not covered
    |
 note: the lint level is defined here
   --> $DIR/stable-omitted-patterns.rs:22:16

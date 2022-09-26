@@ -347,13 +347,6 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
 
             match outlives_bound {
                 OutlivesBound::RegionSubRegion(r1, r2) => {
-                    // `where Type:` is lowered to `where Type: 'empty` so that
-                    // we check `Type` is well formed, but there's no use for
-                    // this bound here.
-                    if r1.is_empty() {
-                        return;
-                    }
-
                     // The bound says that `r1 <= r2`; we store `r2: r1`.
                     let r1 = self.universal_regions.to_region_vid(r1);
                     let r2 = self.universal_regions.to_region_vid(r2);
@@ -368,6 +361,11 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
                     self.region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Projection(projection_b), r_a));
+                }
+
+                OutlivesBound::RegionSubOpaque(r_a, def_id, substs) => {
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Opaque(def_id, substs), r_a));
                 }
             }
         }

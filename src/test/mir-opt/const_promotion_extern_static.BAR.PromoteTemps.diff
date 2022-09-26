@@ -17,7 +17,7 @@
 -         StorageLive(_4);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:32: +0:34
 -         StorageLive(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:33: +0:34
 -         _5 = const {alloc1: &i32};       // scope 0 at $DIR/const-promotion-extern-static.rs:+0:33: +0:34
-+         _6 = const BAR::promoted[0];     // scope 0 at $DIR/const-promotion-extern-static.rs:+0:31: +0:44
++         _6 = const _;                    // scope 0 at $DIR/const-promotion-extern-static.rs:+0:31: +0:44
                                            // mir::Constant
 -                                          // + span: $DIR/const-promotion-extern-static.rs:9:33: 9:34
 -                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc1)) }
@@ -33,18 +33,18 @@
           _0 = core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/const-promotion-extern-static.rs:+0:31: +0:44
                                            // mir::Constant
                                            // + span: $DIR/const-promotion-extern-static.rs:9:36: 9:42
-                                           // + literal: Const { ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: for<'a> fn(&'a [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}, val: Value(<ZST>) }
       }
   
       bb1: {
 -         StorageDead(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:43: +0:44
 -         StorageDead(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:43: +0:44
           StorageDead(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:43: +0:44
-          return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:+0:1: +0:44
+          return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:+0:1: +0:45
       }
   
       bb2 (cleanup): {
-          resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:+0:1: +0:44
+          resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:+0:1: +0:45
       }
 - }
 - 

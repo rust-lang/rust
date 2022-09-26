@@ -3,13 +3,14 @@
 
 use super::*;
 
+use crate::errors::UnableToConstructConstantValue;
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{Region, RegionVid, Term};
+use rustc_middle::ty::{Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
@@ -611,7 +612,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        if let Term::Ty(ty) = p.term().skip_binder() {
+        if let Some(ty) = p.term().skip_binder().ty() {
             matches!(ty.kind(), ty::Projection(proj) if proj == &p.skip_binder().projection_ty)
         } else {
             false
@@ -830,8 +831,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 Ok(None) => {
                                     let tcx = self.tcx;
                                     let def_id = unevaluated.def.did;
-                                    let reported = tcx.sess.struct_span_err(tcx.def_span(def_id), &format!("unable to construct a constant value for the unevaluated constant {:?}", unevaluated)).emit();
-
+                                    let reported =
+                                        tcx.sess.emit_err(UnableToConstructConstantValue {
+                                            span: tcx.def_span(def_id),
+                                            unevaluated: unevaluated,
+                                        });
                                     Err(ErrorHandled::Reported(reported))
                                 }
                                 Err(err) => Err(err),

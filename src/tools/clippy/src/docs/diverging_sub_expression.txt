@@ -1,0 +1,19 @@
+### What it does
+Checks for diverging calls that are not match arms or
+statements.
+
+### Why is this bad?
+It is often confusing to read. In addition, the
+sub-expression evaluation order for Rust is not well documented.
+
+### Known problems
+Someone might want to use `some_bool || panic!()` as a
+shorthand.
+
+### Example
+```
+let a = b() || panic!() || c();
+// `c()` is dead, `panic!()` is only called if `b()` returns `false`
+let x = (a, b, c, panic!());
+// can simply be replaced by `panic!()`
+```

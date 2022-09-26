@@ -7,8 +7,9 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::subst::{GenericArgKind, Subst};
+use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
     self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitor,
@@ -73,7 +74,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     // for opaque types, and then use that kind to fix the spans for type errors
                     // that we see later on.
                     let ty_var = self.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::TypeInference,
+                        kind: TypeVariableOriginKind::OpaqueTypeInference(def_id),
                         span,
                     });
                     obligations.extend(
@@ -176,16 +177,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         } else if let Some(res) = process(b, a) {
             res
         } else {
-            // Rerun equality check, but this time error out due to
-            // different types.
-            match self.at(cause, param_env).define_opaque_types(false).eq(a, b) {
-                Ok(_) => span_bug!(
-                    cause.span,
-                    "opaque types are never equal to anything but themselves: {:#?}",
-                    (a.kind(), b.kind())
-                ),
-                Err(e) => Err(e),
-            }
+            let (a, b) = self.resolve_vars_if_possible((a, b));
+            Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
         }
     }
 
@@ -390,7 +383,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         });
     }
 
-    #[instrument(skip(self), level = "trace")]
+    #[instrument(skip(self), level = "trace", ret)]
     pub fn opaque_type_origin(&self, def_id: LocalDefId, span: Span) -> Option<OpaqueTyOrigin> {
         let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = match self.defining_use_anchor {
@@ -421,16 +414,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         in_definition_scope.then_some(*origin)
     }
 
-    #[instrument(skip(self), level = "trace")]
+    #[instrument(skip(self), level = "trace", ret)]
     fn opaque_ty_origin_unchecked(&self, def_id: LocalDefId, span: Span) -> OpaqueTyOrigin {
-        let origin = match self.tcx.hir().expect_item(def_id).kind {
+        match self.tcx.hir().expect_item(def_id).kind {
             hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
             ref itemkind => {
                 span_bug!(span, "weird opaque type: {:?}, {:#?}", def_id, itemkind)
             }
-        };
-        trace!(?origin);
-        origin
+        }
     }
 }
 
@@ -625,7 +616,7 @@ fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hi
     let scope = tcx.hir().get_defining_scope(opaque_hir_id);
     // We walk up the node tree until we hit the root or the scope of the opaque type.
     while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
-        hir_id = tcx.hir().local_def_id_to_hir_id(tcx.hir().get_parent_item(hir_id));
+        hir_id = tcx.hir().get_parent_item(hir_id).into();
     }
     // Syntactically, we are allowed to define the concrete type if:
     let res = hir_id == scope;

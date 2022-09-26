@@ -53,6 +53,7 @@ pub struct OutlivesEnvironment<'tcx> {
 }
 
 /// Builder of OutlivesEnvironment.
+#[derive(Debug)]
 struct OutlivesEnvironmentBuilder<'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     region_relation: TransitiveRelationBuilder<Region<'tcx>>,
@@ -109,6 +110,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
 
 impl<'a, 'tcx> OutlivesEnvironmentBuilder<'tcx> {
     #[inline]
+    #[instrument(level = "debug")]
     fn build(self) -> OutlivesEnvironment<'tcx> {
         OutlivesEnvironment {
             param_env: self.param_env,
@@ -139,6 +141,10 @@ impl<'a, 'tcx> OutlivesEnvironmentBuilder<'tcx> {
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
                     self.region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Projection(projection_b), r_a));
+                }
+                OutlivesBound::RegionSubOpaque(r_a, def_id, substs) => {
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Opaque(def_id, substs), r_a));
                 }
                 OutlivesBound::RegionSubRegion(r_a, r_b) => {
                     if let (ReEarlyBound(_) | ReFree(_), ReVar(vid_b)) = (r_a.kind(), r_b.kind()) {

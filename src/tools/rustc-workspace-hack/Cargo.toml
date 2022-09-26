@@ -77,9 +77,6 @@ clap = { version = "3.1.1", features = ["derive", "clap_derive"]}
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
 # Ensure default features of libz-sys, which are disabled in some scenarios.
 libz-sys = { version = "1.1.2" }
-# The only user of memchr's deprecated `use_std` feature is `combine`, so this can be
-# removed if/when https://github.com/Marwes/combine/pull/348 is merged and released.
-memchr = { version = "2.5", features = ["std", "use_std"] }
 # Ensure default features of regex, which are disabled in some scenarios.
 regex = { version = "1.5.6" }
 serde_json = { version = "1.0.31", features = ["raw_value", "unbounded_depth"] }

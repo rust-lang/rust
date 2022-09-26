@@ -360,7 +360,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 diag.span_label(upvar_span, "captured outer variable");
                 diag.span_label(
-                    self.body.span,
+                    self.infcx.tcx.def_span(def_id),
                     format!("captured by this `{closure_kind}` closure"),
                 );
 
@@ -401,7 +401,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
         if let Some(use_spans) = use_spans {
             self.explain_captures(
-                &mut err, span, span, use_spans, move_place, None, "", "", "", false, true,
+                &mut err, span, span, use_spans, move_place, "", "", "", false, true,
             );
         }
         err

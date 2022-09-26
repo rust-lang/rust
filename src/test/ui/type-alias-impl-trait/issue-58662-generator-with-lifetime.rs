@@ -16,7 +16,7 @@ fn rand_generator<'a>(rng: &'a ()) -> RandGenerator<'a> {
     }
 }
 
-pub type RandGeneratorWithIndirection<'a> = impl Generator<Return = (), Yield = u64> + 'a;
+pub type RandGeneratorWithIndirection<'c> = impl Generator<Return = (), Yield = u64> + 'c;
 pub fn rand_generator_with_indirection<'a>(rng: &'a ()) -> RandGeneratorWithIndirection<'a> {
     fn helper<'b>(rng: &'b ()) -> impl 'b + Generator<Return = (), Yield = u64> {
         move || {

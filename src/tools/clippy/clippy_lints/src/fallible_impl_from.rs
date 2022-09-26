@@ -84,7 +84,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
 
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-                let receiver_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
+                let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
                 if is_type_diagnostic_item(self.lcx, receiver_ty, sym::Option)
                     || is_type_diagnostic_item(self.lcx, receiver_ty, sym::Result)
                 {
@@ -107,10 +107,10 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
                 let body = cx.tcx.hir().body(body_id);
                 let mut fpu = FindPanicUnwrap {
                     lcx: cx,
-                    typeck_results: cx.tcx.typeck(impl_item.id.def_id),
+                    typeck_results: cx.tcx.typeck(impl_item.id.def_id.def_id),
                     result: Vec::new(),
                 };
-                fpu.visit_expr(&body.value);
+                fpu.visit_expr(body.value);
 
                 // if we've found one, lint
                 if !fpu.result.is_empty() {

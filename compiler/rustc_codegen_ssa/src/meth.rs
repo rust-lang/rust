@@ -69,7 +69,7 @@ impl<'a, 'tcx> VirtualIndex {
 fn expect_dyn_trait_in_self<'tcx>(ty: Ty<'tcx>) -> ty::PolyExistentialTraitRef<'tcx> {
     for arg in ty.peel_refs().walk() {
         if let GenericArgKind::Type(ty) = arg.unpack() {
-            if let ty::Dynamic(data, _) = ty.kind() {
+            if let ty::Dynamic(data, _, _) = ty.kind() {
                 return data.principal().expect("expected principal trait object");
             }
         }
@@ -86,14 +86,13 @@ fn expect_dyn_trait_in_self<'tcx>(ty: Ty<'tcx>) -> ty::PolyExistentialTraitRef<'
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<dyn Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T: Trait`.
+#[instrument(level = "debug", skip(cx))]
 pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Cx::Value {
     let tcx = cx.tcx();
-
-    debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);
 
     // Check the cache.
     if let Some(&val) = cx.vtables().borrow().get(&(ty, trait_ref)) {

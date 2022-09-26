@@ -1,0 +1,142 @@
+error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `[generator@$DIR/clone-impl.rs:36:23: 36:30]`
+  --> $DIR/clone-impl.rs:42:16
+   |
+LL |     let gen_clone_0 = move || {
+   |                       ------- within this `[generator@$DIR/clone-impl.rs:36:23: 36:30]`
+...
+LL |     check_copy(&gen_clone_0);
+   |                ^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:36:23: 36:30]`, the trait `Copy` is not implemented for `Vec<u32>`
+   |
+note: captured value does not implement `Copy`
+  --> $DIR/clone-impl.rs:40:14
+   |
+LL |         drop(clonable_0);
+   |              ^^^^^^^^^^ has type `Vec<u32>` which does not implement `Copy`
+note: required by a bound in `check_copy`
+  --> $DIR/clone-impl.rs:72:18
+   |
+LL | fn check_copy<T: Copy>(_x: &T) {}
+   |                  ^^^^ required by this bound in `check_copy`
+
+error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `[generator@$DIR/clone-impl.rs:36:23: 36:30]`
+  --> $DIR/clone-impl.rs:42:16
+   |
+LL |     let gen_clone_0 = move || {
+   |                       ------- within this `[generator@$DIR/clone-impl.rs:36:23: 36:30]`
+...
+LL |     check_copy(&gen_clone_0);
+   |                ^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:36:23: 36:30]`, the trait `Copy` is not implemented for `Vec<char>`
+   |
+note: generator does not implement `Copy` as this value is used across a yield
+  --> $DIR/clone-impl.rs:38:9
+   |
+LL |         let v = vec!['a'];
+   |             - has type `Vec<char>` which does not implement `Copy`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `v` maybe used later
+...
+LL |     };
+   |     - `v` is later dropped here
+note: required by a bound in `check_copy`
+  --> $DIR/clone-impl.rs:72:18
+   |
+LL | fn check_copy<T: Copy>(_x: &T) {}
+   |                  ^^^^ required by this bound in `check_copy`
+
+error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `[generator@$DIR/clone-impl.rs:46:23: 46:30]`
+  --> $DIR/clone-impl.rs:58:16
+   |
+LL |     let gen_clone_1 = move || {
+   |                       ------- within this `[generator@$DIR/clone-impl.rs:46:23: 46:30]`
+...
+LL |     check_copy(&gen_clone_1);
+   |                ^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:46:23: 46:30]`, the trait `Copy` is not implemented for `Vec<u32>`
+   |
+note: captured value does not implement `Copy`
+  --> $DIR/clone-impl.rs:56:14
+   |
+LL |         drop(clonable_1);
+   |              ^^^^^^^^^^ has type `Vec<u32>` which does not implement `Copy`
+note: required by a bound in `check_copy`
+  --> $DIR/clone-impl.rs:72:18
+   |
+LL | fn check_copy<T: Copy>(_x: &T) {}
+   |                  ^^^^ required by this bound in `check_copy`
+
+error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `[generator@$DIR/clone-impl.rs:46:23: 46:30]`
+  --> $DIR/clone-impl.rs:58:16
+   |
+LL |     let gen_clone_1 = move || {
+   |                       ------- within this `[generator@$DIR/clone-impl.rs:46:23: 46:30]`
+...
+LL |     check_copy(&gen_clone_1);
+   |                ^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:46:23: 46:30]`, the trait `Copy` is not implemented for `Vec<char>`
+   |
+note: generator does not implement `Copy` as this value is used across a yield
+  --> $DIR/clone-impl.rs:52:9
+   |
+LL |         let v = vec!['a'];
+   |             - has type `Vec<char>` which does not implement `Copy`
+...
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `v` maybe used later
+...
+LL |     };
+   |     - `v` is later dropped here
+note: required by a bound in `check_copy`
+  --> $DIR/clone-impl.rs:72:18
+   |
+LL | fn check_copy<T: Copy>(_x: &T) {}
+   |                  ^^^^ required by this bound in `check_copy`
+
+error[E0277]: the trait bound `NonClone: Copy` is not satisfied in `[generator@$DIR/clone-impl.rs:62:25: 62:32]`
+  --> $DIR/clone-impl.rs:66:16
+   |
+LL |     let gen_non_clone = move || {
+   |                         ------- within this `[generator@$DIR/clone-impl.rs:62:25: 62:32]`
+...
+LL |     check_copy(&gen_non_clone);
+   |                ^^^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:62:25: 62:32]`, the trait `Copy` is not implemented for `NonClone`
+   |
+note: captured value does not implement `Copy`
+  --> $DIR/clone-impl.rs:64:14
+   |
+LL |         drop(non_clonable);
+   |              ^^^^^^^^^^^^ has type `NonClone` which does not implement `Copy`
+note: required by a bound in `check_copy`
+  --> $DIR/clone-impl.rs:72:18
+   |
+LL | fn check_copy<T: Copy>(_x: &T) {}
+   |                  ^^^^ required by this bound in `check_copy`
+help: consider annotating `NonClone` with `#[derive(Copy)]`
+   |
+LL | #[derive(Copy)]
+   |
+
+error[E0277]: the trait bound `NonClone: Clone` is not satisfied in `[generator@$DIR/clone-impl.rs:62:25: 62:32]`
+  --> $DIR/clone-impl.rs:68:17
+   |
+LL |     let gen_non_clone = move || {
+   |                         ------- within this `[generator@$DIR/clone-impl.rs:62:25: 62:32]`
+...
+LL |     check_clone(&gen_non_clone);
+   |                 ^^^^^^^^^^^^^^ within `[generator@$DIR/clone-impl.rs:62:25: 62:32]`, the trait `Clone` is not implemented for `NonClone`
+   |
+note: captured value does not implement `Clone`
+  --> $DIR/clone-impl.rs:64:14
+   |
+LL |         drop(non_clonable);
+   |              ^^^^^^^^^^^^ has type `NonClone` which does not implement `Clone`
+note: required by a bound in `check_clone`
+  --> $DIR/clone-impl.rs:73:19
+   |
+LL | fn check_clone<T: Clone>(_x: &T) {}
+   |                   ^^^^^ required by this bound in `check_clone`
+help: consider annotating `NonClone` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

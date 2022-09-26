@@ -11,7 +11,6 @@ use crate::context::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
-use tracing::debug;
 
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, TypeVisitable};

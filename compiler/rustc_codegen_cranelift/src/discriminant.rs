@@ -42,10 +42,10 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
         Variants::Multiple {
             tag: _,
             tag_field,
-            tag_encoding: TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start },
+            tag_encoding: TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
             variants: _,
         } => {
-            if variant_index != dataful_variant {
+            if variant_index != untagged_variant {
                 let niche = place.place_field(fx, mir::Field::new(tag_field));
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                 let niche_value = ty::ScalarInt::try_from_uint(
@@ -113,7 +113,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             let res = CValue::by_val(val, dest_layout);
             dest.write_cvalue(fx, res);
         }
-        TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
+        TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
             // Rebase from niche values to discriminants, and check
             // whether the result is in range for the niche variants.
 
@@ -169,8 +169,9 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
                 fx.bcx.ins().iadd_imm(relative_discr, i64::from(niche_variants.start().as_u32()))
             };
 
-            let dataful_variant = fx.bcx.ins().iconst(cast_to, i64::from(dataful_variant.as_u32()));
-            let discr = fx.bcx.ins().select(is_niche, niche_discr, dataful_variant);
+            let untagged_variant =
+                fx.bcx.ins().iconst(cast_to, i64::from(untagged_variant.as_u32()));
+            let discr = fx.bcx.ins().select(is_niche, niche_discr, untagged_variant);
             let res = CValue::by_val(discr, dest_layout);
             dest.write_cvalue(fx, res);
         }

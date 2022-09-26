@@ -1819,7 +1819,7 @@ impl<'a> Formatter<'a> {
     ///             write!(formatter,
     ///                    "Foo({}{})",
     ///                    if self.0 < 0 { '-' } else { '+' },
-    ///                    self.0)
+    ///                    self.0.abs())
     ///         } else {
     ///             write!(formatter, "Foo({})", self.0)
     ///         }
@@ -1827,6 +1827,7 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// assert_eq!(&format!("{:+}", Foo(23)), "Foo(+23)");
+    /// assert_eq!(&format!("{:+}", Foo(-23)), "Foo(-23)");
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[must_use]

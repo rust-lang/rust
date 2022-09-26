@@ -1,24 +1,24 @@
 error[E0277]: the trait bound `Box<T>: Copy` is not satisfied
-  --> $DIR/issue-74824.rs:7:26
+  --> $DIR/issue-74824.rs:6:26
    |
 LL |     type Copy<T>: Copy = Box<T>;
    |                          ^^^^^^ the trait `Copy` is not implemented for `Box<T>`
    |
 note: required by a bound in `UnsafeCopy::Copy`
-  --> $DIR/issue-74824.rs:7:19
+  --> $DIR/issue-74824.rs:6:19
    |
 LL |     type Copy<T>: Copy = Box<T>;
    |                   ^^^^ required by this bound in `UnsafeCopy::Copy`
 
 error[E0277]: the trait bound `T: Clone` is not satisfied
-  --> $DIR/issue-74824.rs:7:26
+  --> $DIR/issue-74824.rs:6:26
    |
 LL |     type Copy<T>: Copy = Box<T>;
    |                          ^^^^^^ the trait `Clone` is not implemented for `T`
    |
    = note: required for `Box<T>` to implement `Clone`
 note: required by a bound in `UnsafeCopy::Copy`
-  --> $DIR/issue-74824.rs:7:19
+  --> $DIR/issue-74824.rs:6:19
    |
 LL |     type Copy<T>: Copy = Box<T>;
    |                   ^^^^ required by this bound in `UnsafeCopy::Copy`

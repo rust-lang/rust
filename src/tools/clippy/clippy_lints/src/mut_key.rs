@@ -89,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'tcx>) {
         if let hir::ImplItemKind::Fn(ref sig, ..) = item.kind {
-            if trait_ref_of_method(cx, item.def_id).is_none() {
+            if trait_ref_of_method(cx, item.def_id.def_id).is_none() {
                 check_sig(cx, item.hir_id(), sig.decl);
             }
         }

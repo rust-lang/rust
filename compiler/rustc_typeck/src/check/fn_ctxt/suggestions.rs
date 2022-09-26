@@ -14,9 +14,10 @@ use rustc_hir::{
 use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, IsSuggestable, Subst, ToPredicate, Ty};
+use rustc_middle::ty::{self, Binder, IsSuggestable, ToPredicate, Ty};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -143,7 +144,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    fn extract_callable_info(
+    /// Extracts information about a callable type for diagnostics. This is a
+    /// heuristic -- it doesn't necessarily mean that a type is always callable,
+    /// because the callable type must also be well-formed to be called.
+    pub(in super::super) fn extract_callable_info(
         &self,
         expr: &Expr<'_>,
         found: Ty<'tcx>,
@@ -178,7 +182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     })
                 }
-                ty::Dynamic(data, _) => {
+                ty::Dynamic(data, _, ty::Dyn) => {
                     data.iter().find_map(|pred| {
                         if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
                         && Some(proj.item_def_id) == self.tcx.lang_items().fn_once_output()
@@ -925,6 +929,69 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(crate) fn suggest_copied_or_cloned(
+        &self,
+        diag: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) {
+        let ty::Adt(adt_def, substs) = expr_ty.kind() else { return; };
+        let ty::Adt(expected_adt_def, expected_substs) = expected_ty.kind() else { return; };
+        if adt_def != expected_adt_def {
+            return;
+        }
+
+        let mut suggest_copied_or_cloned = || {
+            let expr_inner_ty = substs.type_at(0);
+            let expected_inner_ty = expected_substs.type_at(0);
+            if let ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
+                && self.can_eq(self.param_env, *ty, expected_inner_ty).is_ok()
+            {
+                let def_path = self.tcx.def_path_str(adt_def.did());
+                if self.type_is_copy_modulo_regions(self.param_env, *ty, expr.span) {
+                    diag.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        format!(
+                            "use `{def_path}::copied` to copy the value inside the `{def_path}`"
+                        ),
+                        ".copied()",
+                        Applicability::MachineApplicable,
+                    );
+                } else if let Some(clone_did) = self.tcx.lang_items().clone_trait()
+                    && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
+                        self,
+                        self.param_env,
+                        *ty,
+                        clone_did,
+                        expr.span
+                    )
+                {
+                    diag.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        format!(
+                            "use `{def_path}::cloned` to clone the value inside the `{def_path}`"
+                        ),
+                        ".cloned()",
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+        };
+
+        if let Some(result_did) = self.tcx.get_diagnostic_item(sym::Result)
+            && adt_def.did() == result_did
+            // Check that the error types are equal
+            && self.can_eq(self.param_env, substs.type_at(1), expected_substs.type_at(1)).is_ok()
+        {
+            suggest_copied_or_cloned();
+        } else if let Some(option_did) = self.tcx.get_diagnostic_item(sym::Option)
+            && adt_def.did() == option_did
+        {
+            suggest_copied_or_cloned();
+        }
+    }
+
     /// Suggest wrapping the block in square brackets instead of curly braces
     /// in case the block was mistaken array syntax, e.g. `{ 1 }` -> `[ 1 ]`.
     pub(crate) fn suggest_block_to_brackets(
@@ -985,7 +1052,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
     ) {
-        let hir::ExprKind::MethodCall(segment, &[ref callee_expr], _) = expr.kind else { return; };
+        let hir::ExprKind::MethodCall(segment, callee_expr, &[], _) = expr.kind else { return; };
         let Some(clone_trait_did) = self.tcx.lang_items().clone_trait() else { return; };
         let ty::Ref(_, pointee_ty, _) = found_ty.kind() else { return };
         let results = self.typeck_results.borrow();
@@ -1066,7 +1133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-enum DefIdOrName {
+pub enum DefIdOrName {
     DefId(DefId),
     Name(&'static str),
 }

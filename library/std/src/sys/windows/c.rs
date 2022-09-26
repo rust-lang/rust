@@ -66,6 +66,7 @@ pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
 pub type LPWSABUF = *mut WSABUF;
 pub type LPWSAOVERLAPPED = *mut c_void;
 pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE = *mut c_void;
+pub type BCRYPT_ALG_HANDLE = LPVOID;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
@@ -285,6 +286,8 @@ pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
 }
 
+// "RNG\0"
+pub const BCRYPT_RNG_ALGORITHM: &[u16] = &[b'R' as u16, b'N' as u16, b'G' as u16, 0];
 pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
 
 #[repr(C)]
@@ -452,6 +455,12 @@ pub enum FILE_INFO_BY_HANDLE_CLASS {
     FileIdExtdDirectoryRestartInfo = 20, // 0x14
     FileDispositionInfoEx = 21,          // 0x15, Windows 10 version 1607
     MaximumFileInfoByHandlesClass,
+}
+
+#[repr(C)]
+pub struct FILE_ATTRIBUTE_TAG_INFO {
+    pub FileAttributes: DWORD,
+    pub ReparseTag: DWORD,
 }
 
 #[repr(C)]
@@ -808,10 +817,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     #[link(name = "advapi32")]
     extern "system" {
-        // Forbidden when targeting UWP
-        #[link_name = "SystemFunction036"]
-        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
-
         // Allowed but unused by UWP
         pub fn OpenProcessToken(
             ProcessHandle: HANDLE,
@@ -1223,11 +1228,18 @@ extern "system" {
     // >= Vista / Server 2008
     // https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
     pub fn BCryptGenRandom(
-        hAlgorithm: LPVOID,
+        hAlgorithm: BCRYPT_ALG_HANDLE,
         pBuffer: *mut u8,
         cbBuffer: ULONG,
         dwFlags: ULONG,
     ) -> NTSTATUS;
+    pub fn BCryptOpenAlgorithmProvider(
+        phalgorithm: *mut BCRYPT_ALG_HANDLE,
+        pszAlgId: LPCWSTR,
+        pszimplementation: LPCWSTR,
+        dwflags: ULONG,
+    ) -> NTSTATUS;
+    pub fn BCryptCloseAlgorithmProvider(hAlgorithm: BCRYPT_ALG_HANDLE, dwFlags: ULONG) -> NTSTATUS;
 }
 
 // Functions that aren't available on every version of Windows that we support,

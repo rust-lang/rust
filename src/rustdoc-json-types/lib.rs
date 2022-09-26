@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 18;
+pub const FORMAT_VERSION: u32 = 21;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -289,11 +289,37 @@ pub struct Union {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Struct {
-    pub struct_type: StructType,
+    pub kind: StructKind,
     pub generics: Generics,
-    pub fields_stripped: bool,
-    pub fields: Vec<Id>,
     pub impls: Vec<Id>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StructKind {
+    /// A struct with no fields and no parentheses.
+    ///
+    /// ```rust
+    /// pub struct Unit;
+    /// ```
+    Unit,
+    /// A struct with unnamed fields.
+    ///
+    /// ```rust
+    /// pub struct TupleStruct(i32);
+    /// pub struct EmptyTupleStruct();
+    /// ```
+    ///
+    /// All [`Id`]'s will point to [`ItemEnum::StructField`]. Private and
+    /// `#[doc(hidden)]` fields will be given as `None`
+    Tuple(Vec<Option<Id>>),
+    /// A struct with nammed fields.
+    ///
+    /// ```rust
+    /// pub struct PlainStruct { x: i32 }
+    /// pub struct EmptyPlainStruct {}
+    /// ```
+    Plain { fields: Vec<Id>, fields_stripped: bool },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -308,17 +334,53 @@ pub struct Enum {
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "variant_kind", content = "variant_inner")]
 pub enum Variant {
-    Plain,
-    Tuple(Vec<Type>),
-    Struct(Vec<Id>),
+    /// A variant with no parentheses, and possible discriminant.
+    ///
+    /// ```rust
+    /// enum Demo {
+    ///     PlainVariant,
+    ///     PlainWithDiscriminant = 1,
+    /// }
+    /// ```
+    Plain(Option<Discriminant>),
+    /// A variant with unnamed fields.
+    ///
+    /// Unlike most of json, `#[doc(hidden)]` fields will be given as `None`
+    /// instead of being ommited, because order matters.
+    ///
+    /// ```rust
+    /// enum Demo {
+    ///     TupleVariant(i32),
+    ///     EmptyTupleVariant(),
+    /// }
+    /// ```
+    Tuple(Vec<Option<Id>>),
+    /// A variant with named fields.
+    ///
+    /// ```rust
+    /// enum Demo {
+    ///     StructVariant { x: i32 },
+    ///     EmptyStructVariant {},
+    /// }
+    /// ```
+    Struct { fields: Vec<Id>, fields_stripped: bool },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum StructType {
-    Plain,
-    Tuple,
-    Unit,
+pub struct Discriminant {
+    /// The expression that produced the discriminant.
+    ///
+    /// Unlike `value`, this preserves the original formatting (eg suffixes,
+    /// hexadecimal, and underscores), making it unsuitable to be machine
+    /// interpreted.
+    ///
+    /// In some cases, when the value is to complex, this may be `"{ _ }"`.
+    /// When this occurs is unstable, and may change without notice.
+    pub expr: String,
+    /// The numerical value of the discriminant. Stored as a string due to
+    /// JSON's poor support for large integers, and the fact that it would need
+    /// to store from [`i128::MIN`] to [`u128::MAX`].
+    pub value: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -480,12 +542,12 @@ pub enum Term {
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "kind", content = "inner")]
 pub enum Type {
-    /// Structs, enums, and traits
+    /// Structs, enums, and unions
     ResolvedPath(Path),
     DynTrait(DynTrait),
     /// Parameterized types
     Generic(String),
-    /// Fixed-size numeric types (plus int/usize/float), char, arrays, slices, and tuples
+    /// Built in numberic (i*, u*, f*) types, bool, and char
     Primitive(String),
     /// `extern "ABI" fn`
     FunctionPointer(Box<FunctionPointer>),

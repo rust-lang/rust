@@ -4,8 +4,7 @@
 
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
-#![feature(const_btree_new)]
-#![feature(let_else)]
+#![feature(const_btree_len)]
 #![feature(once_cell)]
 #![feature(min_specialization)]
 #![feature(never_type)]
@@ -16,6 +15,9 @@
 
 #[macro_use]
 extern crate rustc_macros;
+
+#[macro_use]
+extern crate tracing;
 
 #[macro_use]
 extern crate rustc_data_structures;

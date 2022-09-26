@@ -3,8 +3,6 @@
 
 // This should pass, but has a missed normalization due to HRTB.
 
-#![feature(generic_associated_types)]
-
 pub trait Marker {}
 
 pub trait Trait {

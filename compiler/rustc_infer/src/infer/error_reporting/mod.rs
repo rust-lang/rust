@@ -51,6 +51,7 @@ use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePa
 
 use crate::infer;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
+use crate::infer::ExpectedFound;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -61,6 +62,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Node;
@@ -68,8 +70,8 @@ use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::{
-    self, error::TypeError, Binder, List, Region, Subst, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable,
+    self, error::TypeError, Binder, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable,
 };
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
@@ -95,11 +97,6 @@ pub(super) fn note_and_explain_region<'tcx>(
         ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
             msg_span_from_free_region(tcx, region, alt_span)
         }
-
-        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("the empty lifetime".to_owned(), alt_span),
-
-        // uh oh, hope no user ever sees THIS
-        ty::ReEmpty(ui) => (format!("the empty lifetime in universe {:?}", ui), alt_span),
 
         ty::RePlaceholder(_) => return,
 
@@ -139,8 +136,6 @@ fn msg_span_from_free_region<'tcx>(
             (msg, Some(span))
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
-        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("an empty lifetime".to_owned(), alt_span),
-        ty::ReEmpty(ui) => (format!("an empty lifetime in universe {:?}", ui), alt_span),
         _ => bug!("{:?}", region),
     }
 }
@@ -250,17 +245,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 
     // Explain the region we are capturing.
     match *hidden_region {
-        ty::ReEmpty(ty::UniverseIndex::ROOT) => {
-            // All lifetimes shorter than the function body are `empty` in
-            // lexical region resolution. The default explanation of "an empty
-            // lifetime" isn't really accurate here.
-            let message = format!(
-                "hidden type `{}` captures lifetime smaller than the function body",
-                hidden_ty
-            );
-            err.span_note(span, &message);
-        }
-        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty(_) => {
+        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
             // Assuming regionck succeeded (*), we ought to always be
             // capturing *some* region from the fn header, and hence it
             // ought to be free. So under normal circumstances, we will go
@@ -386,7 +371,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     RegionResolutionError::UpperBoundUniverseConflict(
                         _,
                         _,
-                        var_universe,
+                        _,
                         sup_origin,
                         sup_r,
                     ) => {
@@ -397,7 +382,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // placeholder. In practice, we expect more
                         // tailored errors that don't really use this
                         // value.
-                        let sub_r = self.tcx.mk_region(ty::ReEmpty(var_universe));
+                        let sub_r = self.tcx.lifetimes.re_erased;
 
                         self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
                     }
@@ -1434,7 +1419,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// the message in `secondary_span` as the primary label, and apply the message that would
     /// otherwise be used for the primary label on the `secondary_span` `Span`. This applies on
     /// E0271, like `src/test/ui/issues/issue-39970.stderr`.
-    #[tracing::instrument(
+    #[instrument(
         level = "debug",
         skip(self, diag, secondary_span, swap_secondary_and_primary, prefer_label)
     )]
@@ -1586,28 +1571,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             Some(values) => {
                 let values = self.resolve_vars_if_possible(values);
                 let (is_simple_error, exp_found) = match values {
-                    ValuePairs::Terms(infer::ExpectedFound {
-                        expected: ty::Term::Ty(expected),
-                        found: ty::Term::Ty(found),
-                    }) => {
-                        let is_simple_err = expected.is_simple_text() && found.is_simple_text();
-                        OpaqueTypesVisitor::visit_expected_found(self.tcx, expected, found, span)
-                            .report(diag);
+                    ValuePairs::Terms(infer::ExpectedFound { expected, found }) => {
+                        match (expected.unpack(), found.unpack()) {
+                            (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
+                                let is_simple_err =
+                                    expected.is_simple_text() && found.is_simple_text();
+                                OpaqueTypesVisitor::visit_expected_found(
+                                    self.tcx, expected, found, span,
+                                )
+                                .report(diag);
 
-                        (
-                            is_simple_err,
-                            Mismatch::Variable(infer::ExpectedFound { expected, found }),
-                        )
+                                (
+                                    is_simple_err,
+                                    Mismatch::Variable(infer::ExpectedFound { expected, found }),
+                                )
+                            }
+                            (ty::TermKind::Const(_), ty::TermKind::Const(_)) => {
+                                (false, Mismatch::Fixed("constant"))
+                            }
+                            _ => (false, Mismatch::Fixed("type")),
+                        }
                     }
-                    ValuePairs::Terms(infer::ExpectedFound {
-                        expected: ty::Term::Const(_),
-                        found: ty::Term::Const(_),
-                    }) => (false, Mismatch::Fixed("constant")),
                     ValuePairs::TraitRefs(_) | ValuePairs::PolyTraitRefs(_) => {
                         (false, Mismatch::Fixed("trait"))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
-                    _ => (false, Mismatch::Fixed("type")),
                 };
                 let vals = match self.values_str(values) {
                     Some((expected, found)) => Some((expected, found)),
@@ -1666,14 +1654,133 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ),
                 Mismatch::Fixed(s) => (s.into(), s.into(), None),
             };
-            match (&terr, expected == found) {
-                (TypeError::Sorts(values), extra) => {
+
+            enum Similar<'tcx> {
+                Adts { expected: ty::AdtDef<'tcx>, found: ty::AdtDef<'tcx> },
+                PrimitiveFound { expected: ty::AdtDef<'tcx>, found: Ty<'tcx> },
+                PrimitiveExpected { expected: Ty<'tcx>, found: ty::AdtDef<'tcx> },
+            }
+
+            let similarity = |ExpectedFound { expected, found }: ExpectedFound<Ty<'tcx>>| {
+                if let ty::Adt(expected, _) = expected.kind() && let Some(primitive) = found.primitive_symbol() {
+                    let path = self.tcx.def_path(expected.did()).data;
+                    let name = path.last().unwrap().data.get_opt_name();
+                    if name == Some(primitive) {
+                        return Some(Similar::PrimitiveFound { expected: *expected, found });
+                    }
+                } else if let Some(primitive) = expected.primitive_symbol() && let ty::Adt(found, _) = found.kind() {
+                    let path = self.tcx.def_path(found.did()).data;
+                    let name = path.last().unwrap().data.get_opt_name();
+                    if name == Some(primitive) {
+                        return Some(Similar::PrimitiveExpected { expected, found: *found });
+                    }
+                } else if let ty::Adt(expected, _) = expected.kind() && let ty::Adt(found, _) = found.kind() {
+                    if !expected.did().is_local() && expected.did().krate == found.did().krate {
+                        // Most likely types from different versions of the same crate
+                        // are in play, in which case this message isn't so helpful.
+                        // A "perhaps two different versions..." error is already emitted for that.
+                        return None;
+                    }
+                    let f_path = self.tcx.def_path(found.did()).data;
+                    let e_path = self.tcx.def_path(expected.did()).data;
+
+                    if let (Some(e_last), Some(f_last)) = (e_path.last(), f_path.last()) && e_last ==  f_last {
+                        return Some(Similar::Adts{expected: *expected, found: *found});
+                    }
+                }
+                None
+            };
+
+            match terr {
+                // If two types mismatch but have similar names, mention that specifically.
+                TypeError::Sorts(values) if let Some(s) = similarity(values) => {
+                    let diagnose_primitive =
+                        |prim: Ty<'tcx>,
+                         shadow: Ty<'tcx>,
+                         defid: DefId,
+                         diagnostic: &mut Diagnostic| {
+                            let name = shadow.sort_string(self.tcx);
+                            diagnostic.note(format!(
+                            "{prim} and {name} have similar names, but are actually distinct types"
+                        ));
+                            diagnostic
+                                .note(format!("{prim} is a primitive defined by the language"));
+                            let def_span = self.tcx.def_span(defid);
+                            let msg = if defid.is_local() {
+                                format!("{name} is defined in the current crate")
+                            } else {
+                                let crate_name = self.tcx.crate_name(defid.krate);
+                                format!("{name} is defined in crate `{crate_name}")
+                            };
+                            diagnostic.span_note(def_span, msg);
+                        };
+
+                    let diagnose_adts =
+                        |expected_adt : ty::AdtDef<'tcx>,
+                         found_adt: ty::AdtDef<'tcx>,
+                         diagnostic: &mut Diagnostic| {
+                            let found_name = values.found.sort_string(self.tcx);
+                            let expected_name = values.expected.sort_string(self.tcx);
+
+                            let found_defid = found_adt.did();
+                            let expected_defid = expected_adt.did();
+
+                            diagnostic.note(format!("{found_name} and {expected_name} have similar names, but are actually distinct types"));
+                            for (defid, name) in
+                                [(found_defid, found_name), (expected_defid, expected_name)]
+                            {
+                                let def_span = self.tcx.def_span(defid);
+
+                                let msg = if found_defid.is_local() && expected_defid.is_local() {
+                                    let module = self
+                                        .tcx
+                                        .parent_module_from_def_id(defid.expect_local())
+                                        .to_def_id();
+                                    let module_name = self.tcx.def_path(module).to_string_no_crate_verbose();
+                                    format!("{name} is defined in module `crate{module_name}` of the current crate")
+                                } else if defid.is_local() {
+                                    format!("{name} is defined in the current crate")
+                                } else {
+                                    let crate_name = self.tcx.crate_name(defid.krate);
+                                    format!("{name} is defined in crate `{crate_name}`")
+                                };
+                                diagnostic.span_note(def_span, msg);
+                            }
+                        };
+
+                    match s {
+                        Similar::Adts{expected, found} => {
+                            diagnose_adts(expected, found, diag)
+                        }
+                        Similar::PrimitiveFound{expected, found: prim} => {
+                            diagnose_primitive(prim, values.expected, expected.did(), diag)
+                        }
+                        Similar::PrimitiveExpected{expected: prim, found} => {
+                            diagnose_primitive(prim, values.found, found.did(), diag)
+                        }
+                    }
+                }
+                TypeError::Sorts(values) => {
+                    let extra = expected == found;
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Opaque(def_id, _)) => {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                             format!(
                                 " (opaque type at <{}:{}:{}>)",
+                                sm.filename_for_diagnostics(&pos.file.name),
+                                pos.line,
+                                pos.col.to_usize() + 1,
+                            )
+                        }
+                        (true, ty::Projection(proj))
+                            if self.tcx.def_kind(proj.item_def_id)
+                                == DefKind::ImplTraitPlaceholder =>
+                        {
+                            let sm = self.tcx.sess.source_map();
+                            let pos = sm.lookup_char_pos(self.tcx.def_span(proj.item_def_id).lo());
+                            format!(
+                                " (trait associated opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
                                 pos.line,
                                 pos.col.to_usize() + 1,
@@ -1707,10 +1814,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                (TypeError::ObjectUnsafeCoercion(_), _) => {
+                TypeError::ObjectUnsafeCoercion(_) => {
                     diag.note_unsuccessful_coercion(found, expected);
                 }
-                (_, _) => {
+                _ => {
                     debug!(
                         "note_type_err: exp_found={:?}, expected={:?} found={:?}",
                         exp_found, expected, found
@@ -2273,11 +2380,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return None;
         }
 
-        Some(match (exp_found.expected, exp_found.found) {
-            (ty::Term::Ty(expected), ty::Term::Ty(found)) => self.cmp(expected, found),
-            (expected, found) => (
-                DiagnosticStyledString::highlighted(expected.to_string()),
-                DiagnosticStyledString::highlighted(found.to_string()),
+        Some(match (exp_found.expected.unpack(), exp_found.found.unpack()) {
+            (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => self.cmp(expected, found),
+            _ => (
+                DiagnosticStyledString::highlighted(exp_found.expected.to_string()),
+                DiagnosticStyledString::highlighted(exp_found.found.to_string()),
             ),
         })
     }
@@ -2333,7 +2440,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                         // instead we suggest `T: 'a + 'b` in that case.
                         let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                        let ast_generics = self.tcx.hir().get_generics(hir_id.owner);
+                        let ast_generics = self.tcx.hir().get_generics(hir_id.owner.def_id);
                         let bounds =
                             ast_generics.and_then(|g| g.bounds_span_for_suggestions(def_id));
                         // `sp` only covers `T`, change it so that it covers
@@ -2374,6 +2481,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let labeled_user_string = match bound_kind {
             GenericKind::Param(ref p) => format!("the parameter type `{}`", p),
             GenericKind::Projection(ref p) => format!("the associated type `{}`", p),
+            GenericKind::Opaque(def_id, substs) => {
+                format!("the opaque type `{}`", self.tcx.def_path_str_with_substs(def_id, substs))
+            }
         };
 
         if let Some(SubregionOrigin::CompareImplItemObligation {
@@ -2395,19 +2505,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             type_param_span: Option<(Span, bool)>,
             bound_kind: GenericKind<'tcx>,
             sub: S,
+            add_lt_sugg: Option<(Span, String)>,
         ) {
             let msg = "consider adding an explicit lifetime bound";
             if let Some((sp, has_lifetimes)) = type_param_span {
                 let suggestion =
                     if has_lifetimes { format!(" + {}", sub) } else { format!(": {}", sub) };
-                err.span_suggestion_verbose(
-                    sp,
-                    &format!("{}...", msg),
-                    suggestion,
+                let mut suggestions = vec![(sp, suggestion)];
+                if let Some(add_lt_sugg) = add_lt_sugg {
+                    suggestions.push(add_lt_sugg);
+                }
+                err.multipart_suggestion_verbose(
+                    format!("{msg}..."),
+                    suggestions,
                     Applicability::MaybeIncorrect, // Issue #41966
                 );
             } else {
-                let consider = format!("{} `{}: {}`...", msg, bound_kind, sub,);
+                let consider = format!("{} `{}: {}`...", msg, bound_kind, sub);
                 err.help(&consider);
             }
         }
@@ -2423,7 +2537,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     };
                     let mut sugg =
                         vec![(sp, suggestion), (span.shrink_to_hi(), format!(" + {}", new_lt))];
-                    if let Some(lt) = add_lt_sugg {
+                    if let Some(lt) = add_lt_sugg.clone() {
                         sugg.push(lt);
                         sugg.rotate_right(1);
                     }
@@ -2529,7 +2643,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // for the bound is not suitable for suggestions when `-Zverbose` is set because it
                 // uses `Debug` output, so we handle it specially here so that suggestions are
                 // always correct.
-                binding_suggestion(&mut err, type_param_span, bound_kind, name);
+                binding_suggestion(&mut err, type_param_span, bound_kind, name, None);
                 err
             }
 
@@ -2542,7 +2656,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "{} may not live long enough",
                     labeled_user_string
                 );
-                binding_suggestion(&mut err, type_param_span, bound_kind, "'static");
+                binding_suggestion(&mut err, type_param_span, bound_kind, "'static", None);
                 err
             }
 
@@ -2576,7 +2690,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             new_binding_suggestion(&mut err, type_param_span);
                         }
                         _ => {
-                            binding_suggestion(&mut err, type_param_span, bound_kind, new_lt);
+                            binding_suggestion(
+                                &mut err,
+                                type_param_span,
+                                bound_kind,
+                                new_lt,
+                                add_lt_sugg,
+                            );
                         }
                     }
                 }
@@ -2755,7 +2875,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
     where
         T: relate::Relate<'tcx>,
     {
-        Ok(ty::Binder::dummy(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn consts(

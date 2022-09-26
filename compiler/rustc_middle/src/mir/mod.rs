@@ -3,22 +3,22 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::interpret::{
-    AllocRange, ConstAllocation, ConstValue, GlobalAlloc, LitToConstInput, Scalar,
+    AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, LitToConstInput, Scalar,
 };
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
+use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
 use rustc_data_structures::captures::Captures;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
-use rustc_hir::{self, GeneratorKind};
+use rustc_hir::{self, GeneratorKind, ImplicitSelfKind};
 use rustc_hir::{self as hir, HirId};
 use rustc_session::Session;
 use rustc_target::abi::{Size, VariantIdx};
@@ -653,22 +653,6 @@ pub enum BindingForm<'tcx> {
     RefForGuard,
 }
 
-/// Represents what type of implicit self a function has, if any.
-#[derive(Clone, Copy, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
-pub enum ImplicitSelfKind {
-    /// Represents a `fn x(self);`.
-    Imm,
-    /// Represents a `fn x(mut self);`.
-    Mut,
-    /// Represents a `fn x(&self);`.
-    ImmRef,
-    /// Represents a `fn x(&mut self);`.
-    MutRef,
-    /// Represents when a function does not have a self argument or
-    /// when a function has a `self: X` argument.
-    None,
-}
-
 TrivialTypeTraversalAndLiftImpls! { BindingForm<'tcx>, }
 
 mod binding_form_impl {
@@ -838,10 +822,6 @@ pub struct LocalDecl<'tcx> {
     /// ```
     pub source_info: SourceInfo,
 }
-
-// `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(LocalDecl<'_>, 56);
 
 /// Extra information about a some locals that's used for diagnostics and for
 /// classifying variables into local variables, statics, etc, which is needed e.g.
@@ -1317,10 +1297,6 @@ pub struct Statement<'tcx> {
     pub kind: StatementKind<'tcx>,
 }
 
-// `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Statement<'_>, 32);
-
 impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
@@ -1370,13 +1346,7 @@ impl Debug for Statement<'_> {
                 write!(fmt, "Coverage::{:?} for {:?}", kind, rgn)
             }
             Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
-            CopyNonOverlapping(box crate::mir::CopyNonOverlapping {
-                ref src,
-                ref dst,
-                ref count,
-            }) => {
-                write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?}, count={:?})", src, dst, count)
-            }
+            Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
             Nop => write!(fmt, "nop"),
         }
     }
@@ -1410,6 +1380,7 @@ impl<V, T> ProjectionElem<V, T> {
 
             Self::Field(_, _)
             | Self::Index(_)
+            | Self::OpaqueCast(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _) => false,
@@ -1457,7 +1428,7 @@ pub struct PlaceRef<'tcx> {
 // Once we stop implementing `Ord` for `DefId`,
 // this impl will be unnecessary. Until then, we'll
 // leave this impl in place to prevent re-adding a
-// dependnecy on the `Ord` impl for `DefId`
+// dependency on the `Ord` impl for `DefId`
 impl<'tcx> !PartialOrd for PlaceRef<'tcx> {}
 
 impl<'tcx> Place<'tcx> {
@@ -1478,7 +1449,9 @@ impl<'tcx> Place<'tcx> {
     /// It's guaranteed to be in the first place
     pub fn has_deref(&self) -> bool {
         // To make sure this is not accidently used in wrong mir phase
-        debug_assert!(!self.projection[1..].contains(&PlaceElem::Deref));
+        debug_assert!(
+            self.projection.is_empty() || !self.projection[1..].contains(&PlaceElem::Deref)
+        );
         self.projection.first() == Some(&PlaceElem::Deref)
     }
 
@@ -1602,7 +1575,9 @@ impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         for elem in self.projection.iter().rev() {
             match elem {
-                ProjectionElem::Downcast(_, _) | ProjectionElem::Field(_, _) => {
+                ProjectionElem::OpaqueCast(_)
+                | ProjectionElem::Downcast(_, _)
+                | ProjectionElem::Field(_, _) => {
                     write!(fmt, "(").unwrap();
                 }
                 ProjectionElem::Deref => {
@@ -1618,6 +1593,9 @@ impl Debug for Place<'_> {
 
         for elem in self.projection.iter() {
             match elem {
+                ProjectionElem::OpaqueCast(ty) => {
+                    write!(fmt, " as {})", ty)?;
+                }
                 ProjectionElem::Downcast(Some(name), _index) => {
                     write!(fmt, " as {})", name)?;
                 }
@@ -1846,6 +1824,7 @@ impl<'tcx> Rvalue<'tcx> {
             // While the model is undecided, we should be conservative. See
             // <https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html>
             Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => false,
+            Rvalue::Cast(CastKind::DynStar, _, _) => false,
 
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(_)
@@ -2055,6 +2034,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// particular, one must be wary of `NaN`!
 
 #[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct Constant<'tcx> {
     pub span: Span,
 
@@ -2073,6 +2053,10 @@ pub struct Constant<'tcx> {
 pub enum ConstantKind<'tcx> {
     /// This constant came from the type system
     Ty(ty::Const<'tcx>),
+
+    /// An unevaluated mir constant which is not part of the type system.
+    Unevaluated(UnevaluatedConst<'tcx>, Ty<'tcx>),
+
     /// This constant cannot go back into the type system, as it represents
     /// something the type system cannot handle (e.g. pointers).
     Val(interpret::ConstValue<'tcx>, Ty<'tcx>),
@@ -2098,20 +2082,11 @@ impl<'tcx> Constant<'tcx> {
 }
 
 impl<'tcx> ConstantKind<'tcx> {
-    /// Returns `None` if the constant is not trivially safe for use in the type system.
-    #[inline]
-    pub fn const_for_ty(&self) -> Option<ty::Const<'tcx>> {
-        match self {
-            ConstantKind::Ty(c) => Some(*c),
-            ConstantKind::Val(..) => None,
-        }
-    }
-
     #[inline(always)]
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
             ConstantKind::Ty(c) => c.ty(),
-            ConstantKind::Val(_, ty) => *ty,
+            ConstantKind::Val(_, ty) | ConstantKind::Unevaluated(_, ty) => *ty,
         }
     }
 
@@ -2123,6 +2098,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 _ => None,
             },
             ConstantKind::Val(val, _) => Some(val),
+            ConstantKind::Unevaluated(..) => None,
         }
     }
 
@@ -2137,6 +2113,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 _ => None,
             },
             ConstantKind::Val(val, _) => val.try_to_scalar(),
+            ConstantKind::Unevaluated(..) => None,
         }
     }
 
@@ -2169,6 +2146,14 @@ impl<'tcx> ConstantKind<'tcx> {
                 }
             }
             Self::Val(_, _) => self,
+            Self::Unevaluated(uneval, ty) => {
+                // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
+                match tcx.const_eval_resolve(param_env, uneval, None) {
+                    Ok(val) => Self::Val(val, ty),
+                    Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
+                    Err(_) => Self::Ty(tcx.const_error(ty)),
+                }
+            }
         }
     }
 
@@ -2194,6 +2179,18 @@ impl<'tcx> ConstantKind<'tcx> {
                     tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
                 val.try_to_bits(size)
             }
+            Self::Unevaluated(uneval, ty) => {
+                match tcx.const_eval_resolve(param_env, *uneval, None) {
+                    Ok(val) => {
+                        let size = tcx
+                            .layout_of(param_env.with_reveal_all_normalized(tcx).and(*ty))
+                            .ok()?
+                            .size;
+                        val.try_to_bits(size)
+                    }
+                    Err(_) => None,
+                }
+            }
         }
     }
 
@@ -2202,6 +2199,12 @@ impl<'tcx> ConstantKind<'tcx> {
         match self {
             Self::Ty(ct) => ct.try_eval_bool(tcx, param_env),
             Self::Val(val, _) => val.try_to_bool(),
+            Self::Unevaluated(uneval, _) => {
+                match tcx.const_eval_resolve(param_env, *uneval, None) {
+                    Ok(val) => val.try_to_bool(),
+                    Err(_) => None,
+                }
+            }
         }
     }
 
@@ -2210,6 +2213,12 @@ impl<'tcx> ConstantKind<'tcx> {
         match self {
             Self::Ty(ct) => ct.try_eval_usize(tcx, param_env),
             Self::Val(val, _) => val.try_to_machine_usize(tcx),
+            Self::Unevaluated(uneval, _) => {
+                match tcx.const_eval_resolve(param_env, *uneval, None) {
+                    Ok(val) => val.try_to_machine_usize(tcx),
+                    Err(_) => None,
+                }
+            }
         }
     }
 
@@ -2267,7 +2276,7 @@ impl<'tcx> ConstantKind<'tcx> {
         Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id), param_env)
     }
 
-    #[instrument(skip(tcx), level = "debug")]
+    #[instrument(skip(tcx), level = "debug", ret)]
     pub fn from_inline_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = match tcx.hir().get(hir_id) {
@@ -2305,21 +2314,18 @@ impl<'tcx> ConstantKind<'tcx> {
         let substs =
             ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
                 .substs;
-        let uneval_const = tcx.mk_const(ty::ConstS {
-            kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
-                def: ty::WithOptConstParam::unknown(def_id).to_global(),
-                substs,
-                promoted: None,
-            }),
-            ty,
-        });
-        debug!(?uneval_const);
-        debug_assert!(!uneval_const.has_free_regions());
 
-        Self::Ty(uneval_const)
+        let uneval = UnevaluatedConst {
+            def: ty::WithOptConstParam::unknown(def_id).to_global(),
+            substs,
+            promoted: None,
+        };
+        debug_assert!(!uneval.has_free_regions());
+
+        Self::Unevaluated(uneval, ty)
     }
 
-    #[instrument(skip(tcx), level = "debug")]
+    #[instrument(skip(tcx), level = "debug", ret)]
     fn from_opt_const_arg_anon_const(
         tcx: TyCtxt<'tcx>,
         def: ty::WithOptConstParam<LocalDefId>,
@@ -2397,29 +2403,26 @@ impl<'tcx> ConstantKind<'tcx> {
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
         let span = tcx.hir().span(hir_id);
-        let uneval = ty::Unevaluated::new(def.to_global(), substs);
+        let uneval = UnevaluatedConst::new(def.to_global(), substs);
         debug!(?span, ?param_env);
 
         match tcx.const_eval_resolve(param_env, uneval, Some(span)) {
             Ok(val) => {
-                debug!("evaluated const value: {:?}", val);
+                debug!("evaluated const value");
                 Self::Val(val, ty)
             }
             Err(_) => {
                 debug!("error encountered during evaluation");
                 // Error was handled in `const_eval_resolve`. Here we just create a
                 // new unevaluated const and error hard later in codegen
-                let ty_const = tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                Self::Unevaluated(
+                    UnevaluatedConst {
                         def: def.to_global(),
                         substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                         promoted: None,
-                    }),
+                    },
                     ty,
-                });
-                debug!(?ty_const);
-
-                Self::Ty(ty_const)
+                )
             }
         }
     }
@@ -2430,8 +2433,37 @@ impl<'tcx> ConstantKind<'tcx> {
                 let const_val = tcx.valtree_to_const_val((c.ty(), valtree));
                 Self::Val(const_val, c.ty())
             }
+            ty::ConstKind::Unevaluated(uv) => Self::Unevaluated(uv.expand(), c.ty()),
             _ => Self::Ty(c),
         }
+    }
+}
+
+/// An unevaluated (potentially generic) constant used in MIR.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
+#[derive(Hash, HashStable)]
+pub struct UnevaluatedConst<'tcx> {
+    pub def: ty::WithOptConstParam<DefId>,
+    pub substs: SubstsRef<'tcx>,
+    pub promoted: Option<Promoted>,
+}
+
+impl<'tcx> UnevaluatedConst<'tcx> {
+    // FIXME: probably should get rid of this method. It's also wrong to
+    // shrink and then later expand a promoted.
+    #[inline]
+    pub fn shrink(self) -> ty::UnevaluatedConst<'tcx> {
+        ty::UnevaluatedConst { def: self.def, substs: self.substs }
+    }
+}
+
+impl<'tcx> UnevaluatedConst<'tcx> {
+    #[inline]
+    pub fn new(
+        def: ty::WithOptConstParam<DefId>,
+        substs: SubstsRef<'tcx>,
+    ) -> UnevaluatedConst<'tcx> {
+        UnevaluatedConst { def, substs, promoted: Default::default() }
     }
 }
 
@@ -2584,8 +2616,6 @@ impl UserTypeProjection {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! { ProjectionKind, }
-
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Ok(UserTypeProjection {
@@ -2630,6 +2660,11 @@ impl<'tcx> Display for ConstantKind<'tcx> {
         match *self {
             ConstantKind::Ty(c) => pretty_print_const(c, fmt, true),
             ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt, true),
+            // FIXME(valtrees): Correctly print mir constants.
+            ConstantKind::Unevaluated(..) => {
+                fmt.write_str("_")?;
+                Ok(())
+            }
         }
     }
 }
@@ -2651,15 +2686,7 @@ fn pretty_print_const<'tcx>(
 }
 
 fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Result {
-    fmt.write_str("b\"")?;
-    for &c in byte_str {
-        for e in std::ascii::escape_default(c) {
-            fmt.write_char(e as char)?;
-        }
-    }
-    fmt.write_str("\"")?;
-
-    Ok(())
+    write!(fmt, "b\"{}\"", byte_str.escape_ascii())
 }
 
 fn comma_sep<'tcx>(fmt: &mut Formatter<'_>, elems: Vec<ConstantKind<'tcx>>) -> fmt::Result {
@@ -2905,4 +2932,18 @@ impl Location {
             dominators.is_dominated_by(other.block, self.block)
         }
     }
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(BasicBlockData<'_>, 144);
+    static_assert_size!(LocalDecl<'_>, 56);
+    static_assert_size!(Statement<'_>, 32);
+    static_assert_size!(StatementKind<'_>, 16);
+    static_assert_size!(Terminator<'_>, 112);
+    static_assert_size!(TerminatorKind<'_>, 96);
 }

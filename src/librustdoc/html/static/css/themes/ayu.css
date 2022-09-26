@@ -16,6 +16,25 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--headings-border-bottom-color: #5c6773;
 	--border-color: #5c6773;
 	--button-background-color: #141920;
+	--right-side-color: grey;
+	--code-attribute-color: #999;
+	--toggles-color: #999;
+	--search-input-focused-border-color: #5c6773; /* Same as `--border-color`. */
+	--copy-path-button-color: #fff;
+	--copy-path-img-filter: invert(70%);
+	--copy-path-img-hover-filter: invert(100%);
+	--codeblock-error-hover-color: rgb(255, 0, 0);
+	--codeblock-error-color: rgba(255, 0, 0, .5);
+	--codeblock-ignore-hover-color: rgb(255, 142, 0);
+	--codeblock-ignore-color: rgba(255, 142, 0, .6);
+	--type-link-color: #ffa0a5;
+	--trait-link-color: #39afd7;
+	--assoc-item-link-color: #39afd7;
+	--function-link-color: #fdd687;
+	--macro-link-color: #a37acc;
+	--keyword-link-color: #39afd7;
+	--mod-link-color: #39afd7;
+	--link-color: #39afd7;
 }
 
 .slider {
@@ -100,55 +119,11 @@ pre, .rustdoc.source .example-wrap {
 
 .content .item-info::before { color: #ccc; }
 
-.content span.foreigntype, .content a.foreigntype { color: #ffa0a5; }
-.content span.union, .content a.union { color: #ffa0a5; }
-.content span.constant, .content a.constant,
-.content span.static, .content a.static { color: #39AFD7; }
-.content span.primitive, .content a.primitive { color: #ffa0a5; }
-.content span.traitalias, .content a.traitalias { color: #39AFD7; }
-.content span.keyword, .content a.keyword { color: #39AFD7; }
-
-.content span.externcrate, .content span.mod, .content a.mod {
-	color: #39AFD7;
-}
-.content span.struct, .content a.struct {
-	color: #ffa0a5;
-}
-.content span.enum, .content a.enum {
-	color: #ffa0a5;
-}
-.content span.trait, .content a.trait {
-	color: #39AFD7;
-}
-.content span.type, .content a.type {
-	color: #39AFD7;
-}
-.content span.type,
-.content a.type,
-.block a.current.type { color: #39AFD7; }
-.content span.associatedtype,
-.content a.associatedtype,
-.block a.current.associatedtype { color: #39AFD7; }
-.content span.fn, .content a.fn, .content span.method,
-.content a.method, .content span.tymethod,
-.content a.tymethod, .content .fnname {
-	color: #fdd687;
-}
-.content span.attr, .content a.attr, .content span.derive,
-.content a.derive, .content span.macro, .content a.macro {
-	color: #a37acc;
-}
-
 .sidebar a { color: #53b1db; }
 .sidebar a.current.type { color: #53b1db; }
-.sidebar a.current.associatedtype { color: #53b1db; }
 
 pre.rust .comment { color: #788797; }
 pre.rust .doccomment { color: #a1ac88; }
-
-a {
-	color: #39AFD7;
-}
 
 .sidebar h2 a,
 .sidebar h3 a {
@@ -156,11 +131,6 @@ a {
 }
 body.source .example-wrap pre.rust a {
 	background: #333;
-}
-
-details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before {
-	color: #999;
 }
 
 details.rustdoc-toggle > summary::before {
@@ -195,11 +165,6 @@ details.rustdoc-toggle > summary::before {
 .stab.portability > code {
 	color: #e6e1cf;
 	background: none;
-}
-
-.rightside:not(a),
-.out-of-band {
-	color: grey;
 }
 
 .result-name .primitive > i, .result-name .keyword > i {
@@ -242,62 +207,9 @@ a.test-arrow:hover {
 	color: #c5c5c5;
 }
 
-.toggle-label,
-.code-attribute {
-	color: #999;
-}
-
 :target {
 	background: rgba(255, 236, 164, 0.06);
 	border-right: 3px solid rgba(255, 180, 76, 0.85);
-}
-
-pre.compile_fail {
-	border-left: 2px solid rgba(255,0,0,.4);
-}
-
-pre.compile_fail:hover, .information:hover + pre.compile_fail {
-	border-left: 2px solid #f00;
-}
-
-pre.should_panic {
-	border-left: 2px solid rgba(255,0,0,.4);
-}
-
-pre.should_panic:hover, .information:hover + pre.should_panic {
-	border-left: 2px solid #f00;
-}
-
-pre.ignore {
-	border-left: 2px solid rgba(255,142,0,.6);
-}
-
-pre.ignore:hover, .information:hover + pre.ignore {
-	border-left: 2px solid #ff9200;
-}
-
-.tooltip.compile_fail {
-	color: rgba(255,0,0,.5);
-}
-
-.information > .compile_fail:hover {
-	color: #f00;
-}
-
-.tooltip.should_panic {
-	color: rgba(255,0,0,.5);
-}
-
-.information > .should_panic:hover {
-	color: #f00;
-}
-
-.tooltip.ignore {
-	color: rgba(255,142,0,.6);
-}
-
-.information > .ignore:hover {
-	color: #ff9200;
 }
 
 .search-failed a {
@@ -342,35 +254,11 @@ individually rather than as a group) */
 /* FIXME: these rules should be at the bottom of the file but currently must be
 above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 /* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
-.search-input:focus {}
-.content span.attr,.content a.attr,.block a.current.attr,.content span.derive,.content a.derive,
-.block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
-.content span.struct,.content a.struct,.block a.current.struct {}
-#titles>button:hover,#titles>button.selected {}
-.content span.typedef,.content a.typedef,.block a.current.typedef {}
-.content span.union,.content a.union,.block a.current.union {}
 pre.rust .lifetime {}
-.stab.unstable {}
-h2,
-h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {}
-.content span.enum,.content a.enum,.block a.current.enum {}
-.content span.constant,.content a.constant,.block a.current.constant,.content span.static,
-.content a.static, .block a.current.static {}
-.content span.keyword,.content a.keyword,.block a.current.keyword {}
-.content span.traitalias,.content a.traitalias,.block a.current.traitalias {}
-.content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,
-.block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,
-.content .fnname {}
 pre.rust .kw {}
-pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute {}
-.content span.foreigntype,.content a.foreigntype,.block a.current.foreigntype {}
-.stab.deprecated {}
-.content a.attr,.content a.derive,.content a.macro {}
-.stab.portability {}
-.content span.primitive,.content a.primitive,.block a.current.primitive {}
-.content span.externcrate,.content span.mod,.content a.mod,.block a.current.mod {}
-pre.rust .kw-2,pre.rust .prelude-ty {}
-.content span.trait,.content a.trait,.block a.current.trait {}
+#titles > button:hover, #titles > button.selected {}
+pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val, pre.rust .attribute {}
+pre.rust .kw-2, pre.rust .prelude-ty {}
 
 .search-results a:focus span {}
 a.result-trait:focus {}
@@ -406,13 +294,9 @@ a.result-keyword:focus {}
 .sidebar a.current.constant
 .sidebar a.current.static {}
 .sidebar a.current.primitive {}
-.sidebar a.current.externcrate
-.sidebar a.current.mod {}
 .sidebar a.current.trait {}
 .sidebar a.current.traitalias {}
-.sidebar a.current.fn,
-.sidebar a.current.method,
-.sidebar a.current.tymethod {}
+.sidebar a.current.fn {}
 .sidebar a.current.keyword {}
 
 kbd {
@@ -427,16 +311,6 @@ kbd {
 
 #settings-menu > a img {
 	filter: invert(100);
-}
-
-#copy-path {
-	color: #fff;
-}
-#copy-path > img {
-	filter: invert(70%);
-}
-#copy-path:hover > img {
-	filter: invert(100%);
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
@@ -471,9 +345,6 @@ kbd {
 .scraped-example-list .scrape-help:hover {
 	border-color: white;
 	color: white;
-}
-.more-examples-toggle summary, .more-examples-toggle .hide-more {
-	color: #999;
 }
 .scraped-example .example-wrap .rust span.highlight {
 	background: rgb(91, 59, 1);

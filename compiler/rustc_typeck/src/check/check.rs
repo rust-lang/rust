@@ -101,12 +101,11 @@ pub(super) fn check_fn<'a, 'tcx>(
             decl.output.span(),
             param_env,
         ));
-    // If we replaced declared_ret_ty with infer vars, then we must be infering
+    // If we replaced declared_ret_ty with infer vars, then we must be inferring
     // an opaque type, so set a flag so we can improve diagnostics.
     fcx.return_type_has_opaque = ret_ty != declared_ret_ty;
 
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
-    fcx.ret_type_span = Some(decl.output.span());
 
     let span = body.value.span;
 
@@ -610,12 +609,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
         fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
             match arg.kind {
                 hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
-                    [
-                        PathSegment {
-                            res: Some(Res::SelfTy { trait_: _, alias_to: impl_ref }),
-                            ..
-                        },
-                    ] => {
+                    [PathSegment { res: Res::SelfTy { trait_: _, alias_to: impl_ref }, .. }] => {
                         let impl_ty_name =
                             impl_ref.map(|(def_id, _)| self.tcx.def_path_str(def_id));
                         self.selftys.push((path.span, impl_ty_name));
@@ -788,19 +782,19 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     let _indenter = indenter();
     match tcx.def_kind(id.def_id) {
         DefKind::Static(..) => {
-            tcx.ensure().typeck(id.def_id);
-            maybe_check_static_with_link_section(tcx, id.def_id);
-            check_static_inhabited(tcx, id.def_id);
+            tcx.ensure().typeck(id.def_id.def_id);
+            maybe_check_static_with_link_section(tcx, id.def_id.def_id);
+            check_static_inhabited(tcx, id.def_id.def_id);
         }
         DefKind::Const => {
-            tcx.ensure().typeck(id.def_id);
+            tcx.ensure().typeck(id.def_id.def_id);
         }
         DefKind::Enum => {
             let item = tcx.hir().item(id);
             let hir::ItemKind::Enum(ref enum_definition, _) = item.kind else {
                 return;
             };
-            check_enum(tcx, &enum_definition.variants, item.def_id);
+            check_enum(tcx, &enum_definition.variants, item.def_id.def_id);
         }
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl => {
@@ -813,7 +807,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                 check_impl_items_against_trait(
                     tcx,
                     it.span,
-                    it.def_id,
+                    it.def_id.def_id,
                     impl_trait_ref,
                     &impl_.items,
                 );
@@ -851,10 +845,10 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             }
         }
         DefKind::Struct => {
-            check_struct(tcx, id.def_id);
+            check_struct(tcx, id.def_id.def_id);
         }
         DefKind::Union => {
-            check_union(tcx, id.def_id);
+            check_union(tcx, id.def_id.def_id);
         }
         DefKind::OpaqueTy => {
             let item = tcx.hir().item(id);
@@ -867,7 +861,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             // See https://github.com/rust-lang/rust/issues/75100
             if !tcx.sess.opts.actually_rustdoc {
                 let substs = InternalSubsts::identity_for_item(tcx, item.def_id.to_def_id());
-                check_opaque(tcx, item.def_id, substs, &origin);
+                check_opaque(tcx, item.def_id.def_id, substs, &origin);
             }
         }
         DefKind::TyAlias => {
@@ -894,7 +888,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                 }
             } else {
                 for item in items {
-                    let def_id = item.id.def_id;
+                    let def_id = item.id.def_id.def_id;
                     let generics = tcx.generics_of(def_id);
                     let own_counts = generics.own_counts();
                     if generics.params.len() - own_counts.lifetimes != 0 {
@@ -1464,7 +1458,7 @@ fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: L
     def.destructor(tcx); // force the destructor to be evaluated
 
     if vs.is_empty() {
-        if let Some(attr) = tcx.get_attr(def_id.to_def_id(), sym::repr) {
+        if let Some(attr) = tcx.get_attrs(def_id.to_def_id(), sym::repr).next() {
             struct_span_err!(
                 tcx.sess,
                 attr.span,
@@ -1543,7 +1537,7 @@ fn detect_discriminant_duplicate<'tcx>(
             None => {
                 // At this point we know this discriminant is a duplicate, and was not explicitly
                 // assigned by the user. Here we iterate backwards to fetch the HIR for the last
-                // explictly assigned discriminant, and letting the user know that this was the
+                // explicitly assigned discriminant, and letting the user know that this was the
                 // increment startpoint, and how many steps from there leading to the duplicate
                 if let Some((n, hir::Variant { span, ident, .. })) =
                     vs[..idx].iter().rev().enumerate().find(|v| v.1.disr_expr.is_some())
@@ -1566,7 +1560,7 @@ fn detect_discriminant_duplicate<'tcx>(
     };
 
     // Here we loop through the discriminants, comparing each discriminant to another.
-    // When a duplicate is detected, we instatiate an error and point to both
+    // When a duplicate is detected, we instantiate an error and point to both
     // initial and duplicate value. The duplicate discriminant is then discarded by swapping
     // it with the last element and decrementing the `vec.len` (which is why we have to evaluate
     // `discrs.len()` anew every iteration, and why this could be tricky to do in a functional

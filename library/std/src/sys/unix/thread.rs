@@ -429,7 +429,7 @@ mod cgroups {
                         Some(b"") => Cgroup::V2,
                         Some(controllers)
                             if from_utf8(controllers)
-                                .is_ok_and(|c| c.split(",").any(|c| c == "cpu")) =>
+                                .is_ok_and(|c| c.split(',').any(|c| c == "cpu")) =>
                         {
                             Cgroup::V1
                         }

@@ -51,7 +51,7 @@ impl RemoveNoopLandingPads {
                 StatementKind::Assign { .. }
                 | StatementKind::SetDiscriminant { .. }
                 | StatementKind::Deinit(..)
-                | StatementKind::CopyNonOverlapping(..)
+                | StatementKind::Intrinsic(..)
                 | StatementKind::Retag { .. } => {
                     return false;
                 }

@@ -28,7 +28,7 @@ use super::SelectionCandidate::{self, *};
 use super::{EvaluatedCandidate, SelectionCandidateSet, SelectionContext, TraitObligationStack};
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn candidate_from_obligation<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
@@ -48,7 +48,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let Some(c) =
             self.check_candidate_cache(stack.obligation.param_env, cache_fresh_trait_pred)
         {
-            debug!(candidate = ?c, "CACHE HIT");
+            debug!("CACHE HIT");
             return c;
         }
 
@@ -61,7 +61,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let (candidate, dep_node) =
             self.in_task(|this| this.candidate_from_obligation_no_cache(stack));
 
-        debug!(?candidate, "CACHE MISS");
+        debug!("CACHE MISS");
         self.insert_candidate_cache(
             stack.obligation.param_env,
             cache_fresh_trait_pred,
@@ -309,6 +309,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // User-defined transmutability impls are permitted.
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
                 self.assemble_candidates_for_transmutability(obligation, &mut candidates);
+            } else if lang_items.tuple_trait() == Some(def_id) {
+                self.assemble_candidate_for_tuple(obligation, &mut candidates);
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -337,7 +339,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(candidates)
     }
 
-    #[tracing::instrument(level = "debug", skip(self, candidates))]
+    #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_candidates_from_projected_tys(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -360,14 +362,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
 
-        candidates.vec.extend(result.into_iter().map(ProjectionCandidate));
+        candidates
+            .vec
+            .extend(result.into_iter().map(|(idx, constness)| ProjectionCandidate(idx, constness)));
     }
 
     /// Given an obligation like `<SomeTrait for T>`, searches the obligations that the caller
     /// supplied to find out whether it is listed among them.
     ///
     /// Never affects the inference environment.
-    #[tracing::instrument(level = "debug", skip(self, stack, candidates))]
+    #[instrument(level = "debug", skip(self, stack, candidates))]
     fn assemble_candidates_from_caller_bounds<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
@@ -880,7 +884,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
     }
 
-    #[tracing::instrument(level = "debug", skip(self, obligation, candidates))]
+    #[instrument(level = "debug", skip(self, obligation, candidates))]
     fn assemble_candidates_for_transmutability(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -898,7 +902,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates.vec.push(TransmutabilityCandidate);
     }
 
-    #[tracing::instrument(level = "debug", skip(self, obligation, candidates))]
+    #[instrument(level = "debug", skip(self, obligation, candidates))]
     fn assemble_candidates_for_trait_alias(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -917,7 +921,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Assembles the trait which are built-in to the language itself:
     /// `Copy`, `Clone` and `Sized`.
-    #[tracing::instrument(level = "debug", skip(self, candidates))]
+    #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_builtin_bound_candidates(
         &mut self,
         conditions: BuiltinImplConditions<'tcx>,
@@ -1007,6 +1011,48 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(_) => {
                 candidates.ambiguous = true;
             }
+        }
+    }
+
+    fn assemble_candidate_for_tuple(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = self.infcx().shallow_resolve(obligation.self_ty().skip_binder());
+        match self_ty.kind() {
+            ty::Tuple(_) => {
+                candidates.vec.push(TupleCandidate);
+            }
+            ty::Infer(ty::TyVar(_)) => {
+                candidates.ambiguous = true;
+            }
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Dynamic(_, _, _)
+            | ty::Closure(_, _)
+            | ty::Generator(_, _, _)
+            | ty::GeneratorWitness(_)
+            | ty::Never
+            | ty::Projection(_)
+            | ty::Opaque(_, _)
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Error(_)
+            | ty::Infer(_)
+            | ty::Placeholder(_) => {}
         }
     }
 }

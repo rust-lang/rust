@@ -9,10 +9,7 @@ use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{
     hir::place::PlaceBase,
-    mir::{
-        self, BindingForm, ClearCrossCrate, ImplicitSelfKind, Local, LocalDecl, LocalInfo,
-        LocalKind, Location,
-    },
+    mir::{self, BindingForm, ClearCrossCrate, Local, LocalDecl, LocalInfo, LocalKind, Location},
 };
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
@@ -172,6 +169,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         ..,
                         ProjectionElem::Index(_)
                         | ProjectionElem::ConstantIndex { .. }
+                        | ProjectionElem::OpaqueCast { .. }
                         | ProjectionElem::Subslice { .. }
                         | ProjectionElem::Downcast(..),
                     ],
@@ -312,7 +310,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     && !matches!(
                         decl.local_info,
                         Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
-                            ImplicitSelfKind::MutRef
+                            hir::ImplicitSelfKind::MutRef
                         ))))
                     )
                 {
@@ -367,7 +365,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 if let Some(Node::Pat(pat)) = self.infcx.tcx.hir().find(upvar_hir_id)
                     && let hir::PatKind::Binding(
-                        hir::BindingAnnotation::Unannotated,
+                        hir::BindingAnnotation::NONE,
                         _,
                         upvar_ident,
                         _,
@@ -711,8 +709,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                         self.suggested = true;
-                    } else if let hir::ExprKind::MethodCall(_path, args @ [_, ..], sp) = expr.kind
-                        && let hir::ExprKind::Index(val, index) = args[0].kind
+                    } else if let hir::ExprKind::MethodCall(_path, receiver, _, sp) = expr.kind
+                        && let hir::ExprKind::Index(val, index) = receiver.kind
                         && expr.span == self.assign_span
                     {
                         // val[index].path(args..);
@@ -724,7 +722,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     ".get_mut(".to_string(),
                                 ),
                                 (
-                                    index.span.shrink_to_hi().with_hi(args[0].span.hi()),
+                                    index.span.shrink_to_hi().with_hi(receiver.span.hi()),
                                     ").map(|val| val".to_string(),
                                 ),
                                 (sp.shrink_to_hi(), ")".to_string()),
@@ -911,11 +909,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                         [
                                                             Expr {
                                                                 kind:
-                                                                    MethodCall(
-                                                                        path_segment,
-                                                                        _args,
-                                                                        span,
-                                                                    ),
+                                                                    MethodCall(path_segment, _, _, span),
                                                                 hir_id,
                                                                 ..
                                                             },
@@ -935,10 +929,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 _,
             ) = hir_map.body(fn_body_id).value.kind
             {
-                let opt_suggestions = path_segment
-                    .hir_id
-                    .map(|path_hir_id| self.infcx.tcx.typeck(path_hir_id.owner))
-                    .and_then(|typeck| typeck.type_dependent_def_id(*hir_id))
+                let opt_suggestions = self
+                    .infcx
+                    .tcx
+                    .typeck(path_segment.hir_id.owner.def_id)
+                    .type_dependent_def_id(*hir_id)
                     .and_then(|def_id| self.infcx.tcx.impl_of_method(def_id))
                     .map(|def_id| self.infcx.tcx.associated_items(def_id))
                     .map(|assoc_items| {
@@ -976,6 +971,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let hir = self.infcx.tcx.hir();
         let closure_id = self.mir_hir_id();
+        let closure_span = self.infcx.tcx.def_span(self.mir_def_id());
         let fn_call_id = hir.get_parent_node(closure_id);
         let node = hir.get(fn_call_id);
         let def_id = hir.enclosing_body_owner(fn_call_id);
@@ -1027,7 +1023,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(span) = arg {
                     err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
                     err.span_label(func.span, "expects `Fn` instead of `FnMut`");
-                    err.span_label(self.body.span, "in this closure");
+                    err.span_label(closure_span, "in this closure");
                     look_at_return = false;
                 }
             }
@@ -1036,7 +1032,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if look_at_return && hir.get_return_block(closure_id).is_some() {
             // ...otherwise we are probably in the tail expression of the function, point at the
             // return type.
-            match hir.get_by_def_id(hir.get_parent_item(fn_call_id)) {
+            match hir.get_by_def_id(hir.get_parent_item(fn_call_id).def_id) {
                 hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(sig, ..), .. })
                 | hir::Node::TraitItem(hir::TraitItem {
                     ident,
@@ -1053,7 +1049,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         sig.decl.output.span(),
                         "change this to return `FnMut` instead of `Fn`",
                     );
-                    err.span_label(self.body.span, "in this closure");
+                    err.span_label(closure_span, "in this closure");
                 }
                 _ => {}
             }
@@ -1077,7 +1073,7 @@ fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symb
             //
             // Deliberately fall into this case for all implicit self types,
             // so that we don't fall in to the next case with them.
-            *kind == mir::ImplicitSelfKind::MutRef
+            *kind == hir::ImplicitSelfKind::MutRef
         }
         _ if Some(kw::SelfLower) == local_name => {
             // Otherwise, check if the name is the `self` keyword - in which case

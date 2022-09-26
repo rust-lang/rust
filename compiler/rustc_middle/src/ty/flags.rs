@@ -1,5 +1,5 @@
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, InferConst, Term, Ty, TypeFlags};
+use crate::ty::{self, InferConst, Ty, TypeFlags};
 use std::slice;
 
 #[derive(Debug)]
@@ -34,7 +34,7 @@ impl FlagComputation {
         result.flags
     }
 
-    pub fn for_unevaluated_const(uv: ty::Unevaluated<'_>) -> TypeFlags {
+    pub fn for_unevaluated_const(uv: ty::UnevaluatedConst<'_>) -> TypeFlags {
         let mut result = FlagComputation::new();
         result.add_unevaluated_const(uv);
         result.flags
@@ -171,7 +171,7 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::Dynamic(obj, r) => {
+            &ty::Dynamic(obj, r, _) => {
                 for predicate in obj.iter() {
                     self.bound_computation(predicate, |computation, predicate| match predicate {
                         ty::ExistentialPredicate::Trait(tr) => computation.add_substs(tr.substs),
@@ -243,9 +243,9 @@ impl FlagComputation {
             }
             ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
                 self.add_projection_ty(projection_ty);
-                match term {
-                    Term::Ty(ty) => self.add_ty(ty),
-                    Term::Const(c) => self.add_const(c),
+                match term.unpack() {
+                    ty::TermKind::Ty(ty) => self.add_ty(ty),
+                    ty::TermKind::Const(c) => self.add_const(c),
                 }
             }
             ty::PredicateKind::WellFormed(arg) => {
@@ -313,16 +313,16 @@ impl FlagComputation {
         }
     }
 
-    fn add_unevaluated_const<P>(&mut self, ct: ty::Unevaluated<'_, P>) {
+    fn add_unevaluated_const(&mut self, ct: ty::UnevaluatedConst<'_>) {
         self.add_substs(ct.substs);
         self.add_flags(TypeFlags::HAS_CT_PROJECTION);
     }
 
     fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection<'_>) {
         self.add_substs(projection.substs);
-        match projection.term {
-            ty::Term::Ty(ty) => self.add_ty(ty),
-            ty::Term::Const(ct) => self.add_const(ct),
+        match projection.term.unpack() {
+            ty::TermKind::Ty(ty) => self.add_ty(ty),
+            ty::TermKind::Const(ct) => self.add_const(ct),
         }
     }
 

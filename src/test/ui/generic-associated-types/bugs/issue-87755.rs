@@ -3,8 +3,6 @@
 
 // This should pass.
 
-#![feature(generic_associated_types)]
-
 use std::fmt::Debug;
 
 trait Foo {

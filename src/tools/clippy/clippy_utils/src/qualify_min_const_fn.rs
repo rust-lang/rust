@@ -6,8 +6,8 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
-    Body, CastKind, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
+    Terminator, TerminatorKind,
 };
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
@@ -82,7 +82,7 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()));
             },
-            ty::Dynamic(preds, _) => {
+            ty::Dynamic(preds, _, _) => {
                 for pred in preds.iter() {
                     match pred.skip_binder() {
                         ty::ExistentialPredicate::AutoTrait(_) | ty::ExistentialPredicate::Projection(_) => {
@@ -161,6 +161,10 @@ fn check_rvalue<'tcx>(
         Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
             Err((span, "casting pointers to ints is unstable in const fn".into()))
         },
+        Rvalue::Cast(CastKind::DynStar, _, _) => {
+            // FIXME(dyn-star)
+            unimplemented!()
+        },
         // binops are fine on integers
         Rvalue::BinaryOp(_, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(_, box (lhs, rhs)) => {
             check_operand(tcx, lhs, span, body)?;
@@ -212,7 +216,11 @@ fn check_statement<'tcx>(
             check_place(tcx, **place, span, body)
         },
 
-        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(tcx, op, span, body),
+
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+            rustc_middle::mir::CopyNonOverlapping { dst, src, count },
+        )) => {
             check_operand(tcx, dst, span, body)?;
             check_operand(tcx, src, span, body)?;
             check_operand(tcx, count, span, body)
@@ -252,6 +260,7 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
                 }
             },
             ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::OpaqueCast(..)
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Deref
@@ -358,10 +367,21 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<RustcVersion>) -> bo
                 // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                 // function could be removed if `rustc` provided a MSRV-aware version of `is_const_fn`.
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
+
+                // HACK(nilstrieb): CURRENT_RUSTC_VERSION can return versions like 1.66.0-dev. `rustc-semver` doesn't accept
+                //                  the `-dev` version number so we have to strip it off.
+                let short_version = since
+                    .as_str()
+                    .split('-')
+                    .next()
+                    .expect("rustc_attr::StabilityLevel::Stable::since` is empty");
+
+                let since = rustc_span::Symbol::intern(short_version);
+
                 crate::meets_msrv(
                     msrv,
                     RustcVersion::parse(since.as_str())
-                        .expect("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted"),
+                        .unwrap_or_else(|err| panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{since}`, {err:?}")),
                 )
             } else {
                 // Unstable const fn with the feature enabled.

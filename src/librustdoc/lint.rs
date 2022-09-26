@@ -64,9 +64,13 @@ where
 }
 
 macro_rules! declare_rustdoc_lint {
-    ($(#[$attr:meta])* $name: ident, $level: ident, $descr: literal $(,)?) => {
+    (
+        $(#[$attr:meta])* $name: ident, $level: ident, $descr: literal $(,)?
+        $(@feature_gate = $gate:expr;)?
+    ) => {
         declare_tool_lint! {
             $(#[$attr])* pub rustdoc::$name, $level, $descr
+            $(, @feature_gate = $gate;)?
         }
     }
 }
@@ -123,7 +127,8 @@ declare_rustdoc_lint! {
     /// [rustdoc book]: ../../../rustdoc/lints.html#missing_doc_code_examples
     MISSING_DOC_CODE_EXAMPLES,
     Allow,
-    "detects publicly-exported items without code samples in their documentation"
+    "detects publicly-exported items without code samples in their documentation",
+    @feature_gate = rustc_span::symbol::sym::rustdoc_missing_doc_code_examples;
 }
 
 declare_rustdoc_lint! {

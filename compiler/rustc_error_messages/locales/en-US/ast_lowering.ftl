@@ -7,7 +7,9 @@ ast_lowering_use_angle_brackets = use angle brackets instead
 ast_lowering_invalid_abi =
     invalid ABI: found `{$abi}`
     .label = invalid ABI
-    .help = valid ABIs: {$valid_abis}
+    .note = invoke `{$command}` for a full list of supported calling conventions.
+
+ast_lowering_invalid_abi_suggestion = did you mean
 
 ast_lowering_assoc_ty_parentheses =
     parenthesized generic arguments cannot be used in associated type constraints
@@ -131,3 +133,9 @@ ast_lowering_arbitrary_expression_in_pattern =
     arbitrary expressions aren't allowed in patterns
 
 ast_lowering_inclusive_range_with_no_end = inclusive range with no end
+
+ast_lowering_trait_fn_async =
+    functions in traits cannot be declared `async`
+    .label = `async` because of this
+    .note = `async` trait functions are not currently supported
+    .note2 = consider using the `async-trait` crate: https://crates.io/crates/async-trait

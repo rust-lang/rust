@@ -1,11 +1,12 @@
+use crate::error::CycleStack;
 use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryStackFrame};
-use rustc_hir::def::DefKind;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    struct_span_err, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, Level,
+    Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, Level,
 };
+use rustc_hir::def::DefKind;
 use rustc_session::Session;
 use rustc_span::Span;
 
@@ -60,6 +61,7 @@ impl QueryJobId {
     }
 }
 
+#[derive(Clone)]
 pub struct QueryJobInfo {
     pub query: QueryStackFrame,
     pub job: QueryJob,
@@ -117,10 +119,10 @@ impl QueryJob {
     }
 }
 
-#[cfg(not(parallel_compiler))]
 impl QueryJobId {
     #[cold]
     #[inline(never)]
+    #[cfg(not(parallel_compiler))]
     pub(super) fn find_cycle_in_stack(
         &self,
         query_map: QueryMap,
@@ -156,6 +158,24 @@ impl QueryJobId {
         }
 
         panic!("did not find a cycle")
+    }
+
+    #[cold]
+    #[inline(never)]
+    pub fn try_find_layout_root(&self, query_map: QueryMap) -> Option<(QueryJobInfo, usize)> {
+        let mut last_layout = None;
+        let mut current_id = Some(*self);
+        let mut depth = 0;
+
+        while let Some(id) = current_id {
+            let info = query_map.get(&id).unwrap();
+            if info.query.name == "layout_of" {
+                depth += 1;
+                last_layout = Some((info.clone(), depth));
+            }
+            current_id = info.job.parent;
+        }
+        last_layout
     }
 }
 
@@ -536,46 +556,44 @@ pub(crate) fn report_cycle<'a>(
     assert!(!stack.is_empty());
 
     let span = stack[0].query.default_span(stack[1 % stack.len()].span);
-    let mut err =
-        struct_span_err!(sess, span, E0391, "cycle detected when {}", stack[0].query.description);
+
+    let mut cycle_stack = Vec::new();
+
+    use crate::error::StackCount;
+    let stack_count = if stack.len() == 1 { StackCount::Single } else { StackCount::Multiple };
 
     for i in 1..stack.len() {
         let query = &stack[i].query;
         let span = query.default_span(stack[(i + 1) % stack.len()].span);
-        err.span_note(span, &format!("...which requires {}...", query.description));
+        cycle_stack.push(CycleStack { span, desc: query.description.to_owned() });
     }
 
-    if stack.len() == 1 {
-        err.note(&format!("...which immediately requires {} again", stack[0].query.description));
-    } else {
-        err.note(&format!(
-            "...which again requires {}, completing the cycle",
-            stack[0].query.description
-        ));
-    }
-
-    if stack.iter().all(|entry| {
-        entry
-            .query
-            .def_kind
-            .map_or(false, |def_kind| matches!(def_kind, DefKind::TyAlias | DefKind::TraitAlias))
-    }) {
-        if stack.iter().all(|entry| {
-            entry.query.def_kind.map_or(false, |def_kind| matches!(def_kind, DefKind::TyAlias))
-        }) {
-            err.note("type aliases cannot be recursive");
-            err.help("consider using a struct, enum, or union instead to break the cycle");
-            err.help("see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information");
-        } else {
-            err.note("trait aliases cannot be recursive");
-        }
-    }
-
+    let mut cycle_usage = None;
     if let Some((span, query)) = usage {
-        err.span_note(query.default_span(span), &format!("cycle used when {}", query.description));
+        cycle_usage = Some(crate::error::CycleUsage {
+            span: query.default_span(span),
+            usage: query.description,
+        });
     }
 
-    err
+    let alias = if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TyAlias)) {
+        Some(crate::error::Alias::Ty)
+    } else if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TraitAlias)) {
+        Some(crate::error::Alias::Trait)
+    } else {
+        None
+    };
+
+    let cycle_diag = crate::error::Cycle {
+        span,
+        cycle_stack,
+        stack_bottom: stack[0].query.description.to_owned(),
+        alias,
+        cycle_usage: cycle_usage,
+        stack_count,
+    };
+
+    cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
 }
 
 pub fn print_query_stack<CTX: QueryContext>(

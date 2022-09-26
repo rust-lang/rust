@@ -6,8 +6,9 @@ use super::diagnostics::{
     InvalidComparisonOperatorSub, InvalidLogicalOperator, InvalidLogicalOperatorSub,
     LeftArrowOperator, LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath,
     MalformedLoopLabel, MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
-    NotAsNegationOperator, OuterAttributeNotAllowedOnIfElse, RequireColonAfterLabeledExpression,
-    SnapshotParser, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
+    NotAsNegationOperator, NotAsNegationOperatorSub, OuterAttributeNotAllowedOnIfElse,
+    RequireColonAfterLabeledExpression, SnapshotParser, TildeAsUnaryOperator,
+    UnexpectedTokenAfterLabel,
 };
 use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
@@ -35,10 +36,10 @@ use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast::{ClosureBinder, StmtKind};
 use rustc_ast_pretty::pprust;
+use rustc_errors::IntoDiagnostic;
 use rustc_errors::{Applicability, Diagnostic, PResult};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_session::SessionDiagnostic;
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
@@ -660,12 +661,23 @@ impl<'a> Parser<'a> {
     fn recover_not_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
         // Emit the error...
         let negated_token = self.look_ahead(1, |t| t.clone());
+
+        let sub_diag = if negated_token.is_numeric_lit() {
+            NotAsNegationOperatorSub::SuggestNotBitwise
+        } else if negated_token.is_bool_lit() {
+            NotAsNegationOperatorSub::SuggestNotLogical
+        } else {
+            NotAsNegationOperatorSub::SuggestNotDefault
+        };
+
         self.sess.emit_err(NotAsNegationOperator {
             negated: negated_token.span,
             negated_desc: super::token_descr(&negated_token),
             // Span the `not` plus trailing whitespace to avoid
             // trailing whitespace after the `!` in our suggestion
-            not: self.sess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),
+            sub: sub_diag(
+                self.sess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),
+            ),
         });
 
         // ...and recover!
@@ -944,13 +956,18 @@ impl<'a> Parser<'a> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
         // structure
-        self.parse_dot_or_call_expr_with_(e0, lo).map(|expr| {
-            expr.map(|mut expr| {
-                attrs.extend(expr.attrs);
-                expr.attrs = attrs;
-                expr
+        let res = self.parse_dot_or_call_expr_with_(e0, lo);
+        if attrs.is_empty() {
+            res
+        } else {
+            res.map(|expr| {
+                expr.map(|mut expr| {
+                    attrs.extend(expr.attrs);
+                    expr.attrs = attrs;
+                    expr
+                })
             })
-        })
+        }
     }
 
     fn parse_dot_or_call_expr_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
@@ -1578,7 +1595,7 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
 
-                // Replace `'label: non_block_expr` with `'label: {non_block_expr}` in order to supress future errors about `break 'label`.
+                // Replace `'label: non_block_expr` with `'label: {non_block_expr}` in order to suppress future errors about `break 'label`.
                 let stmt = self.mk_stmt(span, StmtKind::Expr(expr));
                 let blk = self.mk_block(vec![stmt], BlockCheckMode::Default, span);
                 self.mk_expr(span, ExprKind::Block(blk, label))
@@ -1972,6 +1989,9 @@ impl<'a> Parser<'a> {
         open_delim_span: Span,
     ) -> PResult<'a, ()> {
         if self.token.kind == token::Comma {
+            if !self.sess.source_map().is_multiline(prev_span.until(self.token.span)) {
+                return Ok(());
+            }
             let mut snapshot = self.create_snapshot_for_diagnostic();
             snapshot.bump();
             match snapshot.parse_seq_to_before_end(
@@ -1992,7 +2012,7 @@ impl<'a> Parser<'a> {
                     return Err(MissingSemicolonBeforeArray {
                         open_delim: open_delim_span,
                         semicolon: prev_span.shrink_to_hi(),
-                    }.into_diagnostic(self.sess));
+                    }.into_diagnostic(&self.sess.span_diagnostic));
                 }
                 Ok(_) => (),
                 Err(err) => err.cancel(),
@@ -2578,7 +2598,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
-        // Used to check the `let_chains` and `if_let_guard` features mostly by scaning
+        // Used to check the `let_chains` and `if_let_guard` features mostly by scanning
         // `&&` tokens.
         fn check_let_expr(expr: &Expr) -> (bool, bool) {
             match expr.kind {
@@ -2740,7 +2760,8 @@ impl<'a> Parser<'a> {
     fn parse_try_block(&mut self, span_lo: Span) -> PResult<'a, P<Expr>> {
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
         if self.eat_keyword(kw::Catch) {
-            Err(CatchAfterTry { span: self.prev_token.span }.into_diagnostic(self.sess))
+            Err(CatchAfterTry { span: self.prev_token.span }
+                .into_diagnostic(&self.sess.span_diagnostic))
         } else {
             let span = span_lo.to(body.span);
             self.sess.gated_spans.gate(sym::try_blocks, span);

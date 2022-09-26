@@ -1,6 +1,5 @@
 // edition:2018
 
-#![feature(generic_associated_types)]
 #![feature(type_alias_impl_trait)]
 
 use std::future::Future;

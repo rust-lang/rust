@@ -1,7 +1,5 @@
 // Regression test for #68641
 
-#![feature(generic_associated_types)]
-
 trait UnsafeCopy {
     type Item<'a>: Copy;
 

@@ -21,8 +21,15 @@ pub fn filter_dirs(path: &Path) -> bool {
         "src/tools/rust-installer",
         "src/tools/rustfmt",
         "src/doc/book",
+        "src/doc/edition-guide",
+        "src/doc/embedded-book",
+        "src/doc/nomicon",
+        "src/doc/rust-by-example",
+        "src/doc/rustc-dev-guide",
+        "src/doc/reference",
         // Filter RLS output directories
         "target/rls",
+        "src/bootstrap/target",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }

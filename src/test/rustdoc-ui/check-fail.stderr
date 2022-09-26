@@ -1,30 +1,30 @@
 error: missing documentation for a function
-  --> $DIR/check-fail.rs:11:1
+  --> $DIR/check-fail.rs:12:1
    |
 LL | pub fn foo() {}
    | ^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/check-fail.rs:3:9
+  --> $DIR/check-fail.rs:4:9
    |
 LL | #![deny(missing_docs)]
    |         ^^^^^^^^^^^^
 
 error: missing code example in this documentation
-  --> $DIR/check-fail.rs:11:1
+  --> $DIR/check-fail.rs:12:1
    |
 LL | pub fn foo() {}
    | ^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/check-fail.rs:4:9
+  --> $DIR/check-fail.rs:5:9
    |
 LL | #![deny(rustdoc::all)]
    |         ^^^^^^^^^^^^
    = note: `#[deny(rustdoc::missing_doc_code_examples)]` implied by `#[deny(rustdoc::all)]`
 
 error: unknown attribute `testharness`. Did you mean `test_harness`?
-  --> $DIR/check-fail.rs:6:1
+  --> $DIR/check-fail.rs:7:1
    |
 LL | / //! ```rust,testharness
 LL | |
@@ -36,7 +36,7 @@ LL | | //! ```
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
 error: unknown attribute `testharness`. Did you mean `test_harness`?
-  --> $DIR/check-fail.rs:15:1
+  --> $DIR/check-fail.rs:16:1
    |
 LL | / /// hello
 LL | |

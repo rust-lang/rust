@@ -2563,14 +2563,13 @@ impl<'test> TestCx<'test> {
 
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
+
         let res = self.cmd2procres(
-            Command::new(&self.config.python)
-                .arg(root.join("src/etc/check_missing_items.py"))
-                .arg(&json_out),
+            Command::new(self.config.jsondoclint_path.as_ref().unwrap()).arg(&json_out),
         );
 
         if !res.status.success() {
-            self.fatal_proc_rec("check_missing_items failed!", &res);
+            self.fatal_proc_rec("jsondoclint failed!", &res);
         }
     }
 
@@ -2594,7 +2593,7 @@ impl<'test> TestCx<'test> {
                     }
                     None
                 } else {
-                    let sline = line.split("///").last().unwrap_or("");
+                    let sline = line.rsplit("///").next().unwrap();
                     let line = sline.trim_start();
                     if line.starts_with("```") {
                         if ignore {

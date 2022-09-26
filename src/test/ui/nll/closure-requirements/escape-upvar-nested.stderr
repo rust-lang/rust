@@ -29,14 +29,8 @@ LL |         let mut closure = || {
 note: no external requirements
   --> $DIR/escape-upvar-nested.rs:13:1
    |
-LL | / fn test() {
-LL | |     let x = 44;
-LL | |     let mut p = &x;
-LL | |
-...  |
-LL | |     deref(p);
-LL | | }
-   | |_^
+LL | fn test() {
+   | ^^^^^^^^^
    |
    = note: defining type: test
 

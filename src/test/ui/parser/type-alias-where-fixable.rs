@@ -1,8 +1,6 @@
 // check-pass
 // run-rustfix
 
-#![feature(generic_associated_types)]
-
 trait Trait {
     // Fine.
     type Assoc where u32: Copy;

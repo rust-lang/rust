@@ -130,14 +130,17 @@ impl<'tcx> ArgMatrix<'tcx> {
         let ai = &self.expected_indices;
         let ii = &self.provided_indices;
 
+        // Issue: 100478, when we end the iteration,
+        // `next_unmatched_idx` will point to the index of the first unmatched
+        let mut next_unmatched_idx = 0;
         for i in 0..cmp::max(ai.len(), ii.len()) {
-            // If we eliminate the last row, any left-over inputs are considered missing
+            // If we eliminate the last row, any left-over arguments are considered missing
             if i >= mat.len() {
-                return Some(Issue::Missing(i));
+                return Some(Issue::Missing(next_unmatched_idx));
             }
-            // If we eliminate the last column, any left-over arguments are extra
+            // If we eliminate the last column, any left-over inputs are extra
             if mat[i].len() == 0 {
-                return Some(Issue::Extra(i));
+                return Some(Issue::Extra(next_unmatched_idx));
             }
 
             // Make sure we don't pass the bounds of our matrix
@@ -145,6 +148,7 @@ impl<'tcx> ArgMatrix<'tcx> {
             let is_input = i < ii.len();
             if is_arg && is_input && matches!(mat[i][i], Compatibility::Compatible) {
                 // This is a satisfied input, so move along
+                next_unmatched_idx += 1;
                 continue;
             }
 
@@ -163,7 +167,7 @@ impl<'tcx> ArgMatrix<'tcx> {
             if is_input {
                 for j in 0..ai.len() {
                     // If we find at least one argument that could satisfy this input
-                    // this argument isn't useless
+                    // this input isn't useless
                     if matches!(mat[i][j], Compatibility::Compatible) {
                         useless = false;
                         break;
@@ -232,8 +236,8 @@ impl<'tcx> ArgMatrix<'tcx> {
                             if matches!(c, Compatibility::Compatible) { Some(i) } else { None }
                         })
                         .collect();
-                if compat.len() != 1 {
-                    // this could go into multiple slots, don't bother exploring both
+                if compat.len() < 1 {
+                    // try to find a cycle even when this could go into multiple slots, see #101097
                     is_cycle = false;
                     break;
                 }
@@ -309,7 +313,8 @@ impl<'tcx> ArgMatrix<'tcx> {
         }
 
         while !self.provided_indices.is_empty() || !self.expected_indices.is_empty() {
-            match self.find_issue() {
+            let res = self.find_issue();
+            match res {
                 Some(Issue::Invalid(idx)) => {
                     let compatibility = self.compatibility_matrix[idx][idx].clone();
                     let input_idx = self.provided_indices[idx];
@@ -364,7 +369,9 @@ impl<'tcx> ArgMatrix<'tcx> {
                 None => {
                     // We didn't find any issues, so we need to push the algorithm forward
                     // First, eliminate any arguments that currently satisfy their inputs
-                    for (inp, arg) in self.eliminate_satisfied() {
+                    let eliminated = self.eliminate_satisfied();
+                    assert!(!eliminated.is_empty(), "didn't eliminated any indice in this round");
+                    for (inp, arg) in eliminated {
                         matched_inputs[arg] = Some(inp);
                     }
                 }

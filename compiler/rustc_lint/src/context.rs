@@ -45,11 +45,14 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_target::abi;
-use tracing::debug;
 
 use std::cell::Cell;
 use std::iter;
 use std::slice;
+
+type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync;
+type LateLintPassFactory =
+    dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::Send + sync::Sync;
 
 /// Information about the registered lints.
 ///
@@ -65,11 +68,11 @@ pub struct LintStore {
     /// interior mutability, we don't enforce this (and lints should, in theory,
     /// be compatible with being constructed more than once, though not
     /// necessarily in a sane manner. This is safe though.)
-    pub pre_expansion_passes: Vec<Box<dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync>>,
-    pub early_passes: Vec<Box<dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync>>,
-    pub late_passes: Vec<Box<dyn Fn() -> LateLintPassObject + sync::Send + sync::Sync>>,
+    pub pre_expansion_passes: Vec<Box<EarlyLintPassFactory>>,
+    pub early_passes: Vec<Box<EarlyLintPassFactory>>,
+    pub late_passes: Vec<Box<LateLintPassFactory>>,
     /// This is unique in that we construct them per-module, so not once.
-    pub late_module_passes: Vec<Box<dyn Fn() -> LateLintPassObject + sync::Send + sync::Sync>>,
+    pub late_module_passes: Vec<Box<LateLintPassFactory>>,
 
     /// Lints indexed by name.
     by_name: FxHashMap<String, TargetLint>,
@@ -187,14 +190,20 @@ impl LintStore {
 
     pub fn register_late_pass(
         &mut self,
-        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
+        pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
+        + 'static
+        + sync::Send
+        + sync::Sync,
     ) {
         self.late_passes.push(Box::new(pass));
     }
 
     pub fn register_late_mod_pass(
         &mut self,
-        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
+        pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
+        + 'static
+        + sync::Send
+        + sync::Sync,
     ) {
         self.late_module_passes.push(Box::new(pass));
     }
@@ -417,7 +426,7 @@ impl LintStore {
                     None => {
                         // 1. The tool is currently running, so this lint really doesn't exist.
                         // FIXME: should this handle tools that never register a lint, like rustfmt?
-                        tracing::debug!("lints={:?}", self.by_name.keys().collect::<Vec<_>>());
+                        debug!("lints={:?}", self.by_name.keys().collect::<Vec<_>>());
                         let tool_prefix = format!("{}::", tool_name);
                         return if self.by_name.keys().any(|lint| lint.starts_with(&tool_prefix)) {
                             self.no_lint_suggestion(&complete_name)
@@ -510,7 +519,7 @@ impl LintStore {
                 CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
             }
             Some(other) => {
-                tracing::debug!("got renamed lint {:?}", other);
+                debug!("got renamed lint {:?}", other);
                 CheckLintNameResult::NoLint(None)
             }
         }
@@ -559,7 +568,7 @@ pub trait LintPassObject: Sized {}
 
 impl LintPassObject for EarlyLintPassObject {}
 
-impl LintPassObject for LateLintPassObject {}
+impl LintPassObject for LateLintPassObject<'_> {}
 
 pub trait LintContext: Sized {
     type PassObject: LintPassObject;
@@ -843,7 +852,7 @@ pub trait LintContext: Sized {
                     if let Some(positional_arg_to_replace) = position_sp_to_replace {
                         let name = if is_formatting_arg { named_arg_name + "$" } else { named_arg_name };
                         let span_to_replace = if let Ok(positional_arg_content) =
-                            self.sess().source_map().span_to_snippet(positional_arg_to_replace) && positional_arg_content.starts_with(":") {
+                            self.sess().source_map().span_to_snippet(positional_arg_to_replace) && positional_arg_content.starts_with(':') {
                             positional_arg_to_replace.shrink_to_lo()
                         } else {
                             positional_arg_to_replace
@@ -950,8 +959,8 @@ impl<'a> EarlyContext<'a> {
     }
 }
 
-impl LintContext for LateContext<'_> {
-    type PassObject = LateLintPassObject;
+impl<'tcx> LintContext for LateContext<'tcx> {
+    type PassObject = LateLintPassObject<'tcx>;
 
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
@@ -1039,7 +1048,7 @@ impl<'tcx> LateContext<'tcx> {
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
                     if self.tcx.has_typeck_results(id.owner.to_def_id()) {
-                        Some(self.tcx.typeck(id.owner))
+                        Some(self.tcx.typeck(id.owner.def_id))
                     } else {
                         None
                     }

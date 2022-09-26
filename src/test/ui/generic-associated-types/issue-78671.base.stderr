@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `CollectionFamily::Member`
-  --> $DIR/issue-78671.rs:11:47
+  --> $DIR/issue-78671.rs:10:47
    |
 LL |     Box::new(Family) as &dyn CollectionFamily<Member=usize>
    |                                               ^^^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-78671.rs:8:10
+  --> $DIR/issue-78671.rs:7:10
    |
 LL |     type Member<T>;
    |          ^^^^^^ -
@@ -15,13 +15,13 @@ LL |     Box::new(Family) as &dyn CollectionFamily<Member<T>=usize>
    |                                               ~~~~~~~~~
 
 error[E0038]: the trait `CollectionFamily` cannot be made into an object
-  --> $DIR/issue-78671.rs:11:25
+  --> $DIR/issue-78671.rs:10:25
    |
 LL |     Box::new(Family) as &dyn CollectionFamily<Member=usize>
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `CollectionFamily` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/issue-78671.rs:8:10
+  --> $DIR/issue-78671.rs:7:10
    |
 LL | trait CollectionFamily {
    |       ---------------- this trait cannot be made into an object...

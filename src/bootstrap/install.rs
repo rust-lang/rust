@@ -200,13 +200,10 @@ install!((self, builder, _config),
         install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };
     Miri, alias = "miri", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::Miri { compiler: self.compiler, target: self.target }) {
-            install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
-        } else {
-            builder.info(
-                &format!("skipping Install miri stage{} ({})", self.compiler.stage, self.target),
-            );
-        }
+        let tarball = builder
+            .ensure(dist::Miri { compiler: self.compiler, target: self.target })
+            .expect("missing miri");
+        install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
     };
     Rustfmt, alias = "rustfmt", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::Rustfmt {

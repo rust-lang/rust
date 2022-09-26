@@ -1,0 +1,26 @@
+error[E0080]: evaluation of `PrintName::<i32>::VOID` failed
+  --> $DIR/erroneous_const.rs:LL:CC
+   |
+LL |     const VOID: ! = panic!();
+   |                     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/erroneous_const.rs:LL:CC
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: post-monomorphization error: referenced constant has errors
+  --> $DIR/erroneous_const.rs:LL:CC
+   |
+LL |         let _ = PrintName::<T>::VOID;
+   |                 ^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+   |
+   = note: inside `no_codegen::<i32>` at $DIR/erroneous_const.rs:LL:CC
+note: inside `main` at $DIR/erroneous_const.rs:LL:CC
+  --> $DIR/erroneous_const.rs:LL:CC
+   |
+LL |     no_codegen::<i32>();
+   |     ^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

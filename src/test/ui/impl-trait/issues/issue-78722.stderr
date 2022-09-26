@@ -7,11 +7,11 @@ LL |         let f: F = async { 1 };
    = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
    = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `F` cannot be evaluated at compile-time
   --> $DIR/issue-78722.rs:13:13
    |
 LL |         let f: F = async { 1 };
-   |             ^ constants cannot evaluate destructors
+   |             ^ the destructor for this type cannot be evaluated in constants
 ...
 LL |     }],
    |     - value is dropped here

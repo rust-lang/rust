@@ -23,7 +23,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts};
 use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
@@ -73,11 +73,29 @@ macro_rules! thir_with_elements {
     }
 }
 
+pub const UPVAR_ENV_PARAM: ParamId = ParamId::from_u32(0);
+
 thir_with_elements! {
     arms: ArmId => Arm<'tcx> => "a{}",
     blocks: BlockId => Block => "b{}",
     exprs: ExprId => Expr<'tcx> => "e{}",
     stmts: StmtId => Stmt<'tcx> => "s{}",
+    params: ParamId => Param<'tcx> => "p{}",
+}
+
+/// Description of a type-checked function parameter.
+#[derive(Clone, Debug, HashStable)]
+pub struct Param<'tcx> {
+    /// The pattern that appears in the parameter list, or None for implicit parameters.
+    pub pat: Option<Box<Pat<'tcx>>>,
+    /// The possibly inferred type.
+    pub ty: Ty<'tcx>,
+    /// Span of the explicitly provided type, or None if inferred for closures.
+    pub ty_span: Option<Span>,
+    /// Whether this param is `self`, and how it is bound.
+    pub self_kind: Option<hir::ImplicitSelfKind>,
+    /// HirId for lints.
+    pub hir_id: Option<hir::HirId>,
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
@@ -180,7 +198,7 @@ pub enum StmtKind<'tcx> {
         /// `let <PAT> = ...`
         ///
         /// If a type annotation is included, it is added as an ascription pattern.
-        pattern: Pat<'tcx>,
+        pattern: Box<Pat<'tcx>>,
 
         /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
@@ -301,7 +319,7 @@ pub enum ExprKind<'tcx> {
     },
     Let {
         expr: ExprId,
-        pat: Pat<'tcx>,
+        pat: Box<Pat<'tcx>>,
     },
     /// A `match` expression.
     Match {
@@ -467,7 +485,7 @@ pub struct FruInfo<'tcx> {
 /// A `match` arm.
 #[derive(Clone, Debug, HashStable)]
 pub struct Arm<'tcx> {
-    pub pattern: Pat<'tcx>,
+    pub pattern: Box<Pat<'tcx>>,
     pub guard: Option<Guard<'tcx>>,
     pub body: ExprId,
     pub lint_level: LintLevel,
@@ -479,7 +497,7 @@ pub struct Arm<'tcx> {
 #[derive(Clone, Debug, HashStable)]
 pub enum Guard<'tcx> {
     If(ExprId),
-    IfLet(Pat<'tcx>, ExprId),
+    IfLet(Box<Pat<'tcx>>, ExprId),
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
@@ -534,19 +552,28 @@ pub enum BindingMode {
 #[derive(Clone, Debug, HashStable)]
 pub struct FieldPat<'tcx> {
     pub field: Field,
-    pub pattern: Pat<'tcx>,
+    pub pattern: Box<Pat<'tcx>>,
 }
 
 #[derive(Clone, Debug, HashStable)]
 pub struct Pat<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
-    pub kind: Box<PatKind<'tcx>>,
+    pub kind: PatKind<'tcx>,
 }
 
 impl<'tcx> Pat<'tcx> {
     pub fn wildcard_from_ty(ty: Ty<'tcx>) -> Self {
-        Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) }
+        Pat { ty, span: DUMMY_SP, kind: PatKind::Wild }
+    }
+
+    pub fn simple_ident(&self) -> Option<Symbol> {
+        match self.kind {
+            PatKind::Binding { name, mode: BindingMode::ByValue, subpattern: None, .. } => {
+                Some(name)
+            }
+            _ => None,
+        }
     }
 }
 
@@ -581,7 +608,7 @@ pub enum PatKind<'tcx> {
 
     AscribeUserType {
         ascription: Ascription<'tcx>,
-        subpattern: Pat<'tcx>,
+        subpattern: Box<Pat<'tcx>>,
     },
 
     /// `x`, `ref x`, `x @ P`, etc.
@@ -591,7 +618,7 @@ pub enum PatKind<'tcx> {
         mode: BindingMode,
         var: LocalVarId,
         ty: Ty<'tcx>,
-        subpattern: Option<Pat<'tcx>>,
+        subpattern: Option<Box<Pat<'tcx>>>,
         /// Is this the leftmost occurrence of the binding, i.e., is `var` the
         /// `HirId` of this pattern?
         is_primary: bool,
@@ -614,7 +641,7 @@ pub enum PatKind<'tcx> {
 
     /// `box P`, `&P`, `&mut P`, etc.
     Deref {
-        subpattern: Pat<'tcx>,
+        subpattern: Box<Pat<'tcx>>,
     },
 
     /// One of the following:
@@ -628,32 +655,32 @@ pub enum PatKind<'tcx> {
         value: mir::ConstantKind<'tcx>,
     },
 
-    Range(PatRange<'tcx>),
+    Range(Box<PatRange<'tcx>>),
 
     /// Matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
     /// e.g., `&[ref xs @ ..]`.
     Slice {
-        prefix: Vec<Pat<'tcx>>,
-        slice: Option<Pat<'tcx>>,
-        suffix: Vec<Pat<'tcx>>,
+        prefix: Box<[Box<Pat<'tcx>>]>,
+        slice: Option<Box<Pat<'tcx>>>,
+        suffix: Box<[Box<Pat<'tcx>>]>,
     },
 
     /// Fixed match against an array; irrefutable.
     Array {
-        prefix: Vec<Pat<'tcx>>,
-        slice: Option<Pat<'tcx>>,
-        suffix: Vec<Pat<'tcx>>,
+        prefix: Box<[Box<Pat<'tcx>>]>,
+        slice: Option<Box<Pat<'tcx>>>,
+        suffix: Box<[Box<Pat<'tcx>>]>,
     },
 
     /// An or-pattern, e.g. `p | q`.
     /// Invariant: `pats.len() >= 2`.
     Or {
-        pats: Vec<Pat<'tcx>>,
+        pats: Box<[Box<Pat<'tcx>>]>,
     },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
     pub lo: mir::ConstantKind<'tcx>,
     pub hi: mir::ConstantKind<'tcx>,
@@ -674,7 +701,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
         };
         let mut start_or_comma = || start_or_continue(", ");
 
-        match *self.kind {
+        match self.kind {
             PatKind::Wild => write!(f, "_"),
             PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{}: _", subpattern),
             PatKind::Binding { mutability, name, mode, ref subpattern, .. } => {
@@ -695,17 +722,32 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 Ok(())
             }
             PatKind::Variant { ref subpatterns, .. } | PatKind::Leaf { ref subpatterns } => {
-                let variant = match *self.kind {
-                    PatKind::Variant { adt_def, variant_index, .. } => {
-                        Some(adt_def.variant(variant_index))
-                    }
-                    _ => self.ty.ty_adt_def().and_then(|adt| {
-                        if !adt.is_enum() { Some(adt.non_enum_variant()) } else { None }
+                let variant_and_name = match self.kind {
+                    PatKind::Variant { adt_def, variant_index, .. } => ty::tls::with(|tcx| {
+                        let variant = adt_def.variant(variant_index);
+                        let adt_did = adt_def.did();
+                        let name = if tcx.get_diagnostic_item(sym::Option) == Some(adt_did)
+                            || tcx.get_diagnostic_item(sym::Result) == Some(adt_did)
+                        {
+                            variant.name.to_string()
+                        } else {
+                            format!("{}::{}", tcx.def_path_str(adt_def.did()), variant.name)
+                        };
+                        Some((variant, name))
+                    }),
+                    _ => self.ty.ty_adt_def().and_then(|adt_def| {
+                        if !adt_def.is_enum() {
+                            ty::tls::with(|tcx| {
+                                Some((adt_def.non_enum_variant(), tcx.def_path_str(adt_def.did())))
+                            })
+                        } else {
+                            None
+                        }
                     }),
                 };
 
-                if let Some(variant) = variant {
-                    write!(f, "{}", variant.name)?;
+                if let Some((variant, name)) = &variant_and_name {
+                    write!(f, "{}", name)?;
 
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
@@ -714,7 +756,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 
                         let mut printed = 0;
                         for p in subpatterns {
-                            if let PatKind::Wild = *p.pattern.kind {
+                            if let PatKind::Wild = p.pattern.kind {
                                 continue;
                             }
                             let name = variant.fields[p.field.index()].name;
@@ -730,8 +772,9 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                     }
                 }
 
-                let num_fields = variant.map_or(subpatterns.len(), |v| v.fields.len());
-                if num_fields != 0 || variant.is_none() {
+                let num_fields =
+                    variant_and_name.as_ref().map_or(subpatterns.len(), |(v, _)| v.fields.len());
+                if num_fields != 0 || variant_and_name.is_none() {
                     write!(f, "(")?;
                     for i in 0..num_fields {
                         write!(f, "{}", start_or_comma())?;
@@ -767,7 +810,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 write!(f, "{}", subpattern)
             }
             PatKind::Constant { value } => write!(f, "{}", value),
-            PatKind::Range(PatRange { lo, hi, end }) => {
+            PatKind::Range(box PatRange { lo, hi, end }) => {
                 write!(f, "{}", lo)?;
                 write!(f, "{}", end)?;
                 write!(f, "{}", hi)
@@ -775,24 +818,24 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             PatKind::Slice { ref prefix, ref slice, ref suffix }
             | PatKind::Array { ref prefix, ref slice, ref suffix } => {
                 write!(f, "[")?;
-                for p in prefix {
+                for p in prefix.iter() {
                     write!(f, "{}{}", start_or_comma(), p)?;
                 }
                 if let Some(ref slice) = *slice {
                     write!(f, "{}", start_or_comma())?;
-                    match *slice.kind {
+                    match slice.kind {
                         PatKind::Wild => {}
                         _ => write!(f, "{}", slice)?,
                     }
                     write!(f, "..")?;
                 }
-                for p in suffix {
+                for p in suffix.iter() {
                     write!(f, "{}{}", start_or_comma(), p)?;
                 }
                 write!(f, "]")
             }
             PatKind::Or { ref pats } => {
-                for pat in pats {
+                for pat in pats.iter() {
                     write!(f, "{}{}", start_or_continue(" | "), pat)?;
                 }
                 Ok(())
@@ -809,8 +852,8 @@ mod size_asserts {
     static_assert_size!(Block, 56);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 24);
-    static_assert_size!(PatKind<'_>, 112);
-    static_assert_size!(Stmt<'_>, 72);
-    static_assert_size!(StmtKind<'_>, 64);
+    static_assert_size!(Pat<'_>, 72);
+    static_assert_size!(PatKind<'_>, 56);
+    static_assert_size!(Stmt<'_>, 48);
+    static_assert_size!(StmtKind<'_>, 40);
 }

@@ -9,6 +9,7 @@ mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
 mod transmute_undefined_repr;
 mod transmutes_expressible_as_ptr_casts;
+mod transmuting_null;
 mod unsound_collection_transmute;
 mod useless_transmute;
 mod utils;
@@ -386,6 +387,28 @@ declare_clippy_lint! {
     "transmute to or from a type with an undefined representation"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for transmute calls which would receive a null pointer.
+    ///
+    /// ### Why is this bad?
+    /// Transmuting a null pointer is undefined behavior.
+    ///
+    /// ### Known problems
+    /// Not all cases can be detected at the moment of this writing.
+    /// For example, variables which hold a null pointer and are then fed to a `transmute`
+    /// call, aren't detectable yet.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let null_ref: &u64 = unsafe { std::mem::transmute(0 as *const u64) };
+    /// ```
+    #[clippy::version = "1.35.0"]
+    pub TRANSMUTING_NULL,
+    correctness,
+    "transmutes from a null pointer to a reference, which is undefined behavior"
+}
+
 pub struct Transmute {
     msrv: Option<RustcVersion>,
 }
@@ -404,6 +427,7 @@ impl_lint_pass!(Transmute => [
     UNSOUND_COLLECTION_TRANSMUTE,
     TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
     TRANSMUTE_UNDEFINED_REPR,
+    TRANSMUTING_NULL,
 ]);
 impl Transmute {
     #[must_use]
@@ -436,6 +460,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
 
                 let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
                     | crosspointer_transmute::check(cx, e, from_ty, to_ty)
+                    | transmuting_null::check(cx, e, arg, to_ty)
                     | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, self.msrv)
                     | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)

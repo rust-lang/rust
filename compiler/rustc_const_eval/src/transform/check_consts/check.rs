@@ -13,8 +13,11 @@ use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty,
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeVisitable};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
-use rustc_trait_selection::traits::SelectionContext;
+use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::{
+    self, ObligationCauseCode, SelectionContext, TraitEngine, TraitEngineExt,
+};
 
 use std::mem;
 use std::ops::Deref;
@@ -546,6 +549,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // Since no pointer can ever get exposed (rejected above), this is easy to support.
             }
 
+            Rvalue::Cast(CastKind::DynStar, _, _) => {
+                unimplemented!()
+            }
+
             Rvalue::Cast(CastKind::Misc, _, _) => {}
 
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
@@ -652,6 +659,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Downcast(..)
+            | ProjectionElem::OpaqueCast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {}
@@ -678,7 +686,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::Nop => {}
         }
     }
@@ -732,6 +740,43 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {
                         let mut selcx = SelectionContext::new(&infcx);
                         selcx.select(&obligation)
+                    });
+
+                    // do a well-formedness check on the trait method being called. This is because typeck only does a
+                    // "non-const" check. This is required for correctness here.
+                    tcx.infer_ctxt().enter(|infcx| {
+                        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
+                        let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
+                        let hir_id = tcx
+                            .hir()
+                            .local_def_id_to_hir_id(self.body.source.def_id().expect_local());
+                        let cause = || {
+                            ObligationCause::new(
+                                terminator.source_info.span,
+                                hir_id,
+                                ObligationCauseCode::ItemObligation(callee),
+                            )
+                        };
+                        let normalized = infcx.partially_normalize_associated_types_in(
+                            cause(),
+                            param_env,
+                            predicates,
+                        );
+
+                        for p in normalized.obligations {
+                            fulfill_cx.register_predicate_obligation(&infcx, p);
+                        }
+                        for obligation in traits::predicates_for_generics(
+                            |_, _| cause(),
+                            self.param_env,
+                            normalized.value,
+                        ) {
+                            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+                        }
+                        let errors = fulfill_cx.select_all_or_error(&infcx);
+                        if !errors.is_empty() {
+                            infcx.report_fulfillment_errors(&errors, None, false);
+                        }
                     });
 
                     match implsrc {
@@ -964,7 +1009,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 if needs_non_const_drop {
                     self.check_op_spanned(
-                        ops::LiveDrop { dropped_at: Some(terminator.source_info.span) },
+                        ops::LiveDrop {
+                            dropped_at: Some(terminator.source_info.span),
+                            dropped_ty: ty_of_dropped_place,
+                        },
                         err_span,
                     );
                 }

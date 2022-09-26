@@ -6,6 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::symbol::{kw, Ident};
@@ -25,6 +26,8 @@ use crate::{ResolutionError, Resolver, Scope, ScopeSet, Segment, ToNameBinding, 
 use Determinacy::*;
 use Namespace::*;
 use RibKind::*;
+
+type Visibility = ty::Visibility<LocalDefId>;
 
 impl<'a> Resolver<'a> {
     /// A generic scope visitor.
@@ -273,7 +276,7 @@ impl<'a> Resolver<'a> {
     ///
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
-    #[tracing::instrument(level = "debug", skip(self, ribs))]
+    #[instrument(level = "debug", skip(self, ribs))]
     pub(crate) fn resolve_ident_in_lexical_scope(
         &mut self,
         mut ident: Ident,
@@ -367,7 +370,7 @@ impl<'a> Resolver<'a> {
     /// expansion and import resolution (perhaps they can be merged in the future).
     /// The function is used for resolving initial segments of macro paths (e.g., `foo` in
     /// `foo::bar!(); or `foo!();`) and also for import paths on 2018 edition.
-    #[tracing::instrument(level = "debug", skip(self, scope_set))]
+    #[instrument(level = "debug", skip(self, scope_set))]
     pub(crate) fn early_resolve_ident_in_lexical_scope(
         &mut self,
         orig_ident: Ident,
@@ -424,8 +427,7 @@ impl<'a> Resolver<'a> {
                 let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
                 let ok = |res, span, arenas| {
                     Ok((
-                        (res, ty::Visibility::Public, span, LocalExpnId::ROOT)
-                            .to_name_binding(arenas),
+                        (res, Visibility::Public, span, LocalExpnId::ROOT).to_name_binding(arenas),
                         Flags::empty(),
                     ))
                 };
@@ -438,7 +440,7 @@ impl<'a> Resolver<'a> {
                         {
                             let binding = (
                                 Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
-                                ty::Visibility::Public,
+                                Visibility::Public,
                                 attr.span,
                                 expn_id,
                             )
@@ -708,7 +710,7 @@ impl<'a> Resolver<'a> {
         Err(Determinacy::determined(determinacy == Determinacy::Determined || force))
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn maybe_resolve_ident_in_module(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -720,7 +722,7 @@ impl<'a> Resolver<'a> {
             .map_err(|(determinacy, _)| determinacy)
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn resolve_ident_in_module(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -734,7 +736,7 @@ impl<'a> Resolver<'a> {
             .map_err(|(determinacy, _)| determinacy)
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_ident_in_module_ext(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -772,7 +774,7 @@ impl<'a> Resolver<'a> {
         )
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_ident_in_module_unadjusted(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -796,7 +798,7 @@ impl<'a> Resolver<'a> {
 
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
     /// Invariant: if `finalize` is `Some`, expansion and import resolution must be complete.
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_ident_in_module_unadjusted_ext(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -841,9 +843,8 @@ impl<'a> Resolver<'a> {
                 if ns == TypeNS {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
-                        let binding =
-                            (module, ty::Visibility::Public, module.span, LocalExpnId::ROOT)
-                                .to_name_binding(self.arenas);
+                        let binding = (module, Visibility::Public, module.span, LocalExpnId::ROOT)
+                            .to_name_binding(self.arenas);
                         return Ok(binding);
                     } else if ident.name == kw::Super || ident.name == kw::SelfLower {
                         // FIXME: Implement these with renaming requirements so that e.g.
@@ -1059,7 +1060,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Validate a local resolution (from ribs).
-    #[tracing::instrument(level = "debug", skip(self, all_ribs))]
+    #[instrument(level = "debug", skip(self, all_ribs))]
     fn validate_res_from_ribs(
         &mut self,
         rib_index: usize,
@@ -1294,7 +1295,7 @@ impl<'a> Resolver<'a> {
         res
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn maybe_resolve_path(
         &mut self,
         path: &[Segment],
@@ -1304,7 +1305,7 @@ impl<'a> Resolver<'a> {
         self.resolve_path_with_ribs(path, opt_ns, parent_scope, None, None, None)
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn resolve_path(
         &mut self,
         path: &[Segment],

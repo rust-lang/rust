@@ -825,7 +825,7 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
 
         // Retain spans from all other statements
         StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`
-        | StatementKind::CopyNonOverlapping(..)
+        | StatementKind::Intrinsic(..)
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::Deinit(..)

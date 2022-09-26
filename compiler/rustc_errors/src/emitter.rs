@@ -22,7 +22,7 @@ use crate::{
 
 use rustc_lint_defs::pluralize;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::FluentArgs;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -34,7 +34,6 @@ use std::iter;
 use std::path::Path;
 use termcolor::{Ansi, BufferWriter, ColorChoice, ColorSpec, StandardStream};
 use termcolor::{Buffer, Color, WriteColor};
-use tracing::*;
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
 const DEFAULT_COLUMN_WIDTH: usize = 140;
@@ -1488,7 +1487,7 @@ impl EmitterWriter {
                 );
 
                 // Contains the vertical lines' positions for active multiline annotations
-                let mut multilines = FxHashMap::default();
+                let mut multilines = FxIndexMap::default();
 
                 // Get the left-side margin to remove it
                 let mut whitespace_margin = usize::MAX;
@@ -1705,7 +1704,7 @@ impl EmitterWriter {
         {
             notice_capitalization |= only_capitalization;
 
-            let has_deletion = parts.iter().any(|p| p.is_deletion());
+            let has_deletion = parts.iter().any(|p| p.is_deletion(sm));
             let is_multiline = complete.lines().count() > 1;
 
             if let Some(span) = span.primary_span() {
@@ -1881,16 +1880,23 @@ impl EmitterWriter {
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
                     let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;
 
+                    // If this addition is _only_ whitespace, then don't trim it,
+                    // or else we're just not rendering anything.
+                    let is_whitespace_addition = part.snippet.trim().is_empty();
+
                     // Do not underline the leading...
-                    let start = part.snippet.len().saturating_sub(part.snippet.trim_start().len());
+                    let start = if is_whitespace_addition {
+                        0
+                    } else {
+                        part.snippet.len().saturating_sub(part.snippet.trim_start().len())
+                    };
                     // ...or trailing spaces. Account for substitutions containing unicode
                     // characters.
-                    let sub_len: usize = part
-                        .snippet
-                        .trim()
-                        .chars()
-                        .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
-                        .sum();
+                    let sub_len: usize =
+                        if is_whitespace_addition { &part.snippet } else { part.snippet.trim() }
+                            .chars()
+                            .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
+                            .sum();
 
                     let offset: isize = offsets
                         .iter()
@@ -2131,7 +2137,7 @@ impl EmitterWriter {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum DisplaySuggestion {
     Underline,
     Diff,

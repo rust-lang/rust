@@ -23,6 +23,7 @@ mod structural_match;
 mod util;
 pub mod wf;
 
+use crate::errors::DumpVTableEntries;
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::InferCtxtExt as _;
@@ -33,12 +34,11 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
-    self, DefIdTree, GenericParamDefKind, Subst, ToPredicate, Ty, TyCtxt, TypeSuperVisitable,
-    VtblEntry,
+    self, DefIdTree, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeSuperVisitable, VtblEntry,
 };
+use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
 
@@ -129,7 +129,7 @@ pub fn predicates_for_generics<'tcx>(
         move |(idx, (predicate, span))| Obligation {
             cause: cause(idx, span),
             recursion_depth: 0,
-            param_env: param_env,
+            param_env,
             predicate,
         },
     )
@@ -763,8 +763,11 @@ fn dump_vtable_entries<'tcx>(
     trait_ref: ty::PolyTraitRef<'tcx>,
     entries: &[VtblEntry<'tcx>],
 ) {
-    let msg = format!("vtable entries for `{}`: {:#?}", trait_ref, entries);
-    tcx.sess.struct_span_err(sp, &msg).emit();
+    tcx.sess.emit_err(DumpVTableEntries {
+        span: sp,
+        trait_ref,
+        entries: format!("{:#?}", entries),
+    });
 }
 
 fn own_existential_vtable_entries<'tcx>(
@@ -967,7 +970,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
-        codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
+        codegen_select_candidate: codegen::codegen_select_candidate,
         own_existential_vtable_entries,
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,

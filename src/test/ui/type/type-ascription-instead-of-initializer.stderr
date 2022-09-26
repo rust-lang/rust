@@ -21,7 +21,7 @@ LL |     pub fn with_capacity(capacity: usize) -> Self {
 help: remove the extra argument
    |
 LL |     let x: Vec::with_capacity(10);
-   |            ~~~~~~~~~~~~~~~~~~~~~~
+   |                              ~~~~
 
 error: aborting due to 2 previous errors
 

@@ -1,5 +1,5 @@
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{Constant, Location};
+use rustc_middle::mir::{Constant, ConstantKind, Location};
 use rustc_middle::ty::ConstKind;
 
 pub struct RequiredConstsVisitor<'a, 'tcx> {
@@ -15,8 +15,13 @@ impl<'a, 'tcx> RequiredConstsVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for RequiredConstsVisitor<'_, 'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, _: Location) {
         let literal = constant.literal;
-        if let Some(ct) = literal.const_for_ty() && let ConstKind::Unevaluated(_) = ct.kind() {
-            self.required_consts.push(*constant);
+        match literal {
+            ConstantKind::Ty(c) => match c.kind() {
+                ConstKind::Param(_) => {}
+                _ => bug!("only ConstKind::Param should be encountered here, got {:#?}", c),
+            },
+            ConstantKind::Unevaluated(..) => self.required_consts.push(*constant),
+            ConstantKind::Val(..) => {}
         }
     }
 }

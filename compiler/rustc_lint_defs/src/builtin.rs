@@ -3206,7 +3206,7 @@ declare_lint! {
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
     Warn,
-    "tranparent type contains an external ZST that is marked #[non_exhaustive] or contains private fields",
+    "transparent type contains an external ZST that is marked #[non_exhaustive] or contains private fields",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #78586 <https://github.com/rust-lang/rust/issues/78586>",
     };
@@ -3365,7 +3365,6 @@ declare_lint_pass! {
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DUPLICATE_MACRO_ATTRIBUTES,
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
-        UNEXPECTED_CFGS,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         TEST_UNSTABLE_LINT,
         FFI_UNWIND_CALLS,
@@ -3408,7 +3407,7 @@ declare_lint! {
     ///
     /// ### Example of drop reorder
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_incompatible_closure_captures)]
     /// # #![allow(unused)]
     ///
@@ -3444,7 +3443,7 @@ declare_lint! {
     ///
     /// ### Example of auto-trait
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_incompatible_closure_captures)]
     /// use std::thread;
     ///
@@ -3989,8 +3988,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(generic_associated_types)]
-    ///
     /// trait Trait {
     ///   type Assoc<'a> where Self: 'a;
     /// }

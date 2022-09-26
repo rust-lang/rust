@@ -1,0 +1,10 @@
+### What it does
+Checks for mis-uses of the serde API.
+
+### Why is this bad?
+Serde is very finnicky about how its API should be
+used, but the type system can't be used to enforce it (yet?).
+
+### Example
+Implementing `Visitor::visit_string` but not
+`Visitor::visit_str`.

@@ -1,4 +1,4 @@
-use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
+use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error, UseEmptyBlockNotSemi};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 
@@ -8,7 +8,7 @@ use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
-use rustc_ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
+use rustc_ast::{BindingAnnotation, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, VariantData};
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast::{MacArgs, MacCall, MacDelimiter};
@@ -22,7 +22,6 @@ use rustc_span::DUMMY_SP;
 
 use std::convert::TryFrom;
 use std::mem;
-use tracing::debug;
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
@@ -665,6 +664,14 @@ impl<'a> Parser<'a> {
         mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
     ) -> PResult<'a, Vec<T>> {
         let open_brace_span = self.token.span;
+
+        // Recover `impl Ty;` instead of `impl Ty {}`
+        if self.token == TokenKind::Semi {
+            self.sess.emit_err(UseEmptyBlockNotSemi { span: self.token.span });
+            self.bump();
+            return Ok(vec![]);
+        }
+
         self.expect(&token::OpenDelim(Delimiter::Brace))?;
         attrs.extend(self.parse_inner_attributes()?);
 
@@ -699,11 +706,22 @@ impl<'a> Parser<'a> {
                     let semicolon_span = self.token.span;
                     // We have to bail or we'll potentially never make progress.
                     let non_item_span = self.token.span;
-                    self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
+                    let is_let = self.token.is_keyword(kw::Let);
+
                     let mut err = self.struct_span_err(non_item_span, "non-item in item list");
-                    err.span_label(open_brace_span, "item list starts here")
-                        .span_label(non_item_span, "non-item starts here")
-                        .span_label(self.prev_token.span, "item list ends here");
+                    self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
+                    if is_let {
+                        err.span_suggestion(
+                            non_item_span,
+                            "consider using `const` instead of `let` for associated const",
+                            "const",
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.span_label(open_brace_span, "item list starts here")
+                            .span_label(non_item_span, "non-item starts here")
+                            .span_label(self.prev_token.span, "item list ends here");
+                    }
                     if is_unnecessary_semicolon {
                         err.span_suggestion(
                             semicolon_span,
@@ -1295,12 +1313,19 @@ impl<'a> Parser<'a> {
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
 
-        let (variants, _) = self
-            .parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant())
-            .map_err(|e| {
-                self.recover_stmt();
-                e
-            })?;
+        // Possibly recover `enum Foo;` instead of `enum Foo {}`
+        let (variants, _) = if self.token == TokenKind::Semi {
+            self.sess.emit_err(UseEmptyBlockNotSemi { span: self.token.span });
+            self.bump();
+            (vec![], false)
+        } else {
+            self.parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant()).map_err(
+                |e| {
+                    self.recover_stmt();
+                    e
+                },
+            )?
+        };
 
         let enum_definition = EnumDef { variants: variants.into_iter().flatten().collect() };
         Ok((id, ItemKind::Enum(enum_definition, generics)))
@@ -1527,6 +1552,17 @@ impl<'a> Parser<'a> {
         if self.token == token::Comma {
             seen_comma = true;
         }
+        if self.eat(&token::Semi) {
+            let sp = self.prev_token.span;
+            let mut err = self.struct_span_err(sp, format!("{adt_ty} fields are separated by `,`"));
+            err.span_suggestion_short(
+                sp,
+                "replace `;` with `,`",
+                ",",
+                Applicability::MachineApplicable,
+            );
+            return Err(err);
+        }
         match self.token.kind {
             token::Comma => {
                 self.bump();
@@ -1694,6 +1730,7 @@ impl<'a> Parser<'a> {
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err()?;
         if !is_raw && ident.is_reserved() {
+            let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false) {
                 let inherited_vis = Visibility {
                     span: rustc_span::DUMMY_SP,
@@ -1714,6 +1751,22 @@ impl<'a> Parser<'a> {
                 err.help("unlike in C++, Java, and C#, functions are declared in `impl` blocks");
                 err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
                 err
+            } else if self.eat_keyword(kw::Struct) {
+                match self.parse_item_struct() {
+                    Ok((ident, _)) => {
+                        let mut err = self.struct_span_err(
+                            lo.with_hi(ident.span.hi()),
+                            &format!("structs are not allowed in {adt_ty} definitions"),
+                        );
+                        err.help("consider creating a new `struct` definition instead of nesting");
+                        err
+                    }
+                    Err(err) => {
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                        self.expected_ident_found()
+                    }
+                }
             } else {
                 self.expected_ident_found()
             };
@@ -2323,7 +2376,7 @@ impl<'a> Parser<'a> {
                 match ty {
                     Ok(ty) => {
                         let ident = Ident::new(kw::Empty, this.prev_token.span);
-                        let bm = BindingMode::ByValue(Mutability::Not);
+                        let bm = BindingAnnotation::NONE;
                         let pat = this.mk_pat_ident(ty.span, bm, ident);
                         (pat, ty)
                     }

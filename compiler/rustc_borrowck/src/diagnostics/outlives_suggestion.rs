@@ -6,7 +6,6 @@ use rustc_errors::Diagnostic;
 use rustc_middle::ty::RegionVid;
 use smallvec::SmallVec;
 use std::collections::BTreeMap;
-use tracing::debug;
 
 use crate::MirBorrowckCtxt;
 

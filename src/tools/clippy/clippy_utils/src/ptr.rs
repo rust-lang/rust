@@ -36,7 +36,7 @@ fn extract_clone_suggestions<'tcx>(
         if abort {
             return false;
         }
-        if let ExprKind::MethodCall(seg, [recv], _) = expr.kind {
+        if let ExprKind::MethodCall(seg, recv, [], _) = expr.kind {
             if path_to_local_id(recv, id) {
                 if seg.ident.name.as_str() == "capacity" {
                     abort = true;

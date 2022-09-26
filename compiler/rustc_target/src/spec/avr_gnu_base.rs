@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, RelocModel, Target, TargetOptions};
 
 /// A base target for AVR devices using the GNU toolchain.
 ///
@@ -21,6 +21,7 @@ pub fn target(target_cpu: &'static str, mmcu: &'static str) -> Target {
             late_link_args: TargetOptions::link_args(LinkerFlavor::Gcc, &["-lgcc"]),
             max_atomic_width: Some(0),
             atomic_cas: false,
+            relocation_model: RelocModel::Static,
             ..TargetOptions::default()
         },
     }

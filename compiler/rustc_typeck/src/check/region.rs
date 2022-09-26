@@ -126,6 +126,29 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
 
         for (i, statement) in blk.stmts.iter().enumerate() {
             match statement.kind {
+                hir::StmtKind::Local(hir::Local { els: Some(els), .. }) => {
+                    // Let-else has a special lexical structure for variables.
+                    // First we take a checkpoint of the current scope context here.
+                    let mut prev_cx = visitor.cx;
+
+                    visitor.enter_scope(Scope {
+                        id: blk.hir_id.local_id,
+                        data: ScopeData::Remainder(FirstStatementIndex::new(i)),
+                    });
+                    visitor.cx.var_parent = visitor.cx.parent;
+                    visitor.visit_stmt(statement);
+                    // We need to back out temporarily to the last enclosing scope
+                    // for the `else` block, so that even the temporaries receiving
+                    // extended lifetime will be dropped inside this block.
+                    // We are visiting the `else` block in this order so that
+                    // the sequence of visits agree with the order in the default
+                    // `hir::intravisit` visitor.
+                    mem::swap(&mut prev_cx, &mut visitor.cx);
+                    visitor.terminating_scopes.insert(els.hir_id.local_id);
+                    visitor.visit_block(els);
+                    // From now on, we continue normally.
+                    visitor.cx = prev_cx;
+                }
                 hir::StmtKind::Local(..) | hir::StmtKind::Item(..) => {
                     // Each declaration introduces a subscope for bindings
                     // introduced by the declaration; this subscope covers a
@@ -138,10 +161,10 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
                     visitor.cx.var_parent = visitor.cx.parent;
+                    visitor.visit_stmt(statement)
                 }
-                hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
+                hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => visitor.visit_stmt(statement),
             }
-            visitor.visit_stmt(statement)
         }
         walk_list!(visitor, visit_expr, &blk.expr);
     }
@@ -460,7 +483,6 @@ fn resolve_local<'tcx>(
     visitor: &mut RegionResolutionVisitor<'tcx>,
     pat: Option<&'tcx hir::Pat<'tcx>>,
     init: Option<&'tcx hir::Expr<'tcx>>,
-    els: Option<&'tcx hir::Block<'tcx>>,
 ) {
     debug!("resolve_local(pat={:?}, init={:?})", pat, init);
 
@@ -547,9 +569,6 @@ fn resolve_local<'tcx>(
     if let Some(pat) = pat {
         visitor.visit_pat(pat);
     }
-    if let Some(els) = els {
-        visitor.visit_block(els);
-    }
 
     /// Returns `true` if `pat` match the `P&` non-terminal.
     ///
@@ -587,8 +606,7 @@ fn resolve_local<'tcx>(
         // & expression, and its lifetime would be extended to the end of the block (due
         // to a different rule, not the below code).
         match pat.kind {
-            PatKind::Binding(hir::BindingAnnotation::Ref, ..)
-            | PatKind::Binding(hir::BindingAnnotation::RefMut, ..) => true,
+            PatKind::Binding(hir::BindingAnnotation(hir::ByRef::Yes, _), ..) => true,
 
             PatKind::Struct(_, ref field_pats, _) => {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.pat))
@@ -607,10 +625,7 @@ fn resolve_local<'tcx>(
             PatKind::Box(ref subpat) => is_binding_pat(&subpat),
 
             PatKind::Ref(_, _)
-            | PatKind::Binding(
-                hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Mutable,
-                ..,
-            )
+            | PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), ..)
             | PatKind::Wild
             | PatKind::Path(_)
             | PatKind::Lit(_)
@@ -770,7 +785,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             // (i.e., `'static`), which means that after `g` returns, it drops,
             // and all the associated destruction scope rules apply.
             self.cx.var_parent = None;
-            resolve_local(self, None, Some(&body.value), None);
+            resolve_local(self, None, Some(&body.value));
         }
 
         if body.generator_kind.is_some() {
@@ -797,7 +812,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         resolve_expr(self, ex);
     }
     fn visit_local(&mut self, l: &'tcx Local<'tcx>) {
-        resolve_local(self, Some(&l.pat), l.init, l.els)
+        resolve_local(self, Some(&l.pat), l.init)
     }
 }
 

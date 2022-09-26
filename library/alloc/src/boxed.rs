@@ -151,7 +151,6 @@ use core::async_iter::AsyncIterator;
 use core::borrow;
 use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
-#[cfg(not(bootstrap))]
 use core::error::Error;
 use core::fmt;
 use core::future::Future;
@@ -176,7 +175,6 @@ use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
@@ -2037,8 +2035,7 @@ impl<T: ?Sized, A: Allocator> AsMut<T> for Box<T, A> {
  *  could have a method to project a Pin<T> from it.
  */
 #[stable(feature = "pin", since = "1.33.0")]
-#[rustc_const_unstable(feature = "const_box", issue = "92521")]
-impl<T: ?Sized, A: Allocator> const Unpin for Box<T, A> where A: 'static {}
+impl<T: ?Sized, A: Allocator> Unpin for Box<T, A> where A: 'static {}
 
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator<R> + Unpin, R, A: Allocator> Generator<R> for Box<G, A>
@@ -2091,7 +2088,6 @@ impl<S: ?Sized + AsyncIterator + Unpin> AsyncIterator for Box<S> {
     }
 }
 
-#[cfg(not(bootstrap))]
 impl dyn Error {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -2109,7 +2105,6 @@ impl dyn Error {
     }
 }
 
-#[cfg(not(bootstrap))]
 impl dyn Error + Send {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -2124,7 +2119,6 @@ impl dyn Error + Send {
     }
 }
 
-#[cfg(not(bootstrap))]
 impl dyn Error + Send + Sync {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -2139,7 +2133,6 @@ impl dyn Error + Send + Sync {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
@@ -2173,7 +2166,6 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
@@ -2213,7 +2205,6 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for Box<dyn Error + Send + Sync> {
@@ -2258,7 +2249,6 @@ impl From<String> for Box<dyn Error + Send + Sync> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_box_error", since = "1.6.0")]
 impl From<String> for Box<dyn Error> {
@@ -2281,7 +2271,6 @@ impl From<String> for Box<dyn Error> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
@@ -2306,7 +2295,6 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_box_error", since = "1.6.0")]
 impl From<&str> for Box<dyn Error> {
@@ -2329,7 +2317,6 @@ impl From<&str> for Box<dyn Error> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
@@ -2352,7 +2339,6 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
@@ -2374,7 +2360,6 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "box_error", since = "1.8.0")]
 impl<T: core::error::Error> core::error::Error for Box<T> {
     #[allow(deprecated, deprecated_in_future)]

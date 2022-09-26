@@ -57,6 +57,7 @@ macro_rules! with_api {
                 fn track_env_var(var: &str, value: Option<&str>);
                 fn track_path(path: &str);
                 fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
+                fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
             },
             TokenStream {
                 fn drop($self: $S::TokenStream);
@@ -86,22 +87,6 @@ macro_rules! with_api {
                 fn eq($self: &$S::SourceFile, other: &$S::SourceFile) -> bool;
                 fn path($self: &$S::SourceFile) -> String;
                 fn is_real($self: &$S::SourceFile) -> bool;
-            },
-            MultiSpan {
-                fn drop($self: $S::MultiSpan);
-                fn new() -> $S::MultiSpan;
-                fn push($self: &mut $S::MultiSpan, span: $S::Span);
-            },
-            Diagnostic {
-                fn drop($self: $S::Diagnostic);
-                fn new(level: Level, msg: &str, span: $S::MultiSpan) -> $S::Diagnostic;
-                fn sub(
-                    $self: &mut $S::Diagnostic,
-                    level: Level,
-                    msg: &str,
-                    span: $S::MultiSpan,
-                );
-                fn emit($self: $S::Diagnostic);
             },
             Span {
                 fn debug($self: $S::Span) -> String;
@@ -508,6 +493,18 @@ compound_traits!(
         Ident(tt),
         Literal(tt),
     }
+);
+
+#[derive(Clone, Debug)]
+pub struct Diagnostic<Span> {
+    pub level: Level,
+    pub message: String,
+    pub spans: Vec<Span>,
+    pub children: Vec<Diagnostic<Span>>,
+}
+
+compound_traits!(
+    struct Diagnostic<Span> { level, message, spans, children }
 );
 
 /// Globals provided alongside the initial inputs for a macro expansion.

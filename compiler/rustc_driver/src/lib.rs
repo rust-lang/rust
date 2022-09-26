@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(let_else)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
@@ -742,6 +741,11 @@ fn print_crate_info(
                     println!("{}", cfg);
                 }
             }
+            CallingConventions => {
+                let mut calling_conventions = rustc_target::spec::abi::all_names();
+                calling_conventions.sort_unstable();
+                println!("{}", calling_conventions.join("\n"));
+            }
             RelocationModels
             | CodeModels
             | TlsModels
@@ -1119,22 +1123,25 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
     while let Some(arg) = args.next() {
         if let Some(a) = ICE_REPORT_COMPILER_FLAGS.iter().find(|a| arg.starts_with(*a)) {
             let content = if arg.len() == a.len() {
+                // A space-separated option, like `-C incremental=foo` or `--crate-type rlib`
                 match args.next() {
                     Some(arg) => arg.to_string(),
                     None => continue,
                 }
             } else if arg.get(a.len()..a.len() + 1) == Some("=") {
+                // An equals option, like `--crate-type=rlib`
                 arg[a.len() + 1..].to_string()
             } else {
+                // A non-space option, like `-Cincremental=foo`
                 arg[a.len()..].to_string()
             };
-            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.iter().any(|exc| content.starts_with(exc)) {
+            let option = content.split_once('=').map(|s| s.0).unwrap_or(&content);
+            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.iter().any(|exc| option == *exc) {
                 excluded_cargo_defaults = true;
             } else {
                 result.push(a.to_string());
-                match ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|s| content.starts_with(*s))
-                {
-                    Some(s) => result.push(s.to_string()),
+                match ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|s| option == **s) {
+                    Some(s) => result.push(format!("{}=[REDACTED]", s)),
                     None => result.push(content),
                 }
             }

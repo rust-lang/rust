@@ -20,7 +20,7 @@ use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
-use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_hir::{BindingAnnotation, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_lifetime::Set1;
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::{bug, span_bug};
@@ -32,7 +32,6 @@ use smallvec::{smallvec, SmallVec};
 use rustc_span::source_map::{respan, Spanned};
 use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, take};
-use tracing::debug;
 
 mod diagnostics;
 pub(crate) mod lifetimes;
@@ -51,7 +50,7 @@ use diagnostics::{
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
     span: Span,
-    binding_mode: BindingMode,
+    annotation: BindingAnnotation,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -806,7 +805,12 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             sig.decl.has_self(),
                             sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
                             &sig.decl.output,
-                        )
+                        );
+
+                        this.record_lifetime_params_for_async(
+                            fn_id,
+                            sig.header.asyncness.opt_return_id(),
+                        );
                     },
                 );
                 return;
@@ -848,41 +852,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             },
                         );
 
-                        // Construct the list of in-scope lifetime parameters for async lowering.
-                        // We include all lifetime parameters, either named or "Fresh".
-                        // The order of those parameters does not matter, as long as it is
-                        // deterministic.
-                        if let Some(async_node_id) = async_node_id {
-                            let mut extra_lifetime_params = this
-                                .r
-                                .extra_lifetime_params_map
-                                .get(&fn_id)
-                                .cloned()
-                                .unwrap_or_default();
-                            for rib in this.lifetime_ribs.iter().rev() {
-                                extra_lifetime_params.extend(
-                                    rib.bindings
-                                        .iter()
-                                        .map(|(&ident, &(node_id, res))| (ident, node_id, res)),
-                                );
-                                match rib.kind {
-                                    LifetimeRibKind::Item => break,
-                                    LifetimeRibKind::AnonymousCreateParameter {
-                                        binder, ..
-                                    } => {
-                                        if let Some(earlier_fresh) =
-                                            this.r.extra_lifetime_params_map.get(&binder)
-                                        {
-                                            extra_lifetime_params.extend(earlier_fresh);
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                            }
-                            this.r
-                                .extra_lifetime_params_map
-                                .insert(async_node_id, extra_lifetime_params);
-                        }
+                        this.record_lifetime_params_for_async(fn_id, async_node_id);
 
                         if let Some(body) = body {
                             // Ignore errors in function bodies if this is rustdoc
@@ -1031,7 +1001,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         if let Some(ref gen_args) = constraint.gen_args {
             // Forbid anonymous lifetimes in GAT parameters until proper semantics are decided.
             self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
-                this.visit_generic_args(gen_args.span(), gen_args)
+                this.visit_generic_args(gen_args)
             });
         }
         match constraint.kind {
@@ -1045,10 +1015,10 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'ast PathSegment) {
+    fn visit_path_segment(&mut self, path_segment: &'ast PathSegment) {
         if let Some(ref args) = path_segment.args {
             match &**args {
-                GenericArgs::AngleBracketed(..) => visit::walk_generic_args(self, path_span, args),
+                GenericArgs::AngleBracketed(..) => visit::walk_generic_args(self, args),
                 GenericArgs::Parenthesized(p_args) => {
                     // Probe the lifetime ribs to know how to behave.
                     for rib in self.lifetime_ribs.iter().rev() {
@@ -1079,7 +1049,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             // We have nowhere to introduce generics.  Code is malformed,
                             // so use regular lifetime resolution to avoid spurious errors.
                             LifetimeRibKind::Item | LifetimeRibKind::Generics { .. } => {
-                                visit::walk_generic_args(self, path_span, args);
+                                visit::walk_generic_args(self, args);
                                 break;
                             }
                             LifetimeRibKind::AnonymousCreateParameter { .. }
@@ -1390,7 +1360,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         })
     }
 
-    #[tracing::instrument(level = "debug", skip(self, work))]
+    #[instrument(level = "debug", skip(self, work))]
     fn with_lifetime_rib<T>(
         &mut self,
         kind: LifetimeRibKind,
@@ -1404,7 +1374,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ret
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_lifetime(&mut self, lifetime: &'ast Lifetime, use_ctxt: visit::LifetimeCtxt) {
         let ident = lifetime.ident;
 
@@ -1508,7 +1478,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.record_lifetime_res(lifetime.id, LifetimeRes::Error, LifetimeElisionCandidate::Named);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_anonymous_lifetime(&mut self, lifetime: &Lifetime, elided: bool) {
         debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
 
@@ -1573,7 +1543,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_elided_lifetime(&mut self, anchor_id: NodeId, span: Span) {
         let id = self.r.next_node_id();
         let lt = Lifetime { id, ident: Ident::new(kw::UnderscoreLifetime, span) };
@@ -1586,7 +1556,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.resolve_anonymous_lifetime(&lt, true);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn create_fresh_lifetime(&mut self, id: NodeId, ident: Ident, binder: NodeId) -> LifetimeRes {
         debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
         debug!(?ident.span);
@@ -1604,7 +1574,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         res
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_elided_lifetimes_in_path(
         &mut self,
         path_id: NodeId,
@@ -1804,7 +1774,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn record_lifetime_res(
         &mut self,
         id: NodeId,
@@ -1827,7 +1797,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn record_lifetime_param(&mut self, id: NodeId, res: LifetimeRes) {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
             panic!(
@@ -1838,7 +1808,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     /// Perform resolution of a function signature, accounting for lifetime elision.
-    #[tracing::instrument(level = "debug", skip(self, inputs))]
+    #[instrument(level = "debug", skip(self, inputs))]
     fn resolve_fn_signature(
         &mut self,
         fn_id: NodeId,
@@ -2866,10 +2836,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         pat.walk(&mut |pat| {
             match pat.kind {
-                PatKind::Ident(binding_mode, ident, ref sub_pat)
+                PatKind::Ident(annotation, ident, ref sub_pat)
                     if sub_pat.is_some() || self.is_base_res_local(pat.id) =>
                 {
-                    binding_map.insert(ident, BindingInfo { span: ident.span, binding_mode });
+                    binding_map.insert(ident, BindingInfo { span: ident.span, annotation });
                 }
                 PatKind::Or(ref ps) => {
                     // Check the consistency of this or-pattern and
@@ -2926,7 +2896,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         binding_error.target.insert(pat_outer.span);
                     }
                     Some(binding_outer) => {
-                        if binding_outer.binding_mode != binding_inner.binding_mode {
+                        if binding_outer.annotation != binding_inner.annotation {
                             // The binding modes in the outer and inner bindings differ.
                             inconsistent_vars
                                 .entry(name)
@@ -3147,14 +3117,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn try_resolve_as_non_binding(
         &mut self,
         pat_src: PatternSource,
-        bm: BindingMode,
+        ann: BindingAnnotation,
         ident: Ident,
         has_sub: bool,
     ) -> Option<Res> {
         // An immutable (no `mut`) by-value (no `ref`) binding pattern without
         // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
         // also be interpreted as a path to e.g. a constant, variant, etc.
-        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
+        let is_syntactic_ambiguity = !has_sub && ann == BindingAnnotation::NONE;
 
         let ls_binding = self.maybe_resolve_ident_in_lexical_scope(ident, ValueNS)?;
         let (res, binding) = match ls_binding {
@@ -3268,11 +3238,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         source: PathSource<'ast>,
         finalize: Finalize,
     ) -> PartialRes {
-        tracing::debug!(
+        debug!(
             "smart_resolve_path_fragment(qself={:?}, path={:?}, finalize={:?})",
-            qself,
-            path,
-            finalize,
+            qself, path, finalize,
         );
         let ns = source.namespace();
 
@@ -3801,7 +3769,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 for argument in arguments {
                     self.resolve_expr(argument, None);
                 }
-                self.visit_path_segment(expr.span, segment);
+                self.visit_path_segment(segment);
             }
 
             ExprKind::Call(ref callee, ref arguments) => {
@@ -3928,6 +3896,36 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ident.span.ctxt(),
             Some((ident.name, ns)),
         )
+    }
+
+    /// Construct the list of in-scope lifetime parameters for async lowering.
+    /// We include all lifetime parameters, either named or "Fresh".
+    /// The order of those parameters does not matter, as long as it is
+    /// deterministic.
+    fn record_lifetime_params_for_async(
+        &mut self,
+        fn_id: NodeId,
+        async_node_id: Option<(NodeId, Span)>,
+    ) {
+        if let Some((async_node_id, _)) = async_node_id {
+            let mut extra_lifetime_params =
+                self.r.extra_lifetime_params_map.get(&fn_id).cloned().unwrap_or_default();
+            for rib in self.lifetime_ribs.iter().rev() {
+                extra_lifetime_params.extend(
+                    rib.bindings.iter().map(|(&ident, &(node_id, res))| (ident, node_id, res)),
+                );
+                match rib.kind {
+                    LifetimeRibKind::Item => break,
+                    LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
+                        if let Some(earlier_fresh) = self.r.extra_lifetime_params_map.get(&binder) {
+                            extra_lifetime_params.extend(earlier_fresh);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            self.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
+        }
     }
 }
 

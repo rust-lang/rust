@@ -17,7 +17,6 @@ use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
 use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt, TypeVisitable};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use tracing::debug;
 
 mod drop_ranges;
 
@@ -219,7 +218,8 @@ pub fn resolve_interior<'a, 'tcx>(
         .filter_map(|mut cause| {
             // Erase regions and canonicalize late-bound regions to deduplicate as many types as we
             // can.
-            let erased = fcx.tcx.erase_regions(cause.ty);
+            let ty = fcx.normalize_associated_types_in(cause.span, cause.ty);
+            let erased = fcx.tcx.erase_regions(ty);
             if captured_tys.insert(erased) {
                 // Replace all regions inside the generator interior with late bound regions.
                 // Note that each region slot in the types gets a new fresh late bound region,
@@ -264,7 +264,7 @@ pub fn resolve_interior<'a, 'tcx>(
     // Unify the type variable inside the generator with the new witness
     match fcx.at(&fcx.misc(body.value.span), fcx.param_env).eq(interior, witness) {
         Ok(ok) => fcx.register_infer_ok_obligations(ok),
-        _ => bug!(),
+        _ => bug!("failed to relate {interior} and {witness}"),
     }
 }
 
@@ -409,8 +409,15 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             }) {
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
         } else {
-            debug!("parent_node: {:?}", self.fcx.tcx.hir().find_parent_node(expr.hir_id));
-            match self.fcx.tcx.hir().find_parent_node(expr.hir_id) {
+            let parent_expr = self
+                .fcx
+                .tcx
+                .hir()
+                .parent_iter(expr.hir_id)
+                .find(|(_, node)| matches!(node, hir::Node::Expr(_)))
+                .map(|(id, _)| id);
+            debug!("parent_expr: {:?}", parent_expr);
+            match parent_expr {
                 Some(parent) => Some(Scope { id: parent.local_id, data: ScopeData::Node }),
                 None => {
                     self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
@@ -521,7 +528,7 @@ fn check_must_not_suspend_ty<'tcx>(
             }
             has_emitted
         }
-        ty::Dynamic(binder, _) => {
+        ty::Dynamic(binder, _, _) => {
             let mut has_emitted = false;
             for predicate in binder.iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {

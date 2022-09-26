@@ -11,7 +11,6 @@
 #![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
-#![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]

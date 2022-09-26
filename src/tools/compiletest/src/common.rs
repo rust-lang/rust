@@ -203,6 +203,9 @@ pub struct Config {
     /// The jsondocck executable.
     pub jsondocck_path: Option<String>,
 
+    /// The jsondoclint executable.
+    pub jsondoclint_path: Option<String>,
+
     /// The LLVM `FileCheck` binary path.
     pub llvm_filecheck: Option<PathBuf>,
 
@@ -274,10 +277,6 @@ pub struct Config {
     /// Whether tests should be optimized by default. Individual test-suites and test files may
     /// override this setting.
     pub optimize_tests: bool,
-
-    /// What panic strategy the target is built with.  Unwind supports Abort, but
-    /// not vice versa.
-    pub target_panic: PanicStrategy,
 
     /// Target system to be tested
     pub target: String,
@@ -423,6 +422,10 @@ impl Config {
         *&self.target_cfg().pointer_width
     }
 
+    pub fn can_unwind(&self) -> bool {
+        self.target_cfg().panic == PanicStrategy::Unwind
+    }
+
     pub fn has_asm_support(&self) -> bool {
         static ASM_SUPPORTED_ARCHS: &[&str] = &[
             "x86", "x86_64", "arm", "aarch64", "riscv32",
@@ -443,6 +446,7 @@ pub struct TargetCfg {
     families: Vec<String>,
     pointer_width: u32,
     endian: Endian,
+    panic: PanicStrategy,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -478,6 +482,7 @@ impl TargetCfg {
         let mut families = Vec::new();
         let mut pointer_width = None;
         let mut endian = None;
+        let mut panic = None;
         for line in print_cfg.lines() {
             if let Some((name, value)) = line.split_once('=') {
                 let value = value.trim_matches('"');
@@ -495,6 +500,13 @@ impl TargetCfg {
                             s => panic!("unexpected {s}"),
                         })
                     }
+                    "panic" => {
+                        panic = match value {
+                            "abort" => Some(PanicStrategy::Abort),
+                            "unwind" => Some(PanicStrategy::Unwind),
+                            s => panic!("unexpected {s}"),
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -507,6 +519,7 @@ impl TargetCfg {
             families,
             pointer_width: pointer_width.unwrap(),
             endian: endian.unwrap(),
+            panic: panic.unwrap(),
         }
     }
 }

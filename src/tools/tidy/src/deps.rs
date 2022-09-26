@@ -20,6 +20,7 @@ const LICENSES: &[&str] = &[
     "Unlicense OR MIT",
     "0BSD OR MIT OR Apache-2.0", // adler license
     "Zlib OR Apache-2.0 OR MIT", // tinyvec
+    "MIT OR Apache-2.0 OR Zlib", // tinyvec_macros
     "MIT OR Zlib OR Apache-2.0", // miniz_oxide
 ];
 
@@ -91,9 +92,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "autocfg",
     "bitflags",
     "block-buffer",
-    "block-padding",
-    "byte-tools",
-    "byteorder",
     "cc",
     "cfg-if",
     "chalk-derive",
@@ -118,7 +116,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "ena",
     "env_logger",
     "expect-test",
-    "fake-simd",
     "fallible-iterator", // dependency of `thorin`
     "filetime",
     "fixedbitset",
@@ -162,7 +159,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "object",
     "odht",
     "once_cell",
-    "opaque-debug",
     "parking_lot",
     "parking_lot_core",
     "pathdiff",
@@ -223,6 +219,8 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "time",
     "tinystr",
     "tinyvec",
+    "tinyvec_macros",
+    "thin-vec",
     "tracing",
     "tracing-attributes",
     "tracing-core",

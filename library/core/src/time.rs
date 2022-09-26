@@ -1280,7 +1280,7 @@ macro_rules! try_from_secs {
             let rem_msb = nanos_tmp & rem_msb_mask == 0;
             let add_ns = !(rem_msb || (is_even && is_tie));
 
-            // f32 does not have enough presicion to trigger the second branch
+            // f32 does not have enough precision to trigger the second branch
             // since it can not represent numbers between 0.999_999_940_395 and 1.0.
             let nanos = nanos + add_ns as u32;
             if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) { (0, nanos) } else { (1, 0) }
@@ -1299,9 +1299,9 @@ macro_rules! try_from_secs {
             let rem_msb = nanos_tmp & rem_msb_mask == 0;
             let add_ns = !(rem_msb || (is_even && is_tie));
 
-            // f32 does not have enough presicion to trigger the second branch.
+            // f32 does not have enough precision to trigger the second branch.
             // For example, it can not represent numbers between 1.999_999_880...
-            // and 2.0. Bigger values result in even smaller presicion of the
+            // and 2.0. Bigger values result in even smaller precision of the
             // fractional part.
             let nanos = nanos + add_ns as u32;
             if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) {

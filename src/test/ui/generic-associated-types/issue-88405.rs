@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
 trait SomeTrait {}
 trait OtherTrait {
     type Item;

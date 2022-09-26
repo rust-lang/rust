@@ -1,4 +1,4 @@
-// Test to ensure that trait bounds are propertly
+// Test to ensure that trait bounds are properly
 // checked on specializable associated types
 
 #![allow(incomplete_features)]

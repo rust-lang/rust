@@ -1,6 +1,6 @@
 //! This file implements "place projections"; basically a symmetric API for 3 types: MPlaceTy, OpTy, PlaceTy.
 //!
-//! OpTy and PlaceTy genrally work by "let's see if we are actually an MPlaceTy, and do something custom if not".
+//! OpTy and PlaceTy generally work by "let's see if we are actually an MPlaceTy, and do something custom if not".
 //! For PlaceTy, the custom thing is basically always to call `force_allocation` and then use the MPlaceTy logic anyway.
 //! For OpTy, the custom thing on field pojections has to be pretty clever (since `Operand::Immediate` can have fields),
 //! but for array/slice operations it only has to worry about `Operand::Uninit`. That makes the value part trivial,
@@ -350,6 +350,11 @@ where
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
+            OpaqueCast(ty) => {
+                let mut place = base.clone();
+                place.layout = self.layout_of(ty)?;
+                place
+            }
             Field(field, _) => self.place_field(base, field.index())?,
             Downcast(_, variant) => self.place_downcast(base, variant)?,
             Deref => self.deref_operand(&self.place_to_op(base)?)?.into(),
@@ -374,6 +379,11 @@ where
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
+            OpaqueCast(ty) => {
+                let mut op = base.clone();
+                op.layout = self.layout_of(ty)?;
+                op
+            }
             Field(field, _) => self.operand_field(base, field.index())?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),

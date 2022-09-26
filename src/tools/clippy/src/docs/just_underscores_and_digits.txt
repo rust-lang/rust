@@ -1,0 +1,14 @@
+### What it does
+Checks if you have variables whose name consists of just
+underscores and digits.
+
+### Why is this bad?
+It's hard to memorize what a variable means without a
+descriptive name.
+
+### Example
+```
+let _1 = 1;
+let ___1 = 1;
+let __1___2 = 11;
+```

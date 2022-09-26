@@ -1,5 +1,6 @@
 // check-pass
-// Regresion test for <https://github.com/rust-lang/rust/issues/79459>.
+// compile-flags: -Znormalize-docs
+// Regression test for <https://github.com/rust-lang/rust/issues/79459>.
 pub trait Query {}
 
 pub trait AsQuery {

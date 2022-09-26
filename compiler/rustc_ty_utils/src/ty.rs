@@ -1,7 +1,6 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
 use rustc_trait_selection::traits;
 
@@ -104,7 +103,6 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstrain
 }
 
 /// See `ParamEnv` struct definition for details.
-#[instrument(level = "debug", skip(tcx))]
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // The param_env of an impl Trait type is its defining function's param_env
     if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
@@ -390,7 +388,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
     let self_ty = trait_ref.self_ty();
     let self_ty_matches = match self_ty.kind() {
-        ty::Dynamic(ref data, re) if re.is_static() => data.principal().is_none(),
+        ty::Dynamic(ref data, re, _) if re.is_static() => data.principal().is_none(),
         _ => false,
     };
 
@@ -410,7 +408,6 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
 }
 
 /// Don't call this directly: use ``tcx.conservative_is_privately_uninhabited`` instead.
-#[instrument(level = "debug", skip(tcx))]
 pub fn conservative_is_privately_uninhabited_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env_and: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,

@@ -1,5 +1,5 @@
 // test for issue 84128
-// missing suggestion for similar ADT type with diffetent generic paramenter
+// missing suggestion for similar ADT type with diffetent generic parameter
 // on closure ReturnNoExpression
 
 struct Foo<T>(T);

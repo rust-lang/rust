@@ -5,7 +5,7 @@ LL |     type Bar = ();
    |                ^^ the trait `AsRef<()>` is not implemented for `()`
    |
 note: required by a bound in `foo_defn::Foo::Bar`
-  --> $DIR/auxiliary/foo_defn.rs:6:15
+  --> $DIR/auxiliary/foo_defn.rs:4:15
    |
 LL |     type Bar: AsRef<()>;
    |               ^^^^^^^^^ required by this bound in `foo_defn::Foo::Bar`

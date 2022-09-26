@@ -1,5 +1,5 @@
 error: missing required bound on `TRef`
-  --> $DIR/issue-86787.rs:11:5
+  --> $DIR/issue-86787.rs:10:5
    |
 LL |     type TRef<'a>;
    |     ^^^^^^^^^^^^^-

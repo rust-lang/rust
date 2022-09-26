@@ -4,8 +4,6 @@
 
 // check-pass
 
-#![feature(generic_associated_types)]
-
 trait Family {
     type Member<'a, C: Eq>: for<'b> MyBound<'b, C>;
 }

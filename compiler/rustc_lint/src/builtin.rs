@@ -59,7 +59,6 @@ use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
 use std::fmt::Write;
-use tracing::{debug, trace};
 
 // hardwired lints from librustc_middle
 pub use rustc_session::lint::builtin::*;
@@ -260,17 +259,8 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                         == Some(cx.tcx.field_index(fieldpat.hir_id, cx.typeck_results()))
                     {
                         cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span, |lint| {
-                            let binding = match binding_annot {
-                                hir::BindingAnnotation::Unannotated => None,
-                                hir::BindingAnnotation::Mutable => Some("mut"),
-                                hir::BindingAnnotation::Ref => Some("ref"),
-                                hir::BindingAnnotation::RefMut => Some("ref mut"),
-                            };
-                            let suggested_ident = if let Some(binding) = binding {
-                                format!("{} {}", binding, ident)
-                            } else {
-                                ident.to_string()
-                            };
+                            let suggested_ident =
+                                format!("{}{}", binding_annot.prefix_str(), ident);
                             lint.build(fluent::lint::builtin_non_shorthand_field_patterns)
                                 .set_arg("ident", ident.clone())
                                 .span_suggestion(
@@ -616,7 +606,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 // Issue #11592: traits are always considered exported, even when private.
                 if cx.tcx.visibility(it.def_id)
                     == ty::Visibility::Restricted(
-                        cx.tcx.parent_module_from_def_id(it.def_id).to_def_id(),
+                        cx.tcx.parent_module_from_def_id(it.def_id.def_id).to_def_id(),
                     )
                 {
                     return;
@@ -637,13 +627,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
         let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, it.def_id, article, desc);
+        self.check_missing_docs_attrs(cx, it.def_id.def_id, article, desc);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, trait_item: &hir::TraitItem<'_>) {
         let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, trait_item.def_id, article, desc);
+        self.check_missing_docs_attrs(cx, trait_item.def_id.def_id, article, desc);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
@@ -671,12 +661,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         }
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
-        self.check_missing_docs_attrs(cx, impl_item.def_id, article, desc);
+        self.check_missing_docs_attrs(cx, impl_item.def_id.def_id, article, desc);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'_>) {
         let (article, desc) = cx.tcx.article_and_description(foreign_item.def_id.to_def_id());
-        self.check_missing_docs_attrs(cx, foreign_item.def_id, article, desc);
+        self.check_missing_docs_attrs(cx, foreign_item.def_id.def_id, article, desc);
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, sf: &hir::FieldDef<'_>) {
@@ -729,7 +719,7 @@ declare_lint_pass!(MissingCopyImplementations => [MISSING_COPY_IMPLEMENTATIONS])
 
 impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.access_levels.is_reachable(item.def_id) {
+        if !cx.access_levels.is_reachable(item.def_id.def_id) {
             return;
         }
         let (def, ty) = match item.kind {
@@ -819,7 +809,7 @@ impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.access_levels.is_reachable(item.def_id) {
+        if !cx.access_levels.is_reachable(item.def_id.def_id) {
             return;
         }
 
@@ -846,7 +836,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             debug!("{:?}", self.impling_types);
         }
 
-        if !self.impling_types.as_ref().unwrap().contains(&item.def_id) {
+        if !self.impling_types.as_ref().unwrap().contains(&item.def_id.def_id) {
             cx.struct_span_lint(MISSING_DEBUG_IMPLEMENTATIONS, item.span, |lint| {
                 lint.build(fluent::lint::builtin_missing_debug_impl)
                     .set_arg("debug", cx.tcx.def_path_str(debug))
@@ -1216,7 +1206,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
                                 Some(generics),
-                                cx.tcx.hir().get_generics(it.id.def_id).unwrap(),
+                                cx.tcx.hir().get_generics(it.id.def_id.def_id).unwrap(),
                                 it.span,
                             );
                         }
@@ -1399,11 +1389,11 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
         if let hir::ItemKind::Use(_, hir::UseKind::ListStem) = &item.kind {
             return;
         }
-        self.perform_lint(cx, "item", item.def_id, item.vis_span, true);
+        self.perform_lint(cx, "item", item.def_id.def_id, item.vis_span, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'tcx>) {
-        self.perform_lint(cx, "item", foreign_item.def_id, foreign_item.vis_span, true);
+        self.perform_lint(cx, "item", foreign_item.def_id.def_id, foreign_item.vis_span, true);
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
@@ -1414,7 +1404,7 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
         // Only lint inherent impl items.
         if cx.tcx.associated_item(impl_item.def_id).trait_item_def_id.is_none() {
-            self.perform_lint(cx, "item", impl_item.def_id, impl_item.vis_span, false);
+            self.perform_lint(cx, "item", impl_item.def_id.def_id, impl_item.vis_span, false);
         }
     }
 }
@@ -1477,7 +1467,7 @@ impl TypeAliasBounds {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(span, fluent::lint::builtin_type_alias_bounds_help);
                 }
-                intravisit::walk_qpath(self, qpath, id, span)
+                intravisit::walk_qpath(self, qpath, id)
             }
         }
 
@@ -1851,7 +1841,7 @@ declare_lint! {
 }
 
 pub struct UnnameableTestItems {
-    boundary: Option<LocalDefId>, // Id of the item under which things are not nameable
+    boundary: Option<hir::OwnerId>, // Id of the item under which things are not nameable
     items_nameable: bool,
 }
 
@@ -2010,7 +2000,7 @@ impl KeywordIdents {
 }
 
 impl EarlyLintPass for KeywordIdents {
-    fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef, _id: ast::NodeId) {
+    fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef) {
         self.check_tokens(cx, mac_def.body.inner_tokens());
     }
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
@@ -2148,7 +2138,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         use rustc_middle::middle::resolve_lifetime::Region;
 
-        let def_id = item.def_id;
+        let def_id = item.def_id.def_id;
         if let hir::ItemKind::Struct(_, ref hir_generics)
         | hir::ItemKind::Enum(_, ref hir_generics)
         | hir::ItemKind::Union(_, ref hir_generics) = item.kind
@@ -2413,13 +2403,13 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         _ => {}
                     }
                 }
-            } else if let hir::ExprKind::MethodCall(_, ref args, _) = expr.kind {
+            } else if let hir::ExprKind::MethodCall(_, receiver, ..) = expr.kind {
                 // Find problematic calls to `MaybeUninit::assume_init`.
                 let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
                 if cx.tcx.is_diagnostic_item(sym::assume_init, def_id) {
                     // This is a call to *some* method named `assume_init`.
                     // See if the `self` parameter is one of the dangerous constructors.
-                    if let hir::ExprKind::Call(ref path_expr, _) = args[0].kind {
+                    if let hir::ExprKind::Call(ref path_expr, _) = receiver.kind {
                         if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                             let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
                             match cx.tcx.get_diagnostic_name(def_id) {
@@ -3168,6 +3158,120 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                                     .to_string(),
                             ),
                         );
+                }
+            }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `special_module_name` lint detects module
+    /// declarations for files that have a special meaning.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// mod lib;
+    ///
+    /// fn main() {
+    ///     lib::run();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Cargo recognizes `lib.rs` and `main.rs` as the root of a
+    /// library or binary crate, so declaring them as modules
+    /// will lead to miscompilation of the crate unless configured
+    /// explicitly.
+    ///
+    /// To access a library from a binary target within the same crate,
+    /// use `your_crate_name::` as the path path instead of `lib::`:
+    ///
+    /// ```rust,compile_fail
+    /// // bar/src/lib.rs
+    /// fn run() {
+    ///     // ...
+    /// }
+    ///
+    /// // bar/src/main.rs
+    /// fn main() {
+    ///     bar::run();
+    /// }
+    /// ```
+    ///
+    /// Binary targets cannot be used as libraries and so declaring
+    /// one as a module is not allowed.
+    pub SPECIAL_MODULE_NAME,
+    Warn,
+    "module declarations for files with a special meaning",
+}
+
+declare_lint_pass!(SpecialModuleName => [SPECIAL_MODULE_NAME]);
+
+impl EarlyLintPass for SpecialModuleName {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
+        for item in &krate.items {
+            if let ast::ItemKind::Mod(
+                _,
+                ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No, _),
+            ) = item.kind
+            {
+                if item.attrs.iter().any(|a| a.has_name(sym::path)) {
+                    continue;
+                }
+
+                match item.ident.name.as_str() {
+                    "lib" => cx.struct_span_lint(SPECIAL_MODULE_NAME, item.span, |lint| {
+                        lint.build("found module declaration for lib.rs")
+                            .note("lib.rs is the root of this crate's library target")
+                            .help("to refer to it from other targets, use the library's name as the path")
+                            .emit()
+                    }),
+                    "main" => cx.struct_span_lint(SPECIAL_MODULE_NAME, item.span, |lint| {
+                        lint.build("found module declaration for main.rs")
+                            .note("a binary crate cannot be used as library")
+                            .emit()
+                    }),
+                    _ => continue
+                }
+            }
+        }
+    }
+}
+
+pub use rustc_session::lint::builtin::UNEXPECTED_CFGS;
+
+declare_lint_pass!(UnexpectedCfgs => [UNEXPECTED_CFGS]);
+
+impl EarlyLintPass for UnexpectedCfgs {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
+        let cfg = &cx.sess().parse_sess.config;
+        let check_cfg = &cx.sess().parse_sess.check_config;
+        for &(name, value) in cfg {
+            if let Some(names_valid) = &check_cfg.names_valid {
+                if !names_valid.contains(&name) {
+                    cx.lookup(UNEXPECTED_CFGS, None::<MultiSpan>, |diag| {
+                        diag.build(fluent::lint::builtin_unexpected_cli_config_name)
+                            .help(fluent::lint::help)
+                            .set_arg("name", name)
+                            .emit();
+                    });
+                }
+            }
+            if let Some(value) = value {
+                if let Some(values) = &check_cfg.values_valid.get(&name) {
+                    if !values.contains(&value) {
+                        cx.lookup(UNEXPECTED_CFGS, None::<MultiSpan>, |diag| {
+                            diag.build(fluent::lint::builtin_unexpected_cli_config_value)
+                                .help(fluent::lint::help)
+                                .set_arg("name", name)
+                                .set_arg("value", value)
+                                .emit();
+                        });
+                    }
                 }
             }
         }

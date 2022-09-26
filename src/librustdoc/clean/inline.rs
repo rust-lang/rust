@@ -3,9 +3,10 @@
 use std::iter::once;
 use std::sync::Arc;
 
+use thin_vec::ThinVec;
+
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -459,7 +460,7 @@ pub(crate) fn build_impl(
         ),
     };
     let polarity = tcx.impl_polarity(did);
-    let trait_ = associated_trait.map(|t| clean_trait_ref_with_bindings(cx, t, &[]));
+    let trait_ = associated_trait.map(|t| clean_trait_ref_with_bindings(cx, t, ThinVec::new()));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }

@@ -1,7 +1,5 @@
 // Test that correct syntax is used in suggestion to constrain associated type
 
-#![feature(generic_associated_types)]
-
 trait X {
     type Y<T>;
 }

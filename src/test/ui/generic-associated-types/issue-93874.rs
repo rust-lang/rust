@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
 pub trait Build {
     type Output<O>;
     fn build<O>(self, input: O) -> Self::Output<O>;

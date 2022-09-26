@@ -3,11 +3,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{
-    self,
-    subst::{GenericArgKind, Subst, SubstsRef},
-    EarlyBinder, PredicateKind, Ty, TyCtxt,
-};
+use rustc_middle::ty::{self, EarlyBinder, GenericArgKind, PredicateKind, SubstsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{symbol::sym, Span};
 use rustc_target::spec::abi::Abi;

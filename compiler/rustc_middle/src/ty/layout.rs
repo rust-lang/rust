@@ -1,7 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::subst::Subst;
 use crate::ty::{
     self, layout_sanity_check::sanity_check_layout, subst::SubstsRef, EarlyBinder, ReprOptions, Ty,
     TyCtxt, TypeVisitable,
@@ -22,7 +21,7 @@ use rustc_target::abi::call::{
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
 
-use std::cmp;
+use std::cmp::{self, Ordering};
 use std::fmt;
 use std::iter;
 use std::num::NonZeroUsize;
@@ -263,6 +262,7 @@ fn layout_of<'tcx>(
     Ok(layout)
 }
 
+#[derive(Clone, Copy)]
 pub struct LayoutCx<'tcx, C> {
     pub tcx: C,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -624,6 +624,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.intern_layout(self.scalar_pair(data_ptr, metadata))
             }
 
+            ty::Dynamic(_, _, ty::DynStar) => {
+                let mut data = scalar_unit(Int(dl.ptr_sized_integer(), false));
+                data.valid_range_mut().start = 0;
+                let mut vtable = scalar_unit(Pointer);
+                vtable.valid_range_mut().start = 1;
+                tcx.intern_layout(self.scalar_pair(data, vtable))
+            }
+
             // Arrays and slices.
             ty::Array(element, mut count) => {
                 if count.has_projections() {
@@ -678,7 +686,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             // Odd unit types.
             ty::FnDef(..) => univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?,
-            ty::Dynamic(..) | ty::Foreign(..) => {
+            ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
                 let mut unit = self.univariant_uninterned(
                     ty,
                     &[],
@@ -756,7 +764,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 // * the element type and length of the single array field, if
                 // the first field is of array type, or
                 //
-                // * the homogenous field type and the number of fields.
+                // * the homogeneous field type and the number of fields.
                 let (e_ty, e_len, is_array) = if let ty::Array(e_ty, _) = f0_ty.kind() {
                     // First ADT field is an array:
 
@@ -1045,131 +1053,191 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 // that allow representation optimization.)
                 assert!(def.is_enum());
 
-                // The current code for niche-filling relies on variant indices
-                // instead of actual discriminants, so dataful enums with
-                // explicit discriminants (RFC #2363) would misbehave.
-                let no_explicit_discriminants = def
-                    .variants()
-                    .iter_enumerated()
-                    .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
+                // Until we've decided whether to use the tagged or
+                // niche filling LayoutS, we don't want to intern the
+                // variant layouts, so we can't store them in the
+                // overall LayoutS. Store the overall LayoutS
+                // and the variant LayoutSs here until then.
+                struct TmpLayout<'tcx> {
+                    layout: LayoutS<'tcx>,
+                    variants: IndexVec<VariantIdx, LayoutS<'tcx>>,
+                }
 
-                let mut niche_filling_layout = None;
-
-                // Niche-filling enum optimization.
-                if !def.repr().inhibit_enum_layout_opt() && no_explicit_discriminants {
-                    let mut dataful_variant = None;
-                    let mut niche_variants = VariantIdx::MAX..=VariantIdx::new(0);
-
-                    // Find one non-ZST variant.
-                    'variants: for (v, fields) in variants.iter_enumerated() {
-                        if absent(fields) {
-                            continue 'variants;
+                let calculate_niche_filling_layout =
+                    || -> Result<Option<TmpLayout<'tcx>>, LayoutError<'tcx>> {
+                        // The current code for niche-filling relies on variant indices
+                        // instead of actual discriminants, so enums with
+                        // explicit discriminants (RFC #2363) would misbehave.
+                        if def.repr().inhibit_enum_layout_opt()
+                            || def
+                                .variants()
+                                .iter_enumerated()
+                                .any(|(i, v)| v.discr != ty::VariantDiscr::Relative(i.as_u32()))
+                        {
+                            return Ok(None);
                         }
-                        for f in fields {
-                            if !f.is_zst() {
-                                if dataful_variant.is_none() {
-                                    dataful_variant = Some(v);
-                                    continue 'variants;
-                                } else {
-                                    dataful_variant = None;
-                                    break 'variants;
-                                }
-                            }
+
+                        if variants.len() < 2 {
+                            return Ok(None);
                         }
-                        niche_variants = *niche_variants.start().min(&v)..=v;
-                    }
 
-                    if niche_variants.start() > niche_variants.end() {
-                        dataful_variant = None;
-                    }
+                        let mut align = dl.aggregate_align;
+                        let mut variant_layouts = variants
+                            .iter_enumerated()
+                            .map(|(j, v)| {
+                                let mut st = self.univariant_uninterned(
+                                    ty,
+                                    v,
+                                    &def.repr(),
+                                    StructKind::AlwaysSized,
+                                )?;
+                                st.variants = Variants::Single { index: j };
 
-                    if let Some(i) = dataful_variant {
-                        let count = (niche_variants.end().as_u32()
-                            - niche_variants.start().as_u32()
-                            + 1) as u128;
+                                align = align.max(st.align);
+
+                                Ok(st)
+                            })
+                            .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+
+                        let largest_variant_index = match variant_layouts
+                            .iter_enumerated()
+                            .max_by_key(|(_i, layout)| layout.size.bytes())
+                            .map(|(i, _layout)| i)
+                        {
+                            None => return Ok(None),
+                            Some(i) => i,
+                        };
+
+                        let all_indices = VariantIdx::new(0)..=VariantIdx::new(variants.len() - 1);
+                        let needs_disc = |index: VariantIdx| {
+                            index != largest_variant_index && !absent(&variants[index])
+                        };
+                        let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
+                            ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
+
+                        let count = niche_variants.size_hint().1.unwrap() as u128;
 
                         // Find the field with the largest niche
-                        let niche_candidate = variants[i]
+                        let (field_index, niche, (niche_start, niche_scalar)) = match variants
+                            [largest_variant_index]
                             .iter()
                             .enumerate()
                             .filter_map(|(j, field)| Some((j, field.largest_niche?)))
-                            .max_by_key(|(_, niche)| niche.available(dl));
-
-                        if let Some((field_index, niche, (niche_start, niche_scalar))) =
-                            niche_candidate.and_then(|(field_index, niche)| {
-                                Some((field_index, niche, niche.reserve(self, count)?))
-                            })
+                            .max_by_key(|(_, niche)| niche.available(dl))
+                            .and_then(|(j, niche)| Some((j, niche, niche.reserve(self, count)?)))
                         {
-                            let mut align = dl.aggregate_align;
-                            let st = variants
-                                .iter_enumerated()
-                                .map(|(j, v)| {
-                                    let mut st = self.univariant_uninterned(
-                                        ty,
-                                        v,
-                                        &def.repr(),
-                                        StructKind::AlwaysSized,
-                                    )?;
-                                    st.variants = Variants::Single { index: j };
+                            None => return Ok(None),
+                            Some(x) => x,
+                        };
 
-                                    align = align.max(st.align);
+                        let niche_offset = niche.offset
+                            + variant_layouts[largest_variant_index].fields.offset(field_index);
+                        let niche_size = niche.value.size(dl);
+                        let size = variant_layouts[largest_variant_index].size.align_to(align.abi);
 
-                                    Ok(tcx.intern_layout(st))
-                                })
-                                .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+                        let all_variants_fit =
+                            variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
+                                if i == largest_variant_index {
+                                    return true;
+                                }
 
-                            let offset = st[i].fields().offset(field_index) + niche.offset;
+                                layout.largest_niche = None;
 
-                            // Align the total size to the largest alignment.
-                            let size = st[i].size().align_to(align.abi);
+                                if layout.size <= niche_offset {
+                                    // This variant will fit before the niche.
+                                    return true;
+                                }
 
-                            let abi = if st.iter().all(|v| v.abi().is_uninhabited()) {
-                                Abi::Uninhabited
-                            } else if align == st[i].align() && size == st[i].size() {
-                                // When the total alignment and size match, we can use the
-                                // same ABI as the scalar variant with the reserved niche.
-                                match st[i].abi() {
-                                    Abi::Scalar(_) => Abi::Scalar(niche_scalar),
-                                    Abi::ScalarPair(first, second) => {
-                                        // Only the niche is guaranteed to be initialised,
-                                        // so use union layout for the other primitive.
-                                        if offset.bytes() == 0 {
-                                            Abi::ScalarPair(niche_scalar, second.to_union())
-                                        } else {
-                                            Abi::ScalarPair(first.to_union(), niche_scalar)
+                                // Determine if it'll fit after the niche.
+                                let this_align = layout.align.abi;
+                                let this_offset = (niche_offset + niche_size).align_to(this_align);
+
+                                if this_offset + layout.size > size {
+                                    return false;
+                                }
+
+                                // It'll fit, but we need to make some adjustments.
+                                match layout.fields {
+                                    FieldsShape::Arbitrary { ref mut offsets, .. } => {
+                                        for (j, offset) in offsets.iter_mut().enumerate() {
+                                            if !variants[i][j].is_zst() {
+                                                *offset += this_offset;
+                                            }
                                         }
                                     }
-                                    _ => Abi::Aggregate { sized: true },
+                                    _ => {
+                                        panic!("Layout of fields should be Arbitrary for variants")
+                                    }
                                 }
-                            } else {
-                                Abi::Aggregate { sized: true }
-                            };
 
-                            let largest_niche = Niche::from_scalar(dl, offset, niche_scalar);
+                                // It can't be a Scalar or ScalarPair because the offset isn't 0.
+                                if !layout.abi.is_uninhabited() {
+                                    layout.abi = Abi::Aggregate { sized: true };
+                                }
+                                layout.size += this_offset;
 
-                            niche_filling_layout = Some(LayoutS {
-                                variants: Variants::Multiple {
-                                    tag: niche_scalar,
-                                    tag_encoding: TagEncoding::Niche {
-                                        dataful_variant: i,
-                                        niche_variants,
-                                        niche_start,
-                                    },
-                                    tag_field: 0,
-                                    variants: st,
-                                },
-                                fields: FieldsShape::Arbitrary {
-                                    offsets: vec![offset],
-                                    memory_index: vec![0],
-                                },
-                                abi,
-                                largest_niche,
-                                size,
-                                align,
+                                true
                             });
+
+                        if !all_variants_fit {
+                            return Ok(None);
                         }
-                    }
-                }
+
+                        let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
+
+                        let others_zst = variant_layouts.iter_enumerated().all(|(i, layout)| {
+                            i == largest_variant_index || layout.size == Size::ZERO
+                        });
+                        let same_size = size == variant_layouts[largest_variant_index].size;
+                        let same_align = align == variant_layouts[largest_variant_index].align;
+
+                        let abi = if variant_layouts.iter().all(|v| v.abi.is_uninhabited()) {
+                            Abi::Uninhabited
+                        } else if same_size && same_align && others_zst {
+                            match variant_layouts[largest_variant_index].abi {
+                                // When the total alignment and size match, we can use the
+                                // same ABI as the scalar variant with the reserved niche.
+                                Abi::Scalar(_) => Abi::Scalar(niche_scalar),
+                                Abi::ScalarPair(first, second) => {
+                                    // Only the niche is guaranteed to be initialised,
+                                    // so use union layouts for the other primitive.
+                                    if niche_offset == Size::ZERO {
+                                        Abi::ScalarPair(niche_scalar, second.to_union())
+                                    } else {
+                                        Abi::ScalarPair(first.to_union(), niche_scalar)
+                                    }
+                                }
+                                _ => Abi::Aggregate { sized: true },
+                            }
+                        } else {
+                            Abi::Aggregate { sized: true }
+                        };
+
+                        let layout = LayoutS {
+                            variants: Variants::Multiple {
+                                tag: niche_scalar,
+                                tag_encoding: TagEncoding::Niche {
+                                    untagged_variant: largest_variant_index,
+                                    niche_variants,
+                                    niche_start,
+                                },
+                                tag_field: 0,
+                                variants: IndexVec::new(),
+                            },
+                            fields: FieldsShape::Arbitrary {
+                                offsets: vec![niche_offset],
+                                memory_index: vec![0],
+                            },
+                            abi,
+                            largest_niche,
+                            size,
+                            align,
+                        };
+
+                        Ok(Some(TmpLayout { layout, variants: variant_layouts }))
+                    };
+
+                let niche_filling_layout = calculate_niche_filling_layout()?;
 
                 let (mut min, mut max) = (i128::MAX, i128::MIN);
                 let discr_type = def.repr().discr_type();
@@ -1424,15 +1492,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
 
-                let layout_variants =
-                    layout_variants.into_iter().map(|v| tcx.intern_layout(v)).collect();
-
                 let tagged_layout = LayoutS {
                     variants: Variants::Multiple {
                         tag,
                         tag_encoding: TagEncoding::Direct,
                         tag_field: 0,
-                        variants: layout_variants,
+                        variants: IndexVec::new(),
                     },
                     fields: FieldsShape::Arbitrary {
                         offsets: vec![Size::ZERO],
@@ -1444,20 +1509,45 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     size,
                 };
 
-                let best_layout = match (tagged_layout, niche_filling_layout) {
-                    (tagged_layout, Some(niche_filling_layout)) => {
+                let tagged_layout = TmpLayout { layout: tagged_layout, variants: layout_variants };
+
+                let mut best_layout = match (tagged_layout, niche_filling_layout) {
+                    (tl, Some(nl)) => {
                         // Pick the smaller layout; otherwise,
                         // pick the layout with the larger niche; otherwise,
                         // pick tagged as it has simpler codegen.
-                        cmp::min_by_key(tagged_layout, niche_filling_layout, |layout| {
-                            let niche_size = layout.largest_niche.map_or(0, |n| n.available(dl));
-                            (layout.size, cmp::Reverse(niche_size))
-                        })
+                        use Ordering::*;
+                        let niche_size = |tmp_l: &TmpLayout<'_>| {
+                            tmp_l.layout.largest_niche.map_or(0, |n| n.available(dl))
+                        };
+                        match (
+                            tl.layout.size.cmp(&nl.layout.size),
+                            niche_size(&tl).cmp(&niche_size(&nl)),
+                        ) {
+                            (Greater, _) => nl,
+                            (Equal, Less) => nl,
+                            _ => tl,
+                        }
                     }
-                    (tagged_layout, None) => tagged_layout,
+                    (tl, None) => tl,
                 };
 
-                tcx.intern_layout(best_layout)
+                // Now we can intern the variant layouts and store them in the enum layout.
+                best_layout.layout.variants = match best_layout.layout.variants {
+                    Variants::Multiple { tag, tag_encoding, tag_field, .. } => Variants::Multiple {
+                        tag,
+                        tag_encoding,
+                        tag_field,
+                        variants: best_layout
+                            .variants
+                            .into_iter()
+                            .map(|layout| tcx.intern_layout(layout))
+                            .collect(),
+                    },
+                    _ => bug!(),
+                };
+
+                tcx.intern_layout(best_layout.layout)
             }
 
             // Types with no meaningful known layout.
@@ -2352,7 +2442,9 @@ where
                 | ty::FnDef(..)
                 | ty::GeneratorWitness(..)
                 | ty::Foreign(..)
-                | ty::Dynamic(..) => bug!("TyAndLayout::field({:?}): not applicable", this),
+                | ty::Dynamic(_, _, ty::Dyn) => {
+                    bug!("TyAndLayout::field({:?}): not applicable", this)
+                }
 
                 // Potentially-fat pointers.
                 ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
@@ -2381,7 +2473,7 @@ where
 
                     match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
                         ty::Slice(_) | ty::Str => TyMaybeWithLayout::Ty(tcx.types.usize),
-                        ty::Dynamic(_, _) => {
+                        ty::Dynamic(_, _, ty::Dyn) => {
                             TyMaybeWithLayout::Ty(tcx.mk_imm_ref(
                                 tcx.lifetimes.re_static,
                                 tcx.mk_array(tcx.types.usize, 3),
@@ -2447,6 +2539,22 @@ where
                             assert_eq!(i, 0);
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
+                    }
+                }
+
+                ty::Dynamic(_, _, ty::DynStar) => {
+                    if i == 0 {
+                        TyMaybeWithLayout::Ty(tcx.types.usize)
+                    } else if i == 1 {
+                        // FIXME(dyn-star) same FIXME as above applies here too
+                        TyMaybeWithLayout::Ty(
+                            tcx.mk_imm_ref(
+                                tcx.lifetimes.re_static,
+                                tcx.mk_array(tcx.types.usize, 3),
+                            ),
+                        )
+                    } else {
+                        bug!("no field {i} on dyn*")
                     }
                 }
 
@@ -2558,11 +2666,11 @@ where
                     // using more niches than just null (e.g., the first page of
                     // the address space, or unaligned pointers).
                     Variants::Multiple {
-                        tag_encoding: TagEncoding::Niche { dataful_variant, .. },
+                        tag_encoding: TagEncoding::Niche { untagged_variant, .. },
                         tag_field,
                         ..
                     } if this.fields.offset(tag_field) == offset => {
-                        Some(this.for_variant(cx, dataful_variant))
+                        Some(this.for_variant(cx, untagged_variant))
                     }
                     _ => Some(this),
                 };
@@ -2645,6 +2753,7 @@ impl<'tcx> ty::Instance<'tcx> {
     // for `Instance` (e.g. typeck would use `Ty::fn_sig` instead),
     // or should go through `FnAbi` instead, to avoid losing any
     // adjustments `fn_abi_of_instance` might be performing.
+    #[tracing::instrument(level = "debug", skip(tcx, param_env))]
     fn fn_sig_for_fn_abi(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -2658,9 +2767,14 @@ impl<'tcx> ty::Instance<'tcx> {
                 // (i.e. due to being inside a projection that got normalized, see
                 // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
                 // track of a polymorphization `ParamEnv` to allow normalizing later.
+                //
+                // We normalize the `fn_sig` again after substituting at a later point.
                 let mut sig = match *ty.kind() {
                     ty::FnDef(def_id, substs) => tcx
-                        .normalize_erasing_regions(tcx.param_env(def_id), tcx.bound_fn_sig(def_id))
+                        .bound_fn_sig(def_id)
+                        .map_bound(|fn_sig| {
+                            tcx.normalize_erasing_regions(tcx.param_env(def_id), fn_sig)
+                        })
                         .subst(tcx, substs),
                     _ => unreachable!(),
                 };
@@ -2791,6 +2905,7 @@ impl<'tcx> ty::Instance<'tcx> {
 /// with `-Cpanic=abort` will look like they can't unwind when in fact they
 /// might (from a foreign exception or similar).
 #[inline]
+#[tracing::instrument(level = "debug", skip(tcx))]
 pub fn fn_can_unwind<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {
     if let Some(did) = fn_def_id {
         // Special attribute for functions which can't unwind.
@@ -3007,6 +3122,7 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
     /// NB: that includes virtual calls, which are represented by "direct calls"
     /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     #[inline]
+    #[tracing::instrument(level = "debug", skip(self))]
     fn fn_abi_of_instance(
         &self,
         instance: ty::Instance<'tcx>,
@@ -3063,9 +3179,100 @@ fn fn_abi_of_instance<'tcx>(
     )
 }
 
+// Handle safe Rust thin and fat pointers.
+pub fn adjust_for_rust_scalar<'tcx>(
+    cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+    attrs: &mut ArgAttributes,
+    scalar: Scalar,
+    layout: TyAndLayout<'tcx>,
+    offset: Size,
+    is_return: bool,
+) {
+    // Booleans are always a noundef i1 that needs to be zero-extended.
+    if scalar.is_bool() {
+        attrs.ext(ArgExtension::Zext);
+        attrs.set(ArgAttribute::NoUndef);
+        return;
+    }
+
+    // Scalars which have invalid values cannot be undef.
+    if !scalar.is_always_valid(&cx) {
+        attrs.set(ArgAttribute::NoUndef);
+    }
+
+    // Only pointer types handled below.
+    let Scalar::Initialized { value: Pointer, valid_range} = scalar else { return };
+
+    if !valid_range.contains(0) {
+        attrs.set(ArgAttribute::NonNull);
+    }
+
+    if let Some(pointee) = layout.pointee_info_at(&cx, offset) {
+        if let Some(kind) = pointee.safe {
+            attrs.pointee_align = Some(pointee.align);
+
+            // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
+            // for the entire duration of the function as they can be deallocated
+            // at any time. Same for shared mutable references. If LLVM had a
+            // way to say "dereferenceable on entry" we could use it here.
+            attrs.pointee_size = match kind {
+                PointerKind::UniqueBorrowed
+                | PointerKind::UniqueBorrowedPinned
+                | PointerKind::Frozen => pointee.size,
+                PointerKind::SharedMutable | PointerKind::UniqueOwned => Size::ZERO,
+            };
+
+            // `Box`, `&T`, and `&mut T` cannot be undef.
+            // Note that this only applies to the value of the pointer itself;
+            // this attribute doesn't make it UB for the pointed-to data to be undef.
+            attrs.set(ArgAttribute::NoUndef);
+
+            // The aliasing rules for `Box<T>` are still not decided, but currently we emit
+            // `noalias` for it. This can be turned off using an unstable flag.
+            // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
+            let noalias_for_box = cx.tcx.sess.opts.unstable_opts.box_noalias.unwrap_or(true);
+
+            // `&mut` pointer parameters never alias other parameters,
+            // or mutable global data
+            //
+            // `&T` where `T` contains no `UnsafeCell<U>` is immutable,
+            // and can be marked as both `readonly` and `noalias`, as
+            // LLVM's definition of `noalias` is based solely on memory
+            // dependencies rather than pointer equality
+            //
+            // Due to past miscompiles in LLVM, we apply a separate NoAliasMutRef attribute
+            // for UniqueBorrowed arguments, so that the codegen backend can decide whether
+            // or not to actually emit the attribute. It can also be controlled with the
+            // `-Zmutable-noalias` debugging option.
+            let no_alias = match kind {
+                PointerKind::SharedMutable
+                | PointerKind::UniqueBorrowed
+                | PointerKind::UniqueBorrowedPinned => false,
+                PointerKind::UniqueOwned => noalias_for_box,
+                PointerKind::Frozen => !is_return,
+            };
+            if no_alias {
+                attrs.set(ArgAttribute::NoAlias);
+            }
+
+            if kind == PointerKind::Frozen && !is_return {
+                attrs.set(ArgAttribute::ReadOnly);
+            }
+
+            if kind == PointerKind::UniqueBorrowed && !is_return {
+                attrs.set(ArgAttribute::NoAliasMutRef);
+            }
+        }
+    }
+}
+
 impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     // FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
     // arguments of this method, into a separate `struct`.
+    #[tracing::instrument(
+        level = "debug",
+        skip(self, caller_location, fn_def_id, force_thin_self_ptr)
+    )]
     fn fn_abi_new_uncached(
         &self,
         sig: ty::PolyFnSig<'tcx>,
@@ -3075,8 +3282,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // FIXME(eddyb) replace this with something typed, like an `enum`.
         force_thin_self_ptr: bool,
     ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
-        debug!("fn_abi_new_uncached({:?}, {:?})", sig, extra_args);
-
         let sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, sig);
 
         let conv = conv_from_spec_abi(self.tcx(), sig.abi);
@@ -3118,92 +3323,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         use SpecAbi::*;
         let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
 
-        // Handle safe Rust thin and fat pointers.
-        let adjust_for_rust_scalar = |attrs: &mut ArgAttributes,
-                                      scalar: Scalar,
-                                      layout: TyAndLayout<'tcx>,
-                                      offset: Size,
-                                      is_return: bool| {
-            // Booleans are always a noundef i1 that needs to be zero-extended.
-            if scalar.is_bool() {
-                attrs.ext(ArgExtension::Zext);
-                attrs.set(ArgAttribute::NoUndef);
-                return;
-            }
-
-            // Scalars which have invalid values cannot be undef.
-            if !scalar.is_always_valid(self) {
-                attrs.set(ArgAttribute::NoUndef);
-            }
-
-            // Only pointer types handled below.
-            let Scalar::Initialized { value: Pointer, valid_range} = scalar else { return };
-
-            if !valid_range.contains(0) {
-                attrs.set(ArgAttribute::NonNull);
-            }
-
-            if let Some(pointee) = layout.pointee_info_at(self, offset) {
-                if let Some(kind) = pointee.safe {
-                    attrs.pointee_align = Some(pointee.align);
-
-                    // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
-                    // for the entire duration of the function as they can be deallocated
-                    // at any time. Same for shared mutable references. If LLVM had a
-                    // way to say "dereferenceable on entry" we could use it here.
-                    attrs.pointee_size = match kind {
-                        PointerKind::UniqueBorrowed
-                        | PointerKind::UniqueBorrowedPinned
-                        | PointerKind::Frozen => pointee.size,
-                        PointerKind::SharedMutable | PointerKind::UniqueOwned => Size::ZERO,
-                    };
-
-                    // `Box`, `&T`, and `&mut T` cannot be undef.
-                    // Note that this only applies to the value of the pointer itself;
-                    // this attribute doesn't make it UB for the pointed-to data to be undef.
-                    attrs.set(ArgAttribute::NoUndef);
-
-                    // The aliasing rules for `Box<T>` are still not decided, but currently we emit
-                    // `noalias` for it. This can be turned off using an unstable flag.
-                    // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
-                    let noalias_for_box =
-                        self.tcx().sess.opts.unstable_opts.box_noalias.unwrap_or(true);
-
-                    // `&mut` pointer parameters never alias other parameters,
-                    // or mutable global data
-                    //
-                    // `&T` where `T` contains no `UnsafeCell<U>` is immutable,
-                    // and can be marked as both `readonly` and `noalias`, as
-                    // LLVM's definition of `noalias` is based solely on memory
-                    // dependencies rather than pointer equality
-                    //
-                    // Due to past miscompiles in LLVM, we apply a separate NoAliasMutRef attribute
-                    // for UniqueBorrowed arguments, so that the codegen backend can decide whether
-                    // or not to actually emit the attribute. It can also be controlled with the
-                    // `-Zmutable-noalias` debugging option.
-                    let no_alias = match kind {
-                        PointerKind::SharedMutable
-                        | PointerKind::UniqueBorrowed
-                        | PointerKind::UniqueBorrowedPinned => false,
-                        PointerKind::UniqueOwned => noalias_for_box,
-                        PointerKind::Frozen => !is_return,
-                    };
-                    if no_alias {
-                        attrs.set(ArgAttribute::NoAlias);
-                    }
-
-                    if kind == PointerKind::Frozen && !is_return {
-                        attrs.set(ArgAttribute::ReadOnly);
-                    }
-
-                    if kind == PointerKind::UniqueBorrowed && !is_return {
-                        attrs.set(ArgAttribute::NoAliasMutRef);
-                    }
-                }
-            }
-        };
-
         let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
+            let span = tracing::debug_span!("arg_of");
+            let _entered = span.enter();
             let is_return = arg_idx.is_none();
 
             let layout = self.layout_of(ty)?;
@@ -3218,7 +3340,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             let mut arg = ArgAbi::new(self, layout, |layout, scalar, offset| {
                 let mut attrs = ArgAttributes::new();
-                adjust_for_rust_scalar(&mut attrs, scalar, *layout, offset, is_return);
+                adjust_for_rust_scalar(*self, &mut attrs, scalar, *layout, offset, is_return);
                 attrs
             });
 
@@ -3260,6 +3382,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         Ok(self.tcx.arena.alloc(fn_abi))
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn fn_abi_adjust_for_abi(
         &self,
         fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
@@ -3334,6 +3457,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     }
 }
 
+#[tracing::instrument(level = "debug", skip(cx))]
 fn make_thin_self_ptr<'tcx>(
     cx: &(impl HasTyCtxt<'tcx> + HasParamEnv<'tcx>),
     layout: TyAndLayout<'tcx>,
@@ -3345,7 +3469,7 @@ fn make_thin_self_ptr<'tcx>(
         tcx.mk_mut_ptr(layout.ty)
     } else {
         match layout.abi {
-            Abi::ScalarPair(..) => (),
+            Abi::ScalarPair(..) | Abi::Scalar(..) => (),
             _ => bug!("receiver type has unsupported layout: {:?}", layout),
         }
 

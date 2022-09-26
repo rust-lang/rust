@@ -210,7 +210,6 @@ provide! { tcx, def_id, other, cdata,
     lookup_const_stability => { table }
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
-    visibility => { table }
     unused_generic_params => { table }
     opt_def_kind => { table_direct }
     impl_parent => { table }
@@ -225,6 +224,7 @@ provide! { tcx, def_id, other, cdata,
     generator_kind => { table }
     trait_def => { table }
 
+    visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
         let _ = cdata;
@@ -233,7 +233,7 @@ provide! { tcx, def_id, other, cdata,
     associated_item_def_ids => {
         tcx.arena.alloc_from_iter(cdata.get_associated_item_def_ids(def_id.index, tcx.sess))
     }
-    associated_item => { cdata.get_associated_item(def_id.index) }
+    associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
@@ -485,7 +485,7 @@ impl CStore {
     pub fn struct_field_visibilities_untracked(
         &self,
         def: DefId,
-    ) -> impl Iterator<Item = Visibility> + '_ {
+    ) -> impl Iterator<Item = Visibility<DefId>> + '_ {
         self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
     }
 
@@ -493,7 +493,7 @@ impl CStore {
         self.get_crate_data(def.krate).get_ctor_def_id_and_kind(def.index)
     }
 
-    pub fn visibility_untracked(&self, def: DefId) -> Visibility {
+    pub fn visibility_untracked(&self, def: DefId) -> Visibility<DefId> {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
@@ -535,8 +535,8 @@ impl CStore {
         )
     }
 
-    pub fn fn_has_self_parameter_untracked(&self, def: DefId) -> bool {
-        self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index)
+    pub fn fn_has_self_parameter_untracked(&self, def: DefId, sess: &Session) -> bool {
+        self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index, sess)
     }
 
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> Lrc<CrateSource> {

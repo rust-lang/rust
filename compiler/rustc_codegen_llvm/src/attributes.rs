@@ -35,6 +35,10 @@ pub fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[&Attrib
 /// Get LLVM attribute for the provided inline heuristic.
 #[inline]
 fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll Attribute> {
+    if !cx.tcx.sess.opts.unstable_opts.inline_llvm {
+        // disable LLVM inlining
+        return Some(AttributeKind::NoInline.create_attr(cx.llcx));
+    }
     match inline {
         InlineAttr::Hint => Some(AttributeKind::InlineHint.create_attr(cx.llcx)),
         InlineAttr::Always => Some(AttributeKind::AlwaysInline.create_attr(cx.llcx)),
@@ -386,7 +390,8 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     ) {
         let span = cx
             .tcx
-            .get_attr(instance.def_id(), sym::target_feature)
+            .get_attrs(instance.def_id(), sym::target_feature)
+            .next()
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
         let msg = format!(
             "the target features {} must all be either enabled or disabled together",

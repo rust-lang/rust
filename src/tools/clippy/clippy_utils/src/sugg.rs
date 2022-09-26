@@ -22,7 +22,7 @@ use std::fmt::{Display, Write as _};
 use std::ops::{Add, Neg, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parentheses.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Sugg<'a> {
     /// An expression that never needs parentheses such as `1337` or `[0; 42]`.
     NonParen(Cow<'a, str>),
@@ -155,8 +155,8 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Ret(..)
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Tup(..)
-            | hir::ExprKind::DropTemps(_)
             | hir::ExprKind::Err => Sugg::NonParen(get_snippet(expr.span)),
+            hir::ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
             hir::ExprKind::Assign(lhs, rhs, _) => {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
             },
@@ -177,11 +177,11 @@ impl<'a> Sugg<'a> {
     pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
         use rustc_ast::ast::RangeLimits;
 
-        let get_whole_snippet = || {
-            if expr.span.from_expansion() {
-                snippet_with_macro_callsite(cx, expr.span, default)
+        let snippet_without_expansion = |cx, span: Span, default| {
+            if span.from_expansion() {
+                snippet_with_macro_callsite(cx, span, default)
             } else {
-                snippet(cx, expr.span, default)
+                snippet(cx, span, default)
             }
         };
 
@@ -192,7 +192,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::If(..)
             | ast::ExprKind::Let(..)
             | ast::ExprKind::Unary(..)
-            | ast::ExprKind::Match(..) => Sugg::MaybeParen(get_whole_snippet()),
+            | ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet_without_expansion(cx, expr.span, default)),
             ast::ExprKind::Async(..)
             | ast::ExprKind::Block(..)
             | ast::ExprKind::Break(..)
@@ -221,41 +221,45 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
-            | ast::ExprKind::Err => Sugg::NonParen(get_whole_snippet()),
+            | ast::ExprKind::Err => Sugg::NonParen(snippet_without_expansion(cx, expr.span, default)),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::HalfOpen) => Sugg::BinOp(
                 AssocOp::DotDot,
-                lhs.as_ref().map_or("".into(), |lhs| snippet(cx, lhs.span, default)),
-                rhs.as_ref().map_or("".into(), |rhs| snippet(cx, rhs.span, default)),
+                lhs.as_ref()
+                    .map_or("".into(), |lhs| snippet_without_expansion(cx, lhs.span, default)),
+                rhs.as_ref()
+                    .map_or("".into(), |rhs| snippet_without_expansion(cx, rhs.span, default)),
             ),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::Closed) => Sugg::BinOp(
                 AssocOp::DotDotEq,
-                lhs.as_ref().map_or("".into(), |lhs| snippet(cx, lhs.span, default)),
-                rhs.as_ref().map_or("".into(), |rhs| snippet(cx, rhs.span, default)),
+                lhs.as_ref()
+                    .map_or("".into(), |lhs| snippet_without_expansion(cx, lhs.span, default)),
+                rhs.as_ref()
+                    .map_or("".into(), |rhs| snippet_without_expansion(cx, rhs.span, default)),
             ),
             ast::ExprKind::Assign(ref lhs, ref rhs, _) => Sugg::BinOp(
                 AssocOp::Assign,
-                snippet(cx, lhs.span, default),
-                snippet(cx, rhs.span, default),
+                snippet_without_expansion(cx, lhs.span, default),
+                snippet_without_expansion(cx, rhs.span, default),
             ),
             ast::ExprKind::AssignOp(op, ref lhs, ref rhs) => Sugg::BinOp(
                 astbinop2assignop(op),
-                snippet(cx, lhs.span, default),
-                snippet(cx, rhs.span, default),
+                snippet_without_expansion(cx, lhs.span, default),
+                snippet_without_expansion(cx, rhs.span, default),
             ),
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => Sugg::BinOp(
                 AssocOp::from_ast_binop(op.node),
-                snippet(cx, lhs.span, default),
-                snippet(cx, rhs.span, default),
+                snippet_without_expansion(cx, lhs.span, default),
+                snippet_without_expansion(cx, rhs.span, default),
             ),
             ast::ExprKind::Cast(ref lhs, ref ty) => Sugg::BinOp(
                 AssocOp::As,
-                snippet(cx, lhs.span, default),
-                snippet(cx, ty.span, default),
+                snippet_without_expansion(cx, lhs.span, default),
+                snippet_without_expansion(cx, ty.span, default),
             ),
             ast::ExprKind::Type(ref lhs, ref ty) => Sugg::BinOp(
                 AssocOp::Colon,
-                snippet(cx, lhs.span, default),
-                snippet(cx, ty.span, default),
+                snippet_without_expansion(cx, lhs.span, default),
+                snippet_without_expansion(cx, ty.span, default),
             ),
         }
     }
@@ -373,12 +377,14 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
         | AssocOp::LessEqual
         | AssocOp::NotEqual
         | AssocOp::Greater
-        | AssocOp::GreaterEqual => format!(
-            "{} {} {}",
-            lhs,
-            op.to_ast_binop().expect("Those are AST ops").to_string(),
-            rhs
-        ),
+        | AssocOp::GreaterEqual => {
+            format!(
+                "{} {} {}",
+                lhs,
+                op.to_ast_binop().expect("Those are AST ops").to_string(),
+                rhs
+            )
+        },
         AssocOp::Assign => format!("{} = {}", lhs, rhs),
         AssocOp::AssignOp(op) => {
             format!("{} {}= {}", lhs, token_kind_to_string(&token::BinOp(op)), rhs)
@@ -868,15 +874,15 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
     /// indicates whether the function from `parent_expr` takes its args by double reference
     fn func_takes_arg_by_double_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
         let ty = match parent_expr.kind {
-            ExprKind::MethodCall(_, call_args, _) => {
+            ExprKind::MethodCall(_, receiver, call_args, _) => {
                 if let Some(sig) = self
                     .cx
                     .typeck_results()
                     .type_dependent_def_id(parent_expr.hir_id)
                     .map(|did| self.cx.tcx.fn_sig(did).skip_binder())
                 {
-                    call_args
-                        .iter()
+                    std::iter::once(receiver)
+                        .chain(call_args.iter())
                         .position(|arg| arg.hir_id == cmt_hir_id)
                         .map(|i| sig.inputs()[i])
                 } else {
@@ -933,14 +939,14 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     match &parent_expr.kind {
                         // given expression is the self argument and will be handled completely by the compiler
                         // i.e.: `|x| x.is_something()`
-                        ExprKind::MethodCall(_, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
+                        ExprKind::MethodCall(_, self_expr, ..) if self_expr.hir_id == cmt.hir_id => {
                             let _ = write!(self.suggestion_start, "{}{}", start_snip, ident_str_with_proj);
                             self.next_pos = span.hi();
                             return;
                         },
                         // item is used in a call
                         // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
-                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, [_, call_args @ ..], _) => {
+                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, _, [call_args @ ..], _) => {
                             let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
                             let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 

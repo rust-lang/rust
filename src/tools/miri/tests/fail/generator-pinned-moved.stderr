@@ -1,0 +1,26 @@
+error: Undefined Behavior: pointer to ALLOC was dereferenced after this allocation got freed
+  --> $DIR/generator-pinned-moved.rs:LL:CC
+   |
+LL |         *num += 1;
+   |         ^^^^^^^^^ pointer to ALLOC was dereferenced after this allocation got freed
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside closure at $DIR/generator-pinned-moved.rs:LL:CC
+note: inside `<GeneratorIteratorAdapter<[static generator@$DIR/generator-pinned-moved.rs:LL:CC]> as std::iter::Iterator>::next` at $DIR/generator-pinned-moved.rs:LL:CC
+  --> $DIR/generator-pinned-moved.rs:LL:CC
+   |
+LL |         match me.resume(()) {
+   |               ^^^^^^^^^^^^^
+   = note: inside `<std::boxed::Box<GeneratorIteratorAdapter<[static generator@$DIR/generator-pinned-moved.rs:LL:CC]>> as std::iter::Iterator>::next` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+note: inside `main` at $DIR/generator-pinned-moved.rs:LL:CC
+  --> $DIR/generator-pinned-moved.rs:LL:CC
+   |
+LL |     generator_iterator_2.next(); // and use moved value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

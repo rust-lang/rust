@@ -322,6 +322,43 @@ impl<T> Arena<T> {
             .map(|(idx, value)| (Idx::from_raw(RawIdx(idx as u32)), value))
     }
 
+    /// Returns an iterator over the arena’s values.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// let idx1 = arena.alloc(20);
+    /// let idx2 = arena.alloc(40);
+    /// let idx3 = arena.alloc(60);
+    ///
+    /// let mut iterator = arena.values();
+    /// assert_eq!(iterator.next(), Some(&20));
+    /// assert_eq!(iterator.next(), Some(&40));
+    /// assert_eq!(iterator.next(), Some(&60));
+    /// ```
+    pub fn values(&mut self) -> impl Iterator<Item = &T> + ExactSizeIterator + DoubleEndedIterator {
+        self.data.iter()
+    }
+
+    /// Returns an iterator over the arena’s mutable values.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// let idx1 = arena.alloc(20);
+    ///
+    /// assert_eq!(arena[idx1], 20);
+    ///
+    /// let mut iterator = arena.values_mut();
+    /// *iterator.next().unwrap() = 10;
+    /// drop(iterator);
+    ///
+    /// assert_eq!(arena[idx1], 10);
+    /// ```
+    pub fn values_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut T> + ExactSizeIterator + DoubleEndedIterator {
+        self.data.iter_mut()
+    }
+
     /// Reallocates the arena to make it take up as little space as possible.
     pub fn shrink_to_fit(&mut self) {
         self.data.shrink_to_fit();

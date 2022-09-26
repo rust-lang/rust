@@ -24,6 +24,13 @@ pub trait InferCtxtExt<'tcx> {
         span: Span,
     ) -> bool;
 
+    fn type_is_sized_modulo_regions(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> bool;
+
     fn partially_normalize_associated_types_in<T>(
         &self,
         cause: ObligationCause<'tcx>,
@@ -72,6 +79,16 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         // moves_by_default has a cache, which we want to use in other
         // cases.
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id, span)
+    }
+
+    fn type_is_sized_modulo_regions(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> bool {
+        let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, lang_item, span)
     }
 
     /// Normalizes associated types in `value`, potentially returning
