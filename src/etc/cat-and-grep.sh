@@ -51,10 +51,7 @@ while getopts ':vieh' OPTION; do
     esac
 done
 
-# an utility function to check if a string contains a substring
-stringContain() { [ -z "$1" ] || { [ -z "${2##*$1*}" ] && [ -n "$2" ];};}
-
-if ! stringContain 'E' "$GREPFLAGS"
+if ! echo "$GREPFLAGS" | grep -q E
 then
     # use F flag if there is not an E flag
     GREPFLAGS="F$GREPFLAGS"
