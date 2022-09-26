@@ -1,11 +1,11 @@
 error[E0204]: the trait `Copy` may not be implemented for this type
-  --> $DIR/missing-bound-in-manual-copy-impl-2.rs:16:9
+  --> $DIR/missing-bound-in-manual-copy-impl-2.rs:16:18
    |
 LL | struct Wrapper<T>(T);
    |                   - this field does not implement `Copy`
 ...
 LL | impl<S> Copy for Wrapper<OnlyCopyIfDisplay<S>> {}
-   |         ^^^^
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the `Copy` impl for `OnlyCopyIfDisplay<S>` requires that `S: std::fmt::Display`
   --> $DIR/missing-bound-in-manual-copy-impl-2.rs:4:19
