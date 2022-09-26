@@ -136,6 +136,7 @@ pub struct Config {
     pub rust_codegen_units_std: Option<u32>,
     pub rust_debug_assertions: bool,
     pub rust_debug_assertions_std: bool,
+    pub rust_randomize_layout: bool,
     pub rust_overflow_checks: bool,
     pub rust_overflow_checks_std: bool,
     pub rust_debug_logging: bool,
@@ -679,6 +680,7 @@ define_config! {
         codegen_units_std: Option<u32> = "codegen-units-std",
         debug_assertions: Option<bool> = "debug-assertions",
         debug_assertions_std: Option<bool> = "debug-assertions-std",
+        randomize_layout: Option<bool> = "randomize-layout",
         overflow_checks: Option<bool> = "overflow-checks",
         overflow_checks_std: Option<bool> = "overflow-checks-std",
         debug_logging: Option<bool> = "debug-logging",
@@ -992,6 +994,7 @@ impl Config {
         let mut debug = None;
         let mut debug_assertions = None;
         let mut debug_assertions_std = None;
+        let mut randomize_layout = None;
         let mut overflow_checks = None;
         let mut overflow_checks_std = None;
         let mut debug_logging = None;
@@ -1091,6 +1094,7 @@ impl Config {
             debug = rust.debug;
             debug_assertions = rust.debug_assertions;
             debug_assertions_std = rust.debug_assertions_std;
+            randomize_layout = rust.randomize_layout;
             overflow_checks = rust.overflow_checks;
             overflow_checks_std = rust.overflow_checks_std;
             debug_logging = rust.debug_logging;
@@ -1245,6 +1249,7 @@ impl Config {
         config.rust_debug_assertions_std =
             debug_assertions_std.unwrap_or(config.rust_debug_assertions);
         config.rust_overflow_checks = overflow_checks.unwrap_or(default);
+        config.rust_randomize_layout = randomize_layout.unwrap_or(default);
         config.rust_overflow_checks_std =
             overflow_checks_std.unwrap_or(config.rust_overflow_checks);
 

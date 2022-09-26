@@ -1,4 +1,5 @@
 // stderr-per-bitwidth
+// needs-deterministic-layouts (randomized layout affects printing of the raw bytes)
 // ignore-debug (the debug assertions change the error)
 use std::alloc::Layout;
 

@@ -1480,6 +1480,10 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
+        if self.config.rust_randomize_layout {
+            rustflags.arg("-Zrandomize-layout");
+        }
+
         // Enable cfg checking of cargo features for everything but std and also enable cfg
         // checking of names and values.
         //
@@ -1496,7 +1500,7 @@ impl<'a> Builder<'a> {
 
         // Add extra cfg not defined in/by rustc
         //
-        // Note: Altrough it would seems that "-Zunstable-options" to `rustflags` is useless as
+        // Note: Although it would seems that "-Zunstable-options" to `rustflags` is useless as
         // cargo would implicitly add it, it was discover that sometimes bootstrap only use
         // `rustflags` without `cargo` making it required.
         rustflags.arg("-Zunstable-options");

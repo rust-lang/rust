@@ -947,6 +947,8 @@ pub fn make_test_description<R: Read>(
         ignore |= !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread");
         ignore |= !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress");
         ignore |= !has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag");
+        ignore |= config.rust_randomized_layout
+            && config.parse_name_directive(ln, "needs-deterministic-layouts");
         ignore |= !has_shadow_call_stack
             && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack");
         ignore |= !config.can_unwind() && config.parse_name_directive(ln, "needs-unwind");

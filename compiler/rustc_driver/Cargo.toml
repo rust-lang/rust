@@ -31,6 +31,7 @@ rustc_interface = { path = "../rustc_interface" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_typeck = { path = "../rustc_typeck" }
+rustc_index = { path = "../rustc_index" }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -43,3 +44,4 @@ llvm = ['rustc_interface/llvm']
 max_level_info = ['rustc_log/max_level_info']
 rustc_use_parallel_compiler = ['rustc_data_structures/rustc_use_parallel_compiler', 'rustc_interface/rustc_use_parallel_compiler',
     'rustc_middle/rustc_use_parallel_compiler']
+rustc_randomized_layouts = ['rustc_index/rustc_randomized_layouts']

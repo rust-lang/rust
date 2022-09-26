@@ -198,6 +198,7 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "parallel_compiler", None),
+    (Some(Mode::Std), "randomized_layouts", None),
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
     (Some(Mode::Std), "no_global_oom_handling", None),
@@ -753,6 +754,9 @@ impl Build {
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
         if self.config.rustc_parallel {
             features.push("rustc_use_parallel_compiler");
+        }
+        if self.config.rust_randomize_layout {
+            features.push("rustc_randomized_layouts");
         }
 
         // If debug logging is on, then we want the default for tracing:

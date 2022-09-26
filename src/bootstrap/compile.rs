@@ -297,6 +297,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
 
+    cargo.rustflag("--cfg").rustflag("randomized_layouts");
+
     // Determine if we're going to compile in optimized C intrinsics to
     // the `compiler-builtins` crate. These intrinsics live in LLVM's
     // `compiler-rt` repository, but our `src/llvm-project` submodule isn't
