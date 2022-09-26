@@ -5,6 +5,11 @@ LL |     let x: &&Box<i32>;
    |         - binding declared here but left uninitialized
 LL |     let _y = &**x;
    |              ^^^^ `**x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: &&Box<i32> = todo!();
+   |                       +++++++++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-ref-chain.rs:11:14
@@ -13,6 +18,11 @@ LL |     let x: &&S<i32, i32>;
    |         - binding declared here but left uninitialized
 LL |     let _y = &**x;
    |              ^^^^ `**x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: &&S<i32, i32> = todo!();
+   |                          +++++++++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-ref-chain.rs:14:14
@@ -21,6 +31,11 @@ LL |     let x: &&i32;
    |         - binding declared here but left uninitialized
 LL |     let _y = &**x;
    |              ^^^^ `**x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: &&i32 = todo!();
+   |                  +++++++++
 
 error[E0381]: partially assigned binding `a` isn't fully initialized
   --> $DIR/borrowck-uninit-ref-chain.rs:18:5
