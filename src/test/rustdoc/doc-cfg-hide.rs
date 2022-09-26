@@ -1,5 +1,6 @@
 #![crate_name = "oud"]
 
+#![doc(auto_cfg)]
 #![doc(cfg_hide(feature = "solecism"))]
 
 // @has 'oud/struct.Solecism.html'

@@ -4,6 +4,8 @@
 #![crate_type = "lib"]
 #![crate_name = "foo"]
 
+#![doc(auto_cfg)]
+
 pub struct S;
 pub trait MyTrait1 {}
 pub trait MyTrait2 {}

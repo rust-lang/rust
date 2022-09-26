@@ -1,5 +1,7 @@
 #![crate_name = "foo"]
 
+#![doc(auto_cfg)]
+
 // @has foo/fn.foo.html
 // @has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-meowmeow'
 #[cfg(not(meowmeow))]
