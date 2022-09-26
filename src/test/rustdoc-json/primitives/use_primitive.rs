@@ -5,7 +5,7 @@
 #[doc(primitive = "usize")]
 mod usize {}
 
-// @set local_crate_id = "$.index[*][?(@.name=='primitive')].crate_id"
+// @set local_crate_id = "$.index[*][?(@.name=='use_primitive')].crate_id"
 
 // @has "$.index[*][?(@.name=='ilog10')]"
 // @!is "$.index[*][?(@.name=='ilog10')].crate_id" $local_crate_id
