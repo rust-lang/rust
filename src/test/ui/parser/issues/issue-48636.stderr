@@ -1,6 +1,8 @@
 error[E0585]: found a documentation comment that doesn't document anything
   --> $DIR/issue-48636.rs:7:5
    |
+LL | struct S {
+   |        - while parsing this struct
 LL |     x: u8
    |          - help: missing comma here: `,`
 LL |     /// The ID of the parent core

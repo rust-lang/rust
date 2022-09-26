@@ -1,6 +1,8 @@
 error: expected identifier, found keyword `let`
   --> $DIR/removed-syntax-field-let.rs:2:5
    |
+LL | struct S {
+   |        - while parsing this struct
 LL |     let foo: (),
    |     ^^^ expected identifier, found keyword
 

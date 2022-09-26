@@ -1,6 +1,8 @@
 error: struct fields are separated by `,`
   --> $DIR/removed-syntax-field-semicolon.rs:2:12
    |
+LL | struct S {
+   |        - while parsing this struct
 LL |     bar: ();
    |            ^ help: replace `;` with `,`
 
