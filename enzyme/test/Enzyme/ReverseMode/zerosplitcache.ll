@@ -62,14 +62,14 @@ declare dso_local double @__enzyme_autodiff(i8*, ...)
 ; TODO not need to cache the primal
 ; CHECK: define internal { double } @diffeabove(double %i10, double %differeturn, i8* %malloccall) 
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"malloccall'mi" = alloca i8, i64 8, align 8
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %"malloccall'mi", i8 0, i64 8, i1 false)
-; CHECK-NEXT:   %"m'ipc" = bitcast i8* %"malloccall'mi" to double*
+; CHECK-NEXT:   %"m'ai" = alloca double, i64 1, align 8
+; CHECK-NEXT:   %0 = bitcast double* %"m'ai" to i8*
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %0, i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   %m = bitcast i8* %malloccall to double*
-; CHECK-NEXT:   store double %differeturn, double* %"m'ipc", align 8
-; CHECK-NEXT:   %0 = call { double } @diffeset(double* %m, double* %"m'ipc", double %i10)
+; CHECK-NEXT:   store double %differeturn, double* %"m'ai", align 8
+; CHECK-NEXT:   %1 = call { double } @diffeset(double* %m, double* %"m'ai", double %i10)
 ; CHECK-NEXT:   tail call void @free(i8* %malloccall)
-; CHECK-NEXT:   ret { double } %0
+; CHECK-NEXT:   ret { double } %1
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { double } @diffeset(double* nocapture %a, double* nocapture %"a'", double %x) 

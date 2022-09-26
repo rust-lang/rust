@@ -52,6 +52,188 @@ LLVMValueRef (*CustomAllocator)(LLVMBuilderRef, LLVMTypeRef,
 LLVMValueRef (*CustomDeallocator)(LLVMBuilderRef, LLVMValueRef) = nullptr;
 void (*CustomRuntimeInactiveError)(LLVMBuilderRef, LLVMValueRef,
                                    LLVMValueRef) = nullptr;
+LLVMValueRef (*EnzymePostCacheStore)(LLVMValueRef, LLVMBuilderRef,
+                                     LLVMValueRef *) = nullptr;
+}
+
+llvm::SmallVector<llvm::Instruction *, 2> PostCacheStore(llvm::StoreInst *SI,
+                                                         llvm::IRBuilder<> &B) {
+  SmallVector<llvm::Instruction *, 2> res;
+  if (EnzymePostCacheStore) {
+    LLVMValueRef V2 = nullptr;
+    auto I = EnzymePostCacheStore(wrap(SI), wrap(&B), &V2);
+    if (V2)
+      res.push_back(cast<Instruction>(unwrap(V2)));
+    if (I)
+      res.push_back(cast<Instruction>(unwrap(I)));
+  }
+  return res;
+}
+
+Function *getOrInsertExponentialAllocator(Module &M, Function *newFunc,
+                                          bool ZeroInit, llvm::Type *RT) {
+  bool custom = true;
+  llvm::PointerType *allocType;
+  {
+    auto i64 = Type::getInt64Ty(newFunc->getContext());
+    BasicBlock *BB = BasicBlock::Create(M.getContext(), "entry", newFunc);
+    IRBuilder<> B(BB);
+    auto P = B.CreatePHI(i64, 1);
+    CallInst *malloccall;
+    CreateAllocation(B, RT, P, "tapemem", &malloccall, nullptr)->getType();
+    if (auto F = getFunctionFromCall(malloccall)) {
+      custom = F->getName() != "malloc";
+      if (F->getName() == "julia.gc_alloc_obj")
+        ZeroInit = false;
+    }
+    allocType = cast<PointerType>(malloccall->getType());
+    BB->eraseFromParent();
+  }
+
+  Type *types[] = {allocType, Type::getInt64Ty(M.getContext()),
+                   Type::getInt64Ty(M.getContext())};
+  std::string name = "__enzyme_exponentialallocation";
+  if (ZeroInit)
+    name += "zero";
+  if (custom)
+    name += ".custom@" + std::to_string((size_t)RT);
+
+  FunctionType *FT = FunctionType::get(allocType, types, false);
+
+#if LLVM_VERSION_MAJOR >= 9
+  Function *F = cast<Function>(M.getOrInsertFunction(name, FT).getCallee());
+#else
+  Function *F = cast<Function>(M.getOrInsertFunction(name, FT));
+#endif
+
+  if (!F->empty())
+    return F;
+
+  F->setLinkage(Function::LinkageTypes::InternalLinkage);
+  F->addFnAttr(Attribute::AlwaysInline);
+  F->addFnAttr(Attribute::NoUnwind);
+  BasicBlock *entry = BasicBlock::Create(M.getContext(), "entry", F);
+  BasicBlock *grow = BasicBlock::Create(M.getContext(), "grow", F);
+  BasicBlock *ok = BasicBlock::Create(M.getContext(), "ok", F);
+
+  IRBuilder<> B(entry);
+
+  Argument *ptr = F->arg_begin();
+  ptr->setName("ptr");
+  Argument *size = ptr + 1;
+  size->setName("size");
+  Argument *tsize = size + 1;
+  tsize->setName("tsize");
+
+  Value *hasOne = B.CreateICmpNE(
+      B.CreateAnd(size, ConstantInt::get(size->getType(), 1, false)),
+      ConstantInt::get(size->getType(), 0, false));
+  auto popCnt = Intrinsic::getDeclaration(&M, Intrinsic::ctpop, {types[1]});
+
+  B.CreateCondBr(
+      B.CreateAnd(B.CreateICmpULT(B.CreateCall(popCnt, {size}),
+                                  ConstantInt::get(types[1], 3, false)),
+                  hasOne),
+      grow, ok);
+
+  B.SetInsertPoint(grow);
+
+  auto lz =
+      B.CreateCall(Intrinsic::getDeclaration(&M, Intrinsic::ctlz, {types[1]}),
+                   {size, ConstantInt::getTrue(M.getContext())});
+  Value *next =
+      B.CreateShl(tsize, B.CreateSub(ConstantInt::get(types[1], 64, false), lz,
+                                     "", true, true));
+
+  Value *gVal;
+
+  Value *prevSize =
+      B.CreateSelect(B.CreateICmpEQ(size, ConstantInt::get(size->getType(), 1)),
+                     ConstantInt::get(next->getType(), 0),
+                     B.CreateLShr(next, ConstantInt::get(next->getType(), 1)));
+
+  if (!custom) {
+    auto reallocF = M.getOrInsertFunction("realloc", allocType, allocType,
+                                          Type::getInt64Ty(M.getContext()));
+
+    Value *args[] = {B.CreatePointerCast(ptr, allocType), next};
+    gVal = B.CreateCall(reallocF, args);
+  } else {
+    Value *tsize = ConstantInt::get(
+        next->getType(),
+        newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(RT) / 8);
+    auto elSize = B.CreateUDiv(next, tsize, "", /*isExact*/ true);
+    gVal = CreateAllocation(B, RT, elSize, "", nullptr, nullptr);
+
+    gVal = B.CreatePointerCast(
+        gVal, PointerType::get(
+                  Type::getInt8Ty(gVal->getContext()),
+                  cast<PointerType>(gVal->getType())->getAddressSpace()));
+    auto pVal = B.CreatePointerCast(ptr, gVal->getType());
+
+    Value *margs[] = {gVal, pVal, prevSize,
+                      ConstantInt::getFalse(M.getContext())};
+    Type *tys[] = {margs[0]->getType(), margs[1]->getType(),
+                   margs[2]->getType()};
+    auto memsetF = Intrinsic::getDeclaration(&M, Intrinsic::memcpy, tys);
+    B.CreateCall(memsetF, margs);
+  }
+
+  if (ZeroInit) {
+    Value *zeroSize = B.CreateSub(next, prevSize);
+
+    Value *margs[] = {
+#if LLVM_VERSION_MAJOR > 7
+      B.CreateInBoundsGEP(gVal->getType()->getPointerElementType(), gVal,
+                          prevSize),
+#else
+      B.CreateInBoundsGEP(gVal, prevSize),
+#endif
+      ConstantInt::get(Type::getInt8Ty(M.getContext()), 0),
+      zeroSize,
+      ConstantInt::getFalse(M.getContext())
+    };
+    Type *tys[] = {margs[0]->getType(), margs[2]->getType()};
+    auto memsetF = Intrinsic::getDeclaration(&M, Intrinsic::memset, tys);
+    B.CreateCall(memsetF, margs);
+  }
+  gVal = B.CreatePointerCast(gVal, ptr->getType());
+
+  B.CreateBr(ok);
+  B.SetInsertPoint(ok);
+  auto phi = B.CreatePHI(ptr->getType(), 2);
+  phi->addIncoming(gVal, grow);
+  phi->addIncoming(ptr, entry);
+  B.CreateRet(phi);
+  return F;
+}
+
+llvm::Value *CreateReAllocation(llvm::IRBuilder<> &B, llvm::Value *prev,
+                                llvm::Type *T, llvm::Value *OuterCount,
+                                llvm::Value *InnerCount, llvm::Twine Name,
+                                llvm::CallInst **caller, bool ZeroMem) {
+  auto newFunc = B.GetInsertBlock()->getParent();
+
+  Value *tsize = ConstantInt::get(
+      InnerCount->getType(),
+      newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(T) / 8);
+
+  Value *idxs[] = {
+      /*ptr*/
+      prev,
+      /*incrementing value to increase when it goes past a power of two*/
+      OuterCount,
+      /*buffer size (element x subloops)*/
+      B.CreateMul(tsize, InnerCount, "", /*NUW*/ true,
+                  /*NSW*/ true)};
+
+  auto realloccall =
+      B.CreateCall(getOrInsertExponentialAllocator(*newFunc->getParent(),
+                                                   newFunc, ZeroMem, T),
+                   idxs, Name);
+  if (caller)
+    *caller = realloccall;
+  return realloccall;
 }
 
 Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
@@ -90,10 +272,12 @@ Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
 
     // Assert computation of size of array doesn't wrap
     if (auto BI = dyn_cast<BinaryOperator>(malloccall->getArgOperand(0))) {
-      if ((BI->getOperand(0) == Align && BI->getOperand(1) == Count) ||
-          (BI->getOperand(1) == Align && BI->getOperand(0) == Count))
-        BI->setHasNoSignedWrap(true);
-      BI->setHasNoUnsignedWrap(true);
+      if (BI->getOpcode() == BinaryOperator::Mul) {
+        if ((BI->getOperand(0) == Align && BI->getOperand(1) == Count) ||
+            (BI->getOperand(1) == Align && BI->getOperand(0) == Count))
+          BI->setHasNoSignedWrap(true);
+        BI->setHasNoUnsignedWrap(true);
+      }
     }
 
     if (auto ci = dyn_cast<ConstantInt>(Count)) {
@@ -129,6 +313,9 @@ Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
   if (caller) {
     *caller = malloccall;
   }
+  if (auto F = getFunctionFromCall(malloccall))
+    if (F->getName() == "julia.gc_alloc_obj")
+      ZeroMem = nullptr;
   if (ZeroMem) {
     auto PT = cast<PointerType>(malloccall->getType());
     Value *tozero = malloccall;
@@ -1017,100 +1204,6 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
 #else
   return B2.CreateLoad(GV);
 #endif
-}
-
-Function *getOrInsertExponentialAllocator(Module &M, bool ZeroInit) {
-  Type *BPTy = Type::getInt8PtrTy(M.getContext());
-  Type *types[] = {BPTy, Type::getInt64Ty(M.getContext()),
-                   Type::getInt64Ty(M.getContext())};
-  std::string name = "__enzyme_exponentialallocation";
-  if (ZeroInit)
-    name += "zero";
-  FunctionType *FT =
-      FunctionType::get(Type::getInt8PtrTy(M.getContext()), types, false);
-
-#if LLVM_VERSION_MAJOR >= 9
-  Function *F = cast<Function>(M.getOrInsertFunction(name, FT).getCallee());
-#else
-  Function *F = cast<Function>(M.getOrInsertFunction(name, FT));
-#endif
-
-  if (!F->empty())
-    return F;
-
-  F->setLinkage(Function::LinkageTypes::InternalLinkage);
-  F->addFnAttr(Attribute::AlwaysInline);
-  F->addFnAttr(Attribute::NoUnwind);
-  BasicBlock *entry = BasicBlock::Create(M.getContext(), "entry", F);
-  BasicBlock *grow = BasicBlock::Create(M.getContext(), "grow", F);
-  BasicBlock *ok = BasicBlock::Create(M.getContext(), "ok", F);
-
-  IRBuilder<> B(entry);
-
-  Argument *ptr = F->arg_begin();
-  ptr->setName("ptr");
-  Argument *size = ptr + 1;
-  size->setName("size");
-  Argument *tsize = size + 1;
-  tsize->setName("tsize");
-
-  Value *hasOne = B.CreateICmpNE(
-      B.CreateAnd(size, ConstantInt::get(size->getType(), 1, false)),
-      ConstantInt::get(size->getType(), 0, false));
-  auto popCnt = Intrinsic::getDeclaration(&M, Intrinsic::ctpop, {types[1]});
-
-  B.CreateCondBr(
-      B.CreateAnd(B.CreateICmpULT(B.CreateCall(popCnt, {size}),
-                                  ConstantInt::get(types[1], 3, false)),
-                  hasOne),
-      grow, ok);
-
-  B.SetInsertPoint(grow);
-
-  auto lz =
-      B.CreateCall(Intrinsic::getDeclaration(&M, Intrinsic::ctlz, {types[1]}),
-                   {size, ConstantInt::getTrue(M.getContext())});
-  Value *next =
-      B.CreateShl(tsize, B.CreateSub(ConstantInt::get(types[1], 64, false), lz,
-                                     "", true, true));
-
-  auto reallocF = M.getOrInsertFunction("realloc", BPTy, BPTy,
-                                        Type::getInt64Ty(M.getContext()));
-
-  Value *args[] = {B.CreatePointerCast(ptr, BPTy), next};
-  Value *gVal =
-      B.CreatePointerCast(B.CreateCall(reallocF, args), ptr->getType());
-  if (ZeroInit) {
-    Value *prevSize = B.CreateSelect(
-        B.CreateICmpEQ(size, ConstantInt::get(size->getType(), 1)),
-        ConstantInt::get(next->getType(), 0),
-        B.CreateLShr(next, ConstantInt::get(next->getType(), 1)));
-
-    Value *zeroSize = B.CreateSub(next, prevSize);
-
-    Value *margs[] = {
-#if LLVM_VERSION_MAJOR > 7
-      B.CreateInBoundsGEP(gVal->getType()->getPointerElementType(), gVal,
-                          prevSize),
-#else
-      B.CreateInBoundsGEP(gVal, prevSize),
-#endif
-      ConstantInt::get(Type::getInt8Ty(args[0]->getContext()), 0),
-      zeroSize,
-      ConstantInt::getFalse(args[0]->getContext())
-    };
-    Type *tys[] = {margs[0]->getType(), margs[2]->getType()};
-    auto memsetF = Intrinsic::getDeclaration(&M, Intrinsic::memset, tys);
-    B.CreateCall(memsetF, margs);
-  }
-
-  B.CreateBr(ok);
-  B.SetInsertPoint(ok);
-  auto phi = B.CreatePHI(ptr->getType(), 2);
-  phi->addIncoming(gVal, grow);
-  phi->addIncoming(ptr, entry);
-  B.CreateRet(phi);
-  return F;
 }
 
 void mayExecuteAfter(llvm::SmallVectorImpl<llvm::Instruction *> &results,

@@ -82,10 +82,11 @@ declare void @__enzyme_autodiff(i8*, ...) local_unnamed_addr #3
 
 ; CHECK-LABEL: define internal void @diffeproject
 ; (double* noalias nocapture readonly %cam, double* nocapture %"cam'", double* noalias nocapture %proj, double* nocapture %"proj'")
-; CHECK: %[[a0:.+]] = alloca i8, i64 16
-; CHECK: %Xcam = bitcast i8* %0 to [2 x double]*
+; CHECK: %Xcam = alloca [2 x double], i64 1, align 16
+; CHECK: %0 = bitcast [2 x double]* %Xcam to i8*
+; CHECK: %2 = bitcast i8* %0 to [2 x double]*
 
 ; CHECK-LABEL: for.body
-; CHECK: %arrayidx2 = getelementptr inbounds [2 x double], [2 x double]* %Xcam, i64 0, i64 %iv
+; CHECK: %arrayidx2 = getelementptr inbounds [2 x double], [2 x double]* %2, i64 0, i64 %iv
 ; CHECK: store double %add, double* %arrayidx2, align 8
 

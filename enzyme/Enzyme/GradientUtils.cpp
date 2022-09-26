@@ -2066,57 +2066,16 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
             erase(preerase);
           }
         } else {
+          // Remove allocations for scopealloc since it is already allocated
+          // by the augmented forward pass
           // Remove stores into
           SmallVector<Instruction *, 3> stores(
               scopeInstructions[found->first].begin(),
               scopeInstructions[found->first].end());
           scopeInstructions.erase(found->first);
+          scopeAllocs.erase(found->first);
           for (int i = stores.size() - 1; i >= 0; i--) {
             erase(stores[i]);
-          }
-
-          // Remove allocations for scopealloc since it is already allocated
-          // by the augmented forward pass
-          SmallVector<CallInst *, 3> allocs(scopeAllocs[found->first].begin(),
-                                            scopeAllocs[found->first].end());
-          scopeAllocs.erase(found->first);
-          for (auto allocinst : allocs) {
-            CastInst *cast = nullptr;
-            StoreInst *store = nullptr;
-            for (auto use : allocinst->users()) {
-              if (auto ci = dyn_cast<CastInst>(use)) {
-                assert(cast == nullptr);
-                cast = ci;
-              }
-              if (auto si = dyn_cast<StoreInst>(use)) {
-                if (si->getValueOperand() == allocinst) {
-                  assert(store == nullptr);
-                  store = si;
-                }
-              }
-            }
-            if (cast) {
-              assert(store == nullptr);
-              for (auto use : cast->users()) {
-                if (auto si = dyn_cast<StoreInst>(use)) {
-                  if (si->getValueOperand() == cast) {
-                    assert(store == nullptr);
-                    store = si;
-                  }
-                }
-              }
-            }
-
-            Instruction *storedinto =
-                cast ? (Instruction *)cast : (Instruction *)allocinst;
-            for (auto use : storedinto->users()) {
-              if (auto si = dyn_cast<StoreInst>(use))
-                erase(si);
-            }
-
-            if (cast)
-              erase(cast);
-            erase(allocinst);
           }
 
           // Remove frees
@@ -5683,6 +5642,9 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 #endif
                     }
                     scopeInstructions[cache].push_back(st);
+                    for (auto post : PostCacheStore(st, v)) {
+                      scopeInstructions[cache].push_back(post);
+                    }
                   }
 
                   assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));

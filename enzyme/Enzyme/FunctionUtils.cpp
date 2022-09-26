@@ -274,6 +274,7 @@ void RecursivelyReplaceAddressSpace(Value *AI, Value *rep, bool legal) {
   SmallVector<Instruction *, 1> toErase;
   if (auto I = dyn_cast<Instruction>(AI))
     toErase.push_back(I);
+  SmallVector<StoreInst *, 1> toPostCache;
   while (Todo.size()) {
     auto cur = Todo.back();
     Todo.pop_back();
@@ -305,6 +306,7 @@ void RecursivelyReplaceAddressSpace(Value *AI, Value *rep, bool legal) {
         Todo.push_back(
             std::make_tuple((Value *)nCI, (Value *)CI, cast<Instruction>(U)));
       }
+      toErase.push_back(CI);
       continue;
     }
     if (auto GEP = dyn_cast<GetElementPtrInst>(inst)) {
@@ -331,6 +333,7 @@ void RecursivelyReplaceAddressSpace(Value *AI, Value *rep, bool legal) {
     if (auto SI = dyn_cast<StoreInst>(inst)) {
       if (SI->getPointerOperand() == prev) {
         SI->setOperand(1, rep);
+        toPostCache.push_back(SI);
         continue;
       }
     }
@@ -358,21 +361,16 @@ void RecursivelyReplaceAddressSpace(Value *AI, Value *rep, bool legal) {
         }
       }
     }
-    if (legal) {
-      IRBuilder<> B(cast<Instruction>(rep)->getNextNode());
-      rep = B.CreateAddrSpaceCast(
-          rep, PointerType::get(
-                   rep->getType()->getPointerElementType(),
-                   cast<PointerType>(prev->getType())->getAddressSpace()));
-      prev->replaceAllUsesWith(rep);
-      continue;
-    }
     llvm::errs() << " rep: " << *rep << " prev: " << *prev << " inst: " << *inst
                  << "\n";
     llvm_unreachable("Illegal address space propagation");
   }
   for (auto I : llvm::reverse(toErase))
     I->eraseFromParent();
+  for (auto SI : toPostCache) {
+    IRBuilder<> B(SI->getNextNode());
+    PostCacheStore(SI, B);
+  }
 }
 
 /// Convert necessary stack allocations into mallocs for use in the reverse
@@ -427,6 +425,11 @@ UpgradeAllocasToMallocs(Function *NewF, DerivativeMode mode,
         MDNode::get(CI->getContext(),
                     {ConstantAsMetadata::get(ConstantInt::get(
                         IntegerType::get(AI->getContext(), 64), align))}));
+
+    if (rep != CI) {
+      cast<Instruction>(rep)->setMetadata("enzyme_caststack",
+                                          MDNode::get(CI->getContext(), {}));
+    }
 
     auto PT0 = cast<PointerType>(rep->getType());
     auto PT1 = cast<PointerType>(AI->getType());
@@ -646,6 +649,35 @@ void PreProcessCache::AlwaysInline(Function *NewF) {
 #else
     InlineFunction(CI, IFI);
 #endif
+  }
+}
+
+void PreProcessCache::LowerAllocAddr(Function *NewF) {
+  SmallVector<Instruction *, 1> Todo;
+  for (auto &BB : *NewF) {
+    for (auto &I : BB) {
+      if (hasMetadata(&I, "enzyme_backstack")) {
+        Todo.push_back(&I);
+        // TODO
+        // I.eraseMetadata("enzyme_backstack");
+      }
+    }
+  }
+  for (auto T : Todo) {
+    auto T0 = T->getOperand(0);
+    if (auto CI = dyn_cast<BitCastInst>(T0))
+      T0 = CI->getOperand(0);
+    auto AI = cast<AllocaInst>(T0);
+    llvm::Value *AIV = AI;
+    if (AIV->getType()->getPointerElementType() !=
+        T->getType()->getPointerElementType()) {
+      IRBuilder<> B(AI->getNextNode());
+      AIV = B.CreateBitCast(
+          AIV, PointerType::get(
+                   T->getType()->getPointerElementType(),
+                   cast<PointerType>(AI->getType())->getAddressSpace()));
+    }
+    RecursivelyReplaceAddressSpace(T, AIV, /*legal*/ true);
   }
 }
 

@@ -133,8 +133,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %mallocsize = shl nuw nsw i64 %wide.trip.count, 3
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %"call'mi_malloccache" = bitcast i8* %malloccall to i8**
-; CHECK-NEXT:   %malloccall2 = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %call_malloccache = bitcast i8* %malloccall2 to i8**
+; CHECK-NEXT:   %[[malloccall2:.+]] = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
+; CHECK-NEXT:   %call_malloccache = bitcast i8* %[[malloccall2]] to i8**
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.body

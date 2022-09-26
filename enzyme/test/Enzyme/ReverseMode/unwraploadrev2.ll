@@ -77,8 +77,8 @@ for.cond.cleanup52:                               ; preds = %for.body53.us
 
 ; CHECK: invertfor.body53.us:                              ; preds = %entry, %incinvertfor.body53.us
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %i3, %entry ], [ %3, %incinvertfor.body53.us ]
-; CHECK-NEXT:   %_unwrap2 = getelementptr inbounds double*, double** %0, i64 %"iv'ac.0"
-; CHECK-NEXT:   %tapeArg1_unwrap = load double*, double** %_unwrap2
+; CHECK-NEXT:   %[[_unwrap2:.+]] = getelementptr inbounds double*, double** %0, i64 %"iv'ac.0"
+; CHECK-NEXT:   %tapeArg1_unwrap = load double*, double** %[[_unwrap2]]
 ; CHECK-NEXT:   call void @diffe_ZN6Domain1xEl({ double*, i64 }* %domain, { double*, i64 }* %"domain'", i64 %"iv'ac.0", double* %tapeArg1_unwrap)
 ; CHECK-NEXT:   %2 = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   br i1 %2, label %invertentry, label %incinvertfor.body53.us

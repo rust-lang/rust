@@ -74,19 +74,19 @@ attributes #1 = { argmemonly }
 
 ; CHECK: define internal void @diffe.omp_outlined.(i32* noalias nocapture readonly %.global_tid., i32* noalias nocapture readnone %.bound_tid., double* noalias nocapture readonly %x, double* nocapture %"x'", double* noalias nocapture %out, double* nocapture %"out'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"malloccall'mi" = alloca i8, i64 8, align 16
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %"malloccall'mi", i8 0, i64 8, i1 false)
-; CHECK-NEXT:   %"m'ipc" = bitcast i8* %"malloccall'mi" to double*
-; CHECK-NEXT:   call void @julia.write_barrier(double* %"m'ipc")
+; CHECK-NEXT:   %"m'ai" = alloca double, i64 1, align 16
+; CHECK-NEXT:   %0 = bitcast double* %"m'ai" to i8*
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %0, i8 0, i64 8, i1 false)
+; CHECK-NEXT:   call void @julia.write_barrier(double* %"m'ai")
 ; CHECK-NEXT:   %t = call i64 @omp_get_thread_num()
 ; CHECK-NEXT:   %"gep'ipg" = getelementptr inbounds double, double* %"out'", i64 %t
-; CHECK-NEXT:   %0 = load double, double* %"gep'ipg", align 8
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* %"gep'ipg", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"gep'ipg", align 8
-; CHECK-NEXT:   %1 = load double, double* %"m'ipc", align 8
-; CHECK-NEXT:   %2 = fadd fast double %1, %0
-; CHECK-NEXT:   store double %2, double* %"m'ipc", align 8
-; CHECK-NEXT:   %3 = load double, double* %"m'ipc", align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %"m'ipc", align 8
-; CHECK-NEXT:   %4 = atomicrmw fadd double* %"x'", double %3 monotonic
+; CHECK-NEXT:   %[[i1:.+]] = load double, double* %"m'ai", align 8
+; CHECK-NEXT:   %[[i2:.+]] = fadd fast double %[[i1]], %[[i0]]
+; CHECK-NEXT:   store double %[[i2]], double* %"m'ai", align 8
+; CHECK-NEXT:   %[[i3:.+]] = load double, double* %"m'ai", align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %"m'ai", align 8
+; CHECK-NEXT:   %[[i4:.+]] = atomicrmw fadd double* %"x'", double %[[i3]] monotonic
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

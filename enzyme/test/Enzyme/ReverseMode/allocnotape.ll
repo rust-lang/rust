@@ -86,15 +86,15 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal void @diffefoo(double* nocapture readonly %x, double* nocapture %"x'", double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca [20 x i32], align 1
+; CHECK-NEXT:   %tmp = alloca [20 x i32], align 1
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %1 = trunc i64 %iv to i32
-; CHECK-NEXT:   %mul = mul nsw i32 %1, %1
-; CHECK-NEXT:   %arrayidx = getelementptr inbounds [20 x i32], [20 x i32]* %0, i64 0, i64 %iv
+; CHECK-NEXT:   %[[a1:.+]] = trunc i64 %iv to i32
+; CHECK-NEXT:   %mul = mul nsw i32 %[[a1]], %[[a1]]
+; CHECK-NEXT:   %arrayidx = getelementptr inbounds [20 x i32], [20 x i32]* %tmp, i64 0, i64 %iv
 ; CHECK-NEXT:   store i32 %mul, i32* %arrayidx, align 4, !tbaa ![[itbaa:[0-9]+]]
 ; CHECK-NEXT:   %exitcond30 = icmp eq i64 %iv.next, 20
 ; CHECK-NEXT:   br i1 %exitcond30, label %for.body5, label %for.body
@@ -109,28 +109,28 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body:                                   ; preds = %invertfor.body5, %incinvertfor.body
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %3, %incinvertfor.body ], [ 19, %invertfor.body5 ]
-; CHECK-NEXT:   %2 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %2, label %invertentry, label %incinvertfor.body
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[a3:.+]], %incinvertfor.body ], [ 19, %invertfor.body5 ]
+; CHECK-NEXT:   %[[a2:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %[[a2]], label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %3 = add nsw i64 %"iv'ac.0", -1
+; CHECK-NEXT:   %[[a3]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertfor.body5:                                  ; preds = %for.body5, %incinvertfor.body5
-; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %7, %incinvertfor.body5 ], [ 19, %for.body5 ]
-; CHECK-NEXT:   %arrayidx9_unwrap = getelementptr inbounds [20 x i32], [20 x i32]* %0, i64 0, i64 %"iv1'ac.0"
+; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %[[a7:.+]], %incinvertfor.body5 ], [ 19, %for.body5 ]
+; CHECK-NEXT:   %arrayidx9_unwrap = getelementptr inbounds [20 x i32], [20 x i32]* %tmp, i64 0, i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %_unwrap = load i32, i32* %arrayidx9_unwrap, align 4, !tbaa ![[itbaa]], !invariant.group !
 ; CHECK-NEXT:   %conv_unwrap = sitofp i32 %_unwrap to double
 ; CHECK-NEXT:   %m0diffe = fmul fast double %conv_unwrap, %differeturn
 ; CHECK-NEXT:   %"arrayidx7'ipg_unwrap" = getelementptr inbounds double, double* %"x'", i64 %"iv1'ac.0"
-; CHECK-NEXT:   %4 = load double, double* %"arrayidx7'ipg_unwrap", align 8
-; CHECK-NEXT:   %5 = fadd fast double %4, %m0diffe
-; CHECK-NEXT:   store double %5, double* %"arrayidx7'ipg_unwrap", align 8
-; CHECK-NEXT:   %6 = icmp eq i64 %"iv1'ac.0", 0
-; CHECK-NEXT:   br i1 %6, label %invertfor.body, label %incinvertfor.body5
+; CHECK-NEXT:   %[[a4:.+]] = load double, double* %"arrayidx7'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[a5:.+]] = fadd fast double %[[a4]], %m0diffe
+; CHECK-NEXT:   store double %[[a5]], double* %"arrayidx7'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[a6:.+]] = icmp eq i64 %"iv1'ac.0", 0
+; CHECK-NEXT:   br i1 %[[a6]], label %invertfor.body, label %incinvertfor.body5
 
 ; CHECK: incinvertfor.body5:                               ; preds = %invertfor.body5
-; CHECK-NEXT:   %7 = add nsw i64 %"iv1'ac.0", -1
+; CHECK-NEXT:   %[[a7]] = add nsw i64 %"iv1'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body5
 ; CHECK-NEXT: }

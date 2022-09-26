@@ -75,8 +75,8 @@ declare dso_local double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT: bb:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(800) dereferenceable_or_null(800) i8* @malloc(i64 800)
 ; CHECK-NEXT:   %i5_malloccache = bitcast i8* %malloccall to i32*
-; CHECK-NEXT:   %malloccall3 = tail call noalias nonnull dereferenceable(1600) dereferenceable_or_null(1600) i8* @malloc(i64 1600)
-; CHECK-NEXT:   %i15_malloccache = bitcast i8* %malloccall3 to i8***
+; CHECK-NEXT:   %[[malloccall3:.+]] = tail call noalias nonnull dereferenceable(1600) dereferenceable_or_null(1600) i8* @malloc(i64 1600)
+; CHECK-NEXT:   %i15_malloccache = bitcast i8* %[[malloccall3]] to i8***
 ; CHECK-NEXT:   br label %bb2
 
 ; CHECK: bb2:                                              ; preds = %bb7, %bb
@@ -97,9 +97,9 @@ declare dso_local double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %4 = add nuw {{(nsw )?}}i64 %3, 1
 ; CHECK-NEXT:   %5 = getelementptr inbounds i8**, i8*** %i15_malloccache, i64 %iv
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %4, 8
-; CHECK-NEXT:   %malloccall5 = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %i15_malloccache6 = bitcast i8* %malloccall5 to i8**
-; CHECK-NEXT:   store i8** %i15_malloccache6, i8*** %5, align 8, !invariant.group !7
+; CHECK-NEXT:   %[[malloccall5:.+]] = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
+; CHECK-NEXT:   %[[i15_malloccache6:.+]] = bitcast i8* %[[malloccall5]] to i8**
+; CHECK-NEXT:   store i8** %[[i15_malloccache6]], i8*** %5, align 8, !invariant.group !7
 ; CHECK-NEXT:   br label %bb12
 
 ; CHECK: bb7:                                              ; preds = %bb12, %bb2
@@ -123,7 +123,7 @@ declare dso_local double @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: invertbb:                                         ; preds = %invertbb2
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall3)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccall3]])
 ; CHECK-NEXT:   ret { double } zeroinitializer
 
 ; CHECK: invertbb2:                                        ; preds = %invertbb7, %invertbb12.preheader
@@ -138,9 +138,9 @@ declare dso_local double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   br label %invertbb7
 
 ; CHECK: invertbb12.preheader:                             ; preds = %remat_enter
-; CHECK-NEXT:   %_unwrap8 = getelementptr inbounds i8**, i8*** %i15_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %forfree9 = load i8**, i8*** %_unwrap8, align 8, !dereferenceable !8, !invariant.group !7
-; CHECK-NEXT:   %12 = bitcast i8** %forfree9 to i8*
+; CHECK-NEXT:   %[[_unwrap8:.+]] = getelementptr inbounds i8**, i8*** %i15_malloccache, i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[forfree9:.+]] = load i8**, i8*** %[[_unwrap8]], align 8, !dereferenceable !8, !invariant.group !7
+; CHECK-NEXT:   %12 = bitcast i8** %[[forfree9]] to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %12)
 ; CHECK-NEXT:   br label %invertbb2
 

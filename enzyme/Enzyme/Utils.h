@@ -80,11 +80,20 @@ extern void (*CustomErrorHandler)(const char *, LLVMValueRef, ErrorType,
                                   void *);
 }
 
+llvm::SmallVector<llvm::Instruction *, 2> PostCacheStore(llvm::StoreInst *SI,
+                                                         llvm::IRBuilder<> &B);
+
 llvm::Value *CreateAllocation(llvm::IRBuilder<> &B, llvm::Type *T,
                               llvm::Value *Count, llvm::Twine Name = "",
                               llvm::CallInst **caller = nullptr,
                               llvm::Instruction **ZeroMem = nullptr);
 llvm::CallInst *CreateDealloc(llvm::IRBuilder<> &B, llvm::Value *ToFree);
+
+llvm::Value *CreateReAllocation(llvm::IRBuilder<> &B, llvm::Value *prev,
+                                llvm::Type *T, llvm::Value *OuterCount,
+                                llvm::Value *InnerCount, llvm::Twine Name = "",
+                                llvm::CallInst **caller = nullptr,
+                                bool ZeroMem = false);
 
 extern std::map<std::string, std::function<llvm::Value *(
                                  llvm::IRBuilder<> &, llvm::CallInst *,
@@ -939,7 +948,6 @@ static inline llvm::Value *getMPIMemberPtr(llvm::IRBuilder<> &B,
 llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
                                    ConcreteType CT, llvm::Type *intType,
                                    llvm::IRBuilder<> &B2);
-llvm::Function *getOrInsertExponentialAllocator(llvm::Module &M, bool ZeroInit);
 
 class AssertingReplacingVH final : public llvm::CallbackVH {
 public:

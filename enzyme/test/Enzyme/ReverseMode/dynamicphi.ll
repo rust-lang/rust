@@ -87,9 +87,9 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %[[phi_realloc:.+]] = phi i8* [ %10, %grow.i ], [ %1, %for.outerbody ]
 ; CHECK-NEXT:   %[[phi_realloccache:.+]] = bitcast i8* %[[phi_realloc]] to double**
 ; CHECK-NEXT:   %13 = bitcast i64* %[[loopLimit_cache3]] to i8*
-; CHECK-NEXT:   br i1 %6, label %grow.i7, label %[[nouterbody:.+]]
+; CHECK-NEXT:   br i1 %6, label %[[growi7:.+]], label %[[nouterbody:.+]]
 
-; CHECK: grow.i7:  
+; CHECK: [[growi7]]:  
 ; CHECK-NEXT:   %14 = call i64 @llvm.ctlz.i64(i64 %iv.next, i1 true)
 ; CHECK-NEXT:   %15 = sub nuw nsw i64 64, %14
 ; CHECK-NEXT:   %16 = shl i64 8, %15
@@ -97,7 +97,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br label %[[nouterbody]]
 
 ; CHECK: [[nouterbody]]:
-; CHECK-NEXT:   %[[loopLimit_realloccache:.+]] = phi i8* [ %17, %grow.i7 ], [ %13, %__enzyme_exponentialallocation.exit ]
+; CHECK-NEXT:   %[[loopLimit_realloccache:.+]] = phi i8* [ %17, %[[growi7]] ], [ %13, %__enzyme_exponentialallocation.exit ]
 ; CHECK-NEXT:   %[[loopLimit_realloccast]] = bitcast i8* %[[loopLimit_realloccache]] to i64*
 
 ; CHECK-NEXT:   %iand = and i64 %iv, 5678
@@ -121,17 +121,17 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %25 = call i64 @llvm.ctpop.i64(i64 %iv.next2)
 ; CHECK-NEXT:   %26 = icmp ult i64 %25, 3
 ; CHECK-NEXT:   %27 = and i1 %26, %24
-; CHECK-NEXT:   br i1 %27, label %grow.i9, label %__enzyme_exponentialallocation.exit10
+; CHECK-NEXT:   br i1 %27, label %[[growi9:.+]], label %[[exit10:.+]]
 
-; CHECK: grow.i9:
+; CHECK: [[growi9]]:
 ; CHECK-NEXT:   %28 = call i64 @llvm.ctlz.i64(i64 %iv.next2, i1 true)
 ; CHECK-NEXT:   %29 = sub nuw nsw i64 64, %28
 ; CHECK-NEXT:   %30 = shl i64 8, %29
 ; CHECK-NEXT:   %31 = call i8* @realloc(i8* %22, i64 %30)
-; CHECK-NEXT:   br label %__enzyme_exponentialallocation.exit10
+; CHECK-NEXT:   br label %[[exit10]]
 
-; CHECK: __enzyme_exponentialallocation.exit10: 
-; CHECK-NEXT:   %[[phi_realloccache4:.+]] = phi i8* [ %31, %grow.i9 ], [ %22, %for.body ]
+; CHECK: [[exit10]]: 
+; CHECK-NEXT:   %[[phi_realloccache4:.+]] = phi i8* [ %31, %[[growi9]] ], [ %22, %for.body ]
 ; CHECK-NEXT:   %[[phi_realloccast5:.+]] = bitcast i8* %[[phi_realloccache4]] to double*
 
 

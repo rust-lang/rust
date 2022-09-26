@@ -519,6 +519,12 @@ EnzymeExtractFunctionFromAugmentation(EnzymeAugmentedReturnPtr ret) {
 }
 
 LLVMTypeRef
+EnzymeExtractUnderlyingTapeTypeFromAugmentation(EnzymeAugmentedReturnPtr ret) {
+  auto AR = (AugmentedReturn *)ret;
+  return wrap(AR->tapeType);
+}
+
+LLVMTypeRef
 EnzymeExtractTapeTypeFromAugmentation(EnzymeAugmentedReturnPtr ret) {
   auto AR = (AugmentedReturn *)ret;
   auto found = AR->returns.find(AugmentedStruct::Tape);

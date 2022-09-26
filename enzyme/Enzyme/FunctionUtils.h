@@ -70,6 +70,7 @@ public:
       bool diffeReturnArg, llvm::Type *additionalArg = nullptr);
 
   void ReplaceReallocs(llvm::Function *NewF, bool mem2reg = false);
+  void LowerAllocAddr(llvm::Function *NewF);
   void AlwaysInline(llvm::Function *NewF);
   void optimizeIntermediate(llvm::Function *F);
 
