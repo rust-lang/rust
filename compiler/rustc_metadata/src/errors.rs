@@ -372,14 +372,6 @@ pub struct ConflictingAllocErrorHandler {
 pub struct GlobalAllocRequired;
 
 #[derive(Diagnostic)]
-#[diag(metadata_alloc_func_required)]
-pub struct AllocFuncRequired;
-
-#[derive(Diagnostic)]
-#[diag(metadata_missing_alloc_error_handler)]
-pub struct MissingAllocErrorHandler;
-
-#[derive(Diagnostic)]
 #[diag(metadata_no_transitive_needs_dep)]
 pub struct NoTransitiveNeedsDep<'a> {
     pub crate_name: Symbol,

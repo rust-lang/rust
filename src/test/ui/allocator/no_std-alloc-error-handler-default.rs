@@ -6,10 +6,8 @@
 // only-linux
 // compile-flags:-C panic=abort
 // aux-build:helper.rs
-// gate-test-default_alloc_error_handler
 
 #![feature(start, rustc_private, new_uninit, panic_info_message, lang_items)]
-#![feature(default_alloc_error_handler)]
 #![no_std]
 
 extern crate alloc;

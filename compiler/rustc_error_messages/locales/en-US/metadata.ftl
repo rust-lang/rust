@@ -166,12 +166,6 @@ metadata_conflicting_alloc_error_handler =
 metadata_global_alloc_required =
     no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait
 
-metadata_alloc_func_required =
-    `#[alloc_error_handler]` function required, but not found
-
-metadata_missing_alloc_error_handler =
-    use `#![feature(default_alloc_error_handler)]` for a default error handler
-
 metadata_no_transitive_needs_dep =
     the crate `{$crate_name}` cannot depend on a crate that needs {$needs_crate_name}, but it depends on `{$deps_crate_name}`
 
