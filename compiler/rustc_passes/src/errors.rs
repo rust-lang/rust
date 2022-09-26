@@ -1,7 +1,8 @@
 use std::{io::Error, path::Path};
 
-use rustc_errors::{Applicability, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
-use rustc_hir::Target;
+use rustc_ast::Label;
+use rustc_errors::{error_code, Applicability, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
+use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -869,4 +870,120 @@ pub struct ConstImplConstTrait {
     pub span: Span,
     #[note]
     pub def_span: Span,
+}
+
+pub struct BreakNonLoop<'a> {
+    pub span: Span,
+    pub head: Option<Span>,
+    pub kind: &'a str,
+    pub suggestion: String,
+    pub loop_label: Option<Label>,
+    pub break_label: Option<Label>,
+    pub break_expr_kind: &'a ExprKind<'a>,
+    pub break_expr_span: Span,
+}
+
+impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
+    fn into_diagnostic(
+        self,
+        handler: &rustc_errors::Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = handler.struct_span_err_with_code(
+            self.span,
+            rustc_errors::fluent::passes::break_non_loop,
+            error_code!(E0571),
+        );
+        diag.set_arg("kind", self.kind);
+        diag.span_label(self.span, rustc_errors::fluent::passes::label);
+        if let Some(head) = self.head {
+            diag.span_label(head, rustc_errors::fluent::passes::label2);
+        }
+        diag.span_suggestion(
+            self.span,
+            rustc_errors::fluent::passes::suggestion,
+            self.suggestion,
+            Applicability::MaybeIncorrect,
+        );
+        if let (Some(label), None) = (self.loop_label, self.break_label) {
+            match self.break_expr_kind {
+                ExprKind::Path(hir::QPath::Resolved(
+                    None,
+                    hir::Path { segments: [segment], res: hir::def::Res::Err, .. },
+                )) if label.ident.to_string() == format!("'{}", segment.ident) => {
+                    // This error is redundant, we will have already emitted a
+                    // suggestion to use the label when `segment` wasn't found
+                    // (hence the `Res::Err` check).
+                    diag.delay_as_bug();
+                }
+                _ => {
+                    diag.span_suggestion(
+                        self.break_expr_span,
+                        rustc_errors::fluent::passes::break_expr_suggestion,
+                        label.ident,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::continue_labeled_block, code = "E0696")]
+pub struct ContinueLabeledBlock {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(passes::block_label)]
+    pub block_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::break_inside_closure, code = "E0267")]
+pub struct BreakInsideClosure<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(passes::closure_label)]
+    pub closure_span: Span,
+    pub name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::break_inside_async_block, code = "E0267")]
+pub struct BreakInsideAsyncBlock<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(passes::async_block_label)]
+    pub closure_span: Span,
+    pub name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::outside_loop, code = "E0268")]
+pub struct OutsideLoop<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::unlabeled_in_labeled_block, code = "E0695")]
+pub struct UnlabeledInLabeledBlock<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub cf_type: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::unlabeled_cf_in_while_condition, code = "E0590")]
+pub struct UnlabeledCfInWhileCondition<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub cf_type: &'a str,
 }

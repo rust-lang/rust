@@ -433,3 +433,37 @@ passes_expr_not_allowed_in_context =
 passes_const_impl_const_trait =
     const `impl`s must be for traits marked with `#[const_trait]`
     .note = this trait must be annotated with `#[const_trait]`
+
+passes_break_non_loop =
+    `break` with value from a `{$kind}` loop
+    .label = can only break with a value inside `loop` or breakable block
+    .label2 = you can't `break` with a value in a `{$kind}` loop
+    .suggestion = use `break` on its own without a value inside this `{$kind}` loop
+    .break_expr_suggestion = alternatively, you might have meant to use the available loop label
+
+passes_continue_labeled_block =
+    `continue` pointing to a labeled block
+    .label = labeled blocks cannot be `continue`'d
+    .block_label = labeled block the `continue` points to
+
+passes_break_inside_closure =
+    `{$name}` inside of a closure
+    .label = cannot `{$name}` inside of a closure
+    .closure_label = enclosing closure
+
+passes_break_inside_async_block =
+    `{$name}` inside of an `async` block
+    .label = cannot `{$name}` inside of an `async` block
+    .async_block_label = enclosing `async` block
+
+passes_outside_loop =
+    `{$name}` outside of a loop
+    .label = cannot `{$name}` outside of a loop
+
+passes_unlabeled_in_labeled_block =
+    unlabeled `{$cf_type}` inside of a labeled block
+    .label = `{$cf_type}` statements that would diverge to or through a labeled block need to bear a label
+
+passes_unlabeled_cf_in_while_condition =
+    `break` or `continue` with no label in the condition of a `while` loop
+    .label = unlabeled `{$cf_type}` in the condition of a `while` loop
