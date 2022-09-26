@@ -183,7 +183,7 @@ function highlightSourceLines(match) {
     if (x) {
         x.scrollIntoView();
     }
-    onEachLazy(document.getElementsByClassName("line-numbers"), e => {
+    onEachLazy(document.getElementsByClassName("src-line-numbers"), e => {
         onEachLazy(e.getElementsByTagName("span"), i_e => {
             removeClass(i_e, "line-highlighted");
         });
@@ -245,7 +245,7 @@ window.addEventListener("hashchange", () => {
     }
 });
 
-onEachLazy(document.getElementsByClassName("line-numbers"), el => {
+onEachLazy(document.getElementsByClassName("src-line-numbers"), el => {
     el.addEventListener("click", handleSourceHighlight);
 });
 
