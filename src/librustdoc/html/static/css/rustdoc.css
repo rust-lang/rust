@@ -299,15 +299,6 @@ summary {
 
 /* Fix some style changes due to normalize.css 8 */
 
-td,
-th {
-	padding: 0;
-}
-
-table {
-	border-collapse: collapse;
-}
-
 button,
 input,
 optgroup,
@@ -695,6 +686,7 @@ pre, .rustdoc.source .example-wrap {
 	width: calc(100% - 2px);
 	overflow-x: auto;
 	display: block;
+	border-collapse: collapse;
 }
 
 .docblock table td {
