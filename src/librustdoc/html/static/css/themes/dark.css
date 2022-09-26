@@ -54,8 +54,8 @@ input:focus + .slider {
 	background: #444;
 }
 
-.line-numbers span { color: #3B91E2; }
-.line-numbers .line-highlighted {
+.src-line-numbers span { color: #3B91E2; }
+.src-line-numbers .line-highlighted {
 	background-color: #0a042f !important;
 }
 
@@ -141,7 +141,7 @@ details.rustdoc-toggle > summary::before {
 	background: none;
 }
 
-.line-numbers :target { background-color: transparent; }
+.src-line-numbers :target { background-color: transparent; }
 
 /* Code highlighting */
 pre.rust .kw { color: #ab8ac1; }
@@ -155,7 +155,7 @@ pre.rust .question-mark {
 	color: #ff9011;
 }
 
-.example-wrap > pre.line-number {
+pre.example-line-numbers {
 	border-color: #4a4949;
 }
 

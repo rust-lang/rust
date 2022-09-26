@@ -2,7 +2,7 @@
 goto: file://|DOC_PATH|/test_docs/fn.foo.html
 
 // We check that without this setting, there is no line number displayed.
-assert-false: "pre.line-number"
+assert-false: "pre.example-line-numbers"
 
 // We now set the setting to show the line numbers on code examples.
 local-storage: {"rustdoc-line-numbers": "true" }
@@ -10,16 +10,16 @@ local-storage: {"rustdoc-line-numbers": "true" }
 reload:
 
 // We wait for them to be added into the DOM by the JS...
-wait-for: "pre.line-number"
+wait-for: "pre.example-line-numbers"
 // If the test didn't fail, it means that it was found!
 // Let's now check some CSS properties...
-assert-css: ("pre.line-number", {
+assert-css: ("pre.example-line-numbers", {
     "margin": "0px",
     "padding": "13px 8px",
     "text-align": "right",
 })
 // The first code block has two lines so let's check its `<pre>` elements lists both of them.
-assert-text: ("pre.line-number", "1\n2")
+assert-text: ("pre.example-line-numbers", "1\n2")
 
 // Now, try changing the setting dynamically. We'll turn it off, using the settings menu,
 // and make sure it goes away.
@@ -32,8 +32,8 @@ assert-css: ("#settings", {"display": "block"})
 // Then, click the toggle button.
 click: "input#line-numbers + .slider"
 wait-for: 100 // wait-for-false does not exist
-assert-false: "pre.line-number"
+assert-false: "pre.example-line-numbers"
 
 // Finally, turn it on again.
 click: "input#line-numbers + .slider"
-wait-for: "pre.line-number"
+wait-for: "pre.example-line-numbers"
