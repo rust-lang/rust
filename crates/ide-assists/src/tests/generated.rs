@@ -2387,6 +2387,25 @@ fn foo() -> i32 { 42i32 }
 }
 
 #[test]
+fn doctest_unwrap_tuple() {
+    check_doc_test(
+        "unwrap_tuple",
+        r#####"
+//- minicore: result
+fn main() {
+    $0let (foo, bar) = ("Foo", "Bar");
+}
+"#####,
+        r#####"
+fn main() {
+    let foo = "Foo";
+    let bar = "Bar";
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_wrap_return_type_in_result() {
     check_doc_test(
         "wrap_return_type_in_result",
