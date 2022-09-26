@@ -4,6 +4,9 @@ on:
   - push
   - pull_request
 
+permissions:
+  contents: read
+
 env:
   # Enable backtraces for easier debugging
   RUST_BACKTRACE: 1
@@ -16,9 +19,9 @@ jobs:
       fail-fast: false
       matrix:
         libgccjit_version:
-          - { gcc: "libgccjit.so", extra: "" }
-          - { gcc: "libgccjit_without_int128.so", extra: "" }
-          - { gcc: "libgccjit12.so", extra: "--no-default-features" }
+          - { gcc: "libgccjit.so", extra: "", artifacts_branch: "master" }
+          - { gcc: "libgccjit_without_int128.so", extra: "", artifacts_branch: "master-without-128bit-integers" }
+          - { gcc: "libgccjit12.so", extra: "--no-default-features", artifacts_branch: "gcc12" }
         commands: [
           "--mini-tests",
           "--std-tests",
@@ -49,6 +52,8 @@ jobs:
           name: ${{ matrix.libgccjit_version.gcc }}
           path: gcc-build
           repo: antoyo/gcc
+          branch: ${{ matrix.libgccjit_version.artifacts_branch }}
+          event: push
           search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
 
     - name: Setup path to libgccjit
