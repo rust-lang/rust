@@ -20,7 +20,7 @@ fn main() -> () {
         _2 = <str as ToString>::to_string(move _3) -> bb1; // scope 0 at $DIR/no-spurious-drop-after-call.rs:+1:20: +1:34
                                          // mir::Constant
                                          // + span: $DIR/no-spurious-drop-after-call.rs:9:23: 9:32
-                                         // + literal: Const { ty: for<'r> fn(&'r str) -> String {<str as ToString>::to_string}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a> fn(&'a str) -> String {<str as ToString>::to_string}, val: Value(<ZST>) }
     }
 
     bb1: {

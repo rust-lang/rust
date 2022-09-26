@@ -85,6 +85,17 @@ impl BoundRegionKind {
             _ => false,
         }
     }
+
+    pub fn get_name(&self) -> Option<Symbol> {
+        if self.is_named() {
+            match *self {
+                BoundRegionKind::BrNamed(_, name) => return Some(name),
+                _ => unreachable!(),
+            }
+        }
+
+        None
+    }
 }
 
 pub trait Article {
@@ -1443,6 +1454,23 @@ impl<'tcx> PolyExistentialProjection<'tcx> {
 impl<'tcx> Region<'tcx> {
     pub fn kind(self) -> RegionKind<'tcx> {
         *self.0.0
+    }
+
+    pub fn get_name(self) -> Option<Symbol> {
+        if self.has_name() {
+            let name = match *self {
+                ty::ReEarlyBound(ebr) => Some(ebr.name),
+                ty::ReLateBound(_, br) => br.kind.get_name(),
+                ty::ReFree(fr) => fr.bound_region.get_name(),
+                ty::ReStatic => Some(kw::StaticLifetime),
+                ty::RePlaceholder(placeholder) => placeholder.name.get_name(),
+                _ => None,
+            };
+
+            return name;
+        }
+
+        None
     }
 
     /// Is this region named by the user?

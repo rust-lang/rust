@@ -67,8 +67,8 @@ fn main() {
                 //[v0]~| ERROR demangling(<[&dyn
                 //[v0]~| ERROR demangling-alt(<[&dyn impl1::Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + impl1::AutoTrait; 3] as impl1::main::{closure#1}::Bar>::method)
             #[rustc_def_path]
-            //[legacy]~^ ERROR def-path(<[&dyn Foo<Assoc = for<'r> extern "C" fn(&'r u8, ...)> + AutoTrait; 3] as main::{closure#1}::Bar>::method)
-               //[v0]~^^ ERROR def-path(<[&dyn Foo<Assoc = for<'r> extern "C" fn(&'r u8, ...)> + AutoTrait; 3] as main::{closure#1}::Bar>::method)
+            //[legacy]~^ ERROR def-path(<[&dyn Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + AutoTrait; 3] as main::{closure#1}::Bar>::method)
+               //[v0]~^^ ERROR def-path(<[&dyn Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + AutoTrait; 3] as main::{closure#1}::Bar>::method)
             fn method(&self) {}
         }
     };

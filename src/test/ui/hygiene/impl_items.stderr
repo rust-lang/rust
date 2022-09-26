@@ -1,4 +1,4 @@
-error: type `for<'r> fn(&'r foo::S) {foo::S::f}` is private
+error: type `for<'a> fn(&'a foo::S) {foo::S::f}` is private
   --> $DIR/impl_items.rs:12:23
    |
 LL |         let _: () = S.f();
