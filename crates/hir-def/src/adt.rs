@@ -151,7 +151,7 @@ impl StructData {
     pub(crate) fn struct_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         id: StructId,
-    ) -> (Arc<StructData>, Arc<Vec<DefDiagnostic>>) {
+    ) -> (Arc<StructData>, Arc<[DefDiagnostic]>) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -176,7 +176,7 @@ impl StructData {
                 repr,
                 visibility: item_tree[strukt.visibility].clone(),
             }),
-            Arc::new(diagnostics),
+            diagnostics.into(),
         )
     }
 
@@ -187,7 +187,7 @@ impl StructData {
     pub(crate) fn union_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         id: UnionId,
-    ) -> (Arc<StructData>, Arc<Vec<DefDiagnostic>>) {
+    ) -> (Arc<StructData>, Arc<[DefDiagnostic]>) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -212,7 +212,7 @@ impl StructData {
                 repr,
                 visibility: item_tree[union.visibility].clone(),
             }),
-            Arc::new(diagnostics),
+            diagnostics.into(),
         )
     }
 }
@@ -225,7 +225,7 @@ impl EnumData {
     pub(crate) fn enum_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         e: EnumId,
-    ) -> (Arc<EnumData>, Arc<Vec<DefDiagnostic>>) {
+    ) -> (Arc<EnumData>, Arc<[DefDiagnostic]>) {
         let loc = e.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -272,7 +272,7 @@ impl EnumData {
                 repr,
                 visibility: item_tree[enum_.visibility].clone(),
             }),
-            Arc::new(diagnostics),
+            diagnostics.into(),
         )
     }
 
