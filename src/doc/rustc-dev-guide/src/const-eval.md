@@ -77,11 +77,10 @@ As a consequence, all decoding of `ValTree` must happen by matching on the type 
 decisions depending on that. The value itself gives no useful information without the type that
 belongs to it.
 
-Other constants get represented as [`ConstValue::Scalar`]
-or [`ConstValue::Slice`] if possible. This means that the `const_eval_*`
-functions cannot be used to create miri-pointers to the evaluated constant.
-If you need the value of a constant inside Miri, you need to directly work with
-[`const_to_op`].
+Other constants get represented as [`ConstValue::Scalar`] or
+[`ConstValue::Slice`] if possible. These values are only useful outside the
+compile-time interpreter. If you need the value of a constant during
+interpretation, you need to directly work with [`const_to_op`].
 
 [`GlobalId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/struct.GlobalId.html
 [`ConstValue::Scalar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/value/enum.ConstValue.html#variant.Scalar

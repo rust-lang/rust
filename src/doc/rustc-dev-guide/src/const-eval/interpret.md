@@ -1,14 +1,13 @@
-# Miri
+# Interpreter
 
 <!-- toc -->
 
-The Miri (**MIR** **I**nterpreter) engine is a virtual machine for executing MIR without
-compiling to machine code. It is usually invoked via `tcx.const_eval_*` functions.
-In the following, we will refer to the Miri engine as just "Miri", but note that
-there also is a stand-alone
-[tool called "Miri"](https://github.com/rust-lang/miri/) that is based on the
-engine (sometimes referred to as Miri-the-tool to disambiguate it from the
-engine).
+The interpreter is a virtual machine for executing MIR without compiling to
+machine code. It is usually invoked via `tcx.const_eval_*` functions. The
+interpreter is shared between the compiler (for compile-time function
+evaluation, CTFE) and the tool [Miri](https://github.com/rust-lang/miri/), which
+uses the same virtual machine to detect Undefined Behavior in (unsafe) Rust
+code.
 
 If you start out with a constant:
 
@@ -98,7 +97,7 @@ further queries need to be executed in order to get at something as simple as a
 `usize`.
 
 Future evaluations of the same constants will not actually invoke
-Miri, but just use the cached result.
+the interpreter, but just use the cached result.
 
 [`Operand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/enum.Operand.html
 [`Immediate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/enum.Immediate.html
@@ -108,7 +107,7 @@ Miri, but just use the cached result.
 
 ## Datastructures
 
-Miri's outside-facing datastructures can be found in
+The interpreter's outside-facing datastructures can be found in
 [rustc_middle/src/mir/interpret](https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/src/mir/interpret).
 This is mainly the error enum and the [`ConstValue`] and [`Scalar`] types. A
 `ConstValue` can be either `Scalar` (a single `Scalar`, i.e., integer or thin
@@ -124,7 +123,7 @@ in an `Option<u64>` yielding the `Scalar` if possible.
 
 ## Memory
 
-To support any kind of pointers, Miri needs to have a "virtual memory" that the
+To support any kind of pointers, the interpreter needs to have a "virtual memory" that the
 pointers can point to.  This is implemented in the [`Memory`] type.  In the
 simplest model, every global variable, stack variable and every dynamic
 allocation corresponds to an [`Allocation`] in that memory.  (Actually using an
@@ -164,7 +163,7 @@ track of which of its bytes are initialized.
 
 ### Global memory and exotic allocations
 
-`Memory` exists only during the Miri evaluation; it gets destroyed when the
+`Memory` exists only during evaluation; it gets destroyed when the
 final value of the constant is computed.  In case that constant contains any
 pointers, those get "interned" and moved to a global "const eval memory" that is
 part of `TyCtxt`.  These allocations stay around for the remaining computation
@@ -190,10 +189,10 @@ bytes of its value.
 
 ### Pointer values vs Pointer types
 
-One common cause of confusion in Miri is that being a pointer *value* and having
+One common cause of confusion in the interpreter is that being a pointer *value* and having
 a pointer *type* are entirely independent properties.  By "pointer value", we
 refer to a `Scalar::Ptr` containing a `Pointer` and thus pointing somewhere into
-Miri's virtual memory.  This is in contrast to `Scalar::Raw`, which is just some
+the interpreter's virtual memory.  This is in contrast to `Scalar::Raw`, which is just some
 concrete integer.
 
 However, a variable of pointer or reference *type*, such as `*const T` or `&T`,
@@ -214,7 +213,7 @@ that allow accessing the fields of a `ConstValue` (`ByRef` or otherwise). You sh
 never have to access an `Allocation` directly except for translating it to the
 compilation target (at the moment just LLVM).
 
-Miri starts by creating a virtual stack frame for the current constant that is
+The interpreter starts by creating a virtual stack frame for the current constant that is
 being evaluated. There's essentially no difference between a constant and a
 function with no arguments, except that constants do not allow local (named)
 variables at the time of writing this guide.
@@ -231,7 +230,7 @@ The frames are just a `Vec<Frame>`, there's no way to actually refer to a
 `Frame`'s memory even if horrible shenanigans are done via unsafe code. The only
 memory that can be referred to are `Allocation`s.
 
-Miri now calls the `step` method (in
+The interpreter now calls the `step` method (in
 [rustc_const_eval/src/interpret/step.rs](https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/step.rs)
 ) until it either returns an error or has no further statements to execute. Each
 statement will now initialize or modify the locals or the virtual memory
