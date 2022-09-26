@@ -1,4 +1,4 @@
-// FIXME(@lcnr): Move this module out of `rustc_typeck`.
+// FIXME(@lcnr): Move this module out of `rustc_hir_analysis`.
 //
 // We don't do any drop checking during hir typeck.
 use crate::hir::def_id::{DefId, LocalDefId};

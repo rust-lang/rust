@@ -8,7 +8,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::TypeVisitable;
 use rustc_span::symbol::sym;
-use rustc_typeck::hir_ty_to_ty;
+use rustc_hir_analysis::hir_ty_to_ty;
 
 use super::VEC_BOX;
 

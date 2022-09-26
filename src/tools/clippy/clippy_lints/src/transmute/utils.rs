@@ -2,7 +2,7 @@ use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{cast::CastKind, Ty};
 use rustc_span::DUMMY_SP;
-use rustc_typeck::check::{cast::{self, CastCheckResult}, FnCtxt, Inherited};
+use rustc_hir_analysis::check::{cast::{self, CastCheckResult}, FnCtxt, Inherited};
 
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment

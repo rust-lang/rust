@@ -502,7 +502,7 @@ fn print_with_analysis(
 
         ThirTree => {
             let mut out = String::new();
-            abort_on_err(rustc_typeck::check_crate(tcx), tcx.sess);
+            abort_on_err(rustc_hir_analysis::check_crate(tcx), tcx.sess);
             debug!("pretty printing THIR tree");
             for did in tcx.hir().body_owners() {
                 let _ = writeln!(

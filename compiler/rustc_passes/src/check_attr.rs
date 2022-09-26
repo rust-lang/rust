@@ -1744,7 +1744,7 @@ impl CheckAttrVisitor<'_> {
                     }
                 }
                 Some(_) => {
-                    // This error case is handled in rustc_typeck::collect.
+                    // This error case is handled in rustc_hir_analysis::collect.
                 }
                 None => {
                     // Default case (compiler) when arg isn't defined.

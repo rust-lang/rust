@@ -7,7 +7,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, ConstKind};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{BytePos, Pos, Span};
-use rustc_typeck::hir_ty_to_ty;
+use rustc_hir_analysis::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// ### What it does

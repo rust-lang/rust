@@ -37,7 +37,6 @@ use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
 use rustc_trait_selection::traits;
-use rustc_typeck as typeck;
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -736,7 +735,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(providers);
-    typeck::provide(providers);
+    rustc_hir_analysis::provide(providers);
     ty::provide(providers);
     traits::provide(providers);
     rustc_passes::provide(providers);
@@ -880,7 +879,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     });
 
     // passes are timed inside typeck
-    typeck::check_crate(tcx)?;
+    rustc_hir_analysis::check_crate(tcx)?;
 
     sess.time("misc_checking_2", || {
         parallel!(
