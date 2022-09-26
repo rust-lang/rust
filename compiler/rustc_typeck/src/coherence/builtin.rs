@@ -70,23 +70,21 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     let self_type = tcx.type_of(impl_did);
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
 
-    let span = tcx.hir().span(impl_hir_id);
     let param_env = tcx.param_env(impl_did);
     assert!(!self_type.has_escaping_bound_vars());
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)", self_type);
 
+    let span = match tcx.hir().expect_item(impl_did).kind {
+        ItemKind::Impl(hir::Impl { polarity: hir::ImplPolarity::Negative(_), .. }) => return,
+        ItemKind::Impl(impl_) => impl_.self_ty.span,
+        _ => bug!("expected Copy impl item"),
+    };
+
     let cause = traits::ObligationCause::misc(span, impl_hir_id);
     match can_type_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
-            let item = tcx.hir().expect_item(impl_did);
-            let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(ref tr), .. }) = item.kind {
-                tr.path.span
-            } else {
-                span
-            };
-
             let mut err = struct_span_err!(
                 tcx.sess,
                 span,
@@ -166,10 +164,6 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
             err.emit();
         }
         Err(CopyImplementationError::NotAnAdt) => {
-            let item = tcx.hir().expect_item(impl_did);
-            let span =
-                if let ItemKind::Impl(ref impl_) = item.kind { impl_.self_ty.span } else { span };
-
             tcx.sess.emit_err(CopyImplOnNonAdt { span });
         }
         Err(CopyImplementationError::HasDestructor) => {
