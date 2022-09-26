@@ -1,7 +1,7 @@
 //! This module is concerned with finding methods that a given type provides.
 //! For details about how this works in rustc, see the method lookup page in the
 //! [rustc guide](https://rust-lang.github.io/rustc-guide/method-lookup.html)
-//! and the corresponding code mostly in librustc_typeck/check/method/probe.rs.
+//! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
 use std::{iter, ops::ControlFlow, sync::Arc};
 
 use arrayvec::ArrayVec;
