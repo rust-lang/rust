@@ -155,7 +155,7 @@ pre.rust .question-mark {
 	color: #ff9011;
 }
 
-.example-wrap > pre.example-line-numbers {
+pre.example-line-numbers {
 	border-color: #4a4949;
 }
 

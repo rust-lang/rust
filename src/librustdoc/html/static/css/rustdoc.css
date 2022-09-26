@@ -578,7 +578,7 @@ h2.location a {
 	position: relative;
 }
 
-.example-wrap > pre.example-line-numbers {
+pre.example-line-numbers {
 	overflow: initial;
 	border: 1px solid;
 	padding: 13px 8px;

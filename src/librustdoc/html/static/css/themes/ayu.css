@@ -190,7 +190,7 @@ pre.rust .attribute {
 	color: #e6e1cf;
 }
 
-.example-wrap > pre.example-line-numbers {
+pre.example-line-numbers {
 	color: #5c67736e;
 	border: none;
 }
