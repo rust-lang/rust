@@ -551,15 +551,40 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                 let id_substs = InternalSubsts::identity_for_item(tcx, def_id);
                 debug!(?id_substs, ?substs);
                 let map: FxHashMap<ty::GenericArg<'tcx>, ty::GenericArg<'tcx>> =
-                    substs.iter().enumerate().map(|(index, arg)| (arg, id_substs[index])).collect();
+                    std::iter::zip(substs, id_substs).collect();
                 debug!(?map);
 
+                // NOTE(compiler-errors): RPITITs, like all other RPITs, have early-bound
+                // region substs that are synthesized during AST lowering. These are substs
+                // that are appended to the parent substs (trait and trait method). However,
+                // we're trying to infer the unsubstituted type value of the RPITIT inside
+                // the *impl*, so we can later use the impl's method substitutions to normalize
+                // an RPITIT to a concrete type.
+                //
+                // Due to the design of RPITITs, during AST lowering, we have no idea that
+                // an impl method is satisfying a trait method with RPITITs in it. Therefore,
+                // we don't have a list ofearly-bound region substs for the RPITIT in the impl.
+                // Since early region parameters are index-based, we can't just rebase these
+                // (trait method) early-bound region substs onto the impl, since region
+                // parameters are index-based, and there's no guarantee that the indices from
+                // the trait substs and impl substs line up -- so we subtract the number of
+                // trait substs and add the number of impl substs to *renumber* these early-
+                // bound regions to their corresponding indices in the impl's substitutions list.
+                //
+                // Also, we only need to account for a difference in trait and impl substs,
+                // since we previously enforce that the trait method and impl method have the
+                // same generics.
+                let num_trait_substs = trait_to_impl_substs.len();
+                let num_impl_substs = tcx.generics_of(impl_m.container_id(tcx)).params.len();
                 let ty = tcx.fold_regions(ty, |region, _| {
-                    if let ty::ReFree(_) = region.kind() {
-                        map[&region.into()].expect_region()
-                    } else {
-                        region
-                    }
+                    let ty::ReFree(_) = region.kind() else { return region; };
+                    let ty::ReEarlyBound(e) = map[&region.into()].expect_region().kind()
+                        else { bug!("expected ReFree to map to ReEarlyBound"); };
+                    tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: e.def_id,
+                        name: e.name,
+                        index: (e.index as usize - num_trait_substs + num_impl_substs) as u32,
+                    }))
                 });
                 debug!(%ty);
                 collected_tys.insert(def_id, ty);
