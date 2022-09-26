@@ -351,7 +351,11 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     let import_item = clean::Item {
                         item_id: import_def_id.into(),
                         attrs: import_attrs,
-                        cfg: ast_attrs.cfg(cx.tcx(), &cx.cache().hidden_cfg),
+                        cfg: ast_attrs.cfg(
+                            cx.tcx(),
+                            &cx.cache().hidden_cfg,
+                            cx.cache().doc_auto_cfg_active,
+                        ),
                         ..myitem.clone()
                     };
 

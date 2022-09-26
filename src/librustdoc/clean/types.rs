@@ -470,7 +470,7 @@ impl Item {
             kind,
             Box::new(Attributes::from_ast(ast_attrs)),
             cx,
-            ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
+            ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg, cx.cache.doc_auto_cfg_active),
         )
     }
 
@@ -845,7 +845,12 @@ pub(crate) trait AttributesExt {
 
     fn inner_docs(&self) -> bool;
 
-    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>>;
+    fn cfg(
+        &self,
+        tcx: TyCtxt<'_>,
+        hidden_cfg: &FxHashSet<Cfg>,
+        doc_auto_cfg_active: bool,
+    ) -> Option<Arc<Cfg>>;
 }
 
 impl AttributesExt for [ast::Attribute] {
@@ -871,7 +876,12 @@ impl AttributesExt for [ast::Attribute] {
         self.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == AttrStyle::Inner)
     }
 
-    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
+    fn cfg(
+        &self,
+        tcx: TyCtxt<'_>,
+        hidden_cfg: &FxHashSet<Cfg>,
+        doc_auto_cfg_active: bool,
+    ) -> Option<Arc<Cfg>> {
         let sess = tcx.sess;
 
         fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
@@ -883,22 +893,28 @@ impl AttributesExt for [ast::Attribute] {
             Some(item)
         }
 
-        let mut doc_cfg = self
-            .iter()
-            .filter(|attr| attr.has_name(sym::doc))
-            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
-            .filter(|attr| attr.has_name(sym::cfg))
-            .peekable();
-        let mut cfg = if doc_cfg.peek().is_some() {
-            doc_cfg
-                .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
-                .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
-        } else {
-            self.iter()
+        let mut cfg = if doc_auto_cfg_active {
+            let mut doc_cfg = self
+                .iter()
+                .filter(|attr| attr.has_name(sym::doc))
+                .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
                 .filter(|attr| attr.has_name(sym::cfg))
-                .filter_map(|attr| single(attr.meta_item_list()?))
-                .filter_map(|attr| Cfg::parse_without(attr.meta_item()?, hidden_cfg).ok().flatten())
-                .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+                .peekable();
+            if doc_cfg.peek().is_some() {
+                doc_cfg
+                    .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
+                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+            } else {
+                self.iter()
+                    .filter(|attr| attr.has_name(sym::cfg))
+                    .filter_map(|attr| single(attr.meta_item_list()?))
+                    .filter_map(|attr| {
+                        Cfg::parse_without(attr.meta_item()?, hidden_cfg).ok().flatten()
+                    })
+                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+            }
+        } else {
+            Cfg::True
         };
 
         for attr in self.iter() {

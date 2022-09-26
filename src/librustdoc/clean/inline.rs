@@ -318,10 +318,13 @@ pub(crate) fn merge_attrs(
             } else {
                 Attributes::from_ast(&both)
             },
-            both.cfg(cx.tcx, &cx.cache.hidden_cfg),
+            both.cfg(cx.tcx, &cx.cache.hidden_cfg, cx.cache.doc_auto_cfg_active),
         )
     } else {
-        (Attributes::from_ast(&old_attrs), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
+        (
+            Attributes::from_ast(&old_attrs),
+            old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg, cx.cache.doc_auto_cfg_active),
+        )
     }
 }
 

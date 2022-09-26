@@ -75,6 +75,12 @@ passes_doc_alias_not_string_literal = `#[doc(alias("a"))]` expects string litera
 passes_doc_alias_malformed =
     doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
 
+passes_doc_auto_cfg_malformed = `#![doc({$attr_str})]` attribute doesn't expect a value
+
+passes_doc_no_auto_cfg_enabled_by_default = `doc(no_auto_cfg)` is enabled by default before the 2024 edition
+
+passes_doc_auto_cfg_enabled_by_default = `doc(auto_cfg)` is enabled by default since the 2024 edition
+
 passes_doc_keyword_empty_mod = `#[doc(keyword = "...")]` should be used on empty modules
 
 passes_doc_keyword_not_mod = `#[doc(keyword = "...")]` should be used on modules

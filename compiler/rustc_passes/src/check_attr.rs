@@ -5,7 +5,7 @@
 //! item.
 
 use crate::errors;
-use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{fluent, struct_span_err, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
@@ -25,6 +25,7 @@ use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
@@ -936,6 +937,40 @@ impl CheckAttrVisitor<'_> {
         is_valid
     }
 
+    /// Checks that `doc(auto_cfg)` is valid (i.e. no value) and warn if it's used whereas the
+    /// "equivalent feature" is already enabled.
+    fn check_auto_cfg(&self, meta: &MetaItem, hir_id: HirId) -> bool {
+        let name = meta.name_or_empty();
+        let mut is_valid = true;
+        if !meta.is_word() {
+            self.tcx
+                .sess
+                .emit_err(errors::DocAutoCfgMalformed { span: meta.span, attr_str: name.as_str() });
+            is_valid = false;
+        } else if name == sym::no_auto_cfg {
+            if self.tcx.sess.edition() < Edition::Edition2024 {
+                self.tcx.emit_spanned_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    meta.span,
+                    errors::DocNoAutoCfgEnabledByDefault,
+                );
+                is_valid = false;
+            }
+        } else {
+            if self.tcx.sess.edition() > Edition::Edition2021 {
+                self.tcx.emit_spanned_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    meta.span,
+                    errors::DocAutoCfgEnabledByDefault,
+                );
+                is_valid = false;
+            }
+        }
+        is_valid
+    }
+
     /// Runs various checks on `#[doc]` attributes. Returns `true` if valid.
     ///
     /// `specified_inline` should be initialized to `None` and kept for the scope
@@ -984,6 +1019,8 @@ impl CheckAttrVisitor<'_> {
                         | sym::html_root_url
                         | sym::html_no_source
                         | sym::test
+                        | sym::auto_cfg
+                        | sym::no_auto_cfg
                             if !self.check_attr_crate_level(attr, meta, hir_id) =>
                         {
                             is_valid = false;
@@ -998,6 +1035,11 @@ impl CheckAttrVisitor<'_> {
                                 specified_inline,
                             ) =>
                         {
+                            is_valid = false;
+                        }
+
+                        sym::auto_cfg | sym::no_auto_cfg
+                            if !self.check_auto_cfg(i_meta, hir_id) => {
                             is_valid = false;
                         }
 
@@ -1022,6 +1064,8 @@ impl CheckAttrVisitor<'_> {
                         | sym::notable_trait
                         | sym::passes
                         | sym::plugins
+                        | sym::auto_cfg
+                        | sym::no_auto_cfg
                         | sym::fake_variadic => {}
 
                         sym::test => {

@@ -121,6 +121,8 @@ pub(crate) struct Cache {
     pub(crate) intra_doc_links: FxHashMap<ItemId, Vec<clean::ItemLink>>,
     /// Cfg that have been hidden via #![doc(cfg_hide(...))]
     pub(crate) hidden_cfg: FxHashSet<clean::cfg::Cfg>,
+    /// Whether or not the `#![doc(auto_cfg)]` attribute was used.
+    pub(crate) doc_auto_cfg_active: bool,
 }
 
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.
