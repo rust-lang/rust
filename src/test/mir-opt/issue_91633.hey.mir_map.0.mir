@@ -17,7 +17,7 @@ fn hey(_1: &[T]) -> () {
         _3 = <[T] as Index<usize>>::index(move _4, const 0_usize) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/issue-91633.rs:+4:15: +4:20
                                          // mir::Constant
                                          // + span: $DIR/issue-91633.rs:7:15: 7:20
-                                         // + literal: Const { ty: for<'r> fn(&'r [T], usize) -> &'r <[T] as Index<usize>>::Output {<[T] as Index<usize>>::index}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a> fn(&'a [T], usize) -> &'a <[T] as Index<usize>>::Output {<[T] as Index<usize>>::index}, val: Value(<ZST>) }
     }
 
     bb1: {

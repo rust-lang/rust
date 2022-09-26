@@ -101,7 +101,7 @@ fn main() -> () {
         _11 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _12, move _13) -> [return: bb2, unwind: bb19]; // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'r, 's> fn(&'r &[u8], &'s &[u8; 4]) -> bool {<&[u8] as PartialEq<&[u8; 4]>>::eq}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a, 'b> fn(&'a &[u8], &'b &[u8; 4]) -> bool {<&[u8] as PartialEq<&[u8; 4]>>::eq}, val: Value(<ZST>) }
     }
 
     bb2: {
@@ -132,7 +132,7 @@ fn main() -> () {
         _16 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _17, move _18, move _20, move _22) -> bb19; // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r &[u8], &'s &[u8; 4], Option<Arguments<'t0>>) -> ! {core::panicking::assert_failed::<&[u8], &[u8; 4]>}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a, 'b, 'c> fn(core::panicking::AssertKind, &'a &[u8], &'b &[u8; 4], Option<Arguments<'c>>) -> ! {core::panicking::assert_failed::<&[u8], &[u8; 4]>}, val: Value(<ZST>) }
     }
 
     bb4: {
@@ -210,7 +210,7 @@ fn main() -> () {
         _32 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _33, move _34) -> [return: bb11, unwind: bb19]; // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'r, 's> fn(&'r &[u8], &'s &[u8; 4]) -> bool {<&[u8] as PartialEq<&[u8; 4]>>::eq}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a, 'b> fn(&'a &[u8], &'b &[u8; 4]) -> bool {<&[u8] as PartialEq<&[u8; 4]>>::eq}, val: Value(<ZST>) }
     }
 
     bb11: {
@@ -241,7 +241,7 @@ fn main() -> () {
         _37 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _38, move _39, move _41, move _43) -> bb19; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r &[u8], &'s &[u8; 4], Option<Arguments<'t0>>) -> ! {core::panicking::assert_failed::<&[u8], &[u8; 4]>}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a, 'b, 'c> fn(core::panicking::AssertKind, &'a &[u8], &'b &[u8; 4], Option<Arguments<'c>>) -> ! {core::panicking::assert_failed::<&[u8], &[u8; 4]>}, val: Value(<ZST>) }
     }
 
     bb13: {

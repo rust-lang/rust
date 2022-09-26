@@ -1415,7 +1415,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if !self.is_tilde_const_allowed {
                         self.err_handler()
                             .struct_span_err(bound.span(), "`~const` is not allowed here")
-                            .note("only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions")
+                            .note("only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions")
                             .emit();
                     }
                 }
@@ -1523,9 +1523,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             });
         }
 
-        let tilde_const_allowed =
-            matches!(fk.header(), Some(FnHeader { constness: Const::Yes(_), .. }))
-                || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
+        let tilde_const_allowed = matches!(fk.header(), Some(FnHeader { .. }))
+            || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
 
         self.with_tilde_const(tilde_const_allowed, |this| visit::walk_fn(this, fk));
     }

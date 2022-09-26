@@ -158,3 +158,6 @@ parser_remove_let = expected pattern, found `let`
 
 parser_use_eq_instead = unexpected `==`
     .suggestion = try using `=` instead
+
+parser_use_empty_block_not_semi = expected { "`{}`" }, found `;`
+    .suggestion = try using { "`{}`" } instead

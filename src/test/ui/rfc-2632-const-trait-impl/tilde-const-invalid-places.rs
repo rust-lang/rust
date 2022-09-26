@@ -17,12 +17,6 @@ fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
 fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T>) {}
 //~^ ERROR `~const` is not allowed
 
-fn generic<P: ~const T>() {}
-//~^ ERROR `~const` is not allowed
-
-fn where_clause<P>() where P: ~const T {}
-//~^ ERROR `~const` is not allowed
-
 struct TildeQuestion<T: ~const ?Sized>(std::marker::PhantomData<T>);
 //~^ ERROR `~const` and `?` are mutually exclusive
 
