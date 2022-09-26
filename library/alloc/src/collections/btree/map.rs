@@ -580,7 +580,7 @@ impl<K, V> BTreeMap<K, V> {
     /// map.insert(1, "a");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_stable(feature = "const_btree_new", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub const fn new() -> BTreeMap<K, V> {
         BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(Global), _marker: PhantomData }
@@ -2392,7 +2392,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(feature = "const_btree_len", issue = "71835")]
     pub const fn len(&self) -> usize {
         self.length
     }
@@ -2413,7 +2413,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(feature = "const_btree_len", issue = "71835")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
