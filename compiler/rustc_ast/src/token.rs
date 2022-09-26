@@ -13,7 +13,7 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
-use std::{fmt, mem};
+use std::fmt;
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum CommentKind {
@@ -333,11 +333,6 @@ impl Token {
     /// Recovers a `Token` from an `Ident`. This creates a raw identifier if necessary.
     pub fn from_ast_ident(ident: Ident) -> Self {
         Token::new(Ident(ident.name, ident.is_raw_guess()), ident.span)
-    }
-
-    /// Return this token by value and leave a dummy token in its place.
-    pub fn take(&mut self) -> Self {
-        mem::replace(self, Token::dummy())
     }
 
     /// For interpolated tokens, returns a span of the fragment to which the interpolated

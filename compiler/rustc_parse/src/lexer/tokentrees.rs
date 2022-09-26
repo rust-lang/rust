@@ -247,14 +247,13 @@ impl<'a> TokenTreesReader<'a> {
     fn parse_token_tree_other(&mut self) -> TokenTree {
         // `spacing` for the returned token is determined by the next token:
         // its kind and its `preceded_by_whitespace` status.
-        let this_tok = self.token.take();
         let (next_tok, is_next_tok_preceded_by_whitespace) = self.string_reader.next_token();
         let this_spacing = if is_next_tok_preceded_by_whitespace || !next_tok.is_op() {
             Spacing::Alone
         } else {
             Spacing::Joint
         };
-        self.token = next_tok;
+        let this_tok = std::mem::replace(&mut self.token, next_tok);
         TokenTree::Token(this_tok, this_spacing)
     }
 }
