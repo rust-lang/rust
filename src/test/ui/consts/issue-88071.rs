@@ -2,8 +2,6 @@
 //
 // regression test for #88071
 
-#![feature(const_btree_new)]
-
 use std::collections::BTreeMap;
 
 pub struct CustomMap<K, V>(BTreeMap<K, V>);

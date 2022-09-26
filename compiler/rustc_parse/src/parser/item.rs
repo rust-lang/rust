@@ -1715,6 +1715,7 @@ impl<'a> Parser<'a> {
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err()?;
         if !is_raw && ident.is_reserved() {
+            let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false) {
                 let inherited_vis = Visibility {
                     span: rustc_span::DUMMY_SP,
@@ -1735,6 +1736,22 @@ impl<'a> Parser<'a> {
                 err.help("unlike in C++, Java, and C#, functions are declared in `impl` blocks");
                 err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
                 err
+            } else if self.eat_keyword(kw::Struct) {
+                match self.parse_item_struct() {
+                    Ok((ident, _)) => {
+                        let mut err = self.struct_span_err(
+                            lo.with_hi(ident.span.hi()),
+                            &format!("structs are not allowed in {adt_ty} definitions"),
+                        );
+                        err.help("consider creating a new `struct` definition instead of nesting");
+                        err
+                    }
+                    Err(err) => {
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                        self.expected_ident_found()
+                    }
+                }
             } else {
                 self.expected_ident_found()
             };
