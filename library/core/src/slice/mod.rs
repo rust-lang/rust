@@ -2076,7 +2076,7 @@ impl<T> [T] {
         SplitN::new(self.split(pred), n)
     }
 
-    /// Returns an iterator over subslices separated by elements that match
+    /// Returns an iterator over mutable subslices separated by elements that match
     /// `pred`, limited to returning at most `n` items. The matched element is
     /// not contained in the subslices.
     ///
