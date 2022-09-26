@@ -1,6 +1,8 @@
 error: expected type, found `{`
   --> $DIR/recover-enum2.rs:6:18
    |
+LL |         Var3 {
+   |         ---- while parsing this struct
 LL |             abc: {},
    |                  ^ expected type
 
