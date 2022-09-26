@@ -49,7 +49,7 @@ impl<'a> Foo<'a> {
 // @has foo/trait.B.html
 pub trait B<'x> {}
 
-// @has - '//h3[@class="code-header in-band"]' "impl<'a> B<'a> for dyn for<'b> Trait<'b>"
+// @has - '//h3[@class="code-header"]' "impl<'a> B<'a> for dyn for<'b> Trait<'b>"
 impl<'a> B<'a> for dyn for<'b> Trait<'b> {}
 
 // @has foo/struct.Bar.html
