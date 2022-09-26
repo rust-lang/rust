@@ -52,7 +52,7 @@ struct C {
 
 #[derive(Subdiagnostic)]
 #[label]
-//~^ ERROR `#[label]` is not a valid attribute
+//~^ ERROR diagnostic slug must be first argument
 struct D {
     #[primary_span]
     span: Span,
@@ -81,6 +81,7 @@ struct F {
 #[derive(Subdiagnostic)]
 #[label(bug = "...")]
 //~^ ERROR `#[label(bug = ...)]` is not a valid attribute
+//~| ERROR diagnostic slug must be first argument
 struct G {
     #[primary_span]
     span: Span,
@@ -90,6 +91,7 @@ struct G {
 #[derive(Subdiagnostic)]
 #[label("...")]
 //~^ ERROR `#[label("...")]` is not a valid attribute
+//~| ERROR diagnostic slug must be first argument
 struct H {
     #[primary_span]
     span: Span,
@@ -99,6 +101,7 @@ struct H {
 #[derive(Subdiagnostic)]
 #[label(slug = 4)]
 //~^ ERROR `#[label(slug = ...)]` is not a valid attribute
+//~| ERROR diagnostic slug must be first argument
 struct J {
     #[primary_span]
     span: Span,
@@ -108,6 +111,7 @@ struct J {
 #[derive(Subdiagnostic)]
 #[label(slug("..."))]
 //~^ ERROR `#[label(slug(...))]` is not a valid attribute
+//~| ERROR diagnostic slug must be first argument
 struct K {
     #[primary_span]
     span: Span,
@@ -135,7 +139,7 @@ struct M {
 
 #[derive(Subdiagnostic)]
 #[label(parser::add_paren, code = "...")]
-//~^ ERROR `code` is not a valid nested attribute of a `label` attribute
+//~^ ERROR `#[label(code = ...)]` is not a valid attribute
 struct N {
     #[primary_span]
     span: Span,
@@ -144,7 +148,7 @@ struct N {
 
 #[derive(Subdiagnostic)]
 #[label(parser::add_paren, applicability = "machine-applicable")]
-//~^ ERROR `applicability` is not a valid nested attribute of a `label` attribute
+//~^ ERROR `#[label(applicability = ...)]` is not a valid attribute
 struct O {
     #[primary_span]
     span: Span,
@@ -216,6 +220,7 @@ enum T {
 enum U {
     #[label(code = "...")]
     //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
+    //~| ERROR `#[label(code = ...)]` is not a valid attribute
     A {
         #[primary_span]
         span: Span,
@@ -531,7 +536,7 @@ struct BA {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren, code = "...", applicability = "machine-applicable")]
 //~^ ERROR multipart suggestion without any `#[suggestion_part(...)]` fields
-//~| ERROR `code` is not a valid nested attribute of a `multipart_suggestion` attribute
+//~| ERROR `#[multipart_suggestion(code = ...)]` is not a valid attribute
 struct BBa {
     var: String,
 }
@@ -612,10 +617,9 @@ struct BG {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
-//~^ NOTE previously specified here
 struct BH {
     #[applicability]
-    //~^ ERROR specified multiple times
+    //~^ ERROR `#[applicability]` has no effect
     appl: Applicability,
     #[suggestion_part(code = "(")]
     first: Span,

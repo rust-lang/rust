@@ -289,7 +289,7 @@ pub enum BadTypePlusSub {
 #[diag(parser::maybe_recover_from_bad_qpath_stage_2)]
 struct BadQPathStage2 {
     #[primary_span]
-    #[suggestion(applicability = "maybe-incorrect")]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
     span: Span,
     ty: String,
 }
@@ -298,7 +298,7 @@ struct BadQPathStage2 {
 #[diag(parser::incorrect_semicolon)]
 struct IncorrectSemicolon<'a> {
     #[primary_span]
-    #[suggestion_short(applicability = "machine-applicable")]
+    #[suggestion_short(code = "", applicability = "machine-applicable")]
     span: Span,
     #[help]
     opt_help: Option<()>,
@@ -309,7 +309,7 @@ struct IncorrectSemicolon<'a> {
 #[diag(parser::incorrect_use_of_await)]
 struct IncorrectUseOfAwait {
     #[primary_span]
-    #[suggestion(parser::parentheses_suggestion, applicability = "machine-applicable")]
+    #[suggestion(parser::parentheses_suggestion, code = "", applicability = "machine-applicable")]
     span: Span,
 }
 
@@ -329,7 +329,7 @@ struct IncorrectAwait {
 struct InInTypo {
     #[primary_span]
     span: Span,
-    #[suggestion(applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable")]
     sugg_span: Span,
 }
 
