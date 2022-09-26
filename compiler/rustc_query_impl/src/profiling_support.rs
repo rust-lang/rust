@@ -1,3 +1,4 @@
+use crate::QueryCtxt;
 use measureme::{StringComponent, StringId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
@@ -8,7 +9,7 @@ use rustc_query_system::query::QueryCache;
 use std::fmt::Debug;
 use std::io::Write;
 
-struct QueryKeyStringCache {
+pub(crate) struct QueryKeyStringCache {
     def_id_cache: FxHashMap<DefId, StringId>,
 }
 
@@ -226,7 +227,7 @@ where
 /// Allocate the self-profiling query strings for a single query cache. This
 /// method is called from `alloc_self_profile_query_strings` which knows all
 /// the queries via macro magic.
-fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
+pub(crate) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
     tcx: TyCtxt<'tcx>,
     query_name: &'static str,
     query_cache: &C,
@@ -298,27 +299,15 @@ fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
 /// If we are recording only summary data, the ids will point to
 /// just the query names. If we are recording query keys too, we
 /// allocate the corresponding strings here.
-pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
+pub fn alloc_self_profile_query_strings<'tcx>(tcx: TyCtxt<'tcx>) {
     if !tcx.prof.enabled() {
         return;
     }
 
     let mut string_cache = QueryKeyStringCache::new();
+    let queries = QueryCtxt::from_tcx(tcx);
 
-    macro_rules! alloc_once {
-        (
-        $($(#[$attr:meta])*
-            [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
-            $(
-                alloc_self_profile_query_strings_for_query_cache(
-                    tcx,
-                    stringify!($name),
-                    &tcx.query_caches.$name,
-                    &mut string_cache,
-                );
-            )+
-        }
+    for query in &queries.queries.query_structs {
+        (query.alloc_self_profile_query_strings)(tcx, &mut string_cache);
     }
-
-    rustc_query_append! { alloc_once! }
 }

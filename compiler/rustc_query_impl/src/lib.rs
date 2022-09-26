@@ -1,6 +1,8 @@
 //! Support for serializing the dep-graph and reloading it.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+// this shouldn't be necessary, but the check for `&mut _` is too naive and denies returning a function pointer that takes a mut ref
+#![feature(const_mut_refs)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(once_cell)]
