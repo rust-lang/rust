@@ -11,6 +11,7 @@ use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::CrateId;
 use hir_def::{
+    expr::Movability,
     lang_item::{lang_attr, LangItemTarget},
     AssocItemId, GenericDefId, HasModule, ItemContainerId, Lookup, ModuleId, TypeAliasId,
 };
@@ -26,9 +27,9 @@ use crate::{
     to_assoc_type_id, to_chalk_trait_id,
     traits::ChalkContext,
     utils::generics,
-    AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId, Interner, ProjectionTy,
-    ProjectionTyExt, QuantifiedWhereClause, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder,
-    TyExt, TyKind, WhereClause,
+    wrap_empty_binders, AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId,
+    Interner, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Substitution, TraitRef,
+    TraitRefExt, Ty, TyBuilder, TyExt, TyKind, WhereClause,
 };
 
 pub(crate) type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;
@@ -372,17 +373,63 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     }
     fn generator_datum(
         &self,
-        _: chalk_ir::GeneratorId<Interner>,
+        id: chalk_ir::GeneratorId<Interner>,
     ) -> std::sync::Arc<chalk_solve::rust_ir::GeneratorDatum<Interner>> {
-        // FIXME
-        unimplemented!()
+        let (parent, expr) = self.db.lookup_intern_generator(id.into());
+
+        // We fill substitution with unknown type, because we only need to know whether the generic
+        // params are types or consts to build `Binders` and those being filled up are for
+        // `resume_type`, `yield_type`, and `return_type` of the generator in question.
+        let subst = TyBuilder::subst_for_generator(self.db, parent).fill_with_unknown().build();
+
+        let len = subst.len(Interner);
+        let input_output = rust_ir::GeneratorInputOutputDatum {
+            resume_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, len - 3))
+                .intern(Interner),
+            yield_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, len - 2))
+                .intern(Interner),
+            return_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, len - 1))
+                .intern(Interner),
+            // FIXME: calculate upvars
+            upvars: vec![],
+        };
+
+        let it = subst
+            .iter(Interner)
+            .map(|it| it.constant(Interner).map(|c| c.data(Interner).ty.clone()));
+        let input_output = crate::make_type_and_const_binders(it, input_output);
+
+        let movability = match self.db.body(parent)[expr] {
+            hir_def::expr::Expr::Closure {
+                closure_kind: hir_def::expr::ClosureKind::Generator(movability),
+                ..
+            } => movability,
+            _ => unreachable!("non generator expression interned as generator"),
+        };
+        let movability = match movability {
+            Movability::Static => rust_ir::Movability::Static,
+            Movability::Movable => rust_ir::Movability::Movable,
+        };
+
+        Arc::new(rust_ir::GeneratorDatum { movability, input_output })
     }
     fn generator_witness_datum(
         &self,
-        _: chalk_ir::GeneratorId<Interner>,
+        id: chalk_ir::GeneratorId<Interner>,
     ) -> std::sync::Arc<chalk_solve::rust_ir::GeneratorWitnessDatum<Interner>> {
-        // FIXME
-        unimplemented!()
+        // FIXME: calculate inner types
+        let inner_types =
+            rust_ir::GeneratorWitnessExistential { types: wrap_empty_binders(vec![]) };
+
+        let (parent, _) = self.db.lookup_intern_generator(id.into());
+        // See the comment in `generator_datum()` for unknown types.
+        let subst = TyBuilder::subst_for_generator(self.db, parent).fill_with_unknown().build();
+        let it = subst
+            .iter(Interner)
+            .map(|it| it.constant(Interner).map(|c| c.data(Interner).ty.clone()));
+        let inner_types = crate::make_type_and_const_binders(it, inner_types);
+
+        Arc::new(rust_ir::GeneratorWitnessDatum { inner_types })
     }
 
     fn unification_database(&self) -> &dyn chalk_ir::UnificationDatabase<Interner> {

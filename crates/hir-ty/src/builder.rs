@@ -9,8 +9,8 @@ use chalk_ir::{
     AdtId, BoundVar, DebruijnIndex, Scalar,
 };
 use hir_def::{
-    builtin_type::BuiltinType, generics::TypeOrConstParamData, ConstParamId, GenericDefId, TraitId,
-    TypeAliasId,
+    builtin_type::BuiltinType, generics::TypeOrConstParamData, ConstParamId, DefWithBodyId,
+    GenericDefId, TraitId, TypeAliasId,
 };
 use smallvec::SmallVec;
 
@@ -203,6 +203,38 @@ impl TyBuilder<()> {
                 })
                 .collect(),
         )
+    }
+
+    /// Creates a `TyBuilder` to build `Substitution` for a generator defined in `parent`.
+    ///
+    /// A generator's substitution consists of:
+    /// - generic parameters in scope on `parent`
+    /// - resume type of generator
+    /// - yield type of generator ([`Generator::Yield`](std::ops::Generator::Yield))
+    /// - return type of generator ([`Generator::Return`](std::ops::Generator::Return))
+    /// in this order.
+    ///
+    /// This method prepopulates the builder with placeholder substitution of `parent`, so you
+    /// should only push exactly 3 `GenericArg`s before building.
+    pub fn subst_for_generator(db: &dyn HirDatabase, parent: DefWithBodyId) -> TyBuilder<()> {
+        let parent_subst = match parent.as_generic_def_id() {
+            Some(parent) => generics(db.upcast(), parent).placeholder_subst(db),
+            // Static initializers *may* contain generators.
+            None => Substitution::empty(Interner),
+        };
+        let builder = TyBuilder::new(
+            (),
+            parent_subst
+                .iter(Interner)
+                .map(|arg| match arg.constant(Interner) {
+                    Some(c) => ParamKind::Const(c.data(Interner).ty.clone()),
+                    None => ParamKind::Type,
+                })
+                // These represent resume type, yield type, and return type of generator.
+                .chain(std::iter::repeat(ParamKind::Type).take(3))
+                .collect(),
+        );
+        builder.use_parent_substs(&parent_subst)
     }
 
     pub fn build(self) -> Substitution {

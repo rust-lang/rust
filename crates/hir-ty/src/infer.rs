@@ -339,7 +339,7 @@ pub struct InferenceResult {
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
     pub type_of_pat: ArenaMap<PatId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
-    /// Interned Unknown to return references to.
+    /// Interned common types to return references to.
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
     pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
@@ -419,6 +419,8 @@ pub(crate) struct InferenceContext<'a> {
     /// closures, but currently this is the only field that will change there,
     /// so it doesn't make sense.
     return_ty: Ty,
+    /// The resume type and the yield type, respectively, of the generator being inferred.
+    resume_yield_tys: Option<(Ty, Ty)>,
     diverges: Diverges,
     breakables: Vec<BreakableContext>,
 }
@@ -483,6 +485,7 @@ impl<'a> InferenceContext<'a> {
             table: unify::InferenceTable::new(db, trait_env.clone()),
             trait_env,
             return_ty: TyKind::Error.intern(Interner), // set in collect_fn_signature
+            resume_yield_tys: None,
             db,
             owner,
             body,

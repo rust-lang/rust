@@ -120,6 +120,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
     #[salsa::interned]
     fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> InternedClosureId;
+    #[salsa::interned]
+    fn intern_generator(&self, id: (DefWithBodyId, ExprId)) -> InternedGeneratorId;
 
     #[salsa::invoke(chalk_db::associated_ty_data_query)]
     fn associated_ty_data(&self, id: chalk_db::AssocTypeId) -> Arc<chalk_db::AssociatedTyDatum>;
@@ -232,6 +234,10 @@ impl_intern_key!(InternedOpaqueTyId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedClosureId(salsa::InternId);
 impl_intern_key!(InternedClosureId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InternedGeneratorId(salsa::InternId);
+impl_intern_key!(InternedGeneratorId);
 
 /// This exists just for Chalk, because Chalk just has a single `FnDefId` where
 /// we have different IDs for struct and enum variant constructors.

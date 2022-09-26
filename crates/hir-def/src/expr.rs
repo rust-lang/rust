@@ -198,6 +198,7 @@ pub enum Expr {
         arg_types: Box<[Option<Interned<TypeRef>>]>,
         ret_type: Option<Interned<TypeRef>>,
         body: ExprId,
+        closure_kind: ClosureKind,
     },
     Tuple {
         exprs: Box<[ExprId]>,
@@ -209,6 +210,18 @@ pub enum Expr {
     Array(Array),
     Literal(Literal),
     Underscore,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClosureKind {
+    Closure,
+    Generator(Movability),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Movability {
+    Static,
+    Movable,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
