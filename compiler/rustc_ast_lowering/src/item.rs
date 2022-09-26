@@ -1055,9 +1055,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         asyncness: Async,
         body: Option<&Block>,
     ) -> hir::BodyId {
-        let closure_id = match asyncness {
-            Async::Yes { closure_id, .. } => closure_id,
-            Async::No => return self.lower_fn_body_block(span, decl, body),
+        let (closure_id, body) = match (asyncness, body) {
+            (Async::Yes { closure_id, .. }, Some(body)) => (closure_id, body),
+            _ => return self.lower_fn_body_block(span, decl, body),
         };
 
         self.lower_body(|this| {
@@ -1199,16 +1199,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 parameters.push(new_parameter);
             }
 
-            let body_span = body.map_or(span, |b| b.span);
             let async_expr = this.make_async_expr(
                 CaptureBy::Value,
                 closure_id,
                 None,
-                body_span,
+                body.span,
                 hir::AsyncGeneratorKind::Fn,
                 |this| {
                     // Create a block from the user's function body:
-                    let user_body = this.lower_block_expr_opt(body_span, body);
+                    let user_body = this.lower_block_expr(body);
 
                     // Transform into `drop-temps { <user-body> }`, an expression:
                     let desugared_span =
@@ -1240,7 +1239,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             (
                 this.arena.alloc_from_iter(parameters),
-                this.expr(body_span, async_expr, AttrVec::new()),
+                this.expr(body.span, async_expr, AttrVec::new()),
             )
         })
     }
