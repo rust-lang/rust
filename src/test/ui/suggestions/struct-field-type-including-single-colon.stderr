@@ -12,6 +12,8 @@ LL |     a: foo::A,
 error: expected `,`, or `}`, found `:`
   --> $DIR/struct-field-type-including-single-colon.rs:9:11
    |
+LL | struct Foo {
+   |        --- while parsing this struct
 LL |     a: foo:A,
    |           ^
 
@@ -29,6 +31,8 @@ LL |     b: foo::bar::B,
 error: expected `,`, or `}`, found `:`
   --> $DIR/struct-field-type-including-single-colon.rs:15:16
    |
+LL | struct Bar {
+   |        --- while parsing this struct
 LL |     b: foo::bar:B,
    |                ^
 

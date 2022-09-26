@@ -1,6 +1,9 @@
 error[E0585]: found a documentation comment that doesn't document anything
   --> $DIR/doc-before-struct-rbrace-1.rs:3:5
    |
+LL | struct X {
+   |        - while parsing this struct
+LL |     a: u8,
 LL |     /// document
    |     ^^^^^^^^^^^^
    |
