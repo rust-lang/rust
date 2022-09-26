@@ -221,27 +221,37 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let init = &this.thir[*initializer];
                     let initializer_span = init.span;
-                    this.declare_bindings(
-                        visibility_scope,
-                        remainder_span,
-                        pattern,
-                        ArmHasGuard(false),
-                        Some((None, initializer_span)),
-                    );
-                    this.visit_primary_bindings(
-                        pattern,
-                        UserTypeProjections::none(),
-                        &mut |this, _, _, _, node, span, _, _| {
-                            this.storage_live_binding(block, node, span, OutsideGuard, true);
-                            this.schedule_drop_for_binding(node, span, OutsideGuard);
-                        },
-                    );
                     let failure = unpack!(
                         block = this.in_opt_scope(
                             opt_destruction_scope.map(|de| (de, source_info)),
                             |this| {
                                 let scope = (*init_scope, source_info);
                                 this.in_scope(scope, *lint_level, |this| {
+                                    this.declare_bindings(
+                                        visibility_scope,
+                                        remainder_span,
+                                        pattern,
+                                        ArmHasGuard(false),
+                                        Some((None, initializer_span)),
+                                    );
+                                    this.visit_primary_bindings(
+                                        pattern,
+                                        UserTypeProjections::none(),
+                                        &mut |this, _, _, _, node, span, _, _| {
+                                            this.storage_live_binding(
+                                                block,
+                                                node,
+                                                span,
+                                                OutsideGuard,
+                                                true,
+                                            );
+                                            this.schedule_drop_for_binding(
+                                                node,
+                                                span,
+                                                OutsideGuard,
+                                            );
+                                        },
+                                    );
                                     this.ast_let_else(
                                         block,
                                         init,
@@ -306,7 +316,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                             ArmHasGuard(false),
                                             Some((None, initializer_span)),
                                         );
-                                        this.expr_into_pattern(block, &pattern, init) // irrefutable pattern
+                                        this.expr_into_pattern(block, &pattern, init)
+                                        // irrefutable pattern
                                     })
                                 },
                             )
