@@ -190,6 +190,22 @@ pub struct DocAliasMalformed {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes::doc_auto_cfg_malformed)]
+pub struct DocAutoCfgMalformed<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes::doc_auto_cfg_enabled_by_default)]
+pub struct DocAutoCfgEnabledByDefault;
+
+#[derive(LintDiagnostic)]
+#[diag(passes::doc_no_auto_cfg_enabled_by_default)]
+pub struct DocNoAutoCfgEnabledByDefault;
+
+#[derive(Diagnostic)]
 #[diag(passes::doc_keyword_empty_mod)]
 pub struct DocKeywordEmptyMod {
     #[primary_span]

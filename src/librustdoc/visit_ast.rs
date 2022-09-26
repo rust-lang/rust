@@ -10,6 +10,7 @@ use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_span::edition::Edition;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
@@ -146,6 +147,22 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .into_iter(),
             )
             .collect();
+        // This feature is enabled by default starting the 2024 edition.
+        self.cx.cache.doc_auto_cfg_active = self.cx.tcx.sess.edition() > Edition::Edition2021;
+        if let Some(attr) = self
+            .cx
+            .tcx
+            .hir()
+            .attrs(CRATE_HIR_ID)
+            .iter()
+            .filter(|attr| attr.has_name(sym::doc))
+            .flat_map(|attr| attr.meta_item_list().into_iter().flatten())
+            .find(|attr| attr.has_name(sym::auto_cfg) || attr.has_name(sym::auto_cfg))
+        {
+            // If we find one of the two attributes, we update the default value of
+            // `doc_auto_cfg_active`.
+            self.cx.cache.doc_auto_cfg_active = attr.has_name(sym::auto_cfg);
+        }
 
         self.cx.cache.exact_paths = self.exact_paths;
         top_level_module

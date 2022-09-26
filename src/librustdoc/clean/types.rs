@@ -463,7 +463,7 @@ impl Item {
             kind,
             Box::new(Attributes::from_ast(ast_attrs)),
             cx,
-            ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
+            ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg, cx.cache.doc_auto_cfg_active),
         )
     }
 
@@ -838,7 +838,12 @@ pub(crate) trait AttributesExt {
 
     fn inner_docs(&self) -> bool;
 
-    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>>;
+    fn cfg(
+        &self,
+        tcx: TyCtxt<'_>,
+        hidden_cfg: &FxHashSet<Cfg>,
+        doc_auto_cfg_active: bool,
+    ) -> Option<Arc<Cfg>>;
 }
 
 impl AttributesExt for [ast::Attribute] {
@@ -864,10 +869,14 @@ impl AttributesExt for [ast::Attribute] {
         self.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == AttrStyle::Inner)
     }
 
-    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
+    fn cfg(
+        &self,
+        tcx: TyCtxt<'_>,
+        hidden_cfg: &FxHashSet<Cfg>,
+        doc_auto_cfg_active: bool,
+    ) -> Option<Arc<Cfg>> {
         let sess = tcx.sess;
         let doc_cfg_active = tcx.features().doc_cfg;
-        let doc_auto_cfg_active = tcx.features().doc_auto_cfg;
 
         fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
             let mut iter = it.into_iter();
