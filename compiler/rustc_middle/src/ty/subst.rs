@@ -606,9 +606,21 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         #[cold]
         #[inline(never)]
-        fn region_param_out_of_range(data: ty::EarlyBoundRegion) -> ! {
+        fn region_param_out_of_range(data: ty::EarlyBoundRegion, substs: &[GenericArg<'_>]) -> ! {
             bug!(
-                "Region parameter out of range when substituting in region {} (index={})",
+                "Region parameter out of range when substituting in region {} (index={}, substs = {:?})",
+                data.name,
+                data.index,
+                substs,
+            )
+        }
+
+        #[cold]
+        #[inline(never)]
+        fn region_param_invalid(data: ty::EarlyBoundRegion, other: GenericArgKind<'_>) -> ! {
+            bug!(
+                "Unexpected parameter {:?} when substituting in region {} (index={})",
+                other,
                 data.name,
                 data.index
             )
@@ -624,7 +636,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                 let rk = self.substs.get(data.index as usize).map(|k| k.unpack());
                 match rk {
                     Some(GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
-                    _ => region_param_out_of_range(data),
+                    Some(other) => region_param_invalid(data, other),
+                    None => region_param_out_of_range(data, self.substs),
                 }
             }
             _ => r,
