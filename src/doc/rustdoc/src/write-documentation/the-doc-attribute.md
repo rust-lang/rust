@@ -279,16 +279,6 @@ Users can now look for `lib_name_do_something` in our crate directly and find
 
 ## `cfg`
 
-By default, if you use `#[cfg(...)]`:
-
-```rust
-#[cfg(any(windows, doc))]
-pub struct WindowsToken;
-```
-
-`rustdoc` will display this information in the rendered documentation. `#[doc(cfg(...))]` is needed
-only if you want to override the default behaviour.
-
 `#[doc(cfg)]` is intended to be used alongside `#[cfg(doc)]` (described in [advanced features]).
 For example, `#[cfg(any(windows, doc))]` will preserve the item either on Windows or during
 the documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc
@@ -316,6 +306,19 @@ in documentation.
 If you want to hide some `cfg` information in your whole crate at once, take a look at `cfg_hide`
 just below.
 
+If you want rustdoc to get the `cfg` information directly from the `#[cfg(...)]` attribute, you
+need to enable it by using the `#![doc(auto_cfg)]` attribute:
+
+```rust
+#[cfg(any(windows, doc))]
+pub struct WindowsToken;
+```
+
+`rustdoc` will display this information in the rendered documentation. `#[doc(cfg(...))]` is needed
+only if you want to override the default behaviour.
+
+More information about `doc(auto_cfg)` below.
+
 [advanced features]: ../advanced-features.md
 
 ## `cfg_hide`
@@ -334,3 +337,10 @@ documentation, you can add:
 ```rust
 #![doc(cfg_hide(feature = "internal-dev-stuff"))]
 ```
+
+## `auto_cfg`/`no_auto_cfg`
+
+These two attributes enable/disable the `doc_auto_cfg` feature. You can find more information
+about it into the [`cfg`](#cfg) part.
+
+Please note that this feature is disabled by default before the 2024 edition.
