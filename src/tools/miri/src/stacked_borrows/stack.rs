@@ -46,7 +46,7 @@ impl Stack {
         // For stacks with a known bottom, we never consider removing the bottom-most tag, because
         // that is the base tag which exists whether or not there are any pointers to the
         // allocation.
-        let mut read_idx = usize::from(self.unknown_bottom.is_none());
+        let mut read_idx = if self.unknown_bottom.is_some() { 0 } else { 1 };
         let mut write_idx = read_idx;
         while read_idx < self.borrows.len() {
             let left = self.borrows[read_idx - 1];

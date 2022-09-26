@@ -37,8 +37,9 @@ pub struct CatchUnwindData<'tcx> {
 
 impl VisitMachineValues for CatchUnwindData<'_> {
     fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
-        visit(&Operand::Indirect(MemPlace::from_ptr(self.catch_fn)));
-        visit(&Operand::Immediate(Immediate::Scalar(self.data)));
+        let CatchUnwindData { catch_fn, data, dest: _, ret: _ } = self;
+        visit(&Operand::Indirect(MemPlace::from_ptr(*catch_fn)));
+        visit(&Operand::Immediate(Immediate::Scalar(*data)));
     }
 }
 

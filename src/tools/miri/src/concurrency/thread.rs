@@ -183,7 +183,8 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
 
 impl VisitMachineValues for Thread<'_, '_> {
     fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
-        let Thread { panic_payload, last_error, stack, .. } = self;
+        let Thread { panic_payload, last_error, stack, state: _, thread_name: _, join_status: _ } =
+            self;
 
         if let Some(payload) = panic_payload {
             visit(&Operand::Immediate(Immediate::Scalar(*payload)))
@@ -199,7 +200,16 @@ impl VisitMachineValues for Thread<'_, '_> {
 
 impl VisitMachineValues for Frame<'_, '_, Provenance, FrameData<'_>> {
     fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
-        let Frame { return_place, locals, extra, .. } = self;
+        let Frame {
+            return_place,
+            locals,
+            extra,
+            body: _,
+            instance: _,
+            return_to_block: _,
+            loc: _,
+            ..
+        } = self;
 
         // Return place.
         if let Place::Ptr(mplace) = **return_place {
@@ -290,7 +300,14 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
 
 impl VisitMachineValues for ThreadManager<'_, '_> {
     fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
-        let ThreadManager { threads, thread_local_alloc_ids, .. } = self;
+        let ThreadManager {
+            threads,
+            thread_local_alloc_ids,
+            active_thread: _,
+            yield_active_thread: _,
+            sync: _,
+            timeout_callbacks: _,
+        } = self;
 
         for thread in threads {
             thread.visit_machine_values(visit);

@@ -65,7 +65,7 @@ impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
 
 impl VisitMachineValues for FrameData<'_> {
     fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
-        let FrameData { catch_unwind, .. } = self;
+        let FrameData { catch_unwind, stacked_borrows: _, timing: _ } = self;
 
         if let Some(catch_unwind) = catch_unwind {
             catch_unwind.visit_machine_values(visit);
