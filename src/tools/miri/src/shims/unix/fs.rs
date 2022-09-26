@@ -463,11 +463,11 @@ impl Default for DirHandler {
 }
 
 impl VisitMachineValues for DirHandler {
-    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
         let DirHandler { streams, next_id: _ } = self;
 
         for dir in streams.values() {
-            visit(&Operand::Indirect(MemPlace::from_ptr(dir.entry)));
+            visit.visit(dir.entry);
         }
     }
 }

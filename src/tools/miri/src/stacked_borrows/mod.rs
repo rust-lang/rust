@@ -513,10 +513,10 @@ impl Stacks {
     }
 }
 
-impl VisitProvenance for Stacks {
-    fn visit_provenance(&self, visit: &mut impl FnMut(SbTag)) {
+impl VisitMachineValues for Stacks {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
         for tag in self.exposed_tags.iter().copied() {
-            visit(tag);
+            visit.visit(tag);
         }
     }
 }

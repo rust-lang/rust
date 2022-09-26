@@ -108,19 +108,15 @@ pub struct StoreBufferAlloc {
     store_buffers: RefCell<RangeObjectMap<StoreBuffer>>,
 }
 
-impl VisitProvenance for StoreBufferAlloc {
-    fn visit_provenance(&self, visitor: &mut impl FnMut(SbTag)) {
+impl VisitMachineValues for StoreBufferAlloc {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
         for val in self
             .store_buffers
             .borrow()
             .iter()
             .flat_map(|buf| buf.buffer.iter().map(|element| &element.val))
         {
-            if let Scalar::Ptr(ptr, _) = val {
-                if let Provenance::Concrete { sb, .. } = ptr.provenance {
-                    visitor(sb);
-                }
-            }
+            visit.visit(val);
         }
     }
 }

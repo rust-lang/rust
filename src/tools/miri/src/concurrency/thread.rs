@@ -182,15 +182,15 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
 }
 
 impl VisitMachineValues for Thread<'_, '_> {
-    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
         let Thread { panic_payload, last_error, stack, state: _, thread_name: _, join_status: _ } =
             self;
 
         if let Some(payload) = panic_payload {
-            visit(&Operand::Immediate(Immediate::Scalar(*payload)))
+            visit.visit(*payload);
         }
         if let Some(error) = last_error {
-            visit(&Operand::Indirect(**error))
+            visit.visit(**error);
         }
         for frame in stack {
             frame.visit_machine_values(visit)
@@ -199,7 +199,7 @@ impl VisitMachineValues for Thread<'_, '_> {
 }
 
 impl VisitMachineValues for Frame<'_, '_, Provenance, FrameData<'_>> {
-    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
         let Frame {
             return_place,
             locals,
@@ -213,12 +213,12 @@ impl VisitMachineValues for Frame<'_, '_, Provenance, FrameData<'_>> {
 
         // Return place.
         if let Place::Ptr(mplace) = **return_place {
-            visit(&Operand::Indirect(mplace));
+            visit.visit(mplace);
         }
         // Locals.
         for local in locals.iter() {
             if let LocalValue::Live(value) = &local.value {
-                visit(value);
+                visit.visit(value);
             }
         }
 
@@ -299,7 +299,7 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
 }
 
 impl VisitMachineValues for ThreadManager<'_, '_> {
-    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
         let ThreadManager {
             threads,
             thread_local_alloc_ids,
@@ -313,8 +313,7 @@ impl VisitMachineValues for ThreadManager<'_, '_> {
             thread.visit_machine_values(visit);
         }
         for ptr in thread_local_alloc_ids.borrow().values().copied() {
-            let ptr: Pointer<Option<Provenance>> = ptr.into();
-            visit(&Operand::Indirect(MemPlace::from_ptr(ptr)));
+            visit.visit(ptr);
         }
         // FIXME: Do we need to do something for TimeoutCallback? That's a Box<dyn>, not sure what
         // to do.

@@ -236,14 +236,14 @@ impl<'tcx> TlsData<'tcx> {
 }
 
 impl VisitMachineValues for TlsData<'_> {
-    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
         let TlsData { keys, macos_thread_dtors, next_key: _, dtors_running: _ } = self;
 
         for scalar in keys.values().flat_map(|v| v.data.values()) {
-            visit(&Operand::Immediate(Immediate::Scalar(*scalar)));
+            visit.visit(scalar);
         }
         for (_, scalar) in macos_thread_dtors.values() {
-            visit(&Operand::Immediate(Immediate::Scalar(*scalar)));
+            visit.visit(scalar);
         }
     }
 }

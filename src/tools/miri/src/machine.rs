@@ -64,7 +64,7 @@ impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
 }
 
 impl VisitMachineValues for FrameData<'_> {
-    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
         let FrameData { catch_unwind, stacked_borrows: _, timing: _ } = self;
 
         if let Some(catch_unwind) = catch_unwind {
@@ -259,6 +259,20 @@ pub struct AllocExtra {
     /// Weak memory emulation via the use of store buffers,
     ///  this is only added if it is enabled.
     pub weak_memory: Option<weak_memory::AllocExtra>,
+}
+
+impl VisitMachineValues for AllocExtra {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
+        let AllocExtra { stacked_borrows, data_race: _, weak_memory } = self;
+
+        if let Some(stacked_borrows) = stacked_borrows {
+            stacked_borrows.borrow().visit_machine_values(visit);
+        }
+
+        if let Some(weak_memory) = weak_memory {
+            weak_memory.visit_machine_values(visit);
+        }
+    }
 }
 
 /// Precomputed layouts of primitive types
@@ -602,7 +616,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
 }
 
 impl VisitMachineValues for MiriMachine<'_, '_> {
-    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
         let MiriMachine {
             threads,
             tls,
@@ -621,17 +635,16 @@ impl VisitMachineValues for MiriMachine<'_, '_> {
         dir_handler.visit_machine_values(visit);
 
         if let Some(argc) = argc {
-            visit(&Operand::Indirect(*argc));
+            visit.visit(argc);
         }
         if let Some(argv) = argv {
-            visit(&Operand::Indirect(*argv));
+            visit.visit(argv);
         }
         if let Some(cmd_line) = cmd_line {
-            visit(&Operand::Indirect(*cmd_line));
+            visit.visit(cmd_line);
         }
         for ptr in extern_statics.values().copied() {
-            let ptr: Pointer<Option<Provenance>> = ptr.into();
-            visit(&Operand::Indirect(MemPlace::from_ptr(ptr)));
+            visit.visit(ptr);
         }
     }
 }

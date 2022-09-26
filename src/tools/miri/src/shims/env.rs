@@ -37,15 +37,14 @@ pub struct EnvVars<'tcx> {
 }
 
 impl VisitMachineValues for EnvVars<'_> {
-    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
         let EnvVars { map, environ } = self;
 
         for ptr in map.values() {
-            visit(&Operand::Indirect(MemPlace::from_ptr(*ptr)));
+            visit.visit(*ptr);
         }
-
         if let Some(env) = environ {
-            visit(&Operand::Indirect(**env));
+            visit.visit(**env);
         }
     }
 }
