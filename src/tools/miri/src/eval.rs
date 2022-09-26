@@ -132,7 +132,7 @@ pub struct MiriConfig {
     pub external_so_file: Option<PathBuf>,
     /// Run a garbage collector for SbTags every N basic blocks.
     pub gc_interval: u32,
-    /// FIXME: add docs.
+    /// The number of CPUs to be reported by miri.
     pub num_cpus: u32,
 }
 

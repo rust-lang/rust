@@ -406,7 +406,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) gc_interval: u32,
     /// The number of blocks that passed since the last SbTag GC pass.
     pub(crate) since_gc: u32,
-    /// FIXME: docs,
+    /// The number of CPUs to be reported by miri.
     pub(crate) num_cpus: u32,
 }
 
