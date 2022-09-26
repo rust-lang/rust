@@ -1283,12 +1283,10 @@ impl<'a> Parser<'a> {
     /// Parses an enum declaration.
     fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
         if self.token.is_keyword(kw::Struct) {
-            let mut err = self.struct_span_err(
-                self.prev_token.span.to(self.token.span),
-                "`enum` and `struct` are mutually exclusive",
-            );
+            let span = self.prev_token.span.to(self.token.span);
+            let mut err = self.struct_span_err(span, "`enum` and `struct` are mutually exclusive");
             err.span_suggestion(
-                self.prev_token.span.to(self.token.span),
+                span,
                 "replace `enum struct` with",
                 "enum",
                 Applicability::MachineApplicable,
