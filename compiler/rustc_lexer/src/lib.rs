@@ -139,6 +139,9 @@ pub enum TokenKind {
 
     /// Unknown token, not expected by the lexer, e.g. "№"
     Unknown,
+
+    /// End of input.
+    Eof,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -235,7 +238,10 @@ pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError>
 /// Creates an iterator that produces tokens from the input string.
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     let mut cursor = Cursor::new(input);
-    std::iter::from_fn(move || cursor.advance_token())
+    std::iter::from_fn(move || {
+        let token = cursor.advance_token();
+        if token.kind != TokenKind::Eof { Some(token) } else { None }
+    })
 }
 
 /// True if `c` is considered a whitespace according to Rust language definition.
@@ -297,8 +303,11 @@ pub fn is_ident(string: &str) -> bool {
 
 impl Cursor<'_> {
     /// Parses a token from the input string.
-    pub fn advance_token(&mut self) -> Option<Token> {
-        let first_char = self.bump()?;
+    pub fn advance_token(&mut self) -> Token {
+        let first_char = match self.bump() {
+            Some(c) => c,
+            None => return Token::new(TokenKind::Eof, 0),
+        };
         let token_kind = match first_char {
             // Slash, comment or block comment.
             '/' => match self.first() {
@@ -419,7 +428,7 @@ impl Cursor<'_> {
             }
             _ => Unknown,
         };
-        let res = Some(Token::new(token_kind, self.pos_within_token()));
+        let res = Token::new(token_kind, self.pos_within_token());
         self.reset_pos_within_token();
         res
     }

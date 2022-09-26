@@ -80,14 +80,7 @@ impl<'a> StringReader<'a> {
 
         // Skip trivial (whitespace & comments) tokens
         loop {
-            let token = match self.cursor.advance_token() {
-                Some(token) => token,
-                None => {
-                    let span = self.mk_sp(self.pos, self.pos);
-                    return (Token::new(token::Eof, span), preceded_by_whitespace);
-                }
-            };
-
+            let token = self.cursor.advance_token();
             let start = self.pos;
             self.pos = self.pos + BytePos(token.len);
 
@@ -327,6 +320,7 @@ impl<'a> StringReader<'a> {
                 err.emit();
                 token?
             }
+            rustc_lexer::TokenKind::Eof => token::Eof,
         })
     }
 

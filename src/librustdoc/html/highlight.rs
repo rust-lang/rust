@@ -415,7 +415,10 @@ struct TokenIter<'a> {
 impl<'a> Iterator for TokenIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<(TokenKind, &'a str)> {
-        let token = self.cursor.advance_token()?;
+        let token = self.cursor.advance_token();
+        if token.kind == TokenKind::Eof {
+            return None;
+        }
         let (text, rest) = self.src.split_at(token.len as usize);
         self.src = rest;
         Some((token.kind, text))
@@ -849,6 +852,7 @@ impl<'a> Classifier<'a> {
                 Class::Ident(self.new_span(before, text))
             }
             TokenKind::Lifetime { .. } => Class::Lifetime,
+            TokenKind::Eof => panic!("Eof in advance"),
         };
         // Anything that didn't return above is the simple case where we the
         // class just spans a single token, so we can use the `string` method.
