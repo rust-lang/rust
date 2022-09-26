@@ -18,7 +18,7 @@ use rustc_middle::ty::{self, ParamTy, PredicateKind, ProjectionPredicate, TraitP
 use rustc_semver::RustcVersion;
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
-use rustc_typeck::check::{FnCtxt, Inherited};
+use rustc_hir_analysis::check::{FnCtxt, Inherited};
 use std::cmp::max;
 
 use super::UNNECESSARY_TO_OWNED;

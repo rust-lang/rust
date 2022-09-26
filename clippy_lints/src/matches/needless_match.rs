@@ -11,7 +11,7 @@ use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, BindingAnnotation, ByRef, Expr, ExprKind, FnRetTy, Guard, Node, Pat, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
-use rustc_typeck::hir_ty_to_ty;
+use rustc_hir_analysis::hir_ty_to_ty;
 
 pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() > 1 && expr_ty_matches_p_ty(cx, ex, expr) && check_all_arms(cx, ex, arms) {

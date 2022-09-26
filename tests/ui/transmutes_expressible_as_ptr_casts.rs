@@ -8,7 +8,7 @@
 
 use std::mem::{size_of, transmute};
 
-// rustc_typeck::check::cast contains documentation about when a cast `e as U` is
+// rustc_hir_analysis::check::cast contains documentation about when a cast `e as U` is
 // valid, which we quote from below.
 fn main() {
     // We should see an error message for each transmute, and no error messages for
