@@ -1,0 +1,60 @@
+error: this attribute can only be applied at the crate level
+  --> $DIR/doc_no_auto_cfg.rs:9:7
+   |
+LL | #[doc(auto_cfg)]
+   |       ^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/doc_no_auto_cfg.rs:2:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(invalid_doc_attributes)]` implied by `#[deny(warnings)]`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+help: to apply to the crate, use an inner attribute
+   |
+LL | #![doc(auto_cfg)]
+   | ~~~~~~~~~~~~~~~~~
+
+error: this attribute can only be applied at the crate level
+  --> $DIR/doc_no_auto_cfg.rs:11:7
+   |
+LL | #[doc(no_auto_cfg)]
+   |       ^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+help: to apply to the crate, use an inner attribute
+   |
+LL | #![doc(no_auto_cfg)]
+   | ~~~~~~~~~~~~~~~~~~~~
+
+error: `#![doc(no_auto_cfg)]` attribute doesn't expect a value
+  --> $DIR/doc_no_auto_cfg.rs:4:8
+   |
+LL | #![doc(no_auto_cfg(1))]
+   |        ^^^^^^^^^^^^^^
+
+error: `#![doc(no_auto_cfg)]` attribute doesn't expect a value
+  --> $DIR/doc_no_auto_cfg.rs:5:8
+   |
+LL | #![doc(no_auto_cfg = 1)]
+   |        ^^^^^^^^^^^^^^^
+
+error: `#![doc(auto_cfg)]` attribute doesn't expect a value
+  --> $DIR/doc_no_auto_cfg.rs:6:8
+   |
+LL | #![doc(auto_cfg(1))]
+   |        ^^^^^^^^^^^
+
+error: `#![doc(auto_cfg)]` attribute doesn't expect a value
+  --> $DIR/doc_no_auto_cfg.rs:7:8
+   |
+LL | #![doc(auto_cfg = 1)]
+   |        ^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

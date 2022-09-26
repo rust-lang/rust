@@ -157,7 +157,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             .iter()
             .filter(|attr| attr.has_name(sym::doc))
             .flat_map(|attr| attr.meta_item_list().into_iter().flatten())
-            .find(|attr| attr.has_name(sym::auto_cfg) || attr.has_name(sym::auto_cfg))
+            .find(|attr| attr.has_name(sym::auto_cfg) || attr.has_name(sym::no_auto_cfg))
         {
             // If we find one of the two attributes, we update the default value of
             // `doc_auto_cfg_active`.

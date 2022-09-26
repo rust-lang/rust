@@ -14,6 +14,5 @@ pub mod a {
 pub mod b {
     // @hasraw - 'pub use foo::'
     // @!has please_inline/b/struct.Foo.html
-    #[feature(inline)]
     pub use foo::Foo;
 }
