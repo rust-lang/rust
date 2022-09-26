@@ -6,6 +6,10 @@ pub trait VisitMachineValues {
     fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>));
 }
 
+pub trait VisitProvenance {
+    fn visit_provenance(&self, visit: &mut impl FnMut(SbTag));
+}
+
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     /// Generic GC helper to visit everything that can store a value. The `acc` offers some chance to
@@ -46,6 +50,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
             }
         };
 
+        let visit_provenance = |tags: &mut FxHashSet<SbTag>, tag: SbTag| {
+            tags.insert(tag);
+        };
+
         this.visit_all_machine_values(
             &mut tags,
             |tags, op| {
@@ -71,21 +79,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                         tags.insert(*sb);
                     }
                 }
-                let stacks = alloc
-                    .extra
-                    .stacked_borrows
-                    .as_ref()
-                    .expect("we should not even enter the GC if Stacked Borrows is disabled");
-                tags.extend(&stacks.borrow().exposed_tags);
+
+                let stacks =
+                    alloc.extra.stacked_borrows.as_ref().expect(
+                        "we should not even enter the tag GC if Stacked Borrows is disabled",
+                    );
+                stacks.borrow().visit_provenance(&mut |tag| visit_provenance(tags, tag));
 
                 if let Some(store_buffers) = alloc.extra.weak_memory.as_ref() {
-                    store_buffers.iter(|val| {
-                        if let Scalar::Ptr(ptr, _) = val {
-                            if let Provenance::Concrete { sb, .. } = ptr.provenance {
-                                tags.insert(sb);
-                            }
-                        }
-                    });
+                    store_buffers.visit_provenance(&mut |tag| visit_provenance(tags, tag));
                 }
             },
         );
