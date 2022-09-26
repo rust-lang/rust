@@ -293,6 +293,9 @@ environment variable. We first document the most relevant and most commonly used
   value of forwarded variables stays the same. Has no effect if `-Zmiri-disable-isolation` is set.
 * `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
   remaining threads to exist when the main thread exits.
+* `-Zmiri-num-cpus` states the number of available CPUs to be reported by miri. By default, the
+  number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
+  any way.
 * `-Zmiri-permissive-provenance` disables the warning for integer-to-pointer casts and
   [`ptr::from_exposed_addr`](https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html).
   This will necessarily miss some bugs as those operations are not efficiently and accurately
@@ -357,7 +360,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   This is **work in progress**; currently, only integer arguments and return values are
   supported (and no, pointer/integer casts to work around this limitation will not work;
   they will fail horribly). It also only works on unix hosts for now.
-  Follow [the discussion on supporting other types](https://github.com/rust-lang/miri/issues/2365). 
+  Follow [the discussion on supporting other types](https://github.com/rust-lang/miri/issues/2365).
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file with the prefix `<name>`, and can be processed
@@ -387,7 +390,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   Borrows "protectors". Specifying this argument multiple times does not overwrite the previous
   values, instead it appends its values to the list. Listing an id multiple times has no effect.
 * `-Zmiri-track-pointer-tag=<tag1>,<tag2>,...` shows a backtrace when a given pointer tag
-  is created and when (if ever) it is popped from a borrow stack (which is where the tag becomes invalid 
+  is created and when (if ever) it is popped from a borrow stack (which is where the tag becomes invalid
   and any future use of it will error).  This helps you in finding out why UB is
   happening and where in your code would be a good place to look for it.
   Specifying this argument multiple times does not overwrite the previous
