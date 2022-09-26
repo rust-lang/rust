@@ -1,6 +1,5 @@
-use crate::const_closure::ConstFnMutClosure;
 use crate::iter::{InPlaceIterable, Iterator};
-use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, NeverShortCircuit, Residual, Try};
+use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 mod array_chunks;
 mod by_ref_sized;
@@ -204,13 +203,7 @@ where
             .into_try()
     }
 
-    fn fold<B, F>(mut self, init: B, mut fold: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.try_fold(init, ConstFnMutClosure::new(&mut fold, NeverShortCircuit::wrap_mut_2_imp)).0
-    }
+    impl_fold_via_try_fold! { fold -> try_fold }
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
