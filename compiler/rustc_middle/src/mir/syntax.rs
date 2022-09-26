@@ -1242,7 +1242,6 @@ pub enum BinOp {
 mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
-    #[cfg(not(bootstrap))]
     static_assert_size!(AggregateKind<'_>, 40);
     static_assert_size!(Operand<'_>, 24);
     static_assert_size!(Place<'_>, 16);

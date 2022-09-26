@@ -3520,14 +3520,11 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
-    #[cfg(not(bootstrap))]
     static_assert_size!(GenericArg<'_>, 24);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
-    #[cfg(not(bootstrap))]
     static_assert_size!(ImplItem<'_>, 80);
-    #[cfg(not(bootstrap))]
     static_assert_size!(ImplItemKind<'_>, 32);
     static_assert_size!(Item<'_>, 80);
     static_assert_size!(ItemKind<'_>, 48);
@@ -3540,9 +3537,7 @@ mod size_asserts {
     static_assert_size!(QPath<'_>, 24);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
-    #[cfg(not(bootstrap))]
     static_assert_size!(TraitItem<'_>, 88);
-    #[cfg(not(bootstrap))]
     static_assert_size!(TraitItemKind<'_>, 48);
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);

@@ -54,8 +54,6 @@
 )]
 #![allow(missing_docs)]
 
-#[cfg(bootstrap)]
-use crate::marker::Destruct;
 use crate::marker::DiscriminantKind;
 use crate::mem;
 
@@ -1297,7 +1295,6 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     ///
     /// Consider using [`pointer::mask`] instead.
-    #[cfg(not(bootstrap))]
     pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
@@ -2022,16 +2019,7 @@ extern "rust-intrinsic" {
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-    #[cfg(not(bootstrap))]
     pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
-
-    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-    #[cfg(bootstrap)]
-    pub fn ptr_guaranteed_eq<T>(ptr: *const T, other: *const T) -> bool;
-
-    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-    #[cfg(bootstrap)]
-    pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
 
     /// Allocates a block of memory at compile time.
     /// At runtime, just returns a null pointer.
@@ -2143,7 +2131,6 @@ extern "rust-intrinsic" {
     /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
     /// which violates the principle that a `const fn` must behave the same at
     /// compile-time and at run-time. The unsafe code in crate B is fine.
-    #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
     pub fn const_eval_select<ARG, F, G, RET>(arg: ARG, called_in_const: F, called_at_rt: G) -> RET
     where
@@ -2214,16 +2201,6 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
     // If the absolute distance between the ptrs is at least as big as the size of the buffer,
     // they do not overlap.
     diff >= size
-}
-
-#[cfg(bootstrap)]
-pub const fn ptr_guaranteed_cmp(a: *const (), b: *const ()) -> u8 {
-    match (ptr_guaranteed_eq(a, b), ptr_guaranteed_ne(a, b)) {
-        (false, false) => 2,
-        (true, false) => 1,
-        (false, true) => 0,
-        (true, true) => unreachable!(),
-    }
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -2483,46 +2460,4 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
         assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
         write_bytes(dst, val, count)
     }
-}
-
-#[cfg(bootstrap)]
-#[unstable(
-    feature = "const_eval_select",
-    issue = "none",
-    reason = "const_eval_select will never be stable"
-)]
-#[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
-#[lang = "const_eval_select"]
-#[rustc_do_not_const_check]
-#[inline]
-pub const unsafe fn const_eval_select<ARG, F, G, RET>(
-    arg: ARG,
-    _called_in_const: F,
-    called_at_rt: G,
-) -> RET
-where
-    F: ~const FnOnce<ARG, Output = RET>,
-    G: FnOnce<ARG, Output = RET> + ~const Destruct,
-{
-    called_at_rt.call_once(arg)
-}
-
-#[cfg(bootstrap)]
-#[unstable(
-    feature = "const_eval_select",
-    issue = "none",
-    reason = "const_eval_select will never be stable"
-)]
-#[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
-#[lang = "const_eval_select_ct"]
-pub const unsafe fn const_eval_select_ct<ARG, F, G, RET>(
-    arg: ARG,
-    called_in_const: F,
-    _called_at_rt: G,
-) -> RET
-where
-    F: ~const FnOnce<ARG, Output = RET>,
-    G: FnOnce<ARG, Output = RET> + ~const Destruct,
-{
-    called_in_const.call_once(arg)
 }

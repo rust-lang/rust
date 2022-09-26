@@ -98,8 +98,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This is a bit safer than `as` because it wouldn't silently change the type if the code is
     /// refactored.
-    #[stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
     pub const fn cast_mut(self) -> *mut T {
         self as _
     }
@@ -568,7 +568,6 @@ impl<T: ?Sized> *const T {
     ///
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "ptr_mask", issue = "98290")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline(always)]

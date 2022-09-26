@@ -2535,7 +2535,6 @@ mod size_asserts {
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(Crate, 72); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
-    #[cfg(not(bootstrap))]
     static_assert_size!(GenericArg, 56);
     static_assert_size!(GenericArgs, 32);
     static_assert_size!(GenericParamDef, 56);

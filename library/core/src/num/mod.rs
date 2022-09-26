@@ -3,7 +3,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::intrinsics;
 use crate::mem;
@@ -59,7 +58,6 @@ pub use wrapping::Wrapping;
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_fp_fmt_parse))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for ParseFloatError {

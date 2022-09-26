@@ -5,7 +5,6 @@
 #![feature(drain_filter)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(lint_reasons)]
 #![feature(never_type)]
 #![feature(once_cell)]

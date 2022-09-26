@@ -2642,5 +2642,4 @@ impl_fn_for_zst! {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(bootstrap))]
 impl !crate::error::Error for &str {}

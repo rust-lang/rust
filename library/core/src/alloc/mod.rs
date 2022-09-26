@@ -21,7 +21,6 @@ pub use self::layout::LayoutErr;
 #[stable(feature = "alloc_layout_error", since = "1.50.0")]
 pub use self::layout::LayoutError;
 
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt;
 use crate::ptr::{self, NonNull};
@@ -34,7 +33,6 @@ use crate::ptr::{self, NonNull};
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct AllocError;
 
-#[cfg(not(bootstrap))]
 #[unstable(
     feature = "allocator_api",
     reason = "the precise API and guarantees it provides may be tweaked.",

@@ -34,7 +34,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
@@ -724,7 +723,6 @@ impl fmt::Display for Infallible {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "str_parse_error2", since = "1.8.0")]
 impl Error for Infallible {
     fn description(&self) -> &str {

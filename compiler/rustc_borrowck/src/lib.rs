@@ -3,7 +3,6 @@
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]

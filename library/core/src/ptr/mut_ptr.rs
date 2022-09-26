@@ -103,8 +103,8 @@ impl<T: ?Sized> *mut T {
     /// coercion.
     ///
     /// [`cast_mut`]: #method.cast_mut
-    #[stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
     pub const fn cast_const(self) -> *const T {
         self as _
     }
@@ -584,7 +584,6 @@ impl<T: ?Sized> *mut T {
     ///
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "ptr_mask", issue = "98290")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline(always)]

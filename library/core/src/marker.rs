@@ -806,7 +806,7 @@ pub trait Destruct {}
 /// The implementation of this trait is built-in and cannot be implemented
 /// for any user type.
 #[unstable(feature = "tuple_trait", issue = "none")]
-#[cfg_attr(not(bootstrap), lang = "tuple_trait")]
+#[lang = "tuple_trait"]
 #[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
 pub trait Tuple {}
 
