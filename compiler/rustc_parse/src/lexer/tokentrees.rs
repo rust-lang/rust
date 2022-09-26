@@ -8,6 +8,8 @@ use rustc_span::Span;
 
 pub(super) struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
+    /// The "next" token, which has been obtained from the `StringReader` but
+    /// not yet handled by the `TokenTreesReader`.
     token: Token,
     /// Stack of open delimiters and their spans. Used for error message.
     open_braces: Vec<(Delimiter, Span)>,
@@ -112,7 +114,7 @@ impl<'a> TokenTreesReader<'a> {
         // The span for beginning of the delimited section
         let pre_span = self.token.span;
 
-        // Parse the open delimiter.
+        // Move past the open delimiter.
         self.open_braces.push((delim, self.token.span));
         self.token = self.string_reader.next_token().0;
 
@@ -152,7 +154,7 @@ impl<'a> TokenTreesReader<'a> {
                 } else {
                     self.matching_delim_spans.push((open_brace, open_brace_span, close_brace_span));
                 }
-                // Parse the closing delimiter.
+                // Move past the closing delimiter.
                 self.token = self.string_reader.next_token().0;
             }
             // Incorrect delimiter.
@@ -208,7 +210,7 @@ impl<'a> TokenTreesReader<'a> {
                 // and an error emitted then. Thus we don't pop from
                 // self.open_braces here.
             }
-            _ => {}
+            _ => unreachable!(),
         }
 
         TokenTree::Delimited(delim_span, delim, tts)
