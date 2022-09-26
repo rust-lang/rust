@@ -1,6 +1,6 @@
 use crate::cmp;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
 ///
@@ -104,12 +104,7 @@ where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_fold(init, ok(fold)).unwrap()
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2_imp(fold)).0
     }
 
     #[inline]

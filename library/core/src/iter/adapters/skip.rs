@@ -1,6 +1,6 @@
 use crate::intrinsics::unlikely;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
 /// An iterator that skips over `n` elements of `iter`.
 ///
@@ -210,12 +210,7 @@ where
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        #[inline]
-        fn ok<Acc, T>(mut f: impl FnMut(Acc, T) -> Acc) -> impl FnMut(Acc, T) -> Result<Acc, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_rfold(init, ok(fold)).unwrap()
+        self.try_rfold(init, NeverShortCircuit::wrap_mut_2_imp(fold)).0
     }
 
     #[inline]

@@ -1,7 +1,7 @@
 use crate::char;
 use crate::convert::TryFrom;
 use crate::mem;
-use crate::ops::{self, Try};
+use crate::ops::{self, NeverShortCircuit, Try};
 
 use super::{
     FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
@@ -1156,12 +1156,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_fold(init, ok(f)).unwrap()
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2_imp(f)).0
     }
 
     #[inline]
@@ -1236,12 +1231,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_rfold(init, ok(f)).unwrap()
+        self.try_rfold(init, NeverShortCircuit::wrap_mut_2_imp(f)).0
     }
 }
 
