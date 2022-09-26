@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::Target;
+use crate::spec::{StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
@@ -13,6 +13,7 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.min_global_align = Some(16);
     base.static_position_independent_executables = true;
+    base.stack_probes = StackProbeType::Inline;
 
     Target {
         llvm_target: "s390x-unknown-linux-musl".into(),

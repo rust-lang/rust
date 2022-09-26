@@ -1,10 +1,11 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
     base.cpu = "ppc64le".into();
     base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64"]);
     base.max_atomic_width = Some(64);
+    base.stack_probes = StackProbeType::Inline;
 
     Target {
         llvm_target: "powerpc64le-unknown-linux-musl".into(),
