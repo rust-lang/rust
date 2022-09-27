@@ -108,7 +108,6 @@ impl<'tcx> JsonRenderer<'tcx> {
             .filter_map(|(&id, trait_item)| {
                 // only need to synthesize items for external traits
                 if !id.is_local() {
-                    let trait_item = &trait_item.trait_;
                     for item in &trait_item.items {
                         trace!("Adding subitem to {id:?}: {:?}", item.item_id);
                         self.item(item.clone()).unwrap();
