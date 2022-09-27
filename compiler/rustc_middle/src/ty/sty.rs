@@ -315,7 +315,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// closure.
     // FIXME(eddyb) this should be unnecessary, as the shallowly resolved
     // type is known at the time of the creation of `ClosureSubsts`,
-    // see `rustc_typeck::check::closure`.
+    // see `rustc_hir_analysis::check::closure`.
     pub fn sig_as_fn_ptr_ty(self) -> Ty<'tcx> {
         self.split().closure_sig_as_fn_ptr_ty.expect_ty()
     }
@@ -2121,7 +2121,7 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// Note that during type checking, we use an inference variable
     /// to represent the closure kind, because it has not yet been
-    /// inferred. Once upvar inference (in `rustc_typeck/src/check/upvar.rs`)
+    /// inferred. Once upvar inference (in `rustc_hir_analysis/src/check/upvar.rs`)
     /// is complete, that type variable will be unified.
     pub fn to_opt_closure_kind(self) -> Option<ty::ClosureKind> {
         match self.kind() {

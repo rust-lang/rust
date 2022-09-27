@@ -5,7 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{self as hir, def_id::DefId, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
-use rustc_typeck::hir_ty_to_ty;
+use rustc_hir_analysis::hir_ty_to_ty;
 
 use super::{utils, REDUNDANT_ALLOCATION};
 

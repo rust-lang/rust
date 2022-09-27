@@ -574,7 +574,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
-    /// Details may be find in `rustc_typeck::check::rvalue_scopes`.
+    /// Details may be find in `rustc_hir_analysis::check::rvalue_scopes`.
     pub rvalue_scopes: RvalueScopes,
 
     /// Stores the type, expression, span and optional scope span of all types

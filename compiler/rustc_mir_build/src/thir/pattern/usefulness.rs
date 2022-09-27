@@ -746,7 +746,7 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
 /// Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
 /// is not exhaustive enough.
 ///
-/// NB: The partner lint for structs lives in `compiler/rustc_typeck/src/check/pat.rs`.
+/// NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
 fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     scrut_ty: Ty<'tcx>,

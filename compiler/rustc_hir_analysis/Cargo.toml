@@ -1,5 +1,5 @@
 [package]
-name = "rustc_typeck"
+name = "rustc_hir_analysis"
 version = "0.0.0"
 edition = "2021"
 

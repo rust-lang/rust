@@ -38,7 +38,7 @@ pub enum CastTy<'tcx> {
 }
 
 /// Cast Kind. See [RFC 401](https://rust-lang.github.io/rfcs/0401-coercions.html)
-/// (or librustc_typeck/check/cast.rs).
+/// (or rustc_hir_analysis/check/cast.rs).
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum CastKind {
     CoercionCast,

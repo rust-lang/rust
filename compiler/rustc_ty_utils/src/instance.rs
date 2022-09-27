@@ -187,7 +187,7 @@ fn resolve_associated_item<'tcx>(
             // we know the error would've been caught (e.g. in an upstream crate).
             //
             // A better approach might be to just introduce a query (returning
-            // `Result<(), ErrorGuaranteed>`) for the check that `rustc_typeck`
+            // `Result<(), ErrorGuaranteed>`) for the check that `rustc_hir_analysis`
             // performs (i.e. that the definition's type in the `impl` matches
             // the declaration in the `trait`), so that we can cheaply check
             // here if it failed, instead of approximating it.

@@ -3394,6 +3394,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_hir",
+ "rustc_hir_analysis",
  "rustc_hir_pretty",
  "rustc_interface",
  "rustc_lint",
@@ -3407,7 +3408,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "rustc_typeck",
  "serde_json",
  "tracing",
  "winapi",
@@ -3513,6 +3513,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_hir_analysis"
+version = "0.0.0"
+dependencies = [
+ "rustc_arena",
+ "rustc_ast",
+ "rustc_attr",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_feature",
+ "rustc_graphviz",
+ "rustc_hir",
+ "rustc_hir_pretty",
+ "rustc_index",
+ "rustc_infer",
+ "rustc_lint",
+ "rustc_macros",
+ "rustc_middle",
+ "rustc_serialize",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
+ "rustc_trait_selection",
+ "rustc_ty_utils",
+ "rustc_type_ir",
+ "smallvec",
+ "tracing",
+]
+
+[[package]]
 name = "rustc_hir_pretty"
 version = "0.0.0"
 dependencies = [
@@ -3591,6 +3620,7 @@ dependencies = [
  "rustc_errors",
  "rustc_expand",
  "rustc_hir",
+ "rustc_hir_analysis",
  "rustc_incremental",
  "rustc_lint",
  "rustc_macros",
@@ -3613,7 +3643,6 @@ dependencies = [
  "rustc_trait_selection",
  "rustc_traits",
  "rustc_ty_utils",
- "rustc_typeck",
  "smallvec",
  "tracing",
  "winapi",
@@ -3923,12 +3952,12 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
+ "rustc_hir_analysis",
  "rustc_macros",
  "rustc_middle",
  "rustc_session",
  "rustc_span",
  "rustc_trait_selection",
- "rustc_typeck",
  "tracing",
 ]
 
@@ -4210,35 +4239,6 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "smallvec",
-]
-
-[[package]]
-name = "rustc_typeck"
-version = "0.0.0"
-dependencies = [
- "rustc_arena",
- "rustc_ast",
- "rustc_attr",
- "rustc_data_structures",
- "rustc_errors",
- "rustc_feature",
- "rustc_graphviz",
- "rustc_hir",
- "rustc_hir_pretty",
- "rustc_index",
- "rustc_infer",
- "rustc_lint",
- "rustc_macros",
- "rustc_middle",
- "rustc_serialize",
- "rustc_session",
- "rustc_span",
- "rustc_target",
- "rustc_trait_selection",
- "rustc_ty_utils",
- "rustc_type_ir",
- "smallvec",
- "tracing",
 ]
 
 [[package]]

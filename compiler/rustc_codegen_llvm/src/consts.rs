@@ -552,7 +552,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 // `#[used(compiler)]` is explicitly requested. This is to avoid similar breakage
                 // on other targets, in particular MachO targets have *their* static constructor
                 // lists broken if `llvm.compiler.used` is emitted rather than llvm.used. However,
-                // that check happens when assigning the `CodegenFnAttrFlags` in `rustc_typeck`,
+                // that check happens when assigning the `CodegenFnAttrFlags` in `rustc_hir_analysis`,
                 // so we don't need to take care of it here.
                 self.add_compiler_used_global(g);
             }

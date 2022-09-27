@@ -32,7 +32,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, BytePos, Span};
-use rustc_typeck::hir_ty_to_ty;
+use rustc_hir_analysis::hir_ty_to_ty;
 
 use std::borrow::{Borrow, Cow};
 

@@ -41,6 +41,7 @@ extern crate rustc_errors;
 extern crate rustc_expand;
 extern crate rustc_feature;
 extern crate rustc_hir;
+extern crate rustc_hir_analysis;
 extern crate rustc_hir_pretty;
 extern crate rustc_index;
 extern crate rustc_infer;
@@ -59,7 +60,6 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
-extern crate rustc_typeck;
 extern crate test;
 
 // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs

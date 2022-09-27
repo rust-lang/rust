@@ -581,7 +581,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
 }
 
 impl<'tcx> InferCtxtBuilder<'tcx> {
-    /// Used only by `rustc_typeck` during body type-checking/inference,
+    /// Used only by `rustc_hir_analysis` during body type-checking/inference,
     /// will initialize `in_progress_typeck_results` with fresh `TypeckResults`.
     /// Will also change the scope for opaque type defining use checks to the given owner.
     pub fn with_fresh_in_progress_typeck_results(mut self, table_owner: OwnerId) -> Self {

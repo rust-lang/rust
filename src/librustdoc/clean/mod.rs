@@ -17,6 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
@@ -26,7 +27,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, ExpnKind};
-use rustc_typeck::hir_ty_to_ty;
 
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
@@ -632,7 +632,7 @@ fn clean_ty_generics<'tcx>(
     let mut impl_trait = BTreeMap::<ImplTraitParam, Vec<GenericBound>>::default();
 
     // Bounds in the type_params and lifetimes fields are repeated in the
-    // predicates field (see rustc_typeck::collect::ty_generics), so remove
+    // predicates field (see rustc_hir_analysis::collect::ty_generics), so remove
     // them.
     let stripped_params = gens
         .params
