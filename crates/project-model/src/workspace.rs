@@ -518,9 +518,15 @@ fn project_json_to_crate_graph(
                     proc_macro,
                     krate.is_proc_macro,
                     if krate.display_name.is_some() {
-                        CrateOrigin::CratesIo { repo: krate.repository.clone() }
+                        CrateOrigin::CratesIo {
+                            repo: krate.repository.clone(),
+                            name: krate
+                                .display_name
+                                .clone()
+                                .map(|n| n.canonical_name().to_string()),
+                        }
                     } else {
-                        CrateOrigin::CratesIo { repo: None }
+                        CrateOrigin::CratesIo { repo: None, name: None }
                     },
                 ),
             )
@@ -740,14 +746,17 @@ fn detached_files_to_crate_graph(
         let detached_file_crate = crate_graph.add_crate_root(
             file_id,
             Edition::CURRENT,
-            display_name,
+            display_name.clone(),
             None,
             cfg_options.clone(),
             cfg_options.clone(),
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo {
+                repo: None,
+                name: display_name.map(|n| n.canonical_name().to_string()),
+            },
         );
 
         public_deps.add(detached_file_crate, &mut crate_graph);
@@ -923,7 +932,7 @@ fn add_target_crate_root(
         env,
         proc_macro,
         is_proc_macro,
-        CrateOrigin::CratesIo { repo: pkg.repository.clone() },
+        CrateOrigin::CratesIo { repo: pkg.repository.clone(), name: Some(pkg.name.clone()) },
     )
 }
 
