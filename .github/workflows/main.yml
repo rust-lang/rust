@@ -29,7 +29,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            env:
+              TARGET_TRIPLE: x86_64-unknown-linux-gnu
           - os: macos-latest
+            env:
+              TARGET_TRIPLE: x86_64-apple-darwin
           # cross-compile from Linux to Windows using mingw
           - os: ubuntu-latest
             env:
@@ -112,7 +116,7 @@ jobs:
       if: matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
       uses: actions/upload-artifact@v2
       with:
-        name: cg_clif-${{ runner.os }}
+        name: ${{ matrix.env.TARGET_TRIPLE }}
         path: cg_clif.tar.xz
 
     - name: Upload prebuilt cg_clif (cross compile)
@@ -132,6 +136,8 @@ jobs:
         include:
           # Native Windows build with MSVC
           - os: windows-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-msvc
           # cross-compile from Windows to Windows MinGW
           - os: windows-latest
             env:
@@ -211,5 +217,5 @@ jobs:
     - name: Upload prebuilt cg_clif
       uses: actions/upload-artifact@v2
       with:
-        name: cg_clif-${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}
+        name: ${{ matrix.env.TARGET_TRIPLE }}
         path: cg_clif.tar
