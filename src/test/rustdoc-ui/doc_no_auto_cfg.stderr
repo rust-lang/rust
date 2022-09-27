@@ -1,5 +1,5 @@
 error: this attribute can only be applied at the crate level
-  --> $DIR/doc_no_auto_cfg.rs:9:7
+  --> $DIR/doc_no_auto_cfg.rs:11:7
    |
 LL | #[doc(auto_cfg)]
    |       ^^^^^^^^
@@ -19,7 +19,7 @@ LL | #![doc(auto_cfg)]
    | ~~~~~~~~~~~~~~~~~
 
 error: this attribute can only be applied at the crate level
-  --> $DIR/doc_no_auto_cfg.rs:11:7
+  --> $DIR/doc_no_auto_cfg.rs:13:7
    |
 LL | #[doc(no_auto_cfg)]
    |       ^^^^^^^^^^^
@@ -32,29 +32,52 @@ help: to apply to the crate, use an inner attribute
 LL | #![doc(no_auto_cfg)]
    | ~~~~~~~~~~~~~~~~~~~~
 
+error: `doc(no_auto_cfg)` is enabled by default before the 2024 edition
+  --> $DIR/doc_no_auto_cfg.rs:3:8
+   |
+LL | #![doc(no_auto_cfg)]
+   |        ^^^^^^^^^^^
+   |
+   = note: `#[deny(unused_attributes)]` implied by `#[deny(warnings)]`
+
+error: `doc(no_auto_cfg)` is enabled by default before the 2024 edition
+  --> $DIR/doc_no_auto_cfg.rs:5:18
+   |
+LL | #![doc(auto_cfg, no_auto_cfg)]
+   |                  ^^^^^^^^^^^
+
+error: please don't specify both `doc(auto_cfg)` and `doc(no_auto_cfg)`
+  --> $DIR/doc_no_auto_cfg.rs:3:8
+   |
+LL | #![doc(no_auto_cfg)]
+   |        ^^^^^^^^^^^
+LL |
+LL | #![doc(auto_cfg, no_auto_cfg)]
+   |                  ----------- the other is specified here
+
 error: `#![doc(no_auto_cfg)]` attribute doesn't expect a value
-  --> $DIR/doc_no_auto_cfg.rs:4:8
+  --> $DIR/doc_no_auto_cfg.rs:6:8
    |
 LL | #![doc(no_auto_cfg(1))]
    |        ^^^^^^^^^^^^^^
 
 error: `#![doc(no_auto_cfg)]` attribute doesn't expect a value
-  --> $DIR/doc_no_auto_cfg.rs:5:8
+  --> $DIR/doc_no_auto_cfg.rs:7:8
    |
 LL | #![doc(no_auto_cfg = 1)]
    |        ^^^^^^^^^^^^^^^
 
 error: `#![doc(auto_cfg)]` attribute doesn't expect a value
-  --> $DIR/doc_no_auto_cfg.rs:6:8
+  --> $DIR/doc_no_auto_cfg.rs:8:8
    |
 LL | #![doc(auto_cfg(1))]
    |        ^^^^^^^^^^^
 
 error: `#![doc(auto_cfg)]` attribute doesn't expect a value
-  --> $DIR/doc_no_auto_cfg.rs:7:8
+  --> $DIR/doc_no_auto_cfg.rs:9:8
    |
 LL | #![doc(auto_cfg = 1)]
    |        ^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 9 previous errors
 
