@@ -11,9 +11,8 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/checked_add.rs:+1:9: +1:10
--         _2 = CheckedAdd(const 1_u32, const 1_u32); // scope 0 at $DIR/checked_add.rs:+1:18: +1:23
+          _2 = CheckedAdd(const 1_u32, const 1_u32); // scope 0 at $DIR/checked_add.rs:+1:18: +1:23
 -         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_u32, const 1_u32) -> bb1; // scope 0 at $DIR/checked_add.rs:+1:18: +1:23
-+         _2 = const (2_u32, false);       // scope 0 at $DIR/checked_add.rs:+1:18: +1:23
 +         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 1_u32, const 1_u32) -> bb1; // scope 0 at $DIR/checked_add.rs:+1:18: +1:23
       }
   

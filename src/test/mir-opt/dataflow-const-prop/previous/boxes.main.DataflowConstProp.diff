@@ -22,10 +22,8 @@
           StorageLive(_1);                 // scope 0 at $DIR/boxes.rs:+1:9: +1:10
           StorageLive(_2);                 // scope 0 at $DIR/boxes.rs:+1:13: +1:22
           StorageLive(_3);                 // scope 0 at $DIR/boxes.rs:+1:14: +1:22
--         _4 = SizeOf(i32);                // scope 2 at $DIR/boxes.rs:+1:14: +1:22
--         _5 = AlignOf(i32);               // scope 2 at $DIR/boxes.rs:+1:14: +1:22
-+         _4 = const 4_usize;              // scope 2 at $DIR/boxes.rs:+1:14: +1:22
-+         _5 = const 4_usize;              // scope 2 at $DIR/boxes.rs:+1:14: +1:22
+          _4 = SizeOf(i32);                // scope 2 at $DIR/boxes.rs:+1:14: +1:22
+          _5 = AlignOf(i32);               // scope 2 at $DIR/boxes.rs:+1:14: +1:22
           _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> bb1; // scope 2 at $DIR/boxes.rs:+1:14: +1:22
                                            // mir::Constant
                                            // + span: $DIR/boxes.rs:13:14: 13:22

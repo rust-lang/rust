@@ -17,8 +17,8 @@
 -         _3 = CheckedAdd(_2, const 1_u8); // scope 0 at $DIR/indirect.rs:+1:13: +1:29
 -         assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", move _2, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:+1:13: +1:29
 +         _2 = const 2_u8;                 // scope 0 at $DIR/indirect.rs:+1:13: +1:25
-+         _3 = const (3_u8, false);        // scope 0 at $DIR/indirect.rs:+1:13: +1:29
-+         assert(!const false, "attempt to compute `{} + {}`, which would overflow", move _2, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:+1:13: +1:29
++         _3 = CheckedAdd(const 2_u8, const 1_u8); // scope 0 at $DIR/indirect.rs:+1:13: +1:29
++         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_u8, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:+1:13: +1:29
       }
   
       bb1: {

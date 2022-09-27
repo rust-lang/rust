@@ -16,8 +16,7 @@
                                            // + span: $DIR/ref_deref.rs:5:6: 5:10
                                            // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[0])) }
           _2 = _4;                         // scope 0 at $DIR/ref_deref.rs:+1:6: +1:10
--         _1 = (*_2);                      // scope 0 at $DIR/ref_deref.rs:+1:5: +1:10
-+         _1 = const 4_i32;                // scope 0 at $DIR/ref_deref.rs:+1:5: +1:10
+          _1 = const 4_i32;                // scope 0 at $DIR/ref_deref.rs:+1:5: +1:10
           StorageDead(_2);                 // scope 0 at $DIR/ref_deref.rs:+1:10: +1:11
           StorageDead(_1);                 // scope 0 at $DIR/ref_deref.rs:+1:10: +1:11
           nop;                             // scope 0 at $DIR/ref_deref.rs:+0:11: +2:2
