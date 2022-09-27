@@ -24,10 +24,15 @@ mod libc {
     }
 }
 
-#[cfg(not(target_feature = "atomics"))]
 pub unsafe fn env_lock() -> impl Any {
-    // No need for a lock if we're single-threaded, but this function will need
-    // to get implemented for multi-threaded scenarios
+    cfg_if::cfg_if! {
+        if #[cfg(target_feature = "atomics")] {
+            todo!()
+        } else {
+            // No need for a lock if we're single-threaded, but this function will need
+            // to get implemented for multi-threaded scenarios
+        }
+    }
 }
 
 pub fn errno() -> i32 {
