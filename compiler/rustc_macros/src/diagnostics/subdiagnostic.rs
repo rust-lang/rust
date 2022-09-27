@@ -1,20 +1,18 @@
 #![deny(unused_must_use)]
 
 use crate::diagnostics::error::{
-    span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err, DiagnosticDeriveError,
+    invalid_attr, span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err,
+    DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span, FieldInfo,
-    FieldInnerTy, HasFieldMap, SetOnce,
+    build_field_mapping, report_error_if_not_applied_to_applicability,
+    report_error_if_not_applied_to_span, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap, SetOnce,
+    SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use std::collections::HashMap;
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, NestedMeta, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
-
-use super::error::invalid_attr;
-use super::utils::{SpannedOption, SubdiagnosticKind};
 
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
 pub(crate) struct SubdiagnosticDerive<'a> {
@@ -55,21 +53,11 @@ impl<'a> SubdiagnosticDerive<'a> {
 
             structure.bind_with(|_| synstructure::BindStyle::Move);
             let variants_ = structure.each_variant(|variant| {
-                // Build the mapping of field names to fields. This allows attributes to peek
-                // values from other fields.
-                let mut fields_map = HashMap::new();
-                for binding in variant.bindings() {
-                    let field = binding.ast();
-                    if let Some(ident) = &field.ident {
-                        fields_map.insert(ident.to_string(), quote! { #binding });
-                    }
-                }
-
                 let mut builder = SubdiagnosticDeriveBuilder {
                     diag: &diag,
                     variant,
                     span,
-                    fields: fields_map,
+                    fields: build_field_mapping(variant),
                     span_field: None,
                     applicability: None,
                     has_suggestion_parts: false,
@@ -111,7 +99,7 @@ struct SubdiagnosticDeriveBuilder<'a> {
 
     /// Store a map of field name to its corresponding field. This is built on construction of the
     /// derive builder.
-    fields: HashMap<String, TokenStream>,
+    fields: FieldMap,
 
     /// Identifier for the binding to the `#[primary_span]` field.
     span_field: SpannedOption<proc_macro2::Ident>,
