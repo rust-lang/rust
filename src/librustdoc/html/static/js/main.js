@@ -699,7 +699,7 @@ function loadCss(cssFileName) {
     window.rustdoc_add_line_numbers_to_examples = () => {
         onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
             const parent = x.parentNode;
-            const line_numbers = parent.querySelectorAll(".line-number");
+            const line_numbers = parent.querySelectorAll(".example-line-numbers");
             if (line_numbers.length > 0) {
                 return;
             }
@@ -709,7 +709,7 @@ function loadCss(cssFileName) {
                 elems.push(i + 1);
             }
             const node = document.createElement("pre");
-            addClass(node, "line-number");
+            addClass(node, "example-line-numbers");
             node.innerHTML = elems.join("\n");
             parent.insertBefore(node, x);
         });
@@ -718,7 +718,7 @@ function loadCss(cssFileName) {
     window.rustdoc_remove_line_numbers_from_examples = () => {
         onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
             const parent = x.parentNode;
-            const line_numbers = parent.querySelectorAll(".line-number");
+            const line_numbers = parent.querySelectorAll(".example-line-numbers");
             for (const node of line_numbers) {
                 parent.removeChild(node);
             }

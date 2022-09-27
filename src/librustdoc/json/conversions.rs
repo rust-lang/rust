@@ -272,7 +272,12 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         ConstantItem(c) => ItemEnum::Constant(c.into_tcx(tcx)),
         MacroItem(m) => ItemEnum::Macro(m.source),
         ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_tcx(tcx)),
-        PrimitiveItem(p) => ItemEnum::PrimitiveType(p.as_sym().to_string()),
+        PrimitiveItem(p) => {
+            ItemEnum::Primitive(Primitive {
+                name: p.as_sym().to_string(),
+                impls: Vec::new(), // Added in JsonRenderer::item
+            })
+        }
         TyAssocConstItem(ty) => ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: None },
         AssocConstItem(ty, default) => {
             ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }

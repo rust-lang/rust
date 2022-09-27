@@ -299,15 +299,6 @@ summary {
 
 /* Fix some style changes due to normalize.css 8 */
 
-td,
-th {
-	padding: 0;
-}
-
-table {
-	border-collapse: collapse;
-}
-
 button,
 input,
 optgroup,
@@ -578,7 +569,7 @@ h2.location a {
 	position: relative;
 }
 
-.example-wrap > pre.line-number {
+pre.example-line-numbers {
 	overflow: initial;
 	border: 1px solid;
 	padding: 13px 8px;
@@ -591,15 +582,15 @@ h2.location a {
 	text-decoration: underline;
 }
 
-.line-numbers {
+.src-line-numbers {
 	text-align: right;
 }
-.rustdoc:not(.source) .example-wrap > pre:not(.line-number) {
+.rustdoc:not(.source) .example-wrap > pre:not(.example-line-numbers) {
 	width: 100%;
 	overflow-x: auto;
 }
 
-.rustdoc:not(.source) .example-wrap > pre.line-numbers {
+.rustdoc:not(.source) .example-wrap > pre.src-line-numbers {
 	width: auto;
 	overflow-x: visible;
 }
@@ -612,14 +603,14 @@ h2.location a {
 	text-align: center;
 }
 
-.content > .example-wrap pre.line-numbers {
+.content > .example-wrap pre.src-line-numbers {
 	position: relative;
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
 }
-.line-numbers span {
+.src-line-numbers span {
 	cursor: pointer;
 }
 
@@ -695,6 +686,7 @@ pre, .rustdoc.source .example-wrap {
 	width: calc(100% - 2px);
 	overflow-x: auto;
 	display: block;
+	border-collapse: collapse;
 }
 
 .docblock table td {
@@ -2067,7 +2059,7 @@ in storage.js plus the media query with (min-width: 701px)
 	padding-bottom: 0;
 }
 
-.scraped-example:not(.expanded) .code-wrapper pre.line-numbers {
+.scraped-example:not(.expanded) .code-wrapper pre.src-line-numbers {
 	overflow-x: hidden;
 }
 
@@ -2113,12 +2105,12 @@ in storage.js plus the media query with (min-width: 701px)
 	bottom: 0;
 }
 
-.scraped-example .code-wrapper .line-numbers {
+.scraped-example .code-wrapper .src-line-numbers {
 	margin: 0;
 	padding: 14px 0;
 }
 
-.scraped-example .code-wrapper .line-numbers span {
+.scraped-example .code-wrapper .src-line-numbers span {
 	padding: 0 14px;
 }
 

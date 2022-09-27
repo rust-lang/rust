@@ -53,8 +53,8 @@ input:focus + .slider {
 	background-color: #fff;
 }
 
-.line-numbers span { color: #c67e2d; }
-.line-numbers .line-highlighted {
+.src-line-numbers span { color: #c67e2d; }
+.src-line-numbers .line-highlighted {
 	background-color: #FDFFD3 !important;
 }
 
@@ -125,7 +125,7 @@ body.source .example-wrap pre.rust a {
 .stab { background: #FFF5D6; border-color: #FFC600; }
 .stab.portability > code { background: none; }
 
-.line-numbers :target { background-color: transparent; }
+.src-line-numbers :target { background-color: transparent; }
 
 /* Code highlighting */
 pre.rust .kw { color: #8959A8; }
@@ -141,7 +141,7 @@ pre.rust .question-mark {
 	color: #ff9011;
 }
 
-.example-wrap > pre.line-number {
+pre.example-line-numbers {
 	border-color: #c7c7c7;
 }
 
