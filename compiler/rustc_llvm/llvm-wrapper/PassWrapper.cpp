@@ -1044,7 +1044,7 @@ extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
 extern "C" void LLVMRustSetModuleCodeModel(LLVMModuleRef M,
                                            LLVMRustCodeModel Model) {
   auto CM = fromRust(Model);
-  if (!CM.hasValue())
+  if (!CM)
     return;
   unwrap(M)->setCodeModel(*CM);
 }
