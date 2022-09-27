@@ -49,7 +49,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">unsafe_deref</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
-        <span class="punctuation">*</span><span class="parenthesis">(</span><span class="operator">&</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="keyword">as</span> <span class="punctuation">*</span><span class="keyword">const</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="parenthesis">)</span>
+        <span class="punctuation">*</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="keyword">as</span> <span class="punctuation">*</span><span class="keyword">const</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="parenthesis">)</span>
     <span class="brace">}</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 <span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable unsafe">MUT_GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
@@ -63,7 +63,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="keyword">struct</span> <span class="struct declaration">Struct</span> <span class="brace">{</span> <span class="field declaration">field</span><span class="colon">:</span> <span class="builtin_type">i32</span> <span class="brace">}</span>
 <span class="keyword">impl</span> <span class="struct">Struct</span> <span class="brace">{</span>
-    <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function associated declaration reference unsafe">unsafe_method</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+    <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function associated declaration reference unsafe">unsafe_method</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="brace">}</span>
 
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">repr</span><span class="parenthesis attribute">(</span><span class="none attribute">packed</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
@@ -78,11 +78,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">fn</span> <span class="function declaration">unsafe_trait_bound</span><span class="angle">&lt;</span><span class="type_param declaration">T</span><span class="colon">:</span> <span class="trait">UnsafeTrait</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="punctuation">_</span><span class="colon">:</span> <span class="type_param">T</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">DoTheAutoref</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated declaration reference trait">calls_autoref</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="keyword">fn</span> <span class="function associated declaration reference trait">calls_autoref</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
 <span class="keyword">impl</span> <span class="trait">DoTheAutoref</span> <span class="keyword">for</span> <span class="builtin_type">u16</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated declaration reference trait">calls_autoref</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+    <span class="keyword">fn</span> <span class="function associated declaration reference trait">calls_autoref</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="brace">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>

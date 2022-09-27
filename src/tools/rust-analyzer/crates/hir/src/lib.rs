@@ -39,7 +39,7 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
 use either::Either;
 use hir_def::{
-    adt::{ReprKind, VariantData},
+    adt::{ReprData, VariantData},
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     generics::{TypeOrConstParamData, TypeParamProvenance},
@@ -50,7 +50,7 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
-    FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
+    EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
     TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
@@ -73,7 +73,7 @@ use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
 use stdx::{impl_from, never};
 use syntax::{
-    ast::{self, HasAttrs as _, HasDocComments, HasName},
+    ast::{self, Expr, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNodePtr, TextRange, T,
 };
 
@@ -348,7 +348,10 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.id.into(),
             ModuleDef::Const(it) => it.id.into(),
             ModuleDef::Static(it) => it.id.into(),
-            _ => return Vec::new(),
+            ModuleDef::Variant(it) => {
+                EnumVariantId { parent: it.parent.into(), local_id: it.id }.into()
+            }
+            ModuleDef::BuiltinType(_) | ModuleDef::Macro(_) => return Vec::new(),
         };
 
         let module = match self.module(db) {
@@ -377,10 +380,10 @@ impl ModuleDef {
             ModuleDef::Function(it) => Some(it.into()),
             ModuleDef::Const(it) => Some(it.into()),
             ModuleDef::Static(it) => Some(it.into()),
+            ModuleDef::Variant(it) => Some(it.into()),
 
             ModuleDef::Module(_)
             | ModuleDef::Adt(_)
-            | ModuleDef::Variant(_)
             | ModuleDef::Trait(_)
             | ModuleDef::TypeAlias(_)
             | ModuleDef::Macro(_)
@@ -534,6 +537,12 @@ impl Module {
                 ModuleDef::Trait(t) => {
                     for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
                         emit_def_diagnostic(db, acc, diag);
+                    }
+                    acc.extend(decl.diagnostics(db))
+                }
+                ModuleDef::Adt(Adt::Enum(e)) => {
+                    for v in e.variants(db) {
+                        acc.extend(ModuleDef::Variant(v).diagnostics(db));
                     }
                     acc.extend(decl.diagnostics(db))
                 }
@@ -874,7 +883,7 @@ impl Struct {
         Type::from_def(db, self.id)
     }
 
-    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprKind> {
+    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprData> {
         db.struct_data(self.id).repr.clone()
     }
 
@@ -952,11 +961,32 @@ impl Enum {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
     }
+
+    /// The type of the enum variant bodies.
+    pub fn variant_body_ty(self, db: &dyn HirDatabase) -> Type {
+        Type::new_for_crate(
+            self.id.lookup(db.upcast()).container.krate(),
+            TyBuilder::builtin(match db.enum_data(self.id).variant_body_type() {
+                Either::Left(builtin) => hir_def::builtin_type::BuiltinType::Int(builtin),
+                Either::Right(builtin) => hir_def::builtin_type::BuiltinType::Uint(builtin),
+            }),
+        )
+    }
+
+    pub fn is_data_carrying(self, db: &dyn HirDatabase) -> bool {
+        self.variants(db).iter().any(|v| !matches!(v.kind(db), StructKind::Unit))
+    }
 }
 
 impl HasVisibility for Enum {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         db.enum_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
+impl From<&Variant> for DefWithBodyId {
+    fn from(&v: &Variant) -> Self {
+        DefWithBodyId::VariantId(v.into())
     }
 }
 
@@ -993,6 +1023,14 @@ impl Variant {
 
     pub(crate) fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
         db.enum_data(self.parent.id).variants[self.id].variant_data.clone()
+    }
+
+    pub fn value(self, db: &dyn HirDatabase) -> Option<Expr> {
+        self.source(db)?.value.expr()
+    }
+
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<ComputedExpr, ConstEvalError> {
+        db.const_eval_variant(self.into())
     }
 }
 
@@ -1129,8 +1167,9 @@ pub enum DefWithBody {
     Function(Function),
     Static(Static),
     Const(Const),
+    Variant(Variant),
 }
-impl_from!(Function, Const, Static for DefWithBody);
+impl_from!(Function, Const, Static, Variant for DefWithBody);
 
 impl DefWithBody {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -1138,6 +1177,7 @@ impl DefWithBody {
             DefWithBody::Const(c) => c.module(db),
             DefWithBody::Function(f) => f.module(db),
             DefWithBody::Static(s) => s.module(db),
+            DefWithBody::Variant(v) => v.module(db),
         }
     }
 
@@ -1146,6 +1186,7 @@ impl DefWithBody {
             DefWithBody::Function(f) => Some(f.name(db)),
             DefWithBody::Static(s) => Some(s.name(db)),
             DefWithBody::Const(c) => c.name(db),
+            DefWithBody::Variant(v) => Some(v.name(db)),
         }
     }
 
@@ -1155,6 +1196,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.ret_type(db),
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
+            DefWithBody::Variant(it) => it.parent.variant_body_ty(db),
         }
     }
 
@@ -1163,6 +1205,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.id.into(),
             DefWithBody::Static(it) => it.id.into(),
             DefWithBody::Const(it) => it.id.into(),
+            DefWithBody::Variant(it) => it.into(),
         }
     }
 
@@ -1379,6 +1422,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.into(),
             DefWithBody::Static(it) => it.into(),
             DefWithBody::Const(it) => it.into(),
+            DefWithBody::Variant(it) => it.into(),
         };
         for diag in hir_ty::diagnostics::incorrect_case(db, krate, def.into()) {
             acc.push(diag.into())
@@ -2940,7 +2984,7 @@ impl Type {
 
         let adt = adt_id.into();
         match adt {
-            Adt::Struct(s) => matches!(s.repr(db), Some(ReprKind::Packed)),
+            Adt::Struct(s) => matches!(s.repr(db), Some(ReprData { packed: true, .. })),
             _ => false,
         }
     }

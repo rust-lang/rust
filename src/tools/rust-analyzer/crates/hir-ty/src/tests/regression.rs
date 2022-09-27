@@ -1691,3 +1691,15 @@ fn macrostmts() -> u8 {
     "#,
     );
 }
+
+#[test]
+fn dyn_with_unresolved_trait() {
+    check_types(
+        r#"
+fn foo(a: &dyn DoesNotExist) {
+    a.bar();
+  //^&{unknown}
+}
+        "#,
+    );
+}

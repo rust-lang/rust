@@ -698,6 +698,7 @@ fn hover_enum_variant() {
     check(
         r#"
 enum Option<T> {
+    Some(T)
     /// The None variant
     Non$0e
 }
@@ -3528,6 +3529,112 @@ impl<const LEN: usize> Foo<LEN$0> {}
 }
 
 #[test]
+fn hover_const_eval_variant() {
+    // show hex for <10
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    /// This is a doc
+    A$0 = 1 << 3,
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            A = 8
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // show hex for >10
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    /// This is a doc
+    A$0 = (1 << 3) + (1 << 2),
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            A = 12 (0xC)
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // enums in const eval
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    A = 1,
+    /// This is a doc
+    B$0 = E::A as u8 + 1,
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            B = 2
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // unspecified variant should increment by one
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    A = 4,
+    /// This is a doc
+    B$0,
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            B = 5
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+}
+
+#[test]
 fn hover_const_eval() {
     // show hex for <10
     check(
@@ -3816,6 +3923,35 @@ fn foo() {
 
             ```rust
             const FOO: usize = 3
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+enum E {
+    /// This is a doc
+    A = 3,
+}
+fn foo(e: E) {
+    match e {
+        E::A$0 => (),
+        _ => ()
+    }
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            A = 3
             ```
 
             ---

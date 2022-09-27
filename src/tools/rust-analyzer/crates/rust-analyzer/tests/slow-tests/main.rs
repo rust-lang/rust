@@ -18,7 +18,6 @@ mod tidy;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
-use expect_test::expect;
 use lsp_types::{
     notification::DidOpenTextDocument,
     request::{
@@ -821,7 +820,10 @@ fn main() {
 }
 
 #[test]
+// FIXME: Re-enable once we can run proc-macro tests on rust-lang/rust-analyzer again
+#[cfg(FALSE)]
 fn resolve_proc_macro() {
+    use expect_test::expect;
     if skip_slow_tests() {
         return;
     }

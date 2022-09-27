@@ -6,8 +6,8 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
-    db::DefDatabase, expr::ExprId, BlockId, ConstId, ConstParamId, DefWithBodyId, FunctionId,
-    GenericDefId, ImplId, LifetimeParamId, LocalFieldId, TypeOrConstParamId, VariantId,
+    db::DefDatabase, expr::ExprId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId,
+    FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
 
@@ -43,9 +43,13 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::lower::const_param_ty_query)]
     fn const_param_ty(&self, def: ConstParamId) -> Ty;
 
-    #[salsa::invoke(crate::consteval::const_eval_query)]
+    #[salsa::invoke(crate::consteval::const_eval_variant_query)]
     #[salsa::cycle(crate::consteval::const_eval_recover)]
     fn const_eval(&self, def: ConstId) -> Result<ComputedExpr, ConstEvalError>;
+
+    #[salsa::invoke(crate::consteval::const_eval_query_variant)]
+    #[salsa::cycle(crate::consteval::const_eval_variant_recover)]
+    fn const_eval_variant(&self, def: EnumVariantId) -> Result<ComputedExpr, ConstEvalError>;
 
     #[salsa::invoke(crate::lower::impl_trait_query)]
     fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;
@@ -187,6 +191,9 @@ fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> 
         DefWithBodyId::StaticId(it) => db.static_data(it).name.clone().to_string(),
         DefWithBodyId::ConstId(it) => {
             db.const_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
+        }
+        DefWithBodyId::VariantId(it) => {
+            db.enum_data(it.parent).variants[it.local_id].name.to_string()
         }
     });
     db.infer_query(def)
