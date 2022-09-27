@@ -174,7 +174,7 @@ pub trait ValueAnalysis<'tcx> {
                 ValueOrPlace::Value(self.handle_constant(constant, state))
             }
             Operand::Copy(place) | Operand::Move(place) => {
-                // Do want want to handle moves different? Could flood place with bottom.
+                // Do we want to handle moves differently? Could flood place with bottom.
                 self.map()
                     .find(place.as_ref())
                     .map(ValueOrPlace::Place)
