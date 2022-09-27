@@ -354,6 +354,10 @@ impl GlobalState {
         }
     }
 
+    pub(crate) fn is_completed(&self, request: &lsp_server::Request) -> bool {
+        self.req_queue.incoming.is_completed(&request.id)
+    }
+
     fn send(&mut self, message: lsp_server::Message) {
         self.sender.send(message).unwrap()
     }

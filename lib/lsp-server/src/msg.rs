@@ -98,7 +98,7 @@ pub struct ResponseError {
 }
 
 #[derive(Clone, Copy, Debug)]
-#[allow(unused)]
+#[non_exhaustive]
 pub enum ErrorCode {
     // Defined by JSON RPC:
     ParseError = -32700,
