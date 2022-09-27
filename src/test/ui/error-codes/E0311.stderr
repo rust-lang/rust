@@ -16,8 +16,8 @@ LL |     with_restriction::<T>(x)
    |     ^^^^^^^^^^^^^^^^^^^^^
 help: consider adding an explicit lifetime bound...
    |
-LL | fn no_restriction<T: 'a>(x: &()) -> &() {
-   |                    ++++
+LL | fn no_restriction<'a, T: 'a>(x: &()) -> &() {
+   |                   +++  ++++
 
 error: aborting due to previous error
 
