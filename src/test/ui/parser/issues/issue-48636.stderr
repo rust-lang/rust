@@ -8,7 +8,7 @@ LL |     x: u8
 LL |     /// The ID of the parent core
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: doc comments must come before what they document, maybe a comment was intended with `//`?
+   = help: doc comments must come before what they document, if a comment was intended use `//`
 
 error: aborting due to previous error
 

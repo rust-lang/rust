@@ -760,8 +760,8 @@ impl<'a> Parser<'a> {
                 )
                 .span_label(self.token.span, "this doc comment doesn't document anything")
                 .help(
-                    "doc comments must come before what they document, maybe a \
-                    comment was intended with `//`?",
+                    "doc comments must come before what they document, if a comment was \
+                    intended use `//`",
                 )
                 .emit();
                 self.bump();
