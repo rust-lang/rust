@@ -34,6 +34,16 @@ enum OneFruit {
     Banana,
 }
 
+enum OneFruitNonZero {
+    Apple(!),
+    Banana(NonZeroU32),
+}
+
+enum TwoUninhabited {
+    A(!),
+    B(Void),
+}
+
 #[allow(unused)]
 fn generic<T: 'static>() {
     unsafe {
@@ -84,6 +94,12 @@ fn main() {
         let _val: [fn(); 2] = mem::zeroed(); //~ ERROR: does not permit zero-initialization
         let _val: [fn(); 2] = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
+        let _val: TwoUninhabited = mem::zeroed(); //~ ERROR: does not permit zero-initialization
+        let _val: TwoUninhabited = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
+        let _val: OneFruitNonZero = mem::zeroed(); //~ ERROR: does not permit zero-initialization
+        let _val: OneFruitNonZero = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
         // Things that can be zero, but not uninit.
         let _val: bool = mem::zeroed();
         let _val: bool = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
@@ -112,6 +128,16 @@ fn main() {
         let _val: *const [()] = mem::zeroed();
         let _val: *const [()] = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
+        // Things where 0 is okay due to rustc implementation details,
+        // but that are not guaranteed to keep working.
+        let _val: Result<i32, i32> = mem::zeroed();
+        let _val: Result<i32, i32> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
+        // Some things that happen to work due to rustc implementation details,
+        // but are not guaranteed to keep working.
+        let _val: OneFruit = mem::zeroed();
+        let _val: OneFruit = mem::uninitialized();
+
         // Transmute-from-0
         let _val: &'static i32 = mem::transmute(0usize); //~ ERROR: does not permit zero-initialization
         let _val: &'static [i32] = mem::transmute((0usize, 0usize)); //~ ERROR: does not permit zero-initialization
@@ -129,9 +155,5 @@ fn main() {
         let _val: bool = MaybeUninit::zeroed().assume_init();
         let _val: [bool; 0] = MaybeUninit::uninit().assume_init();
         let _val: [!; 0] = MaybeUninit::zeroed().assume_init();
-
-        // Some things that happen to work due to rustc implementation details,
-        // but are not guaranteed to keep working.
-        let _val: OneFruit = mem::uninitialized();
     }
 }

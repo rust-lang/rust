@@ -59,7 +59,11 @@ LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
    |                               help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `#[warn(invalid_value)]` on by default
-   = note: enums with no variants have no valid value
+note: enums with no inhabited variants have no valid value
+  --> $DIR/uninhabited-static.rs:4:1
+   |
+LL | enum Void {}
+   | ^^^^^^^^^
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/uninhabited-static.rs:16:32
@@ -76,7 +80,11 @@ LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
    |                                this code causes undefined behavior when executed
    |                                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: enums with no variants have no valid value
+note: enums with no inhabited variants have no valid value
+  --> $DIR/uninhabited-static.rs:4:1
+   |
+LL | enum Void {}
+   | ^^^^^^^^^
 
 error: aborting due to 6 previous errors; 2 warnings emitted
 

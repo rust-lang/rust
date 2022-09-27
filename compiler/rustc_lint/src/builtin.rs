@@ -46,8 +46,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::Instance;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, VariantDef};
 use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
@@ -2425,12 +2424,63 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             None
         }
 
-        /// Test if this enum has several actually "existing" variants.
-        /// Zero-sized uninhabited variants do not always have a tag assigned and thus do not "exist".
-        fn is_multi_variant<'tcx>(adt: ty::AdtDef<'tcx>) -> bool {
-            // As an approximation, we only count dataless variants. Those are definitely inhabited.
-            let existing_variants = adt.variants().iter().filter(|v| v.fields.is_empty()).count();
-            existing_variants > 1
+        /// Determines whether the given type is inhabited. `None` means that we don't know.
+        fn ty_inhabited<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<bool> {
+            use rustc_type_ir::sty::TyKind::*;
+            if !cx.tcx.type_uninhabited_from(cx.param_env.and(ty)).is_empty() {
+                // This is definitely uninhabited from some module.
+                return Some(false);
+            }
+            match ty.kind() {
+                Never => Some(false),
+                Int(_) | Uint(_) | Float(_) | Bool | Char | RawPtr(_) => Some(true),
+                // Fallback for more complicated types. (Note that `&!` might be considered
+                // uninhabited so references are "complicated", too.)
+                _ => None,
+            }
+        }
+        /// Determines whether a product type formed from a list of types is inhabited.
+        fn tys_inhabited<'tcx>(
+            cx: &LateContext<'tcx>,
+            tys: impl Iterator<Item = Ty<'tcx>>,
+        ) -> Option<bool> {
+            let mut definitely_inhabited = true; // with no fields, we are definitely inhabited.
+            for ty in tys {
+                match ty_inhabited(cx, ty) {
+                    // If any type is uninhabited, the product is uninhabited.
+                    Some(false) => return Some(false),
+                    // Otherwise go searching for a `None`.
+                    None => {
+                        // We don't know.
+                        definitely_inhabited = false;
+                    }
+                    Some(true) => {}
+                }
+            }
+            if definitely_inhabited { Some(true) } else { None }
+        }
+
+        fn variant_find_init_error<'tcx>(
+            cx: &LateContext<'tcx>,
+            variant: &VariantDef,
+            substs: ty::SubstsRef<'tcx>,
+            descr: &str,
+            init: InitKind,
+        ) -> Option<InitError> {
+            variant.fields.iter().find_map(|field| {
+                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|(mut msg, span)| {
+                    if span.is_none() {
+                        // Point to this field, should be helpful for figuring
+                        // out where the source of the error is.
+                        let span = cx.tcx.def_span(field.did);
+                        write!(&mut msg, " (in this {descr})").unwrap();
+                        (msg, Some(span))
+                    } else {
+                        // Just forward.
+                        (msg, span)
+                    }
+                })
+            })
         }
 
         /// Return `Some` only if we are sure this type does *not*
@@ -2468,7 +2518,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 RawPtr(_) if init == InitKind::Uninit => {
                     Some(("raw pointers must not be uninitialized".to_string(), None))
                 }
-                // Recurse and checks for some compound types.
+                // Recurse and checks for some compound types. (but not unions)
                 Adt(adt_def, substs) if !adt_def.is_union() => {
                     // First check if this ADT has a layout attribute (like `NonNull` and friends).
                     use std::ops::Bound;
@@ -2476,6 +2526,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         // We exploit here that `layout_scalar_valid_range` will never
                         // return `Bound::Excluded`.  (And we have tests checking that we
                         // handle the attribute correctly.)
+                        // We don't add a span since users cannot declare such types anyway.
                         (Bound::Included(lo), _) if lo > 0 => {
                             return Some((format!("`{}` must be non-null", ty), None));
                         }
@@ -2492,50 +2543,65 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         }
                         _ => {}
                     }
-                    // Now, recurse.
-                    match adt_def.variants().len() {
-                        0 => Some(("enums with no variants have no valid value".to_string(), None)),
-                        1 => {
-                            // Struct, or enum with exactly one variant.
-                            // Proceed recursively, check all fields.
-                            let variant = &adt_def.variant(VariantIdx::from_u32(0));
-                            variant.fields.iter().find_map(|field| {
-                                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(
-                                    |(mut msg, span)| {
-                                        if span.is_none() {
-                                            // Point to this field, should be helpful for figuring
-                                            // out where the source of the error is.
-                                            let span = cx.tcx.def_span(field.did);
-                                            write!(
-                                                &mut msg,
-                                                " (in this {} field)",
-                                                adt_def.descr()
-                                            )
-                                            .unwrap();
-                                            (msg, Some(span))
-                                        } else {
-                                            // Just forward.
-                                            (msg, span)
-                                        }
-                                    },
-                                )
-                            })
-                        }
-                        // Multi-variant enum.
-                        _ => {
-                            if init == InitKind::Uninit && is_multi_variant(*adt_def) {
-                                let span = cx.tcx.def_span(adt_def.did());
-                                Some((
-                                    "enums have to be initialized to a variant".to_string(),
-                                    Some(span),
-                                ))
-                            } else {
-                                // In principle, for zero-initialization we could figure out which variant corresponds
-                                // to tag 0, and check that... but for now we just accept all zero-initializations.
-                                None
-                            }
+                    // Handle structs.
+                    if adt_def.is_struct() {
+                        return variant_find_init_error(
+                            cx,
+                            adt_def.non_enum_variant(),
+                            substs,
+                            "struct field",
+                            init,
+                        );
+                    }
+                    // And now, enums.
+                    let span = cx.tcx.def_span(adt_def.did());
+                    let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
+                        let inhabited = tys_inhabited(
+                            cx,
+                            variant.fields.iter().map(|field| field.ty(cx.tcx, substs)),
+                        );
+                        let definitely_inhabited = match inhabited {
+                            // Entirely skip uninhbaited variants.
+                            Some(false) => return None,
+                            // Forward the others, but remember which ones are definitely inhabited.
+                            Some(true) => true,
+                            None => false,
+                        };
+                        Some((variant, definitely_inhabited))
+                    });
+                    let Some(first_variant) = potential_variants.next() else {
+                        return Some(("enums with no inhabited variants have no valid value".to_string(), Some(span)));
+                    };
+                    // So we have at least one potentially inhabited variant. Might we have two?
+                    let Some(second_variant) = potential_variants.next() else {
+                        // There is only one potentially inhabited variant. So we can recursively check that variant!
+                        return variant_find_init_error(
+                            cx,
+                            &first_variant.0,
+                            substs,
+                            "field of the only potentially inhabited enum variant",
+                            init,
+                        );
+                    };
+                    // So we have at least two potentially inhabited variants.
+                    // If we can prove that we have at least two *definitely* inhabited variants,
+                    // then we have a tag and hence leaving this uninit is definitely disallowed.
+                    // (Leaving it zeroed could be okay, depending on which variant is encoded as zero tag.)
+                    if init == InitKind::Uninit {
+                        let definitely_inhabited = (first_variant.1 as usize)
+                            + (second_variant.1 as usize)
+                            + potential_variants
+                                .filter(|(_variant, definitely_inhabited)| *definitely_inhabited)
+                                .count();
+                        if definitely_inhabited > 1 {
+                            return Some((
+                                "enums with multiple inhabited variants have to be initialized to a variant".to_string(),
+                                Some(span),
+                            ));
                         }
                     }
+                    // We couldn't find anything wrong here.
+                    None
                 }
                 Tuple(..) => {
                     // Proceed recursively, check all fields.

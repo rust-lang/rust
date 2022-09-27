@@ -40,11 +40,11 @@ LL | const BAR: [empty::Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
    |                                          this code causes undefined behavior when executed
    |                                          help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-note: enums with no variants have no valid value (in this struct field)
-  --> $DIR/validate_uninhabited_zsts.rs:16:22
+note: enums with no inhabited variants have no valid value
+  --> $DIR/validate_uninhabited_zsts.rs:13:5
    |
-LL |     pub struct Empty(Void);
-   |                      ^^^^
+LL |     enum Void {}
+   |     ^^^^^^^^^
 
 error: aborting due to 2 previous errors; 2 warnings emitted
 

@@ -7,7 +7,6 @@ show-text: true
 // Ayu theme
 local-storage: {
     "rustdoc-theme": "ayu",
-    "rustdoc-preferred-dark-theme": "ayu",
     "rustdoc-use-system-theme": "false",
 }
 reload:
@@ -23,16 +22,66 @@ assert-css: (
     {"color": "rgb(0, 150, 207)"},
 )
 
-// Checking the color for "keyword".
+// Checking the color of "keyword" text.
 assert-css: (
     "//*[@class='result-name']//*[text()='(keyword)']",
     {"color": "rgb(120, 135, 151)"},
+)
+
+// Checking the color of "keyword".
+assert-css: (
+    ".result-name .keyword",
+    {"color": "rgb(57, 175, 215)"},
+    ALL,
+)
+// Check the color of "struct".
+assert-css: (
+    ".result-name .struct",
+    {"color": "rgb(255, 160, 165)"},
+    ALL,
+)
+// Check the color of "associated type".
+assert-css: (
+    ".result-name .associatedtype",
+    {"color": "rgb(57, 175, 215)"},
+    ALL,
+)
+// Check the color of "type method".
+assert-css: (
+    ".result-name .tymethod",
+    {"color": "rgb(253, 214, 135)"},
+    ALL,
+)
+// Check the color of "method".
+assert-css: (
+    ".result-name .method",
+    {"color": "rgb(253, 214, 135)"},
+    ALL,
+)
+// Check the color of "struct field".
+assert-css: (
+    ".result-name .structfield",
+    {"color": "rgb(0, 150, 207)"},
+    ALL,
+)
+// Check the color of "macro".
+assert-css: (
+    ".result-name .macro",
+    {"color": "rgb(163, 122, 204)"},
+    ALL,
+)
+// Check the color of "fn".
+assert-css: (
+    ".result-name .fn",
+    {"color": "rgb(253, 214, 135)"},
+    ALL,
 )
 
 // Checking the `<a>` container.
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
     {"color": "rgb(0, 150, 207)", "background-color": "rgba(0, 0, 0, 0)"},
+    ALL,
 )
 
 // Checking color and background on hover.
@@ -49,7 +98,6 @@ assert-css: (
 // Dark theme
 local-storage: {
     "rustdoc-theme": "dark",
-    "rustdoc-preferred-dark-theme": "dark",
     "rustdoc-use-system-theme": "false",
 }
 reload:
@@ -69,6 +117,55 @@ assert-css: (
 assert-css: (
     "//*[@class='result-name']//*[text()='(keyword)']",
     {"color": "rgb(221, 221, 221)"},
+)
+
+// Checking the color of "keyword".
+assert-css: (
+    ".result-name .keyword",
+    {"color": "rgb(210, 153, 29)"},
+    ALL,
+)
+// Check the color of "struct".
+assert-css: (
+    ".result-name .struct",
+    {"color": "rgb(45, 191, 184)"},
+    ALL,
+)
+// Check the color of "associated type".
+assert-css: (
+    ".result-name .associatedtype",
+    {"color": "rgb(210, 153, 29)"},
+    ALL,
+)
+// Check the color of "type method".
+assert-css: (
+    ".result-name .tymethod",
+    {"color": "rgb(43, 171, 99)"},
+    ALL,
+)
+// Check the color of "method".
+assert-css: (
+    ".result-name .method",
+    {"color": "rgb(43, 171, 99)"},
+    ALL,
+)
+// Check the color of "struct field".
+assert-css: (
+    ".result-name .structfield",
+    {"color": "rgb(221, 221, 221)"},
+    ALL,
+)
+// Check the color of "macro".
+assert-css: (
+    ".result-name .macro",
+    {"color": "rgb(9, 189, 0)"},
+    ALL,
+)
+// Check the color of "fn".
+assert-css: (
+    ".result-name .fn",
+    {"color": "rgb(43, 171, 99)"},
+    ALL,
 )
 
 // Checking the `<a>` container.
@@ -109,6 +206,55 @@ assert-css: (
     {"color": "rgb(0, 0, 0)"},
 )
 
+// Checking the color of "keyword".
+assert-css: (
+    ".result-name .keyword",
+    {"color": "rgb(56, 115, 173)"},
+    ALL,
+)
+// Check the color of "struct".
+assert-css: (
+    ".result-name .struct",
+    {"color": "rgb(173, 55, 138)"},
+    ALL,
+)
+// Check the color of "associated type".
+assert-css: (
+    ".result-name .associatedtype",
+    {"color": "rgb(56, 115, 173)"},
+    ALL,
+)
+// Check the color of "type method".
+assert-css: (
+    ".result-name .tymethod",
+    {"color": "rgb(173, 124, 55)"},
+    ALL,
+)
+// Check the color of "method".
+assert-css: (
+    ".result-name .method",
+    {"color": "rgb(173, 124, 55)"},
+    ALL,
+)
+// Check the color of "struct field".
+assert-css: (
+    ".result-name .structfield",
+    {"color": "rgb(0, 0, 0)"},
+    ALL,
+)
+// Check the color of "macro".
+assert-css: (
+    ".result-name .macro",
+    {"color": "rgb(6, 128, 0)"},
+    ALL,
+)
+// Check the color of "fn".
+assert-css: (
+    ".result-name .fn",
+    {"color": "rgb(173, 124, 55)"},
+    ALL,
+)
+
 // Checking the `<a>` container.
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
@@ -132,7 +278,6 @@ goto: file://|DOC_PATH|/test_docs/index.html
 // this test is running on.
 local-storage: {
     "rustdoc-theme": "dark",
-    "rustdoc-preferred-dark-theme": "dark",
     "rustdoc-use-system-theme": "false",
 }
 // If the text isn't displayed, the browser doesn't compute color style correctly...
