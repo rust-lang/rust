@@ -184,7 +184,7 @@ fn scan_escape(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
 
             let value = hi * 16 + lo;
 
-            // For a byte literal verify that it is within ASCII range.
+            // For a non-byte literal verify that it is within ASCII range.
             if !mode.is_bytes() && !is_ascii(value) {
                 return Err(EscapeError::OutOfRangeHexEscape);
             }
