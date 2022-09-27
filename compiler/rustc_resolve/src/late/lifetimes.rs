@@ -1336,7 +1336,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                                         diag.multipart_suggestion("consider introducing a named lifetime parameter",
                                                                   vec![
-                                                                    (lifetime_ref.span, "&'a ".to_owned()),
+                                                                    (lifetime_ref.span.shrink_to_hi(), "'a ".to_owned()),
                                                                     (generics.span, "<'a>".to_owned())
                                                                   ], rustc_errors::Applicability::MaybeIncorrect);
                                         diag.emit();
