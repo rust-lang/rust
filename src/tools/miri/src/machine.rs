@@ -35,7 +35,6 @@ use crate::{
 pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture
 pub const STACK_ADDR: u64 = 32 * PAGE_SIZE; // not really about the "stack", but where we start assigning integer addresses to allocations
 pub const STACK_SIZE: u64 = 16 * PAGE_SIZE; // whatever
-pub const NUM_CPUS: u64 = 1;
 
 /// Extra data stored with each stack frame
 pub struct FrameData<'tcx> {
@@ -410,6 +409,8 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) gc_interval: u32,
     /// The number of blocks that passed since the last SbTag GC pass.
     pub(crate) since_gc: u32,
+    /// The number of CPUs to be reported by miri.
+    pub(crate) num_cpus: u32,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -489,6 +490,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             }),
             gc_interval: config.gc_interval,
             since_gc: 0,
+            num_cpus: config.num_cpus,
         }
     }
 

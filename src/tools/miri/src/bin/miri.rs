@@ -550,6 +550,13 @@ fn main() {
             } else {
                 show_error!("-Zmiri-extern-so-file `{}` does not exist", filename);
             }
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-num-cpus=") {
+            let num_cpus = match param.parse::<u32>() {
+                Ok(i) => i,
+                Err(err) => show_error!("-Zmiri-num-cpus requires a `u32`: {}", err),
+            };
+
+            miri_config.num_cpus = num_cpus;
         } else {
             // Forward to rustc.
             rustc_args.push(arg);

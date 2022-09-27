@@ -163,7 +163,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 )?;
                 // Set number of processors.
                 let num_cpus = system_info.offset(field_offsets[6], dword_layout, &this.tcx)?;
-                this.write_scalar(Scalar::from_int(NUM_CPUS, dword_layout.size), &num_cpus.into())?;
+                this.write_scalar(
+                    Scalar::from_int(this.machine.num_cpus, dword_layout.size),
+                    &num_cpus.into(),
+                )?;
             }
 
             // Thread-local storage
