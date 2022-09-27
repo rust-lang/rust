@@ -55,6 +55,7 @@ use std::fmt::{Debug, Formatter};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
@@ -549,8 +550,8 @@ impl Map {
         filter: &mut impl FnMut(Ty<'tcx>) -> bool,
     ) {
         if filter(ty) {
-            // Since downcasts are currently not allowed, this might fail.
-            let _ = self.register(local, projection);
+            // This might fail if `ty` is not scalar.
+            let _ = self.register_with_ty(local, projection, ty);
         }
         if max_derefs > 0 {
             if let Some(ty::TypeAndMut { ty, .. }) = ty.builtin_deref(false) {
@@ -560,33 +561,27 @@ impl Map {
             }
         }
         iter_fields(ty, tcx, |variant, field, ty| {
-            if let Some(variant) = variant {
-                projection.push(PlaceElem::Downcast(None, variant));
+            if variant.is_some() {
+                // Downcasts are currently not supported.
+                return;
             }
             projection.push(PlaceElem::Field(field, ty));
             self.register_with_filter_rec(tcx, max_derefs, local, projection, ty, filter);
             projection.pop();
-            if variant.is_some() {
-                projection.pop();
-            }
         });
     }
 
-    pub fn register<'tcx>(
+    fn make_place<'tcx>(
         &mut self,
         local: Local,
         projection: &[PlaceElem<'tcx>],
-    ) -> Result<(), ()> {
+    ) -> Result<PlaceIndex, ()> {
         // Get the base index of the local.
         let mut index =
             *self.locals.get_or_insert_with(local, || self.places.push(PlaceInfo::new(None)));
 
         // Apply the projection.
         for &elem in projection {
-            // For now, downcast is not allowed due to aliasing between variants (see #101168).
-            // Also, according to the documentation of [`Place`], a single-variant type can be
-            // projected with and without a [`ProjectionElem::Downcast`]. This creates an ambiguity
-            // that needs to be resolved.
             match elem {
                 PlaceElem::Downcast(..) => return Err(()),
                 _ => (),
@@ -601,9 +596,46 @@ impl Map {
             });
         }
 
+        Ok(index)
+    }
+
+    pub fn register<'tcx>(
+        &mut self,
+        local: Local,
+        projection: &[PlaceElem<'tcx>],
+        decls: &impl HasLocalDecls<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> Result<(), ()> {
+        projection
+            .iter()
+            .fold(PlaceTy::from_ty(decls.local_decls()[local].ty), |place_ty, &elem| {
+                place_ty.projection_ty(tcx, elem)
+            });
+
+        let place_ty = Place::ty_from(local, projection, decls, tcx);
+        if place_ty.variant_index.is_some() {
+            return Err(());
+        }
+        self.register_with_ty(local, projection, place_ty.ty)
+    }
+
+    fn register_with_ty<'tcx>(
+        &mut self,
+        local: Local,
+        projection: &[PlaceElem<'tcx>],
+        ty: Ty<'tcx>,
+    ) -> Result<(), ()> {
+        if !ty.is_scalar() {
+            // Currently, only scalar types are allowed, because they are atomic
+            // and therefore do not require invalidation of parent places.
+            return Err(());
+        }
+
+        let place = self.make_place(local, projection)?;
+
         // Allocate a value slot if it doesn't have one.
-        if self.places[index].value_index.is_none() {
-            self.places[index].value_index = Some(self.value_count.into());
+        if self.places[place].value_index.is_none() {
+            self.places[place].value_index = Some(self.value_count.into());
             self.value_count += 1;
         }
 
@@ -720,11 +752,13 @@ impl<V> HasTop for FlatSet<V> {
     }
 }
 
+/// Currently, we only track places through deref and field projections.
+///
+/// For now, downcast is not allowed due to aliasing between variants (see #101168).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ProjElem {
     Deref,
     Field(Field),
-    Downcast(VariantIdx),
 }
 
 impl<V, T> TryFrom<ProjectionElem<V, T>> for ProjElem {
@@ -734,7 +768,6 @@ impl<V, T> TryFrom<ProjectionElem<V, T>> for ProjElem {
         match value {
             ProjectionElem::Deref => Ok(ProjElem::Deref),
             ProjectionElem::Field(field, _) => Ok(ProjElem::Field(field)),
-            ProjectionElem::Downcast(_, variant) => Ok(ProjElem::Downcast(variant)),
             _ => Err(()),
         }
     }
@@ -800,7 +833,6 @@ fn debug_with_context_rec<V: Debug + Eq>(
                     format!("{}.{}", place_str, field.index())
                 }
             }
-            ProjElem::Downcast(variant) => format!("({} as #{})", place_str, variant.index()),
         };
         debug_with_context_rec(child, &child_place_str, new, old, map, f)?;
     }
