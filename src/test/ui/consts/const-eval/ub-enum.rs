@@ -1,5 +1,6 @@
 // stderr-per-bitwidth
 #![feature(never_type)]
+#![allow(invalid_value)]
 
 use std::mem;
 

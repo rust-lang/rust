@@ -41,7 +41,7 @@ enum OneFruitNonZero {
 
 enum TwoUninhabited {
     A(!),
-    B(!),
+    B(Void),
 }
 
 #[allow(unused)]

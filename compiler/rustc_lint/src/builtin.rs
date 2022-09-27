@@ -2425,8 +2425,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         }
 
         /// Determines whether the given type is inhabited. `None` means that we don't know.
-        fn ty_inhabited(ty: Ty<'_>) -> Option<bool> {
+        fn ty_inhabited<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<bool> {
             use rustc_type_ir::sty::TyKind::*;
+            if !cx.tcx.type_uninhabited_from(cx.param_env.and(ty)).is_empty() {
+                // This is definitely uninhabited from some module.
+                return Some(false);
+            }
             match ty.kind() {
                 Never => Some(false),
                 Int(_) | Uint(_) | Float(_) | Bool | Char | RawPtr(_) => Some(true),
@@ -2436,10 +2440,13 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             }
         }
         /// Determines whether a product type formed from a list of types is inhabited.
-        fn tys_inhabited<'tcx>(tys: impl Iterator<Item = Ty<'tcx>>) -> Option<bool> {
+        fn tys_inhabited<'tcx>(
+            cx: &LateContext<'tcx>,
+            tys: impl Iterator<Item = Ty<'tcx>>,
+        ) -> Option<bool> {
             let mut definitely_inhabited = true; // with no fields, we are definitely inhabited.
             for ty in tys {
-                match ty_inhabited(ty) {
+                match ty_inhabited(cx, ty) {
                     // If any type is uninhabited, the product is uninhabited.
                     Some(false) => return Some(false),
                     // Otherwise go searching for a `None`.
@@ -2550,6 +2557,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     let span = cx.tcx.def_span(adt_def.did());
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
                         let inhabited = tys_inhabited(
+                            cx,
                             variant.fields.iter().map(|field| field.ty(cx.tcx, substs)),
                         );
                         let definitely_inhabited = match inhabited {
