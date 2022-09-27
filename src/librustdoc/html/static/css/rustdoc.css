@@ -1116,13 +1116,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--right-side-color);
 }
 
-
-.impl-items .srclink, .impl .srclink, .methods .srclink {
-	/* Override header settings otherwise it's too bold */
-	font-weight: normal;
-	font-size: 1rem;
-}
-
 pre.rust .question-mark {
 	font-weight: bold;
 }
