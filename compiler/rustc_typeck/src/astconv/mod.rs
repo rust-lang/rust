@@ -601,7 +601,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             parent_substs
         } else {
-            self.create_substs_for_ast_path(
+            let (args, _) = self.create_substs_for_ast_path(
                 span,
                 item_def_id,
                 parent_substs,
@@ -609,8 +609,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 item_segment.args(),
                 item_segment.infer_args,
                 None,
-            )
-            .0
+            );
+
+            let assoc_bindings = self.create_assoc_bindings_for_generic_args(item_segment.args());
+            if let Some(b) = assoc_bindings.first() {
+                Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
+            }
+
+            args
         }
     }
 
