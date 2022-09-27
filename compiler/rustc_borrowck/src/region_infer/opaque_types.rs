@@ -2,7 +2,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
-use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt};
 use rustc_infer::traits::{Obligation, ObligationCause, TraitEngine};
@@ -248,9 +247,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // after producing an error for each of them.
         let definition_ty = instantiated_ty.ty.fold_with(&mut ReverseMapper::new(
             self.tcx,
-            opaque_type_key,
             map,
-            instantiated_ty.ty,
             instantiated_ty.span,
         ));
         debug!(?definition_ty);
@@ -427,13 +424,8 @@ fn check_opaque_type_parameter_valid(
 
 struct ReverseMapper<'tcx> {
     tcx: TyCtxt<'tcx>,
-
-    key: ty::OpaqueTypeKey<'tcx>,
     map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
     do_not_error: bool,
-
-    /// initially `Some`, set to `None` once error has been reported
-    hidden_ty: Option<Ty<'tcx>>,
 
     /// Span of function being checked.
     span: Span,
@@ -442,12 +434,10 @@ struct ReverseMapper<'tcx> {
 impl<'tcx> ReverseMapper<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        key: ty::OpaqueTypeKey<'tcx>,
         map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
-        hidden_ty: Ty<'tcx>,
         span: Span,
     ) -> Self {
-        Self { tcx, key, map, do_not_error: false, hidden_ty: Some(hidden_ty), span }
+        Self { tcx, map, do_not_error: false, span }
     }
 
     fn fold_kind_no_missing_regions_error(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
@@ -493,24 +483,10 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             }
         }
 
-        let generics = self.tcx().generics_of(self.key.def_id);
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
             None if self.do_not_error => self.tcx.lifetimes.re_static,
-            None if generics.parent.is_some() => {
-                if let Some(hidden_ty) = self.hidden_ty.take() {
-                    unexpected_hidden_region_diagnostic(
-                        self.tcx,
-                        self.tcx.def_span(self.key.def_id),
-                        hidden_ty,
-                        r,
-                        self.key,
-                    )
-                    .emit();
-                }
-                self.tcx.lifetimes.re_static
-            }
             None => {
                 self.tcx
                     .sess
