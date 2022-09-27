@@ -25,17 +25,17 @@
           StorageLive(_4);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:13: +3:19
           _4 = const {alloc1: *mut u32};   // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:13: +3:19
                                            // mir::Constant
-                                           // + span: $DIR/mutable_variable_no_prop.rs:10:13: 10:19
+                                           // + span: $DIR/mutable_variable_no_prop.rs:9:13: 9:19
                                            // + literal: Const { ty: *mut u32, val: Value(Scalar(alloc1)) }
           _3 = (*_4);                      // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:13: +3:19
           _1 = move _3;                    // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:9: +3:19
           StorageDead(_3);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:18: +3:19
           StorageDead(_4);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:19: +3:20
-          nop;                             // scope 2 at $DIR/mutable_variable_no_prop.rs:+2:5: +4:6
+          _2 = const ();                   // scope 2 at $DIR/mutable_variable_no_prop.rs:+2:5: +4:6
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_no_prop.rs:+4:5: +4:6
           StorageLive(_5);                 // scope 1 at $DIR/mutable_variable_no_prop.rs:+5:9: +5:10
           _5 = _1;                         // scope 1 at $DIR/mutable_variable_no_prop.rs:+5:13: +5:14
-          nop;                             // scope 0 at $DIR/mutable_variable_no_prop.rs:+0:11: +6:2
+          _0 = const ();                   // scope 0 at $DIR/mutable_variable_no_prop.rs:+0:11: +6:2
           StorageDead(_5);                 // scope 1 at $DIR/mutable_variable_no_prop.rs:+6:1: +6:2
           StorageDead(_1);                 // scope 0 at $DIR/mutable_variable_no_prop.rs:+6:1: +6:2
           return;                          // scope 0 at $DIR/mutable_variable_no_prop.rs:+6:2: +6:2

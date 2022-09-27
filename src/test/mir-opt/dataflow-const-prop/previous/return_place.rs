@@ -1,3 +1,4 @@
+// unit-test: DataflowConstProp
 // compile-flags: -C overflow-checks=on
 
 // EMIT_MIR return_place.add.DataflowConstProp.diff

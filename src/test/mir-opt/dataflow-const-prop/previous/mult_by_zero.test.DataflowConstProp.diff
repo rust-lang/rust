@@ -9,7 +9,7 @@
       bb0: {
           StorageLive(_2);                 // scope 0 at $DIR/mult_by_zero.rs:+1:5: +1:6
           _2 = _1;                         // scope 0 at $DIR/mult_by_zero.rs:+1:5: +1:6
-          _0 = const 0_i32;                // scope 0 at $DIR/mult_by_zero.rs:+1:5: +1:10
+          _0 = Mul(move _2, const 0_i32);  // scope 0 at $DIR/mult_by_zero.rs:+1:5: +1:10
           StorageDead(_2);                 // scope 0 at $DIR/mult_by_zero.rs:+1:9: +1:10
           return;                          // scope 0 at $DIR/mult_by_zero.rs:+2:2: +2:2
       }

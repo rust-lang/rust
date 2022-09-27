@@ -1,4 +1,4 @@
-// compile-flags: -O
+// unit-test: DataflowConstProp
 
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR repeat.main.DataflowConstProp.diff

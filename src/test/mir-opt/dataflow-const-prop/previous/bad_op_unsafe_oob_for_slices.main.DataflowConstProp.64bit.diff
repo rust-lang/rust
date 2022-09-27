@@ -27,9 +27,9 @@
           StorageLive(_3);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
           _9 = const main::promoted[0];    // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
                                            // mir::Constant
-                                           // + span: $DIR/bad_op_unsafe_oob_for_slices.rs:5:25: 5:35
+                                           // + span: $DIR/bad_op_unsafe_oob_for_slices.rs:6:25: 6:35
                                            // + literal: Const { ty: &[i32; 3], val: Unevaluated(main, [], Some(promoted[0])) }
-          _3 = _9;                         // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
+          _3 = &(*_9);                     // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
           _2 = &raw const (*_3);           // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
           _1 = move _2 as *const [i32] (Pointer(Unsize)); // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
           StorageDead(_2);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:34: +1:35
@@ -38,14 +38,16 @@
           StorageLive(_6);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:23: +3:24
           _6 = const 3_usize;              // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:23: +3:24
           _7 = Len((*_1));                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
-          _8 = Lt(const 3_usize, _7);      // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
-          assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, const 3_usize) -> bb1; // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
+-         _8 = Lt(_6, _7);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
+-         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb1; // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
++         _8 = Lt(const 3_usize, _7);      // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
++         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, const 3_usize) -> bb1; // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
       }
   
       bb1: {
           _5 = (*_1)[_6];                  // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
           StorageDead(_6);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:25: +3:26
-          nop;                             // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+2:5: +4:6
+          _0 = const ();                   // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+2:5: +4:6
           StorageDead(_5);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+4:5: +4:6
           StorageDead(_1);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+5:1: +5:2
           return;                          // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+5:2: +5:2

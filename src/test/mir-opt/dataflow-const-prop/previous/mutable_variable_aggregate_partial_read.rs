@@ -1,5 +1,4 @@
-// unit-test
-// compile-flags: -O
+// unit-test: DataflowConstProp
 
 // EMIT_MIR mutable_variable_aggregate_partial_read.main.DataflowConstProp.diff
 fn main() {

@@ -1,4 +1,4 @@
-// unit-test
+// unit-test: DataflowConstProp
 // EMIT_MIR ref_deref_project.main.PromoteTemps.diff
 // EMIT_MIR ref_deref_project.main.DataflowConstProp.diff
 

@@ -1,3 +1,4 @@
+// unit-test: DataflowConstProp
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR bad_op_unsafe_oob_for_slices.main.DataflowConstProp.diff
 #[allow(unconditional_panic)]

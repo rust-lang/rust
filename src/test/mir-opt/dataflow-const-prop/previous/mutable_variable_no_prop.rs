@@ -1,5 +1,4 @@
-// unit-test
-// compile-flags: -O
+// unit-test: DataflowConstProp
 
 static mut STATIC: u32 = 42;
 
