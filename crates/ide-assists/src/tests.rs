@@ -232,6 +232,7 @@ fn assist_order_field_struct() {
     assert_eq!(assists.next().expect("expected assist").label, "Generate a getter method");
     assert_eq!(assists.next().expect("expected assist").label, "Generate a mut getter method");
     assert_eq!(assists.next().expect("expected assist").label, "Generate a setter method");
+    assert_eq!(assists.next().expect("expected assist").label, "Convert to tuple struct");
     assert_eq!(assists.next().expect("expected assist").label, "Add `#[derive]`");
 }
 

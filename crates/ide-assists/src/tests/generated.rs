@@ -408,6 +408,47 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_named_struct_to_tuple_struct() {
+    check_doc_test(
+        "convert_named_struct_to_tuple_struct",
+        r#####"
+struct Point$0 { x: f32, y: f32 }
+
+impl Point {
+    pub fn new(x: f32, y: f32) -> Self {
+        Point { x, y }
+    }
+
+    pub fn x(&self) -> f32 {
+        self.x
+    }
+
+    pub fn y(&self) -> f32 {
+        self.y
+    }
+}
+"#####,
+        r#####"
+struct Point(f32, f32);
+
+impl Point {
+    pub fn new(x: f32, y: f32) -> Self {
+        Point(x, y)
+    }
+
+    pub fn x(&self) -> f32 {
+        self.0
+    }
+
+    pub fn y(&self) -> f32 {
+        self.1
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_to_guarded_return() {
     check_doc_test(
         "convert_to_guarded_return",
