@@ -1,0 +1,14 @@
+error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `size_of`
+  --> $DIR/safe-intrinsic-mismatch.rs:5:5
+   |
+LL |     fn size_of<T>() -> usize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `assume`
+  --> $DIR/safe-intrinsic-mismatch.rs:8:5
+   |
+LL |     fn assume(b: bool);
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
