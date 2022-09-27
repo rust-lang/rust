@@ -1025,8 +1025,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	font-size: 1.125rem;
 }
 #help-button span.top {
-	text-align: center;
-	display: block;
 	margin: 10px 0;
 	border-bottom: 1px solid var(--border-color);
 	padding-bottom: 4px;
@@ -1035,9 +1033,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 #help-button span.bottom {
 	clear: both;
 	border-top: 1px solid var(--border-color);
-}
-.side-by-side {
-	text-align: initial;
 }
 .side-by-side > div {
 	width: 50%;
