@@ -257,7 +257,9 @@ pre.rust a,
 }
 
 .content span.fn, .content a.fn,
-.content .fnname {
+.content .fnname,
+.content span.method, .content a.method,
+.content span.tymethod, .content a.tymethod {
 	color: var(--function-link-color);
 }
 
