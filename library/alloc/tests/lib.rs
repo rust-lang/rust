@@ -41,7 +41,6 @@
 #![feature(pointer_is_aligned)]
 #![feature(slice_flatten)]
 #![feature(thin_box)]
-#![feature(bench_black_box)]
 #![feature(strict_provenance)]
 #![feature(once_cell)]
 #![feature(drain_keep_rest)]

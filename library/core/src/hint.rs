@@ -217,7 +217,7 @@ pub fn spin_loop() {
 ///
 /// [`std::convert::identity`]: crate::convert::identity
 #[inline]
-#[unstable(feature = "bench_black_box", issue = "64102")]
+#[stable(feature = "bench_black_box", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
 pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)
