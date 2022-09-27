@@ -987,3 +987,79 @@ pub struct UnlabeledCfInWhileCondition<'a> {
     pub span: Span,
     pub cf_type: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes::cannot_inline_naked_function)]
+pub struct CannotInlineNakedFunction {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes::undefined_naked_function_abi)]
+pub struct UndefinedNakedFunctionAbi;
+
+#[derive(Diagnostic)]
+#[diag(passes::no_patterns)]
+pub struct NoPatterns {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::params_not_allowed)]
+#[help]
+pub struct ParamsNotAllowed {
+    #[primary_span]
+    pub span: Span,
+}
+
+pub struct NakedFunctionsAsmBlock {
+    pub span: Span,
+    pub multiple_asms: Vec<Span>,
+    pub non_asms: Vec<Span>,
+}
+
+impl IntoDiagnostic<'_> for NakedFunctionsAsmBlock {
+    fn into_diagnostic(
+        self,
+        handler: &rustc_errors::Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = handler.struct_span_err_with_code(
+            self.span,
+            rustc_errors::fluent::passes::naked_functions_asm_block,
+            error_code!(E0787),
+        );
+        for span in self.multiple_asms.iter() {
+            diag.span_label(*span, rustc_errors::fluent::passes::label_multiple_asm);
+        }
+        for span in self.non_asms.iter() {
+            diag.span_label(*span, rustc_errors::fluent::passes::label_non_asm);
+        }
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::naked_functions_operands, code = "E0787")]
+pub struct NakedFunctionsOperands {
+    #[primary_span]
+    pub unsupported_operands: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::naked_functions_asm_options, code = "E0787")]
+pub struct NakedFunctionsAsmOptions {
+    #[primary_span]
+    pub span: Span,
+    pub unsupported_options: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::naked_functions_must_use_noreturn, code = "E0787")]
+pub struct NakedFunctionsMustUseNoreturn {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = ", options(noreturn)", applicability = "machine-applicable")]
+    pub last_span: Span,
+}

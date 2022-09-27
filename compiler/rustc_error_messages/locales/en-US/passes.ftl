@@ -467,3 +467,31 @@ passes_unlabeled_in_labeled_block =
 passes_unlabeled_cf_in_while_condition =
     `break` or `continue` with no label in the condition of a `while` loop
     .label = unlabeled `{$cf_type}` in the condition of a `while` loop
+
+passes_cannot_inline_naked_function =
+    naked functions cannot be inlined
+
+passes_undefined_naked_function_abi =
+    Rust ABI is unsupported in naked functions
+
+passes_no_patterns =
+    patterns not allowed in naked function parameters
+
+passes_params_not_allowed =
+    referencing function parameters is not allowed in naked functions
+    .help = follow the calling convention in asm block to use parameters
+
+passes_naked_functions_asm_block =
+    naked functions must contain a single asm block
+    .label_multiple_asm = multiple asm blocks are unsupported in naked functions
+    .label_non_asm = non-asm is unsupported in naked functions
+
+passes_naked_functions_operands =
+    only `const` and `sym` operands are supported in naked functions
+
+passes_naked_functions_asm_options =
+    asm options unsupported in naked functions: {$unsupported_options}
+
+passes_naked_functions_must_use_noreturn =
+    asm in naked functions must use `noreturn` option
+    .suggestion = consider specifying that the asm block is responsible for returning from the function
