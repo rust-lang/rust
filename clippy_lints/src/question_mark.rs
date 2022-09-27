@@ -3,8 +3,8 @@ use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
-    eq_expr_value, get_parent_node, is_else_clause, is_lang_ctor, path_to_local, path_to_local_id, peel_blocks,
-    peel_blocks_with_stmt,
+    eq_expr_value, get_parent_node, in_constant, is_else_clause, is_lang_ctor, path_to_local, path_to_local_id,
+    peel_blocks, peel_blocks_with_stmt,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -222,7 +222,9 @@ fn expr_return_none_or_err(
 
 impl<'tcx> LateLintPass<'tcx> for QuestionMark {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        check_is_none_or_err_and_early_return(cx, expr);
-        check_if_let_some_or_err_and_early_return(cx, expr);
+        if !in_constant(cx, expr.hir_id) {
+            check_is_none_or_err_and_early_return(cx, expr);
+            check_if_let_some_or_err_and_early_return(cx, expr);
+        }
     }
 }
