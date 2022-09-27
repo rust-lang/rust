@@ -7,6 +7,7 @@
 #![feature(const_assume)]
 #![feature(const_black_box)]
 #![feature(const_bool_to_option)]
+#![feature(const_caller_location)]
 #![feature(const_cell_into_inner)]
 #![feature(const_convert)]
 #![feature(const_heap)]
@@ -131,6 +132,7 @@ mod num;
 mod ops;
 mod option;
 mod pattern;
+mod panic;
 mod pin;
 mod pin_macro;
 mod ptr;
