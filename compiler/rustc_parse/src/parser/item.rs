@@ -1291,12 +1291,10 @@ impl<'a> Parser<'a> {
     /// Parses an enum declaration.
     fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
         if self.token.is_keyword(kw::Struct) {
-            let mut err = self.struct_span_err(
-                self.prev_token.span.to(self.token.span),
-                "`enum` and `struct` are mutually exclusive",
-            );
+            let span = self.prev_token.span.to(self.token.span);
+            let mut err = self.struct_span_err(span, "`enum` and `struct` are mutually exclusive");
             err.span_suggestion(
-                self.prev_token.span.to(self.token.span),
+                span,
                 "replace `enum struct` with",
                 "enum",
                 Applicability::MachineApplicable,
@@ -1320,7 +1318,8 @@ impl<'a> Parser<'a> {
             (vec![], false)
         } else {
             self.parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant()).map_err(
-                |e| {
+                |mut e| {
+                    e.span_label(id.span, "while parsing this enum");
                     self.recover_stmt();
                     e
                 },
@@ -1347,7 +1346,8 @@ impl<'a> Parser<'a> {
 
                 let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
                     // Parse a struct variant.
-                    let (fields, recovered) = this.parse_record_struct_body("struct", false)?;
+                    let (fields, recovered) =
+                        this.parse_record_struct_body("struct", ident.span, false)?;
                     VariantData::Struct(fields, recovered)
                 } else if this.check(&token::OpenDelim(Delimiter::Parenthesis)) {
                     VariantData::Tuple(this.parse_tuple_struct_body()?, DUMMY_NODE_ID)
@@ -1401,8 +1401,11 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                let (fields, recovered) =
-                    self.parse_record_struct_body("struct", generics.where_clause.has_where_token)?;
+                let (fields, recovered) = self.parse_record_struct_body(
+                    "struct",
+                    class_name.span,
+                    generics.where_clause.has_where_token,
+                )?;
                 VariantData::Struct(fields, recovered)
             }
         // No `where` so: `struct Foo<T>;`
@@ -1410,8 +1413,11 @@ impl<'a> Parser<'a> {
             VariantData::Unit(DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(Delimiter::Brace) {
-            let (fields, recovered) =
-                self.parse_record_struct_body("struct", generics.where_clause.has_where_token)?;
+            let (fields, recovered) = self.parse_record_struct_body(
+                "struct",
+                class_name.span,
+                generics.where_clause.has_where_token,
+            )?;
             VariantData::Struct(fields, recovered)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(Delimiter::Parenthesis) {
@@ -1440,12 +1446,18 @@ impl<'a> Parser<'a> {
 
         let vdata = if self.token.is_keyword(kw::Where) {
             generics.where_clause = self.parse_where_clause()?;
-            let (fields, recovered) =
-                self.parse_record_struct_body("union", generics.where_clause.has_where_token)?;
+            let (fields, recovered) = self.parse_record_struct_body(
+                "union",
+                class_name.span,
+                generics.where_clause.has_where_token,
+            )?;
             VariantData::Struct(fields, recovered)
         } else if self.token == token::OpenDelim(Delimiter::Brace) {
-            let (fields, recovered) =
-                self.parse_record_struct_body("union", generics.where_clause.has_where_token)?;
+            let (fields, recovered) = self.parse_record_struct_body(
+                "union",
+                class_name.span,
+                generics.where_clause.has_where_token,
+            )?;
             VariantData::Struct(fields, recovered)
         } else {
             let token_str = super::token_descr(&self.token);
@@ -1461,6 +1473,7 @@ impl<'a> Parser<'a> {
     fn parse_record_struct_body(
         &mut self,
         adt_ty: &str,
+        ident_span: Span,
         parsed_where: bool,
     ) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
         let mut fields = Vec::new();
@@ -1475,6 +1488,7 @@ impl<'a> Parser<'a> {
                 match field {
                     Ok(field) => fields.push(field),
                     Err(mut err) => {
+                        err.span_label(ident_span, format!("while parsing this {adt_ty}"));
                         err.emit();
                         break;
                     }
