@@ -77,6 +77,9 @@ passes_doc_alias_malformed =
 
 passes_doc_auto_cfg_malformed = `#![doc({$attr_str})]` attribute doesn't expect a value
 
+passes_doc_both_auto_cfg = please don't specify both `doc(auto_cfg)` and `doc(no_auto_cfg)`
+    .label = the other is specified here
+
 passes_doc_no_auto_cfg_enabled_by_default = `doc(no_auto_cfg)` is enabled by default before the 2024 edition
 
 passes_doc_auto_cfg_enabled_by_default = `doc(auto_cfg)` is enabled by default since the 2024 edition

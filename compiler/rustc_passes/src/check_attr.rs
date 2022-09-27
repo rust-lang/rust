@@ -98,6 +98,7 @@ impl CheckAttrVisitor<'_> {
                     target,
                     &mut specified_inline,
                     &mut doc_aliases,
+                    &mut seen,
                 ),
                 sym::no_link => self.check_no_link(hir_id, &attr, span, target),
                 sym::export_name => self.check_export_name(hir_id, &attr, span, target),
@@ -948,15 +949,16 @@ impl CheckAttrVisitor<'_> {
 
     /// Checks that `doc(auto_cfg)` is valid (i.e. no value) and warn if it's used whereas the
     /// "equivalent feature" is already enabled.
-    fn check_auto_cfg(&self, meta: &MetaItem, hir_id: HirId) -> bool {
+    fn check_auto_cfg(&self, meta: &MetaItem, hir_id: HirId, seen: &mut FxHashMap<Symbol, Span>) -> bool {
         let name = meta.name_or_empty();
-        let mut is_valid = true;
         if !meta.is_word() {
             self.tcx
                 .sess
                 .emit_err(errors::DocAutoCfgMalformed { span: meta.span, attr_str: name.as_str() });
-            is_valid = false;
-        } else if name == sym::no_auto_cfg {
+            return false;
+        }
+        let mut is_valid = true;
+        let other = if name == sym::no_auto_cfg {
             if self.tcx.sess.edition() < Edition::Edition2024 {
                 self.tcx.emit_spanned_lint(
                     UNUSED_ATTRIBUTES,
@@ -966,6 +968,7 @@ impl CheckAttrVisitor<'_> {
                 );
                 is_valid = false;
             }
+            sym::auto_cfg
         } else {
             if self.tcx.sess.edition() > Edition::Edition2021 {
                 self.tcx.emit_spanned_lint(
@@ -976,7 +979,21 @@ impl CheckAttrVisitor<'_> {
                 );
                 is_valid = false;
             }
+            sym::no_auto_cfg
+        };
+
+        match seen.entry(other) {
+            Entry::Occupied(entry) => {
+                self.tcx
+                    .sess
+                    .emit_err(errors::BothDocAutoCfg { span: *entry.get(), attr_span: meta.span });
+                is_valid = false;
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(meta.span);
+            }
         }
+
         is_valid
     }
 
@@ -993,6 +1010,7 @@ impl CheckAttrVisitor<'_> {
         target: Target,
         specified_inline: &mut Option<(bool, Span)>,
         aliases: &mut FxHashMap<String, Span>,
+        seen: &mut FxHashMap<Symbol, Span>,
     ) -> bool {
         let mut is_valid = true;
 
@@ -1048,7 +1066,7 @@ impl CheckAttrVisitor<'_> {
                         }
 
                         sym::auto_cfg | sym::no_auto_cfg
-                            if !self.check_auto_cfg(i_meta, hir_id) => {
+                            if !self.check_auto_cfg(i_meta, hir_id, seen) => {
                             is_valid = false;
                         }
 

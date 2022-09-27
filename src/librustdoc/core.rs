@@ -245,6 +245,7 @@ pub(crate) fn create_config(
         rustc_lint::builtin::UNEXPECTED_CFGS.name.to_string(),
         // this lint is needed to support `#[expect]` attributes
         rustc_lint::builtin::UNFULFILLED_LINT_EXPECTATIONS.name.to_string(),
+        rustc_lint::builtin::UNUSED_ATTRIBUTES.name.to_string(),
     ];
     lints_to_show.extend(crate::lint::RUSTDOC_LINTS.iter().map(|lint| lint.name.to_string()));
 
