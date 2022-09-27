@@ -1428,7 +1428,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             item_name,
                             field_ty,
                             call_expr,
-                            ProbeScope::AllTraits,
+                            ProbeScope::TraitsInScope,
                         )
                         .ok()
                         .map(|pick| (variant, field, pick))
@@ -1500,59 +1500,88 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             item_name,
                             ty,
                             call_expr,
-                            ProbeScope::AllTraits,
+                            ProbeScope::TraitsInScope,
                         )  else { return; };
 
                 let name = self.ty_to_value_string(actual);
                 let inner_id = kind.did();
+                let mutable = if let Some(AutorefOrPtrAdjustment::Autoref { mutbl, .. }) =
+                    pick.autoref_or_ptr_adjustment
+                {
+                    Some(mutbl)
+                } else {
+                    None
+                };
 
                 if tcx.is_diagnostic_item(sym::LocalKey, inner_id) {
-                    err.help("use `with` or `try_with` to access the contents of threadlocals");
+                    err.help("use `with` or `try_with` to access thread local storage");
                 } else if Some(kind.did()) == tcx.lang_items().maybe_uninit() {
                     err.help(format!(
                         "if this `{name}` has been initialized, \
                         use one of the `assume_init` methods to access the inner value"
                     ));
                 } else if tcx.is_diagnostic_item(sym::RefCell, inner_id) {
-                    match pick.autoref_or_ptr_adjustment {
-                        Some(AutorefOrPtrAdjustment::Autoref {
-                            mutbl: Mutability::Not, ..
-                        }) => {
+                    match mutable {
+                        Some(Mutability::Not) => {
                             err.span_suggestion_verbose(
                                 expr.span.shrink_to_hi(),
                                 format!(
-                                    "use `.borrow()` to borrow the {ty}, \
-                                panicking if any outstanding mutable borrows exist."
+                                    "use `.borrow()` to borrow the `{ty}`, \
+                                    panicking if any outstanding mutable borrows exist."
                                 ),
                                 ".borrow()",
                                 Applicability::MaybeIncorrect,
                             );
                         }
-                        Some(AutorefOrPtrAdjustment::Autoref {
-                            mutbl: Mutability::Mut, ..
-                        }) => {
+                        Some(Mutability::Mut) => {
                             err.span_suggestion_verbose(
                                 expr.span.shrink_to_hi(),
                                 format!(
-                                    "use `.borrow_mut()` to mutably borrow the {ty}, \
-                                panicking if any outstanding borrows exist."
+                                    "use `.borrow_mut()` to mutably borrow the `{ty}`, \
+                                    panicking if any outstanding borrows exist."
                                 ),
                                 ".borrow_mut()",
                                 Applicability::MaybeIncorrect,
                             );
                         }
-                        _ => return,
+                        None => return,
                     }
                 } else if tcx.is_diagnostic_item(sym::Mutex, inner_id) {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
                         format!(
-                            "use `.lock()` to borrow the {ty}, \
+                            "use `.lock()` to borrow the `{ty}`, \
                             blocking the current thread until it can be acquired"
                         ),
                         ".lock().unwrap()",
                         Applicability::MaybeIncorrect,
                     );
+                } else if tcx.is_diagnostic_item(sym::RwLock, inner_id) {
+                    match mutable {
+                        Some(Mutability::Not) => {
+                            err.span_suggestion_verbose(
+                                expr.span.shrink_to_hi(),
+                                format!(
+                                    "use `.read()` to borrow the `{ty}`, \
+                                    blocking the current thread until it can be acquired"
+                                ),
+                                ".read().unwrap()",
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        Some(Mutability::Mut) => {
+                            err.span_suggestion_verbose(
+                                expr.span.shrink_to_hi(),
+                                format!(
+                                    "use `.write()` to mutably borrow the `{ty}`, \
+                                    blocking the current thread until it can be acquired"
+                                ),
+                                ".write().unwrap()",
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        None => return,
+                    }
                 } else {
                     return;
                 };

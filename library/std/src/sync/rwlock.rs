@@ -76,6 +76,7 @@ use crate::sys_common::rwlock as sys;
 ///
 /// [`Mutex`]: super::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "RwLock")]
 pub struct RwLock<T: ?Sized> {
     inner: sys::MovableRwLock,
     poison: poison::Flag,

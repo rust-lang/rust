@@ -17,7 +17,7 @@ thread_local! {
 fn main() {
     STRUCT.method();
     //~^ ERROR no method named `method` found for struct `LocalKey` in the current scope [E0599]
-    //~| HELP use `with` or `try_with` to access the contents of threadlocals
+    //~| HELP use `with` or `try_with` to access thread local storage
 
     let item = std::mem::MaybeUninit::new(Struct { p: 42_u32 });
     item.method();

@@ -276,6 +276,7 @@ symbols! {
         Rust,
         RustcDecodable,
         RustcEncodable,
+        RwLock,
         RwLockReadGuard,
         RwLockWriteGuard,
         Send,

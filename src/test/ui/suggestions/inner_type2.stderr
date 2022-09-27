@@ -4,7 +4,7 @@ error[E0599]: no method named `method` found for struct `LocalKey` in the curren
 LL |     STRUCT.method();
    |            ^^^^^^ method not found in `LocalKey<Struct<u32>>`
    |
-   = help: use `with` or `try_with` to access the contents of threadlocals
+   = help: use `with` or `try_with` to access thread local storage
 note: the method `method` exists on the type `Struct<u32>`
   --> $DIR/inner_type2.rs:6:5
    |
