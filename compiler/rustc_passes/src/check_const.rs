@@ -199,7 +199,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
             ..
         }) = item.kind
         {
-            let def_id = trait_ref.trait_def_id().unwrap();
+            let Some(def_id) = trait_ref.trait_def_id() else { return; };
             let source_map = tcx.sess.source_map();
             if !tcx.has_attr(def_id, sym::const_trait) {
                 tcx.sess
