@@ -1,0 +1,47 @@
+From eea3bbaed34ab210868c324219a862a9d5f4681c Mon Sep 17 00:00:00 2001
+From: Afonso Bordado <afonsobordado@az8.co>
+Date: Tue, 27 Sep 2022 08:13:58 +0100
+Subject: [PATCH] Disable rand tests on mingw
+
+---
+ rand_distr/src/pareto.rs            | 2 ++
+ rand_distr/tests/value_stability.rs | 4 ++++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/rand_distr/src/pareto.rs b/rand_distr/src/pareto.rs
+index 217899ed9a..5f8e2c9bbb 100644
+--- a/rand_distr/src/pareto.rs
++++ b/rand_distr/src/pareto.rs
+@@ -107,6 +107,8 @@ mod tests {
+     }
+
+     #[test]
++    // This is broken on x86_64-pc-windows-gnu presumably due to a broken powf implementation
++    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+     fn value_stability() {
+         fn test_samples<F: Float + core::fmt::Debug, D: Distribution<F>>(
+             distr: D, zero: F, expected: &[F],
+diff --git a/rand_distr/tests/value_stability.rs b/rand_distr/tests/value_stability.rs
+index 192ba748b7..10c6ac24f6 100644
+--- a/rand_distr/tests/value_stability.rs
++++ b/rand_distr/tests/value_stability.rs
+@@ -72,6 +72,8 @@ fn unit_disc_stability() {
+ }
+
+ #[test]
++// This is broken on x86_64-pc-windows-gnu
++#[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+ fn pareto_stability() {
+     test_samples(213, Pareto::new(1.0, 1.0).unwrap(), &[
+         1.0423688f32, 2.1235929, 4.132709, 1.4679428,
+@@ -143,6 +145,8 @@ fn inverse_gaussian_stability() {
+ }
+
+ #[test]
++// This is broken on x86_64-pc-windows-gnu
++#[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+ fn gamma_stability() {
+     // Gamma has 3 cases: shape == 1, shape < 1, shape > 1
+     test_samples(223, Gamma::new(1.0, 5.0).unwrap(), &[
+-- 
+2.30.1.windows.1

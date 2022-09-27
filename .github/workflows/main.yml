@@ -201,9 +201,6 @@ jobs:
         
         # This fails with a different output than expected 
         (Get-Content config.txt) -replace '(test.regex-shootout-regex-dna)', '# $1' |  Out-File config.txt
-        
-        # This only fails on x86_64-pc-windows-gnu when run from a windows host
-        (Get-Content config.txt) -replace '(test.rust-random/rand)', '# $1' |  Out-File config.txt
 
         ./y.exe test
 
