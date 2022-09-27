@@ -376,8 +376,6 @@ impl ParseSess {
     }
 
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -386,22 +384,16 @@ impl ParseSess {
     }
 
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.span_diagnostic.struct_warn(msg)
     }
 
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         self.span_diagnostic.struct_fatal(msg)
     }
 
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_diagnostic<G: EmissionGuarantee>(
         &self,
         msg: impl Into<DiagnosticMessage>,
