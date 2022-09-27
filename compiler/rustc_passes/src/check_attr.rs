@@ -949,7 +949,12 @@ impl CheckAttrVisitor<'_> {
 
     /// Checks that `doc(auto_cfg)` is valid (i.e. no value) and warn if it's used whereas the
     /// "equivalent feature" is already enabled.
-    fn check_auto_cfg(&self, meta: &MetaItem, hir_id: HirId, seen: &mut FxHashMap<Symbol, Span>) -> bool {
+    fn check_auto_cfg(
+        &self,
+        meta: &MetaItem,
+        hir_id: HirId,
+        seen: &mut FxHashMap<Symbol, Span>,
+    ) -> bool {
         let name = meta.name_or_empty();
         if !meta.is_word() {
             self.tcx
