@@ -172,9 +172,9 @@ function showSwitcher(isOldVersion) {
     const current_doc_version = window.location.pathname.split("/")[1];
     const version_picker = document.createElement("select");
 
-    version_picker.appendChild(createOption("stable", current_doc_version === "stable"));
-    version_picker.appendChild(createOption("beta", current_doc_version === "beta"));
     version_picker.appendChild(createOption("nightly", current_doc_version === "nightly"));
+    version_picker.appendChild(createOption("beta", current_doc_version === "beta"));
+    version_picker.appendChild(createOption("stable", current_doc_version === "stable"));
 
     for (let medium = get_current_version(); medium >= 0; --medium) {
         const version = `1.${medium}.0`;
