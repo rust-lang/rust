@@ -38,11 +38,14 @@ pub trait Trait {
 
     #[deprecated = "Whatever [`Foo`](#tadam)"]
     fn foo() {}
+    fn fooo();
 }
 
 impl Trait for Foo {
     type X = u32;
     const Y: u32 = 0;
+
+    fn fooo() {}
 }
 
 impl implementors::Whatever for Foo {
