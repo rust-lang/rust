@@ -10510,7 +10510,9 @@ public:
                   Value *Size;
                   if (funcName == "malloc")
                     Size = args[0];
-                  else if (funcName == "julia.gc_alloc_obj")
+                  else if (funcName == "julia.gc_alloc_obj" ||
+                           funcName == "jl_gc_alloc_typed" ||
+                           funcName == "ijl_gc_alloc_typed")
                     Size = args[1];
                   else
                     llvm_unreachable("Unknown allocation to upgrade");
@@ -10694,7 +10696,9 @@ public:
               Value *Size;
               if (funcName == "malloc")
                 Size = orig->getArgOperand(0);
-              else if (funcName == "julia.gc_alloc_obj")
+              else if (funcName == "julia.gc_alloc_obj" ||
+                       funcName == "jl_gc_alloc_typed" ||
+                       funcName == "ijl_gc_alloc_typed")
                 Size = orig->getArgOperand(1);
               else
                 llvm_unreachable("Unknown allocation to upgrade");
@@ -10768,7 +10772,10 @@ public:
                 funcName == "jl_alloc_array_1d" ||
                 funcName == "jl_alloc_array_2d" ||
                 funcName == "jl_alloc_array_3d" ||
-                funcName == "jl_array_copy" || funcName == "julia.gc_alloc_obj")
+                funcName == "jl_array_copy" ||
+                funcName == "julia.gc_alloc_obj" ||
+                funcName == "jl_gc_alloc_typed" ||
+                funcName == "ijl_gc_alloc_typed")
               return;
 
             // Otherwise if in reverse pass, free the newly created allocation.
@@ -10797,7 +10804,9 @@ public:
               Value *Size;
               if (funcName == "malloc")
                 Size = orig->getArgOperand(0);
-              else if (funcName == "julia.gc_alloc_obj")
+              else if (funcName == "julia.gc_alloc_obj" ||
+                       funcName == "jl_gc_alloc_typed" ||
+                       funcName == "ijl_gc_alloc_typed")
                 Size = orig->getArgOperand(1);
               else
                 llvm_unreachable("Unknown allocation to upgrade");
@@ -10879,7 +10888,9 @@ public:
             Value *Size;
             if (funcName == "malloc")
               Size = orig->getArgOperand(0);
-            else if (funcName == "julia.gc_alloc_obj")
+            else if (funcName == "julia.gc_alloc_obj" ||
+                     funcName == "jl_gc_alloc_typed" ||
+                     funcName == "ijl_gc_alloc_typed")
               Size = orig->getArgOperand(1);
             else
               llvm_unreachable("Unknown allocation to upgrade");
@@ -10949,7 +10960,8 @@ public:
           funcName == "ijl_alloc_array_1d" ||
           funcName == "ijl_alloc_array_2d" ||
           funcName == "ijl_alloc_array_3d" || funcName == "ijl_array_copy" ||
-          funcName == "julia.gc_alloc_obj") {
+          funcName == "julia.gc_alloc_obj" || funcName == "jl_gc_alloc_typed" ||
+          funcName == "ijl_gc_alloc_typed") {
         if (!primalNeededInReverse) {
           if (Mode == DerivativeMode::ReverseModeGradient ||
               Mode == DerivativeMode::ForwardModeSplit) {

@@ -649,7 +649,9 @@ public:
               funcName == "ijl_alloc_array_2d" ||
               funcName == "ijl_alloc_array_3d" ||
               funcName == "ijl_array_copy" ||
-              funcName == "julia.gc_alloc_obj") {
+              funcName == "julia.gc_alloc_obj" ||
+              funcName == "jl_gc_alloc_typed" ||
+              funcName == "ijl_gc_alloc_typed") {
             primalInitializationOfShadow = true;
           } else {
             shadowpromotable = false;
@@ -777,7 +779,9 @@ public:
                   funcName == "ijl_alloc_array_2d" ||
                   funcName == "ijl_alloc_array_3d" ||
                   funcName == "ijl_array_copy" ||
-                  funcName == "julia.gc_alloc_obj") {
+                  funcName == "julia.gc_alloc_obj" ||
+                  funcName == "jl_gc_alloc_typed" ||
+                  funcName == "ijl_gc_alloc_typed") {
                 if (!seenLoadLikeCall) {
                   loadLikeCalls.push_back(LoadLikeCall(CI, prev));
                   seenLoadLikeCall = true;
@@ -825,7 +829,9 @@ public:
                   funcName == "ijl_alloc_array_2d" ||
                   funcName == "ijl_alloc_array_3d" ||
                   funcName == "ijl_array_copy" ||
-                  funcName == "julia.gc_alloc_obj") {
+                  funcName == "julia.gc_alloc_obj" ||
+                  funcName == "jl_gc_alloc_typed" ||
+                  funcName == "ijl_gc_alloc_typed") {
                 primalInitializationOfShadow = true;
               } else {
                 shadowpromotable = false;
@@ -963,7 +969,9 @@ public:
               funcName == "ijl_alloc_array_2d" ||
               funcName == "ijl_alloc_array_3d" ||
               funcName == "ijl_array_copy" ||
-              funcName == "julia.gc_alloc_obj") {
+              funcName == "julia.gc_alloc_obj" ||
+              funcName == "jl_gc_alloc_typed" ||
+              funcName == "ijl_gc_alloc_typed") {
           }
         }
       }

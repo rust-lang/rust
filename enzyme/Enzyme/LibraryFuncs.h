@@ -47,7 +47,8 @@ static inline bool isAllocationFunction(const llvm::StringRef name,
     return true;
   if (name == "__rust_alloc" || name == "__rust_alloc_zeroed")
     return true;
-  if (name == "julia.gc_alloc_obj")
+  if (name == "julia.gc_alloc_obj" || name == "jl_gc_alloc_typed" ||
+      name == "ijl_gc_alloc_typed")
     return true;
   if (shadowHandlers.find(name.str()) != shadowHandlers.end())
     return true;
@@ -208,14 +209,8 @@ static inline void zeroKnownAllocation(llvm::IRBuilder<> &bb,
     return;
 
   Value *allocSize = argValues[0];
-  if (funcName == "julia.gc_alloc_obj") {
-    Type *tys[] = {PointerType::get(StructType::get(toZero->getContext()), 10)};
-    FunctionType *FT =
-        FunctionType::get(Type::getVoidTy(toZero->getContext()), tys, true);
-    bb.CreateCall(
-        bb.GetInsertBlock()->getParent()->getParent()->getOrInsertFunction(
-            "julia.write_barrier", FT),
-        toZero);
+  if (funcName == "julia.gc_alloc_obj" || funcName == "jl_gc_alloc_typed" ||
+      funcName == "ijl_gc_alloc_typed") {
     allocSize = argValues[1];
   }
   Value *dst_arg = toZero;
@@ -278,7 +273,9 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   if (allocationfn == "__rust_alloc" || allocationfn == "__rust_alloc_zeroed") {
     llvm_unreachable("todo - hook in rust allocation fns");
   }
-  if (allocationfn == "julia.gc_alloc_obj")
+  if (allocationfn == "julia.gc_alloc_obj" ||
+      allocationfn == "jl_gc_alloc_typed" ||
+      allocationfn == "ijl_gc_alloc_typed")
     return nullptr;
 
   if (allocationfn == "swift_allocObject") {
