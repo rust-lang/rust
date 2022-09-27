@@ -246,6 +246,8 @@ impl<'tcx> Queries<'tcx> {
                 // Don't do code generation if there were any errors
                 self.session().compile_status()?;
 
+                self.session().diagnostic().flush_delayed();
+
                 // Hook for UI tests.
                 Self::check_for_rustc_errors_attr(tcx);
 

@@ -1133,6 +1133,12 @@ impl Handler {
         );
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
+
+    pub fn flush_delayed(&self) {
+        let mut inner = self.inner.lock();
+        let bugs = std::mem::replace(&mut inner.delayed_span_bugs, Vec::new());
+        inner.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
+    }
 }
 
 impl HandlerInner {
