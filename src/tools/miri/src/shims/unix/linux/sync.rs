@@ -1,4 +1,4 @@
-use crate::concurrency::thread::Time;
+use crate::concurrency::thread::{Time, TimeoutCallback};
 use crate::*;
 use rustc_target::abi::{Align, Size};
 use std::time::SystemTime;
@@ -193,14 +193,7 @@ pub fn futex<'tcx>(
                     this.register_timeout_callback(
                         thread,
                         timeout_time,
-                        Box::new(move |this| {
-                            this.unblock_thread(thread);
-                            this.futex_remove_waiter(addr_usize, thread);
-                            let etimedout = this.eval_libc("ETIMEDOUT")?;
-                            this.set_last_error(etimedout)?;
-                            this.write_scalar(Scalar::from_machine_isize(-1, this), &dest)?;
-                            Ok(())
-                        }),
+                        Box::new(Callback { thread, addr_usize, dest }),
                     );
                 }
             } else {
@@ -258,4 +251,31 @@ pub fn futex<'tcx>(
     }
 
     Ok(())
+}
+
+struct Callback<'tcx> {
+    thread: ThreadId,
+    addr_usize: u64,
+    dest: PlaceTy<'tcx, Provenance>,
+}
+
+impl<'tcx> VisitMachineValues for Callback<'tcx> {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
+        let Callback { thread: _, addr_usize: _, dest } = self;
+        if let Place::Ptr(place) = **dest {
+            visit.visit(place);
+        }
+    }
+}
+
+impl<'mir, 'tcx: 'mir> TimeoutCallback<'mir, 'tcx> for Callback<'tcx> {
+    fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+        this.unblock_thread(self.thread);
+        this.futex_remove_waiter(self.addr_usize, self.thread);
+        let etimedout = this.eval_libc("ETIMEDOUT")?;
+        this.set_last_error(etimedout)?;
+        this.write_scalar(Scalar::from_machine_isize(-1, this), &self.dest)?;
+
+        Ok(())
+    }
 }

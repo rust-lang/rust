@@ -3,7 +3,7 @@ use std::time::SystemTime;
 use rustc_hir::LangItem;
 use rustc_middle::ty::{layout::TyAndLayout, query::TyCtxtAt, Ty};
 
-use crate::concurrency::thread::Time;
+use crate::concurrency::thread::{Time, TimeoutCallback};
 use crate::*;
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
@@ -856,20 +856,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.register_timeout_callback(
             active_thread,
             timeout_time,
-            Box::new(move |ecx| {
-                // We are not waiting for the condvar any more, wait for the
-                // mutex instead.
-                reacquire_cond_mutex(ecx, active_thread, mutex_id)?;
-
-                // Remove the thread from the conditional variable.
-                ecx.condvar_remove_waiter(id, active_thread);
-
-                // Set the return value: we timed out.
-                let etimedout = ecx.eval_libc("ETIMEDOUT")?;
-                ecx.write_scalar(etimedout, &dest)?;
-
-                Ok(())
-            }),
+            Box::new(Callback { active_thread, mutex_id, id, dest }),
         );
 
         Ok(())
@@ -895,6 +882,39 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // FIXME: delete interpreter state associated with this condvar.
 
         Ok(0)
+    }
+}
+
+struct Callback<'tcx> {
+    active_thread: ThreadId,
+    mutex_id: MutexId,
+    id: CondvarId,
+    dest: PlaceTy<'tcx, Provenance>,
+}
+
+impl<'tcx> VisitMachineValues for Callback<'tcx> {
+    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
+        let Callback { active_thread: _, mutex_id: _, id: _, dest } = self;
+        if let Place::Ptr(place) = **dest {
+            visit.visit(place);
+        }
+    }
+}
+
+impl<'mir, 'tcx: 'mir> TimeoutCallback<'mir, 'tcx> for Callback<'tcx> {
+    fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+        // We are not waiting for the condvar any more, wait for the
+        // mutex instead.
+        reacquire_cond_mutex(ecx, self.active_thread, self.mutex_id)?;
+
+        // Remove the thread from the conditional variable.
+        ecx.condvar_remove_waiter(self.id, self.active_thread);
+
+        // Set the return value: we timed out.
+        let etimedout = ecx.eval_libc("ETIMEDOUT")?;
+        ecx.write_scalar(etimedout, &self.dest)?;
+
+        Ok(())
     }
 }
 

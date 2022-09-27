@@ -32,9 +32,9 @@ pub enum SchedulingAction {
 
 /// Timeout callbacks can be created by synchronization primitives to tell the
 /// scheduler that they should be called once some period of time passes.
-type TimeoutCallback<'mir, 'tcx> = Box<
-    dyn FnOnce(&mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx> + 'tcx,
->;
+pub trait TimeoutCallback<'mir, 'tcx>: VisitMachineValues + 'tcx {
+    fn call(&self, ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx>;
+}
 
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -252,7 +252,7 @@ struct TimeoutCallbackInfo<'mir, 'tcx> {
     /// The callback should be called no earlier than this time.
     call_time: Time,
     /// The called function.
-    callback: TimeoutCallback<'mir, 'tcx>,
+    callback: Box<dyn TimeoutCallback<'mir, 'tcx>>,
 }
 
 impl<'mir, 'tcx> std::fmt::Debug for TimeoutCallbackInfo<'mir, 'tcx> {
@@ -542,7 +542,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         &mut self,
         thread: ThreadId,
         call_time: Time,
-        callback: TimeoutCallback<'mir, 'tcx>,
+        callback: Box<dyn TimeoutCallback<'mir, 'tcx>>,
     ) {
         self.timeout_callbacks
             .try_insert(thread, TimeoutCallbackInfo { call_time, callback })
@@ -558,7 +558,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     fn get_ready_callback(
         &mut self,
         clock: &Clock,
-    ) -> Option<(ThreadId, TimeoutCallback<'mir, 'tcx>)> {
+    ) -> Option<(ThreadId, Box<dyn TimeoutCallback<'mir, 'tcx>>)> {
         // We iterate over all threads in the order of their indices because
         // this allows us to have a deterministic scheduler.
         for thread in self.threads.indices() {
@@ -931,7 +931,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         thread: ThreadId,
         call_time: Time,
-        callback: TimeoutCallback<'mir, 'tcx>,
+        callback: Box<dyn TimeoutCallback<'mir, 'tcx>>,
     ) {
         let this = self.eval_context_mut();
         if !this.machine.communicate() && matches!(call_time, Time::RealTime(..)) {
@@ -970,7 +970,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // 2. Make the scheduler the only place that can change the active
         //    thread.
         let old_thread = this.set_active_thread(thread);
-        callback(this)?;
+        callback.call(this)?;
         this.set_active_thread(old_thread);
         Ok(())
     }

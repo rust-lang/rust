@@ -1,5 +1,6 @@
 use std::time::{Duration, SystemTime};
 
+use crate::concurrency::thread::TimeoutCallback;
 use crate::*;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
@@ -218,10 +219,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.register_timeout_callback(
             active_thread,
             Time::Monotonic(timeout_time),
-            Box::new(move |ecx| {
-                ecx.unblock_thread(active_thread);
-                Ok(())
-            }),
+            Box::new(Callback { active_thread }),
         );
 
         Ok(0)
@@ -244,12 +242,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.register_timeout_callback(
             active_thread,
             Time::Monotonic(timeout_time),
-            Box::new(move |ecx| {
-                ecx.unblock_thread(active_thread);
-                Ok(())
-            }),
+            Box::new(Callback { active_thread }),
         );
 
+        Ok(())
+    }
+}
+
+struct Callback {
+    active_thread: ThreadId,
+}
+
+impl VisitMachineValues for Callback {
+    fn visit_machine_values(&self, _visit: &mut ProvenanceVisitor) {}
+}
+
+impl<'mir, 'tcx: 'mir> TimeoutCallback<'mir, 'tcx> for Callback {
+    fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+        ecx.unblock_thread(self.active_thread);
         Ok(())
     }
 }
