@@ -8,7 +8,7 @@
 
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::{struct_span_err};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
@@ -23,7 +23,6 @@ use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use std::fmt;
-
 
 trait RegionExt {
     fn early(hir_map: Map<'_>, param: &GenericParam<'_>) -> (LocalDefId, Region);
@@ -1320,21 +1319,29 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {
 
-                        match self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.to_def_id().as_local().unwrap()) {
+                        match self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.def_id) {
                             Some(generics) => {
                                 for i in 0..generics.params.len()  {
 
                                     if !generics.span.contains(generics.params[i].span)  {
-                                        struct_span_err!(
-                                            self.tcx.sess,
+
+                                        let mut diag =  rustc_session::parse::feature_err(
+                                            &self.tcx.sess.parse_sess,
+                                            sym::anonymous_lifetime_in_impl_trait,
                                             lifetime_ref.span,
-                                            E0106,
-                                            "missing lifetime specifier"
-                                            )
-                                            .span_label(lifetime_ref.span, "expected named lifetime parameter")
-                                            .span_help(generics.span, "consider introducing a named lifetime parameter")
-                                            .emit();
-                                            return;
+                                            "anonymous lifetimes in `impl Trait` are unstable",
+                                        );
+
+                                        diag.span_label(lifetime_ref.span, "expected named lifetime parameter");
+
+                                        diag.multipart_suggestion("consider introducing a named lifetime parameter",
+                                                                  vec![
+                                                                    (lifetime_ref.span, "&'a ".to_owned()),
+                                                                    (generics.span, "<'a>".to_owned())
+                                                                  ], rustc_errors::Applicability::MaybeIncorrect);
+                                        diag.emit();
+
+                                        return;
                                     }
                                 }
                             },
