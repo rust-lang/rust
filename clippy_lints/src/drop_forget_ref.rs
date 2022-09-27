@@ -204,11 +204,11 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
         {
             let arg_ty = cx.typeck_results().expr_ty(arg);
             let is_copy = is_copy(cx, arg_ty);
-            let drop_is_only_expr_in_arm = and_only_expr_in_arm(cx, arg, expr);
+            let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
             let (lint, msg) = match fn_name {
                 sym::mem_drop if arg_ty.is_ref() => (DROP_REF, DROP_REF_SUMMARY),
                 sym::mem_forget if arg_ty.is_ref() => (FORGET_REF, FORGET_REF_SUMMARY),
-                sym::mem_drop if is_copy && !drop_is_only_expr_in_arm => (DROP_COPY, DROP_COPY_SUMMARY),
+                sym::mem_drop if is_copy && !drop_is_single_call_in_arm => (DROP_COPY, DROP_COPY_SUMMARY),
                 sym::mem_forget if is_copy => (FORGET_COPY, FORGET_COPY_SUMMARY),
                 sym::mem_drop if is_type_lang_item(cx, arg_ty, LangItem::ManuallyDrop) => {
                     span_lint_and_help(
@@ -225,7 +225,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                     if !(arg_ty.needs_drop(cx.tcx, cx.param_env)
                         || is_must_use_func_call(cx, arg)
                         || is_must_use_ty(cx, arg_ty)
-                        || drop_is_only_expr_in_arm
+                        || drop_is_single_call_in_arm
                         ) =>
                 {
                     (DROP_NON_DROP, DROP_NON_DROP_SUMMARY)
@@ -252,7 +252,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
 //     <pat> => drop(fn_with_side_effect_and_returning_some_value()),
 //     ..
 // }
-fn and_only_expr_in_arm<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'_>, drop_expr: &'tcx Expr<'_>) -> bool {
+fn is_single_call_in_arm<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'_>, drop_expr: &'tcx Expr<'_>) -> bool {
     if matches!(arg.kind, ExprKind::Call(..) | ExprKind::MethodCall(..)) {
         let parent_node = get_parent_node(cx.tcx, drop_expr.hir_id);
         if let Some(Node::Arm(Arm { body, .. })) = &parent_node {
