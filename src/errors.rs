@@ -4,13 +4,12 @@ use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 
-struct ExitCode {
-    pub exit_code: Option<i32>,
-}
+struct ExitCode(Option<i32>);
 
 impl IntoDiagnosticArg for ExitCode {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        match self.exit_code {
+        let ExitCode(exit_code) = self;
+        match exit_code {
             Some(t) => t.into_diagnostic_arg(),
             None => DiagnosticArgValue::Str(Cow::Borrowed("None")),
         }
@@ -25,8 +24,7 @@ pub(crate) struct RanlibFailure {
 
 impl RanlibFailure {
     pub fn new(exit_code: Option<i32>) -> Self {
-        let exit_code = ExitCode{ exit_code };
-        RanlibFailure { exit_code }
+        RanlibFailure { exit_code: ExitCode(exit_code) }
     }
 }
 
