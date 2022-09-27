@@ -1,3 +1,4 @@
+// ignore-endian-big
 // ignore-tidy-linelength
 // stderr-per-bitwidth
 #![allow(invalid_value)]

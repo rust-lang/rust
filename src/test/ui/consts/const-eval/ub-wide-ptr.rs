@@ -1,4 +1,5 @@
 // stderr-per-bitwidth
+// ignore-endian-big
 // ignore-tidy-linelength
 #![allow(unused)]
 

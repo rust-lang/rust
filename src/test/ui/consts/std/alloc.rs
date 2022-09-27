@@ -1,5 +1,6 @@
 // stderr-per-bitwidth
 // ignore-debug (the debug assertions change the error)
+// ignore-endian-big
 use std::alloc::Layout;
 
 // ok

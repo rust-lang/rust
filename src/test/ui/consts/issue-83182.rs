@@ -1,3 +1,4 @@
+// ignore-endian-big
 // stderr-per-bitwidth
 
 use std::mem;
