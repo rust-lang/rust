@@ -1307,6 +1307,8 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         tcx: TyCtxt<'tcx>,
+        // typeck errors have subpar spans for opaque types, so delay error reporting until borrowck.
+        ignore_errors: bool,
     ) -> Self {
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
@@ -1325,7 +1327,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        self.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span))
+        self.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span, ignore_errors))
     }
 }
 
