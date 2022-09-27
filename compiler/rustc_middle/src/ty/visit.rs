@@ -38,7 +38,6 @@
 //!     - ty.super_visit_with(visitor)
 //! - u.visit_with(visitor)
 //! ```
-use crate::mir;
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
 use rustc_errors::ErrorGuaranteed;
 
@@ -205,19 +204,8 @@ pub trait TypeVisitor<'tcx>: Sized {
         uv.super_visit_with(self)
     }
 
-    fn visit_mir_unevaluated(
-        &mut self,
-        uv: mir::UnevaluatedConst<'tcx>,
-    ) -> ControlFlow<Self::BreakTy> {
-        uv.super_visit_with(self)
-    }
-
     fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         p.super_visit_with(self)
-    }
-
-    fn visit_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> ControlFlow<Self::BreakTy> {
-        c.super_visit_with(self)
     }
 }
 
@@ -611,19 +599,6 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         uv: ty::UnevaluatedConst<'tcx>,
     ) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_unevaluated_const(uv);
-        trace!(r.flags=?flags);
-        if flags.intersects(self.flags) {
-            ControlFlow::Break(FoundFlags)
-        } else {
-            ControlFlow::CONTINUE
-        }
-    }
-
-    fn visit_mir_unevaluated(
-        &mut self,
-        uv: mir::UnevaluatedConst<'tcx>,
-    ) -> ControlFlow<Self::BreakTy> {
-        let flags = FlagComputation::for_unevaluated_const(uv.shrink());
         trace!(r.flags=?flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
