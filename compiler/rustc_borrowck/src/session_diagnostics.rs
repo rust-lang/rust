@@ -52,15 +52,6 @@ pub(crate) struct VarNeedNotMut {
     #[suggestion_short(applicability = "machine-applicable", code = "")]
     pub span: Span,
 }
-
-#[derive(Diagnostic)]
-#[diag(borrowck::const_not_used_in_type_alias)]
-pub(crate) struct ConstNotUsedTraitAlias {
-    pub ct: String,
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(Diagnostic)]
 #[diag(borrowck::var_cannot_escape_closure)]
 #[note]
