@@ -96,8 +96,8 @@ mod prelude {
     pub(crate) use cranelift_codegen::ir::function::Function;
     pub(crate) use cranelift_codegen::ir::types;
     pub(crate) use cranelift_codegen::ir::{
-        AbiParam, Block, ExternalName, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc,
-        StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value,
+        AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot,
+        StackSlotData, StackSlotKind, TrapCode, Type, Value,
     };
     pub(crate) use cranelift_codegen::isa::{self, CallConv};
     pub(crate) use cranelift_codegen::Context;
@@ -251,7 +251,6 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
 
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
-    flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
     let enable_verifier = if backend_config.enable_verifier { "true" } else { "false" };
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
     flags_builder.set("regalloc_checker", enable_verifier).unwrap();
@@ -277,6 +276,15 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
         OptLevel::Size | OptLevel::SizeMin | OptLevel::Aggressive => {
             flags_builder.set("opt_level", "speed_and_size").unwrap();
         }
+    }
+
+    if target_triple.architecture == target_lexicon::Architecture::X86_64 {
+        // Windows depends on stack probes to grow the committed part of the stack
+        flags_builder.enable("enable_probestack").unwrap();
+        flags_builder.set("probestack_strategy", "inline").unwrap();
+    } else {
+        // __cranelift_probestack is not provided and inline stack probes are only supported on x86_64
+        flags_builder.set("enable_probestack", "false").unwrap();
     }
 
     let flags = settings::Flags::new(flags_builder);

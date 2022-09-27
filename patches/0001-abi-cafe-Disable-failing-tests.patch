@@ -11,20 +11,13 @@ diff --git a/src/report.rs b/src/report.rs
 index 7346f5e..8347762 100644
 --- a/src/report.rs
 +++ b/src/report.rs
-@@ -45,6 +45,20 @@ pub fn get_test_rules(test: &TestKey, caller: &dyn AbiImpl, callee: &dyn AbiImpl
+@@ -45,6 +45,13 @@ pub fn get_test_rules(test: &TestKey, caller: &dyn AbiImpl, callee: &dyn AbiImpl
      //
      // THIS AREA RESERVED FOR VENDORS TO APPLY PATCHES
 
 +    // Currently MSVC has some broken ABI issues. Furthermore, they cause
 +    // a STATUS_ACCESS_VIOLATION, so we can't even run them. Ensure that they compile and link.
 +    if cfg!(windows) && (test.test_name == "bool" || test.test_name == "ui128") {
-+        result.run = Link;
-+        result.check = Pass(Link);
-+    }
-+
-+    // structs is broken in the current release of cranelift for aarch64.
-+    // It has been fixed for cranelift 0.88: https://github.com/bytecodealliance/wasmtime/pull/4634
-+    if cfg!(target_arch = "aarch64") && test.test_name == "structs" {
 +        result.run = Link;
 +        result.check = Pass(Link);
 +    }
