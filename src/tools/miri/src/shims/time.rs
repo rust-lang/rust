@@ -1,6 +1,6 @@
 use std::time::{Duration, SystemTime};
 
-use crate::concurrency::thread::TimeoutCallback;
+use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
@@ -257,7 +257,7 @@ impl VisitMachineValues for Callback {
     fn visit_machine_values(&self, _visit: &mut ProvenanceVisitor) {}
 }
 
-impl<'mir, 'tcx: 'mir> TimeoutCallback<'mir, 'tcx> for Callback {
+impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback {
     fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
         ecx.unblock_thread(self.active_thread);
         Ok(())

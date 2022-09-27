@@ -1,4 +1,4 @@
-use crate::concurrency::thread::{Time, TimeoutCallback};
+use crate::concurrency::thread::{MachineCallback, Time};
 use crate::*;
 use rustc_target::abi::{Align, Size};
 use std::time::SystemTime;
@@ -268,7 +268,7 @@ impl<'tcx> VisitMachineValues for Callback<'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> TimeoutCallback<'mir, 'tcx> for Callback<'tcx> {
+impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
     fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
         this.unblock_thread(self.thread);
         this.futex_remove_waiter(self.addr_usize, self.thread);

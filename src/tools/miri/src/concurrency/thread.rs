@@ -32,9 +32,11 @@ pub enum SchedulingAction {
 
 /// Timeout callbacks can be created by synchronization primitives to tell the
 /// scheduler that they should be called once some period of time passes.
-pub trait TimeoutCallback<'mir, 'tcx>: VisitMachineValues + 'tcx {
+pub trait MachineCallback<'mir, 'tcx>: VisitMachineValues {
     fn call(&self, ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx>;
 }
+
+type TimeoutCallback<'mir, 'tcx> = Box<dyn MachineCallback<'mir, 'tcx> + 'tcx>;
 
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -252,7 +254,7 @@ struct TimeoutCallbackInfo<'mir, 'tcx> {
     /// The callback should be called no earlier than this time.
     call_time: Time,
     /// The called function.
-    callback: Box<dyn TimeoutCallback<'mir, 'tcx>>,
+    callback: TimeoutCallback<'mir, 'tcx>,
 }
 
 impl<'mir, 'tcx> std::fmt::Debug for TimeoutCallbackInfo<'mir, 'tcx> {
@@ -303,10 +305,10 @@ impl VisitMachineValues for ThreadManager<'_, '_> {
         let ThreadManager {
             threads,
             thread_local_alloc_ids,
+            timeout_callbacks,
             active_thread: _,
             yield_active_thread: _,
             sync: _,
-            timeout_callbacks: _,
         } = self;
 
         for thread in threads {
@@ -315,8 +317,9 @@ impl VisitMachineValues for ThreadManager<'_, '_> {
         for ptr in thread_local_alloc_ids.borrow().values().copied() {
             visit.visit(ptr);
         }
-        // FIXME: Do we need to do something for TimeoutCallback? That's a Box<dyn>, not sure what
-        // to do.
+        for callback in timeout_callbacks.values() {
+            callback.callback.visit_machine_values(visit);
+        }
     }
 }
 
@@ -542,7 +545,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         &mut self,
         thread: ThreadId,
         call_time: Time,
-        callback: Box<dyn TimeoutCallback<'mir, 'tcx>>,
+        callback: TimeoutCallback<'mir, 'tcx>,
     ) {
         self.timeout_callbacks
             .try_insert(thread, TimeoutCallbackInfo { call_time, callback })
@@ -558,7 +561,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     fn get_ready_callback(
         &mut self,
         clock: &Clock,
-    ) -> Option<(ThreadId, Box<dyn TimeoutCallback<'mir, 'tcx>>)> {
+    ) -> Option<(ThreadId, TimeoutCallback<'mir, 'tcx>)> {
         // We iterate over all threads in the order of their indices because
         // this allows us to have a deterministic scheduler.
         for thread in self.threads.indices() {
@@ -931,7 +934,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         thread: ThreadId,
         call_time: Time,
-        callback: Box<dyn TimeoutCallback<'mir, 'tcx>>,
+        callback: TimeoutCallback<'mir, 'tcx>,
     ) {
         let this = self.eval_context_mut();
         if !this.machine.communicate() && matches!(call_time, Time::RealTime(..)) {

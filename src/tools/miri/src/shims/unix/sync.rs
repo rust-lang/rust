@@ -3,7 +3,7 @@ use std::time::SystemTime;
 use rustc_hir::LangItem;
 use rustc_middle::ty::{layout::TyAndLayout, query::TyCtxtAt, Ty};
 
-use crate::concurrency::thread::{Time, TimeoutCallback};
+use crate::concurrency::thread::{MachineCallback, Time};
 use crate::*;
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
@@ -901,7 +901,7 @@ impl<'tcx> VisitMachineValues for Callback<'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> TimeoutCallback<'mir, 'tcx> for Callback<'tcx> {
+impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
     fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
         // We are not waiting for the condvar any more, wait for the
         // mutex instead.
