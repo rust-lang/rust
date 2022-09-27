@@ -116,7 +116,7 @@ jobs:
       if: matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
       uses: actions/upload-artifact@v2
       with:
-        name: ${{ matrix.env.TARGET_TRIPLE }}
+        name: cg_clif-${{ matrix.env.TARGET_TRIPLE }}
         path: cg_clif.tar.xz
 
     - name: Upload prebuilt cg_clif (cross compile)
@@ -217,5 +217,5 @@ jobs:
     - name: Upload prebuilt cg_clif
       uses: actions/upload-artifact@v2
       with:
-        name: ${{ matrix.env.TARGET_TRIPLE }}
+        name: cg_clif-${{ matrix.env.TARGET_TRIPLE }}
         path: cg_clif.tar
