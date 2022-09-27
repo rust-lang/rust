@@ -305,7 +305,6 @@ impl<'tcx> Inliner<'tcx> {
             let func_ty = func.ty(caller_body, self.tcx);
             if let ty::FnDef(def_id, substs) = *func_ty.kind() {
                 // To resolve an instance its substs have to be fully normalized.
-                let substs = self.tcx.try_normalize_erasing_regions(self.param_env, substs).ok()?;
                 let callee =
                     Instance::resolve(self.tcx, self.param_env, def_id, substs).ok().flatten()?;
 
