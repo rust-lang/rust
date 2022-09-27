@@ -44,8 +44,50 @@ function addStyle(css) {
     document.head.appendChild(style);
 }
 
-function setupStyleFor59(rustdoc_container) {
-    // nothing to do in here!
+function setupStyleFor60(rustdoc_container, switcherEl) {
+    function changeSidebarTop() {
+        const height = switcherEl.getBoundingClientRect().height;
+        const sidebarTopbar = document.querySelector(".mobile-topbar");
+        const sidebarTopbarHeight = sidebarTopbar.getBoundingClientRect().height;
+        const sidebar = document.querySelector(".sidebar");
+        sidebar.style.top = height + sidebarTopbarHeight + 1 + "px";
+    }
+    setTimeout(() => {
+        changeSidebarTop();
+    }, 0); // it'll be computed once it's added in the DOM.
+    window.addEventListener("resize", changeSidebarTop);
+}
+
+function setupStyleFor59(rustdoc_container, switcherEl) {
+    function changeSidebarTop() {
+        const height = switcherEl.getBoundingClientRect().height;
+        document.body.marginTop = height + 1 + "px";
+        const sidebarButton = document.querySelector(".sidebar-menu");
+        const val = sidebarButton.getAttribute("old-top");
+        if (val === null) {
+            // We update the position directly.
+            sidebarButton.style.top = height + 1 + "px";
+        } else {
+            // We update the attribute value.
+            sidebarButton.setAttribute("old-top", height + 1 + "px");
+        }
+    }
+    setTimeout(() => {
+        changeSidebarTop();
+    }, 0); // it'll be computed once it's added in the DOM.
+    window.addEventListener("resize", changeSidebarTop);
+    document.querySelector(".sidebar-menu").addEventListener("click", () => {
+        const sidebarButton = document.querySelector(".sidebar-menu");
+        const val = sidebarButton.getAttribute("old-top");
+        if (val === null) {
+            const height = switcherEl.getBoundingClientRect().height;
+            sidebarButton.setAttribute("old-top", sidebarButton.style.top);
+            sidebarButton.style.top = "0";
+        } else {
+            sidebarButton.style.top = val;
+            sidebarButton.removeAttribute("old-top");
+        }
+    });
 }
 
 function setupStyleFor32(rustdoc_container, switcherEl, extraStyle) {
@@ -123,7 +165,6 @@ function setupStyleFor21(rustdoc_container, switcherEl) {
         sidebar.style.top = height + 1 + "px";
     }
     setTimeout(() => {
-        const sidebar = window.getComputedStyle(document.querySelector(".sidebar"));
         changeSidebarTop();
     }, 0); // it'll be computed once it's added in the DOM.
     window.addEventListener("resize", changeSidebarTop);
@@ -201,7 +242,9 @@ function showSwitcher(isOldVersion) {
         medium_version = ["-1"];
     }
     medium_version = parseInt(medium_version[0]);
-    if (medium_version < 0 || medium_version > 58) {
+    if (medium_version < 0 || medium_version > 59) {
+        setupStyleFor60(rustdoc_container, el);
+    } else if (medium_version > 58) {
         setupStyleFor59(rustdoc_container, el);
     } else if (medium_version > 31) {
         setupStyleFor32(rustdoc_container, el, "");
