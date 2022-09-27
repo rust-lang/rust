@@ -5,27 +5,27 @@ use core::panic::Location;
 
 #[test]
 fn location_const_caller() {
-   const _CALLER_REFERENCE: &Location<'static> = Location::caller();
-   const _CALLER: Location<'static> = *Location::caller();
+    const _CALLER_REFERENCE: &Location<'static> = Location::caller();
+    const _CALLER: Location<'static> = *Location::caller();
 }
 
 #[test]
 fn location_const_file() {
-   const CALLER: &Location<'static> = Location::caller();
-   const FILE: &str = CALLER.file();
-   assert_eq!(FILE, "library/core/tests/panic/location.rs");
+    const CALLER: &Location<'static> = Location::caller();
+    const FILE: &str = CALLER.file();
+    assert_eq!(FILE, "library/core/tests/panic/location.rs");
 }
 
 #[test]
 fn location_const_line() {
-   const CALLER: &Location<'static> = Location::caller();
-   const LINE: u32 = CALLER.line();
-   assert_eq!(LINE, 21);
+    const CALLER: &Location<'static> = Location::caller();
+    const LINE: u32 = CALLER.line();
+    assert_eq!(LINE, 21);
 }
 
 #[test]
 fn location_const_column() {
-   const CALLER: &Location<'static> = Location::caller();
-   const COLUMN: u32 = CALLER.column();
-   assert_eq!(COLUMN, 39);
+    const CALLER: &Location<'static> = Location::caller();
+    const COLUMN: u32 = CALLER.column();
+    assert_eq!(COLUMN, 40);
 }
