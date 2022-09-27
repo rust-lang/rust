@@ -10,7 +10,15 @@ use rustc_span::Span;
 pub(super) struct ReverseMapper<'tcx> {
     tcx: TyCtxt<'tcx>,
     map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
+    /// see call sites to fold_kind_no_missing_regions_error
+    /// for an explanation of this field.
     do_not_error: bool,
+
+    /// We do not want to emit any errors in typeck because
+    /// the spans in typeck are subpar at the moment.
+    /// Borrowck will do the same work again (this time with
+    /// lifetime information) and thus report better errors.
+    ignore_errors: bool,
 
     /// Span of function being checked.
     span: Span,
@@ -21,8 +29,9 @@ impl<'tcx> ReverseMapper<'tcx> {
         tcx: TyCtxt<'tcx>,
         map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
         span: Span,
+        ignore_errors: bool,
     ) -> Self {
-        Self { tcx, map, do_not_error: false, span }
+        Self { tcx, map, do_not_error: false, ignore_errors, span }
     }
 
     fn fold_kind_no_missing_regions_error(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
@@ -156,17 +165,19 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(u) => panic!("type mapped to unexpected kind: {:?}", u),
                     None => {
                         debug!(?param, ?self.map);
-                        self.tcx
-                            .sess
-                            .struct_span_err(
-                                self.span,
-                                &format!(
-                                    "type parameter `{}` is part of concrete type but not \
+                        if !self.ignore_errors {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    self.span,
+                                    &format!(
+                                        "type parameter `{}` is part of concrete type but not \
                                           used in parameter list for the `impl Trait` type alias",
-                                    ty
-                                ),
-                            )
-                            .emit();
+                                        ty
+                                    ),
+                                )
+                                .emit();
+                        }
 
                         self.tcx().ty_error()
                     }
@@ -189,10 +200,12 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
                     None => {
-                        self.tcx.sess.emit_err(ty::ConstNotUsedTraitAlias {
-                            ct: ct.to_string(),
-                            span: self.span,
-                        });
+                        if !self.ignore_errors {
+                            self.tcx.sess.emit_err(ty::ConstNotUsedTraitAlias {
+                                ct: ct.to_string(),
+                                span: self.span,
+                            });
+                        }
 
                         self.tcx().const_error(ct.ty())
                     }

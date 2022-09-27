@@ -536,7 +536,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let opaque_types =
             self.fcx.infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
         for (opaque_type_key, decl) in opaque_types {
-            let hidden_type = self.resolve(decl.hidden_type.ty, &decl.hidden_type.span);
+            let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);
+            let opaque_type_key = self.resolve(opaque_type_key, &decl.hidden_type.span);
 
             struct RecursionChecker {
                 def_id: LocalDefId,
@@ -558,6 +559,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             {
                 continue;
             }
+
+            let hidden_type = hidden_type
+                .remap_generic_params_to_declaration_params(
+                    opaque_type_key,
+                    self.fcx.infcx.tcx,
+                    true,
+                )
+                .ty;
 
             self.typeck_results.concrete_opaque_types.insert(opaque_type_key.def_id, hidden_type);
         }
