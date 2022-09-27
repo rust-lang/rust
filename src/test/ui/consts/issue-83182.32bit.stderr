@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/issue-83182.rs:5:1
+  --> $DIR/issue-83182.rs:6:1
    |
 LL | const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[&()]) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
