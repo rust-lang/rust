@@ -195,7 +195,6 @@
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
-#![feature(mixed_integer_ops)]
 #![feature(must_not_suspend)]
 #![feature(negative_impls)]
 #![feature(never_type)]
