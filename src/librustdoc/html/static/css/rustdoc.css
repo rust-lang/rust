@@ -132,7 +132,7 @@ h1, h2, h3, h4, h5, h6 {
 	font-weight: 500;
 }
 h1, h2, h3, h4 {
-	margin: 20px 0 15px 0;
+	margin: 25px 0 15px 0;
 	padding-bottom: 6px;
 }
 .docblock h3, .docblock h4, h5, h6 {
@@ -176,8 +176,6 @@ h4.code-header {
 	border-bottom-style: none;
 	margin: 0;
 	padding: 0;
-	margin-top: 0.6rem;
-	margin-bottom: 0.4rem;
 }
 .impl,
 .impl-items .method,
@@ -291,6 +289,11 @@ p {
 	   Line-height is 1.5rem, so line spacing is .5rem; .75em is 1.5 times that.
 	   https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html */
 	margin: 0 0 .75em 0;
+}
+/* For the last child of a div, the margin will be taken care of
+	by the margin-top of the next item. */
+p:last-child {
+	margin: 0;
 }
 
 summary {
@@ -565,8 +568,15 @@ h2.location a {
 
 .rustdoc .example-wrap {
 	display: flex;
-	margin-bottom: 10px;
 	position: relative;
+}
+.rustdoc .example-wrap {
+	margin-bottom: 10px;
+}
+/* For the last child of a div, the margin will be taken care of
+	by the margin-top of the next item. */
+.rustdoc .example-wrap:last-child {
+	margin-bottom: 0px;
 }
 
 pre.example-line-numbers {
@@ -724,10 +734,6 @@ pre, .rustdoc.source .example-wrap {
 
 .content .item-info {
 	margin-left: 24px;
-}
-
-.content .impl-items .docblock, .content .impl-items .item-info {
-	margin-bottom: .6em;
 }
 
 #main-content > .item-info {
@@ -1532,6 +1538,16 @@ details.dir-entry a {
 	display: block;
 }
 
+/* We use CSS containment on the details elements because most sizeable elements
+	of the page are contained in one of these. This also makes re-rendering
+	faster on document changes (like closing and opening toggles).
+	Unfortunately we can't yet specify contain: content or contain: strict
+	because the [-]/[+] toggles extend past the boundaries of the <details>
+	https://developer.mozilla.org/en-US/docs/Web/CSS/contain */
+details.rustdoc-toggle {
+	contain: layout;
+}
+
 /* The hideme class is used on summary tags that contain a span with
 	placeholder text shown only when the toggle is closed. For instance,
 	"Expand description" or "Show methods". */
@@ -2012,17 +2028,17 @@ in storage.js plus the media query with (min-width: 701px)
 	margin-bottom: 0.75em;
 }
 
-.method-toggle[open] {
+.method-toggle[open]:not(:last-child) {
 	margin-bottom: 2em;
 }
 
-.implementors-toggle[open]  {
+.implementors-toggle[open]:not(:last-child) {
 	margin-bottom: 2em;
 }
 
-#trait-implementations-list .method-toggle,
-#synthetic-implementations-list .method-toggle,
-#blanket-implementations-list .method-toggle {
+#trait-implementations-list .method-toggle:not(:last-child),
+#synthetic-implementations-list .method-toggle:not(:last-child),
+#blanket-implementations-list .method-toggle:not(:last-child) {
 	margin-bottom: 1em;
 }
 
