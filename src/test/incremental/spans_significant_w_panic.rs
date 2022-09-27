@@ -8,7 +8,6 @@
 // compile-flags: -C overflow-checks=on -Z query-dep-graph
 
 #![feature(rustc_attrs)]
-#![feature(bench_black_box)]
 #![rustc_partition_codegened(module = "spans_significant_w_panic", cfg = "rpass2")]
 #![rustc_partition_codegened(module = "spans_significant_w_panic", cfg = "rpass4")]
 
