@@ -60,6 +60,7 @@ store.register_lints(&[
     booleans::NONMINIMAL_BOOL,
     booleans::OVERLY_COMPLEX_BOOL_EXPR,
     borrow_deref_ref::BORROW_DEREF_REF,
+    box_default::BOX_DEFAULT,
     cargo::CARGO_COMMON_METADATA,
     cargo::MULTIPLE_CRATE_VERSIONS,
     cargo::NEGATIVE_FEATURE_NAMES,
