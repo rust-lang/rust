@@ -252,6 +252,23 @@ fn test_is_ascii_digit() {
 }
 
 #[test]
+fn test_is_ascii_octdigit() {
+    assert_all!(is_ascii_octdigit, "", "01234567");
+    assert_none!(
+        is_ascii_octdigit,
+        "abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOQPRSTUVWXYZ",
+        "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
+        " \t\n\x0c\r",
+        "\x00\x01\x02\x03\x04\x05\x06\x07",
+        "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f",
+        "\x10\x11\x12\x13\x14\x15\x16\x17",
+        "\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f",
+        "\x7f",
+    );
+}
+
+#[test]
 fn test_is_ascii_hexdigit() {
     assert_all!(is_ascii_hexdigit, "", "0123456789", "abcdefABCDEF",);
     assert_none!(
@@ -454,6 +471,7 @@ fn ascii_ctype_const() {
         is_ascii_lowercase    => [true,  false, false, false, false];
         is_ascii_alphanumeric => [true,  true,  true,  false, false];
         is_ascii_digit        => [false, false, true,  false, false];
+        is_ascii_octdigit     => [false, false, false, false, false];
         is_ascii_hexdigit     => [true,  true,  true,  false, false];
         is_ascii_punctuation  => [false, false, false, true,  false];
         is_ascii_graphic      => [true,  true,  true,  true,  false];
