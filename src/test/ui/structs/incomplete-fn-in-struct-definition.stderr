@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `fn`
+  --> $DIR/incomplete-fn-in-struct-definition.rs:4:5
+   |
+LL |     fn
+   |     ^^ expected identifier, found keyword
+   |
+help: escape `fn` to use it as an identifier
+   |
+LL |     r#fn
+   |     ++
+
+error: aborting due to previous error
+
