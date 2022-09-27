@@ -197,6 +197,15 @@ pub struct DocAutoCfgMalformed<'a> {
     pub attr_str: &'a str,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes::doc_both_auto_cfg)]
+pub struct BothDocAutoCfg {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub attr_span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes::doc_auto_cfg_enabled_by_default)]
 pub struct DocAutoCfgEnabledByDefault;
