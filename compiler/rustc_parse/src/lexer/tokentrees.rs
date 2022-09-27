@@ -110,12 +110,12 @@ impl<'a> TokenTreesReader<'a> {
         err
     }
 
-    fn parse_token_tree_open_delim(&mut self, delim: Delimiter) -> TokenTree {
+    fn parse_token_tree_open_delim(&mut self, open_delim: Delimiter) -> TokenTree {
         // The span for beginning of the delimited section
         let pre_span = self.token.span;
 
         // Move past the open delimiter.
-        self.open_braces.push((delim, self.token.span));
+        self.open_braces.push((open_delim, self.token.span));
         self.token = self.string_reader.next_token().0;
 
         // Parse the token trees within the delimiters.
@@ -128,7 +128,7 @@ impl<'a> TokenTreesReader<'a> {
 
         match self.token.kind {
             // Correct delimiter.
-            token::CloseDelim(d) if d == delim => {
+            token::CloseDelim(close_delim) if close_delim == open_delim => {
                 let (open_brace, open_brace_span) = self.open_braces.pop().unwrap();
                 let close_brace_span = self.token.span;
 
@@ -138,12 +138,12 @@ impl<'a> TokenTreesReader<'a> {
                     if !sm.is_multiline(empty_block_span) {
                         // Only track if the block is in the form of `{}`, otherwise it is
                         // likely that it was written on purpose.
-                        self.last_delim_empty_block_spans.insert(delim, empty_block_span);
+                        self.last_delim_empty_block_spans.insert(open_delim, empty_block_span);
                     }
                 }
 
                 //only add braces
-                if let (Delimiter::Brace, Delimiter::Brace) = (open_brace, delim) {
+                if let (Delimiter::Brace, Delimiter::Brace) = (open_brace, open_delim) {
                     self.matching_block_spans.push((open_brace_span, close_brace_span));
                 }
 
@@ -158,7 +158,7 @@ impl<'a> TokenTreesReader<'a> {
                 self.token = self.string_reader.next_token().0;
             }
             // Incorrect delimiter.
-            token::CloseDelim(other) => {
+            token::CloseDelim(close_delim) => {
                 let mut unclosed_delimiter = None;
                 let mut candidate = None;
 
@@ -176,7 +176,7 @@ impl<'a> TokenTreesReader<'a> {
                         for (brace, brace_span) in &self.open_braces {
                             if let Some(padding) = sm.span_to_margin(*brace_span) {
                                 // high likelihood of these two corresponding
-                                if current_padding == padding && brace == &other {
+                                if current_padding == padding && brace == &close_delim {
                                     candidate = Some(*brace_span);
                                 }
                             }
@@ -185,7 +185,7 @@ impl<'a> TokenTreesReader<'a> {
                     let (tok, _) = self.open_braces.pop().unwrap();
                     self.unmatched_braces.push(UnmatchedBrace {
                         expected_delim: tok,
-                        found_delim: Some(other),
+                        found_delim: Some(close_delim),
                         found_span: self.token.span,
                         unclosed_span: unclosed_delimiter,
                         candidate_span: candidate,
@@ -201,7 +201,7 @@ impl<'a> TokenTreesReader<'a> {
                 // fn foo() {
                 //     bar(baz(
                 // }  // Incorrect delimiter but matches the earlier `{`
-                if !self.open_braces.iter().any(|&(b, _)| b == other) {
+                if !self.open_braces.iter().any(|&(b, _)| b == close_delim) {
                     self.token = self.string_reader.next_token().0;
                 }
             }
@@ -213,7 +213,7 @@ impl<'a> TokenTreesReader<'a> {
             _ => unreachable!(),
         }
 
-        TokenTree::Delimited(delim_span, delim, tts)
+        TokenTree::Delimited(delim_span, open_delim, tts)
     }
 
     fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'a> {
