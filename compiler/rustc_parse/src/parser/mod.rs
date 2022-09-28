@@ -13,7 +13,6 @@ mod ty;
 use crate::lexer::UnmatchedBrace;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
-use diagnostics::Error;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
@@ -32,7 +31,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::PResult;
 use rustc_errors::{
-    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, MultiSpan,
+    Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, IntoDiagnostic, MultiSpan,
 };
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
@@ -40,6 +39,11 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 use std::ops::Range;
 use std::{cmp, mem, slice};
+
+use crate::errors::{
+    DocCommentDoesNotDocumentAnything, IncorrectVisibilityRestriction, MismatchedClosingDelimiter,
+    NonStringAbiLiteral,
+};
 
 bitflags::bitflags! {
     struct Restrictions: u8 {
@@ -406,22 +410,37 @@ pub enum FollowedByType {
     No,
 }
 
-fn token_descr_opt(token: &Token) -> Option<&'static str> {
-    Some(match token.kind {
-        _ if token.is_special_ident() => "reserved identifier",
-        _ if token.is_used_keyword() => "keyword",
-        _ if token.is_unused_keyword() => "reserved keyword",
-        token::DocComment(..) => "doc comment",
-        _ => return None,
-    })
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum TokenDescription {
+    ReservedIdentifier,
+    Keyword,
+    ReservedKeyword,
+    DocComment,
+}
+
+impl TokenDescription {
+    pub fn from_token(token: &Token) -> Option<Self> {
+        match token.kind {
+            _ if token.is_special_ident() => Some(TokenDescription::ReservedIdentifier),
+            _ if token.is_used_keyword() => Some(TokenDescription::Keyword),
+            _ if token.is_unused_keyword() => Some(TokenDescription::ReservedKeyword),
+            token::DocComment(..) => Some(TokenDescription::DocComment),
+            _ => None,
+        }
+    }
 }
 
 pub(super) fn token_descr(token: &Token) -> String {
-    let token_str = pprust::token_to_string(token);
-    match token_descr_opt(token) {
-        Some(prefix) => format!("{} `{}`", prefix, token_str),
-        _ => format!("`{}`", token_str),
-    }
+    let name = pprust::token_to_string(token).to_string();
+
+    let kind = TokenDescription::from_token(token).map(|kind| match kind {
+        TokenDescription::ReservedIdentifier => "reserved identifier",
+        TokenDescription::Keyword => "keyword",
+        TokenDescription::ReservedKeyword => "reserved keyword",
+        TokenDescription::DocComment => "doc comment",
+    });
+
+    if let Some(kind) = kind { format!("{} `{}`", kind, name) } else { format!("`{}`", name) }
 }
 
 impl<'a> Parser<'a> {
@@ -518,9 +537,11 @@ impl<'a> Parser<'a> {
 
     fn ident_or_err(&mut self) -> PResult<'a, (Ident, /* is_raw */ bool)> {
         self.token.ident().ok_or_else(|| match self.prev_token.kind {
-            TokenKind::DocComment(..) => {
-                self.span_err(self.prev_token.span, Error::UselessDocComment)
+            TokenKind::DocComment(..) => DocCommentDoesNotDocumentAnything {
+                span: self.prev_token.span,
+                missing_comma: None,
             }
+            .into_diagnostic(&self.sess.span_diagnostic),
             _ => self.expected_ident_found(),
         })
     }
@@ -1144,7 +1165,9 @@ impl<'a> Parser<'a> {
     fn parse_field_name(&mut self) -> PResult<'a, Ident> {
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind
         {
-            self.expect_no_suffix(self.token.span, "a tuple index", suffix);
+            if let Some(suffix) = suffix {
+                self.expect_no_tuple_index_suffix(self.token.span, suffix);
+            }
             self.bump();
             Ok(Ident::new(symbol, self.prev_token.span))
         } else {
@@ -1342,23 +1365,8 @@ impl<'a> Parser<'a> {
         let path = self.parse_path(PathStyle::Mod)?;
         self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
 
-        let msg = "incorrect visibility restriction";
-        let suggestion = r##"some possible visibility restrictions are:
-`pub(crate)`: visible only on the current crate
-`pub(super)`: visible only in the current module's parent
-`pub(in path::to::module)`: visible only on the specified path"##;
-
         let path_str = pprust::path_to_string(&path);
-
-        struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{}", msg)
-            .help(suggestion)
-            .span_suggestion(
-                path.span,
-                &format!("make this visible only to module `{}` with `in`", path_str),
-                format!("in {}", path_str),
-                Applicability::MachineApplicable,
-            )
-            .emit();
+        self.sess.emit_err(IncorrectVisibilityRestriction { span: path.span, inner_str: path_str });
 
         Ok(())
     }
@@ -1384,14 +1392,7 @@ impl<'a> Parser<'a> {
             Err(Some(lit)) => match lit.kind {
                 ast::LitKind::Err => None,
                 _ => {
-                    self.struct_span_err(lit.span, "non-string ABI literal")
-                        .span_suggestion(
-                            lit.span,
-                            "specify the ABI with a string literal",
-                            "\"C\"",
-                            Applicability::MaybeIncorrect,
-                        )
-                        .emit();
+                    self.sess.emit_err(NonStringAbiLiteral { span: lit.span });
                     None
                 }
             },
@@ -1432,25 +1433,18 @@ pub(crate) fn make_unclosed_delims_error(
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
     // `unmatched_braces` only for error recovery in the `Parser`.
     let found_delim = unmatched.found_delim?;
-    let span: MultiSpan = if let Some(sp) = unmatched.unclosed_span {
-        vec![unmatched.found_span, sp].into()
-    } else {
-        unmatched.found_span.into()
-    };
-    let mut err = sess.span_diagnostic.struct_span_err(
-        span,
-        &format!(
-            "mismatched closing delimiter: `{}`",
-            pprust::token_kind_to_string(&token::CloseDelim(found_delim)),
-        ),
-    );
-    err.span_label(unmatched.found_span, "mismatched closing delimiter");
-    if let Some(sp) = unmatched.candidate_span {
-        err.span_label(sp, "closing delimiter possibly meant for this");
-    }
+    let mut spans = vec![unmatched.found_span];
     if let Some(sp) = unmatched.unclosed_span {
-        err.span_label(sp, "unclosed delimiter");
+        spans.push(sp);
+    };
+    let err = MismatchedClosingDelimiter {
+        spans,
+        delimiter: pprust::token_kind_to_string(&token::CloseDelim(found_delim)).to_string(),
+        unmatched: unmatched.found_span,
+        opening_candidate: unmatched.candidate_span,
+        unclosed: unmatched.unclosed_span,
     }
+    .into_diagnostic(&sess.span_diagnostic);
     Some(err)
 }
 

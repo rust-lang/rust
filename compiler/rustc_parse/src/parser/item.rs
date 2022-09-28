@@ -1,4 +1,6 @@
-use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error, UseEmptyBlockNotSemi};
+use crate::errors::{DocCommentDoesNotDocumentAnything, UseEmptyBlockNotSemi};
+
+use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 
@@ -13,7 +15,7 @@ use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, Vari
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
+use rustc_errors::{struct_span_err, Applicability, IntoDiagnostic, PResult, StashKey};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
@@ -1584,7 +1586,10 @@ impl<'a> Parser<'a> {
             token::CloseDelim(Delimiter::Brace) => {}
             token::DocComment(..) => {
                 let previous_span = self.prev_token.span;
-                let mut err = self.span_err(self.token.span, Error::UselessDocComment);
+                let mut err = DocCommentDoesNotDocumentAnything {
+                    span: self.token.span,
+                    missing_comma: None,
+                };
                 self.bump(); // consume the doc comment
                 let comma_after_doc_seen = self.eat(&token::Comma);
                 // `seen_comma` is always false, because we are inside doc block
@@ -1593,18 +1598,13 @@ impl<'a> Parser<'a> {
                     seen_comma = true;
                 }
                 if comma_after_doc_seen || self.token == token::CloseDelim(Delimiter::Brace) {
-                    err.emit();
+                    self.sess.emit_err(err);
                 } else {
                     if !seen_comma {
                         let sp = self.sess.source_map().next_point(previous_span);
-                        err.span_suggestion(
-                            sp,
-                            "missing comma here",
-                            ",",
-                            Applicability::MachineApplicable,
-                        );
+                        err.missing_comma = Some(sp);
                     }
-                    return Err(err);
+                    return Err(err.into_diagnostic(&self.sess.span_diagnostic));
                 }
             }
             _ => {

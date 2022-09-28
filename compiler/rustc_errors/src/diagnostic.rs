@@ -3,6 +3,8 @@ use crate::{
     CodeSuggestion, DiagnosticMessage, EmissionGuarantee, Level, LintDiagnosticBuilder, MultiSpan,
     SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
+use rustc_ast as ast;
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_error_messages::FluentValue;
 use rustc_hir as hir;
@@ -172,6 +174,24 @@ impl IntoDiagnosticArg for hir::ConstContext {
             hir::ConstContext::Static(_) => "static",
             hir::ConstContext::Const => "constant",
         }))
+    }
+}
+
+impl IntoDiagnosticArg for ast::Path {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(pprust::path_to_string(&self)))
+    }
+}
+
+impl IntoDiagnosticArg for ast::token::Token {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(pprust::token_to_string(&self))
+    }
+}
+
+impl IntoDiagnosticArg for ast::token::TokenKind {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(pprust::token_kind_to_string(&self))
     }
 }
 

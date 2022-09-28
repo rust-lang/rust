@@ -7,7 +7,7 @@ LL | |  */
    | |___- previous doc comment
 LL |
 LL |   #![recursion_limit="100"]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^ not permitted following an outer attribute
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^ not permitted following an outer doc comment
 LL |
 LL |   fn main() {}
    |   ------------ the inner attribute doesn't annotate this function

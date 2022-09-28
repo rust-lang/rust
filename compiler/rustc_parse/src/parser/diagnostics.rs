@@ -3,6 +3,19 @@ use super::{
     BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep,
     TokenExpectType, TokenType,
 };
+use crate::errors::{
+    AmbiguousPlus, AttributeOnParamType, BadQPathStage2, BadTypePlus, BadTypePlusSub,
+    ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
+    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentOnParamType,
+    DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
+    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg, InInTypo,
+    IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, ParenthesesInForHead,
+    ParenthesesInForHeadSugg, PatternMethodParamWithoutBody, QuestionMarkInType,
+    QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
+    StructLiteralBodyWithoutPathSugg, SuggEscapeToUseAsIdentifier, SuggRemoveComma,
+    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead,
+};
 
 use crate::lexer::UnmatchedBrace;
 use rustc_ast as ast;
@@ -19,8 +32,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_errors::{pluralize, Diagnostic, ErrorGuaranteed, IntoDiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
@@ -29,9 +41,6 @@ use std::ops::{Deref, DerefMut};
 use std::mem::take;
 
 use crate::parser;
-
-const TURBOFISH_SUGGESTION_STR: &str =
-    "use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments";
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident) -> Param {
@@ -49,34 +58,6 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
         span: ident.span,
         ty: P(ty),
         is_placeholder: false,
-    }
-}
-
-pub enum Error {
-    UselessDocComment,
-}
-
-impl Error {
-    fn span_err(
-        self,
-        sp: impl Into<MultiSpan>,
-        handler: &Handler,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        match self {
-            Error::UselessDocComment => {
-                let mut err = struct_span_err!(
-                    handler,
-                    sp,
-                    E0585,
-                    "found a documentation comment that doesn't document anything",
-                );
-                err.help(
-                    "doc comments must come before what they document, maybe a comment was \
-                          intended with `//`?",
-                );
-                err
-            }
-        }
     }
 }
 
@@ -242,517 +223,6 @@ impl MultiSugg {
     }
 }
 
-#[derive(Diagnostic)]
-#[diag(parser::maybe_report_ambiguous_plus)]
-struct AmbiguousPlus {
-    pub sum_ty: String,
-    #[primary_span]
-    #[suggestion(code = "({sum_ty})")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::maybe_recover_from_bad_type_plus, code = "E0178")]
-struct BadTypePlus {
-    pub ty: String,
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sub: BadTypePlusSub,
-}
-
-#[derive(Subdiagnostic)]
-pub enum BadTypePlusSub {
-    #[suggestion(
-        parser::add_paren,
-        code = "{sum_with_parens}",
-        applicability = "machine-applicable"
-    )]
-    AddParen {
-        sum_with_parens: String,
-        #[primary_span]
-        span: Span,
-    },
-    #[label(parser::forgot_paren)]
-    ForgotParen {
-        #[primary_span]
-        span: Span,
-    },
-    #[label(parser::expect_path)]
-    ExpectPath {
-        #[primary_span]
-        span: Span,
-    },
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::maybe_recover_from_bad_qpath_stage_2)]
-struct BadQPathStage2 {
-    #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
-    span: Span,
-    ty: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::incorrect_semicolon)]
-struct IncorrectSemicolon<'a> {
-    #[primary_span]
-    #[suggestion_short(code = "", applicability = "machine-applicable")]
-    span: Span,
-    #[help]
-    opt_help: Option<()>,
-    name: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::incorrect_use_of_await)]
-struct IncorrectUseOfAwait {
-    #[primary_span]
-    #[suggestion(parser::parentheses_suggestion, code = "", applicability = "machine-applicable")]
-    span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::incorrect_use_of_await)]
-struct IncorrectAwait {
-    #[primary_span]
-    span: Span,
-    #[suggestion(parser::postfix_suggestion, code = "{expr}.await{question_mark}")]
-    sugg_span: (Span, Applicability),
-    expr: String,
-    question_mark: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::in_in_typo)]
-struct InInTypo {
-    #[primary_span]
-    span: Span,
-    #[suggestion(code = "", applicability = "machine-applicable")]
-    sugg_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::invalid_variable_declaration)]
-pub struct InvalidVariableDeclaration {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sub: InvalidVariableDeclarationSub,
-}
-
-#[derive(Subdiagnostic)]
-pub enum InvalidVariableDeclarationSub {
-    #[suggestion(
-        parser::switch_mut_let_order,
-        applicability = "maybe-incorrect",
-        code = "let mut"
-    )]
-    SwitchMutLetOrder(#[primary_span] Span),
-    #[suggestion(
-        parser::missing_let_before_mut,
-        applicability = "machine-applicable",
-        code = "let mut"
-    )]
-    MissingLet(#[primary_span] Span),
-    #[suggestion(parser::use_let_not_auto, applicability = "machine-applicable", code = "let")]
-    UseLetNotAuto(#[primary_span] Span),
-    #[suggestion(parser::use_let_not_var, applicability = "machine-applicable", code = "let")]
-    UseLetNotVar(#[primary_span] Span),
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::invalid_comparison_operator)]
-pub(crate) struct InvalidComparisonOperator {
-    #[primary_span]
-    pub span: Span,
-    pub invalid: String,
-    #[subdiagnostic]
-    pub sub: InvalidComparisonOperatorSub,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum InvalidComparisonOperatorSub {
-    #[suggestion_short(
-        parser::use_instead,
-        applicability = "machine-applicable",
-        code = "{correct}"
-    )]
-    Correctable {
-        #[primary_span]
-        span: Span,
-        invalid: String,
-        correct: String,
-    },
-    #[label(parser::spaceship_operator_invalid)]
-    Spaceship(#[primary_span] Span),
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::invalid_logical_operator)]
-#[note]
-pub(crate) struct InvalidLogicalOperator {
-    #[primary_span]
-    pub span: Span,
-    pub incorrect: String,
-    #[subdiagnostic]
-    pub sub: InvalidLogicalOperatorSub,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum InvalidLogicalOperatorSub {
-    #[suggestion_short(
-        parser::use_amp_amp_for_conjunction,
-        applicability = "machine-applicable",
-        code = "&&"
-    )]
-    Conjunction(#[primary_span] Span),
-    #[suggestion_short(
-        parser::use_pipe_pipe_for_disjunction,
-        applicability = "machine-applicable",
-        code = "||"
-    )]
-    Disjunction(#[primary_span] Span),
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::tilde_is_not_unary_operator)]
-pub(crate) struct TildeAsUnaryOperator(
-    #[primary_span]
-    #[suggestion_short(applicability = "machine-applicable", code = "!")]
-    pub Span,
-);
-
-#[derive(Diagnostic)]
-#[diag(parser::unexpected_token_after_not)]
-pub(crate) struct NotAsNegationOperator {
-    #[primary_span]
-    pub negated: Span,
-    pub negated_desc: String,
-    #[subdiagnostic]
-    pub sub: NotAsNegationOperatorSub,
-}
-
-#[derive(Subdiagnostic)]
-pub enum NotAsNegationOperatorSub {
-    #[suggestion_short(
-        parser::unexpected_token_after_not_default,
-        applicability = "machine-applicable",
-        code = "!"
-    )]
-    SuggestNotDefault(#[primary_span] Span),
-
-    #[suggestion_short(
-        parser::unexpected_token_after_not_bitwise,
-        applicability = "machine-applicable",
-        code = "!"
-    )]
-    SuggestNotBitwise(#[primary_span] Span),
-
-    #[suggestion_short(
-        parser::unexpected_token_after_not_logical,
-        applicability = "machine-applicable",
-        code = "!"
-    )]
-    SuggestNotLogical(#[primary_span] Span),
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::malformed_loop_label)]
-pub(crate) struct MalformedLoopLabel {
-    #[primary_span]
-    #[suggestion(applicability = "machine-applicable", code = "{correct_label}")]
-    pub span: Span,
-    pub correct_label: Ident,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::lifetime_in_borrow_expression)]
-pub(crate) struct LifetimeInBorrowExpression {
-    #[primary_span]
-    pub span: Span,
-    #[suggestion(applicability = "machine-applicable", code = "")]
-    #[label]
-    pub lifetime_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::field_expression_with_generic)]
-pub(crate) struct FieldExpressionWithGeneric(#[primary_span] pub Span);
-
-#[derive(Diagnostic)]
-#[diag(parser::macro_invocation_with_qualified_path)]
-pub(crate) struct MacroInvocationWithQualifiedPath(#[primary_span] pub Span);
-
-#[derive(Diagnostic)]
-#[diag(parser::unexpected_token_after_label)]
-pub(crate) struct UnexpectedTokenAfterLabel(
-    #[primary_span]
-    #[label(parser::unexpected_token_after_label)]
-    pub Span,
-);
-
-#[derive(Diagnostic)]
-#[diag(parser::require_colon_after_labeled_expression)]
-#[note]
-pub(crate) struct RequireColonAfterLabeledExpression {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub label: Span,
-    #[suggestion_short(applicability = "machine-applicable", code = ": ")]
-    pub label_end: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::do_catch_syntax_removed)]
-#[note]
-pub(crate) struct DoCatchSyntaxRemoved {
-    #[primary_span]
-    #[suggestion(applicability = "machine-applicable", code = "try")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::float_literal_requires_integer_part)]
-pub(crate) struct FloatLiteralRequiresIntegerPart {
-    #[primary_span]
-    #[suggestion(applicability = "machine-applicable", code = "{correct}")]
-    pub span: Span,
-    pub correct: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::invalid_int_literal_width)]
-#[help]
-pub(crate) struct InvalidIntLiteralWidth {
-    #[primary_span]
-    pub span: Span,
-    pub width: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::invalid_num_literal_base_prefix)]
-#[note]
-pub(crate) struct InvalidNumLiteralBasePrefix {
-    #[primary_span]
-    #[suggestion(applicability = "maybe-incorrect", code = "{fixed}")]
-    pub span: Span,
-    pub fixed: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::invalid_num_literal_suffix)]
-#[help]
-pub(crate) struct InvalidNumLiteralSuffix {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub suffix: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::invalid_float_literal_width)]
-#[help]
-pub(crate) struct InvalidFloatLiteralWidth {
-    #[primary_span]
-    pub span: Span,
-    pub width: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::invalid_float_literal_suffix)]
-#[help]
-pub(crate) struct InvalidFloatLiteralSuffix {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub suffix: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::int_literal_too_large)]
-pub(crate) struct IntLiteralTooLarge {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::missing_semicolon_before_array)]
-pub(crate) struct MissingSemicolonBeforeArray {
-    #[primary_span]
-    pub open_delim: Span,
-    #[suggestion_verbose(applicability = "maybe-incorrect", code = ";")]
-    pub semicolon: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::invalid_block_macro_segment)]
-pub(crate) struct InvalidBlockMacroSegment {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub context: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::if_expression_missing_then_block)]
-pub(crate) struct IfExpressionMissingThenBlock {
-    #[primary_span]
-    pub if_span: Span,
-    #[subdiagnostic]
-    pub sub: IfExpressionMissingThenBlockSub,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum IfExpressionMissingThenBlockSub {
-    #[help(parser::condition_possibly_unfinished)]
-    UnfinishedCondition(#[primary_span] Span),
-    #[help(parser::add_then_block)]
-    AddThenBlock(#[primary_span] Span),
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::if_expression_missing_condition)]
-pub(crate) struct IfExpressionMissingCondition {
-    #[primary_span]
-    #[label(parser::condition_label)]
-    pub if_span: Span,
-    #[label(parser::block_label)]
-    pub block_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::expected_expression_found_let)]
-pub(crate) struct ExpectedExpressionFoundLet {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::expected_else_block)]
-pub(crate) struct ExpectedElseBlock {
-    #[primary_span]
-    pub first_tok_span: Span,
-    pub first_tok: String,
-    #[label]
-    pub else_span: Span,
-    #[suggestion(applicability = "maybe-incorrect", code = "if ")]
-    pub condition_start: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::outer_attribute_not_allowed_on_if_else)]
-pub(crate) struct OuterAttributeNotAllowedOnIfElse {
-    #[primary_span]
-    pub last: Span,
-
-    #[label(parser::branch_label)]
-    pub branch_span: Span,
-
-    #[label(parser::ctx_label)]
-    pub ctx_span: Span,
-    pub ctx: String,
-
-    #[suggestion(applicability = "machine-applicable", code = "")]
-    pub attributes: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::missing_in_in_for_loop)]
-pub(crate) struct MissingInInForLoop {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sub: MissingInInForLoopSub,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum MissingInInForLoopSub {
-    // Has been misleading, at least in the past (closed Issue #48492), thus maybe-incorrect
-    #[suggestion_short(parser::use_in_not_of, applicability = "maybe-incorrect", code = "in")]
-    InNotOf(#[primary_span] Span),
-    #[suggestion_short(parser::add_in, applicability = "maybe-incorrect", code = " in ")]
-    AddIn(#[primary_span] Span),
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::missing_comma_after_match_arm)]
-pub(crate) struct MissingCommaAfterMatchArm {
-    #[primary_span]
-    #[suggestion(applicability = "machine-applicable", code = ",")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::catch_after_try)]
-#[help]
-pub(crate) struct CatchAfterTry {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::comma_after_base_struct)]
-#[note]
-pub(crate) struct CommaAfterBaseStruct {
-    #[primary_span]
-    pub span: Span,
-    #[suggestion_short(applicability = "machine-applicable", code = "")]
-    pub comma: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::eq_field_init)]
-pub(crate) struct EqFieldInit {
-    #[primary_span]
-    pub span: Span,
-    #[suggestion(applicability = "machine-applicable", code = ":")]
-    pub eq: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::dotdotdot)]
-pub(crate) struct DotDotDot {
-    #[primary_span]
-    #[suggestion(parser::suggest_exclusive_range, applicability = "maybe-incorrect", code = "..")]
-    #[suggestion(parser::suggest_inclusive_range, applicability = "maybe-incorrect", code = "..=")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::left_arrow_operator)]
-pub(crate) struct LeftArrowOperator {
-    #[primary_span]
-    #[suggestion(applicability = "maybe-incorrect", code = "< -")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::remove_let)]
-pub(crate) struct RemoveLet {
-    #[primary_span]
-    #[suggestion(applicability = "machine-applicable", code = "")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::use_eq_instead)]
-pub(crate) struct UseEqInstead {
-    #[primary_span]
-    #[suggestion_short(applicability = "machine-applicable", code = "=")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser::use_empty_block_not_semi)]
-pub(crate) struct UseEmptyBlockNotSemi {
-    #[primary_span]
-    #[suggestion_hidden(applicability = "machine-applicable", code = "{{}}")]
-    pub span: Span,
-}
-
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -776,15 +246,6 @@ impl<'a> DerefMut for SnapshotParser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    #[rustc_lint_diagnostics]
-    pub(super) fn span_err<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        err: Error,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        err.span_err(sp, self.diagnostic())
-    }
-
     #[rustc_lint_diagnostics]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
@@ -830,10 +291,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn expected_ident_found(&self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut err = self.struct_span_err(
-            self.token.span,
-            &format!("expected identifier, found {}", super::token_descr(&self.token)),
-        );
         let valid_follow = &[
             TokenKind::Eq,
             TokenKind::Colon,
@@ -845,34 +302,35 @@ impl<'a> Parser<'a> {
             TokenKind::CloseDelim(Delimiter::Brace),
             TokenKind::CloseDelim(Delimiter::Parenthesis),
         ];
-        match self.token.ident() {
+        let suggest_raw = match self.token.ident() {
             Some((ident, false))
                 if ident.is_raw_guess()
                     && self.look_ahead(1, |t| valid_follow.contains(&t.kind)) =>
             {
-                err.span_suggestion_verbose(
-                    ident.span.shrink_to_lo(),
-                    &format!("escape `{}` to use it as an identifier", ident.name),
-                    "r#",
-                    Applicability::MaybeIncorrect,
-                );
+                Some(SuggEscapeToUseAsIdentifier {
+                    span: ident.span.shrink_to_lo(),
+                    // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
+                    // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
+                    ident_name: ident.name.to_string(),
+                })
             }
-            _ => {}
-        }
-        if let Some(token_descr) = super::token_descr_opt(&self.token) {
-            err.span_label(self.token.span, format!("expected identifier, found {}", token_descr));
-        } else {
-            err.span_label(self.token.span, "expected identifier");
+            _ => None,
+        };
+
+        let suggest_remove_comma =
             if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
-                err.span_suggestion(
-                    self.token.span,
-                    "remove this comma",
-                    "",
-                    Applicability::MachineApplicable,
-                );
-            }
-        }
-        err
+                Some(SuggRemoveComma { span: self.token.span })
+            } else {
+                None
+            };
+
+        let err = ExpectedIdentifier {
+            span: self.token.span,
+            token: self.token.clone(),
+            suggest_raw,
+            suggest_remove_comma,
+        };
+        err.into_diagnostic(&self.sess.span_diagnostic)
     }
 
     pub(super) fn expected_one_of_not_found(
@@ -937,8 +395,8 @@ impl<'a> Parser<'a> {
         expected.dedup();
 
         let sm = self.sess.source_map();
-        let msg = format!("expected `;`, found {}", super::token_descr(&self.token));
-        let appl = Applicability::MachineApplicable;
+
+        // Special-case "expected `;`" errors
         if expected.contains(&TokenType::Token(token::Semi)) {
             if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
                 // Likely inside a macro, can't provide meaningful suggestions.
@@ -966,11 +424,13 @@ impl<'a> Parser<'a> {
                 //
                 //   let x = 32:
                 //   let y = 42;
+                self.sess.emit_err(ExpectedSemi {
+                    span: self.token.span,
+                    token: self.token.clone(),
+                    unexpected_token_label: None,
+                    sugg: ExpectedSemiSugg::ChangeToSemi(self.token.span),
+                });
                 self.bump();
-                let sp = self.prev_token.span;
-                self.struct_span_err(sp, &msg)
-                    .span_suggestion_short(sp, "change this to `;`", ";", appl)
-                    .emit();
                 return Ok(true);
             } else if self.look_ahead(0, |t| {
                 t == &token::CloseDelim(Delimiter::Brace)
@@ -988,11 +448,13 @@ impl<'a> Parser<'a> {
                 //
                 //   let x = 32
                 //   let y = 42;
-                let sp = self.prev_token.span.shrink_to_hi();
-                self.struct_span_err(sp, &msg)
-                    .span_label(self.token.span, "unexpected token")
-                    .span_suggestion_short(sp, "add `;` here", ";", appl)
-                    .emit();
+                let span = self.prev_token.span.shrink_to_hi();
+                self.sess.emit_err(ExpectedSemi {
+                    span,
+                    token: self.token.clone(),
+                    unexpected_token_label: Some(self.token.span),
+                    sugg: ExpectedSemiSugg::AddSemi(span),
+                });
                 return Ok(true);
             }
         }
@@ -1029,6 +491,7 @@ impl<'a> Parser<'a> {
             )
         };
         self.last_unexpected_token_span = Some(self.token.span);
+        // FIXME: translation requires list formatting (for `expect`)
         let mut err = self.struct_span_err(self.token.span, &msg_exp);
 
         if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
@@ -1037,7 +500,7 @@ impl<'a> Parser<'a> {
                     self.prev_token.span,
                     &format!("write `fn` instead of `{symbol}` to declare a function"),
                     "fn",
-                    appl,
+                    Applicability::MachineApplicable,
                 );
             }
         }
@@ -1051,7 +514,7 @@ impl<'a> Parser<'a> {
                 self.prev_token.span,
                 "write `pub` instead of `public` to make the item public",
                 "pub",
-                appl,
+                Applicability::MachineApplicable,
             );
         }
 
@@ -1189,19 +652,13 @@ impl<'a> Parser<'a> {
                     //     field: value,
                     // } }
                     err.delay_as_bug();
-                    self.struct_span_err(
-                        expr.span,
-                        fluent::parser::struct_literal_body_without_path,
-                    )
-                    .multipart_suggestion(
-                        fluent::parser::suggestion,
-                        vec![
-                            (expr.span.shrink_to_lo(), "{ SomeStruct ".to_string()),
-                            (expr.span.shrink_to_hi(), " }".to_string()),
-                        ],
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
+                    self.sess.emit_err(StructLiteralBodyWithoutPath {
+                        span: expr.span,
+                        sugg: StructLiteralBodyWithoutPathSugg {
+                            before: expr.span.shrink_to_lo(),
+                            after: expr.span.shrink_to_hi(),
+                        },
+                    });
                     self.restore_snapshot(snapshot);
                     let mut tail = self.mk_block(
                         vec![self.mk_stmt_err(expr.span)],
@@ -1395,18 +852,8 @@ impl<'a> Parser<'a> {
             self.eat_to_tokens(end);
             let span = lo.until(self.token.span);
 
-            let total_num_of_gt = number_of_gt + number_of_shr * 2;
-            self.struct_span_err(
-                span,
-                &format!("unmatched angle bracket{}", pluralize!(total_num_of_gt)),
-            )
-            .span_suggestion(
-                span,
-                &format!("remove extra angle bracket{}", pluralize!(total_num_of_gt)),
-                "",
-                Applicability::MachineApplicable,
-            )
-            .emit();
+            let num_extra_brackets = number_of_gt + number_of_shr * 2;
+            self.sess.emit_err(UnmatchedAngleBrackets { span, num_extra_brackets });
             return true;
         }
         false
@@ -1435,19 +882,13 @@ impl<'a> Parser<'a> {
                         let args = AngleBracketedArgs { args, span }.into();
                         segment.args = args;
 
-                        self.struct_span_err(
+                        self.sess.emit_err(GenericParamsWithoutAngleBrackets {
                             span,
-                            "generic parameters without surrounding angle brackets",
-                        )
-                        .multipart_suggestion(
-                            "surround the type parameters with angle brackets",
-                            vec![
-                                (span.shrink_to_lo(), "<".to_string()),
-                                (trailing_span, ">".to_string()),
-                            ],
-                            Applicability::MachineApplicable,
-                        )
-                        .emit();
+                            sugg: GenericParamsWithoutAngleBracketsSugg {
+                                left: span.shrink_to_lo(),
+                                right: trailing_span,
+                            },
+                        });
                     } else {
                         // This doesn't look like an invalid turbofish, can't recover parse state.
                         self.restore_snapshot(snapshot);
@@ -1484,7 +925,7 @@ impl<'a> Parser<'a> {
                     if self.eat(&token::Gt) {
                         e.span_suggestion_verbose(
                             binop.span.shrink_to_lo(),
-                            TURBOFISH_SUGGESTION_STR,
+                            fluent::parser::sugg_turbofish_syntax,
                             "::",
                             Applicability::MaybeIncorrect,
                         )
@@ -1516,7 +957,7 @@ impl<'a> Parser<'a> {
     /// parenthesising the leftmost comparison.
     fn attempt_chained_comparison_suggestion(
         &mut self,
-        err: &mut Diagnostic,
+        err: &mut ComparisonOperatorsCannotBeChained,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
     ) -> bool /* advanced the cursor */ {
@@ -1529,16 +970,6 @@ impl<'a> Parser<'a> {
                 // suggestion being the only one to apply is high.
                 return false;
             }
-            let mut enclose = |left: Span, right: Span| {
-                err.multipart_suggestion(
-                    "parenthesize the comparison",
-                    vec![
-                        (left.shrink_to_lo(), "(".to_string()),
-                        (right.shrink_to_hi(), ")".to_string()),
-                    ],
-                    Applicability::MaybeIncorrect,
-                );
-            };
             return match (op.node, &outer_op.node) {
                 // `x == y == z`
                 (BinOpKind::Eq, AssocOp::Equal) |
@@ -1552,12 +983,10 @@ impl<'a> Parser<'a> {
                         self.span_to_snippet(e.span)
                             .unwrap_or_else(|_| pprust::expr_to_string(&e))
                     };
-                    err.span_suggestion_verbose(
-                        inner_op.span.shrink_to_hi(),
-                        "split the comparison into two",
-                        format!(" && {}", expr_to_str(&r1)),
-                        Applicability::MaybeIncorrect,
-                    );
+                    err.chaining_sugg = Some(ComparisonOperatorsCannotBeChainedSugg::SplitComparison {
+                        span: inner_op.span.shrink_to_hi(),
+                        middle_term: expr_to_str(&r1),
+                    });
                     false // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
                 // `x == y < z`
@@ -1568,7 +997,10 @@ impl<'a> Parser<'a> {
                         Ok(r2) => {
                             // We are sure that outer-op-rhs could be consumed, the suggestion is
                             // likely correct.
-                            enclose(r1.span, r2.span);
+                            err.chaining_sugg = Some(ComparisonOperatorsCannotBeChainedSugg::Parenthesize {
+                                left: r1.span.shrink_to_lo(),
+                                right: r2.span.shrink_to_hi(),
+                            });
                             true
                         }
                         Err(expr_err) => {
@@ -1585,7 +1017,10 @@ impl<'a> Parser<'a> {
                     // further checks are necessary.
                     match self.parse_expr() {
                         Ok(_) => {
-                            enclose(l1.span, r1.span);
+                            err.chaining_sugg = Some(ComparisonOperatorsCannotBeChainedSugg::Parenthesize {
+                                left: l1.span.shrink_to_lo(),
+                                right: r1.span.shrink_to_hi(),
+                            });
                             true
                         }
                         Err(expr_err) => {
@@ -1634,18 +1069,11 @@ impl<'a> Parser<'a> {
 
         match inner_op.kind {
             ExprKind::Binary(op, ref l1, ref r1) if op.node.is_comparison() => {
-                let mut err = self.struct_span_err(
-                    vec![op.span, self.prev_token.span],
-                    "comparison operators cannot be chained",
-                );
-
-                let suggest = |err: &mut Diagnostic| {
-                    err.span_suggestion_verbose(
-                        op.span.shrink_to_lo(),
-                        TURBOFISH_SUGGESTION_STR,
-                        "::",
-                        Applicability::MaybeIncorrect,
-                    );
+                let mut err = ComparisonOperatorsCannotBeChained {
+                    span: vec![op.span, self.prev_token.span],
+                    suggest_turbofish: None,
+                    help_turbofish: None,
+                    chaining_sugg: None,
                 };
 
                 // Include `<` to provide this recommendation even in a case like
@@ -1672,7 +1100,7 @@ impl<'a> Parser<'a> {
                     return if token::ModSep == self.token.kind {
                         // We have some certainty that this was a bad turbofish at this point.
                         // `foo< bar >::`
-                        suggest(&mut err);
+                        err.suggest_turbofish = Some(op.span.shrink_to_lo());
 
                         let snapshot = self.create_snapshot_for_diagnostic();
                         self.bump(); // `::`
@@ -1681,7 +1109,7 @@ impl<'a> Parser<'a> {
                         match self.parse_expr() {
                             Ok(_) => {
                                 // 99% certain that the suggestion is correct, continue parsing.
-                                err.emit();
+                                self.sess.emit_err(err);
                                 // FIXME: actually check that the two expressions in the binop are
                                 // paths and resynthesize new fn call expression instead of using
                                 // `ExprKind::Err` placeholder.
@@ -1692,18 +1120,18 @@ impl<'a> Parser<'a> {
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
                                 self.restore_snapshot(snapshot);
-                                Err(err)
+                                Err(err.into_diagnostic(&self.sess.span_diagnostic))
                             }
                         }
                     } else if token::OpenDelim(Delimiter::Parenthesis) == self.token.kind {
                         // We have high certainty that this was a bad turbofish at this point.
                         // `foo< bar >(`
-                        suggest(&mut err);
+                        err.suggest_turbofish = Some(op.span.shrink_to_lo());
                         // Consume the fn call arguments.
                         match self.consume_fn_args() {
-                            Err(()) => Err(err),
+                            Err(()) => Err(err.into_diagnostic(&self.sess.span_diagnostic)),
                             Ok(()) => {
-                                err.emit();
+                                self.sess.emit_err(err);
                                 // FIXME: actually check that the two expressions in the binop are
                                 // paths and resynthesize new fn call expression instead of using
                                 // `ExprKind::Err` placeholder.
@@ -1716,25 +1144,24 @@ impl<'a> Parser<'a> {
                         {
                             // All we know is that this is `foo < bar >` and *nothing* else. Try to
                             // be helpful, but don't attempt to recover.
-                            err.help(TURBOFISH_SUGGESTION_STR);
-                            err.help("or use `(...)` if you meant to specify fn arguments");
+                            err.help_turbofish = Some(());
                         }
 
                         // If it looks like a genuine attempt to chain operators (as opposed to a
                         // misformatted turbofish, for instance), suggest a correct form.
                         if self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op)
                         {
-                            err.emit();
+                            self.sess.emit_err(err);
                             mk_err_expr(self, inner_op.span.to(self.prev_token.span))
                         } else {
                             // These cases cause too many knock-down errors, bail out (#61329).
-                            Err(err)
+                            Err(err.into_diagnostic(&self.sess.span_diagnostic))
                         }
                     };
                 }
                 let recover =
                     self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
-                err.emit();
+                self.sess.emit_err(err);
                 if recover {
                     return mk_err_expr(self, inner_op.span.to(self.prev_token.span));
                 }
@@ -1775,17 +1202,13 @@ impl<'a> Parser<'a> {
     pub(super) fn maybe_recover_from_question_mark(&mut self, ty: P<Ty>) -> P<Ty> {
         if self.token == token::Question {
             self.bump();
-            self.struct_span_err(self.prev_token.span, "invalid `?` in type")
-                .span_label(self.prev_token.span, "`?` is only allowed on expressions, not types")
-                .multipart_suggestion(
-                    "if you meant to express that the type might not contain a value, use the `Option` wrapper type",
-                    vec![
-                        (ty.span.shrink_to_lo(), "Option<".to_string()),
-                        (self.prev_token.span, ">".to_string()),
-                    ],
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.sess.emit_err(QuestionMarkInType {
+                span: self.prev_token.span,
+                sugg: QuestionMarkInTypeSugg {
+                    left: ty.span.shrink_to_lo(),
+                    right: self.prev_token.span,
+                },
+            });
             self.mk_ty(ty.span.to(self.prev_token.span), TyKind::Err)
         } else {
             ty
@@ -2209,19 +1632,16 @@ impl<'a> Parser<'a> {
             (token::CloseDelim(Delimiter::Parenthesis), Some(begin_par_sp)) => {
                 self.bump();
 
-                self.struct_span_err(
-                    MultiSpan::from_spans(vec![begin_par_sp, self.prev_token.span]),
-                    "unexpected parentheses surrounding `for` loop head",
-                )
-                .multipart_suggestion(
-                    "remove parentheses in `for` loop",
-                    vec![(begin_par_sp, String::new()), (self.prev_token.span, String::new())],
+                self.sess.emit_err(ParenthesesInForHead {
+                    span: vec![begin_par_sp, self.prev_token.span],
                     // With e.g. `for (x) in y)` this would replace `(x) in y)`
                     // with `x) in y)` which is syntactically invalid.
                     // However, this is prevented before we get here.
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+                    sugg: ParenthesesInForHeadSugg {
+                        left: begin_par_sp,
+                        right: self.prev_token.span,
+                    },
+                });
 
                 // Unwrap `(pat)` into `pat` to avoid the `unused_parens` lint.
                 pat.and_then(|pat| match pat.kind {
@@ -2440,12 +1860,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn eat_incorrect_doc_comment_for_param_type(&mut self) {
         if let token::DocComment(..) = self.token.kind {
-            self.struct_span_err(
-                self.token.span,
-                "documentation comments cannot be applied to a function parameter's type",
-            )
-            .span_label(self.token.span, "doc comments are not allowed here")
-            .emit();
+            self.sess.emit_err(DocCommentOnParamType { span: self.token.span });
             self.bump();
         } else if self.token == token::Pound
             && self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Bracket))
@@ -2457,9 +1872,7 @@ impl<'a> Parser<'a> {
             }
             let sp = lo.to(self.token.span);
             self.bump();
-            self.struct_span_err(sp, "attributes cannot be applied to a function parameter's type")
-                .span_label(sp, "attributes are not allowed here")
-                .emit();
+            self.sess.emit_err(AttributeOnParamType { span: sp });
         }
     }
 
@@ -2580,19 +1993,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
-        struct_span_err!(
-            self.diagnostic(),
-            pat.span,
-            E0642,
-            "patterns aren't allowed in methods without bodies",
-        )
-        .span_suggestion_short(
-            pat.span,
-            "give this argument a name or use an underscore to ignore it",
-            "_",
-            Applicability::MachineApplicable,
-        )
-        .emit();
+        self.sess.emit_err(PatternMethodParamWithoutBody { span: pat.span });
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
         let pat =
@@ -2601,11 +2002,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_bad_self_param(&mut self, mut param: Param) -> PResult<'a, Param> {
-        let sp = param.pat.span;
+        let span = param.pat.span;
         param.ty.kind = TyKind::Err;
-        self.struct_span_err(sp, "unexpected `self` parameter in function")
-            .span_label(sp, "must be the first parameter of an associated function")
-            .emit();
+        self.sess.emit_err(SelfParamNotFirst { span });
         Ok(param)
     }
 
@@ -2754,20 +2153,13 @@ impl<'a> Parser<'a> {
             err
         })?;
         if !self.expr_is_valid_const_arg(&expr) {
-            self.struct_span_err(
-                expr.span,
-                "expressions must be enclosed in braces to be used as const generic \
-                    arguments",
-            )
-            .multipart_suggestion(
-                "enclose the `const` expression in braces",
-                vec![
-                    (expr.span.shrink_to_lo(), "{ ".to_string()),
-                    (expr.span.shrink_to_hi(), " }".to_string()),
-                ],
-                Applicability::MachineApplicable,
-            )
-            .emit();
+            self.sess.emit_err(ConstGenericWithoutBraces {
+                span: expr.span,
+                sugg: ConstGenericWithoutBracesSugg {
+                    left: expr.span.shrink_to_lo(),
+                    right: expr.span.shrink_to_hi(),
+                },
+            });
         }
         Ok(expr)
     }
@@ -2782,24 +2174,30 @@ impl<'a> Parser<'a> {
                 return None;
             }
         };
-        let mut err =
-            self.struct_span_err(param.span(), "unexpected `const` parameter declaration");
-        err.span_label(param.span(), "expected a `const` expression, not a parameter declaration");
-        if let (Some(generics), Ok(snippet)) =
-            (ty_generics, self.sess.source_map().span_to_snippet(param.span()))
-        {
-            let (span, sugg) = match &generics.params[..] {
-                [] => (generics.span, format!("<{snippet}>")),
-                [.., generic] => (generic.span().shrink_to_hi(), format!(", {snippet}")),
-            };
-            err.multipart_suggestion(
-                "`const` parameters must be declared for the `impl`",
-                vec![(span, sugg), (param.span(), param.ident.to_string())],
-                Applicability::MachineApplicable,
-            );
-        }
+
+        let ident = param.ident.to_string();
+        let sugg = match (ty_generics, self.sess.source_map().span_to_snippet(param.span())) {
+            (Some(Generics { params, span: impl_generics, .. }), Ok(snippet)) => {
+                Some(match &params[..] {
+                    [] => UnexpectedConstParamDeclarationSugg::AddParam {
+                        impl_generics: *impl_generics,
+                        incorrect_decl: param.span(),
+                        snippet,
+                        ident,
+                    },
+                    [.., generic] => UnexpectedConstParamDeclarationSugg::AppendParam {
+                        impl_generics_end: generic.span().shrink_to_hi(),
+                        incorrect_decl: param.span(),
+                        snippet,
+                        ident,
+                    },
+                })
+            }
+            _ => None,
+        };
+        self.sess.emit_err(UnexpectedConstParamDeclaration { span: param.span(), sugg });
+
         let value = self.mk_expr_err(param.span());
-        err.emit();
         Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }))
     }
 
@@ -2817,20 +2215,15 @@ impl<'a> Parser<'a> {
         self.bump(); // `const`
 
         // Detect and recover from the old, pre-RFC2000 syntax for const generics.
-        let mut err = self
-            .struct_span_err(start, "expected lifetime, type, or constant, found keyword `const`");
+        let mut err = UnexpectedConstInGenericParam { span: start, to_remove: None };
         if self.check_const_arg() {
-            err.span_suggestion_verbose(
-                start.until(self.token.span),
-                "the `const` keyword is only needed in the definition of the type",
-                "",
-                Applicability::MaybeIncorrect,
-            );
-            err.emit();
+            err.to_remove = Some(start.until(self.token.span));
+            self.sess.emit_err(err);
             Ok(Some(GenericArg::Const(self.parse_const_arg()?)))
         } else {
             let after_kw_const = self.token.span;
-            self.recover_const_arg(after_kw_const, err).map(Some)
+            self.recover_const_arg(after_kw_const, err.into_diagnostic(&self.sess.span_diagnostic))
+                .map(Some)
         }
     }
 
@@ -2934,24 +2327,6 @@ impl<'a> Parser<'a> {
         let value = self.mk_expr_err(span);
         err.emit();
         GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
-    }
-
-    /// Get the diagnostics for the cases where `move async` is found.
-    ///
-    /// `move_async_span` starts at the 'm' of the move keyword and ends with the 'c' of the async keyword
-    pub(super) fn incorrect_move_async_order_found(
-        &self,
-        move_async_span: Span,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut err =
-            self.struct_span_err(move_async_span, "the order of `move` and `async` is incorrect");
-        err.span_suggestion_verbose(
-            move_async_span,
-            "try switching the order",
-            "async move",
-            Applicability::MaybeIncorrect,
-        );
-        err
     }
 
     /// Some special error handling for the "top-level" patterns in a match arm,
@@ -3149,17 +2524,11 @@ impl<'a> Parser<'a> {
                 let (a_span, b_span) = (a.span(), b.span());
                 let between_span = a_span.shrink_to_hi().to(b_span.shrink_to_lo());
                 if self.span_to_snippet(between_span).as_ref().map(|a| &a[..]) == Ok(":: ") {
-                    let mut err = self.struct_span_err(
-                        path.span.shrink_to_hi(),
-                        "expected `:` followed by trait or lifetime",
-                    );
-                    err.span_suggestion(
-                        between_span,
-                        "use single colon",
-                        ": ",
-                        Applicability::MachineApplicable,
-                    );
-                    return Err(err);
+                    return Err(DoubleColonInBound {
+                        span: path.span.shrink_to_hi(),
+                        between: between_span,
+                    }
+                    .into_diagnostic(&self.sess.span_diagnostic));
                 }
             }
         }

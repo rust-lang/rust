@@ -1,18 +1,18 @@
 extern
-    "C"suffix //~ ERROR suffixes on a string literal are invalid
+    "C"suffix //~ ERROR suffixes on string literals are invalid
     fn foo() {}
 
 extern
-    "C"suffix //~ ERROR suffixes on a string literal are invalid
+    "C"suffix //~ ERROR suffixes on string literals are invalid
 {}
 
 fn main() {
-    ""suffix; //~ ERROR suffixes on a string literal are invalid
-    b""suffix; //~ ERROR suffixes on a byte string literal are invalid
-    r#""#suffix; //~ ERROR suffixes on a string literal are invalid
-    br#""#suffix; //~ ERROR suffixes on a byte string literal are invalid
-    'a'suffix; //~ ERROR suffixes on a char literal are invalid
-    b'a'suffix; //~ ERROR suffixes on a byte literal are invalid
+    ""suffix; //~ ERROR suffixes on string literals are invalid
+    b""suffix; //~ ERROR suffixes on byte string literals are invalid
+    r#""#suffix; //~ ERROR suffixes on string literals are invalid
+    br#""#suffix; //~ ERROR suffixes on byte string literals are invalid
+    'a'suffix; //~ ERROR suffixes on char literals are invalid
+    b'a'suffix; //~ ERROR suffixes on byte literals are invalid
 
     1234u1024; //~ ERROR invalid width `1024` for integer literal
     1234i1024; //~ ERROR invalid width `1024` for integer literal
