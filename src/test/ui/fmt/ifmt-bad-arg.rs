@@ -20,9 +20,9 @@ fn main() {
     //~^ ERROR: invalid reference to positional argument 2 (there are 2 arguments)
 
     format!("{} {value} {} {}", 1, value=2);
-    //~^ ERROR: invalid reference to positional argument 2 (there are 2 arguments)
+    //~^ ERROR: 3 positional arguments in format string, but there are 2 arguments
     format!("{name} {value} {} {} {} {} {} {}", 0, name=1, value=2);
-    //~^ ERROR: invalid reference to positional arguments 3, 4 and 5 (there are 3 arguments)
+    //~^ ERROR: 6 positional arguments in format string, but there are 3 arguments
 
     format!("{} {foo} {} {bar} {}", 1, 2, 3);
     //~^ ERROR: cannot find value `foo` in this scope
@@ -79,7 +79,7 @@ tenth number: {}",
     //~^ ERROR 4 positional arguments in format string, but there are 3 arguments
     //~| ERROR mismatched types
     println!("{} {:07$.*} {}", 1, 3.2, 4);
-    //~^ ERROR 4 positional arguments in format string, but there are 3 arguments
+    //~^ ERROR invalid reference to positional arguments 3 and 7 (there are 3 arguments)
     //~| ERROR mismatched types
     println!("{} {:07$} {}", 1, 3.2, 4);
     //~^ ERROR invalid reference to positional argument 7 (there are 3 arguments)
@@ -95,5 +95,5 @@ tenth number: {}",
     println!("{:.*}");
     //~^ ERROR 2 positional arguments in format string, but no arguments were given
     println!("{:.0$}");
-    //~^ ERROR 1 positional argument in format string, but no arguments were given
+    //~^ ERROR invalid reference to positional argument 0 (no arguments were given)
 }

@@ -2,7 +2,7 @@ warning: named argument `f` is not used by name
   --> $DIR/issue-99907.rs:5:30
    |
 LL |     println!("Hello {:.1}!", f = 0.02f32);
-   |                     --       ^ this named argument is referred to by position in formatting string
+   |                     -----    ^ this named argument is referred to by position in formatting string
    |                     |
    |                     this formatting argument uses named argument `f` by position
    |
@@ -16,7 +16,7 @@ warning: named argument `f` is not used by name
   --> $DIR/issue-99907.rs:9:31
    |
 LL |     println!("Hello {:1.1}!", f = 0.02f32);
-   |                     --        ^ this named argument is referred to by position in formatting string
+   |                     ------    ^ this named argument is referred to by position in formatting string
    |                     |
    |                     this formatting argument uses named argument `f` by position
    |
