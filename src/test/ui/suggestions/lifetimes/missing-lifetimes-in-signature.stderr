@@ -164,5 +164,5 @@ LL |     G: Get<T> + 'a,
 
 error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0261, E0309, E0621, E0700.
+Some errors have detailed explanations: E0261, E0309, E0311, E0621, E0700.
 For more information about an error, try `rustc --explain E0261`.
