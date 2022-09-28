@@ -1973,6 +1973,7 @@ impl<T> const From<T> for Option<T> {
     ///
     /// assert_eq!(Some(67), o);
     /// ```
+    #[inline]
     fn from(val: T) -> Option<T> {
         Some(val)
     }
