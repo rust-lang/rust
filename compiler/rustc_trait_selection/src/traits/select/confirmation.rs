@@ -626,7 +626,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // the signature, as evidenced by how we treat it during projection.
         // The safe thing to do here is to liberate it, though, which should
         // have no worse effect than skipping the binder here.
-        let liberated_fn_ty = self.infcx.replace_bound_vars_with_placeholders(obligation.self_ty());
+        let liberated_fn_ty =
+            self.infcx.replace_bound_vars_with_placeholders(obligation.predicate.rebind(self_ty));
         let output_ty = self
             .infcx
             .replace_bound_vars_with_placeholders(liberated_fn_ty.fn_sig(self.tcx()).output());
