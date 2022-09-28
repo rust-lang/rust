@@ -91,7 +91,7 @@ LLVM_PROFILE_DIR=${LLVM_PROFILE_DIRECTORY_ROOT}/prof-%p python3 $CHECKOUT/x.py b
     --target=$PGO_HOST \
     --host=$PGO_HOST \
     --stage 2 library/std \
-    --llvm-profile-generate
+    --llvm-profile-generate  --warnings warn
 
 # Compile rustc-perf:
 # - get the expected commit source code: on linux, the Dockerfile downloads a source archive before
@@ -150,7 +150,7 @@ RUSTC_PROFILE_DIRECTORY_ROOT=$PGO_TMP/rustc-pgo
 
 python3 $CHECKOUT/x.py build --target=$PGO_HOST --host=$PGO_HOST \
     --stage 2 library/std \
-    --rust-profile-generate=${RUSTC_PROFILE_DIRECTORY_ROOT}
+    --rust-profile-generate=${RUSTC_PROFILE_DIRECTORY_ROOT} --warnings warn
 
 # Here we're profiling the `rustc` frontend, so we also include `Check`.
 # The benchmark set includes various stress tests that put the frontend under pressure.
@@ -194,7 +194,7 @@ rm -r $BUILD_ARTIFACTS/llvm $BUILD_ARTIFACTS/lld
 # collected profiling data.
 $@ \
     --rust-profile-use=${RUSTC_PROFILE_MERGED_FILE} \
-    --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE}
+    --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE} --warnings warn
 
 echo "Rustc binary size"
 ls -la ./build/$PGO_HOST/stage2/bin
