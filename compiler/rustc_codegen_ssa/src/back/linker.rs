@@ -1180,18 +1180,12 @@ impl<'a> WasmLd<'a> {
         //   sharing memory and instantiating the module multiple times. As a
         //   result if it were exported then we'd just have no sharing.
         //
-        // * `--export=__wasm_init_memory` - when using `--passive-segments` the
-        //   linker will synthesize this function, and so we need to make sure
-        //   that our usage of `--export` below won't accidentally cause this
-        //   function to get deleted.
-        //
         // * `--export=*tls*` - when `#[thread_local]` symbols are used these
         //   symbols are how the TLS segments are initialized and configured.
         if sess.target_features.contains(&sym::atomics) {
             cmd.arg("--shared-memory");
             cmd.arg("--max-memory=1073741824");
             cmd.arg("--import-memory");
-            cmd.arg("--export=__wasm_init_memory");
             cmd.arg("--export=__wasm_init_tls");
             cmd.arg("--export=__tls_size");
             cmd.arg("--export=__tls_align");
