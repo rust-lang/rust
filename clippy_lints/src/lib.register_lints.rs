@@ -184,6 +184,7 @@ store.register_lints(&[
     if_then_some_else_none::IF_THEN_SOME_ELSE_NONE,
     implicit_hasher::IMPLICIT_HASHER,
     implicit_return::IMPLICIT_RETURN,
+    implicit_saturating_add::IMPLICIT_SATURATING_ADD,
     implicit_saturating_sub::IMPLICIT_SATURATING_SUB,
     inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR,
     index_refutable_slice::INDEX_REFUTABLE_SLICE,
