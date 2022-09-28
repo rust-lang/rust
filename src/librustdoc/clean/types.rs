@@ -689,7 +689,7 @@ impl Item {
                 let abi = tcx.fn_sig(self.item_id.as_def_id().unwrap()).abi();
                 hir::FnHeader {
                     unsafety: if abi == Abi::RustIntrinsic {
-                        intrinsic_operation_unsafety(self.name.unwrap())
+                        intrinsic_operation_unsafety(tcx, self.item_id.as_def_id().unwrap())
                     } else {
                         hir::Unsafety::Unsafe
                     },

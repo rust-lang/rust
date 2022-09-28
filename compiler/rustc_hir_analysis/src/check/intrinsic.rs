@@ -7,7 +7,8 @@ use crate::errors::{
 };
 use crate::require_same_types;
 
-use rustc_errors::struct_span_err;
+use hir::def_id::DefId;
+use rustc_errors::{struct_span_err, DiagnosticMessage};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, TyCtxt};
@@ -61,8 +62,12 @@ fn equate_intrinsic_type<'tcx>(
 }
 
 /// Returns the unsafety of the given intrinsic.
-pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
-    match intrinsic {
+pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir::Unsafety {
+    let has_safe_attr = match tcx.has_attr(intrinsic_id, sym::rustc_safe_intrinsic) {
+        true => hir::Unsafety::Normal,
+        false => hir::Unsafety::Unsafe,
+    };
+    let is_in_list = match tcx.item_name(intrinsic_id) {
         // When adding a new intrinsic to this list,
         // it's usually worth updating that intrinsic's documentation
         // to note that it's safe to call, since
@@ -106,14 +111,26 @@ pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
         | sym::variant_count
         | sym::ptr_mask => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
+    };
+
+    if has_safe_attr != is_in_list {
+        tcx.sess.struct_span_err(
+            tcx.def_span(intrinsic_id),
+            DiagnosticMessage::Str(format!(
+                    "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
+                    tcx.item_name(intrinsic_id)
+        ))).emit();
     }
+
+    is_in_list
 }
 
 /// Remember to add all intrinsics here, in `compiler/rustc_codegen_llvm/src/intrinsic.rs`,
 /// and in `library/core/src/intrinsics.rs`.
 pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)));
-    let intrinsic_name = tcx.item_name(it.def_id.to_def_id());
+    let intrinsic_id = it.def_id.to_def_id();
+    let intrinsic_name = tcx.item_name(intrinsic_id);
     let name_str = intrinsic_name.as_str();
 
     let bound_vars = tcx.mk_bound_variable_kinds(
@@ -160,7 +177,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         };
         (n_tps, 0, inputs, output, hir::Unsafety::Unsafe)
     } else {
-        let unsafety = intrinsic_operation_unsafety(intrinsic_name);
+        let unsafety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, inputs, output) = match intrinsic_name {
             sym::abort => (0, Vec::new(), tcx.types.never),
             sym::unreachable => (0, Vec::new(), tcx.types.never),

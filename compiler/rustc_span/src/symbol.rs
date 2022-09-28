@@ -1296,6 +1296,7 @@ symbols! {
         rustc_reallocator,
         rustc_regions,
         rustc_reservation_impl,
+        rustc_safe_intrinsic,
         rustc_serialize,
         rustc_skip_array_during_method_dispatch,
         rustc_specialization_trait,
