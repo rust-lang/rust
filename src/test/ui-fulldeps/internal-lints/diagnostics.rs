@@ -19,14 +19,14 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
-#[diag(parser::expect_path)]
+#[diag(compiletest::example)]
 struct DeriveDiagnostic {
     #[primary_span]
     span: Span,
 }
 
 #[derive(Subdiagnostic)]
-#[note(parser::add_paren)]
+#[note(compiletest::example)]
 struct Note {
     #[primary_span]
     span: Span,
@@ -45,7 +45,7 @@ pub struct TranslatableInIntoDiagnostic;
 
 impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for TranslatableInIntoDiagnostic {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        handler.struct_err(fluent::parser::expect_path)
+        handler.struct_err(fluent::compiletest::example)
     }
 }
 
@@ -62,12 +62,12 @@ pub struct TranslatableInAddToDiagnostic;
 
 impl AddToDiagnostic for TranslatableInAddToDiagnostic {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
-        diag.note(fluent::typeck::note);
+        diag.note(fluent::compiletest::note);
     }
 }
 
 pub fn make_diagnostics<'a>(handler: &'a Handler) {
-    let _diag = handler.struct_err(fluent::parser::expect_path);
+    let _diag = handler.struct_err(fluent::compiletest::example);
     //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
 
     let _diag = handler.struct_err("untranslatable diagnostic");
