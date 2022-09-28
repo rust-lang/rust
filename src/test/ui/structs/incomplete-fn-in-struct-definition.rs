@@ -1,5 +1,5 @@
 fn main() {}
 
 struct S {
-    fn //~ ERROR expected identifier, found keyword `fn`
+    fn: u8 //~ ERROR expected identifier, found keyword `fn`
 }
