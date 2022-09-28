@@ -1176,6 +1176,15 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             }
 
             if let ty::TraitContainer = assoc_item.container {
+                // FIXME(fmease): `tcx.explicit_item_bounds` does not contain the bounds of GATs,
+                //                e.g. the bounds `Copy`, `Display` & (implicitly) `Sized` in
+                //                `type Assoc<T: Copy> where T: Display`. This also means that we
+                //                later incorrectly render `where T: ?Sized`.
+                //
+                //                The result of `tcx.explicit_predicates_of` *does* contain them but
+                //                it does not contain the other bounds / predicates we need.
+                //                Either merge those two interned lists somehow or refactor
+                //                `clean_ty_generics` to call `explicit_item_bounds` by itself.
                 let bounds = tcx.explicit_item_bounds(assoc_item.def_id);
                 let predicates = ty::GenericPredicates { parent: None, predicates: bounds };
                 let mut generics =
