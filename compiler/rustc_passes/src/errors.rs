@@ -1,10 +1,14 @@
-use std::{io::Error, path::Path};
+use std::{
+    io::Error,
+    path::{Path, PathBuf},
+};
 
 use rustc_ast::Label;
 use rustc_errors::{error_code, Applicability, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_span::{Span, Symbol};
+use rustc_middle::ty::MainDefinition;
+use rustc_span::{Span, Symbol, DUMMY_SP};
 
 #[derive(LintDiagnostic)]
 #[diag(passes::outer_crate_level_attr)]
@@ -1062,4 +1066,128 @@ pub struct NakedFunctionsMustUseNoreturn {
     pub span: Span,
     #[suggestion(code = ", options(noreturn)", applicability = "machine-applicable")]
     pub last_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::attr_only_on_main)]
+pub struct AttrOnlyOnMain {
+    #[primary_span]
+    pub span: Span,
+    pub attr: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::attr_only_on_root_main)]
+pub struct AttrOnlyOnRootMain {
+    #[primary_span]
+    pub span: Span,
+    pub attr: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::attr_only_in_functions)]
+pub struct AttrOnlyInFunctions {
+    #[primary_span]
+    pub span: Span,
+    pub attr: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::multiple_rustc_main, code = "E0137")]
+pub struct MultipleRustcMain {
+    #[primary_span]
+    pub span: Span,
+    #[label(passes::first)]
+    pub first: Span,
+    #[label(passes::additional)]
+    pub additional: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::multiple_start_functions, code = "E0138")]
+pub struct MultipleStartFunctions {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub labeled: Span,
+    #[label(passes::previous)]
+    pub previous: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::extern_main)]
+pub struct ExternMain {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::unix_sigpipe_values)]
+pub struct UnixSigpipeValues {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::no_main_function, code = "E0601")]
+pub struct NoMainFunction {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+}
+
+pub struct NoMainErr {
+    pub sp: Span,
+    pub crate_name: Symbol,
+    pub has_filename: bool,
+    pub filename: PathBuf,
+    pub file_empty: bool,
+    pub non_main_fns: Vec<Span>,
+    pub main_def_opt: Option<MainDefinition>,
+    pub add_teach_note: bool,
+}
+
+impl<'a> IntoDiagnostic<'a> for NoMainErr {
+    fn into_diagnostic(
+        self,
+        handler: &'a rustc_errors::Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
+        let mut diag = handler.struct_span_err_with_code(
+            DUMMY_SP,
+            rustc_errors::fluent::passes::no_main_function,
+            error_code!(E0601),
+        );
+        diag.set_arg("crate_name", self.crate_name);
+        diag.set_arg("filename", self.filename);
+        diag.set_arg("has_filename", self.has_filename);
+        let note = if !self.non_main_fns.is_empty() {
+            for &span in &self.non_main_fns {
+                diag.span_note(span, rustc_errors::fluent::passes::here_is_main);
+            }
+            diag.note(rustc_errors::fluent::passes::one_or_more_possible_main);
+            diag.help(rustc_errors::fluent::passes::consider_moving_main);
+            // There were some functions named `main` though. Try to give the user a hint.
+            rustc_errors::fluent::passes::main_must_be_defined_at_crate
+        } else if self.has_filename {
+            rustc_errors::fluent::passes::consider_adding_main_to_file
+        } else {
+            rustc_errors::fluent::passes::consider_adding_main_at_crate
+        };
+        if self.file_empty {
+            diag.note(note);
+        } else {
+            diag.set_span(self.sp.shrink_to_hi());
+            diag.span_label(self.sp.shrink_to_hi(), note);
+        }
+
+        if let Some(main_def) = self.main_def_opt && main_def.opt_fn_def_id().is_none(){
+            // There is something at `crate::main`, but it is not a function definition.
+            diag.span_label(main_def.span, rustc_errors::fluent::passes::non_function_main);
+        }
+
+        if self.add_teach_note {
+            diag.note(rustc_errors::fluent::passes::teach_note);
+        }
+        diag
+    }
 }

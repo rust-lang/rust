@@ -495,3 +495,42 @@ passes_naked_functions_asm_options =
 passes_naked_functions_must_use_noreturn =
     asm in naked functions must use `noreturn` option
     .suggestion = consider specifying that the asm block is responsible for returning from the function
+
+passes_attr_only_on_main =
+    `{$attr}` attribute can only be used on `fn main()`
+
+passes_attr_only_on_root_main =
+    `{$attr}` attribute can only be used on root `fn main()`
+
+passes_attr_only_in_functions =
+    `{$attr}` attribute can only be used on functions
+
+passes_multiple_rustc_main =
+    multiple functions with a `#[rustc_main]` attribute
+    .first = first `#[rustc_main]` function
+    .additional = additional `#[rustc_main]` function
+
+passes_multiple_start_functions =
+    multiple `start` functions
+    .label = multiple `start` functions
+    .previous = previous `#[start]` function here
+
+passes_extern_main =
+    the `main` function cannot be declared in an `extern` block
+
+passes_unix_sigpipe_values =
+    valid values for `#[unix_sigpipe = "..."]` are `inherit`, `sig_ign`, or `sig_dfl`
+
+passes_no_main_function =
+    `main` function not found in crate `{$crate_name}`
+    .here_is_main = here is a function named `main`
+    .one_or_more_possible_main = you have one or more functions named `main` not defined at the crate level
+    .consider_moving_main = consider moving the `main` function definitions
+    .main_must_be_defined_at_crate = the main function must be defined at the crate level{$has_filename ->
+        [true] {" "}(in `{$filename}`)
+        *[false] {""}
+        }
+    .consider_adding_main_to_file = consider adding a `main` function to `{$filename}`
+    .consider_adding_main_at_crate = consider adding a `main` function at the crate level
+    .teach_note = If you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/
+    .non_function_main = non-function item at `crate::main` is found
