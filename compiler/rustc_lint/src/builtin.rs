@@ -46,6 +46,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::List;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, VariantDef};
 use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
@@ -53,7 +54,8 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::VariantIdx;
-use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
+use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
+use rustc_trait_selection::traits::{self, misc::can_type_implement_copy, EvaluationResult};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -748,10 +750,40 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         if def.has_dtor(cx.tcx) {
             return;
         }
+
+        // If the type contains a raw pointer, it may represent something like a handle,
+        // and recommending Copy might be a bad idea.
+        for field in def.all_fields() {
+            let did = field.did;
+            if cx.tcx.type_of(did).is_unsafe_ptr() {
+                return;
+            }
+        }
         let param_env = ty::ParamEnv::empty();
         if ty.is_copy_modulo_regions(cx.tcx.at(item.span), param_env) {
             return;
         }
+
+        // We shouldn't recommend implementing `Copy` on stateful things,
+        // such as iterators.
+        if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator) {
+            if cx.tcx.infer_ctxt().enter(|infer_ctxt| {
+                infer_ctxt.type_implements_trait(iter_trait, ty, List::empty(), param_env)
+                    == EvaluationResult::EvaluatedToOk
+            }) {
+                return;
+            }
+        }
+
+        // Default value of clippy::trivially_copy_pass_by_ref
+        const MAX_SIZE: u64 = 256;
+
+        if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes()) {
+            if size > MAX_SIZE {
+                return;
+            }
+        }
+
         if can_type_implement_copy(
             cx.tcx,
             param_env,
