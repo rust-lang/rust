@@ -1320,10 +1320,12 @@ impl<'a> Linker for WasmLd<'a> {
 
         // LLD will hide these otherwise-internal symbols since it only exports
         // symbols explicitly passed via the `--export` flags above and hides all
-        // others. Various bits and pieces of tooling use this, so be sure these
-        // symbols make their way out of the linker as well.
-        self.cmd.arg("--export=__heap_base");
-        self.cmd.arg("--export=__data_end");
+        // others. Various bits and pieces of wasm32-unknown-unknown tooling use
+        // this, so be sure these symbols make their way out of the linker as well.
+        if self.sess.target.os == "unknown" {
+            self.cmd.arg("--export=__heap_base");
+            self.cmd.arg("--export=__data_end");
+        }
     }
 
     fn subsystem(&mut self, _subsystem: &str) {}
