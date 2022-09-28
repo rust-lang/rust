@@ -94,6 +94,7 @@ macro_rules! arena_types {
             [] tys: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::TyKind<'tcx>>,
             [] predicates: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::PredicateKind<'tcx>>,
             [] consts: rustc_middle::ty::ConstData<'tcx>,
+            [] effects: rustc_middle::ty::EffectData<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena

@@ -531,6 +531,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             type Type = !;
             type DynExistential = !;
             type Const = !;
+            type Effect = !;
 
             fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
                 self.tcx
@@ -552,6 +553,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+                Err(NonTrivialPath)
+            }
+
+            fn print_effect(self, _: ty::Effect<'tcx>) -> Result<Self::Effect, Self::Error> {
                 Err(NonTrivialPath)
             }
 

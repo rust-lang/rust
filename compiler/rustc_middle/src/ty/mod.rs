@@ -86,6 +86,9 @@ pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, OnDiskCache, TyCtxt,
     TyCtxtFeed,
 };
+pub use self::effect::{
+    Effect, EffectData, EffectKind, EffectValue, EffectVid, InferEffect, PlaceholderEffect,
+};
 pub use self::instance::{Instance, InstanceDef, ShortInstance};
 pub use self::list::List;
 pub use self::parameterized::ParameterizedOverTcx;
@@ -136,6 +139,7 @@ mod closure;
 mod consts;
 mod context;
 mod diagnostics;
+mod effect;
 mod erase_regions;
 mod generics;
 mod impls_ty;

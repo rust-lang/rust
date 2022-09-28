@@ -213,6 +213,7 @@ pub trait PrettyPrinter<'tcx>:
         Type = Self,
         DynExistential = Self,
         Const = Self,
+        Effect = Self,
     > + fmt::Write
 {
     /// Like `print_def_path` but for value paths.
@@ -1269,6 +1270,34 @@ pub trait PrettyPrinter<'tcx>:
         Ok(self)
     }
 
+    fn pretty_print_effect(mut self, e: ty::Effect<'tcx>) -> Result<Self::Effect, Self::Error> {
+        define_scoped_cx!(self);
+
+        let verbose = self.tcx().sess.verbose();
+
+        use ty::EffectKind::*;
+
+        match (&e.val, e.kind) {
+            (ty::EffectValue::Rigid { on: true }, Host) => p!(write("!const")),
+            (ty::EffectValue::Rigid { on: false }, Host) => p!(write("const")),
+
+            (ty::EffectValue::Param { index }, _) if verbose => p!(write("E/{index}")),
+            (ty::EffectValue::Param { .. }, Host) => p!(write("~const")),
+
+            (ty::EffectValue::Infer(infer), _) if verbose => match infer {
+                ty::InferEffect::Var(var) => p!(write("#_{}e", var.index)),
+                ty::InferEffect::Fresh(fresh) => p!(write("#_fresh{fresh}e")),
+            },
+            (ty::EffectValue::Infer(_), _) => p!(write("_")),
+
+            (ty::EffectValue::Bound(di, bv), _) => p!(write("Bound({di:?}, {bv:?})")),
+            (ty::EffectValue::Placeholder(ph), _) => p!(write("Placeholder({ph:?})")),
+            (ty::EffectValue::Err(_), Host) => p!(write("[error effect: host]")),
+        }
+
+        Ok(self)
+    }
+
     fn pretty_print_const(
         mut self,
         ct: ty::Const<'tcx>,
@@ -1787,6 +1816,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     type Type = Self;
     type DynExistential = Self;
     type Const = Self;
+    type Effect = Self;
 
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
@@ -1875,6 +1905,10 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         self.pretty_print_const(ct, false)
+    }
+
+    fn print_effect(self, e: ty::Effect<'tcx>) -> Result<Self::Effect, Self::Error> {
+        self.pretty_print_effect(e)
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
@@ -2622,6 +2656,7 @@ forward_display_to_print! {
     Ty<'tcx>,
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ty::Const<'tcx>,
+    ty::Effect<'tcx>,
 
     // HACK(eddyb) these are exhaustive instead of generic,
     // because `for<'tcx>` isn't possible yet.

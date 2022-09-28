@@ -17,11 +17,11 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, DefIdTree, FloatTy, FloatVar,
-    FloatVid, GenericParamDefKind, ImplPolarity, InferTy, IntTy, IntVar, IntVid, List, ParamConst,
-    ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, Region, RegionKind,
-    ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut, TypeckResults, UintTy,
-    Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, DefIdTree, Effect, EffectData,
+    FloatTy, FloatVar, FloatVid, GenericParamDefKind, ImplPolarity, InferTy, IntTy, IntVar, IntVid,
+    List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
+    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut,
+    TypeckResults, UintTy, Visibility,
 };
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_ast as ast;
@@ -141,6 +141,7 @@ pub struct CtxtInterners<'tcx> {
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, ConstData<'tcx>>,
+    effect: InternedSet<'tcx, EffectData<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, LayoutS<VariantIdx>>,
@@ -162,6 +163,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             projs: Default::default(),
             place_elems: Default::default(),
             const_: Default::default(),
+            effect: Default::default(),
             const_allocation: Default::default(),
             bound_variable_kinds: Default::default(),
             layout: Default::default(),
@@ -263,6 +265,12 @@ pub struct CommonTypes<'tcx> {
     pub trait_object_dummy_self: Ty<'tcx>,
 }
 
+pub struct CommonEffects<'tcx> {
+    pub host: ty::Effect<'tcx>,
+    /// The opposite of `host`.
+    pub always_const: ty::Effect<'tcx>,
+}
+
 pub struct CommonLifetimes<'tcx> {
     /// `ReStatic`
     pub re_static: Region<'tcx>,
@@ -306,6 +314,26 @@ impl<'tcx> CommonTypes<'tcx> {
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 
             trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
+        }
+    }
+}
+
+impl<'tcx> CommonEffects<'tcx> {
+    fn new(interners: &CtxtInterners<'tcx>) -> Self {
+        let mk = |val, kind| {
+            ty::Effect(Interned::new_unchecked(
+                interners
+                    .effect
+                    .intern(ty::EffectData { val, kind }, |e| {
+                        InternedInSet(interners.arena.alloc(e))
+                    })
+                    .0,
+            ))
+        };
+
+        CommonEffects {
+            host: mk(ty::EffectValue::Rigid { on: true }, ty::EffectKind::Host),
+            always_const: mk(ty::EffectValue::Rigid { on: false }, ty::EffectKind::Host),
         }
     }
 }
@@ -420,6 +448,9 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
+
+    /// Common effects, pre-interned for your convenience.
+    pub effects: CommonEffects<'tcx>,
 
     /// Common lifetimes, pre-interned for your convenience.
     pub lifetimes: CommonLifetimes<'tcx>,
@@ -609,6 +640,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_types = CommonTypes::new(&interners, s, &untracked);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
+        let common_effects = CommonEffects::new(&interners);
 
         GlobalCtxt {
             sess: s,
@@ -620,6 +652,7 @@ impl<'tcx> TyCtxt<'tcx> {
             prof: s.prof.clone(),
             types: common_types,
             lifetimes: common_lifetimes,
+            effects: common_effects,
             consts: common_consts,
             untracked,
             untracked_resolutions,
@@ -1189,6 +1222,7 @@ macro_rules! nop_list_lift {
 nop_lift! {type_; Ty<'a> => Ty<'tcx>}
 nop_lift! {region; Region<'a> => Region<'tcx>}
 nop_lift! {const_; Const<'a> => Const<'tcx>}
+nop_lift! {effect; Effect<'a> => Effect<'tcx>}
 nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 
@@ -1602,6 +1636,7 @@ macro_rules! direct_interners {
 direct_interners! {
     region: mk_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: mk_const_internal(ConstData<'tcx>): Const -> Const<'tcx>,
+    effect: mk_effect_internal(EffectData<'tcx>): Effect -> Effect<'tcx>,
     const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: intern_layout(LayoutS<VariantIdx>): Layout -> Layout<'tcx>,
     adt_def: intern_adt_def(AdtDefData): AdtDef -> AdtDef<'tcx>,
@@ -1977,6 +2012,15 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_const(self, kind: impl Into<ty::ConstKind<'tcx>>, ty: Ty<'tcx>) -> Const<'tcx> {
         self.mk_const_internal(ty::ConstData { kind: kind.into(), ty })
+    }
+
+    #[inline]
+    pub fn mk_effect(
+        self,
+        val: impl Into<ty::EffectValue<'tcx>>,
+        kind: ty::EffectKind,
+    ) -> Effect<'tcx> {
+        self.mk_effect_internal(ty::EffectData { val: val.into(), kind })
     }
 
     #[inline]

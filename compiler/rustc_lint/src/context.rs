@@ -1151,6 +1151,7 @@ impl<'tcx> LateContext<'tcx> {
             type Type = ();
             type DynExistential = ();
             type Const = ();
+            type Effect = ();
 
             fn tcx(&self) -> TyCtxt<'tcx> {
                 self.tcx
@@ -1172,6 +1173,10 @@ impl<'tcx> LateContext<'tcx> {
             }
 
             fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+                Ok(())
+            }
+
+            fn print_effect(self, _: ty::Effect<'tcx>) -> Result<Self::Effect, Self::Error> {
                 Ok(())
             }
 

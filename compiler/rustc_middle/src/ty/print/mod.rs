@@ -36,6 +36,7 @@ pub trait Printer<'tcx>: Sized {
     type Type;
     type DynExistential;
     type Const;
+    type Effect;
 
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
@@ -67,6 +68,7 @@ pub trait Printer<'tcx>: Sized {
     ) -> Result<Self::DynExistential, Self::Error>;
 
     fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error>;
+    fn print_effect(self, ct: ty::Effect<'tcx>) -> Result<Self::Effect, Self::Error>;
 
     fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error>;
 
@@ -327,5 +329,13 @@ pub fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
         "top-level module".to_string()
     } else {
         format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
+    }
+}
+
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Effect<'tcx> {
+    type Output = P::Effect;
+    type Error = P::Error;
+    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
+        cx.print_effect(*self)
     }
 }

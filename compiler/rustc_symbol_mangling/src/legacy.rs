@@ -203,6 +203,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
     type Type = Self;
     type DynExistential = Self;
     type Const = Self;
+    type Effect = Self;
 
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
@@ -271,6 +272,11 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
             }
             _ => self.write_str("_")?,
         }
+        Ok(self)
+    }
+
+    fn print_effect(self, _: ty::Effect<'tcx>) -> Result<Self::Effect, Self::Error> {
+        self.write_str("_")?;
         Ok(self)
     }
 

@@ -244,6 +244,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     type Type = Self;
     type DynExistential = Self;
     type Const = Self;
+    type Effect = Self;
 
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
@@ -562,6 +563,10 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         self.push("E");
         Ok(self)
+    }
+
+    fn print_effect(self, _: ty::Effect<'tcx>) -> Result<Self::Effect, Self::Error> {
+        unimplemented!()
     }
 
     fn print_const(mut self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {

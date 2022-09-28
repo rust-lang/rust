@@ -22,6 +22,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     type Type = Self;
     type DynExistential = Self;
     type Const = Self;
+    type Effect = Self;
 
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
@@ -69,6 +70,10 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 
     fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         self.pretty_print_const(ct, false)
+    }
+
+    fn print_effect(self, _: ty::Effect<'tcx>) -> Result<Self::Effect, Self::Error> {
+        unimplemented!()
     }
 
     fn print_dyn_existential(
