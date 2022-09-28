@@ -78,9 +78,15 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self,
         name: &str,
         unnamed: llvm::UnnamedAddr,
-        visibility: llvm::Visibility,
         fn_type: &'ll Type,
     ) -> &'ll Value {
+        // Declare C ABI functions with the visibility used by C by default.
+        let visibility = if self.tcx.sess.target.default_hidden_visibility {
+            llvm::Visibility::Hidden
+        } else {
+            llvm::Visibility::Default
+        };
+
         declare_raw_fn(self, name, llvm::CCallConv, unnamed, visibility, fn_type)
     }
 

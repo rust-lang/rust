@@ -1458,12 +1458,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         } else {
             format!("llvm.{}.sat.i{}.f{}", instr, int_width, float_width)
         };
-        let f = self.declare_cfn(
-            &name,
-            llvm::UnnamedAddr::No,
-            llvm::Visibility::Default,
-            self.type_func(&[src_ty], dest_ty),
-        );
+        let f = self.declare_cfn(&name, llvm::UnnamedAddr::No, self.type_func(&[src_ty], dest_ty));
         self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None)
     }
 
