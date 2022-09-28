@@ -7,5 +7,5 @@
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
 // We check that ".item-info" is bigger than its content.
 move-cursor-to: ".impl"
-assert-property: (".impl > a.anchor", {"offsetWidth": "9"})
+assert-property: (".impl > a.anchor", {"offsetWidth": "8"})
 assert-css: (".impl > a.anchor", {"left": "-8px"})
