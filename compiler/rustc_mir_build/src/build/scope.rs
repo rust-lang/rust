@@ -466,9 +466,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let normal_exit_block = f(self);
         let breakable_scope = self.scopes.breakable_scopes.pop().unwrap();
         assert!(breakable_scope.region_scope == region_scope);
-        let break_block = self.build_exit_tree(breakable_scope.break_drops, None);
+        let break_block =
+            self.build_exit_tree(breakable_scope.break_drops, region_scope, span, None);
         if let Some(drops) = breakable_scope.continue_drops {
-            self.build_exit_tree(drops, loop_block);
+            self.build_exit_tree(drops, region_scope, span, loop_block);
         }
         match (normal_exit_block, break_block) {
             (Some(block), None) | (None, Some(block)) => block,
@@ -510,6 +511,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn in_if_then_scope<F>(
         &mut self,
         region_scope: region::Scope,
+        span: Span,
         f: F,
     ) -> (BasicBlock, BasicBlock)
     where
@@ -524,7 +526,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         assert!(if_then_scope.region_scope == region_scope);
 
         let else_block = self
-            .build_exit_tree(if_then_scope.else_drops, None)
+            .build_exit_tree(if_then_scope.else_drops, region_scope, span, None)
             .map_or_else(|| self.cfg.start_new_block(), |else_block_and| unpack!(else_block_and));
 
         (then_block, else_block)
@@ -1021,6 +1023,38 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         cached_drop
     }
 
+    /// This is similar to [diverge_cleanup_target] except its target is set to
+    /// some ancestor scope instead of the current scope.
+    /// It is possible to unwind to some ancestor scope if some drop panics as
+    /// the program breaks out of a if-then scope.
+    fn diverge_cleanup_target(&mut self, target_scope: region::Scope, span: Span) -> DropIdx {
+        let target = self.scopes.scope_index(target_scope, span);
+        let (uncached_scope, mut cached_drop) = self.scopes.scopes[..=target]
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(scope_idx, scope)| {
+                scope.cached_unwind_block.map(|cached_block| (scope_idx + 1, cached_block))
+            })
+            .unwrap_or((0, ROOT_NODE));
+
+        if uncached_scope > target {
+            return cached_drop;
+        }
+
+        let is_generator = self.generator_kind.is_some();
+        for scope in &mut self.scopes.scopes[uncached_scope..=target] {
+            for drop in &scope.drops {
+                if is_generator || drop.kind == DropKind::Value {
+                    cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
+                }
+            }
+            scope.cached_unwind_block = Some(cached_drop);
+        }
+
+        cached_drop
+    }
+
     /// Prepares to create a path that performs all required cleanup for a
     /// terminator that can unwind at the given basic block.
     ///
@@ -1222,21 +1256,24 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
     fn build_exit_tree(
         &mut self,
         mut drops: DropTree,
+        else_scope: region::Scope,
+        span: Span,
         continue_block: Option<BasicBlock>,
     ) -> Option<BlockAnd<()>> {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
         blocks[ROOT_NODE] = continue_block;
 
         drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
+        let is_generator = self.generator_kind.is_some();
 
         // Link the exit drop tree to unwind drop tree.
         if drops.drops.iter().any(|(drop, _)| drop.kind == DropKind::Value) {
-            let unwind_target = self.diverge_cleanup();
+            let unwind_target = self.diverge_cleanup_target(else_scope, span);
             let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
             for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(1) {
                 match drop_data.0.kind {
                     DropKind::Storage => {
-                        if self.generator_kind.is_some() {
+                        if is_generator {
                             let unwind_drop = self
                                 .scopes
                                 .unwind_drops
