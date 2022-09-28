@@ -264,6 +264,21 @@ impl CiEnv {
         Self::current() != CiEnv::None
     }
 
+    pub fn is_rust_lang_ci() -> bool {
+        if let Ok(rust_lang_ci) = env::var("RUST_LANG_CI") {
+            match rust_lang_ci.as_str() {
+                "1" | "true" | "yes" | "on" => true,
+                "0" | "false" | "no" | "off" => false,
+                other => {
+                    // Let's make sure typos don't go unnoticed
+                    panic!("Unrecognized option '{}' set in RUST_LANG_CI", other)
+                }
+            }
+        } else {
+            Self::is_ci()
+        }
+    }
+
     /// If in a CI environment, forces the command to run with colors.
     pub fn force_coloring_in_ci(self, cmd: &mut Command) {
         if self != CiEnv::None {
