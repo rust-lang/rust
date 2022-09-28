@@ -28,8 +28,8 @@ const RESUME_PENALTY: usize = 5;
 
 const UNKNOWN_SIZE_COST: usize = 10;
 
-const DEFAULT_THRESHOLD: usize = 100;
-const DEFAULT_HINT_THRESHOLD: usize = 200;
+const DEFAULT_THRESHOLD: usize = 75;
+const DEFAULT_HINT_THRESHOLD: usize = 150;
 
 pub struct Inline;
 
