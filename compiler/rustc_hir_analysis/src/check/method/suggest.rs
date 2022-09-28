@@ -1521,67 +1521,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         use one of the `assume_init` methods to access the inner value"
                     ));
                 } else if tcx.is_diagnostic_item(sym::RefCell, inner_id) {
-                    match mutable {
-                        Some(Mutability::Not) => {
-                            err.span_suggestion_verbose(
-                                expr.span.shrink_to_hi(),
-                                format!(
-                                    "use `.borrow()` to borrow the `{ty}`, \
-                                    panicking if any outstanding mutable borrows exist."
-                                ),
-                                ".borrow()",
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
+                    let (suggestion, borrow_kind, panic_if) = match mutable {
+                        Some(Mutability::Not) => (".borrow()", "borrow", "a mutable borrow exists"),
                         Some(Mutability::Mut) => {
-                            err.span_suggestion_verbose(
-                                expr.span.shrink_to_hi(),
-                                format!(
-                                    "use `.borrow_mut()` to mutably borrow the `{ty}`, \
-                                    panicking if any outstanding borrows exist."
-                                ),
-                                ".borrow_mut()",
-                                Applicability::MaybeIncorrect,
-                            );
+                            (".borrow_mut()", "mutably borrow", "any borrows exist")
                         }
                         None => return,
-                    }
+                    };
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        format!(
+                            "use `{suggestion}` to {borrow_kind} the `{ty}`, \
+                            panicking if {panic_if}"
+                        ),
+                        suggestion,
+                        Applicability::MaybeIncorrect,
+                    );
                 } else if tcx.is_diagnostic_item(sym::Mutex, inner_id) {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
                         format!(
-                            "use `.lock()` to borrow the `{ty}`, \
+                            "use `.lock().unwrap()` to borrow the `{ty}`, \
                             blocking the current thread until it can be acquired"
                         ),
                         ".lock().unwrap()",
                         Applicability::MaybeIncorrect,
                     );
                 } else if tcx.is_diagnostic_item(sym::RwLock, inner_id) {
-                    match mutable {
-                        Some(Mutability::Not) => {
-                            err.span_suggestion_verbose(
-                                expr.span.shrink_to_hi(),
-                                format!(
-                                    "use `.read()` to borrow the `{ty}`, \
-                                    blocking the current thread until it can be acquired"
-                                ),
-                                ".read().unwrap()",
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        Some(Mutability::Mut) => {
-                            err.span_suggestion_verbose(
-                                expr.span.shrink_to_hi(),
-                                format!(
-                                    "use `.write()` to mutably borrow the `{ty}`, \
-                                    blocking the current thread until it can be acquired"
-                                ),
-                                ".write().unwrap()",
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
+                    let (suggestion, borrow_kind) = match mutable {
+                        Some(Mutability::Not) => (".read().unwrap()", "borrow"),
+                        Some(Mutability::Mut) => (".write().unwrap()", "mutably borrow"),
                         None => return,
-                    }
+                    };
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        format!(
+                            "use `{suggestion}` to {borrow_kind} the `{ty}`, \
+                            blocking the current thread until it can be acquired"
+                        ),
+                        suggestion,
+                        Applicability::MaybeIncorrect,
+                    );
                 } else {
                     return;
                 };

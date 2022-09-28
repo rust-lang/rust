@@ -9,7 +9,7 @@ note: the method `method` exists on the type `Struct<u32>`
    |
 LL |     pub fn method(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^
-help: use `.borrow()` to borrow the `Struct<u32>`, panicking if any outstanding mutable borrows exist.
+help: use `.borrow()` to borrow the `Struct<u32>`, panicking if a mutable borrow exists
    |
 LL |     other_item.borrow().method();
    |               +++++++++
@@ -25,7 +25,7 @@ note: the method `some_mutable_method` exists on the type `Struct<u32>`
    |
 LL |     pub fn some_mutable_method(&mut self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: use `.borrow_mut()` to mutably borrow the `Struct<u32>`, panicking if any outstanding borrows exist.
+help: use `.borrow_mut()` to mutably borrow the `Struct<u32>`, panicking if any borrows exist
    |
 LL |     other_item.borrow_mut().some_mutable_method();
    |               +++++++++++++
@@ -41,7 +41,7 @@ note: the method `method` exists on the type `Struct<u32>`
    |
 LL |     pub fn method(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^
-help: use `.lock()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
+help: use `.lock().unwrap()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
    |
 LL |     another_item.lock().unwrap().method();
    |                 ++++++++++++++++
@@ -57,7 +57,7 @@ note: the method `method` exists on the type `Struct<u32>`
    |
 LL |     pub fn method(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^
-help: use `.read()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
+help: use `.read().unwrap()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
    |
 LL |     another_item.read().unwrap().method();
    |                 ++++++++++++++++
@@ -73,7 +73,7 @@ note: the method `some_mutable_method` exists on the type `Struct<u32>`
    |
 LL |     pub fn some_mutable_method(&mut self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: use `.write()` to mutably borrow the `Struct<u32>`, blocking the current thread until it can be acquired
+help: use `.write().unwrap()` to mutably borrow the `Struct<u32>`, blocking the current thread until it can be acquired
    |
 LL |     another_item.write().unwrap().some_mutable_method();
    |                 +++++++++++++++++
