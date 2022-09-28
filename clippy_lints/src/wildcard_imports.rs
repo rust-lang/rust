@@ -173,7 +173,7 @@ impl LateLintPass<'_> for WildcardImports {
                 let sugg = if braced_glob {
                     imports_string
                 } else {
-                    format!("{}::{}", import_source_snippet, imports_string)
+                    format!("{import_source_snippet}::{imports_string}")
                 };
 
                 let (lint, message) = if let Res::Def(DefKind::Enum, _) = use_path.res {

@@ -91,7 +91,7 @@ pub(super) fn check(
                 collect_expr.span,
                 "manual implementation of `str::repeat` using iterators",
                 "try this",
-                format!("{}.repeat({})", val_str, count_snip),
+                format!("{val_str}.repeat({count_snip})"),
                 app
             )
         }

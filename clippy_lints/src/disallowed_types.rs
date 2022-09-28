@@ -1,9 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{
-    def::Res, def_id::DefId, Item, ItemKind, PolyTraitRef, PrimTy, Ty, TyKind, UseKind,
-};
+use rustc_hir::{def::Res, def_id::DefId, Item, ItemKind, PolyTraitRef, PrimTy, Ty, TyKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -92,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
                 conf::DisallowedType::Simple(path) => (path, None),
                 conf::DisallowedType::WithReason { path, reason } => (
                     path,
-                    reason.as_ref().map(|reason| format!("{} (from clippy.toml)", reason)),
+                    reason.as_ref().map(|reason| format!("{reason} (from clippy.toml)")),
                 ),
             };
             let segs: Vec<_> = path.split("::").collect();
@@ -130,7 +128,7 @@ fn emit(cx: &LateContext<'_>, name: &str, span: Span, reason: Option<&str>) {
         cx,
         DISALLOWED_TYPES,
         span,
-        &format!("`{}` is not allowed according to config", name),
+        &format!("`{name}` is not allowed according to config"),
         |diag| {
             if let Some(reason) = reason {
                 diag.note(reason);

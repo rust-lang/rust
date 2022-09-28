@@ -8,12 +8,12 @@ use rustc_hir as hir;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Constness, FnDecl, GenericParamKind, HirId};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
-use rustc_hir_analysis::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// ### What it does

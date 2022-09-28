@@ -61,9 +61,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
                 "return "
             };
             let suggestion = if err_ty == expr_err_ty {
-                format!("{}{}{}{}", ret_prefix, prefix, origin_snippet, suffix)
+                format!("{ret_prefix}{prefix}{origin_snippet}{suffix}")
             } else {
-                format!("{}{}{}.into(){}", ret_prefix, prefix, origin_snippet, suffix)
+                format!("{ret_prefix}{prefix}{origin_snippet}.into(){suffix}")
             };
 
             span_lint_and_sugg(

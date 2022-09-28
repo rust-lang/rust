@@ -23,6 +23,7 @@ use rustc_hir::{
     BinOpKind, Block, Closure, Expr, ExprKind, HirId, Item, Local, MutTy, Mutability, Node, Path, Stmt, StmtKind, Ty,
     TyKind, UnOp,
 };
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::interpret::ConstValue;
@@ -32,7 +33,6 @@ use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, BytePos, Span};
-use rustc_hir_analysis::hir_ty_to_ty;
 
 use std::borrow::{Borrow, Cow};
 
@@ -530,7 +530,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     cx,
                     LINT_WITHOUT_LINT_PASS,
                     lint_span,
-                    &format!("the lint `{}` is not added to any `LintPass`", lint_name),
+                    &format!("the lint `{lint_name}` is not added to any `LintPass`"),
                 );
             }
         }
@@ -666,7 +666,7 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
                     path.ident.span,
                     "usage of a compiler lint function",
                     None,
-                    &format!("please use the Clippy variant of this function: `{}`", sugg),
+                    &format!("please use the Clippy variant of this function: `{sugg}`"),
                 );
             }
         }
@@ -854,13 +854,8 @@ fn suggest_help(
         "this call is collapsible",
         "collapse into",
         format!(
-            "span_lint_and_help({}, {}, {}, {}, {}, {})",
-            and_then_snippets.cx,
-            and_then_snippets.lint,
-            and_then_snippets.span,
-            and_then_snippets.msg,
-            &option_span,
-            help
+            "span_lint_and_help({}, {}, {}, {}, {}, {help})",
+            and_then_snippets.cx, and_then_snippets.lint, and_then_snippets.span, and_then_snippets.msg, &option_span,
         ),
         Applicability::MachineApplicable,
     );
@@ -886,13 +881,8 @@ fn suggest_note(
         "this call is collapsible",
         "collapse into",
         format!(
-            "span_lint_and_note({}, {}, {}, {}, {}, {})",
-            and_then_snippets.cx,
-            and_then_snippets.lint,
-            and_then_snippets.span,
-            and_then_snippets.msg,
-            note_span,
-            note
+            "span_lint_and_note({}, {}, {}, {}, {note_span}, {note})",
+            and_then_snippets.cx, and_then_snippets.lint, and_then_snippets.span, and_then_snippets.msg,
         ),
         Applicability::MachineApplicable,
     );
@@ -927,7 +917,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
                     expr.span,
                     "usage of `clippy_utils::ty::match_type()` on a type diagnostic item",
                     "try",
-                    format!("clippy_utils::ty::is_type_diagnostic_item({}, {}, sym::{})", cx_snippet, ty_snippet, item_name),
+                    format!("clippy_utils::ty::is_type_diagnostic_item({cx_snippet}, {ty_snippet}, sym::{item_name})"),
                     Applicability::MaybeIncorrect,
                 );
             }

@@ -142,8 +142,7 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Su
         if let ast::LitKind::Float(sym, ast::LitFloatType::Unsuffixed) = lit.node;
         then {
             let op = format!(
-                "{}{}{}",
-                suggestion,
+                "{suggestion}{}{}",
                 // Check for float literals without numbers following the decimal
                 // separator such as `2.` and adds a trailing zero
                 if sym.as_str().ends_with('.') {
@@ -172,7 +171,7 @@ fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, ar
             expr.span,
             "logarithm for bases 2, 10 and e can be computed more accurately",
             "consider using",
-            format!("{}.{}()", Sugg::hir(cx, receiver, "..").maybe_par(), method),
+            format!("{}.{method}()", Sugg::hir(cx, receiver, "..").maybe_par()),
             Applicability::MachineApplicable,
         );
     }
@@ -251,7 +250,7 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
                 expr.span,
                 "exponent for bases 2 and e can be computed more accurately",
                 "consider using",
-                format!("{}.{}()", prepare_receiver_sugg(cx, &args[0]), method),
+                format!("{}.{method}()", prepare_receiver_sugg(cx, &args[0])),
                 Applicability::MachineApplicable,
             );
         }

@@ -352,8 +352,10 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         match item.kind {
             ImplItemKind::Const(ty, _) => {
-                let is_in_trait_impl = if let Some(hir::Node::Item(item)) =
-                    cx.tcx.hir().find_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
+                let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx
+                    .tcx
+                    .hir()
+                    .find_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
                 {
                     matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
                 } else {

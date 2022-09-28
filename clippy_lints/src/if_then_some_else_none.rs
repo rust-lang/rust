@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
         {
             let cond_snip = snippet_with_macro_callsite(cx, cond.span, "[condition]");
             let cond_snip = if matches!(cond.kind, ExprKind::Unary(_, _) | ExprKind::Binary(_, _, _)) {
-                format!("({})", cond_snip)
+                format!("({cond_snip})")
             } else {
                 cond_snip.into_owned()
             };
@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             let mut method_body = if then_block.stmts.is_empty() {
                 arg_snip.into_owned()
             } else {
-                format!("{{ /* snippet */ {} }}", arg_snip)
+                format!("{{ /* snippet */ {arg_snip} }}")
             };
             let method_name = if switch_to_eager_eval(cx, expr) && meets_msrv(self.msrv, msrvs::BOOL_THEN_SOME) {
                 "then_some"
@@ -102,14 +102,13 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             };
 
             let help = format!(
-                "consider using `bool::{}` like: `{}.{}({})`",
-                method_name, cond_snip, method_name, method_body,
+                "consider using `bool::{method_name}` like: `{cond_snip}.{method_name}({method_body})`",
             );
             span_lint_and_help(
                 cx,
                 IF_THEN_SOME_ELSE_NONE,
                 expr.span,
-                &format!("this could be simplified with `bool::{}`", method_name),
+                &format!("this could be simplified with `bool::{method_name}`"),
                 None,
                 &help,
             );

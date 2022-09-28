@@ -463,7 +463,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                     diag.span_suggestion(
                                         hir_ty.span,
                                         "change this to",
-                                        format!("&{}{}", mutability.prefix_str(), ty_name),
+                                        format!("&{}{ty_name}", mutability.prefix_str()),
                                         Applicability::Unspecified,
                                     );
                                 }

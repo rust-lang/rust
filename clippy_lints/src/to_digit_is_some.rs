@@ -84,9 +84,9 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                         "use of `.to_digit(..).is_some()`",
                         "try this",
                         if is_method_call {
-                            format!("{}.is_digit({})", char_arg_snip, radix_snip)
+                            format!("{char_arg_snip}.is_digit({radix_snip})")
                         } else {
-                            format!("char::is_digit({}, {})", char_arg_snip, radix_snip)
+                            format!("char::is_digit({char_arg_snip}, {radix_snip})")
                         },
                         applicability,
                     );

@@ -157,8 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
                                 span,
                                 &format!(
                                     "this closure returns \
-                                   the unit type which also implements {}",
-                                    trait_name
+                                   the unit type which also implements {trait_name}"
                                 ),
                             );
                         },
@@ -169,8 +168,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
                                 span,
                                 &format!(
                                     "this closure returns \
-                                   the unit type which also implements {}",
-                                    trait_name
+                                   the unit type which also implements {trait_name}"
                                 ),
                                 Some(last_semi),
                                 "probably caused by this trailing semicolon",

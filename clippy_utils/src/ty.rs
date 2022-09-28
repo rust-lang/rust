@@ -12,11 +12,11 @@ use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{
     self, AdtDef, Binder, BoundRegion, DefIdTree, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, ProjectionTy,
     Region, RegionKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};

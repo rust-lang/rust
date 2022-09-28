@@ -35,7 +35,8 @@ struct PathAndSpan {
     span: Span,
 }
 
-/// `MacroRefData` includes the name of the macro.
+/// `MacroRefData` includes the name of the macro
+/// and the path from `SourceMap::span_to_filename`.
 #[derive(Debug, Clone)]
 pub struct MacroRefData {
     name: String,
@@ -189,9 +190,9 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         let mut suggestions = vec![];
         for ((root, span, hir_id), path) in used {
             if path.len() == 1 {
-                suggestions.push((span, format!("{}::{}", root, path[0]), hir_id));
+                suggestions.push((span, format!("{root}::{}", path[0]), hir_id));
             } else {
-                suggestions.push((span, format!("{}::{{{}}}", root, path.join(", ")), hir_id));
+                suggestions.push((span, format!("{root}::{{{}}}", path.join(", ")), hir_id));
             }
         }
 
@@ -199,7 +200,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         // such as `std::prelude::v1::foo` or some other macro that expands to an import.
         if self.mac_refs.is_empty() {
             for (span, import, hir_id) in suggestions {
-                let help = format!("use {};", import);
+                let help = format!("use {import};");
                 span_lint_hir_and_then(
                     cx,
                     MACRO_USE_IMPORTS,

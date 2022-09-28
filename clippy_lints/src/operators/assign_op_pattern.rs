@@ -7,11 +7,11 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::BorrowKind;
 use rustc_trait_selection::infer::TyCtxtInferExt;
-use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 use super::ASSIGN_OP_PATTERN;
 
@@ -55,7 +55,7 @@ pub(super) fn check<'tcx>(
                                 diag.span_suggestion(
                                     expr.span,
                                     "replace it with",
-                                    format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
+                                    format!("{snip_a} {}= {snip_r}", op.node.as_str()),
                                     Applicability::MachineApplicable,
                                 );
                             }

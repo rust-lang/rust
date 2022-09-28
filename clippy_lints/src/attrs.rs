@@ -541,10 +541,7 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribut
                     cx,
                     INLINE_ALWAYS,
                     attr.span,
-                    &format!(
-                        "you have declared `#[inline(always)]` on `{}`. This is usually a bad idea",
-                        name
-                    ),
+                    &format!("you have declared `#[inline(always)]` on `{name}`. This is usually a bad idea"),
                 );
             }
         }
@@ -720,7 +717,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                 let mut unix_suggested = false;
 
                 for (os, span) in mismatched {
-                    let sugg = format!("target_os = \"{}\"", os);
+                    let sugg = format!("target_os = \"{os}\"");
                     diag.span_suggestion(span, "try", sugg, Applicability::MaybeIncorrect);
 
                     if !unix_suggested && is_unix(os) {

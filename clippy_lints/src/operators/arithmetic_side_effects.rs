@@ -9,7 +9,6 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::{Span, Spanned};
 
@@ -78,28 +77,47 @@ impl ArithmeticSideEffects {
         )
     }
 
-    /// Explicit integers like `1` or `i32::MAX`. Does not take into consideration references.
-    fn is_literal_integer(expr: &hir::Expr<'_>, expr_refs: Ty<'_>) -> bool {
-        let is_integral = expr_refs.is_integral();
-        let is_literal = matches!(expr.kind, hir::ExprKind::Lit(_));
-        is_integral && is_literal
-    }
-
+    // Common entry-point to avoid code duplication.
     fn issue_lint(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
         let msg = "arithmetic operation that can potentially result in unexpected side-effects";
         span_lint(cx, ARITHMETIC_SIDE_EFFECTS, expr.span, msg);
         self.expr_span = Some(expr.span);
     }
 
+    /// * If `expr` is a literal integer like `1` or `i32::MAX`, returns itself.
+    /// * Is `expr` is a literal integer reference like `&199`, returns the literal integer without
+    ///   references.
+    /// * If `expr` is anything else, returns `None`.
+    fn literal_integer<'expr, 'tcx>(
+        cx: &LateContext<'tcx>,
+        expr: &'expr hir::Expr<'tcx>,
+    ) -> Option<&'expr hir::Expr<'tcx>> {
+        let expr_refs = cx.typeck_results().expr_ty(expr).peel_refs();
+
+        if !expr_refs.is_integral() {
+            return None;
+        }
+
+        if matches!(expr.kind, hir::ExprKind::Lit(_)) {
+            return Some(expr);
+        }
+
+        if let hir::ExprKind::AddrOf(.., inn) = expr.kind && let hir::ExprKind::Lit(_) = inn.kind {
+            return Some(inn)
+        }
+
+        None
+    }
+
     /// Manages when the lint should be triggered. Operations in constant environments, hard coded
     /// types, custom allowed types and non-constant operations that won't overflow are ignored.
-    fn manage_bin_ops(
+    fn manage_bin_ops<'tcx>(
         &mut self,
-        cx: &LateContext<'_>,
-        expr: &hir::Expr<'_>,
+        cx: &LateContext<'tcx>,
+        expr: &hir::Expr<'tcx>,
         op: &Spanned<hir::BinOpKind>,
-        lhs: &hir::Expr<'_>,
-        rhs: &hir::Expr<'_>,
+        lhs: &hir::Expr<'tcx>,
+        rhs: &hir::Expr<'tcx>,
     ) {
         if constant_simple(cx, cx.typeck_results(), expr).is_some() {
             return;
@@ -119,14 +137,11 @@ impl ArithmeticSideEffects {
         if self.is_allowed_ty(cx, lhs) || self.is_allowed_ty(cx, rhs) {
             return;
         }
-        let has_valid_op = match (
-            Self::is_literal_integer(lhs, cx.typeck_results().expr_ty(lhs).peel_refs()),
-            Self::is_literal_integer(rhs, cx.typeck_results().expr_ty(rhs).peel_refs()),
-        ) {
-            (true, true) => true,
-            (true, false) => Self::has_valid_op(op, lhs),
-            (false, true) => Self::has_valid_op(op, rhs),
-            (false, false) => false,
+        let has_valid_op = match (Self::literal_integer(cx, lhs), Self::literal_integer(cx, rhs)) {
+            (None, None) => false,
+            (None, Some(local_expr)) => Self::has_valid_op(op, local_expr),
+            (Some(local_expr), None) => Self::has_valid_op(op, local_expr),
+            (Some(_), Some(_)) => true,
         };
         if !has_valid_op {
             self.issue_lint(cx, expr);
@@ -135,7 +150,7 @@ impl ArithmeticSideEffects {
 }
 
 impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) {
         if self.expr_span.is_some() || self.const_span.map_or(false, |sp| sp.contains(expr.span)) {
             return;
         }

@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// let mut vec = vec![0, 1, 2];
     /// vec.retain(|x| x % 2 == 0);
     /// ```
-    #[clippy::version = "1.63.0"]
+    #[clippy::version = "1.64.0"]
     pub MANUAL_RETAIN,
     perf,
     "`retain()` is simpler and the same functionalitys"
@@ -153,7 +153,7 @@ fn suggest(cx: &LateContext<'_>, parent_expr: &hir::Expr<'_>, left_expr: &hir::E
         && let [filter_params] = filter_body.params
         && let Some(sugg) = match filter_params.pat.kind {
             hir::PatKind::Binding(_, _, filter_param_ident, None) => {
-                Some(format!("{}.retain(|{}| {})", snippet(cx, left_expr.span, ".."), filter_param_ident, snippet(cx, filter_body.value.span, "..")))
+                Some(format!("{}.retain(|{filter_param_ident}| {})", snippet(cx, left_expr.span, ".."), snippet(cx, filter_body.value.span, "..")))
             },
             hir::PatKind::Tuple([key_pat, value_pat], _) => {
                 make_sugg(cx, key_pat, value_pat, left_expr, filter_body)
@@ -161,7 +161,7 @@ fn suggest(cx: &LateContext<'_>, parent_expr: &hir::Expr<'_>, left_expr: &hir::E
             hir::PatKind::Ref(pat, _) => {
                 match pat.kind {
                     hir::PatKind::Binding(_, _, filter_param_ident, None) => {
-                        Some(format!("{}.retain(|{}| {})", snippet(cx, left_expr.span, ".."), filter_param_ident, snippet(cx, filter_body.value.span, "..")))
+                        Some(format!("{}.retain(|{filter_param_ident}| {})", snippet(cx, left_expr.span, ".."), snippet(cx, filter_body.value.span, "..")))
                     },
                     _ => None
                 }
@@ -190,23 +190,19 @@ fn make_sugg(
     match (&key_pat.kind, &value_pat.kind) {
         (hir::PatKind::Binding(_, _, key_param_ident, None), hir::PatKind::Binding(_, _, value_param_ident, None)) => {
             Some(format!(
-                "{}.retain(|{}, &mut {}| {})",
+                "{}.retain(|{key_param_ident}, &mut {value_param_ident}| {})",
                 snippet(cx, left_expr.span, ".."),
-                key_param_ident,
-                value_param_ident,
                 snippet(cx, filter_body.value.span, "..")
             ))
         },
         (hir::PatKind::Binding(_, _, key_param_ident, None), hir::PatKind::Wild) => Some(format!(
-            "{}.retain(|{}, _| {})",
+            "{}.retain(|{key_param_ident}, _| {})",
             snippet(cx, left_expr.span, ".."),
-            key_param_ident,
             snippet(cx, filter_body.value.span, "..")
         )),
         (hir::PatKind::Wild, hir::PatKind::Binding(_, _, value_param_ident, None)) => Some(format!(
-            "{}.retain(|_, &mut {}| {})",
+            "{}.retain(|_, &mut {value_param_ident}| {})",
             snippet(cx, left_expr.span, ".."),
-            value_param_ident,
             snippet(cx, filter_body.value.span, "..")
         )),
         _ => None,

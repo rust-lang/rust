@@ -42,12 +42,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, scrutinee: 
             span_lint_and_sugg(
                 cx,
                 MANUAL_UNWRAP_OR, expr.span,
-                &format!("this pattern reimplements `{}::unwrap_or`", ty_name),
+                &format!("this pattern reimplements `{ty_name}::unwrap_or`"),
                 "replace with",
                 format!(
-                    "{}.unwrap_or({})",
-                    suggestion,
-                    reindented_or_body,
+                    "{suggestion}.unwrap_or({reindented_or_body})",
                 ),
                 Applicability::MachineApplicable,
             );

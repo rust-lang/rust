@@ -67,7 +67,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         expr.span.with_hi(scrutinee_expr.span.hi()),
         "this loop could be written as a `for` loop",
         "try",
-        format!("for {} in {}{}", loop_var, iterator, by_ref),
+        format!("for {loop_var} in {iterator}{by_ref}"),
         applicability,
     );
 }

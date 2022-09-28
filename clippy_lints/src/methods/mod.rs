@@ -109,13 +109,13 @@ use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, PrimTy, QPath, TraitItem, TraitItemKind};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
-use rustc_hir_analysis::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -3255,65 +3255,59 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let self_ty = cx.tcx.type_of(item.def_id);
 
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
-        if_chain! {
-            if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind;
-            if let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir().body(id)).next();
-
-            let method_sig = cx.tcx.fn_sig(impl_item.def_id.def_id);
+        if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
+            let method_sig = cx.tcx.fn_sig(impl_item.def_id);
             let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
-
-            let first_arg_ty = method_sig.inputs().iter().next();
-
-            // check conventions w.r.t. conversion method names and predicates
-            if let Some(first_arg_ty) = first_arg_ty;
-
-            then {
-                // if this impl block implements a trait, lint in trait definition instead
-                if !implements_trait && cx.access_levels.is_exported(impl_item.def_id.def_id) {
-                    // check missing trait implementations
-                    for method_config in &TRAIT_METHODS {
-                        if name == method_config.method_name &&
-                            sig.decl.inputs.len() == method_config.param_count &&
-                            method_config.output_type.matches(&sig.decl.output) &&
-                            method_config.self_kind.matches(cx, self_ty, *first_arg_ty) &&
-                            fn_header_equals(method_config.fn_header, sig.header) &&
-                            method_config.lifetime_param_cond(impl_item)
-                        {
-                            span_lint_and_help(
-                                cx,
-                                SHOULD_IMPLEMENT_TRAIT,
-                                impl_item.span,
-                                &format!(
-                                    "method `{}` can be confused for the standard trait method `{}::{}`",
-                                    method_config.method_name,
-                                    method_config.trait_name,
-                                    method_config.method_name
-                                ),
-                                None,
-                                &format!(
-                                    "consider implementing the trait `{}` or choosing a less ambiguous method name",
-                                    method_config.trait_name
-                                )
-                            );
-                        }
+            let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
+            // if this impl block implements a trait, lint in trait definition instead
+            if !implements_trait && cx.access_levels.is_exported(impl_item.def_id.def_id) {
+                // check missing trait implementations
+                for method_config in &TRAIT_METHODS {
+                    if name == method_config.method_name
+                        && sig.decl.inputs.len() == method_config.param_count
+                        && method_config.output_type.matches(&sig.decl.output)
+                        // in case there is no first arg, since we already have checked the number of arguments
+                        // it's should be always true
+                        && first_arg_ty_opt.map_or(true, |first_arg_ty| method_config
+                            .self_kind.matches(cx, self_ty, first_arg_ty)
+                            )
+                        && fn_header_equals(method_config.fn_header, sig.header)
+                        && method_config.lifetime_param_cond(impl_item)
+                    {
+                        span_lint_and_help(
+                            cx,
+                            SHOULD_IMPLEMENT_TRAIT,
+                            impl_item.span,
+                            &format!(
+                                "method `{}` can be confused for the standard trait method `{}::{}`",
+                                method_config.method_name, method_config.trait_name, method_config.method_name
+                            ),
+                            None,
+                            &format!(
+                                "consider implementing the trait `{}` or choosing a less ambiguous method name",
+                                method_config.trait_name
+                            ),
+                        );
                     }
                 }
+            }
 
-                if sig.decl.implicit_self.has_implicit_self()
+            if sig.decl.implicit_self.has_implicit_self()
                     && !(self.avoid_breaking_exported_api
-                        && cx.access_levels.is_exported(impl_item.def_id.def_id))
+                    && cx.access_levels.is_exported(impl_item.def_id.def_id))
+                    && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir().body(id)).next()
+                    && let Some(first_arg_ty) = first_arg_ty_opt
                 {
                     wrong_self_convention::check(
                         cx,
                         name,
                         self_ty,
-                        *first_arg_ty,
+                        first_arg_ty,
                         first_arg.pat.span,
                         implements_trait,
                         false
                     );
                 }
-            }
         }
 
         // if this impl block implements a trait, lint in trait definition instead
@@ -3799,7 +3793,6 @@ const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
     ShouldImplTraitCase::new("std::borrow::BorrowMut", "borrow_mut",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
     ShouldImplTraitCase::new("std::clone::Clone", "clone",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
     ShouldImplTraitCase::new("std::cmp::Ord", "cmp",  2,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
-    // FIXME: default doesn't work
     ShouldImplTraitCase::new("std::default::Default", "default",  0,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
     ShouldImplTraitCase::new("std::ops::Deref", "deref",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
     ShouldImplTraitCase::new("std::ops::DerefMut", "deref_mut",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
@@ -3827,7 +3820,7 @@ enum SelfKind {
     Value,
     Ref,
     RefMut,
-    No,
+    No, // When we want the first argument type to be different than `Self`
 }
 
 impl SelfKind {

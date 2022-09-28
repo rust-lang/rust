@@ -193,8 +193,8 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 
     let xs: Vec<Cow<'static, str>> = vec![
         "the compiler unexpectedly panicked. this is a bug.".into(),
-        format!("we would appreciate a bug report: {}", bug_report_url).into(),
-        format!("Clippy version: {}", version_info).into(),
+        format!("we would appreciate a bug report: {bug_report_url}").into(),
+        format!("Clippy version: {version_info}").into(),
     ];
 
     for note in &xs {
@@ -290,7 +290,7 @@ pub fn main() {
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
             let version_info = rustc_tools_util::get_version_info!();
-            println!("{}", version_info);
+            println!("{version_info}");
             exit(0);
         }
 

@@ -98,13 +98,12 @@ pub(super) fn check<'tcx>(
             format!(".as_ref().map({})", snippet(cx, map_arg.span, ".."))
         };
         let method_hint = if is_mut { "as_deref_mut" } else { "as_deref" };
-        let hint = format!("{}.{}()", snippet(cx, as_ref_recv.span, ".."), method_hint);
-        let suggestion = format!("try using {} instead", method_hint);
+        let hint = format!("{}.{method_hint}()", snippet(cx, as_ref_recv.span, ".."));
+        let suggestion = format!("try using {method_hint} instead");
 
         let msg = format!(
-            "called `{0}` on an Option value. This can be done more directly \
-            by calling `{1}` instead",
-            current_method, hint
+            "called `{current_method}` on an Option value. This can be done more directly \
+            by calling `{hint}` instead"
         );
         span_lint_and_sugg(
             cx,

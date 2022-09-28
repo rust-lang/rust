@@ -27,7 +27,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
                 pat.span,
                 "all the struct fields are matched to a wildcard pattern, consider using `..`",
                 None,
-                &format!("try with `{} {{ .. }}` instead", type_name),
+                &format!("try with `{type_name} {{ .. }}` instead"),
             );
             return;
         }
@@ -63,7 +63,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
                             "you matched a field with a wildcard pattern, consider using `..` \
                              instead",
                             None,
-                            &format!("try with `{} {{ {}, .. }}`", type_name, normal[..].join(", ")),
+                            &format!("try with `{type_name} {{ {}, .. }}`", normal[..].join(", ")),
                         );
                     }
                 }

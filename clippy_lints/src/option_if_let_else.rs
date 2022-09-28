@@ -163,7 +163,7 @@ fn try_get_option_occurence<'tcx>(
             return Some(OptionOccurence {
                 option: format_option_in_sugg(cx, cond_expr, as_ref, as_mut),
                 method_sugg: method_sugg.to_string(),
-                some_expr: format!("|{}{}| {}", capture_mut, capture_name, Sugg::hir_with_macro_callsite(cx, some_body, "..")),
+                some_expr: format!("|{capture_mut}{capture_name}| {}", Sugg::hir_with_macro_callsite(cx, some_body, "..")),
                 none_expr: format!("{}{}", if method_sugg == "map_or" { "" } else { "|| " }, Sugg::hir_with_macro_callsite(cx, none_body, "..")),
             });
         }

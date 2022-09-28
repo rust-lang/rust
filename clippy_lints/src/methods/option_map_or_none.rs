@@ -87,7 +87,7 @@ pub(super) fn check<'tcx>(
                     expr.span,
                     msg,
                     "try using `map` instead",
-                    format!("{0}.map({1} {2})", self_snippet, arg_snippet,func_snippet),
+                    format!("{self_snippet}.map({arg_snippet} {func_snippet})"),
                     Applicability::MachineApplicable,
                 );
             }
@@ -102,7 +102,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             msg,
             "try using `and_then` instead",
-            format!("{0}.and_then({1})", self_snippet, func_snippet),
+            format!("{self_snippet}.and_then({func_snippet})"),
             Applicability::MachineApplicable,
         );
     } else if f_arg_is_some {
@@ -115,7 +115,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             msg,
             "try using `ok` instead",
-            format!("{0}.ok()", self_snippet),
+            format!("{self_snippet}.ok()"),
             Applicability::MachineApplicable,
         );
     }

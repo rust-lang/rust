@@ -135,7 +135,7 @@ declare_clippy_lint! {
     /// let x = String::new();
     /// let y: &str = &x;
     /// ```
-    #[clippy::version = "1.60.0"]
+    #[clippy::version = "1.64.0"]
     pub EXPLICIT_AUTO_DEREF,
     complexity,
     "dereferencing when the compiler would automatically dereference"
@@ -1308,7 +1308,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
             };
 
             let expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence().order() < PREC_PREFIX {
-                format!("({})", expr_str)
+                format!("({expr_str})")
             } else {
                 expr_str.into_owned()
             };
@@ -1322,7 +1322,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                     Mutability::Mut => "explicit `deref_mut` method call",
                 },
                 "try this",
-                format!("{}{}{}", addr_of_str, deref_str, expr_str),
+                format!("{addr_of_str}{deref_str}{expr_str}"),
                 app,
             );
         },
@@ -1336,7 +1336,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                     && !has_enclosing_paren(&snip)
                     && (expr.precedence().order() < data.position.precedence() || calls_field)
                 {
-                    format!("({})", snip)
+                    format!("({snip})")
                 } else {
                     snip.into()
                 };
@@ -1379,9 +1379,9 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                     let (snip, snip_is_macro) = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app);
                     let sugg =
                         if !snip_is_macro && expr.precedence().order() < precedence && !has_enclosing_paren(&snip) {
-                            format!("{}({})", prefix, snip)
+                            format!("{prefix}({snip})")
                         } else {
-                            format!("{}{}", prefix, snip)
+                            format!("{prefix}{snip}")
                         };
                     diag.span_suggestion(data.span, "try this", sugg, app);
                 },
@@ -1460,14 +1460,14 @@ impl Dereferencing {
                             } else {
                                 pat.always_deref = false;
                                 let snip = snippet_with_context(cx, e.span, parent.span.ctxt(), "..", &mut pat.app).0;
-                                pat.replacements.push((e.span, format!("&{}", snip)));
+                                pat.replacements.push((e.span, format!("&{snip}")));
                             }
                         },
                         _ if !e.span.from_expansion() => {
                             // Double reference might be needed at this point.
                             pat.always_deref = false;
                             let snip = snippet_with_applicability(cx, e.span, "..", &mut pat.app);
-                            pat.replacements.push((e.span, format!("&{}", snip)));
+                            pat.replacements.push((e.span, format!("&{snip}")));
                         },
                         // Edge case for macros. The span of the identifier will usually match the context of the
                         // binding, but not if the identifier was created in a macro. e.g. `concat_idents` and proc

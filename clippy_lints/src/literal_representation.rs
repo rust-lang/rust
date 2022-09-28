@@ -478,7 +478,7 @@ impl DecimalLiteralRepresentation {
             if num_lit.radix == Radix::Decimal;
             if val >= u128::from(self.threshold);
             then {
-                let hex = format!("{:#X}", val);
+                let hex = format!("{val:#X}");
                 let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
                 let _ = Self::do_lint(num_lit.integer).map_err(|warning_type| {
                     warning_type.display(num_lit.format(), cx, lit.span);

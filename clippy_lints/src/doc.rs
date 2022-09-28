@@ -237,7 +237,15 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                         panic_span: None,
                     };
                     fpu.visit_expr(body.value);
-                    lint_for_missing_headers(cx, item.def_id.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+                    lint_for_missing_headers(
+                        cx,
+                        item.def_id.def_id,
+                        item.span,
+                        sig,
+                        headers,
+                        Some(body_id),
+                        fpu.panic_span,
+                    );
                 }
             },
             hir::ItemKind::Impl(impl_) => {
@@ -287,7 +295,15 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                 panic_span: None,
             };
             fpu.visit_expr(body.value);
-            lint_for_missing_headers(cx, item.def_id.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+            lint_for_missing_headers(
+                cx,
+                item.def_id.def_id,
+                item.span,
+                sig,
+                headers,
+                Some(body_id),
+                fpu.panic_span,
+            );
         }
     }
 }
@@ -790,7 +806,7 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
                 diag.span_suggestion_with_style(
                     span,
                     "try",
-                    format!("`{}`", snippet),
+                    format!("`{snippet}`"),
                     applicability,
                     // always show the suggestion in a separate line, since the
                     // inline presentation adds another pair of backticks

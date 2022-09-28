@@ -97,7 +97,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
                     item.span,
                     msg,
                     |diag| {
-                        let sugg = format!("#[non_exhaustive]\n{}", indent);
+                        let sugg = format!("#[non_exhaustive]\n{indent}");
                         diag.span_suggestion(suggestion_span,
                                              "try adding #[non_exhaustive]",
                                              sugg,

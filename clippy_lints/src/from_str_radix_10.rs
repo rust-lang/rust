@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
                     exp.span,
                     "this call to `from_str_radix` can be replaced with a call to `str::parse`",
                     "try",
-                    format!("{}.parse::<{}>()", sugg, prim_ty.name_str()),
+                    format!("{sugg}.parse::<{}>()", prim_ty.name_str()),
                     Applicability::MaybeIncorrect
                 );
             }

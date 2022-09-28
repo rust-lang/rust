@@ -62,9 +62,9 @@ fn check_mul(cx: &LateContext<'_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
             let mut applicability = Applicability::MachineApplicable;
             let snip = snippet_with_applicability(cx, exp.span, "..", &mut applicability);
             let suggestion = if exp.precedence().order() < PREC_PREFIX && !has_enclosing_paren(&snip) {
-                format!("-({})", snip)
+                format!("-({snip})")
             } else {
-                format!("-{}", snip)
+                format!("-{snip}")
             };
             span_lint_and_sugg(
                     cx,
