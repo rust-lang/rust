@@ -132,14 +132,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
 
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        {
-            let errors = self.select_where_possible(infcx);
-            if !errors.is_empty() {
-                return errors;
-            }
-        }
-
+    fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>> {
         self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
     }
 

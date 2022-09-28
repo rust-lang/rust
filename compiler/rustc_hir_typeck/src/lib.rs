@@ -301,7 +301,11 @@ fn typeck_with_fallback<'tcx>(
             fcx.require_type_is_sized(ty, span, code);
         }
 
-        fcx.select_all_obligations_or_error();
+        fcx.select_obligations_where_possible(|_| {});
+
+        if let None = fcx.infcx.tainted_by_errors() {
+            fcx.report_ambiguity_errors();
+        }
 
         if let None = fcx.infcx.tainted_by_errors() {
             fcx.check_transmutes();
