@@ -718,10 +718,6 @@ pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
     debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);
 
-    let trait_ = clean::TraitWithExtraInfo {
-        trait_,
-        is_notable: clean::utils::has_doc_flag(cx.tcx, did, sym::notable_trait),
-    };
     cx.external_traits.borrow_mut().insert(did, trait_);
     cx.active_extern_traits.remove(&did);
 }

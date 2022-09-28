@@ -119,7 +119,7 @@ pub(crate) struct Crate {
     pub(crate) module: Item,
     pub(crate) primitives: ThinVec<(DefId, PrimitiveType)>,
     /// Only here so that they can be filtered through the rustdoc passes.
-    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
+    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
 }
 
 impl Crate {
@@ -130,13 +130,6 @@ impl Crate {
     pub(crate) fn src(&self, tcx: TyCtxt<'_>) -> FileName {
         ExternalCrate::LOCAL.src(tcx)
     }
-}
-
-/// This struct is used to wrap additional information added by rustdoc on a `trait` item.
-#[derive(Clone, Debug)]
-pub(crate) struct TraitWithExtraInfo {
-    pub(crate) trait_: Trait,
-    pub(crate) is_notable: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -1529,6 +1522,9 @@ pub(crate) struct Trait {
 impl Trait {
     pub(crate) fn is_auto(&self, tcx: TyCtxt<'_>) -> bool {
         tcx.trait_is_auto(self.def_id)
+    }
+    pub(crate) fn is_notable_trait(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.is_doc_notable_trait(self.def_id)
     }
     pub(crate) fn unsafety(&self, tcx: TyCtxt<'_>) -> hir::Unsafety {
         tcx.trait_def(self.def_id).unsafety

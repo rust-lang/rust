@@ -1294,7 +1294,12 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                 if let Some(trait_) = &impl_.trait_ {
                     let trait_did = trait_.def_id();
 
-                    if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable) {
+                    if cx
+                        .cache()
+                        .traits
+                        .get(&trait_did)
+                        .map_or(false, |t| t.is_notable_trait(cx.tcx()))
+                    {
                         if out.is_empty() {
                             write!(
                                 &mut out,
@@ -1598,7 +1603,7 @@ fn render_impl(
             link,
             render_mode,
             false,
-            trait_.map(|t| &t.trait_),
+            trait_,
             rendering_params,
         );
     }
@@ -1658,7 +1663,7 @@ fn render_impl(
                 &mut default_impl_items,
                 &mut impl_items,
                 cx,
-                &t.trait_,
+                t,
                 i.inner_impl(),
                 &i.impl_item,
                 parent,
