@@ -21,6 +21,14 @@ fn some_call<T: Default>() -> T {
     T::default()
 }
 
+struct Issue9427(i32);
+
+impl Drop for Issue9427 {
+    fn drop(&mut self) {
+        println!("{}", self.0);
+    }
+}
+
 fn main() {
     let astronomers_pi = 10;
     let ext_arr: [usize; 1] = [2];
@@ -72,6 +80,9 @@ fn main() {
     let _ = deep.0.or_else(some_call);
     let _ = deep.0.or_else(|| some_call());
     let _ = opt.ok_or_else(|| ext_arr[0]);
+
+    // Should not lint - bool
+    let _ = (0 == 1).then(|| Issue9427(0)); // Issue9427 has a significant drop
 
     // should not lint, bind_instead_of_map takes priority
     let _ = Some(10).and_then(|idx| Some(ext_arr[idx]));
