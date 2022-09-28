@@ -1478,6 +1478,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let bounded_ty =
                     self.ty_path(ty_id, param_span, hir::QPath::Resolved(None, ty_path));
                 Some(hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                    hir_id: self.next_id(),
                     bounded_ty: self.arena.alloc(bounded_ty),
                     bounds,
                     span,
@@ -1508,6 +1509,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref bounds,
                 span,
             }) => hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                hir_id: self.next_id(),
                 bound_generic_params: self.lower_generic_params(bound_generic_params),
                 bounded_ty: self
                     .lower_ty(bounded_ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type)),

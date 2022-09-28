@@ -1,0 +1,18 @@
+error[E0277]: the trait bound `for<'b> fn(&ReLateBound(DebruijnIndex(1), BoundRegion { var: 0, kind: BrNamed(DefId(0:6 ~ higher_ranked_fn_type[1209]::called::'b), 'b) }) ()): Foo` is not satisfied
+  --> $DIR/higher-ranked-fn-type.rs:20:5
+   |
+LL |     called()
+   |     ^^^^^^ the trait `for<'b> Foo` is not implemented for `fn(&ReLateBound(DebruijnIndex(1), BoundRegion { var: 0, kind: BrNamed(DefId(0:6 ~ higher_ranked_fn_type[1209]::called::'b), 'b) }) ())`
+   |
+note: required by a bound in `called`
+  --> $DIR/higher-ranked-fn-type.rs:12:25
+   |
+LL | fn called()
+   |    ------ required by a bound in this
+LL | where
+LL |     for<'b> fn(&'b ()): Foo,
+   |                         ^^^ required by this bound in `called`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

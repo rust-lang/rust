@@ -697,7 +697,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                 } else {
                     None
                 };
-                let bvars = self.tcx.late_bound_vars(bp.bounded_ty.hir_id);
+                let bvars = self.tcx.late_bound_vars(bp.hir_id);
 
                 bp.bounds.iter().filter_map(move |b| bt.map(|bt| (bt, b, bvars))).filter(
                     |(_, b, _)| match assoc_name {
@@ -2295,7 +2295,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         match predicate {
             hir::WherePredicate::BoundPredicate(bound_pred) => {
                 let ty = icx.to_ty(bound_pred.bounded_ty);
-                let bound_vars = icx.tcx.late_bound_vars(bound_pred.bounded_ty.hir_id);
+                let bound_vars = icx.tcx.late_bound_vars(bound_pred.hir_id);
 
                 // Keep the type around in a dummy predicate, in case of no bounds.
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
