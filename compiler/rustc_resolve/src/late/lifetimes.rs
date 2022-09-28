@@ -1333,11 +1333,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                         );
 
                                         diag.span_label(lifetime_ref.span, "expected named lifetime parameter");
-
                                         diag.multipart_suggestion("consider introducing a named lifetime parameter",
                                                                   vec![
                                                                     (lifetime_ref.span.shrink_to_hi(), "'a ".to_owned()),
-                                                                    (generics.span, "<'a>".to_owned())
+                                                                    match generics.span_for_param_suggestion() {
+                                                                        Some(_) => {
+                                                                            (self.tcx.sess.source_map().span_through_char(generics.span, '<').shrink_to_hi(), "'a, ".to_owned())
+                                                                        }
+                                                                        None => (generics.span, "<'a>".to_owned()),
+
+                                                                    }
                                                                   ], rustc_errors::Applicability::MaybeIncorrect);
                                         diag.emit();
 

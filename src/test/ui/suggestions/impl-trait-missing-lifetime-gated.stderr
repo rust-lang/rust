@@ -26,17 +26,25 @@ error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:5:31
    |
 LL | fn f(_: impl Iterator<Item = &'_ ()>) {}
-   |                               ^^
+   |                               ^^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+help: consider introducing a named lifetime parameter
+   |
+LL | fn f<'a>(_: impl Iterator<Item = &'_'a  ()>) {}
+   |     ++++                            ++
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:8:31
    |
 LL | fn g(x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
-   |                               ^^
+   |                               ^^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+help: consider introducing a named lifetime parameter
+   |
+LL | fn g<'a>(x: impl Iterator<Item = &'_'a  ()>) -> Option<&'_ ()> { x.next() }
+   |     ++++                            ++
 
 error: aborting due to 4 previous errors
 
