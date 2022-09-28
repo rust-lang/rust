@@ -88,7 +88,7 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 ///     None/_ => {..}
 /// }
 /// ```
-struct OptionOccurence {
+struct OptionOccurrence {
     option: String,
     method_sugg: String,
     some_expr: String,
@@ -109,13 +109,13 @@ fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: boo
     )
 }
 
-fn try_get_option_occurence<'tcx>(
+fn try_get_option_occurrence<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &Pat<'tcx>,
     expr: &Expr<'_>,
     if_then: &'tcx Expr<'_>,
     if_else: &'tcx Expr<'_>,
-) -> Option<OptionOccurence> {
+) -> Option<OptionOccurrence> {
     let cond_expr = match expr.kind {
         ExprKind::Unary(UnOp::Deref, inner_expr) | ExprKind::AddrOf(_, _, inner_expr) => inner_expr,
         _ => expr,
@@ -160,7 +160,7 @@ fn try_get_option_occurence<'tcx>(
                 }
             }
 
-            return Some(OptionOccurence {
+            return Some(OptionOccurrence {
                 option: format_option_in_sugg(cx, cond_expr, as_ref, as_mut),
                 method_sugg: method_sugg.to_string(),
                 some_expr: format!("|{capture_mut}{capture_name}| {}", Sugg::hir_with_macro_callsite(cx, some_body, "..")),
@@ -182,9 +182,9 @@ fn try_get_inner_pat<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<&'
 }
 
 /// If this expression is the option if let/else construct we're detecting, then
-/// this function returns an `OptionOccurence` struct with details if
+/// this function returns an `OptionOccurrence` struct with details if
 /// this construct is found, or None if this construct is not found.
-fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurence> {
+fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurrence> {
     if let Some(higher::IfLet {
         let_pat,
         let_expr,
@@ -193,16 +193,16 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
     }) = higher::IfLet::hir(cx, expr)
     {
         if !is_else_clause(cx.tcx, expr) {
-            return try_get_option_occurence(cx, let_pat, let_expr, if_then, if_else);
+            return try_get_option_occurrence(cx, let_pat, let_expr, if_then, if_else);
         }
     }
     None
 }
 
-fn detect_option_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurence> {
+fn detect_option_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurrence> {
     if let ExprKind::Match(ex, arms, MatchSource::Normal) = expr.kind {
         if let Some((let_pat, if_then, if_else)) = try_convert_match(cx, arms) {
-            return try_get_option_occurence(cx, let_pat, ex, if_then, if_else);
+            return try_get_option_occurrence(cx, let_pat, ex, if_then, if_else);
         }
     }
     None
