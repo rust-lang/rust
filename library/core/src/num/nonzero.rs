@@ -742,7 +742,7 @@ macro_rules! nonzero_signed_operations {
                 /// # }
                 /// ```
                 #[must_use]
-                #[inline(always)]
+                #[inline]
                 #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
                 pub const fn is_negative(self) -> bool {
                     self.get().is_negative()
