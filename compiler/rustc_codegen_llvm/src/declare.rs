@@ -42,7 +42,7 @@ fn declare_raw_fn<'ll>(
 
     llvm::SetFunctionCallConv(llfn, callconv);
     llvm::SetUnnamedAddress(llfn, unnamed);
-    llvm::SetVisibility(llfn, visibility);
+    llvm::set_visibility(llfn, visibility);
 
     let mut attrs = SmallVec::<[_; 4]>::new();
 

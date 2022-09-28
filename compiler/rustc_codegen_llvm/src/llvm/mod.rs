@@ -172,12 +172,6 @@ pub fn SetUnnamedAddress(global: &Value, unnamed: UnnamedAddr) {
     }
 }
 
-pub fn SetVisibility(global: &Value, visibility: Visibility) {
-    unsafe {
-        LLVMRustSetVisibility(global, visibility);
-    }
-}
-
 pub fn set_thread_local_mode(global: &Value, mode: ThreadLocalMode) {
     unsafe {
         LLVMSetThreadLocalMode(global, mode);
