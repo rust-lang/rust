@@ -13,6 +13,7 @@ use std::collections::VecDeque;
 use std::fmt::{Display, Write};
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_lexer::Cursor;
 use rustc_lexer::{LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
@@ -408,15 +409,16 @@ enum Highlight<'a> {
 
 struct TokenIter<'a> {
     src: &'a str,
+    cursor: Cursor<'a>,
 }
 
 impl<'a> Iterator for TokenIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<(TokenKind, &'a str)> {
-        if self.src.is_empty() {
+        let token = self.cursor.advance_token();
+        if token.kind == TokenKind::Eof {
             return None;
         }
-        let token = rustc_lexer::first_token(self.src);
         let (text, rest) = self.src.split_at(token.len as usize);
         self.src = rest;
         Some((token.kind, text))
@@ -525,7 +527,7 @@ impl<'a> Classifier<'a> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondance_map`.
     fn new(src: &str, file_span: Span, decoration_info: Option<DecorationInfo>) -> Classifier<'_> {
-        let tokens = PeekIter::new(TokenIter { src });
+        let tokens = PeekIter::new(TokenIter { src, cursor: Cursor::new(src) });
         let decorations = decoration_info.map(Decorations::new);
         Classifier {
             tokens,
@@ -850,6 +852,7 @@ impl<'a> Classifier<'a> {
                 Class::Ident(self.new_span(before, text))
             }
             TokenKind::Lifetime { .. } => Class::Lifetime,
+            TokenKind::Eof => panic!("Eof in advance"),
         };
         // Anything that didn't return above is the simple case where we the
         // class just spans a single token, so we can use the `string` method.

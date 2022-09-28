@@ -1,10 +1,11 @@
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{Spacing, TokenStream};
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_lexer::unescape::{self, Mode};
+use rustc_lexer::Cursor;
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
@@ -38,11 +39,20 @@ pub struct UnmatchedBrace {
 
 pub(crate) fn parse_token_trees<'a>(
     sess: &'a ParseSess,
-    src: &'a str,
-    start_pos: BytePos,
+    mut src: &'a str,
+    mut start_pos: BytePos,
     override_span: Option<Span>,
 ) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
-    StringReader { sess, start_pos, pos: start_pos, src, override_span }.into_token_trees()
+    // Skip `#!`, if present.
+    if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
+        src = &src[shebang_len..];
+        start_pos = start_pos + BytePos::from_usize(shebang_len);
+    }
+
+    let cursor = Cursor::new(src);
+    let string_reader =
+        StringReader { sess, start_pos, pos: start_pos, src, cursor, override_span };
+    tokentrees::TokenTreesReader::parse_token_trees(string_reader)
 }
 
 struct StringReader<'a> {
@@ -53,6 +63,8 @@ struct StringReader<'a> {
     pos: BytePos,
     /// Source text to tokenize.
     src: &'a str,
+    /// Cursor for getting lexer tokens.
+    cursor: Cursor<'a>,
     override_span: Option<Span>,
 }
 
@@ -61,42 +73,195 @@ impl<'a> StringReader<'a> {
         self.override_span.unwrap_or_else(|| Span::with_root_ctxt(lo, hi))
     }
 
-    /// Returns the next token, and info about preceding whitespace, if any.
-    fn next_token(&mut self) -> (Spacing, Token) {
-        let mut spacing = Spacing::Joint;
-
-        // Skip `#!` at the start of the file
-        if self.pos == self.start_pos
-            && let Some(shebang_len) = rustc_lexer::strip_shebang(self.src)
-        {
-            self.pos = self.pos + BytePos::from_usize(shebang_len);
-            spacing = Spacing::Alone;
-        }
+    /// Returns the next token, paired with a bool indicating if the token was
+    /// preceded by whitespace.
+    fn next_token(&mut self) -> (Token, bool) {
+        let mut preceded_by_whitespace = false;
 
         // Skip trivial (whitespace & comments) tokens
         loop {
-            let start_src_index = self.src_index(self.pos);
-            let text: &str = &self.src[start_src_index..];
-
-            if text.is_empty() {
-                let span = self.mk_sp(self.pos, self.pos);
-                return (spacing, Token::new(token::Eof, span));
-            }
-
-            let token = rustc_lexer::first_token(text);
-
+            let token = self.cursor.advance_token();
             let start = self.pos;
             self.pos = self.pos + BytePos(token.len);
 
             debug!("next_token: {:?}({:?})", token.kind, self.str_from(start));
 
-            match self.cook_lexer_token(token.kind, start) {
-                Some(kind) => {
-                    let span = self.mk_sp(start, self.pos);
-                    return (spacing, Token::new(kind, span));
+            // Now "cook" the token, converting the simple `rustc_lexer::TokenKind` enum into a
+            // rich `rustc_ast::TokenKind`. This turns strings into interned symbols and runs
+            // additional validation.
+            let kind = match token.kind {
+                rustc_lexer::TokenKind::LineComment { doc_style } => {
+                    // Skip non-doc comments
+                    let Some(doc_style) = doc_style else {
+                        self.lint_unicode_text_flow(start);
+                        preceded_by_whitespace = true;
+                        continue;
+                    };
+
+                    // Opening delimiter of the length 3 is not included into the symbol.
+                    let content_start = start + BytePos(3);
+                    let content = self.str_from(content_start);
+                    self.cook_doc_comment(content_start, content, CommentKind::Line, doc_style)
                 }
-                None => spacing = Spacing::Alone,
-            }
+                rustc_lexer::TokenKind::BlockComment { doc_style, terminated } => {
+                    if !terminated {
+                        self.report_unterminated_block_comment(start, doc_style);
+                    }
+
+                    // Skip non-doc comments
+                    let Some(doc_style) = doc_style else {
+                        self.lint_unicode_text_flow(start);
+                        preceded_by_whitespace = true;
+                        continue;
+                    };
+
+                    // Opening delimiter of the length 3 and closing delimiter of the length 2
+                    // are not included into the symbol.
+                    let content_start = start + BytePos(3);
+                    let content_end = self.pos - BytePos(if terminated { 2 } else { 0 });
+                    let content = self.str_from_to(content_start, content_end);
+                    self.cook_doc_comment(content_start, content, CommentKind::Block, doc_style)
+                }
+                rustc_lexer::TokenKind::Whitespace => {
+                    preceded_by_whitespace = true;
+                    continue;
+                }
+                rustc_lexer::TokenKind::Ident => {
+                    let sym = nfc_normalize(self.str_from(start));
+                    let span = self.mk_sp(start, self.pos);
+                    self.sess.symbol_gallery.insert(sym, span);
+                    token::Ident(sym, false)
+                }
+                rustc_lexer::TokenKind::RawIdent => {
+                    let sym = nfc_normalize(self.str_from(start + BytePos(2)));
+                    let span = self.mk_sp(start, self.pos);
+                    self.sess.symbol_gallery.insert(sym, span);
+                    if !sym.can_be_raw() {
+                        self.err_span(span, &format!("`{}` cannot be a raw identifier", sym));
+                    }
+                    self.sess.raw_identifier_spans.borrow_mut().push(span);
+                    token::Ident(sym, true)
+                }
+                rustc_lexer::TokenKind::UnknownPrefix => {
+                    self.report_unknown_prefix(start);
+                    let sym = nfc_normalize(self.str_from(start));
+                    let span = self.mk_sp(start, self.pos);
+                    self.sess.symbol_gallery.insert(sym, span);
+                    token::Ident(sym, false)
+                }
+                rustc_lexer::TokenKind::InvalidIdent
+                    // Do not recover an identifier with emoji if the codepoint is a confusable
+                    // with a recoverable substitution token, like `➖`.
+                    if !UNICODE_ARRAY
+                        .iter()
+                        .any(|&(c, _, _)| {
+                            let sym = self.str_from(start);
+                            sym.chars().count() == 1 && c == sym.chars().next().unwrap()
+                        }) =>
+                {
+                    let sym = nfc_normalize(self.str_from(start));
+                    let span = self.mk_sp(start, self.pos);
+                    self.sess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default()
+                        .push(span);
+                    token::Ident(sym, false)
+                }
+                rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
+                    let suffix_start = start + BytePos(suffix_start);
+                    let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
+                    let suffix = if suffix_start < self.pos {
+                        let string = self.str_from(suffix_start);
+                        if string == "_" {
+                            self.sess
+                                .span_diagnostic
+                                .struct_span_warn(
+                                    self.mk_sp(suffix_start, self.pos),
+                                    "underscore literal suffix is not allowed",
+                                )
+                                .warn(
+                                    "this was previously accepted by the compiler but is \
+                                       being phased out; it will become a hard error in \
+                                       a future release!",
+                                )
+                                .note(
+                                    "see issue #42326 \
+                                     <https://github.com/rust-lang/rust/issues/42326> \
+                                     for more information",
+                                )
+                                .emit();
+                            None
+                        } else {
+                            Some(Symbol::intern(string))
+                        }
+                    } else {
+                        None
+                    };
+                    token::Literal(token::Lit { kind, symbol, suffix })
+                }
+                rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
+                    // Include the leading `'` in the real identifier, for macro
+                    // expansion purposes. See #12512 for the gory details of why
+                    // this is necessary.
+                    let lifetime_name = self.str_from(start);
+                    if starts_with_number {
+                        self.err_span_(start, self.pos, "lifetimes cannot start with a number");
+                    }
+                    let ident = Symbol::intern(lifetime_name);
+                    token::Lifetime(ident)
+                }
+                rustc_lexer::TokenKind::Semi => token::Semi,
+                rustc_lexer::TokenKind::Comma => token::Comma,
+                rustc_lexer::TokenKind::Dot => token::Dot,
+                rustc_lexer::TokenKind::OpenParen => token::OpenDelim(Delimiter::Parenthesis),
+                rustc_lexer::TokenKind::CloseParen => token::CloseDelim(Delimiter::Parenthesis),
+                rustc_lexer::TokenKind::OpenBrace => token::OpenDelim(Delimiter::Brace),
+                rustc_lexer::TokenKind::CloseBrace => token::CloseDelim(Delimiter::Brace),
+                rustc_lexer::TokenKind::OpenBracket => token::OpenDelim(Delimiter::Bracket),
+                rustc_lexer::TokenKind::CloseBracket => token::CloseDelim(Delimiter::Bracket),
+                rustc_lexer::TokenKind::At => token::At,
+                rustc_lexer::TokenKind::Pound => token::Pound,
+                rustc_lexer::TokenKind::Tilde => token::Tilde,
+                rustc_lexer::TokenKind::Question => token::Question,
+                rustc_lexer::TokenKind::Colon => token::Colon,
+                rustc_lexer::TokenKind::Dollar => token::Dollar,
+                rustc_lexer::TokenKind::Eq => token::Eq,
+                rustc_lexer::TokenKind::Bang => token::Not,
+                rustc_lexer::TokenKind::Lt => token::Lt,
+                rustc_lexer::TokenKind::Gt => token::Gt,
+                rustc_lexer::TokenKind::Minus => token::BinOp(token::Minus),
+                rustc_lexer::TokenKind::And => token::BinOp(token::And),
+                rustc_lexer::TokenKind::Or => token::BinOp(token::Or),
+                rustc_lexer::TokenKind::Plus => token::BinOp(token::Plus),
+                rustc_lexer::TokenKind::Star => token::BinOp(token::Star),
+                rustc_lexer::TokenKind::Slash => token::BinOp(token::Slash),
+                rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
+                rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
+
+                rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
+                    let c = self.str_from(start).chars().next().unwrap();
+                    let mut err =
+                        self.struct_err_span_char(start, self.pos, "unknown start of token", c);
+                    // FIXME: the lexer could be used to turn the ASCII version of unicode
+                    // homoglyphs, instead of keeping a table in `check_for_substitution`into the
+                    // token. Ideally, this should be inside `rustc_lexer`. However, we should
+                    // first remove compound tokens like `<<` from `rustc_lexer`, and then add
+                    // fancier error recovery to it, as there will be less overall work to do this
+                    // way.
+                    let token = unicode_chars::check_for_substitution(self, start, c, &mut err);
+                    if c == '\x00' {
+                        err.help("source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used");
+                    }
+                    err.emit();
+                    if let Some(token) = token {
+                        token
+                    } else {
+                        preceded_by_whitespace = true;
+                        continue;
+                    }
+                }
+                rustc_lexer::TokenKind::Eof => token::Eof,
+            };
+            let span = self.mk_sp(start, self.pos);
+            return (Token::new(kind, span), preceded_by_whitespace);
         }
     }
 
@@ -160,171 +325,6 @@ impl<'a> StringReader<'a> {
                 BuiltinLintDiagnostics::UnicodeTextFlow(span, content.to_string()),
             );
         }
-    }
-
-    /// Turns simple `rustc_lexer::TokenKind` enum into a rich
-    /// `rustc_ast::TokenKind`. This turns strings into interned
-    /// symbols and runs additional validation.
-    fn cook_lexer_token(&self, token: rustc_lexer::TokenKind, start: BytePos) -> Option<TokenKind> {
-        Some(match token {
-            rustc_lexer::TokenKind::LineComment { doc_style } => {
-                // Skip non-doc comments
-                let Some(doc_style) = doc_style else {
-                    self.lint_unicode_text_flow(start);
-                    return None;
-                };
-
-                // Opening delimiter of the length 3 is not included into the symbol.
-                let content_start = start + BytePos(3);
-                let content = self.str_from(content_start);
-                self.cook_doc_comment(content_start, content, CommentKind::Line, doc_style)
-            }
-            rustc_lexer::TokenKind::BlockComment { doc_style, terminated } => {
-                if !terminated {
-                    self.report_unterminated_block_comment(start, doc_style);
-                }
-
-                // Skip non-doc comments
-                let Some(doc_style) = doc_style else {
-                    self.lint_unicode_text_flow(start);
-                    return None;
-                };
-
-                // Opening delimiter of the length 3 and closing delimiter of the length 2
-                // are not included into the symbol.
-                let content_start = start + BytePos(3);
-                let content_end = self.pos - BytePos(if terminated { 2 } else { 0 });
-                let content = self.str_from_to(content_start, content_end);
-                self.cook_doc_comment(content_start, content, CommentKind::Block, doc_style)
-            }
-            rustc_lexer::TokenKind::Whitespace => return None,
-            rustc_lexer::TokenKind::Ident
-            | rustc_lexer::TokenKind::RawIdent
-            | rustc_lexer::TokenKind::UnknownPrefix => {
-                let is_raw_ident = token == rustc_lexer::TokenKind::RawIdent;
-                let is_unknown_prefix = token == rustc_lexer::TokenKind::UnknownPrefix;
-                let mut ident_start = start;
-                if is_raw_ident {
-                    ident_start = ident_start + BytePos(2);
-                }
-                if is_unknown_prefix {
-                    self.report_unknown_prefix(start);
-                }
-                let sym = nfc_normalize(self.str_from(ident_start));
-                let span = self.mk_sp(start, self.pos);
-                self.sess.symbol_gallery.insert(sym, span);
-                if is_raw_ident {
-                    if !sym.can_be_raw() {
-                        self.err_span(span, &format!("`{}` cannot be a raw identifier", sym));
-                    }
-                    self.sess.raw_identifier_spans.borrow_mut().push(span);
-                }
-                token::Ident(sym, is_raw_ident)
-            }
-            rustc_lexer::TokenKind::InvalidIdent
-                // Do not recover an identifier with emoji if the codepoint is a confusable
-                // with a recoverable substitution token, like `➖`.
-                if !UNICODE_ARRAY
-                    .iter()
-                    .any(|&(c, _, _)| {
-                        let sym = self.str_from(start);
-                        sym.chars().count() == 1 && c == sym.chars().next().unwrap()
-                    })
-                     =>
-            {
-                let sym = nfc_normalize(self.str_from(start));
-                let span = self.mk_sp(start, self.pos);
-                self.sess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default().push(span);
-                token::Ident(sym, false)
-            }
-            rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
-                let suffix_start = start + BytePos(suffix_start);
-                let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
-                let suffix = if suffix_start < self.pos {
-                    let string = self.str_from(suffix_start);
-                    if string == "_" {
-                        self.sess
-                            .span_diagnostic
-                            .struct_span_warn(
-                                self.mk_sp(suffix_start, self.pos),
-                                "underscore literal suffix is not allowed",
-                            )
-                            .warn(
-                                "this was previously accepted by the compiler but is \
-                                   being phased out; it will become a hard error in \
-                                   a future release!",
-                            )
-                            .note(
-                                "see issue #42326 \
-                                 <https://github.com/rust-lang/rust/issues/42326> \
-                                 for more information",
-                            )
-                            .emit();
-                        None
-                    } else {
-                        Some(Symbol::intern(string))
-                    }
-                } else {
-                    None
-                };
-                token::Literal(token::Lit { kind, symbol, suffix })
-            }
-            rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
-                // Include the leading `'` in the real identifier, for macro
-                // expansion purposes. See #12512 for the gory details of why
-                // this is necessary.
-                let lifetime_name = self.str_from(start);
-                if starts_with_number {
-                    self.err_span_(start, self.pos, "lifetimes cannot start with a number");
-                }
-                let ident = Symbol::intern(lifetime_name);
-                token::Lifetime(ident)
-            }
-            rustc_lexer::TokenKind::Semi => token::Semi,
-            rustc_lexer::TokenKind::Comma => token::Comma,
-            rustc_lexer::TokenKind::Dot => token::Dot,
-            rustc_lexer::TokenKind::OpenParen => token::OpenDelim(Delimiter::Parenthesis),
-            rustc_lexer::TokenKind::CloseParen => token::CloseDelim(Delimiter::Parenthesis),
-            rustc_lexer::TokenKind::OpenBrace => token::OpenDelim(Delimiter::Brace),
-            rustc_lexer::TokenKind::CloseBrace => token::CloseDelim(Delimiter::Brace),
-            rustc_lexer::TokenKind::OpenBracket => token::OpenDelim(Delimiter::Bracket),
-            rustc_lexer::TokenKind::CloseBracket => token::CloseDelim(Delimiter::Bracket),
-            rustc_lexer::TokenKind::At => token::At,
-            rustc_lexer::TokenKind::Pound => token::Pound,
-            rustc_lexer::TokenKind::Tilde => token::Tilde,
-            rustc_lexer::TokenKind::Question => token::Question,
-            rustc_lexer::TokenKind::Colon => token::Colon,
-            rustc_lexer::TokenKind::Dollar => token::Dollar,
-            rustc_lexer::TokenKind::Eq => token::Eq,
-            rustc_lexer::TokenKind::Bang => token::Not,
-            rustc_lexer::TokenKind::Lt => token::Lt,
-            rustc_lexer::TokenKind::Gt => token::Gt,
-            rustc_lexer::TokenKind::Minus => token::BinOp(token::Minus),
-            rustc_lexer::TokenKind::And => token::BinOp(token::And),
-            rustc_lexer::TokenKind::Or => token::BinOp(token::Or),
-            rustc_lexer::TokenKind::Plus => token::BinOp(token::Plus),
-            rustc_lexer::TokenKind::Star => token::BinOp(token::Star),
-            rustc_lexer::TokenKind::Slash => token::BinOp(token::Slash),
-            rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
-            rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
-
-            rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
-                let c = self.str_from(start).chars().next().unwrap();
-                let mut err =
-                    self.struct_err_span_char(start, self.pos, "unknown start of token", c);
-                // FIXME: the lexer could be used to turn the ASCII version of unicode homoglyphs,
-                // instead of keeping a table in `check_for_substitution`into the token. Ideally,
-                // this should be inside `rustc_lexer`. However, we should first remove compound
-                // tokens like `<<` from `rustc_lexer`, and then add fancier error recovery to it,
-                // as there will be less overall work to do this way.
-                let token = unicode_chars::check_for_substitution(self, start, c, &mut err);
-                if c == '\x00' {
-                    err.help("source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used");
-                }
-                err.emit();
-                token?
-            }
-        })
     }
 
     fn cook_doc_comment(
