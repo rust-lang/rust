@@ -28,6 +28,7 @@ use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_data_structures::functor::IdFunctor;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -219,6 +220,7 @@ fn do_normalize_predicates<'tcx>(
     cause: ObligationCause<'tcx>,
     elaborated_env: ty::ParamEnv<'tcx>,
     predicates: Vec<ty::Predicate<'tcx>>,
+    outlives: bool,
 ) -> Result<Vec<ty::Predicate<'tcx>>, ErrorGuaranteed> {
     let span = cause.span;
     // FIXME. We should really... do something with these region
@@ -235,7 +237,15 @@ fn do_normalize_predicates<'tcx>(
     // them here too, and we will remove this function when
     // we move over to lazy normalization *anyway*.
     tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
-        let predicates = match fully_normalize(&infcx, cause, elaborated_env, predicates) {
+        let predicates = match predicates.try_map_id(|predicate| {
+            if outlives
+                != matches!(predicate.kind().skip_binder(), ty::PredicateKind::TypeOutlives(..))
+            {
+                Ok(predicate)
+            } else {
+                fully_normalize(&infcx, cause.clone(), elaborated_env, predicate)
+            }
+        }) {
             Ok(predicates) => predicates,
             Err(errors) => {
                 let reported = infcx.report_fulfillment_errors(&errors, None, false);
@@ -262,7 +272,15 @@ fn do_normalize_predicates<'tcx>(
             );
         }
 
-        match infcx.fully_resolve(predicates) {
+        match predicates.try_map_id(|predicate| {
+            if outlives
+                != matches!(predicate.kind().skip_binder(), ty::PredicateKind::TypeOutlives(..))
+            {
+                Ok(predicate)
+            } else {
+                infcx.fully_resolve(predicate)
+            }
+        }) {
             Ok(predicates) => Ok(predicates),
             Err(fixup_err) => {
                 // If we encounter a fixup error, it means that some type
@@ -306,7 +324,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // parameter environments once for every fn as it goes,
     // and errors will get reported then; so outside of type inference we
     // can be sure that no errors should occur.
-    let mut predicates: Vec<_> =
+    let predicates: Vec<_> =
         util::elaborate_predicates(tcx, unnormalized_env.caller_bounds().into_iter())
             .map(|obligation| obligation.predicate)
             .collect();
@@ -337,53 +355,39 @@ pub fn normalize_param_env_or_error<'tcx>(
     //
     // This works fairly well because trait matching  does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
-    let outlives_predicates: Vec<_> = predicates
-        .drain_filter(|predicate| {
-            matches!(predicate.kind().skip_binder(), ty::PredicateKind::TypeOutlives(..))
-        })
-        .collect();
 
-    debug!(
-        "normalize_param_env_or_error: predicates=(non-outlives={:?}, outlives={:?})",
-        predicates, outlives_predicates
-    );
-    let Ok(non_outlives_predicates) = do_normalize_predicates(
+    let Ok(predicates) = do_normalize_predicates(
         tcx,
         cause.clone(),
         elaborated_env,
         predicates,
+        false,
     ) else {
         // An unnormalized env is better than nothing.
         debug!("normalize_param_env_or_error: errored resolving non-outlives predicates");
         return elaborated_env;
     };
 
-    debug!("normalize_param_env_or_error: non-outlives predicates={:?}", non_outlives_predicates);
-
     // Not sure whether it is better to include the unnormalized TypeOutlives predicates
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // predicates here anyway. Keeping them here anyway because it seems safer.
-    let outlives_env: Vec<_> =
-        non_outlives_predicates.iter().chain(&outlives_predicates).cloned().collect();
     let outlives_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&outlives_env),
+        tcx.intern_predicates(&predicates),
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     );
-    let Ok(outlives_predicates) = do_normalize_predicates(
+    let Ok(predicates) = do_normalize_predicates(
         tcx,
         cause,
         outlives_env,
-        outlives_predicates,
+        predicates,
+        true
     ) else {
         // An unnormalized env is better than nothing.
         debug!("normalize_param_env_or_error: errored resolving outlives predicates");
         return elaborated_env;
     };
-    debug!("normalize_param_env_or_error: outlives predicates={:?}", outlives_predicates);
 
-    let mut predicates = non_outlives_predicates;
-    predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
     ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
