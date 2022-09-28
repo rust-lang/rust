@@ -2,6 +2,7 @@
 //! found or is otherwise invalid.
 
 use crate::check::FnCtxt;
+use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
@@ -30,7 +31,7 @@ use rustc_trait_selection::traits::{
 use std::cmp::Ordering;
 use std::iter;
 
-use super::probe::{IsSuggestion, Mode, ProbeScope};
+use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -983,7 +984,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.check_for_field_method(&mut err, source, span, actual, item_name);
                 }
 
-                self.check_for_unwrap_self(&mut err, source, span, actual, item_name);
+                self.check_for_inner_self(&mut err, source, span, actual, item_name);
 
                 bound_spans.sort();
                 bound_spans.dedup();
@@ -1395,7 +1396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_for_unwrap_self(
+    fn check_for_inner_self(
         &self,
         err: &mut Diagnostic,
         source: SelfSource<'tcx>,
@@ -1408,81 +1409,168 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let call_expr = tcx.hir().expect_expr(tcx.hir().get_parent_node(expr.hir_id));
 
         let ty::Adt(kind, substs) = actual.kind() else { return; };
-        if !kind.is_enum() {
-            return;
-        }
+        match kind.adt_kind() {
+            ty::AdtKind::Enum => {
+                let matching_variants: Vec<_> = kind
+                    .variants()
+                    .iter()
+                    .flat_map(|variant| {
+                        let [field] = &variant.fields[..] else { return None; };
+                        let field_ty = field.ty(tcx, substs);
 
-        let matching_variants: Vec<_> = kind
-            .variants()
-            .iter()
-            .flat_map(|variant| {
-                let [field] = &variant.fields[..] else { return None; };
-                let field_ty = field.ty(tcx, substs);
+                        // Skip `_`, since that'll just lead to ambiguity.
+                        if self.resolve_vars_if_possible(field_ty).is_ty_var() {
+                            return None;
+                        }
 
-                // Skip `_`, since that'll just lead to ambiguity.
-                if self.resolve_vars_if_possible(field_ty).is_ty_var() {
-                    return None;
-                }
+                        self.lookup_probe(
+                            span,
+                            item_name,
+                            field_ty,
+                            call_expr,
+                            ProbeScope::TraitsInScope,
+                        )
+                        .ok()
+                        .map(|pick| (variant, field, pick))
+                    })
+                    .collect();
 
-                self.lookup_probe(span, item_name, field_ty, call_expr, ProbeScope::AllTraits)
-                    .ok()
-                    .map(|pick| (variant, field, pick))
-            })
-            .collect();
-
-        let ret_ty_matches = |diagnostic_item| {
-            if let Some(ret_ty) = self
-                .ret_coercion
-                .as_ref()
-                .map(|c| self.resolve_vars_if_possible(c.borrow().expected_ty()))
-                && let ty::Adt(kind, _) = ret_ty.kind()
-                && tcx.get_diagnostic_item(diagnostic_item) == Some(kind.did())
-            {
-                true
-            } else {
-                false
-            }
-        };
-
-        match &matching_variants[..] {
-            [(_, field, pick)] => {
-                let self_ty = field.ty(tcx, substs);
-                err.span_note(
-                    tcx.def_span(pick.item.def_id),
-                    &format!("the method `{item_name}` exists on the type `{self_ty}`"),
-                );
-                let (article, kind, variant, question) =
-                    if Some(kind.did()) == tcx.get_diagnostic_item(sym::Result) {
-                        ("a", "Result", "Err", ret_ty_matches(sym::Result))
-                    } else if Some(kind.did()) == tcx.get_diagnostic_item(sym::Option) {
-                        ("an", "Option", "None", ret_ty_matches(sym::Option))
+                let ret_ty_matches = |diagnostic_item| {
+                    if let Some(ret_ty) = self
+                        .ret_coercion
+                        .as_ref()
+                        .map(|c| self.resolve_vars_if_possible(c.borrow().expected_ty()))
+                        && let ty::Adt(kind, _) = ret_ty.kind()
+                        && tcx.get_diagnostic_item(diagnostic_item) == Some(kind.did())
+                    {
+                        true
                     } else {
-                        return;
+                        false
+                    }
+                };
+
+                match &matching_variants[..] {
+                    [(_, field, pick)] => {
+                        let self_ty = field.ty(tcx, substs);
+                        err.span_note(
+                            tcx.def_span(pick.item.def_id),
+                            &format!("the method `{item_name}` exists on the type `{self_ty}`"),
+                        );
+                        let (article, kind, variant, question) =
+                            if tcx.is_diagnostic_item(sym::Result, kind.did()) {
+                                ("a", "Result", "Err", ret_ty_matches(sym::Result))
+                            } else if tcx.is_diagnostic_item(sym::Option, kind.did()) {
+                                ("an", "Option", "None", ret_ty_matches(sym::Option))
+                            } else {
+                                return;
+                            };
+                        if question {
+                            err.span_suggestion_verbose(
+                                expr.span.shrink_to_hi(),
+                                format!(
+                                    "use the `?` operator to extract the `{self_ty}` value, propagating \
+                                    {article} `{kind}::{variant}` value to the caller"
+                                ),
+                                "?",
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            err.span_suggestion_verbose(
+                                expr.span.shrink_to_hi(),
+                                format!(
+                                    "consider using `{kind}::expect` to unwrap the `{self_ty}` value, \
+                                    panicking if the value is {article} `{kind}::{variant}`"
+                                ),
+                                ".expect(\"REASON\")",
+                                Applicability::HasPlaceholders,
+                            );
+                        }
+                    }
+                    // FIXME(compiler-errors): Support suggestions for other matching enum variants
+                    _ => {}
+                }
+            }
+            // Target wrapper types - types that wrap or pretend to wrap another type,
+            // perhaps this inner type is meant to be called?
+            ty::AdtKind::Struct | ty::AdtKind::Union => {
+                let [first] = ***substs else { return; };
+                let ty::GenericArgKind::Type(ty) = first.unpack() else { return; };
+                let Ok(pick) = self.lookup_probe(
+                            span,
+                            item_name,
+                            ty,
+                            call_expr,
+                            ProbeScope::TraitsInScope,
+                        )  else { return; };
+
+                let name = self.ty_to_value_string(actual);
+                let inner_id = kind.did();
+                let mutable = if let Some(AutorefOrPtrAdjustment::Autoref { mutbl, .. }) =
+                    pick.autoref_or_ptr_adjustment
+                {
+                    Some(mutbl)
+                } else {
+                    None
+                };
+
+                if tcx.is_diagnostic_item(sym::LocalKey, inner_id) {
+                    err.help("use `with` or `try_with` to access thread local storage");
+                } else if Some(kind.did()) == tcx.lang_items().maybe_uninit() {
+                    err.help(format!(
+                        "if this `{name}` has been initialized, \
+                        use one of the `assume_init` methods to access the inner value"
+                    ));
+                } else if tcx.is_diagnostic_item(sym::RefCell, inner_id) {
+                    let (suggestion, borrow_kind, panic_if) = match mutable {
+                        Some(Mutability::Not) => (".borrow()", "borrow", "a mutable borrow exists"),
+                        Some(Mutability::Mut) => {
+                            (".borrow_mut()", "mutably borrow", "any borrows exist")
+                        }
+                        None => return,
                     };
-                if question {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
                         format!(
-                            "use the `?` operator to extract the `{self_ty}` value, propagating \
-                            {article} `{kind}::{variant}` value to the caller"
+                            "use `{suggestion}` to {borrow_kind} the `{ty}`, \
+                            panicking if {panic_if}"
                         ),
-                        "?",
-                        Applicability::MachineApplicable,
+                        suggestion,
+                        Applicability::MaybeIncorrect,
+                    );
+                } else if tcx.is_diagnostic_item(sym::Mutex, inner_id) {
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        format!(
+                            "use `.lock().unwrap()` to borrow the `{ty}`, \
+                            blocking the current thread until it can be acquired"
+                        ),
+                        ".lock().unwrap()",
+                        Applicability::MaybeIncorrect,
+                    );
+                } else if tcx.is_diagnostic_item(sym::RwLock, inner_id) {
+                    let (suggestion, borrow_kind) = match mutable {
+                        Some(Mutability::Not) => (".read().unwrap()", "borrow"),
+                        Some(Mutability::Mut) => (".write().unwrap()", "mutably borrow"),
+                        None => return,
+                    };
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        format!(
+                            "use `{suggestion}` to {borrow_kind} the `{ty}`, \
+                            blocking the current thread until it can be acquired"
+                        ),
+                        suggestion,
+                        Applicability::MaybeIncorrect,
                     );
                 } else {
-                    err.span_suggestion_verbose(
-                        expr.span.shrink_to_hi(),
-                        format!(
-                            "consider using `{kind}::expect` to unwrap the `{self_ty}` value, \
-                             panicking if the value is {article} `{kind}::{variant}`"
-                        ),
-                        ".expect(\"REASON\")",
-                        Applicability::HasPlaceholders,
-                    );
-                }
+                    return;
+                };
+
+                err.span_note(
+                    tcx.def_span(pick.item.def_id),
+                    &format!("the method `{item_name}` exists on the type `{ty}`"),
+                );
             }
-            // FIXME(compiler-errors): Support suggestions for other matching enum variants
-            _ => {}
         }
     }
 

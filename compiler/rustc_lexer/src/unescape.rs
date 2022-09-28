@@ -93,7 +93,7 @@ where
         // NOTE: Raw strings do not perform any explicit character escaping, here we
         // only translate CRLF to LF and produce errors on bare CR.
         Mode::RawStr | Mode::RawByteStr => {
-            unescape_raw_str_or_byte_str(literal_text, mode, callback)
+            unescape_raw_str_or_raw_byte_str(literal_text, mode, callback)
         }
     }
 }
@@ -105,7 +105,7 @@ pub fn unescape_byte_literal<F>(literal_text: &str, mode: Mode, callback: &mut F
 where
     F: FnMut(Range<usize>, Result<u8, EscapeError>),
 {
-    assert!(mode.is_bytes());
+    debug_assert!(mode.is_bytes());
     unescape_literal(literal_text, mode, &mut |range, result| {
         callback(range, result.map(byte_from_char));
     })
@@ -129,7 +129,7 @@ pub fn unescape_byte(literal_text: &str) -> Result<u8, (usize, EscapeError)> {
 }
 
 /// What kind of literal do we parse.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Mode {
     Char,
     Str,
@@ -140,15 +140,11 @@ pub enum Mode {
 }
 
 impl Mode {
-    pub fn in_single_quotes(self) -> bool {
-        match self {
-            Mode::Char | Mode::Byte => true,
-            Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr => false,
-        }
-    }
-
     pub fn in_double_quotes(self) -> bool {
-        !self.in_single_quotes()
+        match self {
+            Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr => true,
+            Mode::Char | Mode::Byte => false,
+        }
     }
 
     pub fn is_bytes(self) -> bool {
@@ -184,7 +180,7 @@ fn scan_escape(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
 
             let value = hi * 16 + lo;
 
-            // For a byte literal verify that it is within ASCII range.
+            // For a non-byte literal verify that it is within ASCII range.
             if !mode.is_bytes() && !is_ascii(value) {
                 return Err(EscapeError::OutOfRangeHexEscape);
             }
@@ -263,6 +259,7 @@ fn ascii_check(first_char: char, mode: Mode) -> Result<char, EscapeError> {
 }
 
 fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
+    debug_assert!(mode == Mode::Char || mode == Mode::Byte);
     let first_char = chars.next().ok_or(EscapeError::ZeroChars)?;
     let res = match first_char {
         '\\' => scan_escape(chars, mode),
@@ -282,7 +279,7 @@ fn unescape_str_or_byte_str<F>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
-    assert!(mode.in_double_quotes());
+    debug_assert!(mode == Mode::Str || mode == Mode::ByteStr);
     let initial_len = src.len();
     let mut chars = src.chars();
     while let Some(first_char) = chars.next() {
@@ -344,11 +341,11 @@ where
 /// sequence of characters or errors.
 /// NOTE: Raw strings do not perform any explicit character escaping, here we
 /// only translate CRLF to LF and produce errors on bare CR.
-fn unescape_raw_str_or_byte_str<F>(literal_text: &str, mode: Mode, callback: &mut F)
+fn unescape_raw_str_or_raw_byte_str<F>(literal_text: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
-    assert!(mode.in_double_quotes());
+    debug_assert!(mode == Mode::RawStr || mode == Mode::RawByteStr);
     let initial_len = literal_text.len();
 
     let mut chars = literal_text.chars();
@@ -368,7 +365,7 @@ where
 
 fn byte_from_char(c: char) -> u8 {
     let res = c as u32;
-    assert!(res <= u8::MAX as u32, "guaranteed because of Mode::ByteStr");
+    debug_assert!(res <= u8::MAX as u32, "guaranteed because of Mode::ByteStr");
     res as u8
 }
 
