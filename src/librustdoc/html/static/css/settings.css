@@ -12,7 +12,8 @@
 	margin-right: 0.3em;
 	height: 1.2rem;
 	width: 1.2rem;
-	border: 1px solid;
+	color: inherit;
+	border: 1px solid currentColor;
 	outline: none;
 	-webkit-appearance: none;
 	cursor: pointer;
