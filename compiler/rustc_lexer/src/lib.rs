@@ -23,15 +23,17 @@
 // We want to be able to build this crate with a stable compiler, so no
 // `#![feature]` attributes should be added.
 
-pub mod cursor;
+mod cursor;
 pub mod unescape;
 
 #[cfg(test)]
 mod tests;
 
+pub use crate::cursor::Cursor;
+
 use self::LiteralKind::*;
 use self::TokenKind::*;
-use crate::cursor::{Cursor, EOF_CHAR};
+use crate::cursor::EOF_CHAR;
 use std::convert::TryFrom;
 
 /// Parsed token.

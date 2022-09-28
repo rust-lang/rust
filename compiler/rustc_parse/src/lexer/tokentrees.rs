@@ -53,7 +53,7 @@ impl<'a> TokenTreesReader<'a> {
                 token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
                 token::CloseDelim(delim) => return Err(self.close_delim_err(delim)),
                 token::Eof => return Ok(buf.into_token_stream()),
-                _ => buf.push(self.parse_token_tree_other()),
+                _ => buf.push(self.parse_token_tree_non_delim_non_eof()),
             }
         }
     }
@@ -66,11 +66,10 @@ impl<'a> TokenTreesReader<'a> {
                 token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
                 token::CloseDelim(..) => return buf.into_token_stream(),
                 token::Eof => {
-                    let mut err = self.eof_err();
-                    err.emit();
+                    self.eof_err().emit();
                     return buf.into_token_stream();
                 }
-                _ => buf.push(self.parse_token_tree_other()),
+                _ => buf.push(self.parse_token_tree_non_delim_non_eof()),
             }
         }
     }
@@ -245,9 +244,10 @@ impl<'a> TokenTreesReader<'a> {
     }
 
     #[inline]
-    fn parse_token_tree_other(&mut self) -> TokenTree {
-        // `spacing` for the returned token is determined by the next token:
-        // its kind and its `preceded_by_whitespace` status.
+    fn parse_token_tree_non_delim_non_eof(&mut self) -> TokenTree {
+        // `this_spacing` for the returned token refers to whether the token is
+        // immediately followed by another op token. It is determined by the
+        // next token: its kind and its `preceded_by_whitespace` status.
         let (next_tok, is_next_tok_preceded_by_whitespace) = self.string_reader.next_token();
         let this_spacing = if is_next_tok_preceded_by_whitespace || !next_tok.is_op() {
             Spacing::Alone
