@@ -32,6 +32,7 @@ fn declare_raw_fn<'ll>(
     name: &str,
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
+    visibility: llvm::Visibility,
     ty: &'ll Type,
 ) -> &'ll Value {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
@@ -41,6 +42,7 @@ fn declare_raw_fn<'ll>(
 
     llvm::SetFunctionCallConv(llfn, callconv);
     llvm::SetUnnamedAddress(llfn, unnamed);
+    llvm::SetVisibility(llfn, visibility);
 
     let mut attrs = SmallVec::<[_; 4]>::new();
 
@@ -76,9 +78,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self,
         name: &str,
         unnamed: llvm::UnnamedAddr,
+        visibility: llvm::Visibility,
         fn_type: &'ll Type,
     ) -> &'ll Value {
-        declare_raw_fn(self, name, llvm::CCallConv, unnamed, fn_type)
+        declare_raw_fn(self, name, llvm::CCallConv, unnamed, visibility, fn_type)
     }
 
     /// Declare a Rust function.
@@ -95,6 +98,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             name,
             fn_abi.llvm_cconv(),
             llvm::UnnamedAddr::Global,
+            llvm::Visibility::Default,
             fn_abi.llvm_type(self),
         );
         fn_abi.apply_attrs_llfn(self, llfn);

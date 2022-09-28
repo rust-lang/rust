@@ -528,7 +528,12 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     llfn
                 } else {
                     let fty = self.type_variadic_func(&[], self.type_i32());
-                    let llfn = self.declare_cfn(name, llvm::UnnamedAddr::Global, fty);
+                    let llfn = self.declare_cfn(
+                        name,
+                        llvm::UnnamedAddr::Global,
+                        llvm::Visibility::Default,
+                        fty,
+                    );
                     let target_cpu = attributes::target_cpu_attr(self);
                     attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[target_cpu]);
                     llfn
@@ -585,7 +590,13 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         if self.get_declared_value("main").is_none() {
-            Some(self.declare_cfn("main", llvm::UnnamedAddr::Global, fn_type))
+            let visibility = if self.sess().target.default_hidden_visibility {
+                llvm::Visibility::Hidden
+            } else {
+                llvm::Visibility::Default
+            };
+
+            Some(self.declare_cfn("main", llvm::UnnamedAddr::Global, visibility, fn_type))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
@@ -615,7 +626,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         } else {
             self.type_variadic_func(&[], ret)
         };
-        let f = self.declare_cfn(name, llvm::UnnamedAddr::No, fn_ty);
+        let f = self.declare_cfn(name, llvm::UnnamedAddr::No, llvm::Visibility::Default, fn_ty);
         self.intrinsics.borrow_mut().insert(name, (fn_ty, f));
         (fn_ty, f)
     }

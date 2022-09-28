@@ -1216,7 +1216,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             _ => return_error!("unrecognized intrinsic `{}`", name),
         };
         let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
-        let f = bx.declare_cfn(llvm_name, llvm::UnnamedAddr::No, fn_ty);
+        let f = bx.declare_cfn(llvm_name, llvm::UnnamedAddr::No, llvm::Visibility::Default, fn_ty);
         let c =
             bx.call(fn_ty, f, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
         Ok(c)
@@ -1416,7 +1416,12 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             &[llvm_pointer_vec_ty, alignment_ty, mask_ty, llvm_elem_vec_ty],
             llvm_elem_vec_ty,
         );
-        let f = bx.declare_cfn(&llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
+        let f = bx.declare_cfn(
+            &llvm_intrinsic,
+            llvm::UnnamedAddr::No,
+            llvm::Visibility::Default,
+            fn_ty,
+        );
         let v =
             bx.call(fn_ty, f, &[args[1].immediate(), alignment, mask, args[0].immediate()], None);
         return Ok(v);
@@ -1542,7 +1547,12 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             format!("llvm.masked.scatter.{}.{}", llvm_elem_vec_str, llvm_pointer_vec_str);
         let fn_ty =
             bx.type_func(&[llvm_elem_vec_ty, llvm_pointer_vec_ty, alignment_ty, mask_ty], ret_t);
-        let f = bx.declare_cfn(&llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
+        let f = bx.declare_cfn(
+            &llvm_intrinsic,
+            llvm::UnnamedAddr::No,
+            llvm::Visibility::Default,
+            fn_ty,
+        );
         let v =
             bx.call(fn_ty, f, &[args[0].immediate(), args[1].immediate(), alignment, mask], None);
         return Ok(v);
@@ -1991,7 +2001,8 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
         let fn_ty = bx.type_func(&[vec_ty, vec_ty], vec_ty);
-        let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
+        let f =
+            bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, llvm::Visibility::Default, fn_ty);
         let v = bx.call(fn_ty, f, &[lhs, rhs], None);
         return Ok(v);
     }
