@@ -1,5 +1,6 @@
 // unit-test
 // compile-flags: -O
+// ignore-endian-big
 
 static mut STATIC: u32 = 42;
 
