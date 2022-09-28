@@ -1126,6 +1126,11 @@ rustc_queries! {
         desc { |tcx| "checking whether `{}` is `doc(hidden)`", tcx.def_path_str(def_id) }
     }
 
+    /// Determines whether an item is annotated with `doc(notable_trait)`.
+    query is_doc_notable_trait(def_id: DefId) -> bool {
+        desc { |tcx| "checking whether `{}` is `doc(notable_trait)`", tcx.def_path_str(def_id) }
+    }
+
     /// Returns the attributes on the item at `def_id`.
     ///
     /// Do not use this directly, use `tcx.get_attrs` instead.

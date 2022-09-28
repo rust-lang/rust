@@ -37,7 +37,7 @@ use crate::clean::cfg::Cfg;
 use crate::clean::clean_visibility;
 use crate::clean::external_path;
 use crate::clean::inline::{self, print_inlined_const};
-use crate::clean::utils::{has_doc_flag, is_literal_expr, print_const_expr, print_evaluated_const};
+use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -1524,7 +1524,7 @@ impl Trait {
         tcx.trait_is_auto(self.def_id)
     }
     pub(crate) fn is_notable_trait(&self, tcx: TyCtxt<'_>) -> bool {
-        has_doc_flag(tcx, self.def_id, sym::notable_trait)
+        tcx.is_doc_notable_trait(self.def_id)
     }
     pub(crate) fn unsafety(&self, tcx: TyCtxt<'_>) -> hir::Unsafety {
         tcx.trait_def(self.def_id).unsafety

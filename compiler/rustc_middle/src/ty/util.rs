@@ -1289,12 +1289,24 @@ pub fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
 }
 
+/// Determines whether an item is annotated with `doc(notable_trait)`.
+pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    tcx.get_attrs(def_id, sym::doc)
+        .filter_map(|attr| attr.meta_item_list())
+        .any(|items| items.iter().any(|item| item.has_name(sym::notable_trait)))
+}
+
 /// Determines whether an item is an intrinsic by Abi.
 pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     matches!(tcx.fn_sig(def_id).abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers =
-        ty::query::Providers { normalize_opaque_types, is_doc_hidden, is_intrinsic, ..*providers }
+    *providers = ty::query::Providers {
+        normalize_opaque_types,
+        is_doc_hidden,
+        is_doc_notable_trait,
+        is_intrinsic,
+        ..*providers
+    }
 }
