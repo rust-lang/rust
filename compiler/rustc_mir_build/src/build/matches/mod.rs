@@ -1986,7 +1986,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let mut guard_span = rustc_span::DUMMY_SP;
 
             let (post_guard_block, otherwise_post_guard_block) =
-                self.in_if_then_scope(match_scope, |this| match *guard {
+                self.in_if_then_scope(match_scope, guard_span, |this| match *guard {
                     Guard::If(e) => {
                         let e = &this.thir[e];
                         guard_span = e.span;
@@ -2301,7 +2301,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         pattern: &Pat<'tcx>,
     ) -> BlockAnd<BasicBlock> {
         let else_block_span = self.thir[else_block].span;
-        let (matching, failure) = self.in_if_then_scope(*let_else_scope, |this| {
+        let (matching, failure) = self.in_if_then_scope(*let_else_scope, else_block_span, |this| {
             let scrutinee = unpack!(block = this.lower_scrutinee(block, init, initializer_span));
             let pat = Pat { ty: init.ty, span: else_block_span, kind: PatKind::Wild };
             let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false, this);
