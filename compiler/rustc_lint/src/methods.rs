@@ -57,7 +57,7 @@ fn first_method_call<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for TemporaryCStringAsPtr {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    /*fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_macro(expr.span) {
             return;
         }
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for TemporaryCStringAsPtr {
             }
             _ => return,
         }
-    }
+    }*/
 }
 
 fn lint_cstring_as_ptr(

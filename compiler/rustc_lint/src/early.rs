@@ -310,7 +310,7 @@ macro_rules! expand_early_lint_pass_impl_methods {
 macro_rules! early_lint_pass_impl {
     ([], [$($methods:tt)*]) => (
         impl EarlyLintPass for EarlyLintPassObjects<'_> {
-            expand_early_lint_pass_impl_methods!([$($methods)*]);
+            //expand_early_lint_pass_impl_methods!([$($methods)*]);
         }
     )
 }

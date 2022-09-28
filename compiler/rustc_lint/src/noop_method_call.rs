@@ -39,7 +39,7 @@ declare_lint! {
 declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL]);
 
 impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    /*fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // We only care about method calls.
         let ExprKind::MethodCall(call, receiver, ..) = &expr.kind else {
             return
@@ -98,5 +98,5 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                 .note(fluent::lint::note)
                 .emit();
         });
-    }
+    }*/
 }

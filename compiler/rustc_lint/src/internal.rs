@@ -111,7 +111,7 @@ declare_lint_pass!(TyTyKind => [
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for TyTyKind {
-    fn check_path(
+    /*fn check_path(
         &mut self,
         cx: &LateContext<'tcx>,
         path: &'tcx rustc_hir::Path<'tcx>,
@@ -225,7 +225,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
             }
             _ => {}
         }
-    }
+    }*/
 }
 
 fn lint_ty_kind_usage(cx: &LateContext<'_>, res: &Res) -> bool {
@@ -295,7 +295,7 @@ declare_tool_lint! {
 declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
 
 impl EarlyLintPass for LintPassImpl {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+    /*fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         if let ast::ItemKind::Impl(box ast::Impl { of_trait: Some(lint_pass), .. }) = &item.kind {
             if let Some(last) = lint_pass.path.segments.last() {
                 if last.ident.name == sym::LintPass {
@@ -318,7 +318,7 @@ impl EarlyLintPass for LintPassImpl {
                 }
             }
         }
-    }
+    }*/
 }
 
 declare_tool_lint! {
@@ -335,7 +335,7 @@ fn is_doc_keyword(s: Symbol) -> bool {
 }
 
 impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
+    /*fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
         for attr in cx.tcx.hir().attrs(item.hir_id()) {
             if !attr.has_name(sym::doc) {
                 continue;
@@ -359,7 +359,7 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
                 }
             }
         }
-    }
+    }*/
 }
 
 declare_tool_lint! {

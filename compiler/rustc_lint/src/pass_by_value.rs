@@ -20,7 +20,7 @@ declare_tool_lint! {
 declare_lint_pass!(PassByValue => [PASS_BY_VALUE]);
 
 impl<'tcx> LateLintPass<'tcx> for PassByValue {
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx>) {
+    /*fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx>) {
         match &ty.kind {
             TyKind::Rptr(_, hir::MutTy { ty: inner_ty, mutbl: hir::Mutability::Not }) => {
                 if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner.to_def_id()) {
@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
             }
             _ => {}
         }
-    }
+    }*/
 }
 
 fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<String> {

@@ -109,7 +109,7 @@ impl HiddenUnicodeCodepoints {
     }
 }
 impl EarlyLintPass for HiddenUnicodeCodepoints {
-    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
+    /*fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         if let ast::AttrKind::DocComment(_, comment) = attr.kind {
             if contains_text_flow_control_chars(comment.as_str()) {
                 self.lint_text_direction_codepoint(cx, comment, attr.span, 0, false, "doc comment");
@@ -137,5 +137,5 @@ impl EarlyLintPass for HiddenUnicodeCodepoints {
             _ => return,
         };
         self.lint_text_direction_codepoint(cx, text, *span, padding, true, "literal");
-    }
+    }*/
 }

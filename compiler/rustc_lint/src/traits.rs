@@ -86,7 +86,7 @@ declare_lint_pass!(
 );
 
 impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
-    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
+    /*fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::PredicateKind::*;
 
         let predicates = cx.tcx.explicit_predicates_of(item.def_id);
@@ -130,5 +130,5 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                 });
             }
         }
-    }
+    }*/
 }

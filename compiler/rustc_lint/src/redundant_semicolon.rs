@@ -27,7 +27,7 @@ declare_lint! {
 declare_lint_pass!(RedundantSemicolons => [REDUNDANT_SEMICOLONS]);
 
 impl EarlyLintPass for RedundantSemicolons {
-    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &Block) {
+    /*fn check_block(&mut self, cx: &EarlyContext<'_>, block: &Block) {
         let mut seq = None;
         for stmt in block.stmts.iter() {
             match (&stmt.kind, &mut seq) {
@@ -37,7 +37,7 @@ impl EarlyLintPass for RedundantSemicolons {
             }
         }
         maybe_lint_redundant_semis(cx, &mut seq);
-    }
+    }*/
 }
 
 fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, bool)>) {

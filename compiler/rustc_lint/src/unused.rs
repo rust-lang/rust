@@ -780,7 +780,7 @@ impl UnusedParens {
 }
 
 impl EarlyLintPass for UnusedParens {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
+    /*fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         match e.kind {
             ExprKind::Let(ref pat, _, _) | ExprKind::ForLoop(ref pat, ..) => {
                 self.check_unused_parens_pat(cx, pat, false, false);
@@ -892,7 +892,7 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         <Self as UnusedDelimLint>::check_item(self, cx, item)
-    }
+    }*/
 }
 
 declare_lint! {
@@ -992,7 +992,7 @@ impl UnusedDelimLint for UnusedBraces {
 }
 
 impl EarlyLintPass for UnusedBraces {
-    fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
+    /*fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         <Self as UnusedDelimLint>::check_stmt(self, cx, s)
     }
 
@@ -1067,7 +1067,7 @@ impl EarlyLintPass for UnusedBraces {
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         <Self as UnusedDelimLint>::check_item(self, cx, item)
-    }
+    }*/
 }
 
 declare_lint! {
@@ -1136,11 +1136,11 @@ impl UnusedImportBraces {
 }
 
 impl EarlyLintPass for UnusedImportBraces {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+    /*fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         if let ast::ItemKind::Use(ref use_tree) = item.kind {
             self.check_use_tree(cx, use_tree, item);
         }
-    }
+    }*/
 }
 
 declare_lint! {

@@ -161,7 +161,7 @@ impl NonCamelCaseTypes {
 }
 
 impl EarlyLintPass for NonCamelCaseTypes {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
+    /*fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         let has_repr_c = it
             .attrs
             .iter()
@@ -196,7 +196,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
         if let ast::GenericParamKind::Type { .. } = param.kind {
             self.check_case(cx, "type parameter", &param.ident);
         }
-    }
+    }*/
 }
 
 declare_lint! {
@@ -327,7 +327,7 @@ impl NonSnakeCase {
 }
 
 impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
-    fn check_mod(&mut self, cx: &LateContext<'_>, _: &'tcx hir::Mod<'tcx>, id: hir::HirId) {
+    /*fn check_mod(&mut self, cx: &LateContext<'_>, _: &'tcx hir::Mod<'tcx>, id: hir::HirId) {
         if id != hir::CRATE_HIR_ID {
             return;
         }
@@ -448,7 +448,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         for sf in s.fields() {
             self.check_snake_case(cx, "structure field", &sf.ident);
         }
-    }
+    }*/
 }
 
 declare_lint! {
@@ -503,7 +503,7 @@ impl NonUpperCaseGlobals {
 }
 
 impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
-    fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
+    /*fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(it.hir_id());
         match it.kind {
             hir::ItemKind::Static(..) if !cx.sess().contains_name(attrs, sym::no_mangle) => {
@@ -547,7 +547,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
         if let GenericParamKind::Const { .. } = param.kind {
             NonUpperCaseGlobals::check_upper_case(cx, "const parameter", &param.name.ident());
         }
-    }
+    }*/
 }
 
 #[cfg(test)]

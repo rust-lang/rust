@@ -74,7 +74,7 @@ fn enforce_mem_variant_count(cx: &LateContext<'_>, func_expr: &hir::Expr<'_>, sp
 }
 
 impl<'tcx> LateLintPass<'tcx> for EnumIntrinsicsNonEnums {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
+    /*fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
         let hir::ExprKind::Call(func, args) = &expr.kind else { return };
         let hir::ExprKind::Path(qpath) = &func.kind else { return };
         let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id() else { return };
@@ -84,5 +84,5 @@ impl<'tcx> LateLintPass<'tcx> for EnumIntrinsicsNonEnums {
             sym::mem_variant_count => enforce_mem_variant_count(cx, func, expr.span),
             _ => {}
         }
-    }
+    }*/
 }

@@ -123,7 +123,7 @@ macro_rules! declare_combined_late_lint_pass {
         }
 
         impl<'tcx> LateLintPass<'tcx> for $name {
-            expand_combined_late_lint_pass_methods!([$($passes),*], $methods);
+            //expand_combined_late_lint_pass_methods!([$($passes),*], $methods);
         }
 
         #[allow(rustc::lint_pass_impl_without_macro)]
@@ -230,7 +230,7 @@ macro_rules! declare_combined_early_lint_pass {
         }
 
         impl EarlyLintPass for $name {
-            expand_combined_early_lint_pass_methods!([$($passes),*], $methods);
+            //expand_combined_early_lint_pass_methods!([$($passes),*], $methods);
         }
 
         #[allow(rustc::lint_pass_impl_without_macro)]

@@ -45,7 +45,7 @@ pub struct ArrayIntoIter {
 impl_lint_pass!(ArrayIntoIter => [ARRAY_INTO_ITER]);
 
 impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+    /*fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         // Save the span of expressions in `for _ in expr` syntax,
         // so we can give a better suggestion for those later.
         if let hir::ExprKind::Match(arg, [_], hir::MatchSource::ForLoopDesugar) = &expr.kind {
@@ -150,5 +150,5 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                 diag.emit();
             })
         }
-    }
+    }*/
 }

@@ -487,7 +487,7 @@ fn lint_literal<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
+    /*fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
@@ -585,7 +585,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     | hir::BinOpKind::Gt
             )
         }
-    }
+    }*/
 }
 
 declare_lint! {
@@ -1290,7 +1290,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
-    fn check_foreign_item(&mut self, cx: &LateContext<'_>, it: &hir::ForeignItem<'_>) {
+    /*fn check_foreign_item(&mut self, cx: &LateContext<'_>, it: &hir::ForeignItem<'_>) {
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Declaration };
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id());
 
@@ -1305,11 +1305,11 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
                 hir::ForeignItemKind::Type => (),
             }
         }
-    }
+    }*/
 }
 
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
-    fn check_fn(
+    /*fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
         kind: hir::intravisit::FnKind<'tcx>,
@@ -1330,13 +1330,13 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
         if !vis.is_internal_abi(abi) {
             vis.check_foreign_fn(hir_id, decl);
         }
-    }
+    }*/
 }
 
 declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
-    fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
+    /*fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
             let t = cx.tcx.type_of(it.def_id);
             let ty = cx.tcx.erase_regions(t);
@@ -1389,7 +1389,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
                 );
             }
         }
-    }
+    }*/
 }
 
 declare_lint! {
@@ -1563,9 +1563,9 @@ impl InvalidAtomicOrdering {
 }
 
 impl<'tcx> LateLintPass<'tcx> for InvalidAtomicOrdering {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    /*fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         Self::check_atomic_load_store(cx, expr);
         Self::check_memory_fence(cx, expr);
         Self::check_atomic_compare_exchange(cx, expr);
-    }
+    }*/
 }

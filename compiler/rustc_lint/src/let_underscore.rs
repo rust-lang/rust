@@ -100,7 +100,7 @@ const SYNC_GUARD_SYMBOLS: [Symbol; 3] = [
 ];
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
-    fn check_local(&mut self, cx: &LateContext<'_>, local: &hir::Local<'_>) {
+    /*fn check_local(&mut self, cx: &LateContext<'_>, local: &hir::Local<'_>) {
         if !matches!(local.pat.kind, hir::PatKind::Wild) {
             return;
         }
@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 })
             }
         }
-    }
+    }*/
 }
 
 fn build_and_emit_lint(
