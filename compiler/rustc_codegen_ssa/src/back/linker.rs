@@ -1180,16 +1180,19 @@ impl<'a> WasmLd<'a> {
         //   sharing memory and instantiating the module multiple times. As a
         //   result if it were exported then we'd just have no sharing.
         //
-        // * `--export=*tls*` - when `#[thread_local]` symbols are used these
-        //   symbols are how the TLS segments are initialized and configured.
+        // On wasm32-unknown-unknown, we also export symbols for glue code to use:
+        //    * `--export=*tls*` - when `#[thread_local]` symbols are used these
+        //      symbols are how the TLS segments are initialized and configured.
         if sess.target_features.contains(&sym::atomics) {
             cmd.arg("--shared-memory");
             cmd.arg("--max-memory=1073741824");
             cmd.arg("--import-memory");
-            cmd.arg("--export=__wasm_init_tls");
-            cmd.arg("--export=__tls_size");
-            cmd.arg("--export=__tls_align");
-            cmd.arg("--export=__tls_base");
+            if sess.target.os == "unknown" {
+                cmd.arg("--export=__wasm_init_tls");
+                cmd.arg("--export=__tls_size");
+                cmd.arg("--export=__tls_align");
+                cmd.arg("--export=__tls_base");
+            }
         }
         WasmLd { cmd, sess }
     }
