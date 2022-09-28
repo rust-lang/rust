@@ -43,7 +43,7 @@ fn parse_attributes(field: &syn::Field) -> Attributes {
 
 pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let generic: syn::GenericParam = parse_quote!(__CTX);
-    s.add_bounds(synstructure::AddBounds::Generics);
+    s.add_bounds(synstructure::AddBounds::Fields);
     s.add_impl_generic(generic);
     s.add_where_predicate(parse_quote! { __CTX: crate::HashStableContext });
     let body = s.each(|bi| {
@@ -86,7 +86,7 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
 
 pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let generic: syn::GenericParam = parse_quote!('__ctx);
-    s.add_bounds(synstructure::AddBounds::Generics);
+    s.add_bounds(synstructure::AddBounds::Fields);
     s.add_impl_generic(generic);
     let body = s.each(|bi| {
         let attrs = parse_attributes(bi.ast());

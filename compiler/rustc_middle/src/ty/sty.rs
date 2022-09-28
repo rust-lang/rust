@@ -15,6 +15,7 @@ use hir::def::DefKind;
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
@@ -1337,17 +1338,28 @@ impl fmt::Debug for EarlyBoundRegion {
 
 /// A **`const`** **v**ariable **ID**.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(HashStable, TyEncodable, TyDecodable)]
+#[derive(TyEncodable, TyDecodable)]
 pub struct ConstVid<'tcx> {
     pub index: u32,
     pub phantom: PhantomData<&'tcx ()>,
 }
 
+impl<CTX> HashStable<CTX> for ConstVid<'_> {
+    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {
+        panic!("const variables should not be hashed: {self:?}")
+    }
+}
+
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
-    #[derive(HashStable)]
     pub struct RegionVid {
         DEBUG_FORMAT = custom,
+    }
+}
+
+impl<CTX> HashStable<CTX> for RegionVid {
+    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {
+        panic!("region variables should not be hashed: {self:?}")
     }
 }
 

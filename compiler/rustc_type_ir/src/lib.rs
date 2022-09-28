@@ -502,6 +502,12 @@ rustc_index::newtype_index! {
     }
 }
 
+impl<CTX> HashStable<CTX> for TyVid {
+    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {
+        panic!("type variables should not be hashed: {self:?}")
+    }
+}
+
 /// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 pub struct IntVid {
