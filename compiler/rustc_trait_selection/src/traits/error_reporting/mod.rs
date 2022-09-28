@@ -2263,13 +2263,22 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                                     trait_impls.non_blanket_impls().len()
                                 )
                             };
-
+                            let mut suggestions = vec![(
+                                trait_path_segment.ident.span.shrink_to_lo(),
+                                format!("<{} as ", self.tcx.def_path(impl_def_id).to_string_no_crate_verbose())
+                            )];
+                            if let Some(generic_arg) = trait_path_segment.args {
+                                let between_span = trait_path_segment.ident.span.between(generic_arg.span_ext);
+                                // get rid of :: between Trait and <type>
+                                // must be '::' between them, otherwise the parser won't accept the code
+                                suggestions.push((between_span, "".to_string(),));
+                                suggestions.push((generic_arg.span_ext.shrink_to_hi(), format!(">")));
+                            } else {
+                                suggestions.push((trait_path_segment.ident.span.shrink_to_hi(), format!(">")));
+                            }
                             err.multipart_suggestion(
                                 message,
-                                vec![
-                                    (trait_path_segment.ident.span.shrink_to_lo(), format!("<{} as ", self.tcx.def_path(impl_def_id).to_string_no_crate_verbose())),
-                                    (trait_path_segment.ident.span.shrink_to_hi(), format!(">"))
-                                ],
+                                suggestions,
                                 Applicability::MaybeIncorrect
                             );
                         }
