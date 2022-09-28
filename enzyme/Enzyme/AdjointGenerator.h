@@ -12063,7 +12063,9 @@ public:
           shouldFree()) {
         assert(tape);
         auto tapep = BuilderZ.CreatePointerCast(
-            tape, PointerType::getUnqual(fnandtapetype->tapeType));
+            tape, PointerType::get(
+                      fnandtapetype->tapeType,
+                      cast<PointerType>(tape->getType())->getAddressSpace()));
 #if LLVM_VERSION_MAJOR > 7
         auto truetape =
             BuilderZ.CreateLoad(fnandtapetype->tapeType, tapep, "tapeld");

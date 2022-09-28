@@ -2355,17 +2355,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
           gutils->newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
               tapeType);
       if (size != 0) {
-        auto i64 = Type::getInt64Ty(gutils->newFunc->getContext());
-        BasicBlock *BB = BasicBlock::Create(gutils->newFunc->getContext(),
-                                            "entry", gutils->newFunc);
-        IRBuilder<> B(BB);
-
-        CallInst *malloccall;
-        CreateAllocation(B, tapeType, ConstantInt::get(i64, 1), "tapemem",
-                         &malloccall, nullptr);
         RetTypes[returnMapping.find(AugmentedStruct::Tape)->second] =
-            malloccall->getType();
-        BB->eraseFromParent();
+            getDefaultAnonymousTapeType(gutils->newFunc->getContext());
       }
     }
   }
@@ -2485,13 +2476,13 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       if (size != 0) {
         CallInst *malloccall = nullptr;
         Instruction *zero = nullptr;
-        tapeMemory =
-            CreateAllocation(ib, tapeType, ConstantInt::get(i64, 1), "tapemem",
-                             &malloccall, EnzymeZeroCache ? &zero : nullptr);
+        tapeMemory = CreateAllocation(
+            ib, tapeType, ConstantInt::get(i64, 1), "tapemem", &malloccall,
+            EnzymeZeroCache ? &zero : nullptr, /*isDefault*/ true);
         memory = malloccall;
       } else {
-        memory =
-            ConstantPointerNull::get(Type::getInt8PtrTy(NewF->getContext()));
+        memory = ConstantPointerNull::get(
+            getDefaultAnonymousTapeType(NewF->getContext()));
       }
       Value *Idxs[] = {
           ib.getInt32(0),

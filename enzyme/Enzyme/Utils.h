@@ -86,7 +86,8 @@ llvm::SmallVector<llvm::Instruction *, 2> PostCacheStore(llvm::StoreInst *SI,
 llvm::Value *CreateAllocation(llvm::IRBuilder<> &B, llvm::Type *T,
                               llvm::Value *Count, llvm::Twine Name = "",
                               llvm::CallInst **caller = nullptr,
-                              llvm::Instruction **ZeroMem = nullptr);
+                              llvm::Instruction **ZeroMem = nullptr,
+                              bool isDefault = false);
 llvm::CallInst *CreateDealloc(llvm::IRBuilder<> &B, llvm::Value *ToFree);
 
 llvm::Value *CreateReAllocation(llvm::IRBuilder<> &B, llvm::Value *prev,
@@ -94,6 +95,8 @@ llvm::Value *CreateReAllocation(llvm::IRBuilder<> &B, llvm::Value *prev,
                                 llvm::Value *InnerCount, llvm::Twine Name = "",
                                 llvm::CallInst **caller = nullptr,
                                 bool ZeroMem = false);
+
+llvm::PointerType *getDefaultAnonymousTapeType(llvm::LLVMContext &C);
 
 extern std::map<std::string, std::function<llvm::Value *(
                                  llvm::IRBuilder<> &, llvm::CallInst *,

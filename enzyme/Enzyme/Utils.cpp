@@ -48,12 +48,13 @@ void (*CustomErrorHandler)(const char *, LLVMValueRef, ErrorType,
                            void *) = nullptr;
 LLVMValueRef (*CustomAllocator)(LLVMBuilderRef, LLVMTypeRef,
                                 /*Count*/ LLVMValueRef,
-                                /*Align*/ LLVMValueRef) = nullptr;
+                                /*Align*/ LLVMValueRef, uint8_t) = nullptr;
 LLVMValueRef (*CustomDeallocator)(LLVMBuilderRef, LLVMValueRef) = nullptr;
 void (*CustomRuntimeInactiveError)(LLVMBuilderRef, LLVMValueRef,
                                    LLVMValueRef) = nullptr;
 LLVMValueRef (*EnzymePostCacheStore)(LLVMValueRef, LLVMBuilderRef,
                                      LLVMValueRef *) = nullptr;
+LLVMTypeRef (*EnzymeDefaultTapeType)(LLVMContextRef) = nullptr;
 }
 
 llvm::SmallVector<llvm::Instruction *, 2> PostCacheStore(llvm::StoreInst *SI,
@@ -68,6 +69,12 @@ llvm::SmallVector<llvm::Instruction *, 2> PostCacheStore(llvm::StoreInst *SI,
       res.push_back(cast<Instruction>(unwrap(I)));
   }
   return res;
+}
+
+llvm::PointerType *getDefaultAnonymousTapeType(llvm::LLVMContext &C) {
+  if (EnzymeDefaultTapeType)
+    return cast<PointerType>(unwrap(EnzymeDefaultTapeType(wrap(&C))));
+  return Type::getInt8PtrTy(C);
 }
 
 Function *getOrInsertExponentialAllocator(Module &M, Function *newFunc,
@@ -239,15 +246,16 @@ llvm::Value *CreateReAllocation(llvm::IRBuilder<> &B, llvm::Value *prev,
 }
 
 Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
-                        Twine Name, CallInst **caller, Instruction **ZeroMem) {
+                        Twine Name, CallInst **caller, Instruction **ZeroMem,
+                        bool isDefault) {
   Value *res;
   auto &M = *Builder.GetInsertBlock()->getParent()->getParent();
   auto AlignI = M.getDataLayout().getTypeAllocSizeInBits(T) / 8;
   auto Align = ConstantInt::get(Count->getType(), AlignI);
   CallInst *malloccall = nullptr;
   if (CustomAllocator) {
-    res = unwrap(
-        CustomAllocator(wrap(&Builder), wrap(T), wrap(Count), wrap(Align)));
+    res = unwrap(CustomAllocator(wrap(&Builder), wrap(T), wrap(Count),
+                                 wrap(Align), isDefault));
     if (auto I = dyn_cast<Instruction>(res))
       I->setName(Name);
 

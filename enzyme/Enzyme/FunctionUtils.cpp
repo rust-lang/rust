@@ -1942,7 +1942,7 @@ FunctionType *getFunctionTypeForClone(
       returnValue == ReturnType::TapeAndReturn ||
       returnValue == ReturnType::Tape) {
     RetTypes.clear();
-    RetTypes.push_back(Type::getInt8PtrTy(FTy->getContext()));
+    RetTypes.push_back(getDefaultAnonymousTapeType(FTy->getContext()));
     if (returnValue == ReturnType::TapeAndTwoReturns) {
       RetTypes.push_back(FTy->getReturnType());
       RetTypes.push_back(
