@@ -308,15 +308,15 @@ fn find_good_method_for_match<'a>(
     should_be_left: &'a str,
     should_be_right: &'a str,
 ) -> Option<&'a str> {
-    let pat_left = arms[0].pat;
-    let pat_right = arms[1].pat;
+    let first_pat = arms[0].pat;
+    let second_pat = arms[1].pat;
 
-    let body_node_pair = if (is_pat_variant(cx, pat_left, path_left, expected_item_left))
-        && (is_pat_variant(cx, pat_right, path_right, expected_item_right))
+    let body_node_pair = if (is_pat_variant(cx, first_pat, path_left, expected_item_left))
+        && (is_pat_variant(cx, second_pat, path_right, expected_item_right))
     {
         (&arms[0].body.kind, &arms[1].body.kind)
-    } else if (is_pat_variant(cx, pat_left, path_left, expected_item_right))
-        && (is_pat_variant(cx, pat_right, path_right, expected_item_left))
+    } else if (is_pat_variant(cx, first_pat, path_left, expected_item_right))
+        && (is_pat_variant(cx, second_pat, path_right, expected_item_left))
     {
         (&arms[1].body.kind, &arms[0].body.kind)
     } else {
