@@ -14,7 +14,6 @@ use rustc_span::{Span, Symbol, sym};
 use rustc_target::abi::Align;
 
 use crate::builder::Builder;
-use crate::intrinsic;
 
 pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, name: Symbol, callee_ty: Ty<'tcx>, args: &[OperandRef<'tcx, RValue<'gcc>>], ret_ty: Ty<'tcx>, llret_ty: Type<'gcc>, span: Span) -> Result<RValue<'gcc>, ()> {
     // macros for error handling:
@@ -415,8 +414,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
             if let ty::Float(f) = in_elem.kind() {
                 let elem_ty = bx.cx.type_float_from_ty(*f);
                 match f.bit_width() {
-                    32 => ("f32", elem_ty),
-                    64 => ("f64", elem_ty),
+                    32 => ("f", elem_ty),
+                    64 => ("", elem_ty),
                     _ => {
                         return_error!(
                             "unsupported element type `{}` of floating-point vector `{}`",
@@ -432,30 +431,49 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
 
         let vec_ty = bx.cx.type_vector(elem_ty, in_len);
 
-        let (intr_name, fn_ty) =
+        let intr_name =
             match name {
-                sym::simd_ceil => ("ceil", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_fabs => ("fabs", bx.type_func(&[vec_ty], vec_ty)), // TODO(antoyo): pand with 170141183420855150465331762880109871103
-                sym::simd_fcos => ("cos", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_fexp2 => ("exp2", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_fexp => ("exp", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_flog10 => ("log10", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_flog2 => ("log2", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_flog => ("log", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
-                sym::simd_fpowi => ("powi", bx.type_func(&[vec_ty, bx.type_i32()], vec_ty)),
-                sym::simd_fpow => ("pow", bx.type_func(&[vec_ty, vec_ty], vec_ty)),
-                sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
+                sym::simd_ceil => "ceil",
+                sym::simd_fabs => "fabs", // TODO(antoyo): pand with 170141183420855150465331762880109871103
+                sym::simd_fcos => "cos",
+                sym::simd_fexp2 => "exp2",
+                sym::simd_fexp => "exp",
+                sym::simd_flog10 => "log10",
+                sym::simd_flog2 => "log2",
+                sym::simd_flog => "log",
+                sym::simd_floor => "floor",
+                sym::simd_fma => "fma",
+                sym::simd_fpowi => "__builtin_powi",
+                sym::simd_fpow => "pow",
+                sym::simd_fsin => "sin",
+                sym::simd_fsqrt => "sqrt",
+                sym::simd_round => "round",
+                sym::simd_trunc => "trunc",
                 _ => return_error!("unrecognized intrinsic `{}`", name),
             };
-        let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
-        let function = intrinsic::llvm::intrinsic(llvm_name, &bx.cx);
-        let function: RValue<'gcc> = unsafe { std::mem::transmute(function) };
-        let c = bx.call(fn_ty, function, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
+        let builtin_name = format!("{}{}", intr_name, elem_ty_str);
+        let funcs = bx.cx.functions.borrow();
+        let function = funcs.get(&builtin_name).unwrap_or_else(|| panic!("unable to find builtin function {}", builtin_name));
+
+        // TODO(antoyo): add platform-specific behavior here for architectures that have these
+        // intrinsics as instructions (for instance, gpus)
+        let mut vector_elements = vec![];
+        for i in 0..in_len {
+            let index = bx.context.new_rvalue_from_long(bx.ulong_type, i as i64);
+            // we have to treat fpowi specially, since fpowi's second argument is always an i32
+            let arguments = if name == sym::simd_fpowi {
+                vec![
+                    bx.extract_element(args[0].immediate(), index).to_rvalue(),
+                    args[1].immediate(),
+                ]
+            } else {
+                args.iter()
+                    .map(|arg| bx.extract_element(arg.immediate(), index).to_rvalue())
+                    .collect()
+            };
+            vector_elements.push(bx.context.new_call(None, *function, &arguments));
+        }
+        let c = bx.context.new_rvalue_from_vector(None, vec_ty, &vector_elements);
         Ok(c)
     }
 
