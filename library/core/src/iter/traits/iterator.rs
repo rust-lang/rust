@@ -2431,22 +2431,13 @@ pub trait Iterator {
     ///
     /// # Example
     ///
-    /// Find the maximum value:
-    ///
     /// ```
-    /// fn find_max<I>(iter: I) -> Option<I::Item>
-    ///     where I: Iterator,
-    ///           I::Item: Ord,
-    /// {
-    ///     iter.reduce(|accum, item| {
-    ///         if accum >= item { accum } else { item }
-    ///     })
-    /// }
-    /// let a = [10, 20, 5, -23, 0];
-    /// let b: [u32; 0] = [];
+    /// let reduced: i32 = (1..10).reduce(|acc, e| acc + e).unwrap();
+    /// assert_eq!(reduced, 45);
     ///
-    /// assert_eq!(find_max(a.iter()), Some(&20));
-    /// assert_eq!(find_max(b.iter()), None);
+    /// // Which is equivalent to doing it with `fold`:
+    /// let folded: i32 = (1..10).fold(0, |acc, e| acc + e);
+    /// assert_eq!(reduced, folded);
     /// ```
     #[inline]
     #[stable(feature = "iterator_fold_self", since = "1.51.0")]

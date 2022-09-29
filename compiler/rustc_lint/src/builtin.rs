@@ -97,30 +97,28 @@ fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
 
 impl EarlyLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if let ast::ExprKind::While(cond, _, label) = &e.kind {
-            if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind {
-                if let ast::LitKind::Bool(true) = lit.kind {
-                    if !lit.span.from_expansion() {
-                        let condition_span = e.span.with_hi(cond.span.hi());
-                        cx.struct_span_lint(WHILE_TRUE, condition_span, |lint| {
-                            lint.build(fluent::lint::builtin_while_true)
-                                .span_suggestion_short(
-                                    condition_span,
-                                    fluent::lint::suggestion,
-                                    format!(
-                                        "{}loop",
-                                        label.map_or_else(String::new, |label| format!(
-                                            "{}: ",
-                                            label.ident,
-                                        ))
-                                    ),
-                                    Applicability::MachineApplicable,
-                                )
-                                .emit();
-                        })
-                    }
-                }
-            }
+        if let ast::ExprKind::While(cond, _, label) = &e.kind
+            && let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind
+            && let ast::LitKind::Bool(true) = lit.kind
+            && !lit.span.from_expansion()
+        {
+            let condition_span = e.span.with_hi(cond.span.hi());
+            cx.struct_span_lint(WHILE_TRUE, condition_span, |lint| {
+                lint.build(fluent::lint::builtin_while_true)
+                    .span_suggestion_short(
+                        condition_span,
+                        fluent::lint::suggestion,
+                        format!(
+                            "{}loop",
+                            label.map_or_else(String::new, |label| format!(
+                                "{}: ",
+                                label.ident,
+                            ))
+                        ),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+            })
         }
     }
 }
