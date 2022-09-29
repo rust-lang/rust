@@ -32,11 +32,6 @@ pub struct AttrWrapper {
     start_pos: usize,
 }
 
-// This struct is passed around very frequently,
-// so make sure it doesn't accidentally get larger
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(AttrWrapper, 16);
-
 impl AttrWrapper {
     pub(super) fn new(attrs: AttrVec, start_pos: usize) -> AttrWrapper {
         AttrWrapper { attrs, start_pos }
@@ -95,9 +90,6 @@ struct LazyAttrTokenStreamImpl {
     break_last_token: bool,
     replace_ranges: Box<[ReplaceRange]>,
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(LazyAttrTokenStreamImpl, 144);
 
 impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
     fn to_attr_token_stream(&self) -> AttrTokenStream {
@@ -460,4 +452,14 @@ fn make_token_stream(
         }
     }
     AttrTokenStream::new(final_buf.inner)
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(AttrWrapper, 16);
+    static_assert_size!(LazyAttrTokenStreamImpl, 144);
 }
