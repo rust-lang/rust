@@ -2173,10 +2173,16 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
         let mut region_index = self.region_index;
         let mut next_name = |this: &Self| {
-            let name = name_by_region_index(region_index, &mut available_names, num_available);
-            debug!(?name);
-            region_index += 1;
-            assert!(!this.used_region_names.contains(&name));
+            let mut name;
+
+            loop {
+                name = name_by_region_index(region_index, &mut available_names, num_available);
+                region_index += 1;
+
+                if !this.used_region_names.contains(&name) {
+                    break;
+                }
+            }
 
             name
         };
