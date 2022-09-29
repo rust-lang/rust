@@ -194,7 +194,6 @@ h4.code-header {
 .impl-items .associatedtype,
 .methods .associatedtype {
 	flex-basis: 100%;
-	font-weight: 600;
 	position: relative;
 }
 
