@@ -276,9 +276,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             item_segment.infer_args,
             None,
         );
-        let assoc_bindings = self.create_assoc_bindings_for_generic_args(item_segment.args());
-
-        if let Some(b) = assoc_bindings.first() {
+        if let Some(b) = item_segment.args().bindings.first() {
             Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
         }
 
@@ -605,8 +603,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             None,
         );
 
-        let assoc_bindings = self.create_assoc_bindings_for_generic_args(item_segment.args());
-        if let Some(b) = assoc_bindings.first() {
+        if let Some(b) = item_segment.args().bindings.first() {
             Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
         }
 
@@ -794,8 +791,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_segment,
             is_impl,
         );
-        let assoc_bindings = self.create_assoc_bindings_for_generic_args(trait_segment.args());
-        if let Some(b) = assoc_bindings.first() {
+        if let Some(b) = trait_segment.args().bindings.first() {
             Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
         }
         ty::TraitRef::new(trait_def_id, substs)
@@ -2208,8 +2204,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         for segment in segments {
             // Only emit the first error to avoid overloading the user with error messages.
-            if let [binding, ..] = segment.args().bindings {
-                Self::prohibit_assoc_ty_binding(self.tcx(), binding.span);
+            if let Some(b) = segment.args().bindings.first() {
+                Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
                 return true;
             }
         }
