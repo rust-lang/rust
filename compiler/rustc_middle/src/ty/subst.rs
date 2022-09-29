@@ -492,6 +492,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
 }
 
 impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &'tcx ty::List<T> {
+    #[inline]
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
