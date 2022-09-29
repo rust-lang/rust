@@ -839,8 +839,7 @@ void TypeAnalyzer::considerTBAA() {
           std::set<std::string> JuliaKnownTypes = {
               "julia.gc_alloc_obj", "jl_alloc_array_1d",  "jl_alloc_array_2d",
               "jl_alloc_array_3d",  "ijl_alloc_array_1d", "ijl_alloc_array_2d",
-              "ijl_alloc_array_3d",
-          };
+              "ijl_alloc_array_3d", "jl_gc_alloc_typed",  "ijl_gc_alloc_typed"};
           if (JuliaKnownTypes.count(F->getName().str())) {
             visitCallInst(*call);
             continue;
@@ -3953,6 +3952,21 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       }
       updateAnalysis(&call, ptr.Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      return;
+    }
+    if (funcName == "julia.gc_alloc_obj" || funcName == "jl_gc_alloc_typed" ||
+        funcName == "ijl_gc_alloc_typed") {
+      auto ptr = TypeTree(BaseType::Pointer);
+      if (auto CI = dyn_cast<ConstantInt>(call.getOperand(1))) {
+        auto &DL = call.getParent()->getParent()->getParent()->getDataLayout();
+        auto LoadSize = CI->getZExtValue();
+        // Only propagate mappings in range that aren't "Anything" into the
+        // pointer
+        ptr |= getAnalysis(&call).Lookup(LoadSize, DL);
+      }
+      updateAnalysis(&call, ptr.Only(-1), &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       return;
     }

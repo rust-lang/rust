@@ -322,6 +322,8 @@ enum class ValueType {
   Both = Primal | Shadow,
 };
 
+typedef std::pair<const llvm::Value *, ValueType> UsageKey;
+
 static inline std::string to_string(DerivativeMode mode) {
   switch (mode) {
   case DerivativeMode::ForwardMode:

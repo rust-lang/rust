@@ -185,6 +185,7 @@ struct CacheAnalysis {
       // Pointer operands originating from call instructions that are not
       // malloc/free are conservatively considered uncacheable.
       if (auto obj_op = dyn_cast<CallInst>(obj)) {
+        auto n = getFuncNameFromCall(obj_op);
         // If this is a known allocation which is not captured or returned,
         // a caller function cannot overwrite this (since it cannot access).
         // Since we don't currently perform this check, we can instead check
@@ -192,6 +193,9 @@ struct CacheAnalysis {
         // the required property).
         if (allocationsWithGuaranteedFree.find(obj_op) !=
             allocationsWithGuaranteedFree.end()) {
+
+        } else if (n == "julia.get_pgcstack" || n == "julia.ptls_states" ||
+                   n == "jl_get_ptls_states") {
 
         } else {
           // OP is a non malloc/free call so we need to cache
@@ -266,6 +270,13 @@ struct CacheAnalysis {
         GetUnderlyingObject(li.getOperand(0),
                             oldFunc->getParent()->getDataLayout(), 100);
 #endif
+
+    if (auto obj_op = dyn_cast<CallInst>(obj)) {
+      auto n = getFuncNameFromCall(obj_op);
+      if (n == "julia.get_pgcstack" || n == "julia.ptls_states" ||
+          n == "jl_get_ptls_states")
+        return false;
+    }
 
     // Openmp bound and local thread id are unchanging
     // definitionally cacheable.

@@ -29,8 +29,6 @@
 
 #include "GradientUtils.h"
 
-typedef std::pair<const Value *, ValueType> UsageKey;
-
 // Determine if a value is needed directly to compute the adjoint
 // of the given instruction user
 static inline bool is_use_directly_needed_in_reverse(
@@ -297,6 +295,43 @@ static inline bool is_use_directly_needed_in_reverse(
     // we still need even if instruction is inactive
     if (funcName == "llvm.julia.gc_preserve_begin")
       return true;
+
+    bool writeOnlyNoCapture = true;
+    auto F = getFunctionFromCall(const_cast<CallInst *>(CI));
+#if LLVM_VERSION_MAJOR >= 14
+    for (size_t i = 0; i < CI->arg_size(); i++)
+#else
+    for (size_t i = 0; i < CI->getNumArgOperands(); i++)
+#endif
+    {
+      if (val == CI->getArgOperand(i)) {
+#if LLVM_VERSION_MAJOR >= 8
+        if (!CI->doesNotCapture(i))
+#else
+        if (!(CI->dataOperandHasImpliedAttr(i + 1, Attribute::NoCapture) ||
+              (F && F->hasParamAttribute(i, Attribute::NoCapture))))
+#endif
+        {
+          writeOnlyNoCapture = false;
+          break;
+        }
+#if LLVM_VERSION_MAJOR >= 14
+        if (!CI->onlyWritesMemory(i))
+#else
+        if (!(CI->dataOperandHasImpliedAttr(i + 1, Attribute::WriteOnly) ||
+              CI->dataOperandHasImpliedAttr(i + 1, Attribute::ReadNone) ||
+              (F && (F->hasParamAttribute(i, Attribute::WriteOnly) ||
+                     F->hasParamAttribute(i, Attribute::ReadNone)))))
+#endif
+        {
+          writeOnlyNoCapture = false;
+          break;
+        }
+      }
+    }
+    // Don't need the primal argument if it is write only and not captured
+    if (writeOnlyNoCapture)
+      return false;
   }
 
   return !gutils->isConstantInstruction(user) ||

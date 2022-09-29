@@ -3177,7 +3177,8 @@ bool GradientUtils::legalRecompute(const Value *val,
     auto n = getFuncNameFromCall(const_cast<CallInst *>(ci));
     auto called = ci->getCalledFunction();
     Intrinsic::ID ID = Intrinsic::not_intrinsic;
-    if ((called && called->hasFnAttribute("enzyme_shouldrecompute")) ||
+    if (ci->hasFnAttr("enzyme_shouldrecompute") ||
+        (called && called->hasFnAttribute("enzyme_shouldrecompute")) ||
         isMemFreeLibMFunction(n, &ID) || n == "lgamma_r" || n == "lgammaf_r" ||
         n == "lgammal_r" || n == "__lgamma_r_finite" ||
         n == "__lgammaf_r_finite" || n == "__lgammal_r_finite" || n == "tanh" ||
@@ -6702,7 +6703,6 @@ void GradientUtils::computeMinCache() {
         }
       }
       for (Instruction &I : BB) {
-
         if (!legalRecompute(&I, Available2, nullptr)) {
           if (is_value_needed_in_reverse<ValueType::Primal>(
                   this, &I, minCutMode, FullSeen, notForAnalysis)) {
@@ -7043,5 +7043,415 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
 #endif
       }
     }
+  }
+}
+
+void GradientUtils::computeForwardingProperties(Instruction *V) {
+  if (!EnzymeRematerialize)
+    return;
+
+  SmallVector<LoadInst *, 1> loads;
+  SmallVector<LoadLikeCall, 1> loadLikeCalls;
+  SmallPtrSet<Instruction *, 1> stores;
+  SmallPtrSet<Instruction *, 1> frees;
+  SmallPtrSet<IntrinsicInst *, 1> LifetimeStarts;
+  bool promotable = true;
+  bool shadowpromotable = true;
+  bool primalInitializationOfShadow = false;
+  std::set<std::pair<Instruction *, Value *>> seen;
+  SmallVector<std::pair<Instruction *, Value *>, 1> todo;
+  for (auto U : V->users())
+    if (auto I = dyn_cast<Instruction>(U))
+      todo.push_back(std::make_pair(I, V));
+  while (todo.size()) {
+    auto tup = todo.back();
+    Instruction *cur = tup.first;
+    Value *prev = tup.second;
+    todo.pop_back();
+    if (seen.count(tup))
+      continue;
+    seen.insert(tup);
+    if (isa<CastInst>(cur) || isa<GetElementPtrInst>(cur)) {
+      for (auto u : cur->users()) {
+        if (auto I = dyn_cast<Instruction>(u))
+          todo.push_back(std::make_pair(I, (Value *)cur));
+      }
+    } else if (auto load = dyn_cast<LoadInst>(cur)) {
+
+      // If loaded value is an int or pointer, may need
+      // to preserve initialization within the primal.
+      auto TT = TR.query(load)[{-1}];
+      if (!TT.isFloat()) {
+        // ok to duplicate in forward /
+        // reverse if it is a stack or GC allocation.
+        // Said memory will still be shadow initialized.
+        StringRef funcName = "";
+        if (auto CI = dyn_cast<CallInst>(V))
+          if (Function *originCall = getFunctionFromCall(CI))
+            funcName = originCall->getName();
+        if (isa<AllocaInst>(V) || hasMetadata(V, "enzyme_fromstack") ||
+            funcName == "jl_alloc_array_1d" ||
+            funcName == "jl_alloc_array_2d" ||
+            funcName == "jl_alloc_array_3d" || funcName == "jl_array_copy" ||
+            funcName == "ijl_alloc_array_1d" ||
+            funcName == "ijl_alloc_array_2d" ||
+            funcName == "ijl_alloc_array_3d" || funcName == "ijl_array_copy" ||
+            funcName == "julia.gc_alloc_obj" ||
+            funcName == "jl_gc_alloc_typed" ||
+            funcName == "ijl_gc_alloc_typed") {
+          primalInitializationOfShadow = true;
+        } else {
+          shadowpromotable = false;
+          EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                      cur->getParent(), " Could not promote allocation ", *V,
+                      " due to non-floating load ", *load);
+        }
+      }
+      loads.push_back(load);
+    } else if (auto store = dyn_cast<StoreInst>(cur)) {
+      // TODO only add store to shadow iff non float type
+      if (store->getValueOperand() == prev) {
+        EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                    cur->getParent(), " Could not promote allocation ", *V,
+                    " due to capturing store ", *cur);
+        promotable = false;
+        shadowpromotable = false;
+        break;
+      } else
+        stores.insert(store);
+    } else if (auto II = dyn_cast<IntrinsicInst>(cur)) {
+      switch (II->getIntrinsicID()) {
+      case Intrinsic::lifetime_start:
+        LifetimeStarts.insert(II);
+        break;
+      case Intrinsic::dbg_declare:
+      case Intrinsic::dbg_value:
+#if LLVM_VERSION_MAJOR > 6
+      case Intrinsic::dbg_label:
+#endif
+      case Intrinsic::dbg_addr:
+      case Intrinsic::lifetime_end:
+        break;
+      case Intrinsic::memset: {
+        bool first = true;
+#if LLVM_VERSION_MAJOR >= 14
+        for (auto &arg : II->args())
+#else
+        for (auto &arg : II->arg_operands())
+#endif
+        {
+          if (first) {
+            first = false;
+            break;
+          }
+          if (arg == prev) {
+            promotable = false;
+            shadowpromotable = false;
+            EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                        cur->getParent(), " Could not promote allocation ", *V,
+                        " due to memset use ", *cur);
+            break;
+          }
+          break;
+        }
+        stores.insert(II);
+        break;
+      }
+      // TODO memtransfer(cpy/move)
+      case Intrinsic::memcpy:
+      case Intrinsic::memmove:
+      default:
+        promotable = false;
+        shadowpromotable = false;
+        EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                    cur->getParent(), " Could not promote allocation ", *V,
+                    " due to unknown intrinsic ", *cur);
+        break;
+      }
+    } else if (auto CI = dyn_cast<CallInst>(cur)) {
+      StringRef funcName = getFuncNameFromCall(CI);
+      if (isDeallocationFunction(funcName, TLI)) {
+        frees.insert(CI);
+        continue;
+      }
+      if (funcName == "julia.write_barrier") {
+        stores.insert(CI);
+        continue;
+      }
+
+      size_t idx = 0;
+      bool seenLoadLikeCall = false;
+#if LLVM_VERSION_MAJOR >= 14
+      for (auto &arg : CI->args())
+#else
+      for (auto &arg : CI->arg_operands())
+#endif
+      {
+        if (arg != prev) {
+          idx++;
+          continue;
+        }
+        auto F = getFunctionFromCall(CI);
+        auto TT = TR.query(prev)[{-1, -1}];
+        // If it either could capture, or could have a int/pointer written to
+        // it it is not promotable
+#if LLVM_VERSION_MAJOR >= 8
+        if (CI->doesNotCapture(idx))
+#else
+        if (CI->dataOperandHasImpliedAttr(idx + 1, Attribute::NoCapture) ||
+            (F && F->hasParamAttribute(idx, Attribute::NoCapture)))
+#endif
+        {
+
+          auto TmpOrig =
+#if LLVM_VERSION_MAJOR >= 12
+              getUnderlyingObject(V, 100);
+#else
+              GetUnderlyingObject(V, newFunc->getParent()->getDataLayout(),
+                                  100);
+#endif
+
+          bool stackOrGC = false;
+          StringRef funcName = "";
+          if (auto CI = dyn_cast<CallInst>(TmpOrig))
+            if (Function *originCall = getFunctionFromCall(CI))
+              funcName = originCall->getName();
+          if (isa<AllocaInst>(TmpOrig) ||
+              (isa<Instruction>(TmpOrig) &&
+               hasMetadata(cast<Instruction>(TmpOrig), "enzyme_fromstack")) ||
+              funcName == "jl_alloc_array_1d" ||
+              funcName == "jl_alloc_array_2d" ||
+              funcName == "jl_alloc_array_3d" || funcName == "jl_array_copy" ||
+              funcName == "ijl_alloc_array_1d" ||
+              funcName == "ijl_alloc_array_2d" ||
+              funcName == "ijl_alloc_array_3d" ||
+              funcName == "ijl_array_copy" ||
+              funcName == "julia.gc_alloc_obj" ||
+              funcName == "jl_gc_alloc_typed" ||
+              funcName == "ijl_gc_alloc_typed")
+            stackOrGC = true;
+
+#if LLVM_VERSION_MAJOR >= 8
+          if (CI->onlyReadsMemory(idx))
+#else
+          if (CI->dataOperandHasImpliedAttr(idx + 1, Attribute::ReadOnly) ||
+              CI->dataOperandHasImpliedAttr(idx + 1, Attribute::ReadNone) ||
+              (F && (F->hasParamAttribute(idx, Attribute::ReadOnly) ||
+                     F->hasParamAttribute(idx, Attribute::ReadNone))))
+#endif
+          {
+            // if only reading memory, ok to duplicate in forward /
+            // reverse if it is a stack or GC allocation.
+            // Said memory will still be primal initialized.
+            StringRef funcName = "";
+            if (auto CI = dyn_cast<CallInst>(TmpOrig))
+              if (Function *originCall = getFunctionFromCall(CI))
+                funcName = originCall->getName();
+            if (stackOrGC) {
+              if (!seenLoadLikeCall) {
+                loadLikeCalls.push_back(LoadLikeCall(CI, prev));
+                seenLoadLikeCall = true;
+              }
+            } else {
+              promotable = false;
+              EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                          cur->getParent(), " Could not promote allocation ",
+                          *V, " due to unknown non-local call ", *cur);
+            }
+          }
+#if LLVM_VERSION_MAJOR >= 14
+          else if (!CI->onlyWritesMemory(idx))
+#else
+          else if (!(CI->dataOperandHasImpliedAttr(idx + 1,
+                                                   Attribute::WriteOnly) ||
+                     CI->dataOperandHasImpliedAttr(idx + 1,
+                                                   Attribute::ReadNone) ||
+                     (F && (F->hasParamAttribute(idx, Attribute::WriteOnly) ||
+                            F->hasParamAttribute(idx, Attribute::ReadNone)))))
+#endif
+          {
+            promotable = false;
+            EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                        cur->getParent(), " Could not promote allocation ", *V,
+                        " due to unknown writing call ", *cur);
+          }
+
+          if (TT.isFloat()) {
+            // all floats ok
+          }
+#if LLVM_VERSION_MAJOR >= 8
+          else if (CI->onlyReadsMemory(idx))
+#else
+          else if (CI->dataOperandHasImpliedAttr(idx + 1,
+                                                 Attribute::ReadOnly) ||
+                   CI->dataOperandHasImpliedAttr(idx + 1,
+                                                 Attribute::ReadNone) ||
+                   (F && (F->hasParamAttribute(idx, Attribute::ReadOnly) ||
+                          F->hasParamAttribute(idx, Attribute::ReadNone))))
+#endif
+          {
+            // if only reading memory, ok to duplicate in forward /
+            // reverse if it is a stack or GC allocation.
+            // Said memory will still be shadow initialized.
+            if (stackOrGC) {
+              primalInitializationOfShadow = true;
+            } else {
+              shadowpromotable = false;
+              EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                          cur->getParent(), " Could not promote allocation ",
+                          *V, " due to unknown readonly non float call ", *cur);
+            }
+          } else {
+            shadowpromotable = false;
+            EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                        cur->getParent(), " Could not promote allocation ", *V,
+                        " due to unknown writing non float call ", *cur);
+          }
+        } else {
+          shadowpromotable = false;
+          promotable = false;
+          EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                      cur->getParent(), " Could not promote allocation ", *V,
+                      " due to unknown capturing call ", *cur);
+        }
+        idx++;
+      }
+
+    } else {
+      promotable = false;
+      shadowpromotable = false;
+      EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                  cur->getParent(), " Could not promote allocation ", *V,
+                  " due to unknown instruction ", *cur);
+    }
+  }
+
+  // Find the outermost loop of all stores, and the allocation/lifetime
+  Loop *outer = OrigLI.getLoopFor(V->getParent());
+  if (LifetimeStarts.size() == 1) {
+    outer = OrigLI.getLoopFor((*LifetimeStarts.begin())->getParent());
+  }
+
+  for (auto S : stores) {
+    outer = getAncestor(outer, OrigLI.getLoopFor(S->getParent()));
+  }
+
+  if (shadowpromotable && !isConstantValue(V)) {
+    backwardsOnlyShadows[V] = ShadowRematerializer(
+        stores, frees, primalInitializationOfShadow, outer);
+  }
+
+  if (!promotable)
+    return;
+
+  SmallPtrSet<LoadInst *, 1> rematerializable;
+
+  // We currently require a rematerializable allocation to have
+  // all of its loads be able to be performed again. Thus if
+  // there is an overwriting store after a load in context,
+  // it may no longer be rematerializable.
+  for (auto LI : loads) {
+    // Is there a store which could occur after the load.
+    // In other words
+    SmallVector<Instruction *, 2> results;
+    mayExecuteAfter(results, LI, stores, outer);
+    for (auto res : results) {
+      if (overwritesToMemoryReadBy(OrigAA, TLI, SE, OrigLI, OrigDT, LI, res,
+                                   outer)) {
+        EmitWarning("NotPromotable", LI->getDebugLoc(), oldFunc,
+                    LI->getParent(), " Could not promote allocation ", *V,
+                    " due to load ", *LI,
+                    " which does not postdominates store ", *res);
+        return;
+      }
+    }
+    rematerializable.insert(LI);
+  }
+  for (auto LI : loadLikeCalls) {
+    // Is there a store which could occur after the load.
+    // In other words
+    SmallVector<Instruction *, 2> results;
+    mayExecuteAfter(results, LI.loadCall, stores, outer);
+    for (auto res : results) {
+      if (overwritesToMemoryReadBy(OrigAA, TLI, SE, OrigLI, OrigDT, LI.loadCall,
+                                   res, outer)) {
+        EmitWarning("NotPromotable", LI.loadCall->getDebugLoc(), oldFunc,
+                    LI.loadCall->getParent(), " Could not promote allocation ",
+                    *V, " due to load-like call ", *LI.loadCall,
+                    " which does not postdominates store ", *res);
+        return;
+      }
+    }
+  }
+  rematerializableAllocations[V] =
+      Rematerializer(loads, loadLikeCalls, stores, frees, outer);
+}
+
+void GradientUtils::computeGuaranteedFrees() {
+  SmallPtrSet<CallInst *, 2> allocsToPromote;
+  for (auto &BB : *oldFunc) {
+    if (notForAnalysis.count(&BB))
+      continue;
+    for (auto &I : BB) {
+      if (auto AI = dyn_cast<AllocaInst>(&I))
+        computeForwardingProperties(AI);
+
+      auto CI = dyn_cast<CallInst>(&I);
+      if (!CI)
+        continue;
+
+      StringRef funcName = getFuncNameFromCall(CI);
+
+      if (isDeallocationFunction(funcName, TLI)) {
+
+        llvm::Value *val = CI->getArgOperand(0);
+        while (auto cast = dyn_cast<CastInst>(val))
+          val = cast->getOperand(0);
+
+        if (auto dc = dyn_cast<CallInst>(val)) {
+          StringRef sfuncName = getFuncNameFromCall(dc);
+          if (isAllocationFunction(sfuncName, TLI)) {
+
+            bool hasPDFree = false;
+            if (dc->getParent() == CI->getParent() ||
+                OrigPDT.dominates(CI->getParent(), dc->getParent())) {
+              hasPDFree = true;
+            }
+
+            if (hasPDFree) {
+              allocationsWithGuaranteedFree[dc].insert(CI);
+            }
+          }
+        }
+      }
+      if (isAllocationFunction(funcName, TLI)) {
+        allocsToPromote.insert(CI);
+        if (hasMetadata(CI, "enzyme_fromstack")) {
+          allocationsWithGuaranteedFree[CI].insert(CI);
+        }
+        if (funcName == "jl_alloc_array_1d" ||
+            funcName == "jl_alloc_array_2d" ||
+            funcName == "jl_alloc_array_3d" || funcName == "jl_array_copy" ||
+            funcName == "ijl_alloc_array_1d" ||
+            funcName == "ijl_alloc_array_2d" ||
+            funcName == "ijl_alloc_array_3d" || funcName == "ijl_array_copy" ||
+            funcName == "julia.gc_alloc_obj" ||
+            funcName == "jl_gc_alloc_typed" ||
+            funcName == "ijl_gc_alloc_typed") {
+        }
+      }
+    }
+  }
+  for (CallInst *V : allocsToPromote) {
+    // TODO compute if an only load/store (non capture)
+    // allocaion by traversing its users. If so, mark
+    // all of its load/stores, as now the loads can
+    // potentially be rematerialized without a cache
+    // of the allocation, but the operands of all stores.
+    // This info needs to be provided to minCutCache
+    // the derivative of store needs to redo the store,
+    // isValueNeededInReverse needs to know to preserve the
+    // store operands in this case, etc
+    computeForwardingProperties(V);
   }
 }

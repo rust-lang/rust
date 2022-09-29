@@ -285,6 +285,7 @@ void RecursivelyReplaceAddressSpace(Value *AI, Value *rep, bool legal) {
       auto AS = cast<PointerType>(rep->getType())->getAddressSpace();
       if (AS == ASC->getDestAddressSpace()) {
         ASC->replaceAllUsesWith(rep);
+        toErase.push_back(ASC);
         continue;
       }
       ASC->setOperand(0, rep);
@@ -360,13 +361,28 @@ void RecursivelyReplaceAddressSpace(Value *AI, Value *rep, bool legal) {
           continue;
         }
       }
+      IRBuilder<> B(CI);
+      auto Addr = B.CreateAddrSpaceCast(rep, prev->getType());
+#if LLVM_VERSION_MAJOR >= 14
+      for (size_t i = 0; i < CI->arg_size(); i++)
+#else
+      for (size_t i = 0; i < CI->getNumArgOperands(); i++)
+#endif
+      {
+        if (CI->getArgOperand(i) == prev) {
+          CI->setArgOperand(i, Addr);
+        }
+      }
+      continue;
     }
     llvm::errs() << " rep: " << *rep << " prev: " << *prev << " inst: " << *inst
                  << "\n";
     llvm_unreachable("Illegal address space propagation");
   }
-  for (auto I : llvm::reverse(toErase))
+
+  for (auto I : llvm::reverse(toErase)) {
     I->eraseFromParent();
+  }
   for (auto SI : toPostCache) {
     IRBuilder<> B(SI->getNextNode());
     PostCacheStore(SI, B);

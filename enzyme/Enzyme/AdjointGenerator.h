@@ -10377,7 +10377,12 @@ public:
             if (!forwardsShadow) {
               if (Mode == DerivativeMode::ReverseModePrimal) {
                 // Needs a stronger replacement check/assertion.
-                Value *replacement = UndefValue::get(placeholder->getType());
+                Value *replacement;
+                if (EnzymeZeroCache)
+                  replacement = ConstantPointerNull::get(
+                      cast<PointerType>(placeholder->getType()));
+                else
+                  replacement = UndefValue::get(placeholder->getType());
                 gutils->replaceAWithB(placeholder, replacement);
                 gutils->invertedPointers.erase(found);
                 gutils->invertedPointers.insert(std::make_pair(
@@ -11615,6 +11620,34 @@ public:
           gradByVal[args.size()] = orig->getParamByValType(i);
         }
 #endif
+
+        bool writeOnlyNoCapture = true;
+#if LLVM_VERSION_MAJOR >= 8
+        if (!orig->doesNotCapture(i))
+#else
+        if (!(orig->dataOperandHasImpliedAttr(i + 1, Attribute::NoCapture) ||
+              (called && called->hasParamAttribute(i, Attribute::NoCapture))))
+#endif
+        {
+          writeOnlyNoCapture = false;
+        }
+#if LLVM_VERSION_MAJOR >= 14
+        if (!orig->onlyWritesMemory(i))
+#else
+        if (!(orig->dataOperandHasImpliedAttr(i + 1, Attribute::WriteOnly) ||
+              orig->dataOperandHasImpliedAttr(i + 1, Attribute::ReadNone) ||
+              (called && (called->hasParamAttribute(i, Attribute::WriteOnly) ||
+                          called->hasParamAttribute(i, Attribute::ReadNone)))))
+#endif
+        {
+          writeOnlyNoCapture = false;
+        }
+        if (writeOnlyNoCapture) {
+          if (EnzymeZeroCache)
+            argi = ConstantPointerNull::get(cast<PointerType>(argi->getType()));
+          else
+            argi = UndefValue::get(argi->getType());
+        }
         args.push_back(lookup(argi, Builder2));
       }
 
