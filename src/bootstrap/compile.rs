@@ -21,7 +21,7 @@ use serde::Deserialize;
 use crate::builder::Cargo;
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
-use crate::config::{LlvmLibunwind, TargetSelection};
+use crate::config::{LlvmLibunwind, RustcLto, TargetSelection};
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
