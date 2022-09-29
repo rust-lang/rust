@@ -14,7 +14,7 @@ help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x4]
    |
 LL |     safe_raw(xraw, xshr);
    |                    ^^^^
-help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique FnEntry retag
+help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique FnEntry retag inside this call
   --> $DIR/aliasing_mut3.rs:LL:CC
    |
 LL |     safe_raw(xraw, xshr);

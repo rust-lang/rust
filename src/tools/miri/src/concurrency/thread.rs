@@ -290,10 +290,6 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         &mut self.threads[self.active_thread].stack
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Thread<'mir, 'tcx>> {
-        self.threads.iter()
-    }
-
     pub fn all_stacks(
         &self,
     ) -> impl Iterator<Item = &[Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>]> {
@@ -390,6 +386,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         data_race: Option<&mut data_race::GlobalState>,
     ) -> InterpResult<'tcx> {
         if self.threads[joined_thread_id].join_status == ThreadJoinStatus::Detached {
+            // On Windows this corresponds to joining on a closed handle.
             throw_ub_format!("trying to join a detached thread");
         }
 
@@ -624,6 +621,33 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             Ok(SchedulingAction::ExecuteTimeoutCallback)
         } else {
             throw_machine_stop!(TerminationInfo::Deadlock);
+        }
+    }
+}
+
+impl VisitMachineValues for ThreadManager<'_, '_> {
+    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
+        // FIXME some other fields also contain machine values
+        let ThreadManager { threads, .. } = self;
+
+        for thread in threads {
+            // FIXME: implement VisitMachineValues for `Thread` and `Frame` instead.
+            // In particular we need to visit the `last_error` and `catch_unwind` fields.
+            if let Some(payload) = thread.panic_payload {
+                visit(&Operand::Immediate(Immediate::Scalar(payload)))
+            }
+            for frame in &thread.stack {
+                // Return place.
+                if let Place::Ptr(mplace) = *frame.return_place {
+                    visit(&Operand::Indirect(mplace));
+                }
+                // Locals.
+                for local in frame.locals.iter() {
+                    if let LocalValue::Live(value) = &local.value {
+                        visit(value);
+                    }
+                }
+            }
         }
     }
 }

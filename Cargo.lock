@@ -385,11 +385,12 @@ version = "0.1.0"
 dependencies = [
  "cargo_metadata 0.15.0",
  "directories",
+ "rustc-build-sysroot",
  "rustc-workspace-hack",
+ "rustc_tools_util 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_version",
  "serde",
  "serde_json",
- "vergen",
 ]
 
 [[package]]
@@ -647,7 +648,7 @@ dependencies = [
  "regex",
  "rustc-semver",
  "rustc-workspace-hack",
- "rustc_tools_util",
+ "rustc_tools_util 0.2.0",
  "semver",
  "serde",
  "syn",
@@ -1082,9 +1083,9 @@ dependencies = [
 
 [[package]]
 name = "directories"
-version = "3.0.2"
+version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e69600ff1703123957937708eb27f7a564e48885c537782722ed0ba3189ce1d7"
+checksum = "f51c5d4ddabd36886dd3e1438cb358cdcb0d7c499cb99cb4ac2e38e18b5cb210"
 dependencies = [
  "dirs-sys",
 ]
@@ -1172,26 +1173,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7402b94a93c24e742487327a7cd839dc9d36fec9de9fb25b09f2dae459f36c3"
 dependencies = [
  "log",
-]
-
-[[package]]
-name = "enum-iterator"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79a6321a1197d7730510c7e3f6cb80432dfefecb32426de8cea0aa19b4bb8d7"
-dependencies = [
- "enum-iterator-derive",
-]
-
-[[package]]
-name = "enum-iterator-derive"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e94aa31f7c0dc764f57896dc615ddd76fc13b0d5dca7eb6cc5e018a5a09ec06"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1529,18 +1510,6 @@ dependencies = [
  "cfg-if 0.1.10",
  "libc",
  "wasi 0.9.0+wasi-snapshot-preview1",
-]
-
-[[package]]
-name = "getset"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24b328c01a4d71d2d8173daa93562a73ab0fe85616876f02500f53d82948c504"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -3030,6 +2999,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc-build-sysroot"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec5f3689b6c560d6a3a17fcbe54204cd870b4fcf46342d60de16715b660d2c92"
+dependencies = [
+ "anyhow",
+ "rustc_version",
+ "tempfile",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4164,6 +4144,12 @@ dependencies = [
 [[package]]
 name = "rustc_tools_util"
 version = "0.2.0"
+
+[[package]]
+name = "rustc_tools_util"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b725dadae9fabc488df69a287f5a99c5eaf5d10853842a8a3dfac52476f544ee"
 
 [[package]]
 name = "rustc_trait_selection"
@@ -5329,21 +5315,6 @@ name = "vcpkg"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6454029bf181f092ad1b853286f23e2c507d8e8194d01d92da4a55c274a5508c"
-
-[[package]]
-name = "vergen"
-version = "5.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfbc87f9a7a9d61b15d51d1d3547284f67b6b4f1494ce3fc5814c101f35a5183"
-dependencies = [
- "anyhow",
- "chrono",
- "enum-iterator",
- "getset",
- "git2",
- "rustversion",
- "thiserror",
-]
 
 [[package]]
 name = "version_check"

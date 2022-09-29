@@ -7,7 +7,6 @@ mod util;
 mod arg;
 mod phases;
 mod setup;
-mod version;
 
 use std::{env, iter};
 
@@ -23,8 +22,8 @@ fn main() {
     // Dispatch to `cargo-miri` phase. Here is a rough idea of "who calls who".
     //
     // Initially, we are invoked as `cargo-miri miri run/test`. We first run the setup phase:
-    // - We call `xargo`, and set `RUSTC` back to us, together with `MIRI_CALLED_FROM_XARGO`,
-    //   so that xargo's rustc invocations end up in `phase_rustc` with `RustcPhase::Setup`.
+    // - We use `rustc-build-sysroot`, and set `RUSTC` back to us, together with `MIRI_CALLED_FROM_SETUP`,
+    //   so that the sysroot build rustc invocations end up in `phase_rustc` with `RustcPhase::Setup`.
     //   There we then call the Miri driver with `MIRI_BE_RUSTC` to perform the actual build.
     //
     // Then we call `cargo run/test`, exactly forwarding all user flags, plus some configuration so
@@ -53,7 +52,7 @@ fn main() {
     //     the Miri driver for interpretation.
 
     // Dispatch running as part of sysroot compilation.
-    if env::var_os("MIRI_CALLED_FROM_XARGO").is_some() {
+    if env::var_os("MIRI_CALLED_FROM_SETUP").is_some() {
         phase_rustc(args, RustcPhase::Setup);
         return;
     }

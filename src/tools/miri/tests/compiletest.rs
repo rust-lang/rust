@@ -213,7 +213,7 @@ fn main() -> Result<()> {
     ui(Mode::Fail { require_patterns: true }, "tests/fail", WithDependencies)?;
     if cfg!(target_os = "linux") {
         ui(Mode::Pass, "tests/extern-so/pass", WithoutDependencies)?;
-        ui(Mode::Fail { require_patterns: true }, "tests/extern-so/fail", WithDependencies)?;
+        ui(Mode::Fail { require_patterns: true }, "tests/extern-so/fail", WithoutDependencies)?;
     }
 
     Ok(())

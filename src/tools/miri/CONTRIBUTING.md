@@ -38,7 +38,7 @@ for you. If you don't want all of these to happen, you can add individual `.auto
 ## Building and testing Miri
 
 Invoking Miri requires getting a bunch of flags right and setting up a custom
-sysroot with xargo. The `miri` script takes care of that for you. With the
+sysroot. The `miri` script takes care of that for you. With the
 build environment prepared, compiling Miri is just one command away:
 
 ```
@@ -275,3 +275,28 @@ see <https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html>.
 
 With this, you should now have a working development setup! See
 [above](#building-and-testing-miri) for how to proceed working on Miri.
+
+
+### Fetching the latest changes from the rustc repo
+
+Run the josh proxy locally
+
+```
+docker run -p 8000:8000 -e JOSH_REMOTE=https://github.com -v josh-vol:/data/git joshproject/josh-proxy:latest
+```
+
+Register the josh proxy as a remote
+
+```
+git remote add josh http://localhost:8000/rust-lang/rust.git:/src/tools/miri.git
+```
+
+Fetch (takes ca 5-10 min the first time)
+
+```
+git fetch josh
+git checkout josh/master
+git switch -c josh_sync
+```
+
+Now push `josh_sync` to your own miri fork and open a PR with it.
