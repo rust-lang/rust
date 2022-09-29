@@ -77,6 +77,8 @@ pub(crate) fn evaluate_goal<'tcx>(
                     ),
                     CanonicalVarKind::Const(_ui, _ty) => unimplemented!(),
                     CanonicalVarKind::PlaceholderConst(_pc, _ty) => unimplemented!(),
+                    CanonicalVarKind::Effect(_ui, _effect_kind) => unimplemented!(),
+                    CanonicalVarKind::PlaceholderEffect(_pc, _effect_kind) => unimplemented!(),
                 }),
             ),
             value: obligation.value.lower_into(interner),

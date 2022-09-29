@@ -41,8 +41,10 @@ pub struct TypeFreshener<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     ty_freshen_count: u32,
     const_freshen_count: u32,
+    effect_freshen_count: u32,
     ty_freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
     const_freshen_map: FxHashMap<ty::InferConst<'tcx>, ty::Const<'tcx>>,
+    effect_freshen_map: FxHashMap<ty::InferEffect<'tcx>, ty::Effect<'tcx>>,
     keep_static: bool,
 }
 
@@ -52,8 +54,10 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             infcx,
             ty_freshen_count: 0,
             const_freshen_count: 0,
+            effect_freshen_count: 0,
             ty_freshen_map: Default::default(),
             const_freshen_map: Default::default(),
+            effect_freshen_map: Default::default(),
             keep_static,
         }
     }
@@ -105,6 +109,32 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                 let ct = self.infcx.tcx.mk_const(freshener(index), ty);
                 entry.insert(ct);
                 ct
+            }
+        }
+    }
+
+    fn freshen_effect<F>(
+        &mut self,
+        opt_e: Option<ty::Effect<'tcx>>,
+        key: ty::InferEffect<'tcx>,
+        freshener: F,
+        kind: ty::EffectKind,
+    ) -> ty::Effect<'tcx>
+    where
+        F: FnOnce(u32) -> ty::InferEffect<'tcx>,
+    {
+        if let Some(e) = opt_e {
+            return e.fold_with(self);
+        }
+
+        match self.effect_freshen_map.entry(key) {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => {
+                let index = self.effect_freshen_count;
+                self.effect_freshen_count += 1;
+                let e = self.infcx.tcx.mk_effect(freshener(index), kind);
+                entry.insert(e);
+                e
             }
         }
     }
@@ -249,6 +279,41 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::ConstKind::Unevaluated(..)
             | ty::ConstKind::Expr(..)
             | ty::ConstKind::Error(_) => ct.super_fold_with(self),
+        }
+    }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        match e.val {
+            ty::EffectValue::Infer(ty::InferEffect::Var(v)) => {
+                let opt_e = self
+                    .infcx
+                    .inner
+                    .borrow_mut()
+                    .effect_unification_table()
+                    .probe_value(v)
+                    .val
+                    .known();
+                self.freshen_effect(opt_e, ty::InferEffect::Var(v), ty::InferEffect::Fresh, e.kind)
+            }
+            ty::EffectValue::Infer(ty::InferEffect::Fresh(i)) => {
+                if i >= self.effect_freshen_count {
+                    bug!(
+                        "Encountered a freshend effect with id {} \
+                            but our counter is only at {}",
+                        i,
+                        self.effect_freshen_count,
+                    );
+                }
+                e
+            }
+
+            ty::EffectValue::Bound(..) | ty::EffectValue::Placeholder(_) => {
+                bug!("unexpected effect {:?}", e)
+            }
+
+            ty::EffectValue::Rigid { .. }
+            | ty::EffectValue::Err(_)
+            | ty::EffectValue::Param { .. } => e.super_fold_with(self),
         }
     }
 }

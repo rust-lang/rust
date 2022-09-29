@@ -577,7 +577,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 // or handle this some other way.
 
                 let infcx = self.selcx.infcx;
-                let (data, mapped_regions, mapped_types, mapped_consts) =
+                let (data, mapped_regions, mapped_types, mapped_consts, mapped_effects) =
                     BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
                 let data = data.fold_with(self);
                 let normalized_ty = opt_normalize_projection_type(
@@ -597,6 +597,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                         mapped_regions,
                         mapped_types,
                         mapped_consts,
+                        mapped_effects,
                         &self.universes,
                         normalized_ty,
                     )
@@ -652,6 +653,7 @@ pub struct BoundVarReplacer<'me, 'tcx> {
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+    mapped_effects: BTreeMap<ty::PlaceholderEffect, ty::BoundVar>,
     // The current depth relative to *this* folding, *not* the entire normalization. In other words,
     // the depth of binders we've passed here.
     current_index: ty::DebruijnIndex,
@@ -679,7 +681,7 @@ pub fn with_replaced_escaping_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>, R: Typ
     f: impl FnOnce(T) -> R,
 ) -> R {
     if value.has_escaping_bound_vars() {
-        let (value, mapped_regions, mapped_types, mapped_consts) =
+        let (value, mapped_regions, mapped_types, mapped_consts, mapped_effects) =
             BoundVarReplacer::replace_bound_vars(infcx, universe_indices, value);
         let result = f(value);
         PlaceholderReplacer::replace_placeholders(
@@ -687,6 +689,7 @@ pub fn with_replaced_escaping_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>, R: Typ
             mapped_regions,
             mapped_types,
             mapped_consts,
+            mapped_effects,
             universe_indices,
             result,
         )
@@ -707,23 +710,32 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
         BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
         BTreeMap<ty::PlaceholderType, ty::BoundTy>,
         BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+        BTreeMap<ty::PlaceholderEffect, ty::BoundVar>,
     ) {
         let mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion> = BTreeMap::new();
         let mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy> = BTreeMap::new();
         let mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar> = BTreeMap::new();
+        let mapped_effects: BTreeMap<ty::PlaceholderEffect, ty::BoundVar> = BTreeMap::new();
 
         let mut replacer = BoundVarReplacer {
             infcx,
             mapped_regions,
             mapped_types,
             mapped_consts,
+            mapped_effects,
             current_index: ty::INNERMOST,
             universe_indices,
         };
 
         let value = value.fold_with(&mut replacer);
 
-        (value, replacer.mapped_regions, replacer.mapped_types, replacer.mapped_consts)
+        (
+            value,
+            replacer.mapped_regions,
+            replacer.mapped_types,
+            replacer.mapped_consts,
+            replacer.mapped_effects,
+        )
     }
 
     fn universe_for(&mut self, debruijn: ty::DebruijnIndex) -> ty::UniverseIndex {
@@ -810,6 +822,24 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
         }
     }
 
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        match e.val {
+            ty::EffectValue::Bound(debruijn, _)
+                if debruijn.as_usize() + 1
+                    > self.current_index.as_usize() + self.universe_indices.len() =>
+            {
+                bug!("Bound vars outside of `self.universe_indices`");
+            }
+            ty::EffectValue::Bound(debruijn, bound_const) if debruijn >= self.current_index => {
+                let universe = self.universe_for(debruijn);
+                let p = ty::PlaceholderEffect { universe, name: bound_const };
+                self.mapped_effects.insert(p, bound_const);
+                self.infcx.tcx.mk_effect(ty::EffectValue::Placeholder(p), e.kind)
+            }
+            _ => e.super_fold_with(self),
+        }
+    }
+
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
@@ -821,6 +851,7 @@ pub struct PlaceholderReplacer<'me, 'tcx> {
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+    mapped_effects: BTreeMap<ty::PlaceholderEffect, ty::BoundVar>,
     universe_indices: &'me [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
 }
@@ -831,6 +862,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
         mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
         mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+        mapped_effects: BTreeMap<ty::PlaceholderEffect, ty::BoundVar>,
         universe_indices: &'me [Option<ty::UniverseIndex>],
         value: T,
     ) -> T {
@@ -839,6 +871,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
             mapped_regions,
             mapped_types,
             mapped_consts,
+            mapped_effects,
             universe_indices,
             current_index: ty::INNERMOST,
         };
@@ -945,6 +978,28 @@ impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
             }
         } else {
             ct.super_fold_with(self)
+        }
+    }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        if let ty::EffectValue::Placeholder(p) = e.val {
+            let replace_var = self.mapped_effects.get(&p);
+            match replace_var {
+                Some(replace_var) => {
+                    let index = self
+                        .universe_indices
+                        .iter()
+                        .position(|u| matches!(u, Some(pu) if *pu == p.universe))
+                        .unwrap_or_else(|| bug!("Unexpected placeholder universe."));
+                    let db = ty::DebruijnIndex::from_usize(
+                        self.universe_indices.len() - index + self.current_index.as_usize() - 1,
+                    );
+                    self.tcx().mk_effect(ty::EffectValue::Bound(db, *replace_var), e.kind)
+                }
+                None => e,
+            }
+        } else {
+            e.super_fold_with(self)
         }
     }
 }

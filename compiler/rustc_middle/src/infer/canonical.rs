@@ -117,6 +117,8 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
             CanonicalVarKind::PlaceholderRegion(..) => false,
             CanonicalVarKind::Const(..) => true,
             CanonicalVarKind::PlaceholderConst(_, _) => false,
+            CanonicalVarKind::Effect(..) => true,
+            CanonicalVarKind::PlaceholderEffect(_, _) => false,
         }
     }
 }
@@ -146,6 +148,12 @@ pub enum CanonicalVarKind<'tcx> {
 
     /// A "placeholder" that represents "any const".
     PlaceholderConst(ty::PlaceholderConst<'tcx>, Ty<'tcx>),
+
+    /// Some kind of effect inference variable.
+    Effect(ty::UniverseIndex, ty::EffectKind),
+
+    /// A "placeholder" that represents "any effect".
+    PlaceholderEffect(ty::PlaceholderEffect, ty::EffectKind),
 }
 
 impl<'tcx> CanonicalVarKind<'tcx> {
@@ -161,6 +169,8 @@ impl<'tcx> CanonicalVarKind<'tcx> {
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe,
             CanonicalVarKind::Const(ui, _) => ui,
             CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.universe,
+            CanonicalVarKind::Effect(ui, _) => ui,
+            CanonicalVarKind::PlaceholderEffect(placeholder, _) => placeholder.universe,
         }
     }
 }

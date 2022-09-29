@@ -513,6 +513,57 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
         let flags = FlagComputation::for_const(ct);
         if flags.intersects(self.needs_canonical_flags) { ct.super_fold_with(self) } else { ct }
     }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        match e.val {
+            ty::EffectValue::Infer(ty::InferEffect::Var(vid)) => {
+                debug!("canonical: effect var found with vid {:?}", vid);
+                match self.infcx.probe_effect_var(vid) {
+                    Ok(e) => {
+                        debug!("(resolved to {:?})", e);
+                        return self.fold_effect(e);
+                    }
+
+                    // `InferEffect::Var(vid)` is unresolved, track its universe index in the
+                    // canonicalized result
+                    Err(mut ui) => {
+                        if !self.canonicalize_mode.preserve_universes() {
+                            // FIXME: perf problem described in #55921.
+                            ui = ty::UniverseIndex::ROOT;
+                        }
+                        return self.canonicalize_effect_var(
+                            CanonicalVarInfo {
+                                kind: CanonicalVarKind::Effect(ui, ty::EffectKind::Host),
+                            },
+                            e,
+                        );
+                    }
+                }
+            }
+            ty::EffectValue::Infer(ty::InferEffect::Fresh(_)) => {
+                bug!("encountered a fresh const during canonicalization")
+            }
+            ty::EffectValue::Bound(debruijn, _) => {
+                if debruijn >= self.binder_index {
+                    bug!("escaping bound type during canonicalization")
+                } else {
+                    return e;
+                }
+            }
+            ty::EffectValue::Placeholder(placeholder) => {
+                return self.canonicalize_effect_var(
+                    CanonicalVarInfo {
+                        kind: CanonicalVarKind::PlaceholderEffect(placeholder, e.kind),
+                    },
+                    e,
+                );
+            }
+            _ => {}
+        }
+
+        let flags = FlagComputation::for_effect(e);
+        if flags.intersects(self.needs_canonical_flags) { e.super_fold_with(self) } else { e }
+    }
 }
 
 impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
@@ -532,12 +583,14 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             TypeFlags::NEEDS_INFER |
             TypeFlags::HAS_FREE_REGIONS | // `HAS_RE_PLACEHOLDER` implies `HAS_FREE_REGIONS`
             TypeFlags::HAS_TY_PLACEHOLDER |
-            TypeFlags::HAS_CT_PLACEHOLDER
+            TypeFlags::HAS_CT_PLACEHOLDER |
+            TypeFlags::HAS_EFFECT_PLACEHOLDER
         } else {
             TypeFlags::NEEDS_INFER
                 | TypeFlags::HAS_RE_PLACEHOLDER
                 | TypeFlags::HAS_TY_PLACEHOLDER
                 | TypeFlags::HAS_CT_PLACEHOLDER
+                | TypeFlags::HAS_EFFECT_PLACEHOLDER
         };
 
         // Fast path: nothing that needs to be canonicalized.
@@ -675,6 +728,9 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
                     CanonicalVarKind::Const(u, t) => {
                         CanonicalVarKind::Const(reverse_universe_map[&u], t)
                     }
+                    CanonicalVarKind::Effect(u, effect_kind) => {
+                        CanonicalVarKind::Effect(reverse_universe_map[&u], effect_kind)
+                    }
                     CanonicalVarKind::PlaceholderTy(placeholder) => {
                         CanonicalVarKind::PlaceholderTy(ty::Placeholder {
                             universe: reverse_universe_map[&placeholder.universe],
@@ -694,6 +750,15 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
                                 ..placeholder
                             },
                             t,
+                        )
+                    }
+                    CanonicalVarKind::PlaceholderEffect(placeholder, kind) => {
+                        CanonicalVarKind::PlaceholderEffect(
+                            ty::Placeholder {
+                                universe: reverse_universe_map[&placeholder.universe],
+                                ..placeholder
+                            },
+                            kind,
                         )
                     }
                 },
@@ -776,6 +841,25 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
                 ty::ConstKind::Bound(self.binder_index, var),
                 self.fold_ty(const_var.ty()),
             )
+        }
+    }
+
+    /// Given a type variable `effect_var` of the given kind, first check
+    /// if `effect_var` is bound to anything; if so, canonicalize
+    /// *that*. Otherwise, create a new canonical variable for
+    /// `const_var`.
+    fn canonicalize_effect_var(
+        &mut self,
+        info: CanonicalVarInfo<'tcx>,
+        effect_var: ty::Effect<'tcx>,
+    ) -> ty::Effect<'tcx> {
+        let infcx = self.infcx;
+        let bound_to = infcx.shallow_resolve(effect_var);
+        if bound_to != effect_var {
+            self.fold_effect(bound_to)
+        } else {
+            let var = self.canonical_var(info, effect_var.into());
+            self.tcx().mk_effect(ty::EffectValue::Bound(self.binder_index, var), effect_var.kind)
         }
     }
 }

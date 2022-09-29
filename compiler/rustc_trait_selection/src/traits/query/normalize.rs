@@ -309,7 +309,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
 
                 let tcx = self.infcx.tcx;
                 let infcx = self.infcx;
-                let (data, mapped_regions, mapped_types, mapped_consts) =
+                let (data, mapped_regions, mapped_types, mapped_consts, mapped_effects) =
                     BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
                 let data = data.try_fold_with(self)?;
 
@@ -349,6 +349,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     mapped_regions,
                     mapped_types,
                     mapped_consts,
+                    mapped_effects,
                     &self.universes,
                     result.normalized_ty,
                 );

@@ -380,6 +380,7 @@ pub struct InferCtxt<'tcx> {
 pub enum ValuePairs<'tcx> {
     Regions(ExpectedFound<ty::Region<'tcx>>),
     Terms(ExpectedFound<ty::Term<'tcx>>),
+    Effects(ExpectedFound<ty::Effect<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
     Sigs(ExpectedFound<ty::FnSig<'tcx>>),
@@ -1491,6 +1492,16 @@ impl<'tcx> InferCtxt<'tcx> {
         match self.inner.borrow_mut().const_unification_table().probe_value(vid).val {
             ConstVariableValue::Known { value } => Ok(value),
             ConstVariableValue::Unknown { universe } => Err(universe),
+        }
+    }
+
+    pub fn probe_effect_var(
+        &self,
+        vid: ty::EffectVid<'tcx>,
+    ) -> Result<ty::Effect<'tcx>, ty::UniverseIndex> {
+        match self.inner.borrow_mut().effect_unification_table().probe_value(vid).val {
+            EffectVariableValue::Known { value } => Ok(value),
+            EffectVariableValue::Unknown { universe } => Err(universe),
         }
     }
 

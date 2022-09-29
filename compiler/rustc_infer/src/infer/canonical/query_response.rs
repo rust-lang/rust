@@ -175,6 +175,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// out the [chapter in the rustc dev guide][c].
     ///
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#processing-the-canonicalized-query-result
+    #[instrument(level = "debug", skip(self, cause, param_env), ret)]
     pub fn instantiate_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -310,6 +311,20 @@ impl<'tcx> InferCtxt<'tcx> {
                     .relate(v1, v2)?;
                 }
 
+                (GenericArgKind::Effect(v1), GenericArgKind::Effect(v2)) => {
+                    TypeRelating::new(
+                        self,
+                        QueryTypeRelatingDelegate {
+                            infcx: self,
+                            param_env,
+                            cause,
+                            obligations: &mut obligations,
+                        },
+                        ty::Variance::Invariant,
+                    )
+                    .relate(v1, v2)?;
+                }
+
                 _ => {
                     bug!("kind mismatch, cannot unify {:?} and {:?}", original_value, result_value);
                 }
@@ -355,6 +370,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// example) we are doing lazy normalization and the value
     /// assigned to a type variable is unified with an unnormalized
     /// projection.
+    #[instrument(level = "debug", skip(self, cause, param_env), ret)]
     fn query_response_substitution<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -365,11 +381,6 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: Debug + TypeFoldable<'tcx>,
     {
-        debug!(
-            "query_response_substitution(original_values={:#?}, query_response={:#?})",
-            original_values, query_response,
-        );
-
         let mut value = self.query_response_substitution_guess(
             cause,
             param_env,
@@ -632,6 +643,10 @@ impl<'tcx> InferCtxt<'tcx> {
                             .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
                     }
                     (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
+                        let ok = self.at(cause, param_env).eq(v1, v2)?;
+                        obligations.extend(ok.into_obligations());
+                    }
+                    (GenericArgKind::Effect(v1), GenericArgKind::Effect(v2)) => {
                         let ok = self.at(cause, param_env).eq(v1, v2)?;
                         obligations.extend(ok.into_obligations());
                     }

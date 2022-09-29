@@ -24,6 +24,7 @@
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_index::vec::IndexVec;
+use rustc_middle::infer::unify_key::{EffectVariableOrigin, EffectVariableOriginKind};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, BoundVar, List};
@@ -151,6 +152,24 @@ impl<'tcx> InferCtxt<'tcx> {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
                 self.tcx.mk_const(placeholder_mapped, ty).into()
+            }
+
+            CanonicalVarKind::Effect(ui, effect_kind) => self
+                .next_effect_var_in_universe(
+                    effect_kind,
+                    EffectVariableOrigin {
+                        kind: EffectVariableOriginKind::MiscVariable,
+                        span,
+                        effect_kind,
+                    },
+                    universe_map(ui),
+                )
+                .into(),
+
+            CanonicalVarKind::PlaceholderEffect(ty::PlaceholderEffect { universe, name }, kind) => {
+                let universe_mapped = universe_map(universe);
+                let placeholder_mapped = ty::PlaceholderEffect { universe: universe_mapped, name };
+                self.tcx.mk_effect(ty::EffectValue::Placeholder(placeholder_mapped), kind).into()
             }
         }
     }

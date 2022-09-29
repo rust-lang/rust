@@ -369,6 +369,21 @@ impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
     }
 }
 
+impl<'tcx> ToTrace<'tcx> for ty::Effect<'tcx> {
+    fn to_trace(
+        _: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: Effects(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
+    }
+}
+
 impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
     fn to_trace(
         _: TyCtxt<'tcx>,

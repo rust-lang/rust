@@ -1583,6 +1583,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         (false, Mismatch::Fixed("trait"))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
+                    ValuePairs::Effects(_) => (false, Mismatch::Fixed("effect")),
                 };
                 let Some(vals) = self.values_str(values) else {
                     // Derived error. Cancel the emitter.
@@ -2025,6 +2026,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     {
         match values {
             infer::Regions(exp_found) => self.expected_found_str(exp_found),
+            infer::Effects(exp_found) => self.expected_found_str(exp_found),
             infer::Terms(exp_found) => self.expected_found_str_term(exp_found),
             infer::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
