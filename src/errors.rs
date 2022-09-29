@@ -11,7 +11,7 @@ impl IntoDiagnosticArg for ExitCode {
         let ExitCode(exit_code) = self;
         match exit_code {
             Some(t) => t.into_diagnostic_arg(),
-            None => DiagnosticArgValue::Str(Cow::Borrowed("None")),
+            None => DiagnosticArgValue::Str(Cow::Borrowed("<signal>")),
         }
     }
 }
