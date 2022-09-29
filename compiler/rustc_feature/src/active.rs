@@ -426,8 +426,6 @@ declare_features! (
     (incomplete, inline_const_pat, "1.58.0", Some(76001), None),
     /// Allows using `pointer` and `reference` in intra-doc links
     (active, intra_doc_pointers, "1.51.0", Some(80896), None),
-    /// Allows `#[instruction_set(_)]` attribute
-    (active, isa_attribute, "1.48.0", Some(74727), None),
     // Allows setting the threshold for the `large_assignments` lint.
     (active, large_assignments, "1.52.0", Some(83518), None),
     /// Allows `if/while p && let q = r && ...` chains.

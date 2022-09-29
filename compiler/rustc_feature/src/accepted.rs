@@ -185,6 +185,8 @@ declare_features! (
     (accepted, infer_outlives_requirements, "1.30.0", Some(44493), None),
     /// Allows irrefutable patterns in `if let` and `while let` statements (RFC 2086).
     (accepted, irrefutable_let_patterns, "1.33.0", Some(44495), None),
+    /// Allows `#[instruction_set(_)]` attribute.
+    (accepted, isa_attribute, "CURRENT_RUSTC_VERSION", Some(74727), None),
     /// Allows some increased flexibility in the name resolution rules,
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
