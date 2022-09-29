@@ -138,6 +138,13 @@ h1, h2, h3, h4 {
 .docblock h3, .docblock h4, h5, h6 {
 	margin: 15px 0 5px 0;
 }
+.docblock > h2:first-child,
+.docblock > h3:first-child,
+.docblock > h4:first-child,
+.docblock > h5:first-child,
+.docblock > h6:first-child {
+	margin-top: 0;
+}
 h1.fqn {
 	margin: 0;
 	padding: 0;
