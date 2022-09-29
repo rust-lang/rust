@@ -3,20 +3,17 @@ javascript: false
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
 // Since the javascript is disabled, there shouldn't be a toggle.
 assert-false: "#sidebar-toggle"
-// For some reason, we need to wait a bit here because it seems like the transition on opacity
-// is being applied whereas it can't be reproduced in a browser...
-wait-for-css: (".sidebar > *", {"visibility": "hidden", "opacity": 0})
+wait-for-css: (".sidebar > *", {"visibility": "hidden"})
 
 // Let's retry with javascript enabled.
 javascript: true
 reload:
 wait-for: "#sidebar-toggle"
-assert-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
-assert-css: (".sidebar > *:not(#sidebar-toggle)", {"visibility": "hidden", "opacity": 0})
+assert-css: ("#sidebar-toggle", {"visibility": "visible"})
+assert-css: (".sidebar > *:not(#sidebar-toggle)", {"visibility": "hidden"})
 // Let's expand the sidebar now.
 click: "#sidebar-toggle"
-// Because of the transition CSS, we check by using `wait-for-css` instead of `assert-css`.
-wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
 
 // We now check that opening the sidebar and clicking a link will leave it open.
 // The behavior here on desktop is different than the behavior on mobile,
@@ -36,7 +33,7 @@ show-text: true
 local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
 reload:
 // Waiting for the sidebar to be displayed...
-wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
 assert-css: (
     "#source-sidebar details[open] > .files a.selected",
     {"color": "rgb(0, 0, 0)", "background-color": "rgb(255, 255, 255)"},
@@ -91,7 +88,7 @@ assert-css: (
 local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
 reload:
 // Waiting for the sidebar to be displayed...
-wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
 assert-css: (
     "#source-sidebar details[open] > .files > a.selected",
     {"color": "rgb(221, 221, 221)", "background-color": "rgb(51, 51, 51)"},
@@ -146,7 +143,7 @@ assert-css: (
 local-storage: {"rustdoc-theme": "ayu", "rustdoc-use-system-theme": "false"}
 reload:
 // Waiting for the sidebar to be displayed...
-wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
 assert-css: (
     "#source-sidebar details[open] > .files a.selected",
     {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
@@ -201,7 +198,7 @@ assert-css: (
 size: (500, 700)
 reload:
 // Waiting for the sidebar to be displayed...
-wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
 
 // We now check it takes the full size of the display.
 assert-property: ("body", {"clientWidth": "500", "clientHeight": "700"})
