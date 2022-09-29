@@ -716,7 +716,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         document(&mut content, cx, m, Some(t), HeadingOffset::H5);
         let toggled = !content.is_empty();
         if toggled {
-            write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
+            write!(w, "<details class=\"rustdoc-toggle method-toggle\" open><summary>");
         }
         write!(w, "<div id=\"{}\" class=\"method has-srclink\">", id);
         render_rightside(w, cx, m, t, RenderMode::Normal);
