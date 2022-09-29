@@ -4,6 +4,8 @@ use crate::{
     SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 
+use rustc_ast as ast;
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
 use rustc_error_messages::FluentValue;
