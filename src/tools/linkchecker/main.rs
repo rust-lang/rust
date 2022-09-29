@@ -216,6 +216,7 @@ impl Checker {
                 || url.starts_with("irc:")
                 || url.starts_with("data:")
                 || url.starts_with("mailto:")
+                || url.starts_with("file:")
             {
                 report.links_ignored_external += 1;
                 return;
