@@ -461,7 +461,7 @@ pub struct GenericParamWrongOrder {
     pub correct_order: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::obsolete_auto_trait_syntax)]
 #[help]
 pub struct ObsoleteAutoTraitSyntax {
@@ -469,7 +469,7 @@ pub struct ObsoleteAutoTraitSyntax {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::unsafe_negative_impl, code = "E0198")]
 pub struct UnsafeNegativeImpl {
     #[primary_span]
@@ -480,7 +480,7 @@ pub struct UnsafeNegativeImpl {
     pub unsafe_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::unsafe_inherent_impl, code = "E0197")]
 pub struct UnsafeInherentImpl {
     #[primary_span]
@@ -490,7 +490,7 @@ pub struct UnsafeInherentImpl {
     pub unsafe_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::negative_inherent_impl)]
 pub struct NegativeInherentImpl {
     #[primary_span]
@@ -500,7 +500,7 @@ pub struct NegativeInherentImpl {
     pub negative_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::default_inherent_impl)]
 #[note]
 pub struct DefaultInherentImpl {
@@ -511,7 +511,7 @@ pub struct DefaultInherentImpl {
     pub default_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::const_inherent_impl)]
 #[note]
 pub struct ConstInherentImpl {
@@ -522,28 +522,28 @@ pub struct ConstInherentImpl {
     pub const_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::unsafe_extern_block)]
 pub struct UnsafeExternBlock {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::unsafe_module)]
 pub struct UnsafeModule {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::empty_union)]
 pub struct EmptyUnion {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::ty_alias_with_where_clause)]
 #[note]
 pub struct TyAliasWithWhereClause {
@@ -551,21 +551,21 @@ pub struct TyAliasWithWhereClause {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::generic_param_with_default_not_trailing)]
 pub struct GenericParamWithDefaultNotTrailing {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::lifetime_nested_quantification, code = "E0316")]
 pub struct LifetimeNestedQuantification {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::super_trait_with_maybe)]
 #[note]
 pub struct SuperTraitWithMaybe {
@@ -574,14 +574,14 @@ pub struct SuperTraitWithMaybe {
     pub path_str: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::trait_object_with_maybe)]
 pub struct TraitObjectWithMaybe {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_maybe_const)]
 #[note]
 pub struct ForbiddenMaybeConst {
@@ -610,14 +610,14 @@ impl AddToDiagnostic for DisallowTildeConstContext {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::maybe_const_with_maybe_trait)]
 pub struct MaybeConstWithMaybeTrait {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::const_async_fn)]
 pub struct ConstAsyncFn {
     #[primary_span]
@@ -630,7 +630,7 @@ pub struct ConstAsyncFn {
     pub fn_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::patterns_in_foreign_fns, code = "E0130")]
 pub struct PatternsInForeignFns {
     #[primary_span]
@@ -638,7 +638,7 @@ pub struct PatternsInForeignFns {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::patterns_in_fns_without_body, code = "E0642")]
 pub struct PatternsInFnsWithoutBody {
     #[primary_span]
@@ -646,7 +646,7 @@ pub struct PatternsInFnsWithoutBody {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::equality_constraint)]
 #[note]
 pub struct EqualityConstraint {
@@ -662,7 +662,7 @@ pub struct EqualityConstraintToAssocConstraintSuggestion {
     pub suggestion: Vec<(Span, String)>,
 }
 
-impl AddSubdiagnostic for EqualityConstraintToAssocConstraintSuggestion {
+impl AddToDiagnostic for EqualityConstraintToAssocConstraintSuggestion {
     fn add_to_diagnostic(self, diag: &mut Diagnostic) {
         diag.set_arg("assoc_ty", self.assoc_ty);
         diag.multipart_suggestion(

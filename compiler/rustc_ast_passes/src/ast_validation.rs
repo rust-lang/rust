@@ -13,14 +13,14 @@ use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::fluent;
+use rustc_errors::{fluent, IntoDiagnostic};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
-use rustc_session::{Session, SessionDiagnostic};
+use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -399,7 +399,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_type_no_bounds<D>(&self, bounds: &[GenericBound], create_diag: impl FnOnce(Span) -> D)
     where
-        D: SessionDiagnostic<'a>,
+        D: IntoDiagnostic<'a>,
     {
         let span = match bounds {
             [] => return,
@@ -431,7 +431,7 @@ impl<'a> AstValidator<'a> {
         create_diag: impl FnOnce(Span, Span, Span) -> D,
         body: Option<Span>,
     ) where
-        D: SessionDiagnostic<'a>,
+        D: IntoDiagnostic<'a>,
     {
         let Some(body) = body else {
             return;
@@ -502,7 +502,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_item_named<D>(&self, ident: Ident, create_diag: impl FnOnce(Span) -> D)
     where
-        D: SessionDiagnostic<'a>,
+        D: IntoDiagnostic<'a>,
     {
         if ident.name != kw::Underscore {
             return;
