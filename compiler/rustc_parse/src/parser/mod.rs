@@ -302,7 +302,10 @@ impl TokenCursor {
 
     fn desugar(&mut self, attr_style: AttrStyle, data: Symbol, span: Span) -> (Token, Spacing) {
         // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
-        // required to wrap the text.
+        // required to wrap the text. E.g.
+        // - `abc d` is wrapped as `r"abc d"` (num_of_hashes = 0)
+        // - `abc "d"` is wrapped as `r#"abc "d""#` (num_of_hashes = 1)
+        // - `abc "##d##"` is wrapped as `r###"abc "d""###` (num_of_hashes = 3)
         let mut num_of_hashes = 0;
         let mut count = 0;
         for ch in data.as_str().chars() {
@@ -314,6 +317,7 @@ impl TokenCursor {
             num_of_hashes = cmp::max(num_of_hashes, count);
         }
 
+        // `/// foo` becomes `doc = r"foo".
         let delim_span = DelimSpan::from_single(span);
         let body = TokenTree::Delimited(
             delim_span,
