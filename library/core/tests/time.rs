@@ -197,9 +197,31 @@ fn correct_sum() {
 #[test]
 fn debug_formatting_extreme_values() {
     assert_eq!(
-        format!("{:?}", Duration::new(18_446_744_073_709_551_615, 123_456_789)),
+        format!("{:?}", Duration::new(u64::MAX, 123_456_789)),
         "18446744073709551615.123456789s"
     );
+    assert_eq!(format!("{:.0?}", Duration::MAX), "18446744073709551616s");
+    assert_eq!(format!("{:.0?}", Duration::new(u64::MAX, 500_000_000)), "18446744073709551616s");
+    assert_eq!(format!("{:.0?}", Duration::new(u64::MAX, 499_999_999)), "18446744073709551615s");
+    assert_eq!(
+        format!("{:.3?}", Duration::new(u64::MAX, 999_500_000)),
+        "18446744073709551616.000s"
+    );
+    assert_eq!(
+        format!("{:.3?}", Duration::new(u64::MAX, 999_499_999)),
+        "18446744073709551615.999s"
+    );
+    assert_eq!(
+        format!("{:.8?}", Duration::new(u64::MAX, 999_999_995)),
+        "18446744073709551616.00000000s"
+    );
+    assert_eq!(
+        format!("{:.8?}", Duration::new(u64::MAX, 999_999_994)),
+        "18446744073709551615.99999999s"
+    );
+    assert_eq!(format!("{:21.0?}", Duration::MAX), "18446744073709551616s");
+    assert_eq!(format!("{:22.0?}", Duration::MAX), "18446744073709551616s ");
+    assert_eq!(format!("{:24.0?}", Duration::MAX), "18446744073709551616s   ");
 }
 
 #[test]
