@@ -353,54 +353,6 @@ fn instance_def_size_estimate<'tcx>(
     }
 }
 
-/// If `def_id` is an issue 33140 hack impl, returns its self type; otherwise, returns `None`.
-///
-/// See [`ty::ImplOverlapKind::Issue33140`] for more details.
-fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
-    debug!("issue33140_self_ty({:?})", def_id);
-
-    let trait_ref = tcx
-        .impl_trait_ref(def_id)
-        .unwrap_or_else(|| bug!("issue33140_self_ty called on inherent impl {:?}", def_id));
-
-    debug!("issue33140_self_ty({:?}), trait-ref={:?}", def_id, trait_ref);
-
-    let is_marker_like = tcx.impl_polarity(def_id) == ty::ImplPolarity::Positive
-        && tcx.associated_item_def_ids(trait_ref.def_id).is_empty();
-
-    // Check whether these impls would be ok for a marker trait.
-    if !is_marker_like {
-        debug!("issue33140_self_ty - not marker-like!");
-        return None;
-    }
-
-    // impl must be `impl Trait for dyn Marker1 + Marker2 + ...`
-    if trait_ref.substs.len() != 1 {
-        debug!("issue33140_self_ty - impl has substs!");
-        return None;
-    }
-
-    let predicates = tcx.predicates_of(def_id);
-    if predicates.parent.is_some() || !predicates.predicates.is_empty() {
-        debug!("issue33140_self_ty - impl has predicates {:?}!", predicates);
-        return None;
-    }
-
-    let self_ty = trait_ref.self_ty();
-    let self_ty_matches = match self_ty.kind() {
-        ty::Dynamic(ref data, re, _) if re.is_static() => data.principal().is_none(),
-        _ => false,
-    };
-
-    if self_ty_matches {
-        debug!("issue33140_self_ty - MATCHES!");
-        Some(self_ty)
-    } else {
-        debug!("issue33140_self_ty - non-matching self type");
-        None
-    }
-}
-
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     let node = tcx.hir().get_by_def_id(def_id.expect_local());
@@ -470,7 +422,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         param_env,
         param_env_reveal_all_normalized,
         instance_def_size_estimate,
-        issue33140_self_ty,
         impl_defaultness,
         conservative_is_privately_uninhabited: conservative_is_privately_uninhabited_raw,
         ..*providers

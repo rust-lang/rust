@@ -1752,7 +1752,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 if other.evaluation.must_apply_considering_regions() {
                     match tcx.impls_are_allowed_to_overlap(other_def, victim_def) {
-                        Some(ty::ImplOverlapKind::Permitted { marker: true }) => {
+                        Some(ty::PermittedImplOverlap { marker: true }) => {
                             // Subtle: If the predicate we are evaluating has inference
                             // variables, do *not* allow discarding candidates due to
                             // marker trait impls.

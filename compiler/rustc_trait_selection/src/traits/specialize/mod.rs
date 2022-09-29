@@ -15,14 +15,13 @@ use specialization_graph::GraphExt;
 use crate::errors::NegativePositiveConflict;
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause};
+use crate::traits::{self, coherence, ObligationCause};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, EmissionGuarantee, LintDiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self, ImplSubject, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
-use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::{Span, DUMMY_SP};
 
 use super::util;
@@ -260,9 +259,9 @@ pub(super) fn specialization_graph_provider(
             let insert_result = sg.insert(tcx, impl_def_id.to_def_id(), overlap_mode);
             // Report error if there was one.
             let (overlap, used_to_be_allowed) = match insert_result {
-                Err(overlap) => (Some(overlap), None),
-                Ok(Some(overlap)) => (Some(overlap.error), Some(overlap.kind)),
-                Ok(None) => (None, None),
+                Err(overlap) => (Some(overlap), false),
+                Ok(Some(overlap)) => (Some(overlap.error), overlap.used_to_be_allowed),
+                Ok(None) => (None, false),
             };
 
             if let Some(overlap) = overlap {
@@ -286,7 +285,7 @@ fn report_overlap_conflict(
     tcx: TyCtxt<'_>,
     overlap: OverlapError,
     impl_def_id: LocalDefId,
-    used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
+    used_to_be_allowed: bool,
     sg: &mut specialization_graph::Graph,
 ) {
     let impl_polarity = tcx.impl_polarity(impl_def_id.to_def_id());
@@ -342,7 +341,7 @@ fn report_conflicting_impls(
     tcx: TyCtxt<'_>,
     overlap: OverlapError,
     impl_def_id: LocalDefId,
-    used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
+    used_to_be_allowed: bool,
     sg: &mut specialization_graph::Graph,
 ) {
     let impl_span = tcx.def_span(impl_def_id);
@@ -353,21 +352,16 @@ fn report_conflicting_impls(
     fn decorate<G: EmissionGuarantee>(
         tcx: TyCtxt<'_>,
         overlap: OverlapError,
-        used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
         impl_span: Span,
         err: LintDiagnosticBuilder<'_, G>,
     ) -> G {
         let msg = format!(
-            "conflicting implementations of trait `{}`{}{}",
+            "conflicting implementations of trait `{}`{}",
             overlap.trait_desc,
             overlap
                 .self_desc
                 .clone()
                 .map_or_else(String::new, |ty| { format!(" for type `{}`", ty) }),
-            match used_to_be_allowed {
-                Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
-                _ => "",
-            }
         );
         let mut err = err.build(&msg);
         match tcx.span_of_impl(overlap.with_impl) {
@@ -401,39 +395,25 @@ fn report_conflicting_impls(
         err.emit()
     }
 
-    match used_to_be_allowed {
-        None => {
-            let reported = if overlap.with_impl.is_local()
-                || tcx.orphan_check_impl(impl_def_id).is_ok()
-            {
-                let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
-                Some(decorate(
-                    tcx,
-                    overlap,
-                    used_to_be_allowed,
-                    impl_span,
-                    LintDiagnosticBuilder::new(err),
-                ))
-            } else {
-                Some(tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check"))
-            };
-            sg.has_errored = reported;
-        }
-        Some(kind) => {
-            let lint = match kind {
-                FutureCompatOverlapErrorKind::Issue33140 => ORDER_DEPENDENT_TRAIT_OBJECTS,
-                FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
-            };
-            tcx.struct_span_lint_hir(
-                lint,
-                tcx.hir().local_def_id_to_hir_id(impl_def_id),
-                impl_span,
-                |ldb| {
-                    decorate(tcx, overlap, used_to_be_allowed, impl_span, ldb);
-                },
-            );
-        }
-    };
+    if used_to_be_allowed {
+        tcx.struct_span_lint_hir(
+            COHERENCE_LEAK_CHECK,
+            tcx.hir().local_def_id_to_hir_id(impl_def_id),
+            impl_span,
+            |ldb| {
+                decorate(tcx, overlap, impl_span, ldb);
+            },
+        );
+    } else {
+        let reported = if overlap.with_impl.is_local() || tcx.orphan_check_impl(impl_def_id).is_ok()
+        {
+            let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
+            Some(decorate(tcx, overlap, impl_span, LintDiagnosticBuilder::new(err)))
+        } else {
+            Some(tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check"))
+        };
+        sg.has_errored = reported;
+    }
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a

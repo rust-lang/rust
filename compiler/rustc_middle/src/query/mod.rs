@@ -722,10 +722,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query issue33140_self_ty(key: DefId) -> Option<ty::Ty<'tcx>> {
-        desc { |tcx| "computing Self type wrt issue #33140 `{}`", tcx.def_path_str(key) }
-    }
-
     /// Maps a `DefId` of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.

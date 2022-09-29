@@ -1427,41 +1427,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `order_dependent_trait_objects` lint detects a trait coherency
-    /// violation that would allow creating two trait impls for the same
-    /// dynamic trait object involving marker traits.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// pub trait Trait {}
-    ///
-    /// impl Trait for dyn Send + Sync { }
-    /// impl Trait for dyn Sync + Send { }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// A previous bug caused the compiler to interpret traits with different
-    /// orders (such as `Send + Sync` and `Sync + Send`) as distinct types
-    /// when they were intended to be treated the same. This allowed code to
-    /// define separate trait implementations when there should be a coherence
-    /// error. This is a [future-incompatible] lint to transition this to a
-    /// hard error in the future. See [issue #56484] for more details.
-    ///
-    /// [issue #56484]: https://github.com/rust-lang/rust/issues/56484
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub ORDER_DEPENDENT_TRAIT_OBJECTS,
-    Deny,
-    "trait-object types were treated as different depending on marker-trait order",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
-    };
-}
-
-declare_lint! {
     /// The `coherence_leak_check` lint detects conflicting implementations of
     /// a trait that are only distinguished by the old leak-check code.
     ///
@@ -3302,7 +3267,6 @@ declare_lint_pass! {
         PATTERNS_IN_FNS_WITHOUT_BODY,
         MISSING_FRAGMENT_SPECIFIER,
         LATE_BOUND_LIFETIME_ARGUMENTS,
-        ORDER_DEPENDENT_TRAIT_OBJECTS,
         COHERENCE_LEAK_CHECK,
         DEPRECATED,
         UNUSED_UNSAFE,

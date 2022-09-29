@@ -2109,45 +2109,9 @@ impl<'tcx> FieldDef {
 
 pub type Attributes<'tcx> = impl Iterator<Item = &'tcx ast::Attribute>;
 #[derive(Debug, PartialEq, Eq)]
-pub enum ImplOverlapKind {
-    /// These impls are always allowed to overlap.
-    Permitted {
-        /// Whether or not the impl is permitted due to the trait being a `#[marker]` trait
-        marker: bool,
-    },
-    /// These impls are allowed to overlap, but that raises
-    /// an issue #33140 future-compatibility warning.
-    ///
-    /// Some background: in Rust 1.0, the trait-object types `Send + Sync` (today's
-    /// `dyn Send + Sync`) and `Sync + Send` (now `dyn Sync + Send`) were different.
-    ///
-    /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied
-    /// that difference, making what reduces to the following set of impls:
-    ///
-    /// ```compile_fail,(E0119)
-    /// trait Trait {}
-    /// impl Trait for dyn Send + Sync {}
-    /// impl Trait for dyn Sync + Send {}
-    /// ```
-    ///
-    /// Obviously, once we made these types be identical, that code causes a coherence
-    /// error and a fairly big headache for us. However, luckily for us, the trait
-    /// `Trait` used in this case is basically a marker trait, and therefore having
-    /// overlapping impls for it is sound.
-    ///
-    /// To handle this, we basically regard the trait as a marker trait, with an additional
-    /// future-compatibility warning. To avoid accidentally "stabilizing" this feature,
-    /// it has the following restrictions:
-    ///
-    /// 1. The trait must indeed be a marker-like trait (i.e., no items), and must be
-    /// positive impls.
-    /// 2. The trait-ref of both impls must be equal.
-    /// 3. The trait-ref of both impls must be a trait object type consisting only of
-    /// marker traits.
-    /// 4. Neither of the impls can have any where-clauses.
-    ///
-    /// Once `traitobject` 0.1.0 is no longer an active concern, this hack can be removed.
-    Issue33140,
+pub struct PermittedImplOverlap {
+    /// Whether or not the impl is permitted due to the trait being a `#[marker]` trait
+    pub marker: bool,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2229,13 +2193,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id1: DefId,
         def_id2: DefId,
-    ) -> Option<ImplOverlapKind> {
+    ) -> Option<PermittedImplOverlap> {
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
         if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.references_error())
             || self.impl_trait_ref(def_id2).map_or(false, |tr| tr.references_error())
         {
-            return Some(ImplOverlapKind::Permitted { marker: false });
+            return Some(PermittedImplOverlap { marker: false });
         }
 
         match (self.impl_polarity(def_id1), self.impl_polarity(def_id2)) {
@@ -2245,7 +2209,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     "impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted) (reservations)",
                     def_id1, def_id2
                 );
-                return Some(ImplOverlapKind::Permitted { marker: false });
+                return Some(PermittedImplOverlap { marker: false });
             }
             (ImplPolarity::Positive, ImplPolarity::Negative)
             | (ImplPolarity::Negative, ImplPolarity::Positive) => {
@@ -2273,25 +2237,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 "impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted) (marker overlap)",
                 def_id1, def_id2
             );
-            Some(ImplOverlapKind::Permitted { marker: true })
+            Some(PermittedImplOverlap { marker: true })
         } else {
-            if let Some(self_ty1) = self.issue33140_self_ty(def_id1) {
-                if let Some(self_ty2) = self.issue33140_self_ty(def_id2) {
-                    if self_ty1 == self_ty2 {
-                        debug!(
-                            "impls_are_allowed_to_overlap({:?}, {:?}) - issue #33140 HACK",
-                            def_id1, def_id2
-                        );
-                        return Some(ImplOverlapKind::Issue33140);
-                    } else {
-                        debug!(
-                            "impls_are_allowed_to_overlap({:?}, {:?}) - found {:?} != {:?}",
-                            def_id1, def_id2, self_ty1, self_ty2
-                        );
-                    }
-                }
-            }
-
             debug!("impls_are_allowed_to_overlap({:?}, {:?}) = None", def_id1, def_id2);
             None
         }

@@ -8,16 +8,10 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 
 pub use rustc_middle::traits::specialization_graph::*;
 
-#[derive(Copy, Clone, Debug)]
-pub enum FutureCompatOverlapErrorKind {
-    Issue33140,
-    LeakCheck,
-}
-
 #[derive(Debug)]
 pub struct FutureCompatOverlapError {
     pub error: OverlapError,
-    pub kind: FutureCompatOverlapErrorKind,
+    pub used_to_be_allowed: bool,
 }
 
 /// The result of attempting to insert an impl into a group of children.
@@ -146,10 +140,7 @@ impl ChildrenExt<'_> for Children {
                 if should_err {
                     Err(error)
                 } else {
-                    *last_lint = Some(FutureCompatOverlapError {
-                        error,
-                        kind: FutureCompatOverlapErrorKind::LeakCheck,
-                    });
+                    *last_lint = Some(FutureCompatOverlapError { error, used_to_be_allowed: true });
 
                     Ok((false, false))
                 }
@@ -167,13 +158,7 @@ impl ChildrenExt<'_> for Children {
                         tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling)
                     {
                         match overlap_kind {
-                            ty::ImplOverlapKind::Permitted { marker: _ } => {}
-                            ty::ImplOverlapKind::Issue33140 => {
-                                *last_lint_mut = Some(FutureCompatOverlapError {
-                                    error: create_overlap_error(overlap),
-                                    kind: FutureCompatOverlapErrorKind::Issue33140,
-                                });
-                            }
+                            ty::PermittedImplOverlap { marker: _ } => {}
                         }
 
                         return Ok((false, false));
