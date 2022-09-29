@@ -864,15 +864,13 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         };
 
         let tcx = self.infcx.tcx;
-        let body_parent_did = tcx.opt_parent(self.mir_def_id().to_def_id())?;
-        if tcx.parent(region.def_id) != body_parent_did
-            || tcx.def_kind(body_parent_did) != DefKind::Impl
-        {
+        let region_parent = tcx.parent(region.def_id);
+        if tcx.def_kind(region_parent) != DefKind::Impl {
             return None;
         }
 
         let mut found = false;
-        tcx.fold_regions(tcx.type_of(body_parent_did), |r: ty::Region<'tcx>, _| {
+        tcx.fold_regions(tcx.type_of(region_parent), |r: ty::Region<'tcx>, _| {
             if *r == ty::ReEarlyBound(region) {
                 found = true;
             }
