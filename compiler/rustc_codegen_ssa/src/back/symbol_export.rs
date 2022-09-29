@@ -179,17 +179,22 @@ fn exported_symbols_provider_local<'tcx>(
         .map(|(&def_id, &info)| (ExportedSymbol::NonGeneric(def_id), info))
         .collect();
 
-    if tcx.entry_fn(()).is_some() {
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, "main"));
+    // Export `main`, on platforms where it has "default" visibility. On platforms
+    // where C functions are "hidden", `main` is "hidden" too, which means we aren't
+    // expected to export it.
+    if !tcx.sess.target.default_hidden_visibility {
+        if tcx.entry_fn(()).is_some() {
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, "main"));
 
-        symbols.push((
-            exported_symbol,
-            SymbolExportInfo {
-                level: SymbolExportLevel::C,
-                kind: SymbolExportKind::Text,
-                used: false,
-            },
-        ));
+            symbols.push((
+                exported_symbol,
+                SymbolExportInfo {
+                    level: SymbolExportLevel::C,
+                    kind: SymbolExportKind::Text,
+                    used: false,
+                },
+            ));
+        }
     }
 
     if tcx.allocator_kind(()).is_some() {
