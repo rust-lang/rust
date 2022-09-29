@@ -1164,7 +1164,7 @@ void TypeAnalyzer::visitConstantExpr(ConstantExpr &CE) {
     int maxSize = -1;
     if (cast<ConstantInt>(CE.getOperand(1))->getLimitedValue() == 0) {
       maxSize =
-          DL.getTypeAllocSizeInBits(g2->getType()->getPointerElementType()) / 8;
+          DL.getTypeAllocSizeInBits(g2->getResultElementType()) / 8;
     }
 
     delete g2;
@@ -1479,7 +1479,7 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
     int maxSize = -1;
     if (cast<ConstantInt>(vec[0])->getLimitedValue() == 0) {
       maxSize =
-          DL.getTypeAllocSizeInBits(gep.getType()->getPointerElementType()) / 8;
+          DL.getTypeAllocSizeInBits(gep.getResultElementType()) / 8;
     }
 
     if (direction & DOWN) {
