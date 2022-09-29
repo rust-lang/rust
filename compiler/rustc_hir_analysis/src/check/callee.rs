@@ -394,140 +394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::FnPtr(sig) => (sig, None),
             _ => {
-                let mut unit_variant = None;
-                if let hir::ExprKind::Path(qpath) = &callee_expr.kind
-                    && let Res::Def(def::DefKind::Ctor(kind, def::CtorKind::Const), _)
-                        = self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
-                    // Only suggest removing parens if there are no arguments
-                    && arg_exprs.is_empty()
-                {
-                    let descr = match kind {
-                        def::CtorOf::Struct => "struct",
-                        def::CtorOf::Variant => "enum variant",
-                    };
-                    let removal_span =
-                        callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
-                    unit_variant =
-                        Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(qpath)));
-                }
-
-                let callee_ty = self.resolve_vars_if_possible(callee_ty);
-                let mut err = type_error_struct!(
-                    self.tcx.sess,
-                    callee_expr.span,
-                    callee_ty,
-                    E0618,
-                    "expected function, found {}",
-                    match &unit_variant {
-                        Some((_, kind, path)) => format!("{kind} `{path}`"),
-                        None => format!("`{callee_ty}`"),
-                    }
-                );
-
-                self.identify_bad_closure_def_and_call(
-                    &mut err,
-                    call_expr.hir_id,
-                    &callee_expr.kind,
-                    callee_expr.span,
-                );
-
-                if let Some((removal_span, kind, path)) = &unit_variant {
-                    err.span_suggestion_verbose(
-                        *removal_span,
-                        &format!(
-                            "`{path}` is a unit {kind}, and does not take parentheses to be constructed",
-                        ),
-                        "",
-                        Applicability::MachineApplicable,
-                    );
-                }
-
-                let mut inner_callee_path = None;
-                let def = match callee_expr.kind {
-                    hir::ExprKind::Path(ref qpath) => {
-                        self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
-                    }
-                    hir::ExprKind::Call(ref inner_callee, _) => {
-                        // If the call spans more than one line and the callee kind is
-                        // itself another `ExprCall`, that's a clue that we might just be
-                        // missing a semicolon (Issue #51055)
-                        let call_is_multiline =
-                            self.tcx.sess.source_map().is_multiline(call_expr.span);
-                        if call_is_multiline {
-                            err.span_suggestion(
-                                callee_expr.span.shrink_to_hi(),
-                                "consider using a semicolon here",
-                                ";",
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.kind {
-                            inner_callee_path = Some(inner_qpath);
-                            self.typeck_results.borrow().qpath_res(inner_qpath, inner_callee.hir_id)
-                        } else {
-                            Res::Err
-                        }
-                    }
-                    _ => Res::Err,
-                };
-
-                if !self.maybe_suggest_bad_array_definition(&mut err, call_expr, callee_expr) {
-                    if let Some((maybe_def, output_ty, _)) = self.extract_callable_info(callee_expr, callee_ty)
-                        && !self.type_is_sized_modulo_regions(self.param_env, output_ty, callee_expr.span)
-                    {
-                        let descr = match maybe_def {
-                            DefIdOrName::DefId(def_id) => self.tcx.def_kind(def_id).descr(def_id),
-                            DefIdOrName::Name(name) => name,
-                        };
-                        err.span_label(
-                            callee_expr.span,
-                            format!("this {descr} returns an unsized value `{output_ty}`, so it cannot be called")
-                        );
-                        if let DefIdOrName::DefId(def_id) = maybe_def
-                            && let Some(def_span) = self.tcx.hir().span_if_local(def_id)
-                        {
-                            err.span_label(def_span, "the callable type is defined here");
-                        }
-                    } else {
-                        err.span_label(call_expr.span, "call expression requires function");
-                    }
-                }
-
-                if let Some(span) = self.tcx.hir().res_span(def) {
-                    let callee_ty = callee_ty.to_string();
-                    let label = match (unit_variant, inner_callee_path) {
-                        (Some((_, kind, path)), _) => Some(format!("{kind} `{path}` defined here")),
-                        (_, Some(hir::QPath::Resolved(_, path))) => self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(path.span)
-                            .ok()
-                            .map(|p| format!("`{p}` defined here returns `{callee_ty}`")),
-                        _ => {
-                            match def {
-                                // Emit a different diagnostic for local variables, as they are not
-                                // type definitions themselves, but rather variables *of* that type.
-                                Res::Local(hir_id) => Some(format!(
-                                    "`{}` has type `{}`",
-                                    self.tcx.hir().name(hir_id),
-                                    callee_ty
-                                )),
-                                Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {
-                                    Some(format!(
-                                        "`{}` defined here",
-                                        self.tcx.def_path_str(def_id),
-                                    ))
-                                }
-                                _ => Some(format!("`{callee_ty}` defined here")),
-                            }
-                        }
-                    };
-                    if let Some(label) = label {
-                        err.span_label(span, label);
-                    }
-                }
-                err.emit();
+                self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
 
                 // This is the "default" function signature, used in case of error.
                 // In that case, we check each argument against "error" in order to
@@ -572,6 +439,145 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         fn_sig.output()
+    }
+
+    fn report_invalid_callee(
+        &self,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        callee_expr: &'tcx hir::Expr<'tcx>,
+        callee_ty: Ty<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
+    ) {
+        let mut unit_variant = None;
+        if let hir::ExprKind::Path(qpath) = &callee_expr.kind
+            && let Res::Def(def::DefKind::Ctor(kind, def::CtorKind::Const), _)
+                = self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
+            // Only suggest removing parens if there are no arguments
+            && arg_exprs.is_empty()
+        {
+            let descr = match kind {
+                def::CtorOf::Struct => "struct",
+                def::CtorOf::Variant => "enum variant",
+            };
+            let removal_span =
+                callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
+            unit_variant =
+                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(qpath)));
+        }
+
+        let callee_ty = self.resolve_vars_if_possible(callee_ty);
+        let mut err = type_error_struct!(
+            self.tcx.sess,
+            callee_expr.span,
+            callee_ty,
+            E0618,
+            "expected function, found {}",
+            match &unit_variant {
+                Some((_, kind, path)) => format!("{kind} `{path}`"),
+                None => format!("`{callee_ty}`"),
+            }
+        );
+
+        self.identify_bad_closure_def_and_call(
+            &mut err,
+            call_expr.hir_id,
+            &callee_expr.kind,
+            callee_expr.span,
+        );
+
+        if let Some((removal_span, kind, path)) = &unit_variant {
+            err.span_suggestion_verbose(
+                *removal_span,
+                &format!(
+                    "`{path}` is a unit {kind}, and does not take parentheses to be constructed",
+                ),
+                "",
+                Applicability::MachineApplicable,
+            );
+        }
+
+        let mut inner_callee_path = None;
+        let def = match callee_expr.kind {
+            hir::ExprKind::Path(ref qpath) => {
+                self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
+            }
+            hir::ExprKind::Call(ref inner_callee, _) => {
+                // If the call spans more than one line and the callee kind is
+                // itself another `ExprCall`, that's a clue that we might just be
+                // missing a semicolon (Issue #51055)
+                let call_is_multiline = self.tcx.sess.source_map().is_multiline(call_expr.span);
+                if call_is_multiline {
+                    err.span_suggestion(
+                        callee_expr.span.shrink_to_hi(),
+                        "consider using a semicolon here",
+                        ";",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.kind {
+                    inner_callee_path = Some(inner_qpath);
+                    self.typeck_results.borrow().qpath_res(inner_qpath, inner_callee.hir_id)
+                } else {
+                    Res::Err
+                }
+            }
+            _ => Res::Err,
+        };
+
+        if !self.maybe_suggest_bad_array_definition(&mut err, call_expr, callee_expr) {
+            if let Some((maybe_def, output_ty, _)) = self.extract_callable_info(callee_expr, callee_ty)
+                && !self.type_is_sized_modulo_regions(self.param_env, output_ty, callee_expr.span)
+            {
+                let descr = match maybe_def {
+                    DefIdOrName::DefId(def_id) => self.tcx.def_kind(def_id).descr(def_id),
+                    DefIdOrName::Name(name) => name,
+                };
+                err.span_label(
+                    callee_expr.span,
+                    format!("this {descr} returns an unsized value `{output_ty}`, so it cannot be called")
+                );
+                if let DefIdOrName::DefId(def_id) = maybe_def
+                    && let Some(def_span) = self.tcx.hir().span_if_local(def_id)
+                {
+                    err.span_label(def_span, "the callable type is defined here");
+                }
+            } else {
+                err.span_label(call_expr.span, "call expression requires function");
+            }
+        }
+
+        if let Some(span) = self.tcx.hir().res_span(def) {
+            let callee_ty = callee_ty.to_string();
+            let label = match (unit_variant, inner_callee_path) {
+                (Some((_, kind, path)), _) => Some(format!("{kind} `{path}` defined here")),
+                (_, Some(hir::QPath::Resolved(_, path))) => self
+                    .tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(path.span)
+                    .ok()
+                    .map(|p| format!("`{p}` defined here returns `{callee_ty}`")),
+                _ => {
+                    match def {
+                        // Emit a different diagnostic for local variables, as they are not
+                        // type definitions themselves, but rather variables *of* that type.
+                        Res::Local(hir_id) => Some(format!(
+                            "`{}` has type `{}`",
+                            self.tcx.hir().name(hir_id),
+                            callee_ty
+                        )),
+                        Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {
+                            Some(format!("`{}` defined here", self.tcx.def_path_str(def_id),))
+                        }
+                        _ => Some(format!("`{callee_ty}` defined here")),
+                    }
+                }
+            };
+            if let Some(label) = label {
+                err.span_label(span, label);
+            }
+        }
+        err.emit();
     }
 
     fn confirm_deferred_closure_call(
