@@ -2024,7 +2024,14 @@ impl<T> Vec<T> {
 }
 
 impl<T> IntoIterator for Vec<T> {
-    type Item=T;
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+}
+
+struct IntoIter<T> {}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
 }
 
 fn main() {

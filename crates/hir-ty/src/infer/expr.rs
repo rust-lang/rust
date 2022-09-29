@@ -207,8 +207,10 @@ impl<'a> InferenceContext<'a> {
             }
             &Expr::For { iterable, body, pat, label } => {
                 let iterable_ty = self.infer_expr(iterable, &Expectation::none());
-                let pat_ty =
+                let into_iter_ty =
                     self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
+                let pat_ty =
+                    self.resolve_associated_type(into_iter_ty, self.resolve_iterator_item());
 
                 self.infer_pat(pat, &pat_ty, BindingMode::default());
                 self.with_breakable_ctx(BreakableKind::Loop, self.err_ty(), label, |this| {

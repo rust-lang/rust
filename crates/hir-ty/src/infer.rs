@@ -883,6 +883,12 @@ impl<'a> InferenceContext<'a> {
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
         let path = path![core::iter::IntoIterator];
         let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name![IntoIter])
+    }
+
+    fn resolve_iterator_item(&self) -> Option<TypeAliasId> {
+        let path = path![core::iter::Iterator];
+        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Item])
     }
 
