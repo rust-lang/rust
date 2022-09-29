@@ -39,6 +39,7 @@ use cc::windows_registry;
 use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
+use itertools::Itertools;
 use std::borrow::Borrow;
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
@@ -49,7 +50,6 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
-use itertools::Itertools;
 
 pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -219,10 +219,15 @@ pub fn each_linked_rlib(
     let lto_active = matches!(sess.lto(), Lto::Fat | Lto::Thin);
     if lto_active {
         for combination in info.dependency_formats.iter().combinations(2) {
-            let (ty1, list1) = combination[0];
-            let (ty2, list2) = combination[1];
+            let (ty1, list1) = &combination[0];
+            let (ty2, list2) = &combination[1];
             if list1 != list2 {
-                return Err(format!("{ty1:?} and {ty2:?} do not have equivalent dependency formats (`{list1:?}` vs `{list2:?}`)"));
+                return Err(errors::LinkRlibError::IncompatibleDependencyFormats {
+                    ty1: format!("{ty1:?}"),
+                    ty2: format!("{ty2:?}"),
+                    list1: format!("{list1:?}"),
+                    list2: format!("{list2:?}"),
+                });
             }
         }
     }

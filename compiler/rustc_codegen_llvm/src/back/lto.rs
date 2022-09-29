@@ -82,8 +82,22 @@ fn prepare_lto(
                 );
                 return Err(e);
             } else if *crate_type == CrateType::Dylib {
-                diag_handler.warn("LTO with dylibs may not be as effective");
+                if !cgcx.opts.unstable_opts.dylib_lto {
+                    return Err(diag_handler
+                        .fatal("lto cannot be used for `dylib` crate type without `-Zdylib-lto`"));
+                }
             }
+        }
+
+        if cgcx.opts.cg.prefer_dynamic && !cgcx.opts.unstable_opts.dylib_lto {
+            diag_handler
+                .struct_err("cannot prefer dynamic linking when performing LTO")
+                .note(
+                    "only 'staticlib', 'bin', and 'cdylib' outputs are \
+                               supported with LTO",
+                )
+                .emit();
+            return Err(FatalError);
         }
 
         for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {

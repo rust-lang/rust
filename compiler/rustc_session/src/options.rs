@@ -1295,6 +1295,8 @@ options! {
         an additional `.html` file showing the computed coverage spans."),
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
+    dylib_lto: bool = (false, parse_bool, [UNTRACKED],
+        "enables LTO for dylib crate type"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
     emit_thin_lto: bool = (true, parse_bool, [TRACKED],

@@ -321,12 +321,12 @@ impl SplitDebuginfo {
 }
 
 /// LTO mode used for compiling rustc itself.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub enum RustcLto {
     #[default]
     ThinLocal,
     Thin,
-    Fat
+    Fat,
 }
 
 impl std::str::FromStr for RustcLto {
@@ -1201,8 +1201,7 @@ impl Config {
             config.rust_lto = rust
                 .lto
                 .as_deref()
-                .map(RustcLto::from_str)
-                .map(|v| v.expect("invalid value for rust.lto"))
+                .map(|value| RustcLto::from_str(value).unwrap())
                 .unwrap_or_default();
         } else {
             config.rust_profile_use = flags.rust_profile_use;
