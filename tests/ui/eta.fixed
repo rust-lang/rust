@@ -303,3 +303,14 @@ fn not_general_enough() {
     fn f(_: impl FnMut(&Path) -> std::io::Result<()>) {}
     f(|path| std::fs::remove_file(path));
 }
+
+// https://github.com/rust-lang/rust-clippy/issues/9369
+pub fn mutable_impl_fn_mut(mut f: impl FnMut()) {
+    fn takes_fn_mut(_: impl FnMut()) {}
+    takes_fn_mut(&mut f);
+
+    fn takes_fn_once(_: impl FnOnce()) {}
+    takes_fn_once(&mut f);
+
+    f();
+}
