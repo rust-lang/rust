@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::Target;
+use crate::spec::{StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::linux_gnu_base::opts();
@@ -12,6 +12,7 @@ pub fn target() -> Target {
     base.features = "-vector".into();
     base.max_atomic_width = Some(64);
     base.min_global_align = Some(16);
+    base.stack_probes = StackProbeType::Inline;
 
     Target {
         llvm_target: "s390x-unknown-linux-gnu".into(),

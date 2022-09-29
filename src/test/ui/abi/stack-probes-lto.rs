@@ -3,8 +3,6 @@
 // ignore-aarch64
 // ignore-mips
 // ignore-mips64
-// ignore-powerpc
-// ignore-s390x
 // ignore-sparc
 // ignore-sparc64
 // ignore-wasm

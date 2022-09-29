@@ -1,11 +1,12 @@
 use crate::abi::Endian;
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::freebsd_base::opts();
     // Extra hint to linker that we are generating secure-PLT code.
     base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32", "--target=powerpc-unknown-freebsd13.0"]);
     base.max_atomic_width = Some(32);
+    base.stack_probes = StackProbeType::Inline;
 
     Target {
         llvm_target: "powerpc-unknown-freebsd13.0".into(),

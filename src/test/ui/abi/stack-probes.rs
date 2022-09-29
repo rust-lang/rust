@@ -3,8 +3,6 @@
 // ignore-aarch64
 // ignore-mips
 // ignore-mips64
-// ignore-powerpc
-// ignore-s390x
 // ignore-sparc
 // ignore-sparc64
 // ignore-wasm
@@ -27,8 +25,9 @@ fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
     if args.len() > 0 {
         match &args[0][..] {
-            "main-thread" => recurse(&MaybeUninit::uninit()),
-            "child-thread" => thread::spawn(|| recurse(&MaybeUninit::uninit())).join().unwrap(),
+            "main-recurse" => overflow_recurse(),
+            "child-recurse" => thread::spawn(overflow_recurse).join().unwrap(),
+            "child-frame" => overflow_frame(),
             _ => panic!(),
         }
         return;
@@ -41,9 +40,10 @@ fn main() {
     // that we report stack overflow on the main thread, see #43052 for some
     // details
     if cfg!(not(target_os = "linux")) {
-        assert_overflow(Command::new(&me).arg("main-thread"));
+        assert_overflow(Command::new(&me).arg("main-recurse"));
     }
-    assert_overflow(Command::new(&me).arg("child-thread"));
+    assert_overflow(Command::new(&me).arg("child-recurse"));
+    assert_overflow(Command::new(&me).arg("child-frame"));
 }
 
 #[allow(unconditional_recursion)]
@@ -53,6 +53,23 @@ fn recurse(array: &MaybeUninit<[u64; 1024]>) {
     }
     let local: MaybeUninit<[u64; 1024]> = MaybeUninit::uninit();
     recurse(&local);
+}
+
+#[inline(never)]
+fn overflow_recurse() {
+    recurse(&MaybeUninit::uninit());
+}
+
+fn overflow_frame() {
+    // By using a 1MiB stack frame with only 512KiB stack, we'll jump over any
+    // guard page, even with 64K pages -- but stack probes should catch it.
+    const STACK_SIZE: usize = 512 * 1024;
+    thread::Builder::new().stack_size(STACK_SIZE).spawn(|| {
+        let local: MaybeUninit<[u8; 2 * STACK_SIZE]> = MaybeUninit::uninit();
+        unsafe {
+            black_box(local.as_ptr() as u64);
+        }
+    }).unwrap().join().unwrap();
 }
 
 fn assert_overflow(cmd: &mut Command) {
