@@ -1,8 +1,12 @@
 // run-rustfix
+// aux-build: proc_macro_with_span.rs
 #![warn(clippy::unnecessary_lazy_evaluations)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::bind_instead_of_map)]
 #![allow(clippy::map_identity)]
+
+extern crate proc_macro_with_span;
+use proc_macro_with_span::with_span;
 
 struct Deep(Option<usize>);
 
@@ -140,4 +144,10 @@ fn main() {
     // neither bind_instead_of_map nor unnecessary_lazy_eval applies here
     let _: Result<usize, usize> = res.and_then(|x| Err(x));
     let _: Result<usize, usize> = res.or_else(|err| Ok(err));
+}
+
+#[allow(unused)]
+fn issue9485() {
+    // should not lint, is in proc macro
+    with_span!(span Some(42).unwrap_or_else(|| 2););
 }
