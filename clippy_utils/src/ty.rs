@@ -12,11 +12,11 @@ use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
     self, AdtDef, Binder, BoundRegion, DefIdTree, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, ProjectionTy,
     Region, RegionKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};
@@ -208,7 +208,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             }
             false
         },
-        ty::Dynamic(binder, _) => {
+        ty::Dynamic(binder, _, _) => {
             for predicate in binder.iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
                     if cx.tcx.has_attr(trait_ref.def_id, sym::must_use) {
@@ -586,7 +586,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs), Some(id))),
         ty::Opaque(id, _) => sig_from_bounds(cx, ty, cx.tcx.item_bounds(id), cx.tcx.opt_parent(id)),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
-        ty::Dynamic(bounds, _) => {
+        ty::Dynamic(bounds, _, _) => {
             let lang_items = cx.tcx.lang_items();
             match bounds.principal() {
                 Some(bound)

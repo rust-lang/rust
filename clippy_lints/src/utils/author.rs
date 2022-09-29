@@ -140,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
 
 fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
     let hir = cx.tcx.hir();
-    if let Some(body_id) = hir.maybe_body_owned_by(hir_id.expect_owner()) {
+    if let Some(body_id) = hir.maybe_body_owned_by(hir_id.expect_owner().def_id) {
         check_node(cx, hir_id, |v| {
             v.expr(&v.bind("expr", hir.body(body_id).value));
         });

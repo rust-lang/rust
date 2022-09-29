@@ -1,4 +1,3 @@
-#![feature(let_else)]
 #![allow(
     clippy::single_match,
     unused_assignments,

@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir;
 use rustc_hir::intravisit;
 use rustc_hir::{self, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
+use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
@@ -10,7 +11,6 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::kw;
 use rustc_target::spec::abi::Abi;
-use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 #[derive(Copy, Clone)]
 pub struct BoxedLocal {
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             }
         }
 
-        let parent_id = cx.tcx.hir().get_parent_item(hir_id);
+        let parent_id = cx.tcx.hir().get_parent_item(hir_id).def_id;
         let parent_node = cx.tcx.hir().find_by_def_id(parent_id);
 
         let mut trait_self_ty = None;
@@ -177,7 +177,13 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn fake_read(&mut self, _: &rustc_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(
+        &mut self,
+        _: &rustc_hir_analysis::expr_use_visitor::PlaceWithHirId<'tcx>,
+        _: FakeReadCause,
+        _: HirId,
+    ) {
+    }
 }
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {

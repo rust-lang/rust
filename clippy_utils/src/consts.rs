@@ -9,7 +9,7 @@ use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, Item, ItemKind, 
 use rustc_lint::LateContext;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, FloatTy, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
@@ -424,7 +424,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     .tcx
                     .const_eval_resolve(
                         self.param_env,
-                        ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs),
+                        mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs),
                         None,
                     )
                     .ok()

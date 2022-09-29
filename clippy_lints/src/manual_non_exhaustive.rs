@@ -166,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
             if let Some((id, span)) = iter.next()
                 && iter.next().is_none()
             {
-                self.potential_enums.push((item.def_id, id, item.span, span));
+                self.potential_enums.push((item.def_id.def_id, id, item.span, span));
             }
         }
     }

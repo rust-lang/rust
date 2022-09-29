@@ -23,6 +23,7 @@ use rustc_hir::{
     BinOpKind, Block, Closure, Expr, ExprKind, HirId, Item, Local, MutTy, Mutability, Node, Path, Stmt, StmtKind, Ty,
     TyKind, UnOp,
 };
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::interpret::ConstValue;
@@ -32,7 +33,6 @@ use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, BytePos, Span};
-use rustc_typeck::hir_ty_to_ty;
 
 use std::borrow::{Borrow, Cow};
 

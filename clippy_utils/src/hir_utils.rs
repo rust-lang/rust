@@ -929,7 +929,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_lifetime(&mut self, lifetime: Lifetime) {
+    pub fn hash_lifetime(&mut self, lifetime: &Lifetime) {
         std::mem::discriminant(&lifetime.name).hash(&mut self.s);
         if let LifetimeName::Param(param_id, ref name) = lifetime.name {
             std::mem::discriminant(name).hash(&mut self.s);
@@ -962,7 +962,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 mut_ty.mutbl.hash(&mut self.s);
             },
             TyKind::Rptr(lifetime, ref mut_ty) => {
-                self.hash_lifetime(*lifetime);
+                self.hash_lifetime(lifetime);
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
@@ -987,11 +987,12 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             TyKind::Path(ref qpath) => self.hash_qpath(qpath),
-            TyKind::OpaqueDef(_, arg_list) => {
+            TyKind::OpaqueDef(_, arg_list, in_trait) => {
                 self.hash_generic_args(arg_list);
+                in_trait.hash(&mut self.s);
             },
             TyKind::TraitObject(_, lifetime, _) => {
-                self.hash_lifetime(*lifetime);
+                self.hash_lifetime(lifetime);
             },
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);

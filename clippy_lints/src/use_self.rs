@@ -12,11 +12,11 @@ use rustc_hir::{
     Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath,
     TyKind,
 };
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
-use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !is_from_proc_macro(cx, item); // expensive, should be last check
             then {
                 StackItem::Check {
-                    impl_id: item.def_id,
+                    impl_id: item.def_id.def_id,
                     in_body: 0,
                     types_to_skip: std::iter::once(self_ty.hir_id).collect(),
                 }

@@ -1,7 +1,6 @@
 #![feature(array_chunks)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
-#![feature(let_else)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(once_cell)]
@@ -24,6 +23,7 @@ extern crate rustc_attr;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
+extern crate rustc_hir_analysis;
 extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
@@ -33,7 +33,6 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
-extern crate rustc_typeck;
 
 #[macro_use]
 pub mod sym_helper;
@@ -78,7 +77,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
@@ -212,7 +211,7 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
 /// }
 /// ```
 pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
-    let parent_id = cx.tcx.hir().get_parent_item(id);
+    let parent_id = cx.tcx.hir().get_parent_item(id).def_id;
     match cx.tcx.hir().get_by_def_id(parent_id) {
         Node::Item(&Item {
             kind: ItemKind::Const(..) | ItemKind::Static(..),
@@ -597,8 +596,8 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> 
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
     if_chain! {
-        if parent_impl != CRATE_DEF_ID;
-        if let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent_impl);
+        if parent_impl != hir::CRATE_OWNER_ID;
+        if let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent_impl.def_id);
         if let hir::ItemKind::Impl(impl_) = &item.kind;
         then {
             return impl_.of_trait.as_ref();
@@ -1104,7 +1103,7 @@ pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
-    let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
+    let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id).def_id;
     match cx.tcx.hir().find_by_def_id(parent_id) {
         Some(
             Node::Item(Item { ident, .. })
@@ -1121,7 +1120,7 @@ pub struct ContainsName {
 }
 
 impl<'tcx> Visitor<'tcx> for ContainsName {
-    fn visit_name(&mut self, _: Span, name: Symbol) {
+    fn visit_name(&mut self, name: Symbol) {
         if self.name == name {
             self.result = true;
         }
@@ -1387,8 +1386,8 @@ pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
 /// Examples of coercions can be found in the Nomicon at
 /// <https://doc.rust-lang.org/nomicon/coercions.html>.
 ///
-/// See `rustc_middle::ty::adjustment::Adjustment` and `rustc_typeck::check::coercion` for more
-/// information on adjustments and coercions.
+/// See `rustc_middle::ty::adjustment::Adjustment` and `rustc_hir_analysis::check::coercion` for
+/// more information on adjustments and coercions.
 pub fn is_adjusted(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     cx.typeck_results().adjustments().get(e.hir_id).is_some()
 }
@@ -1552,7 +1551,8 @@ pub fn iter_input_pats<'tcx>(decl: &FnDecl<'_>, body: &'tcx Body<'_>) -> impl It
 pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     fn is_ok(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
         if_chain! {
-            if let PatKind::TupleStruct(ref path, pat, None) = arm.pat.kind;
+            if let PatKind::TupleStruct(ref path, pat, ddpos) = arm.pat.kind;
+            if ddpos.as_opt_usize().is_none();
             if is_lang_ctor(cx, path, ResultOk);
             if let PatKind::Binding(_, hir_id, _, None) = pat[0].kind;
             if path_to_local_id(arm.body, hir_id);
@@ -1647,7 +1647,7 @@ pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);
-        enclosing_node = map.local_def_id_to_hir_id(map.get_parent_item(enclosing_node));
+        enclosing_node = map.get_parent_item(enclosing_node).into();
     }
 
     false

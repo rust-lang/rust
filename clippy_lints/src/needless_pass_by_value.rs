@@ -12,6 +12,7 @@ use rustc_hir::{
     BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Mutability, Node, PatKind, QPath, TyKind,
 };
 use rustc_hir::{HirIdMap, HirIdSet};
+use rustc_hir_analysis::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
@@ -22,7 +23,6 @@ use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::can_type_implement_copy;
-use rustc_typeck::expr_use_visitor as euv;
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -173,7 +173,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 (
                     preds.iter().any(|t| cx.tcx.is_diagnostic_item(sym::Borrow, t.def_id())),
                     !preds.is_empty() && {
-                        let ty_empty_region = cx.tcx.mk_imm_ref(cx.tcx.lifetimes.re_root_empty, ty);
+                        let ty_empty_region = cx.tcx.mk_imm_ref(cx.tcx.lifetimes.re_erased, ty);
                         preds.iter().all(|t| {
                             let ty_params = t.trait_ref.substs.iter().skip(1).collect::<Vec<_>>();
                             implements_trait(cx, ty_empty_region, t.def_id(), &ty_params)
@@ -342,5 +342,11 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
 
     fn mutate(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn fake_read(&mut self, _: &rustc_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(
+        &mut self,
+        _: &rustc_hir_analysis::expr_use_visitor::PlaceWithHirId<'tcx>,
+        _: FakeReadCause,
+        _: HirId,
+    ) {
+    }
 }

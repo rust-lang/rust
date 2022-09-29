@@ -5,12 +5,12 @@ use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, Visitor};
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, Pat, PatKind, Stmt};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_typeck::hir_ty_to_ty;
 use std::iter::Iterator;
 
 #[derive(Debug, PartialEq, Eq)]

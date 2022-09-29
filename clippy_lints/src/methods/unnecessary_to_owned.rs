@@ -1,6 +1,5 @@
 use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
-use crate::rustc_middle::ty::Subst;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
@@ -9,6 +8,7 @@ use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trai
 use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
+use rustc_hir_analysis::check::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
@@ -19,7 +19,6 @@ use rustc_middle::ty::{self, ParamTy, PredicateKind, ProjectionPredicate, TraitP
 use rustc_semver::RustcVersion;
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
-use rustc_typeck::check::{FnCtxt, Inherited};
 use std::cmp::max;
 
 use super::UNNECESSARY_TO_OWNED;

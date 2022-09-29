@@ -109,13 +109,13 @@ use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, PrimTy, QPath, TraitItem, TraitItemKind};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
-use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -3250,7 +3250,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
         let name = impl_item.ident.name.as_str();
-        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
+        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
         let item = cx.tcx.hir().expect_item(parent);
         let self_ty = cx.tcx.type_of(item.def_id);
 
@@ -3260,7 +3260,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
             // if this impl block implements a trait, lint in trait definition instead
-            if !implements_trait && cx.access_levels.is_exported(impl_item.def_id) {
+            if !implements_trait && cx.access_levels.is_exported(impl_item.def_id.def_id) {
                 // check missing trait implementations
                 for method_config in &TRAIT_METHODS {
                     if name == method_config.method_name
@@ -3294,7 +3294,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
             if sig.decl.implicit_self.has_implicit_self()
                     && !(self.avoid_breaking_exported_api
-                    && cx.access_levels.is_exported(impl_item.def_id))
+                    && cx.access_levels.is_exported(impl_item.def_id.def_id))
                     && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir().body(id)).next()
                     && let Some(first_arg_ty) = first_arg_ty_opt
                 {
