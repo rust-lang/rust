@@ -206,10 +206,8 @@ pub trait AsFd {
     /// ```rust,no_run
     /// use std::fs::File;
     /// # use std::io;
-    /// # #[cfg(target_os = "wasi")]
-    /// # use std::os::wasi::io::{AsFd, BorrowedFd};
-    /// # #[cfg(unix)]
-    /// # use std::os::unix::io::{AsFd, BorrowedFd};
+    /// # #[cfg(any(unix, target_os = "wasi"))]
+    /// # use std::os::fd::{AsFd, BorrowedFd};
     ///
     /// let mut f = File::open("foo.txt")?;
     /// # #[cfg(any(unix, target_os = "wasi"))]

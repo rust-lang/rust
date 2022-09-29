@@ -245,7 +245,7 @@ parser_assignment_else_not_allowed = <assignment> ... else {"{"} ... {"}"} is no
 parser_expected_statement_after_outer_attr = expected statement after outer attribute
 
 parser_doc_comment_does_not_document_anything = found a documentation comment that doesn't document anything
-    .help = doc comments must come before what they document, maybe a comment was intended with `//`?
+    .help = doc comments must come before what they document, if a comment was intended use `//`
     .suggestion = missing comma here
 
 parser_const_let_mutually_exclusive = `const` and `let` are mutually exclusive

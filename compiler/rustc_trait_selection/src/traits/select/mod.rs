@@ -1737,12 +1737,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             (&ImplCandidate(other_def), &ImplCandidate(victim_def)) => {
                 // See if we can toss out `victim` based on specialization.
-                // This requires us to know *for sure* that the `other` impl applies
-                // i.e., `EvaluatedToOk`.
+                // While this requires us to know *for sure* that the `other` impl applies
+                // we still use modulo regions here.
                 //
-                // FIXME(@lcnr): Using `modulo_regions` here seems kind of scary
-                // to me but is required for `std` to compile, so I didn't change it
-                // for now.
+                // This is fine as specialization currently assumes that specializing
+                // impls have to be always applicable, meaning that the only allowed
+                // region constraints may be constraints also present on the default impl.
                 let tcx = self.tcx();
                 if other.evaluation.must_apply_modulo_regions() {
                     if tcx.specializes((other_def, victim_def)) {

@@ -7,7 +7,7 @@ LL |     a: u8,
 LL |     /// document
    |     ^^^^^^^^^^^^
    |
-   = help: doc comments must come before what they document, maybe a comment was intended with `//`?
+   = help: doc comments must come before what they document, if a comment was intended use `//`
 
 error: aborting due to previous error
 
