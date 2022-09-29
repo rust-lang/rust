@@ -327,7 +327,7 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     check_exceptions(&metadata, EXCEPTIONS, runtime_ids, bad);
     check_dependencies(
         &metadata,
-        "main workspace",
+        "rustc",
         PERMITTED_DEPENDENCIES,
         RESTRICTED_DEPENDENCY_CRATES,
         bad,
