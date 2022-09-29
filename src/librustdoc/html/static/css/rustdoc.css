@@ -191,6 +191,7 @@ h4.code-header {
 	position: relative;
 }
 
+#crate-search,
 h1, h2, h3, h4, h5, h6,
 .sidebar,
 .mobile-topbar,
@@ -303,16 +304,6 @@ summary {
 }
 
 /* Fix some style changes due to normalize.css 8 */
-
-button,
-input,
-optgroup,
-select,
-textarea {
-	color: inherit;
-	font: inherit;
-	margin: 0;
-}
 
 button {
 	/* Buttons on Safari have different default padding than other platforms. Make them the same. */
@@ -887,6 +878,9 @@ table,
 	/* Removes default arrow from firefox */
 	text-indent: 0.01px;
 	background-color: var(--main-background-color);
+	color: inherit;
+	line-height: 1.5;
+	font-weight: 500;
 }
 /* cancel stylistic differences in padding in firefox
 for "appearance: none"-style (or equivalent) <select>s */
@@ -1363,6 +1357,8 @@ pre.rust {
 	border: 0;
 	border-top: 2px solid;
 	flex: 1;
+	line-height: 1.5;
+	color: inherit;
 }
 
 #titles > button > div.count {
@@ -1380,7 +1376,6 @@ pre.rust {
 	position: sticky;
 	top: 0;
 	left: 0;
-	font-weight: bold;
 	font-size: 1.25rem;
 	border-bottom: 1px solid;
 	display: flex;
@@ -1400,6 +1395,8 @@ pre.rust {
 	margin-bottom: 6px;
 }
 #sidebar-toggle > button {
+	font-size: inherit;
+	font-weight: bold;
 	background: none;
 	color: inherit;
 	cursor: pointer;
@@ -1428,6 +1425,7 @@ pre.rust {
 	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	cursor: pointer;
+	line-height: 1.5;
 }
 
 #settings-menu > a, #help-button > button {
@@ -1887,7 +1885,6 @@ in storage.js plus the media query with (min-width: 701px)
 		border-top-right-radius: 3px;
 		border-bottom-right-radius: 3px;
 		cursor: pointer;
-		font-weight: bold;
 		border: 1px solid;
 		border-left: 0;
 	}
