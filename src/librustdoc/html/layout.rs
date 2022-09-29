@@ -35,15 +35,18 @@ pub(crate) struct Page<'a> {
 }
 
 impl<'a> Page<'a> {
-    pub(crate) fn get_static_root_path(&self) -> &str {
-        self.static_root_path.unwrap_or(self.root_path)
+    pub(crate) fn get_static_root_path(&self) -> String {
+        match self.static_root_path {
+            Some(s) => s.to_string(),
+            None => format!("{}{}", self.root_path, "static.files/"),
+        }
     }
 }
 
 #[derive(Template)]
 #[template(path = "page.html")]
 struct PageLayout<'a> {
-    static_root_path: &'a str,
+    static_root_path: String,
     page: &'a Page<'a>,
     layout: &'a Layout,
 

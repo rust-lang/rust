@@ -5,7 +5,7 @@
 
 use rustc_data_structures::fx::FxHasher;
 use std::hash::Hasher;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::{fmt, str};
 
 pub(crate) struct StaticFile {
@@ -51,7 +51,7 @@ pub(crate) fn suffix_path(filename: &str, suffix: &str) -> PathBuf {
 
 pub(crate) fn static_filename(filename: &str, contents: &[u8]) -> PathBuf {
     let filename = filename.rsplit("/").next().unwrap();
-    Path::new("static.files").join(suffix_path(filename, &static_suffix(contents)))
+    suffix_path(filename, &static_suffix(contents))
 }
 
 fn static_suffix(bytes: &[u8]) -> String {

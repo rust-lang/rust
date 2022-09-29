@@ -147,7 +147,7 @@ pub(super) fn print_item(
     };
 
     let item_vars = ItemVars {
-        static_root_path: page.get_static_root_path(),
+        static_root_path: &page.get_static_root_path(),
         clipboard_svg: &static_files::STATIC_FILES.clipboard_svg,
         typ,
         name: item.name.as_ref().unwrap().as_str(),

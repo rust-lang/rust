@@ -636,7 +636,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      <link rel=\"stylesheet\" type=\"text/css\" \
                          href=\"{static_root_path}{settings_css}\">\
                      <script defer src=\"{static_root_path}{settings_js}\"></script>",
-                    static_root_path = page.static_root_path.unwrap_or(""),
+                    static_root_path = page.get_static_root_path(),
                     settings_css = static_files::STATIC_FILES.settings_css,
                     settings_js = static_files::STATIC_FILES.settings_js,
                 )

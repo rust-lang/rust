@@ -24,7 +24,8 @@ use crate::{try_err, try_none};
 ///    URL if the contents change, so they are safe to cache with the
 ///    `Cache-Control: immutable` directive. They are written under the static.files/
 ///    directory and are written when --emit-type is empty (default) or contains
-///    "toolchain-specific".
+///    "toolchain-specific". If using the --static-root-path flag, it should point
+///    to a URL path prefix where each of these filenames can be fetched.
 ///  - Invocation specific files. These are generated based on the crate(s) being
 ///    documented. Their filenames need to be predictable without knowing their
 ///    contents, so they do not include a hash in their filename and are not safe to
@@ -85,8 +86,10 @@ pub(super) fn write_shared(
 
     if options.emit.is_empty() || options.emit.contains(&EmitType::Toolchain) {
         for f in static_files::STATIC_FILES_LIST {
-            let filename = static_files::static_filename(f.filename, f.bytes);
-            cx.shared.fs.write(cx.dst.join(filename), f.minified())?;
+            let filename = cx.dst.join(
+                Path::new("static.files/").join(static_files::static_filename(f.filename, f.bytes)),
+            );
+            cx.shared.fs.write(filename, f.minified())?;
         }
     }
 
