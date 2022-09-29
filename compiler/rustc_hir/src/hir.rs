@@ -2404,8 +2404,9 @@ impl<'hir> Ty<'hir> {
             return None;
         };
         match path.res {
-            Res::Def(DefKind::TyParam, def_id)
-            | Res::SelfTy { trait_: Some(def_id), alias_to: None } => Some((def_id, segment.ident)),
+            Res::Def(DefKind::TyParam, def_id) | Res::SelfTyParam { trait_: def_id } => {
+                Some((def_id, segment.ident))
+            }
             _ => None,
         }
     }
@@ -3533,9 +3534,10 @@ mod size_asserts {
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 72);
     static_assert_size!(PatKind<'_>, 48);
-    static_assert_size!(Path<'_>, 48);
-    static_assert_size!(PathSegment<'_>, 56);
+    static_assert_size!(Path<'_>, 40);
+    static_assert_size!(PathSegment<'_>, 48);
     static_assert_size!(QPath<'_>, 24);
+    static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
     static_assert_size!(TraitItem<'_>, 88);

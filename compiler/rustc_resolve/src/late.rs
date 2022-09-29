@@ -19,7 +19,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{BindingAnnotation, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_lifetime::Set1;
 use rustc_middle::ty::DefIdTree;
@@ -414,7 +414,8 @@ impl<'a> PathSource<'a> {
                         | DefKind::ForeignTy,
                     _,
                 ) | Res::PrimTy(..)
-                    | Res::SelfTy { .. }
+                    | Res::SelfTyParam { .. }
+                    | Res::SelfTyAlias { .. }
             ),
             PathSource::Trait(AliasPossibility::No) => matches!(res, Res::Def(DefKind::Trait, _)),
             PathSource::Trait(AliasPossibility::Maybe) => {
@@ -448,7 +449,8 @@ impl<'a> PathSource<'a> {
                         | DefKind::TyAlias
                         | DefKind::AssocTy,
                     _,
-                ) | Res::SelfTy { .. }
+                ) | Res::SelfTyParam { .. }
+                    | Res::SelfTyAlias { .. }
             ),
             PathSource::TraitItem(ns) => match res {
                 Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
@@ -1929,7 +1931,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     TyKind::ImplicitSelf => true,
                     TyKind::Path(None, _) => {
                         let path_res = self.r.partial_res_map[&ty.id].base_res();
-                        if let Res::SelfTy { .. } = path_res {
+                        if let Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } = path_res {
                             return true;
                         }
                         Some(path_res) == self.impl_self
@@ -2050,7 +2052,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 |this| {
                     let item_def_id = this.r.local_def_id(item.id).to_def_id();
                     this.with_self_rib(
-                        Res::SelfTy { trait_: None, alias_to: Some((item_def_id, false)) },
+                        Res::SelfTyAlias {
+                            alias_to: item_def_id,
+                            forbid_generic: false,
+                            is_trait_impl: false,
+                        },
                         |this| {
                             visit::walk_item(this, item);
                         },
@@ -2164,14 +2170,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     },
                     |this| {
                         let local_def_id = this.r.local_def_id(item.id).to_def_id();
-                        this.with_self_rib(
-                            Res::SelfTy { trait_: Some(local_def_id), alias_to: None },
-                            |this| {
-                                this.visit_generics(generics);
-                                walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits);
-                                this.resolve_trait_items(items);
-                            },
-                        );
+                        this.with_self_rib(Res::SelfTyParam { trait_: local_def_id }, |this| {
+                            this.visit_generics(generics);
+                            walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits);
+                            this.resolve_trait_items(items);
+                        });
                     },
                 );
             }
@@ -2188,13 +2191,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     },
                     |this| {
                         let local_def_id = this.r.local_def_id(item.id).to_def_id();
-                        this.with_self_rib(
-                            Res::SelfTy { trait_: Some(local_def_id), alias_to: None },
-                            |this| {
-                                this.visit_generics(generics);
-                                walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
-                            },
-                        );
+                        this.with_self_rib(Res::SelfTyParam { trait_: local_def_id }, |this| {
+                            this.visit_generics(generics);
+                            walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
+                        });
                     },
                 );
             }
@@ -2576,7 +2576,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             },
             |this| {
                 // Dummy self type for better errors if `Self` is used in the trait path.
-                this.with_self_rib(Res::SelfTy { trait_: None, alias_to: None }, |this| {
+                this.with_self_rib(Res::SelfTyParam { trait_: LOCAL_CRATE.as_def_id() }, |this| {
                     this.with_lifetime_rib(
                         LifetimeRibKind::AnonymousCreateParameter {
                             binder: item_id,
@@ -2600,9 +2600,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     }
 
                                     let item_def_id = item_def_id.to_def_id();
-                                    let res = Res::SelfTy {
-                                        trait_: trait_id,
-                                        alias_to: Some((item_def_id, false)),
+                                    let res = Res::SelfTyAlias {
+                                        alias_to: item_def_id,
+                                        forbid_generic: false,
+                                        is_trait_impl: trait_id.is_some()
                                     };
                                     this.with_self_rib(res, |this| {
                                         if let Some(trait_ref) = opt_trait_reference.as_ref() {

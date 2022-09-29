@@ -56,7 +56,7 @@ fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<Stri
                 let path_segment = path.segments.last().unwrap();
                 return Some(format!("{}{}", name, gen_args(cx, path_segment)));
             }
-            Res::SelfTy { trait_: None, alias_to: Some((did, _)) } => {
+            Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
                 if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
                     if cx.tcx.has_attr(adt.did(), sym::rustc_pass_by_value) {
                         return Some(cx.tcx.def_path_str_with_substs(adt.did(), substs));

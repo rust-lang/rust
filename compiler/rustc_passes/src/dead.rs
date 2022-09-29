@@ -102,14 +102,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
             }
             Res::Def(_, def_id) => self.check_def_id(def_id),
-            Res::SelfTy { trait_: t, alias_to: i } => {
-                if let Some(t) = t {
-                    self.check_def_id(t);
-                }
-                if let Some((i, _)) = i {
-                    self.check_def_id(i);
-                }
-            }
+            Res::SelfTyParam { trait_: t } => self.check_def_id(t),
+            Res::SelfTyAlias { alias_to: i, .. } => self.check_def_id(i),
             Res::ToolMod | Res::NonMacroAttr(..) | Res::Err => {}
         }
     }

@@ -2197,8 +2197,11 @@ impl Path {
     /// Checks if this is a `T::Name` path for an associated type.
     pub(crate) fn is_assoc_ty(&self) -> bool {
         match self.res {
-            Res::SelfTy { .. } if self.segments.len() != 1 => true,
-            Res::Def(DefKind::TyParam, _) if self.segments.len() != 1 => true,
+            Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::Def(DefKind::TyParam, _)
+                if self.segments.len() != 1 =>
+            {
+                true
+            }
             Res::Def(DefKind::AssocTy, _) => true,
             _ => false,
         }
@@ -2531,11 +2534,11 @@ mod size_asserts {
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(Crate, 72); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
-    static_assert_size!(GenericArg, 56);
+    static_assert_size!(GenericArg, 48);
     static_assert_size!(GenericArgs, 32);
     static_assert_size!(GenericParamDef, 56);
     static_assert_size!(Item, 56);
-    static_assert_size!(ItemKind, 96);
+    static_assert_size!(ItemKind, 88);
     static_assert_size!(PathSegment, 40);
-    static_assert_size!(Type, 56);
+    static_assert_size!(Type, 48);
 }

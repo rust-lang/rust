@@ -314,74 +314,75 @@ pub enum Res<Id = hir::HirId> {
     /// **Belongs to the type namespace.**
     PrimTy(hir::PrimTy),
 
-    /// The `Self` type, optionally with the [`DefId`] of the trait it belongs to and
-    /// optionally with the [`DefId`] of the item introducing the `Self` type alias.
+    /// The `Self` type, as used within a trait.
+    ///
+    /// **Belongs to the type namespace.**
+    ///
+    /// See the examples on [`Res::SelfTyAlias`] for details.
+    SelfTyParam {
+        /// The trait this `Self` is a generic parameter for.
+        trait_: DefId,
+    },
+
+    /// The `Self` type, as used somewhere other than within a trait.
     ///
     /// **Belongs to the type namespace.**
     ///
     /// Examples:
     /// ```
-    /// struct Bar(Box<Self>);
-    /// // `Res::SelfTy { trait_: None, alias_of: Some(Bar) }`
+    /// struct Bar(Box<Self>); // SelfTyAlias
     ///
     /// trait Foo {
-    ///     fn foo() -> Box<Self>;
-    ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: None }`
+    ///     fn foo() -> Box<Self>; // SelfTyParam
     /// }
     ///
     /// impl Bar {
     ///     fn blah() {
-    ///         let _: Self;
-    ///         // `Res::SelfTy { trait_: None, alias_of: Some(::{impl#0}) }`
+    ///         let _: Self; // SelfTyAlias
     ///     }
     /// }
     ///
     /// impl Foo for Bar {
-    ///     fn foo() -> Box<Self> {
-    ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
-    ///         let _: Self;
-    ///         // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
+    ///     fn foo() -> Box<Self> { // SelfTyAlias
+    ///         let _: Self;        // SelfTyAlias
     ///
     ///         todo!()
     ///     }
     /// }
     /// ```
-    ///
     /// *See also [`Res::SelfCtor`].*
     ///
-    /// -----
-    ///
-    /// HACK(min_const_generics): self types also have an optional requirement to **not** mention
-    /// any generic parameters to allow the following with `min_const_generics`:
-    /// ```
-    /// # struct Foo;
-    /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
-    ///
-    /// struct Bar([u8; baz::<Self>()]);
-    /// const fn baz<T>() -> usize { 10 }
-    /// ```
-    /// We do however allow `Self` in repeat expression even if it is generic to not break code
-    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat
-    /// lint:
-    /// ```
-    /// fn foo<T>() {
-    ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
-    /// }
-    /// ```
-    // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
-    SelfTy {
-        /// The trait this `Self` is a generic arg for.
-        trait_: Option<DefId>,
+    SelfTyAlias {
         /// The item introducing the `Self` type alias. Can be used in the `type_of` query
-        /// to get the underlying type. Additionally whether the `Self` type is disallowed
-        /// from mentioning generics (i.e. when used in an anonymous constant).
-        alias_to: Option<(DefId, bool)>,
-    },
+        /// to get the underlying type.
+        alias_to: DefId,
 
-    /// A tool attribute module; e.g., the `rustfmt` in `#[rustfmt::skip]`.
-    ///
-    /// **Belongs to the type namespace.**
-    ToolMod,
+        /// Whether the `Self` type is disallowed from mentioning generics (i.e. when used in an
+        /// anonymous constant).
+        ///
+        /// HACK(min_const_generics): self types also have an optional requirement to **not**
+        /// mention any generic parameters to allow the following with `min_const_generics`:
+        /// ```
+        /// # struct Foo;
+        /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
+        ///
+        /// struct Bar([u8; baz::<Self>()]);
+        /// const fn baz<T>() -> usize { 10 }
+        /// ```
+        /// We do however allow `Self` in repeat expression even if it is generic to not break code
+        /// which already works on stable while causing the `const_evaluatable_unchecked` future
+        /// compat lint:
+        /// ```
+        /// fn foo<T>() {
+        ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
+        /// }
+        /// ```
+        // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
+        forbid_generic: bool,
+
+        /// Is this within an `impl Foo for bar`?
+        is_trait_impl: bool,
+    },
 
     // Value namespace
     /// The `Self` constructor, along with the [`DefId`]
@@ -389,13 +390,18 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// **Belongs to the value namespace.**
     ///
-    /// *See also [`Res::SelfTy`].*
+    /// *See also [`Res::SelfTyParam`] and [`Res::SelfTyAlias`].*
     SelfCtor(DefId),
 
     /// A local variable or function parameter.
     ///
     /// **Belongs to the value namespace.**
     Local(Id),
+
+    /// A tool attribute module; e.g., the `rustfmt` in `#[rustfmt::skip]`.
+    ///
+    /// **Belongs to the type namespace.**
+    ToolMod,
 
     // Macro namespace
     /// An attribute that is *not* implemented via macro.
@@ -606,7 +612,8 @@ impl<Id> Res<Id> {
 
             Res::Local(..)
             | Res::PrimTy(..)
-            | Res::SelfTy { .. }
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..)
             | Res::ToolMod
             | Res::NonMacroAttr(..)
@@ -629,7 +636,7 @@ impl<Id> Res<Id> {
             Res::SelfCtor(..) => "self constructor",
             Res::PrimTy(..) => "builtin type",
             Res::Local(..) => "local variable",
-            Res::SelfTy { .. } => "self type",
+            Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => "self type",
             Res::ToolMod => "tool module",
             Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
             Res::Err => "unresolved item",
@@ -652,7 +659,10 @@ impl<Id> Res<Id> {
             Res::SelfCtor(id) => Res::SelfCtor(id),
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)),
-            Res::SelfTy { trait_, alias_to } => Res::SelfTy { trait_, alias_to },
+            Res::SelfTyParam { trait_ } => Res::SelfTyParam { trait_ },
+            Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl } => {
+                Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl }
+            }
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
@@ -665,7 +675,10 @@ impl<Id> Res<Id> {
             Res::SelfCtor(id) => Res::SelfCtor(id),
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)?),
-            Res::SelfTy { trait_, alias_to } => Res::SelfTy { trait_, alias_to },
+            Res::SelfTyParam { trait_ } => Res::SelfTyParam { trait_ },
+            Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl } => {
+                Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl }
+            }
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
@@ -692,7 +705,9 @@ impl<Id> Res<Id> {
     pub fn ns(&self) -> Option<Namespace> {
         match self {
             Res::Def(kind, ..) => kind.ns(),
-            Res::PrimTy(..) | Res::SelfTy { .. } | Res::ToolMod => Some(Namespace::TypeNS),
+            Res::PrimTy(..) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::ToolMod => {
+                Some(Namespace::TypeNS)
+            }
             Res::SelfCtor(..) | Res::Local(..) => Some(Namespace::ValueNS),
             Res::NonMacroAttr(..) => Some(Namespace::MacroNS),
             Res::Err => None,

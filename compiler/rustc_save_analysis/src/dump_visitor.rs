@@ -913,7 +913,8 @@ impl<'tcx> DumpVisitor<'tcx> {
                     | HirDefKind::AssocTy,
                     _,
                 )
-                | Res::SelfTy { .. } => {
+                | Res::SelfTyParam { .. }
+                | Res::SelfTyAlias { .. } => {
                     self.dump_path_segment_ref(
                         id,
                         &hir::PathSegment::new(ident, hir::HirId::INVALID, Res::Err),
