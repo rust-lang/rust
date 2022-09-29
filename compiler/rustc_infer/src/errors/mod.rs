@@ -544,25 +544,177 @@ pub struct ExplicitLifetimeRequired<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum ActualImplExplNotes {
-    // Field names have to be different across all variants
-    #[note(infer::actual_impl_expl_expected)]
-    Expected {
+    // Field names have to be different across Expected* and ButActually variants
+    #[note(infer::actual_impl_expl_expected_signature_two)]
+    ExpectedSignatureTwo {
         leading_ellipsis: bool,
-        kind: &'static str,
         ty_or_sig: String,
         trait_path: String,
-        lt_kind: &'static str,
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note(infer::actual_impl_expl_but_actually)]
-    ButActually {
-        kind_2: &'static str,
+    #[note(infer::actual_impl_expl_expected_signature_any)]
+    ExpectedSignatureAny {
+        leading_ellipsis: bool,
+        ty_or_sig: String,
+        trait_path: String,
+        lifetime_1: usize,
+    },
+    #[note(infer::actual_impl_expl_expected_signature_some)]
+    ExpectedSignatureSome {
+        leading_ellipsis: bool,
+        ty_or_sig: String,
+        trait_path: String,
+        lifetime_1: usize,
+    },
+    #[note(infer::actual_impl_expl_expected_signature_nothing)]
+    ExpectedSignatureNothing { leading_ellipsis: bool, ty_or_sig: String, trait_path: String },
+    #[note(infer::actual_impl_expl_expected_passive_two)]
+    ExpectedPassiveTwo {
+        leading_ellipsis: bool,
+        ty_or_sig: String,
+        trait_path: String,
+        lifetime_1: usize,
+        lifetime_2: usize,
+    },
+    #[note(infer::actual_impl_expl_expected_passive_any)]
+    ExpectedPassiveAny {
+        leading_ellipsis: bool,
+        ty_or_sig: String,
+        trait_path: String,
+        lifetime_1: usize,
+    },
+    #[note(infer::actual_impl_expl_expected_passive_some)]
+    ExpectedPassiveSome {
+        leading_ellipsis: bool,
+        ty_or_sig: String,
+        trait_path: String,
+        lifetime_1: usize,
+    },
+    #[note(infer::actual_impl_expl_expected_passive_nothing)]
+    ExpectedPassiveNothing { leading_ellipsis: bool, ty_or_sig: String, trait_path: String },
+    #[note(infer::actual_impl_expl_expected_other_two)]
+    ExpectedOtherTwo {
+        leading_ellipsis: bool,
+        ty_or_sig: String,
+        trait_path: String,
+        lifetime_1: usize,
+        lifetime_2: usize,
+    },
+    #[note(infer::actual_impl_expl_expected_other_any)]
+    ExpectedOtherAny {
+        leading_ellipsis: bool,
+        ty_or_sig: String,
+        trait_path: String,
+        lifetime_1: usize,
+    },
+    #[note(infer::actual_impl_expl_expected_other_some)]
+    ExpectedOtherSome {
+        leading_ellipsis: bool,
+        ty_or_sig: String,
+        trait_path: String,
+        lifetime_1: usize,
+    },
+    #[note(infer::actual_impl_expl_expected_other_nothing)]
+    ExpectedOtherNothing { leading_ellipsis: bool, ty_or_sig: String, trait_path: String },
+    #[note(infer::actual_impl_expl_but_actually_implements_trait)]
+    ButActuallyImplementsTrait { trait_path_2: String, has_lifetime: bool, lifetime: usize },
+    #[note(infer::actual_impl_expl_but_actually_implemented_for_ty)]
+    ButActuallyImplementedForTy {
         trait_path_2: String,
         has_lifetime: bool,
         lifetime: usize,
         ty: String,
     },
+    #[note(infer::actual_impl_expl_but_actually_ty_implements)]
+    ButActuallyTyImplements {
+        trait_path_2: String,
+        has_lifetime: bool,
+        lifetime: usize,
+        ty: String,
+    },
+}
+
+pub enum ActualImplExpectedKind {
+    Signature,
+    Passive,
+    Other,
+}
+
+pub enum ActualImplExpectedLifetimeKind {
+    Two,
+    Any,
+    Some,
+    Nothing,
+}
+
+impl ActualImplExplNotes {
+    pub fn new_expected(
+        kind: ActualImplExpectedKind,
+        lt_kind: ActualImplExpectedLifetimeKind,
+        leading_ellipsis: bool,
+        ty_or_sig: String,
+        trait_path: String,
+        lifetime_1: usize,
+        lifetime_2: usize,
+    ) -> Self {
+        match (kind, lt_kind) {
+            (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Two) => {
+                Self::ExpectedSignatureTwo {
+                    leading_ellipsis,
+                    ty_or_sig,
+                    trait_path,
+                    lifetime_1,
+                    lifetime_2,
+                }
+            }
+            (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Any) => {
+                Self::ExpectedSignatureAny { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+            }
+            (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Some) => {
+                Self::ExpectedSignatureSome { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+            }
+            (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Nothing) => {
+                Self::ExpectedSignatureNothing { leading_ellipsis, ty_or_sig, trait_path }
+            }
+            (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Two) => {
+                Self::ExpectedPassiveTwo {
+                    leading_ellipsis,
+                    ty_or_sig,
+                    trait_path,
+                    lifetime_1,
+                    lifetime_2,
+                }
+            }
+            (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Any) => {
+                Self::ExpectedPassiveAny { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+            }
+            (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Some) => {
+                Self::ExpectedPassiveSome { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+            }
+            (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Nothing) => {
+                Self::ExpectedPassiveNothing { leading_ellipsis, ty_or_sig, trait_path }
+            }
+            (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Two) => {
+                Self::ExpectedOtherTwo {
+                    leading_ellipsis,
+                    ty_or_sig,
+                    trait_path,
+                    lifetime_1,
+                    lifetime_2,
+                }
+            }
+            (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Any) => {
+                Self::ExpectedOtherAny { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+            }
+            (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Some) => {
+                Self::ExpectedOtherSome { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+            }
+            (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Nothing) => {
+                Self::ExpectedOtherNothing { leading_ellipsis, ty_or_sig, trait_path }
+            }
+        }
+    }
 }
 
 #[derive(Diagnostic)]

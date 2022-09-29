@@ -1,4 +1,7 @@
-use crate::errors::{ActualImplExplNotes, TraitPlaceholderMismatch};
+use crate::errors::{
+    ActualImplExpectedKind, ActualImplExpectedLifetimeKind, ActualImplExplNotes,
+    TraitPlaceholderMismatch,
+};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::ValuePairs;
@@ -414,52 +417,54 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                     }
                 });
                 (
-                    "signature",
+                    ActualImplExpectedKind::Signature,
                     closure_sig.to_string(),
                     expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
                 )
             } else {
                 (
-                    "other",
+                    ActualImplExpectedKind::Other,
                     self_ty.to_string(),
                     expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
                 )
             }
         } else if passive_voice {
             (
-                "passive",
+                ActualImplExpectedKind::Passive,
                 expected_trait_ref.map(|tr| tr.self_ty()).to_string(),
                 expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
             )
         } else {
             (
-                "other",
+                ActualImplExpectedKind::Other,
                 expected_trait_ref.map(|tr| tr.self_ty()).to_string(),
                 expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
             )
         };
 
         let (lt_kind, lifetime_1, lifetime_2) = match (has_sub, has_sup) {
-            (Some(n1), Some(n2)) => ("two", std::cmp::min(n1, n2), std::cmp::max(n1, n2)),
-            (Some(n), _) | (_, Some(n)) => ("any", n, 0),
+            (Some(n1), Some(n2)) => {
+                (ActualImplExpectedLifetimeKind::Two, std::cmp::min(n1, n2), std::cmp::max(n1, n2))
+            }
+            (Some(n), _) | (_, Some(n)) => (ActualImplExpectedLifetimeKind::Any, n, 0),
             (None, None) => {
                 if let Some(n) = expected_has_vid {
-                    ("some", n, 0)
+                    (ActualImplExpectedLifetimeKind::Some, n, 0)
                 } else {
-                    ("nothing", 0, 0)
+                    (ActualImplExpectedLifetimeKind::Nothing, 0, 0)
                 }
             }
         };
 
-        let note_1 = ActualImplExplNotes::Expected {
-            leading_ellipsis,
+        let note_1 = ActualImplExplNotes::new_expected(
             kind,
+            lt_kind,
+            leading_ellipsis,
             ty_or_sig,
             trait_path,
-            lt_kind,
             lifetime_1,
             lifetime_2,
-        };
+        );
 
         let mut actual_trait_ref = highlight_trait_ref(actual_trait_ref);
         actual_trait_ref.highlight.maybe_highlighting_region(vid, actual_has_vid);
@@ -471,19 +476,26 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
 
         let trait_path_2 = actual_trait_ref.map(|tr| tr.print_only_trait_path()).to_string();
         let ty = actual_trait_ref.map(|tr| tr.self_ty()).to_string();
-        let kind_2 = if same_self_type {
-            "implements_trait"
-        } else if passive_voice {
-            "implemented_for_ty"
-        } else {
-            "ty_implements"
-        };
-
         let has_lifetime = actual_has_vid.is_some();
         let lifetime = actual_has_vid.unwrap_or_default();
 
-        let note_2 =
-            ActualImplExplNotes::ButActually { kind_2, trait_path_2, ty, has_lifetime, lifetime };
+        let note_2 = if same_self_type {
+            ActualImplExplNotes::ButActuallyImplementsTrait { trait_path_2, has_lifetime, lifetime }
+        } else if passive_voice {
+            ActualImplExplNotes::ButActuallyImplementedForTy {
+                trait_path_2,
+                ty,
+                has_lifetime,
+                lifetime,
+            }
+        } else {
+            ActualImplExplNotes::ButActuallyTyImplements {
+                trait_path_2,
+                ty,
+                has_lifetime,
+                lifetime,
+            }
+        };
 
         vec![note_1, note_2]
     }

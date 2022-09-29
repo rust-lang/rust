@@ -184,25 +184,64 @@ infer_explicit_lifetime_required_sugg = add explicit lifetime `{$named}` to {$id
     *[param_type] type
 }
 
-infer_actual_impl_expl_expected = {$leading_ellipsis ->
+infer_actual_impl_expl_expected_signature_two = {$leading_ellipsis ->
     [true] ...
     *[false] {""}
-}{$kind ->
-    [signature] closure with signature `{$ty_or_sig}` must implement `{$trait_path}`
-    [passive] `{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`
-    *[other] `{$ty_or_sig}` must implement `{$trait_path}`
-}{$lt_kind ->
-    [two] , for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...
-    [any] , for any lifetime `'{$lifetime_1}`...
-    [some] , for some specific lifetime `'{lifetime_1}`...
-    *[nothing] {""}
-}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...
+infer_actual_impl_expl_expected_signature_any = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`...
+infer_actual_impl_expl_expected_signature_some = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{lifetime_1}`...
+infer_actual_impl_expl_expected_signature_nothing = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`
+infer_actual_impl_expl_expected_passive_two = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...
+infer_actual_impl_expl_expected_passive_any = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any lifetime `'{$lifetime_1}`...
+infer_actual_impl_expl_expected_passive_some = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for some specific lifetime `'{lifetime_1}`...
+infer_actual_impl_expl_expected_passive_nothing = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`
+infer_actual_impl_expl_expected_other_two = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...
+infer_actual_impl_expl_expected_other_any = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`...
+infer_actual_impl_expl_expected_other_some = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{lifetime_1}`...
+infer_actual_impl_expl_expected_other_nothing = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$ty_or_sig}` must implement `{$trait_path}`
 
-infer_actual_impl_expl_but_actually = {$kind_2 ->
-    [implements_trait] ...but it actually implements `{$trait_path_2}`
-    [implemented_for_ty] ...but `{$trait_path_2}` is actually implemented for the type `{$ty}`
-    *[ty_implements] ...but `{$ty}` actually implements `{$trait_path_2}`
-}{$has_lifetime ->
+infer_actual_impl_expl_but_actually_implements_trait = ...but it actually implements `{$trait_path_2}`{$has_lifetime ->
+    [true] , for some specific lifetime `'{$lifetime}`
+    *[false] {""}
+}
+infer_actual_impl_expl_but_actually_implemented_for_ty = ...but `{$trait_path_2}` is actually implemented for the type `{$ty}`{$has_lifetime ->
+    [true] , for some specific lifetime `'{$lifetime}`
+    *[false] {""}
+}
+infer_actual_impl_expl_but_actually_ty_implements = ...but `{$ty}` actually implements `{$trait_path_2}`{$has_lifetime ->
     [true] , for some specific lifetime `'{$lifetime}`
     *[false] {""}
 }
