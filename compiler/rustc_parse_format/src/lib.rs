@@ -224,7 +224,7 @@ impl<'a> Iterator for Parser<'a> {
                 '{' => {
                     let curr_last_brace = self.last_opening_brace;
                     let byte_pos = self.to_span_index(pos);
-                    let lbrace_end = InnerOffset(byte_pos.0 + 1);
+                    let lbrace_end = self.to_span_index(pos + 1);
                     self.last_opening_brace = Some(byte_pos.to(lbrace_end));
                     self.cur.next();
                     if self.consume('{') {
