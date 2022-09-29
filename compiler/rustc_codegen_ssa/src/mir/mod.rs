@@ -190,7 +190,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             match err {
                 // errored or at least linted
                 ErrorHandled::Reported(_) | ErrorHandled::Linted => {}
-                ErrorHandled::TooGeneric => {
+                ErrorHandled::TooGeneric(_) => {
                     span_bug!(const_.span, "codegen encountered polymorphic constant: {:?}", err)
                 }
             }

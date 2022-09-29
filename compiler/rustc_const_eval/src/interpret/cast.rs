@@ -68,7 +68,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             def_id,
                             substs,
                         )
-                        .ok_or_else(|| err_inval!(TooGeneric))?;
+                        .ok_or_else(|| err_inval!(TooGeneric(10)))?;
 
                         let fn_ptr = self.create_fn_alloc_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
@@ -101,7 +101,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             substs,
                             ty::ClosureKind::FnOnce,
                         )
-                        .ok_or_else(|| err_inval!(TooGeneric))?;
+                        .ok_or_else(|| err_inval!(TooGeneric(9)))?;
                         let fn_ptr = self.create_fn_alloc_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }

@@ -58,7 +58,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let cid = GlobalId { instance, promoted: ct.promoted };
                 self.const_eval_global_id(param_env, cid, span)
             }
-            Ok(None) => Err(ErrorHandled::TooGeneric),
+            Ok(None) => Err(ErrorHandled::TooGeneric(0)),
             Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
         }
     }
@@ -85,7 +85,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let cid = GlobalId { instance, promoted: None };
                 self.const_eval_global_id_for_typeck(param_env, cid, span)
             }
-            Ok(None) => Err(ErrorHandled::TooGeneric),
+            Ok(None) => Err(ErrorHandled::TooGeneric(0)),
             Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
         }
     }

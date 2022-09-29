@@ -558,7 +558,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             mir::ConstantKind::Ty(ct) => {
                 match ct.kind() {
                     ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
-                        throw_inval!(TooGeneric)
+                        throw_inval!(TooGeneric(3))
                     }
                     ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => {
                         throw_inval!(AlreadyReported(reported))

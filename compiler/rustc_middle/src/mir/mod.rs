@@ -2150,7 +2150,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
                 match tcx.const_eval_resolve(param_env, uneval, None) {
                     Ok(val) => Self::Val(val, ty),
-                    Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
+                    Err(ErrorHandled::TooGeneric(_) | ErrorHandled::Linted) => self,
                     Err(_) => Self::Ty(tcx.const_error(ty)),
                 }
             }

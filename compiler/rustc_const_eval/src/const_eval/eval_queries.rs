@@ -239,7 +239,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
         key.param_env = key.param_env.with_user_facing();
         match tcx.eval_to_const_value_raw(key) {
             // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {}
+            Err(ErrorHandled::TooGeneric(_)) => {}
             // deduplicate calls
             other => return other,
         }
@@ -281,7 +281,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         key.param_env = key.param_env.with_user_facing();
         match tcx.eval_to_allocation_raw(key) {
             // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {}
+            Err(ErrorHandled::TooGeneric(_)) => {}
             // deduplicate calls
             other => return other,
         }

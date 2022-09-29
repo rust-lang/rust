@@ -66,7 +66,7 @@ where
 
     let mut vis = UsedParamsNeedSubstVisitor { tcx };
     if matches!(ty.visit_with(&mut vis), ControlFlow::Break(FoundParam)) {
-        throw_inval!(TooGeneric);
+        throw_inval!(TooGeneric(0));
     } else {
         Ok(())
     }

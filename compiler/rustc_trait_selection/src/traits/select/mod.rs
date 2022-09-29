@@ -728,7 +728,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 "ConstEquate: const_eval_resolve returned an unexpected error"
                             )
                         }
-                        (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                        (Err(ErrorHandled::TooGeneric(_)), _)
+                        | (_, Err(ErrorHandled::TooGeneric(_))) => {
                             if c1.has_infer_types_or_consts() || c2.has_infer_types_or_consts() {
                                 Ok(EvaluatedToAmbig)
                             } else {

@@ -512,7 +512,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     format!("failed to normalize {}", e.get_type_for_failure()).as_str(),
                 );
 
-                InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric)
+                InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric(7))
             })
     }
 
@@ -527,7 +527,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("substs: {:#?}", substs);
         match ty::Instance::resolve_opt_const_arg(*self.tcx, self.param_env, def, substs) {
             Ok(Some(instance)) => Ok(instance),
-            Ok(None) => throw_inval!(TooGeneric),
+            Ok(None) => throw_inval!(TooGeneric(6)),
 
             // FIXME(eddyb) this could be a bit more specific than `AlreadyReported`.
             Err(error_reported) => throw_inval!(AlreadyReported(error_reported)),

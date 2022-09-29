@@ -204,8 +204,8 @@ impl<'tcx> ConstEvalErr<'tcx> {
         // Special handling for certain errors
         match &self.error {
             // Don't emit a new diagnostic for these errors
-            err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
-                return ErrorHandled::TooGeneric;
+            err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric(_)) => {
+                return ErrorHandled::TooGeneric(11);
             }
             err_inval!(AlreadyReported(error_reported)) => {
                 return ErrorHandled::Reported(*error_reported);

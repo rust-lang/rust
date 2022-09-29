@@ -20,7 +20,7 @@ pub enum ErrorHandled {
     Linted,
     /// Don't emit an error, the evaluation failed because the MIR was generic
     /// and the substs didn't fully monomorphize it.
-    TooGeneric,
+    TooGeneric(usize),
 }
 
 impl From<ErrorGuaranteed> for ErrorHandled {
@@ -95,7 +95,7 @@ impl From<ErrorHandled> for InterpErrorInfo<'_> {
             ErrorHandled::Reported(ErrorGuaranteed { .. }) | ErrorHandled::Linted => {
                 err_inval!(ReferencedConstant)
             }
-            ErrorHandled::TooGeneric => err_inval!(TooGeneric),
+            ErrorHandled::TooGeneric(reason) => err_inval!(TooGeneric(reason)),
         }
         .into()
     }
@@ -137,7 +137,7 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
 /// where we work on generic code or execution does not have all information available.
 pub enum InvalidProgramInfo<'tcx> {
     /// Resolution can fail if we are in a too generic context.
-    TooGeneric,
+    TooGeneric(usize),
     /// Cannot compute this constant because it depends on another one
     /// which already produced an error.
     ReferencedConstant,
@@ -157,7 +157,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InvalidProgramInfo::*;
         match self {
-            TooGeneric => write!(f, "encountered overly generic constant"),
+            TooGeneric(_) => write!(f, "encountered overly generic constant"),
             ReferencedConstant => write!(f, "referenced constant has errors"),
             AlreadyReported(ErrorGuaranteed { .. }) => {
                 write!(f, "encountered constants with type errors, stopping evaluation")

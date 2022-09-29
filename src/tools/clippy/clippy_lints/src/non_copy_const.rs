@@ -179,7 +179,7 @@ fn is_value_unfrozen_raw<'tcx>(
             // similar to 2., but with the a frozen variant) (e.g. borrowing
             // `borrow_interior_mutable_const::enums::AssocConsts::TO_BE_FROZEN_VARIANT`).
             // I chose this way because unfrozen enums as assoc consts are rare (or, hopefully, none).
-            err == ErrorHandled::TooGeneric
+            matches!(err, ErrorHandled::TooGeneric(_))
         },
         |val| inner(cx, mir::ConstantKind::from_value(val, ty)),
     )

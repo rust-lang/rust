@@ -1745,7 +1745,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if ct.unify_failure_kind(self.tcx) == FailureKind::Concrete {
                         substs = replace_param_and_infer_substs_with_placeholder(self.tcx, substs);
                     } else {
-                        return Err(ErrorHandled::TooGeneric);
+                        return Err(ErrorHandled::TooGeneric(1));
                     }
                 }
                 Err(guar) => return Err(ErrorHandled::Reported(guar)),

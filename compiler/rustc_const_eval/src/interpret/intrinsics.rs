@@ -80,7 +80,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::Opaque(_, _)
             | ty::Param(_)
             | ty::Placeholder(_)
-            | ty::Infer(_) => throw_inval!(TooGeneric),
+            | ty::Infer(_) => throw_inval!(TooGeneric(4)),
             ty::Bound(_, _) => bug!("bound ty during ctfe"),
             ty::Bool
             | ty::Char

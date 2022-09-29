@@ -539,7 +539,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     pattern
                 }
             }
-            Err(ErrorHandled::TooGeneric) => {
+            Err(ErrorHandled::TooGeneric(_)) => {
                 // While `Reported | Linted` cases will have diagnostics emitted already
                 // it is not true for TooGeneric case, so we need to give user more information.
                 self.tcx.sess.span_err(span, "constant pattern depends on a generic parameter");

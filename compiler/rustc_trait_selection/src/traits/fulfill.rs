@@ -523,13 +523,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             ) {
                                 Ok(val) => Ok(val),
                                 Err(e) => match e {
-                                    ErrorHandled::TooGeneric => {
+                                    ErrorHandled::TooGeneric(reason) => {
                                         stalled_on.extend(
                                             unevaluated.substs.iter().filter_map(
                                                 TyOrConstInferVar::maybe_from_generic_arg,
                                             ),
                                         );
-                                        Err(ErrorHandled::TooGeneric)
+                                        Err(ErrorHandled::TooGeneric(reason))
                                     }
                                     _ => Err(e),
                                 },
@@ -568,7 +568,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 "ConstEquate: const_eval_resolve returned an unexpected error"
                             )
                         }
-                        (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                        (Err(ErrorHandled::TooGeneric(_)), _)
+                        | (_, Err(ErrorHandled::TooGeneric(_))) => {
                             if c1.has_infer_types_or_consts() || c2.has_infer_types_or_consts() {
                                 ProcessResult::Unchanged
                             } else {

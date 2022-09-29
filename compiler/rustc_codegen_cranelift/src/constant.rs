@@ -52,7 +52,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
                 ErrorHandled::Reported(_) | ErrorHandled::Linted => {
                     fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
                 }
-                ErrorHandled::TooGeneric => {
+                ErrorHandled::TooGeneric(_) => {
                     span_bug!(constant.span, "codegen encountered polymorphic constant: {:?}", err);
                 }
             }

@@ -185,7 +185,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
         }
         let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));
         match concrete {
-            Err(ErrorHandled::TooGeneric) => {
+            Err(ErrorHandled::TooGeneric(_)) => {
                 Err(NotConstEvaluatable::Error(infcx.tcx.sess.delay_span_bug(
                     span,
                     format!("Missing value for constant, but no error reported?"),
@@ -235,7 +235,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                   .emit()
             }
 
-            Err(ErrorHandled::TooGeneric) => Err(if uv.has_infer_types_or_consts() {
+            Err(ErrorHandled::TooGeneric(_)) => Err(if uv.has_infer_types_or_consts() {
                 NotConstEvaluatable::MentionsInfer
                 } else if uv.has_param_types_or_consts() {
                 NotConstEvaluatable::MentionsParam

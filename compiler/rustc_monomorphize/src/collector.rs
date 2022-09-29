@@ -774,7 +774,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                         // The `monomorphize` call should have evaluated that constant already.
                         Ok(val) => val,
                         Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
-                        Err(ErrorHandled::TooGeneric) => span_bug!(
+                        Err(ErrorHandled::TooGeneric(_)) => span_bug!(
                             self.body.source_info(location).span,
                             "collection encountered polymorphic constant: {:?}",
                             literal
@@ -789,7 +789,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     // The `monomorphize` call should have evaluated that constant already.
                     Ok(val) => val,
                     Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
-                    Err(ErrorHandled::TooGeneric) => span_bug!(
+                    Err(ErrorHandled::TooGeneric(_)) => span_bug!(
                         self.body.source_info(location).span,
                         "collection encountered polymorphic constant: {:?}",
                         literal
