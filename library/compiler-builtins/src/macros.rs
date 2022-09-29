@@ -266,6 +266,7 @@ macro_rules! intrinsics {
         #[cfg(target_arch = "arm")]
         pub mod $alias {
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
             pub extern "aapcs" fn $alias( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
