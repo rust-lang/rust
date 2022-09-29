@@ -603,7 +603,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// # Platform-specific behavior
 ///
 /// On Unix, returns the value of the `TMPDIR` environment variable if it is
-/// set, otherwise for non-Android it returns `/tmp`. If Android, since there
+/// set, otherwise for non-Android it returns `/tmp`. On Android, since there
 /// is no global temporary folder (it is usually allocated per-app), it returns
 /// `/data/local/tmp`.
 /// On Windows, the behavior is equivalent to that of [`GetTempPath2`][GetTempPath2] /
