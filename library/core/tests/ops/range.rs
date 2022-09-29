@@ -204,55 +204,74 @@ fn test_cmp_range() {
     use core::cmp::Ordering::{Equal, Greater, Less};
 
     // Range
-    assert_eq!((50..150).cmp_scalar(40), Greater);
-    assert_eq!((50..150).cmp_scalar(49), Greater);
-    assert_eq!((50..150).cmp_scalar(50), Equal);
-    assert_eq!((50..150).cmp_scalar(51), Equal);
-    assert_eq!((50..150).cmp_scalar(100), Equal);
-    assert_eq!((50..150).cmp_scalar(149), Equal);
-    assert_eq!((50..150).cmp_scalar(150), Less);
-    assert_eq!((50..150).cmp_scalar(151), Less);
-    assert_eq!((50..150).cmp_scalar(160), Less);
+    assert_eq!((50..150).cmp_scalar(40), Some(Greater));
+    assert_eq!((50..150).cmp_scalar(49), Some(Greater));
+    assert_eq!((50..150).cmp_scalar(50), Some(Equal));
+    assert_eq!((50..150).cmp_scalar(51), Some(Equal));
+    assert_eq!((50..150).cmp_scalar(100), Some(Equal));
+    assert_eq!((50..150).cmp_scalar(149), Some(Equal));
+    assert_eq!((50..150).cmp_scalar(150), Some(Less));
+    assert_eq!((50..150).cmp_scalar(151), Some(Less));
+    assert_eq!((50..150).cmp_scalar(160), Some(Less));
 
     // RangeInclusive
-    assert_eq!((50..=150).cmp_scalar(40), Greater);
-    assert_eq!((50..=150).cmp_scalar(49), Greater);
-    assert_eq!((50..=150).cmp_scalar(50), Equal);
-    assert_eq!((50..=150).cmp_scalar(51), Equal);
-    assert_eq!((50..=150).cmp_scalar(100), Equal);
-    assert_eq!((50..=150).cmp_scalar(149), Equal);
-    assert_eq!((50..=150).cmp_scalar(150), Equal);
-    assert_eq!((50..=150).cmp_scalar(151), Less);
-    assert_eq!((50..=150).cmp_scalar(160), Less);
+    assert_eq!((50..=150).cmp_scalar(40), Some(Greater));
+    assert_eq!((50..=150).cmp_scalar(49), Some(Greater));
+    assert_eq!((50..=150).cmp_scalar(50), Some(Equal));
+    assert_eq!((50..=150).cmp_scalar(51), Some(Equal));
+    assert_eq!((50..=150).cmp_scalar(100), Some(Equal));
+    assert_eq!((50..=150).cmp_scalar(149), Some(Equal));
+    assert_eq!((50..=150).cmp_scalar(150), Some(Equal));
+    assert_eq!((50..=150).cmp_scalar(151), Some(Less));
+    assert_eq!((50..=150).cmp_scalar(160), Some(Less));
 
     // RangeFrom
-    assert_eq!((50..).cmp_scalar(49), Greater);
-    assert_eq!((50..).cmp_scalar(50), Equal);
-    assert_eq!((50..).cmp_scalar(51), Equal);
-    assert_eq!((50..).cmp_scalar(100), Equal);
-    assert_eq!((50..).cmp_scalar(u32::MAX), Equal);
+    assert_eq!((50..).cmp_scalar(49), Some(Greater));
+    assert_eq!((50..).cmp_scalar(50), Some(Equal));
+    assert_eq!((50..).cmp_scalar(51), Some(Equal));
+    assert_eq!((50..).cmp_scalar(100), Some(Equal));
+    assert_eq!((50..).cmp_scalar(u32::MAX), Some(Equal));
 
     // RangeTo
-    assert_eq!((..150).cmp_scalar(u32::MIN), Equal);
-    assert_eq!((..150).cmp_scalar(149), Equal);
-    assert_eq!((..150).cmp_scalar(150), Less);
-    assert_eq!((..150).cmp_scalar(151), Less);
-    assert_eq!((..150).cmp_scalar(160), Less);
+    assert_eq!((..150).cmp_scalar(u32::MIN), Some(Equal));
+    assert_eq!((..150).cmp_scalar(149), Some(Equal));
+    assert_eq!((..150).cmp_scalar(150), Some(Less));
+    assert_eq!((..150).cmp_scalar(151), Some(Less));
+    assert_eq!((..150).cmp_scalar(160), Some(Less));
 
     // RangeToInclusive
-    assert_eq!((..=150).cmp_scalar(u32::MIN), Equal);
-    assert_eq!((..=150).cmp_scalar(149), Equal);
-    assert_eq!((..=150).cmp_scalar(150), Equal);
-    assert_eq!((..=150).cmp_scalar(151), Less);
-    assert_eq!((..=150).cmp_scalar(160), Less);
+    assert_eq!((..=150).cmp_scalar(u32::MIN), Some(Equal));
+    assert_eq!((..=150).cmp_scalar(149), Some(Equal));
+    assert_eq!((..=150).cmp_scalar(150), Some(Equal));
+    assert_eq!((..=150).cmp_scalar(151), Some(Less));
+    assert_eq!((..=150).cmp_scalar(160), Some(Less));
 
     // Empty ranges
-    assert_eq!((50..50).cmp_scalar(49), Greater);
-    assert_eq!((50..50).cmp_scalar(50), Less);
-    assert_eq!((50..50).cmp_scalar(51), Less);
+    assert_eq!((50..50).cmp_scalar(49), Some(Greater));
+    assert_eq!((50..50).cmp_scalar(50), Some(Less));
+    assert_eq!((50..50).cmp_scalar(51), Some(Less));
 
     // Almost-empty inclusive ranges
-    assert_eq!((50..=50).cmp_scalar(49), Greater);
-    assert_eq!((50..=50).cmp_scalar(50), Equal);
-    assert_eq!((50..=50).cmp_scalar(51), Less);
+    assert_eq!((50..=50).cmp_scalar(49), Some(Greater));
+    assert_eq!((50..=50).cmp_scalar(50), Some(Equal));
+    assert_eq!((50..=50).cmp_scalar(51), Some(Less));
+
+    // Degenerate ranges
+    assert_eq!((20..10).cmp_scalar(15), None);
+    assert_eq!((20..=10).cmp_scalar(15), None);
+
+    // Uncomparables
+    assert_eq!((10.0..20.0).cmp_scalar(f32::NAN), None);
+    assert_eq!((10.0..=20.0).cmp_scalar(f32::NAN), None);
+    assert_eq!((10.0..).cmp_scalar(f32::NAN), None);
+    assert_eq!((..20.0).cmp_scalar(f32::NAN), None);
+    assert_eq!((..=20.0).cmp_scalar(f32::NAN), None);
+
+    assert_eq!((10.0..f32::NAN).cmp_scalar(15.0), None);
+    assert_eq!((f32::NAN..20.0).cmp_scalar(15.0), None);
+    assert_eq!((10.0..=f32::NAN).cmp_scalar(15.0), None);
+    assert_eq!((f32::NAN..=20.0).cmp_scalar(15.0), None);
+    assert_eq!((f32::NAN..).cmp_scalar(15.0), None);
+    assert_eq!((..f32::NAN).cmp_scalar(15.0), None);
+    assert_eq!((..=f32::NAN).cmp_scalar(15.0), None);
 }

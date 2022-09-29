@@ -163,7 +163,7 @@
 #![feature(const_slice_index)]
 #![feature(const_is_char_boundary)]
 #![feature(const_cstr_methods)]
-#![feature(cmp_scalar)]
+#![feature(range_cmp_scalar)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
