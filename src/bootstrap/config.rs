@@ -73,6 +73,8 @@ pub struct Config {
     pub color: Color,
     pub patch_binaries_for_nix: bool,
     pub stage0_metadata: Stage0Metadata,
+    /// Whether to use the `c` feature of the `compiler_builtins` crate.
+    pub optimized_compiler_builtins: bool,
 
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -597,6 +599,7 @@ define_config! {
         bench_stage: Option<u32> = "bench-stage",
         patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
         metrics: Option<bool> = "metrics",
+        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
     }
 }
 
@@ -966,6 +969,7 @@ impl Config {
         set(&mut config.print_step_timings, build.print_step_timings);
         set(&mut config.print_step_rusage, build.print_step_rusage);
         set(&mut config.patch_binaries_for_nix, build.patch_binaries_for_nix);
+        set(&mut config.optimized_compiler_builtins, build.optimized_compiler_builtins);
 
         config.verbose = cmp::max(config.verbose, flags.verbose);
 

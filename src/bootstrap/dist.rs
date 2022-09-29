@@ -1844,23 +1844,21 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
 ///
 /// Returns whether the files were actually copied.
 fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) -> bool {
-    if let Some(config) = builder.config.target_config.get(&target) {
-        if config.llvm_config.is_some() && !builder.config.llvm_from_ci {
-            // If the LLVM was externally provided, then we don't currently copy
-            // artifacts into the sysroot. This is not necessarily the right
-            // choice (in particular, it will require the LLVM dylib to be in
-            // the linker's load path at runtime), but the common use case for
-            // external LLVMs is distribution provided LLVMs, and in that case
-            // they're usually in the standard search path (e.g., /usr/lib) and
-            // copying them here is going to cause problems as we may end up
-            // with the wrong files and isn't what distributions want.
-            //
-            // This behavior may be revisited in the future though.
-            //
-            // If the LLVM is coming from ourselves (just from CI) though, we
-            // still want to install it, as it otherwise won't be available.
-            return false;
-        }
+    if !builder.is_rust_llvm(target) {
+        // If the LLVM was externally provided, then we don't currently copy
+        // artifacts into the sysroot. This is not necessarily the right
+        // choice (in particular, it will require the LLVM dylib to be in
+        // the linker's load path at runtime), but the common use case for
+        // external LLVMs is distribution provided LLVMs, and in that case
+        // they're usually in the standard search path (e.g., /usr/lib) and
+        // copying them here is going to cause problems as we may end up
+        // with the wrong files and isn't what distributions want.
+        //
+        // This behavior may be revisited in the future though.
+        //
+        // If the LLVM is coming from ourselves (just from CI) though, we
+        // still want to install it, as it otherwise won't be available.
+        return false;
     }
 
     // On macOS, rustc (and LLVM tools) link to an unversioned libLLVM.dylib
