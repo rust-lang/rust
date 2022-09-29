@@ -1,13 +1,179 @@
 error[E0599]: `usize` is not an iterator
-  --> $DIR/issue-90315.rs:3:26
+  --> $DIR/issue-90315.rs:4:28
    |
-LL |   for _i in 0..arr.len().rev() {
-   |                          ^^^ `usize` is not an iterator
+LL |     for _i in 0..arr.len().rev() {
+   |                            ^^^ `usize` is not an iterator
+   |
+help: you must surround the range in parentheses to call the `rev` function
+   |
+LL |     for _i in (0..arr.len()).rev() {
+   |               +            +
+
+error[E0599]: `{integer}` is not an iterator
+  --> $DIR/issue-90315.rs:12:20
+   |
+LL |     for i in 1..11.rev() {
+   |                    ^^^ `{integer}` is not an iterator
+   |
+help: you must surround the range in parentheses to call the `rev` function
+   |
+LL |     for i in (1..11).rev() {
+   |              +     +
+
+error[E0599]: `usize` is not an iterator
+  --> $DIR/issue-90315.rs:18:21
+   |
+LL |     for i in 1..end.rev() {
+   |                     ^^^ `usize` is not an iterator
+   |
+help: you must surround the range in parentheses to call the `rev` function
+   |
+LL |     for i in (1..end).rev() {
+   |              +      +
+
+error[E0599]: `usize` is not an iterator
+  --> $DIR/issue-90315.rs:23:27
+   |
+LL |     for i in 1..(end + 1).rev() {
+   |                           ^^^ `usize` is not an iterator
+   |
+help: you must surround the range in parentheses to call the `rev` function
+   |
+LL |     for i in (1..(end + 1)).rev() {
+   |              +            +
+
+error[E0599]: `usize` is not an iterator
+  --> $DIR/issue-90315.rs:28:21
+   |
+LL |     if 1..(end + 1).is_empty() {
+   |                     ^^^^^^^^ `usize` is not an iterator
+   |
+help: you must surround the range in parentheses to call the `is_empty` function
+   |
+LL |     if (1..(end + 1)).is_empty() {
+   |        +            +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:28:8
+   |
+LL |     if 1..(end + 1).is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+            found struct `std::ops::Range<{integer}>`
+
+error[E0599]: `usize` is not an iterator
+  --> $DIR/issue-90315.rs:34:21
+   |
+LL |     if 1..(end + 1).is_sorted() {
+   |                     ^^^^^^^^^ `usize` is not an iterator
+   |
+help: you must surround the range in parentheses to call the `is_sorted` function
+   |
+LL |     if (1..(end + 1)).is_sorted() {
+   |        +            +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:34:8
+   |
+LL |     if 1..(end + 1).is_sorted() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+            found struct `std::ops::Range<{integer}>`
+
+error[E0599]: `{integer}` is not an iterator
+  --> $DIR/issue-90315.rs:40:26
+   |
+LL |     let _res: i32 = 3..6.take(2).sum();
+   |                          ^^^^ `{integer}` is not an iterator
+   |
+help: you must surround the range in parentheses to call the `take` function
+   |
+LL |     let _res: i32 = (3..6).take(2).sum();
+   |                     +    +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:40:21
+   |
+LL |     let _res: i32 = 3..6.take(2).sum();
+   |               ---   ^^^^^^^^^^^^^^^^^^ expected `i32`, found struct `std::ops::Range`
+   |               |
+   |               expected due to this
+   |
+   = note: expected type `i32`
+            found struct `std::ops::Range<{integer}>`
+
+error[E0599]: `{integer}` is not an iterator
+  --> $DIR/issue-90315.rs:45:26
+   |
+LL |     let _sum: i32 = 3..6.sum();
+   |                          ^^^ `{integer}` is not an iterator
+   |
+help: you must surround the range in parentheses to call the `sum` function
+   |
+LL |     let _sum: i32 = (3..6).sum();
+   |                     +    +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:45:21
+   |
+LL |     let _sum: i32 = 3..6.sum();
+   |               ---   ^^^^^^^^^^ expected `i32`, found struct `std::ops::Range`
+   |               |
+   |               expected due to this
+   |
+   = note: expected type `i32`
+            found struct `std::ops::Range<{integer}>`
+
+error[E0599]: `usize` is not an iterator
+  --> $DIR/issue-90315.rs:53:21
+   |
+LL |     for _a in a..=b.rev() {
+   |                     ^^^ `usize` is not an iterator
+   |
+help: you must surround the range in parentheses to call the `rev` function
+   |
+LL |     for _a in (a..=b).rev() {
+   |               +     +
+
+error[E0599]: `{integer}` is not an iterator
+  --> $DIR/issue-90315.rs:58:21
+   |
+LL |     let _res = ..10.contains(3);
+   |                     ^^^^^^^^ `{integer}` is not an iterator
+   |
+help: you must surround the range in parentheses to call the `contains` function
+   |
+LL |     let _res = (..10).contains(3);
+   |                +    +
+
+error[E0599]: no method named `error_method` found for type `usize` in the current scope
+  --> $DIR/issue-90315.rs:62:15
+   |
+LL |     if 1..end.error_method() {
+   |               ^^^^^^^^^^^^ method not found in `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:62:8
+   |
+LL |     if 1..end.error_method() {
+   |        ^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+            found struct `std::ops::Range<{integer}>`
+
+error[E0599]: `usize` is not an iterator
+  --> $DIR/issue-90315.rs:68:18
+   |
+LL |     let _res = b.take(1)..a;
+   |                  ^^^^ `usize` is not an iterator
    |
    = note: the following trait bounds were not satisfied:
            `usize: Iterator`
            which is required by `&mut usize: Iterator`
 
-error: aborting due to previous error
+error: aborting due to 17 previous errors
 
-For more information about this error, try `rustc --explain E0599`.
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.

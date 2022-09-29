@@ -2,6 +2,7 @@
 //! found or is otherwise invalid.
 
 use crate::check::FnCtxt;
+use crate::errors;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
@@ -12,7 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, Node, QPath};
+use rustc_hir::{is_range_literal, ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
@@ -271,9 +272,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
 
-                if self.suggest_constraining_numerical_ty(
-                    tcx, actual, source, span, item_kind, item_name, &ty_str,
-                ) {
+                if self.suggest_range_for_iter(tcx, actual, source, span, item_name, &ty_str)
+                    || self.suggest_constraining_numerical_ty(
+                        tcx, actual, source, span, item_kind, item_name, &ty_str,
+                    )
+                {
                     return None;
                 }
 
@@ -1201,6 +1204,69 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    fn suggest_range_for_iter(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        actual: Ty<'tcx>,
+        source: SelfSource<'tcx>,
+        span: Span,
+        item_name: Ident,
+        ty_str: &str,
+    ) -> bool {
+        if let SelfSource::MethodCall(expr) = source {
+            let mut search_limit = 5;
+            for (_, parent) in tcx.hir().parent_iter(expr.hir_id) {
+                search_limit -= 1;
+                if search_limit == 0 {
+                    break;
+                }
+
+                if let Node::Expr(parent_expr) = parent && is_range_literal(parent_expr) {
+                    let span_included = match parent_expr.kind {
+                            hir::ExprKind::Struct(_, eps, _) =>
+                                eps.len() > 0 && eps.last().map_or(false, |ep| ep.span.contains(span)),
+                            // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
+                            hir::ExprKind::Call(ref func, ..) => func.span.contains(span),
+                            _ => false,
+                    };
+
+                    if !span_included {
+                        continue;
+                    }
+
+                    let range_def_id = self.tcx.lang_items().range_struct().unwrap();
+                    let range_ty = self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
+
+                    // avoid suggesting when the method name is not implemented for a `range`
+                    let pick =  self.lookup_probe(
+                        span,
+                        item_name,
+                        range_ty,
+                        expr,
+                        ProbeScope::AllTraits
+                    );
+
+                    if pick.is_ok() {
+                        let range_span = parent_expr.span.with_hi(expr.span.hi());
+                        tcx.sess.emit_err(errors::MissingParentheseInRange {
+                            span: span,
+                            ty_str: ty_str.to_string(),
+                            add_missing_parentheses: Some(
+                                errors::AddMissingParenthesesInRange {
+                                    func_name: item_name.name.as_str().to_string(),
+                                    left: range_span.shrink_to_lo(),
+                                    right: range_span.shrink_to_hi(),
+                                }
+                            )
+                        });
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
     fn suggest_constraining_numerical_ty(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -1263,7 +1329,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // If this is a floating point literal that ends with '.',
                     // get rid of it to stop this from becoming a member access.
                     let snippet = snippet.strip_suffix('.').unwrap_or(&snippet);
-
                     err.span_suggestion(
                         lit.span,
                         &format!(
