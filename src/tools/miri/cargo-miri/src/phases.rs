@@ -1,7 +1,6 @@
 //! Implements the various phases of `cargo miri run/test`.
 
 use std::env;
-use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::PathBuf;
@@ -39,17 +38,13 @@ fn show_help() {
 }
 
 fn show_version() {
-    let mut version = format!("miri {}", env!("CARGO_PKG_VERSION"));
-    // Only use `option_env` on vergen variables to ensure the build succeeds
-    // when vergen failed to find the git info.
-    if let Some(sha) = option_env!("VERGEN_GIT_SHA_SHORT") {
-        // This `unwrap` can never fail because if VERGEN_GIT_SHA_SHORT exists, then so does
-        // VERGEN_GIT_COMMIT_DATE.
-        #[allow(clippy::option_env_unwrap)]
-        write!(&mut version, " ({} {})", sha, option_env!("VERGEN_GIT_COMMIT_DATE").unwrap())
-            .unwrap();
+    print!("miri {}", env!("CARGO_PKG_VERSION"));
+    let version = format!("{} {}", env!("GIT_HASH"), env!("COMMIT_DATE"));
+    if version.len() > 1 {
+        // If there is actually something here, print it.
+        print!(" ({version})");
     }
-    println!("{}", version);
+    println!();
 }
 
 fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut Command) {
