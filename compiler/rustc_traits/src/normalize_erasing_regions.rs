@@ -18,9 +18,6 @@ pub(crate) fn provide(p: &mut Providers) {
 
             try_normalize_after_erasing_regions(tcx, goal)
         },
-        try_normalize_mir_const_after_erasing_regions: |tcx, goal| {
-            try_normalize_after_erasing_regions(tcx, goal)
-        },
         ..*p
     };
 }
