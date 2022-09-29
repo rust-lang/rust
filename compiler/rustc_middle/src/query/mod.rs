@@ -274,9 +274,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query shallow_lint_levels_on(key: HirId) -> rustc_middle::lint::ShallowLintLevelMap {
+    query shallow_lint_levels_on(key: hir::OwnerId) -> rustc_middle::lint::ShallowLintLevelMap {
+        eval_always // fetches `resolutions`
         arena_cache
-        desc { |tcx| "looking up lint levels for `{}`", key }
+        desc { |tcx| "looking up lint levels for `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
     query lint_expectations(_: ()) -> Vec<(LintExpectationId, LintExpectation)> {

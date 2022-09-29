@@ -1,8 +1,9 @@
 use std::cmp;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, MultiSpan};
-use rustc_hir::HirId;
+use rustc_hir::{HirId, ItemLocalId};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
     FutureIncompatibilityReason, Level, Lint, LintId,
@@ -62,7 +63,7 @@ pub type LevelAndSource = (Level, LintLevelSource);
 /// by the attributes for *a single HirId*.
 #[derive(Default, Debug, HashStable)]
 pub struct ShallowLintLevelMap {
-    pub specs: FxHashMap<LintId, LevelAndSource>,
+    pub specs: VecMap<ItemLocalId, FxHashMap<LintId, LevelAndSource>>,
 }
 
 /// From an initial level and source, verify the effect of special annotations:
@@ -116,19 +117,30 @@ impl ShallowLintLevelMap {
     /// Perform a deep probe in the HIR tree looking for the actual level for the lint.
     /// This lint level is not usable for diagnostics, it needs to be corrected by
     /// `reveal_actual_level` beforehand.
+    #[instrument(level = "trace", skip(self, tcx), ret)]
     fn probe_for_lint_level(
         &self,
         tcx: TyCtxt<'_>,
         id: LintId,
         start: HirId,
     ) -> (Option<Level>, LintLevelSource) {
-        if let Some(&(level, src)) = self.specs.get(&id) {
+        if let Some(map) = self.specs.get(&start.local_id)
+            && let Some(&(level, src)) = map.get(&id)
+        {
             return (Some(level), src);
         }
 
+        let mut owner = start.owner;
+        let mut specs = &self.specs;
+
         for parent in tcx.hir().parent_id_iter(start) {
-            let specs = tcx.shallow_lint_levels_on(parent);
-            if let Some(&(level, src)) = specs.specs.get(&id) {
+            if parent.owner != owner {
+                owner = parent.owner;
+                specs = &tcx.shallow_lint_levels_on(owner).specs;
+            }
+            if let Some(map) = specs.get(&parent.local_id)
+                && let Some(&(level, src)) = map.get(&id)
+            {
                 return (Some(level), src);
             }
         }
@@ -137,6 +149,7 @@ impl ShallowLintLevelMap {
     }
 
     /// Fetch and return the user-visible lint level for the given lint at the given HirId.
+    #[instrument(level = "trace", skip(self, tcx), ret)]
     pub fn lint_level_id_at_node(
         &self,
         tcx: TyCtxt<'_>,
@@ -154,7 +167,7 @@ impl ShallowLintLevelMap {
 impl TyCtxt<'_> {
     /// Fetch and return the user-visible lint level for the given lint at the given HirId.
     pub fn lint_level_at_node(self, lint: &'static Lint, id: HirId) -> (Level, LintLevelSource) {
-        self.shallow_lint_levels_on(id).lint_level_id_at_node(self, LintId::of(lint), id)
+        self.shallow_lint_levels_on(id.owner).lint_level_id_at_node(self, LintId::of(lint), id)
     }
 
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.
