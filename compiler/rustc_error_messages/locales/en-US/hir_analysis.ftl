@@ -133,3 +133,8 @@ hir_analysis_extern_crate_not_idiomatic =
     .suggestion = convert it to a `{$msg_code}`
 
 hir_analysis_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
+hir_analysis_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
+
+hir_analysis_missing_parentheses_in_range = `{$ty_str}` is not an iterator
+
+hir_analysis_add_missing_parentheses_in_range = you must surround the range in parentheses to call the `{$func_name}` function
