@@ -721,6 +721,160 @@ macro_rules! nonzero_signed_operations {
                     // SAFETY: absolute value of nonzero cannot yield zero values.
                     unsafe { $Uty::new_unchecked(self.get().unsigned_abs()) }
                 }
+
+                /// Returns `true` if `self` is negative and `false` if the
+                /// number is positive.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                ///
+                /// assert!(neg_five.is_negative());
+                /// assert!(!pos_five.is_negative());
+                /// # Some(())
+                /// # }
+                /// ```
+                #[must_use]
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn is_negative(self) -> bool {
+                    self.get().is_negative()
+                }
+
+                /// Checked negation. Computes `-self`, returning `None` if `self == i32::MIN`.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!(pos_five.checked_neg(), Some(neg_five));
+                /// assert_eq!(min.checked_neg(), None);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn checked_neg(self) -> Option<$Ty> {
+                    if let Some(result) = self.get().checked_neg() {
+                        // SAFETY: negation of nonzero cannot yield zero values.
+                        return Some(unsafe { $Ty::new_unchecked(result) });
+                    }
+                    None
+                }
+
+                /// Negates self, overflowing if this is equal to the minimum value.
+                ///
+                #[doc = concat!("See [`", stringify!($Int), "::overflowing_neg`]")]
+                /// for documentation on overflow behaviour.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!(pos_five.overflowing_neg(), (neg_five, false));
+                /// assert_eq!(min.overflowing_neg(), (min, true));
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn overflowing_neg(self) -> ($Ty, bool) {
+                    let (result, overflow) = self.get().overflowing_neg();
+                    // SAFETY: negation of nonzero cannot yield zero values.
+                    ((unsafe { $Ty::new_unchecked(result) }), overflow)
+                }
+
+                /// Saturating negation. Computes `-self`, returning `MAX` if
+                /// `self == i32::MIN` instead of overflowing.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                #[doc = concat!("let min_plus_one = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN + 1)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(pos_five.saturating_neg(), neg_five);
+                /// assert_eq!(min.saturating_neg(), max);
+                /// assert_eq!(max.saturating_neg(), min_plus_one);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn saturating_neg(self) -> $Ty {
+                    if let Some(result) = self.checked_neg() {
+                        return result;
+                    }
+                    $Ty::MAX
+                }
+
+                /// Wrapping (modular) negation. Computes `-self`, wrapping around at the boundary
+                /// of the type.
+                ///
+                #[doc = concat!("See [`", stringify!($Int), "::wrapping_neg`]")]
+                /// for documentation on overflow behaviour.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!(pos_five.wrapping_neg(), neg_five);
+                /// assert_eq!(min.wrapping_neg(), min);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn wrapping_neg(self) -> $Ty {
+                    let result = self.get().wrapping_neg();
+                    // SAFETY: negation of nonzero cannot yield zero values.
+                    unsafe { $Ty::new_unchecked(result) }
+                }
             }
         )+
     }
