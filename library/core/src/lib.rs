@@ -104,7 +104,6 @@
 #![feature(const_black_box)]
 #![feature(const_caller_location)]
 #![feature(const_cell_into_inner)]
-#![feature(const_char_convert)]
 #![feature(const_char_from_u32_unchecked)]
 #![feature(const_clone)]
 #![feature(const_cmp)]
