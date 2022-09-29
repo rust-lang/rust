@@ -13,7 +13,7 @@ goto: file://|DOC_PATH|/test_docs/type.SomeType.html
 assert-css: (".top-doc .docblock p", {"font-weight": "400"}, ALL)
 
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
-assert-css: (".impl-items .method", {"font-weight": "600"}, ALL)
+assert-css: (".impl-items .method > .code-header", {"font-weight": "600"}, ALL)
 
 goto: file://|DOC_PATH|/lib2/trait.Trait.html
 
@@ -41,4 +41,4 @@ assert-count: (".methods .associatedtype", 1)
 assert-css: (".methods .associatedtype", {"font-weight": "600"})
 assert-count: (".methods .constant", 1)
 assert-css: (".methods .constant", {"font-weight": "600"})
-assert-css: (".methods .method", {"font-weight": "600"})
+assert-css: (".methods .method > .code-header", {"font-weight": "600"})
