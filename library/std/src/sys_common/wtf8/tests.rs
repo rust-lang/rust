@@ -353,6 +353,26 @@ fn wtf8buf_into_string_lossy() {
 }
 
 #[test]
+fn wtf8buf_into_string_split() {
+    // is_known_utf8
+    let mut string = Wtf8Buf::from_str("aé");
+    assert_eq!(string.clone().into_string_split(), (String::from("aé"), Wtf8Buf::new()),);
+
+    // !is_known_utf8, next_surrogate(0).is_none()
+    string.push_char(' ');
+    string.push(CodePoint::from_u32(0xD83D).unwrap());
+    string.push(CodePoint::from_u32(0xDCA9).unwrap());
+    assert_eq!(string.clone().into_string_split(), (String::from("aé 💩"), Wtf8Buf::new()),);
+
+    // !is_known_utf8, next_surrogate(0).is_some()
+    string.push(CodePoint::from_u32(0xD800).unwrap());
+    assert_eq!(
+        string.clone().into_string_split(),
+        (String::from("aé 💩"), Wtf8Buf::from_wide(&[0xD800])),
+    );
+}
+
+#[test]
 fn wtf8buf_from_iterator() {
     fn f(values: &[u32]) -> Wtf8Buf {
         values.iter().map(|&c| CodePoint::from_u32(c).unwrap()).collect::<Wtf8Buf>()
@@ -536,6 +556,20 @@ fn wtf8_to_string_lossy() {
     string.push(CodePoint::from_u32(0xD800).unwrap());
     let expected: Cow<'_, str> = Cow::Owned(String::from("aé 💩�"));
     assert_eq!(string.to_string_lossy(), expected);
+}
+
+#[test]
+fn wtf8_to_str_split() {
+    // next_surrogate(0).is_none()
+    let mut string = Wtf8Buf::from_str("aé 💩");
+    assert_eq!(string.as_slice().to_str_split(), ("aé 💩", Wtf8::from_str("")),);
+
+    // next_surrogate(0).is_some()
+    string.push(CodePoint::from_u32(0xD800).unwrap());
+    assert_eq!(
+        string.as_slice().to_str_split(),
+        ("aé 💩", Wtf8Buf::from_wide(&[0xD800]).as_slice()),
+    );
 }
 
 #[test]

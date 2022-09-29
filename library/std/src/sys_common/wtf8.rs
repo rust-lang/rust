@@ -441,6 +441,42 @@ impl Wtf8Buf {
         }
     }
 
+    /// Consumes the WTF-8 string and converts it to a (UTF-8, WTF-8) pair.
+    ///
+    /// This does not copy the data.
+    ///
+    /// The first element of the return value is the longest prefix of valid
+    /// UTF-8, with the second element being the remainder.
+    pub fn into_string_split(self) -> (String, Wtf8Buf) {
+        if self.is_known_utf8 {
+            // SAFETY: The inner value is known to be UTF-8.
+            let utf8 = unsafe { String::from_utf8_unchecked(self.bytes) };
+            return (utf8, Wtf8Buf::new());
+        }
+
+        let surrogate_pos = match self.next_surrogate(0) {
+            None => {
+                // SAFETY: Well-formed WTF-8 that contains no surrogates is
+                // also well-formed UTF-8.
+                let utf8 = unsafe { String::from_utf8_unchecked(self.bytes) };
+                return (utf8, Wtf8Buf::new());
+            }
+            Some((surrogate_pos, _)) => surrogate_pos,
+        };
+
+        if surrogate_pos == 0 {
+            return (String::new(), self);
+        }
+
+        let mut utf8_bytes = self.bytes;
+        let wtf8_bytes = utf8_bytes.split_off(surrogate_pos);
+        // SAFETY: `utf8_bytes` is a prefix of a WTF-8 value that contains no
+        // surrogates, and well-formed WTF-8 that contains no surrogates is
+        // also well-formed UTF-8.
+        let utf8 = unsafe { String::from_utf8_unchecked(utf8_bytes) };
+        (utf8, Wtf8Buf { bytes: wtf8_bytes, is_known_utf8: false })
+    }
+
     /// Converts this `Wtf8Buf` into a boxed `Wtf8`.
     #[inline]
     pub fn into_box(self) -> Box<Wtf8> {
@@ -661,6 +697,38 @@ impl Wtf8 {
                     return Cow::Owned(unsafe { String::from_utf8_unchecked(utf8_bytes) });
                 }
             }
+        }
+    }
+
+    /// Losslessly split a WTF-8 string into to a (UTF-8, WTF-8) pair.
+    ///
+    /// This does not copy the data.
+    ///
+    /// The first element of the return value is the longest prefix of valid
+    /// UTF-8, with the second element being the remainder.
+    pub fn to_str_split(&self) -> (&str, &Wtf8) {
+        let surrogate_pos = match self.next_surrogate(0) {
+            None => {
+                // SAFETY: Well-formed WTF-8 that contains no surrogates is
+                // also well-formed UTF-8.
+                let utf8 = unsafe { str::from_utf8_unchecked(&self.bytes) };
+                return (utf8, Wtf8::from_str(""));
+            }
+            Some((surrogate_pos, _)) => surrogate_pos,
+        };
+
+        if surrogate_pos == 0 {
+            return ("", self);
+        }
+
+        let (utf8_bytes, wtf8_bytes) = self.bytes.split_at(surrogate_pos);
+        // SAFETY: `utf8_bytes` is a prefix of a WTF-8 value that contains no
+        // surrogates, and well-formed WTF-8 that contains no surrogates is
+        // also well-formed UTF-8.
+        unsafe {
+            let utf8 = str::from_utf8_unchecked(utf8_bytes);
+            let wtf8 = Wtf8::from_bytes_unchecked(wtf8_bytes);
+            (utf8, wtf8)
         }
     }
 

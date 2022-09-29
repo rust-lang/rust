@@ -98,6 +98,11 @@ impl Buf {
         self.inner.into_string().map_err(|buf| Buf { inner: buf })
     }
 
+    pub fn into_string_split(self) -> (String, Buf) {
+        let (prefix, suffix) = self.inner.into_string_split();
+        (prefix, Buf { inner: suffix })
+    }
+
     pub fn push_slice(&mut self, s: &Slice) {
         self.inner.push_wtf8(&s.inner)
     }
@@ -157,6 +162,11 @@ impl Slice {
 
     pub fn to_str(&self) -> Option<&str> {
         self.inner.as_str()
+    }
+
+    pub fn to_str_split(&self) -> (&str, &Slice) {
+        let (prefix, suffix) = self.inner.to_str_split();
+        (prefix, Slice { inner: suffix })
     }
 
     pub fn to_string_lossy(&self) -> Cow<'_, str> {

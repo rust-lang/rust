@@ -178,6 +178,34 @@ impl OsString {
         self.inner.into_string().map_err(|buf| OsString { inner: buf })
     }
 
+    /// Splits the `OsString` into a Unicode prefix and non-Unicode suffix.
+    ///
+    /// The returned `String` is the longest prefix of the `OsString` that
+    /// contained valid Unicode. The returned `OsString` is the rest of the
+    /// original value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstr_str_prefix_ops)]
+    ///
+    /// use std::ffi::OsString;
+    ///
+    /// let os_string = OsString::from("foo");
+    /// let (prefix, suffix) = os_string.clone().into_string_split();
+    ///
+    /// let mut rejoined = OsString::from(prefix);
+    /// rejoined.push(suffix);
+    /// assert_eq!(rejoined, os_string);
+    /// ```
+    #[unstable(feature = "osstr_str_prefix_ops", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn into_string_split(self) -> (String, OsString) {
+        let (prefix, suffix) = self.inner.into_string_split();
+        (prefix, OsString { inner: suffix })
+    }
+
     /// Extends the string with the given <code>&[OsStr]</code> slice.
     ///
     /// # Examples
@@ -701,6 +729,34 @@ impl OsStr {
     #[inline]
     pub fn to_str(&self) -> Option<&str> {
         self.inner.to_str()
+    }
+
+    /// Splits the `OsStr` into a Unicode prefix and non-Unicode suffix.
+    ///
+    /// The returned `str` is the longest prefix of the `OsStr` that
+    /// contained valid Unicode. The returned `OsStr` is the rest of the
+    /// original value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstr_str_prefix_ops)]
+    ///
+    /// use std::ffi::{OsStr, OsString};
+    ///
+    /// let os_str = OsStr::new("foo");
+    /// let (prefix, suffix) = os_str.to_str_split();
+    ///
+    /// let mut rejoined = OsString::from(prefix);
+    /// rejoined.push(suffix);
+    /// assert_eq!(rejoined, os_str);
+    /// ```
+    #[unstable(feature = "osstr_str_prefix_ops", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn to_str_split(&self) -> (&str, &OsStr) {
+        let (prefix, suffix) = self.inner.to_str_split();
+        (prefix, Self::from_inner(suffix))
     }
 
     /// Converts an `OsStr` to a <code>[Cow]<[str]></code>.

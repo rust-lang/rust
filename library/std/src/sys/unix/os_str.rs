@@ -164,6 +164,27 @@ impl Buf {
         String::from_utf8(self.inner).map_err(|p| Buf { inner: p.into_bytes() })
     }
 
+    pub fn into_string_split(self) -> (String, Buf) {
+        let utf8_err = match str::from_utf8(&self.inner) {
+            Ok(_) => {
+                // SAFETY: If `str::from_utf8()` succeeds then the input is UTF-8.
+                let prefix = unsafe { String::from_utf8_unchecked(self.inner) };
+                return (prefix, Buf { inner: Vec::new() });
+            }
+            Err(err) => err,
+        };
+        let utf8_len = utf8_err.valid_up_to();
+        if utf8_len == 0 {
+            return (String::new(), self);
+        }
+        let mut utf8_bytes = self.inner;
+        let rem_bytes = utf8_bytes.split_off(utf8_len);
+        // SAFETY: `Utf8Error::valid_up_to()` returns an index up to which
+        // valid UTF-8 has been verified.
+        let prefix = unsafe { String::from_utf8_unchecked(utf8_bytes) };
+        (prefix, Buf { inner: rem_bytes })
+    }
+
     pub fn push_slice(&mut self, s: &Slice) {
         self.inner.extend_from_slice(&s.inner)
     }
@@ -203,6 +224,21 @@ impl Slice {
 
     pub fn to_str(&self) -> Option<&str> {
         str::from_utf8(&self.inner).ok()
+    }
+
+    pub fn to_str_split(&self) -> (&str, &Slice) {
+        let utf8_err = match str::from_utf8(&self.inner) {
+            Ok(prefix) => return (prefix, Slice::from_u8_slice(b"")),
+            Err(err) => err,
+        };
+        let utf8_len = utf8_err.valid_up_to();
+        if utf8_len == 0 {
+            return ("", self);
+        }
+        // SAFETY: `Utf8Error::valid_up_to()` returns an index up to which
+        // valid UTF-8 has been verified.
+        let prefix = unsafe { str::from_utf8_unchecked(&self.inner[..utf8_len]) };
+        (prefix, Slice::from_u8_slice(&self.inner[utf8_len..]))
     }
 
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
