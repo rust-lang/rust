@@ -60,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["8", "9", "11", "12", "13", "14"]
+        llvm: ["8", "9", "11", "12", "13", "14", "15"]
         build: ["Release", "Debug"] # "RelWithDebInfo"
   
     timeout-minutes: 30 
@@ -76,8 +76,9 @@ jobs:
       run: cd enzyme && rm -rf build && mkdir build
     - name: cmake
       run: |
-          cd enzyme/build 
-          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_EXTERNAL_LIT=`which lit` -DLLVM_DIR=`brew --prefix llvm@${{ matrix.llvm }}`/lib/cmake/llvm
+          llvm_prefix=`brew --prefix llvm@${{ matrix.llvm }}`
+          cd enzyme/build
+          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_EXTERNAL_LIT=`which lit` -DLLVM_DIR=${llvm_prefix}/lib/cmake/llvm -DCMAKE_EXE_LINKER_FLAGS=-Wl,-lto_library,${llvm_prefix}/lib/libLTO.dylib
     - name: make
       run: cd enzyme/build && make -j 3
     - name: make check-typeanalysis

@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -gvn -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -licm -early-cse -simplifycfg -instsimplify -S | FileCheck %s
+; RUN: if [ %llvmver -lt 15 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -gvn -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -licm -early-cse -simplifycfg -instsimplify -S | FileCheck %s -check-prefixes LL14,CHECK; fi
+; RUN: if [ %llvmver -ge 15 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -gvn -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -licm -early-cse -simplifycfg -instsimplify -S | FileCheck %s -check-prefixes LL15,CHECK; fi
 
 ; Function Attrs: noinline norecurse nounwind uwtable
 define dso_local double @get(double* nocapture %x, i64 %i) local_unnamed_addr #0 {
@@ -110,10 +111,12 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.body: 
-; CHECK-NEXT:   %[[a5:.+]] = phi double* [ %.pre, %[[crit:.+]] ], [ null, %for.body.ph ]
-; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %[[crit]] ], [ 0, %for.body.ph ]
+; LL14-NEXT:   %[[a5:.+]] = phi double* [ %.pre, %[[crit:.+]] ], [ null, %for.body.ph ]
+; LL15-NEXT:   %iv1 = phi i64 [ %iv.next2, %[[crit:.+]] ], [ 0, %for.body.ph ]
+; LL14-NEXT:   %iv1 = phi i64 [ %iv.next2, %[[crit]] ], [ 0, %for.body.ph ]
 ; CHECK-NEXT:   %phi = phi double [ %phiadd, %[[crit]] ], [ %x, %for.body.ph ]
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
+; LL15-NEXT:   %[[a5:.+]] = load double*, double** %[[a4]]
 ; CHECK-NEXT:   %[[a6:.+]] = bitcast double* %[[a5]] to i8*
 
 ; CHECK-NEXT:   %23 = and i64 %iv.next2, 1
@@ -121,16 +124,19 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %25 = call i64 @llvm.ctpop.i64(i64 %iv.next2)
 ; CHECK-NEXT:   %26 = icmp ult i64 %25, 3
 ; CHECK-NEXT:   %27 = and i1 %26, %24
-; CHECK-NEXT:   br i1 %27, label %[[growi9:.+]], label %[[exit10:.+]]
+; LL14-NEXT:   br i1 %27, label %[[growi9:.+]], label %[[exit10:.+]]
+; LL15-NEXT:   br i1 %27, label %[[growi9:.+]], label %[[crit:.+]]
 
 ; CHECK: [[growi9]]:
 ; CHECK-NEXT:   %28 = call i64 @llvm.ctlz.i64(i64 %iv.next2, i1 true)
 ; CHECK-NEXT:   %29 = sub nuw nsw i64 64, %28
 ; CHECK-NEXT:   %30 = shl i64 8, %29
 ; CHECK-NEXT:   %31 = call i8* @realloc(i8* %22, i64 %30)
-; CHECK-NEXT:   br label %[[exit10]]
+; LL14-NEXT:   br label %[[exit10]]
+; LL15-NEXT:   br label %[[crit]]
 
-; CHECK: [[exit10]]: 
+; LL14: [[exit10]]: 
+; LL15: [[crit]]: 
 ; CHECK-NEXT:   %[[phi_realloccache4:.+]] = phi i8* [ %31, %[[growi9]] ], [ %22, %for.body ]
 ; CHECK-NEXT:   %[[phi_realloccast5:.+]] = bitcast i8* %[[phi_realloccache4]] to double*
 
@@ -141,11 +147,12 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %phiadd = fadd fast double %phi, 1.000000e+00
 ; CHECK-NEXT:   %jand = and i64 %iv1, 1234
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %jand, %n
-; CHECK-NEXT:   br i1 %exitcond, label %for.outerbody.loopexit, label %[[crit]]
+; LL14-NEXT:   br i1 %exitcond, label %for.outerbody.loopexit, label %[[crit]]
+; LL15-NEXT:   br i1 %exitcond, label %for.outerbody.loopexit, label %for.body
 
-; CHECK: [[crit]]:
-; CHECK-NEXT:   %.pre = load double*, double** %[[a4]]
-; CHECK-NEXT:   br label %for.body
+; LL14: [[crit]]:
+; LL14-NEXT:   %.pre = load double*, double** %[[a4]]
+; LL14-NEXT:   br label %for.body
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.outerbody
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[loopLimit_realloccache]])

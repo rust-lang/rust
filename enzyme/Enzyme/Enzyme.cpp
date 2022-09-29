@@ -1029,6 +1029,8 @@ public:
 
     auto newFunc = Logic.CreateBatch(F, width, arg_types, ret_type);
 
+    if (!newFunc) return false;
+
     Value *batch =
         Builder.CreateCall(newFunc->getFunctionType(), newFunc, args);
 

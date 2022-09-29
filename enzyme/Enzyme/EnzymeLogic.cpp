@@ -4726,8 +4726,16 @@ llvm::Function *EnzymeLogic::CreateBatch(Function *tobatch, unsigned width,
                              originalToNewFn, toVectorize, *this);
 
   for (auto val : toVectorize) {
-    if (auto inst = dyn_cast<Instruction>(val))
+    if (auto inst = dyn_cast<Instruction>(val)) {
       batcher->visit(inst);
+      if (batcher->hasError) break;
+    }
+  }
+
+  if (batcher->hasError) {
+    delete batcher;
+    NewF->eraseFromParent();
+    return BatchCachedFunctions[tup] = nullptr;
   }
 
   if (llvm::verifyFunction(*NewF, &llvm::errs())) {
@@ -4738,7 +4746,7 @@ llvm::Function *EnzymeLogic::CreateBatch(Function *tobatch, unsigned width,
 
   delete batcher;
 
-  return NewF;
+  return BatchCachedFunctions[tup] = NewF;
 };
 
 void EnzymeLogic::clear() {

@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -sroa -early-cse -adce -instsimplify -adce -simplifycfg -S -instsimplify -dse | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -sroa -early-cse -adce -instsimplify -adce -simplifycfg -S -instsimplify | FileCheck %s
 
 ; #include <math.h>
 ;
@@ -187,6 +187,8 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds i8, i8* %[[callp]], i64 24
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast i8* %[[arrayidx]] to double*
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %[[ipc]], align 8
+; TODO DSE SHOULD ELIM
+; CHECK-NEXT:   store double 0.000000e+00, double* %"'ipc"
 ; CHECK-NEXT:   %[[result:.+]] = fadd fast double %differeturn, %[[loaded]]
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[callp]])
 ; CHECK-NEXT:   tail call void @free(i8* %call)

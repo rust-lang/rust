@@ -1,5 +1,5 @@
-; RUN: if [ %llvmver -lt 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -O3 -dse -S | FileCheck %s -check-prefixes MALLOC,SHARED; fi
-; RUN: if [ %llvmver -ge 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -O3 -dse -S | FileCheck %s -check-prefixes CALLOC,SHARED; fi
+; RUN: if [ %llvmver -lt 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -sroa -simplifycfg -instsimplify -early-cse -adce -dse -S | FileCheck %s -check-prefixes MALLOC,SHARED; fi
+; RUN: if [ %llvmver -ge 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -sroa -simplifycfg -instsimplify -early-cse -adce -dse -S | FileCheck %s -check-prefixes CALLOC,SHARED; fi
 
 ; Function Attrs: noinline norecurse nounwind readonly uwtable
 define dso_local double @f(double* nocapture readonly %x) local_unnamed_addr #0 {
@@ -56,16 +56,16 @@ attributes #4 = { nounwind }
 ; SHARED: define dso_local void @derivative(double %x, i64 %n)
 ; SHARED-NEXT: entry:
 ; SHARED-NEXT:   %mul.i = shl i64 %n, 3
-; SHARED-NEXT:   %call.i = tail call i8* @malloc(i64 %mul.i)
-; MALLOC-NEXT:   %[[alloc1:.+]] = tail call noalias nonnull i8* @malloc(i64 %mul.i)
-; MALLOC-NEXT:   %[[alloc2:.+]] = tail call noalias nonnull i8* @malloc(i64 %mul.i)
-; MALLOC-NEXT:   %[[alloc3:.+]] = tail call noalias nonnull i8* @malloc(i64 %mul.i)
+; SHARED-NEXT:   %call.i = call i8* @malloc(i64 %mul.i)
+; MALLOC-NEXT:   %[[alloc1:.+]] = call noalias nonnull i8* @malloc(i64 %mul.i)
+; MALLOC-NEXT:   %[[alloc2:.+]] = call noalias nonnull i8* @malloc(i64 %mul.i)
+; MALLOC-NEXT:   %[[alloc3:.+]] = call noalias nonnull i8* @malloc(i64 %mul.i)
 ; CALLOC-NEXT:   %[[alloc1:.+]] = call i8* @calloc(i64 1, i64 %mul.i)
 ; CALLOC-NEXT:   %[[alloc2:.+]] = call i8* @calloc(i64 1, i64 %mul.i)
 ; CALLOC-NEXT:   %[[alloc3:.+]] = call i8* @calloc(i64 1, i64 %mul.i)
-; MALLOC-NEXT:   tail call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %[[alloc1]], i8 0, i64 %mul.i, i1 false)
-; MALLOC-NEXT:   tail call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %[[alloc2]], i8 0, i64 %mul.i, i1 false)
-; MALLOC-NEXT:   tail call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %[[alloc3]], i8 0, i64 %mul.i, i1 false)
+; MALLOC-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %[[alloc1]], i8 0, i64 %mul.i, i1 false)
+; MALLOC-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %[[alloc2]], i8 0, i64 %mul.i, i1 false)
+; MALLOC-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %[[alloc3]], i8 0, i64 %mul.i, i1 false)
 ; SHARED-NEXT:   %"'ipc.i" = bitcast i8* %[[alloc1]] to double*
 ; SHARED-NEXT:   %0 = insertvalue [3 x double*] undef, double* %"'ipc.i", 0
 ; SHARED-NEXT:   %"'ipc5.i" = bitcast i8* %[[alloc2]] to double*
@@ -74,23 +74,23 @@ attributes #4 = { nounwind }
 ; SHARED-NEXT:   %2 = insertvalue [3 x double*] %1, double* %"'ipc6.i", 2
 ; SHARED-NEXT:   %3 = bitcast i8* %call.i to double*
 ; SHARED-NEXT:   store double %x, double* %3
-; SHARED-NEXT:   %call1.i = tail call fastcc double @augmented_f(double %x)
-; SHARED-NEXT:   %factor = fmul fast double %call1.i, 2.000000e+00
-; SHARED-NEXT:   %4 = insertvalue [3 x double] undef, double %factor, 0
-; SHARED-NEXT:   %5 = insertvalue [3 x double] %4, double %factor, 1
-; SHARED-NEXT:   %6 = insertvalue [3 x double] %5, double %factor, 2
-; SHARED-NEXT:   tail call fastcc void @diffe3f([3 x double*] %2, [3 x double] %6)
+; SHARED-NEXT:   %call1.i = call fast double @augmented_f(double* %3, [3 x double*] %2)
+; SHARED-NEXT:   %[[factor:.+]] = fadd fast double %call1.i, %call1.i
+; SHARED-NEXT:   %[[i4:.+]] = insertvalue [3 x double] {{(undef|poison)}}, double %[[factor]], 0
+; SHARED-NEXT:   %[[i5:.+]] = insertvalue [3 x double] %[[i4]], double %[[factor]], 1
+; SHARED-NEXT:   %[[i6:.+]] = insertvalue [3 x double] %[[i5]], double %[[factor]], 2
+; SHARED-NEXT:   call void @diffe3f(double* %3, [3 x double*] %2, [3 x double] %[[i6]])
 ; SHARED-NEXT:   store double 0.000000e+00, double* %"'ipc.i"
 ; SHARED-NEXT:   store double 0.000000e+00, double* %"'ipc5.i"
 ; SHARED-NEXT:   store double 0.000000e+00, double* %"'ipc6.i"
-; SHARED-NEXT:   tail call void bitcast (i32 (...)* @free to void (i8*)*)(i8* nonnull %[[alloc1]])
-; SHARED-NEXT:   tail call void bitcast (i32 (...)* @free to void (i8*)*)(i8* nonnull %[[alloc2]])
-; SHARED-NEXT:   tail call void bitcast (i32 (...)* @free to void (i8*)*)(i8* nonnull %[[alloc3]])
-; SHARED-NEXT:   tail call void bitcast (i32 (...)* @free to void (i8*)*)(i8* %call.i)
+; SHARED-NEXT:   call void bitcast (i32 (...)* @free to void (i8*)*)(i8* nonnull %[[alloc1]])
+; SHARED-NEXT:   call void bitcast (i32 (...)* @free to void (i8*)*)(i8* nonnull %[[alloc2]])
+; SHARED-NEXT:   call void bitcast (i32 (...)* @free to void (i8*)*)(i8* nonnull %[[alloc3]])
+; SHARED-NEXT:   call void bitcast (i32 (...)* @free to void (i8*)*)(i8* %call.i)
 ; SHARED-NEXT:   ret void
 ; SHARED-NEXT: }
 
-; SHARED: define internal fastcc void @diffe3f([3 x double*] %"x'", [3 x double] %differeturn)
+; SHARED: define internal void @diffe3f(double* nocapture readonly %x, [3 x double*] %"x'", [3 x double] %differeturn)
 ; SHARED-NEXT: entry:
 ; SHARED-NEXT:   %[[i0:.+]] = extractvalue [3 x double*] %"x'", 0
 ; SHARED-NEXT:   %[[i6:.+]] = extractvalue [3 x double] %differeturn, 0

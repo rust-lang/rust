@@ -1740,7 +1740,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
       // getModref against any location.
       if (!memval->getType()->isPointerTy()) {
         if (auto CB = dyn_cast<CallInst>(I)) {
+#if LLVM_VERSION_MAJOR >= 16
+          AARes = AA.getModRefBehavior(CB).getModRef();
+#else
           AARes = createModRefInfo(AA.getModRefBehavior(CB));
+#endif
         } else {
           bool mayRead = I->mayReadFromMemory();
           bool mayWrite = I->mayWriteToMemory();

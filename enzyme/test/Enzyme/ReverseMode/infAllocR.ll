@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -gvn -simplifycfg -loop-deletion -simplifycfg -instsimplify -correlated-propagation -early-cse-memssa  -adce -S | FileCheck %s
+; RUN: if [ %llvmver -lt 15 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -gvn -simplifycfg -loop-deletion -simplifycfg -instsimplify -correlated-propagation -early-cse-memssa  -adce -S | FileCheck %s -check-prefixes LL14,CHECK; fi
+; RUN: if [ %llvmver -ge 15 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -gvn -simplifycfg -loop-deletion -simplifycfg -instsimplify -correlated-propagation -early-cse-memssa  -adce -S | FileCheck %s -check-prefixes LL15,CHECK; fi
 
 source_filename = "mem.c"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
@@ -127,8 +128,10 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   br label %remat_enter
 
 ; CHECK: invertfor.body3:                                  ; preds = %remat_for.body_for.end, %incinvertfor.body3
-; CHECK-NEXT:   %[[i6:.+]] = phi double [ 0.000000e+00, %remat_for.body_for.end ], [ %[[i9:.+]], %incinvertfor.body3 ]
-; CHECK-NEXT:   %[[i7:.+]] = phi double [ %differeturn, %remat_for.body_for.end ], [ %.pre, %incinvertfor.body3 ]
+; LL14-NEXT:   %[[i6:.+]] = phi double [ 0.000000e+00, %remat_for.body_for.end ], [ %[[i9:.+]], %incinvertfor.body3 ]
+; LL15-NEXT:   %[[i6:.+]] = phi double [ %[[pre11:.+]], %remat_for.body_for.end ], [ %[[i9:.+]], %incinvertfor.body3 ]
+; LL14-NEXT:   %[[i7:.+]] = phi double [ %differeturn, %remat_for.body_for.end ], [ %[[pre:.+]], %incinvertfor.body3 ]
+; LL15-NEXT:   %[[i7:.+]] = phi double [ %[[a14:.+]], %remat_for.body_for.end ], [ %[[pre:.+]], %incinvertfor.body3 ]
 ; CHECK-NEXT:   %"rho0'de.0" = phi double [ %"rho0'de.1", %remat_for.body_for.end ], [ %[[i8:.+]], %incinvertfor.body3 ]
 ; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ 999998, %remat_for.body_for.end ], [ %[[i11:.+]], %incinvertfor.body3 ]
 ; CHECK-NEXT:   %iv.next2_unwrap = add nuw nsw i64 %"iv1'ac.0", 1
@@ -148,7 +151,7 @@ attributes #3 = { nounwind }
 ; CHECK: incinvertfor.body3:                               ; preds = %invertfor.body3
 ; CHECK-NEXT:   %[[i11]] = add nsw i64 %"iv1'ac.0", -1
 ; CHECK-NEXT:   %"arrayidx4'ipg_unwrap.phi.trans.insert" = getelementptr inbounds double, double* %"i4'ipc_unwrap8", i64 %[[i11]]
-; CHECK-NEXT:   %.pre = load double, double* %"arrayidx4'ipg_unwrap.phi.trans.insert", align 8
+; CHECK-NEXT:   %[[pre]] = load double, double* %"arrayidx4'ipg_unwrap.phi.trans.insert", align 8
 ; CHECK-NEXT:   br label %invertfor.body3
 
 ; CHECK: remat_enter:  
@@ -174,5 +177,13 @@ attributes #3 = { nounwind }
 ; CHECK: remat_for.body_for.end:                           ; preds = %remat_for.body_for.body3
 ; CHECK-NEXT:   %"i4'ipc_unwrap8" = bitcast i8* %"call'mi" to double*
 ; CHECK-NEXT:   %"lgep'ipg_unwrap" = getelementptr inbounds double, double* %"i4'ipc_unwrap8", i64 999998
-; CHECK-NEXT:   store double %differeturn, double* %"lgep'ipg_unwrap", align 8
+; LL14-NEXT:   store double %differeturn, double* %"lgep'ipg_unwrap", align 8
+
+; LL15-NEXT:  %[[a13:.+]] = load double, double* %"lgep'ipg_unwrap", align 8, !alias.scope !10, !noalias !7
+; LL15-NEXT:  %[[a14]] = fadd fast double %[[a13]], %differeturn
+; LL15-NEXT:  store double %[[a14]], double* %"lgep'ipg_unwrap", align 8
+
+; LL15-NEXT:  %"arrayidx5'ipg_unwrap.phi.trans.insert" = getelementptr inbounds double, double* %"i4'ipc_unwrap8", i64 999999
+; LL15-NEXT:  %[[pre11]] = load double, double* %"arrayidx5'ipg_unwrap.phi.trans.insert", align 8
+
 ; CHECK-NEXT:   br label %invertfor.body3
