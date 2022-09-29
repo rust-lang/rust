@@ -5,7 +5,6 @@
 // ignore-sgx no libc
 // ignore-emscripten no processes
 // ignore-sgx no processes
-// ignore-android: FIXME(#85261)
 // ignore-fuchsia no fork
 
 #![feature(rustc_private)]
