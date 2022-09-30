@@ -126,6 +126,9 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
             context.add_command_line_option("-fdata-sections");
         }
 
+        if env::var("CG_GCCJIT_DUMP_TREE_ALL").as_deref() == Ok("1") {
+            context.add_command_line_option("-fdump-tree-all");
+        }
         if env::var("CG_GCCJIT_DUMP_CODE").as_deref() == Ok("1") {
             context.set_dump_code_on_compile(true);
         }
