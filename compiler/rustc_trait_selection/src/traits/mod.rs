@@ -217,12 +217,12 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
 #[instrument(level = "debug", skip(tcx, elaborated_env))]
 fn do_normalize_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cause: ObligationCause<'tcx>,
+    span: Span,
+    mut causes: impl Iterator<Item = ObligationCause<'tcx>> + Debug,
     elaborated_env: ty::ParamEnv<'tcx>,
     predicates: Vec<ty::Predicate<'tcx>>,
     outlives: bool,
 ) -> Result<Vec<ty::Predicate<'tcx>>, ErrorGuaranteed> {
-    let span = cause.span;
     // FIXME. We should really... do something with these region
     // obligations. But this call just continues the older
     // behavior (i.e., doesn't cause any new bugs), and it would
@@ -241,9 +241,10 @@ fn do_normalize_predicates<'tcx>(
             if outlives
                 != matches!(predicate.kind().skip_binder(), ty::PredicateKind::TypeOutlives(..))
             {
+                causes.next().unwrap();
                 Ok(predicate)
             } else {
-                fully_normalize(&infcx, cause.clone(), elaborated_env, predicate)
+                fully_normalize(&infcx, causes.next().unwrap(), elaborated_env, predicate)
             }
         }) {
             Ok(predicates) => predicates,
@@ -304,6 +305,7 @@ fn do_normalize_predicates<'tcx>(
 
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
+#[inline]
 #[instrument(level = "debug", skip(tcx))]
 pub fn normalize_param_env_or_error<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -331,6 +333,23 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
+    normalize_param_env_with_causes(
+        tcx,
+        unnormalized_env,
+        cause.span,
+        std::iter::repeat(cause),
+        predicates,
+    )
+}
+
+#[instrument(level = "debug", skip(tcx))]
+pub fn normalize_param_env_with_causes<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    unnormalized_env: ty::ParamEnv<'tcx>,
+    span: Span,
+    causes: impl Iterator<Item = ObligationCause<'tcx>> + Clone + Debug,
+    predicates: Vec<ty::Predicate<'tcx>>,
+) -> ty::ParamEnv<'tcx> {
     let elaborated_env = ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
         unnormalized_env.reveal(),
@@ -358,7 +377,8 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     let Ok(predicates) = do_normalize_predicates(
         tcx,
-        cause.clone(),
+        span.clone(),
+        causes.clone(),
         elaborated_env,
         predicates,
         false,
@@ -378,7 +398,8 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
     let Ok(predicates) = do_normalize_predicates(
         tcx,
-        cause,
+        span,
+        causes,
         outlives_env,
         predicates,
         true

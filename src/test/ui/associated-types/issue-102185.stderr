@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: B` is not satisfied
+  --> $DIR/issue-102185.rs:3:17
+   |
+LL | fn f<T>(_: impl A<X = T>) {}
+   |                 ^^^^^^^^ the trait `B` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn f<T: B>(_: impl A<X = T>) {}
+   |       +++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

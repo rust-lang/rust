@@ -1,6 +1,8 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::traits::util::elaborate_obligations;
+use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
 use rustc_trait_selection::traits;
 
@@ -110,7 +112,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     }
     // Compute the bounds on Self and the type parameters.
 
-    let ty::InstantiatedPredicates { mut predicates, .. } =
+    let ty::InstantiatedPredicates { mut predicates, spans } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
 
     // Finally, we have to normalize the bounds in the environment, in
@@ -132,6 +134,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 
     let local_did = def_id.as_local();
     let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
+    let mut is_fn = false;
 
     let constness = match hir_id {
         Some(hir_id) => match tcx.hir().get(hir_id) {
@@ -181,8 +184,11 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
                 kind:
                     hir::ItemKind::Fn(hir::FnSig { header: hir::FnHeader { constness, .. }, .. }, ..),
                 ..
-            })
-            | hir::Node::TraitItem(hir::TraitItem {
+            }) => {
+                is_fn = true;
+                *constness
+            }
+            hir::Node::TraitItem(hir::TraitItem {
                 kind:
                     hir::TraitItemKind::Fn(
                         hir::FnSig { header: hir::FnHeader { constness, .. }, .. },
@@ -214,8 +220,36 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         _ => hir::CRATE_HIR_ID,
     };
 
-    let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
-    traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
+    let span = tcx.def_span(def_id);
+
+    if is_fn {
+        let mut spans = spans.into_iter();
+        let obligations: Vec<_> = predicates
+            .into_iter()
+            .map(|predicate| {
+                let cause = traits::ObligationCause::misc(spans.next().unwrap_or(span), body_id);
+                Obligation::new(cause, ty::ParamEnv::empty(), predicate)
+            })
+            .collect();
+
+        let (predicates, causes): (Vec<_>, Vec<_>) = elaborate_obligations(tcx, obligations)
+            .map(|obligation| (obligation.predicate, obligation.cause))
+            .unzip();
+
+        traits::normalize_param_env_with_causes(
+            tcx,
+            unnormalized_env,
+            span,
+            causes.into_iter(),
+            predicates,
+        )
+    } else {
+        traits::normalize_param_env_or_error(
+            tcx,
+            unnormalized_env,
+            traits::ObligationCause::misc(span, body_id),
+        )
+    }
 }
 
 /// Elaborate the environment.
