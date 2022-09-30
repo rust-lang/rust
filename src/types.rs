@@ -683,9 +683,11 @@ impl Rewrite for ast::Ty {
         match self.kind {
             ast::TyKind::TraitObject(ref bounds, tobj_syntax) => {
                 // we have to consider 'dyn' keyword is used or not!!!
-                let is_dyn = tobj_syntax == ast::TraitObjectSyntax::Dyn;
-                // 4 is length of 'dyn '
-                let shape = if is_dyn { shape.offset_left(4)? } else { shape };
+                let (shape, prefix) = match tobj_syntax {
+                    ast::TraitObjectSyntax::Dyn => (shape.offset_left(4)?, "dyn "),
+                    ast::TraitObjectSyntax::DynStar => (shape.offset_left(5)?, "dyn* "),
+                    ast::TraitObjectSyntax::None => (shape, ""),
+                };
                 let mut res = bounds.rewrite(context, shape)?;
                 // We may have falsely removed a trailing `+` inside macro call.
                 if context.inside_macro() && bounds.len() == 1 {
@@ -693,11 +695,7 @@ impl Rewrite for ast::Ty {
                         res.push('+');
                     }
                 }
-                if is_dyn {
-                    Some(format!("dyn {}", res))
-                } else {
-                    Some(res)
-                }
+                Some(format!("{}{}", prefix, res))
             }
             ast::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
