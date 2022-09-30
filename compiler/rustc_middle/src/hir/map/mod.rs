@@ -14,7 +14,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 
 #[inline]
@@ -1131,7 +1131,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
                 .filter_map(|(def_id, info)| {
                     let _ = info.as_owner()?;
                     let def_path_hash = definitions.def_path_hash(def_id);
-                    let span = resolutions.source_span[def_id];
+                    let span = resolutions.source_span.get(def_id).unwrap_or(&DUMMY_SP);
                     debug_assert_eq!(span.parent(), None);
                     Some((def_path_hash, span))
                 })
