@@ -41,6 +41,7 @@ fluent_messages! {
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
+    codegen_gcc => "../locales/en-US/codegen_gcc.ftl",
     driver => "../locales/en-US/driver.ftl",
     expand => "../locales/en-US/expand.ftl",
     session => "../locales/en-US/session.ftl",
