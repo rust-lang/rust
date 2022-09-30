@@ -400,7 +400,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         if myitem.fn_header(cx.tcx()).unwrap().unsafety
                             == hir::Unsafety::Unsafe =>
                     {
-                        "<a title=\"unsafe function\" href=\"#\"><sup>⚠</sup></a>"
+                        "<sup title=\"unsafe function\">⚠</sup>"
                     }
                     _ => "",
                 };
