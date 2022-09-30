@@ -1325,11 +1325,13 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
 ) {
     let tcx = selcx.tcx();
     if tcx.def_kind(obligation.predicate.item_def_id) == DefKind::ImplTraitPlaceholder {
+        let trait_fn_def_id = tcx.impl_trait_in_trait_parent(obligation.predicate.item_def_id);
         // If we are trying to project an RPITIT with trait's default `Self` parameter,
         // then we must be within a default trait body.
         if obligation.predicate.self_ty()
             == ty::InternalSubsts::identity_for_item(tcx, obligation.predicate.item_def_id)
                 .type_at(0)
+            && tcx.associated_item(trait_fn_def_id).defaultness(tcx).has_value()
         {
             candidate_set.push_candidate(ProjectionCandidate::ImplTraitInTrait(
                 ImplTraitInTraitCandidate::Trait,
@@ -1337,7 +1339,6 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
             return;
         }
 
-        let trait_fn_def_id = tcx.impl_trait_in_trait_parent(obligation.predicate.item_def_id);
         let trait_def_id = tcx.parent(trait_fn_def_id);
         let trait_substs =
             obligation.predicate.substs.truncate_to(tcx, tcx.generics_of(trait_def_id));
