@@ -1425,7 +1425,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut spans_and_needs_box = vec![];
 
         match liberated_sig.output().kind() {
-            ty::Dynamic(predicates, _, _) => {
+            ty::Dynamic(predicates, _, ty::Dyn) => {
                 let cause = ObligationCause::misc(ret_ty.span, fn_hir_id);
                 let param_env = ty::ParamEnv::empty();
 
