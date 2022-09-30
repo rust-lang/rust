@@ -1300,14 +1300,14 @@ fn compare_generic_param_kinds<'tcx>(
     Ok(())
 }
 
-pub(crate) fn compare_const_impl<'tcx>(
+/// Use `tcx.compare_assoc_const_impl_item_with_trait_item` instead
+pub(crate) fn raw_compare_const_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
-    impl_c: &ty::AssocItem,
-    impl_c_span: Span,
-    trait_c: &ty::AssocItem,
-    impl_trait_ref: ty::TraitRef<'tcx>,
-) {
+    (impl_c, trait_c, impl_trait_ref): (&ty::AssocItem, &ty::AssocItem, ty::TraitRef<'tcx>),
+) -> Result<(), ErrorGuaranteed> {
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
+
+    let impl_c_span = tcx.def_span(impl_c.def_id);
 
     tcx.infer_ctxt().enter(|infcx| {
         let param_env = tcx.param_env(impl_c.def_id);
@@ -1346,68 +1346,68 @@ pub(crate) fn compare_const_impl<'tcx>(
 
         debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
-        let err = infcx
+        let maybe_error_reported = infcx
             .at(&cause, param_env)
             .sup(trait_ty, impl_ty)
-            .map(|ok| ocx.register_infer_ok_obligations(ok));
+            .map(|ok| ocx.register_infer_ok_obligations(ok))
+            .map_err(|terr| {
+                debug!(
+                    "checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
+                    impl_ty, trait_ty
+                );
 
-        if let Err(terr) = err {
-            debug!(
-                "checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
-                impl_ty, trait_ty
-            );
-
-            // Locate the Span containing just the type of the offending impl
-            match tcx.hir().expect_impl_item(impl_c.def_id.expect_local()).kind {
-                ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
-                _ => bug!("{:?} is not a impl const", impl_c),
-            }
-
-            let mut diag = struct_span_err!(
-                tcx.sess,
-                cause.span,
-                E0326,
-                "implemented const `{}` has an incompatible type for trait",
-                trait_c.name
-            );
-
-            let trait_c_span = trait_c.def_id.as_local().map(|trait_c_def_id| {
-                // Add a label to the Span containing just the type of the const
-                match tcx.hir().expect_trait_item(trait_c_def_id).kind {
-                    TraitItemKind::Const(ref ty, _) => ty.span,
-                    _ => bug!("{:?} is not a trait const", trait_c),
+                // Locate the Span containing just the type of the offending impl
+                match tcx.hir().expect_impl_item(impl_c.def_id.expect_local()).kind {
+                    ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
+                    _ => bug!("{:?} is not a impl const", impl_c),
                 }
-            });
 
-            infcx.note_type_err(
-                &mut diag,
-                &cause,
-                trait_c_span.map(|span| (span, "type in trait".to_owned())),
-                Some(infer::ValuePairs::Terms(ExpectedFound {
-                    expected: trait_ty.into(),
-                    found: impl_ty.into(),
-                })),
-                terr,
-                false,
-                false,
-            );
-            diag.emit();
-        }
+                let mut diag = struct_span_err!(
+                    tcx.sess,
+                    cause.span,
+                    E0326,
+                    "implemented const `{}` has an incompatible type for trait",
+                    trait_c.name
+                );
+
+                let trait_c_span = trait_c.def_id.as_local().map(|trait_c_def_id| {
+                    // Add a label to the Span containing just the type of the const
+                    match tcx.hir().expect_trait_item(trait_c_def_id).kind {
+                        TraitItemKind::Const(ref ty, _) => ty.span,
+                        _ => bug!("{:?} is not a trait const", trait_c),
+                    }
+                });
+
+                infcx.note_type_err(
+                    &mut diag,
+                    &cause,
+                    trait_c_span.map(|span| (span, "type in trait".to_owned())),
+                    Some(infer::ValuePairs::Terms(ExpectedFound {
+                        expected: trait_ty.into(),
+                        found: impl_ty.into(),
+                    })),
+                    terr,
+                    false,
+                    false,
+                );
+                diag.emit()
+            });
 
         // Check that all obligations are satisfied by the implementation's
         // version.
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            infcx.report_fulfillment_errors(&errors, None, false);
-            return;
+            return Err(infcx.report_fulfillment_errors(&errors, None, false));
         }
 
+        // FIXME return `ErrorReported` if region obligations error?
         let outlives_environment = OutlivesEnvironment::new(param_env);
         infcx.check_region_obligations_and_report_errors(
             impl_c.def_id.expect_local(),
             &outlives_environment,
         );
-    });
+        maybe_error_reported
+    })
 }
 
 pub(crate) fn compare_ty_impl<'tcx>(

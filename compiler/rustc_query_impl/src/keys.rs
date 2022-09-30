@@ -557,3 +557,14 @@ impl<'tcx> Key for (Ty<'tcx>, ty::ValTree<'tcx>) {
         DUMMY_SP
     }
 }
+
+impl<'tcx> Key for (&'tcx ty::AssocItem, &'tcx ty::AssocItem, ty::TraitRef<'tcx>) {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        self.0.def_id.krate == LOCAL_CRATE
+    }
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.0.def_id)
+    }
+}

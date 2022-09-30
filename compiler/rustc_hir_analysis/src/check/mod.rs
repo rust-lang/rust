@@ -251,6 +251,7 @@ pub fn provide(providers: &mut Providers) {
         check_mod_item_types,
         region_scope_tree,
         collect_trait_impl_trait_tys,
+        compare_assoc_const_impl_item_with_trait_item: compare_method::raw_compare_const_impl,
         ..*providers
     };
 }
