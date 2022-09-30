@@ -1,5 +1,3 @@
-#![deny(unaligned_references)]
-
 // Check that deriving certain builtin traits on certain packed structs cause
 // errors. This happens when the derived trait would need to use a potentially
 // misaligned reference. But there are two cases that are allowed:
@@ -10,15 +8,12 @@
 
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
 //~^ ERROR `Clone` can't be derived on this `#[repr(packed)]` struct with type or const parameters
-//~| hard error
-//~^^^ ERROR `PartialEq` can't be derived on this `#[repr(packed)]` struct with type or const parameters
-//~| hard error
+//~| ERROR `PartialEq` can't be derived on this `#[repr(packed)]` struct with type or const parameters
 #[repr(packed)]
 pub struct Foo<T>(T, T, T);
 
 #[derive(Default, Hash)]
 //~^ ERROR `Hash` can't be derived on this `#[repr(packed)]` struct that does not derive `Copy`
-//~| hard error
 #[repr(packed)]
 pub struct Bar(u32, u32, u32);
 
@@ -38,7 +33,6 @@ struct Y(usize);
 
 #[derive(Debug, Default)]
 //~^ ERROR `Debug` can't be derived on this `#[repr(packed)]` struct that does not derive `Copy`
-//~| hard error
 #[repr(packed)]
 struct X(Y);
 
