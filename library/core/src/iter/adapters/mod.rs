@@ -209,7 +209,11 @@ where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.try_fold(init, ConstFnMutClosure::new(&mut fold, NeverShortCircuit::wrap_mut_2_imp)).0
+        self.try_fold(
+            init,
+            ConstFnMutClosure { data: &mut fold, func: NeverShortCircuit::wrap_mut_2_imp },
+        )
+        .0
     }
 }
 
