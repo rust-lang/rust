@@ -10,6 +10,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 
@@ -693,7 +694,7 @@ impl<'a> Parser<'a> {
 
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
-            self.sess.expr_parentheses_needed(&mut err, *sp);
+            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
 
         Err(err)

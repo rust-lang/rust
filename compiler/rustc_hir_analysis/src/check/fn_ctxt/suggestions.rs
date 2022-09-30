@@ -15,6 +15,7 @@ use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Binder, IsSuggestable, ToPredicate, Ty};
+use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -895,7 +896,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sp = self.tcx.sess.source_map().start_point(expr.span);
         if let Some(sp) = self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp) {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
-            self.tcx.sess.parse_sess.expr_parentheses_needed(err, *sp);
+            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
     }
 

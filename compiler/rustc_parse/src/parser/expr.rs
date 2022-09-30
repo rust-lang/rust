@@ -1310,7 +1310,7 @@ impl<'a> Parser<'a> {
                 // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
                 // then suggest parens around the lhs.
                 if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&lo) {
-                    self.sess.expr_parentheses_needed(&mut err, *sp);
+                    err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                 }
                 err
             })
