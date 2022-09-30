@@ -7,6 +7,7 @@ use crate::ty::{
 };
 use rustc_ast as ast;
 use rustc_attr as attr;
+use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -204,6 +205,12 @@ pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     SizeOverflow(Ty<'tcx>),
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
+}
+
+impl<'a> IntoDiagnostic<'a, !> for LayoutError<'a> {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, !> {
+        handler.struct_fatal(self.to_string())
+    }
 }
 
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
@@ -3062,6 +3069,12 @@ impl<'tcx> fmt::Display for FnAbiError<'tcx> {
             Self::Layout(err) => err.fmt(f),
             Self::AdjustForForeignAbi(err) => err.fmt(f),
         }
+    }
+}
+
+impl<'tcx> IntoDiagnostic<'tcx, !> for FnAbiError<'tcx> {
+    fn into_diagnostic(self, handler: &'tcx Handler) -> DiagnosticBuilder<'tcx, !> {
+        handler.struct_fatal(self.to_string())
     }
 }
 

@@ -154,6 +154,11 @@ pub unsafe fn create_module<'ll>(
             target_data_layout = target_data_layout.replace("-p10:8:8-p20:8:8", "");
         }
     }
+    if llvm_version < (16, 0, 0) {
+        if sess.target.arch == "s390x" {
+            target_data_layout = target_data_layout.replace("-v128:64", "");
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.is_builtin {

@@ -448,7 +448,6 @@ img {
 }
 
 .source .sidebar > *:not(#sidebar-toggle) {
-	opacity: 0;
 	visibility: hidden;
 }
 
@@ -457,7 +456,6 @@ img {
 }
 
 .source-sidebar-expanded .source .sidebar > *:not(#sidebar-toggle) {
-	opacity: 1;
 	visibility: visible;
 }
 
@@ -1320,11 +1318,6 @@ h3.variant {
 	margin: 0;
 	padding: 0;
 	font-size: 1.25rem;
-}
-
-/* Example code has the "Run" button that needs to be positioned relative to the pre */
-pre.rust.rust-example-rendered {
-	position: relative;
 }
 
 pre.rust {
