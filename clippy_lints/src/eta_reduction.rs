@@ -122,9 +122,10 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(mut snippet) = snippet_opt(cx, callee.span) {
-                        if let Some(fn_mut_id) = cx.tcx.lang_items().fn_mut_trait() &&
-                            implements_trait(cx, callee_ty.peel_refs(), fn_mut_id, &[]) &&
-                            path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, expr)) {
+                        if let Some(fn_mut_id) = cx.tcx.lang_items().fn_mut_trait()
+                            && implements_trait(cx, callee_ty.peel_refs(), fn_mut_id, &[])
+                            && path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, expr))
+                        {
                                 // Mutable closure is used after current expr; we cannot consume it.
                                 snippet = format!("&mut {snippet}");
                         }
