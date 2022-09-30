@@ -27,7 +27,7 @@ pub(super) struct TokenTreesReader<'a> {
 }
 
 impl<'a> TokenTreesReader<'a> {
-    pub(super) fn parse_token_trees(
+    pub(super) fn parse_all_token_trees(
         string_reader: StringReader<'a>,
     ) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
         let mut tt_reader = TokenTreesReader {
@@ -40,34 +40,29 @@ impl<'a> TokenTreesReader<'a> {
             last_delim_empty_block_spans: FxHashMap::default(),
             matching_block_spans: Vec::new(),
         };
-        let res = tt_reader.parse_all_token_trees();
+        let res = tt_reader.parse_token_trees(/* is_top_level */ true);
         (res, tt_reader.unmatched_braces)
     }
 
-    // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
-    fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
+    // Parse a stream of tokens into a list of `TokenTree`s.
+    fn parse_token_trees(&mut self, is_top_level: bool) -> PResult<'a, TokenStream> {
         self.token = self.string_reader.next_token().0;
         let mut buf = TokenStreamBuilder::default();
         loop {
             match self.token.kind {
                 token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
-                token::CloseDelim(delim) => return Err(self.close_delim_err(delim)),
-                token::Eof => return Ok(buf.into_token_stream()),
-                _ => buf.push(self.parse_token_tree_non_delim_non_eof()),
-            }
-        }
-    }
-
-    // Parse a stream of tokens into a list of `TokenTree`s, up to a `CloseDelim`.
-    fn parse_token_trees_until_close_delim(&mut self) -> TokenStream {
-        let mut buf = TokenStreamBuilder::default();
-        loop {
-            match self.token.kind {
-                token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
-                token::CloseDelim(..) => return buf.into_token_stream(),
+                token::CloseDelim(delim) => {
+                    return if !is_top_level {
+                        Ok(buf.into_token_stream())
+                    } else {
+                        Err(self.close_delim_err(delim))
+                    };
+                }
                 token::Eof => {
-                    self.eof_err().emit();
-                    return buf.into_token_stream();
+                    if !is_top_level {
+                        self.eof_err().emit();
+                    }
+                    return Ok(buf.into_token_stream());
                 }
                 _ => buf.push(self.parse_token_tree_non_delim_non_eof()),
             }
@@ -113,14 +108,12 @@ impl<'a> TokenTreesReader<'a> {
         // The span for beginning of the delimited section
         let pre_span = self.token.span;
 
-        // Move past the open delimiter.
         self.open_braces.push((open_delim, self.token.span));
-        self.token = self.string_reader.next_token().0;
 
         // Parse the token trees within the delimiters.
         // We stop at any delimiter so we can try to recover if the user
         // uses an incorrect delimiter.
-        let tts = self.parse_token_trees_until_close_delim();
+        let tts = self.parse_token_trees(/* is_top_level */ false).unwrap();
 
         // Expand to cover the entire delimited token tree
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
