@@ -555,6 +555,9 @@ impl Session {
     pub fn abort_if_errors(&self) {
         self.diagnostic().abort_if_errors();
     }
+    pub fn abort_if_errors_or_delayed_span_bugs(&self) {
+        self.diagnostic().abort_if_errors_or_delayed_span_bugs();
+    }
     pub fn compile_status(&self) -> Result<(), ErrorGuaranteed> {
         if let Some(reported) = self.diagnostic().has_errors_or_lint_errors() {
             let _ = self.diagnostic().emit_stashed_diagnostics();

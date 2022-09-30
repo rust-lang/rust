@@ -381,7 +381,9 @@ fn clean_hir_term<'tcx>(term: &hir::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Te
         hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
         hir::Term::Const(c) => {
             let def_id = cx.tcx.hir().local_def_id(c.hir_id);
-            Term::Constant(clean_middle_const(ty::Const::from_anon_const(cx.tcx, def_id), cx))
+            let ty = ty::Const::from_anon_const(cx.tcx, def_id);
+            cx.tcx.sess.abort_if_errors_or_delayed_span_bugs();
+            Term::Constant(clean_middle_const(ty, cx))
         }
     }
 }

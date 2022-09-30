@@ -1011,6 +1011,16 @@ impl Handler {
         self.inner.borrow_mut().abort_if_errors()
     }
 
+    pub fn abort_if_errors_or_delayed_span_bugs(&self) {
+        self.abort_if_errors();
+        let mut inner = self.inner.borrow();
+        if inner.has_delayed_span_bugs() {
+            let bugs = inner.delayed_span_bugs.clone();
+            inner.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
+            FatalError.raise();
+        }
+    }
+
     /// `true` if we haven't taught a diagnostic with this code already.
     /// The caller must then teach the user about such a diagnostic.
     ///
@@ -1414,7 +1424,10 @@ impl HandlerInner {
         self.has_errors() || self.lint_err_count > 0
     }
     fn has_errors_or_delayed_span_bugs(&self) -> bool {
-        self.has_errors() || !self.delayed_span_bugs.is_empty()
+        self.has_errors() || !self.has_delayed_span_bugs()
+    }
+    fn has_delayed_span_bugs(&self) -> bool {
+        !self.delayed_span_bugs.is_empty()
     }
     fn has_any_message(&self) -> bool {
         self.err_count() > 0 || self.lint_err_count > 0 || self.warn_count > 0
