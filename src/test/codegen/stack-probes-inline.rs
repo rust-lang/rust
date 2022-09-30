@@ -2,7 +2,7 @@
 // or `StackProbeType::InlineOrCall` when running on newer LLVM.
 
 // compile-flags: -C no-prepopulate-passes
-// revisions: powerpc powerpc64 powerpc64le s390x
+// revisions: powerpc powerpc64 powerpc64le s390x i686 x86_64
 //[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
 //[powerpc] needs-llvm-components: powerpc
 //[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
@@ -11,6 +11,12 @@
 //[powerpc64le] needs-llvm-components: powerpc
 //[s390x] compile-flags: --target s390x-unknown-linux-gnu
 //[s390x] needs-llvm-components: systemz
+//[i686] compile-flags: --target i686-unknown-linux-gnu
+//[i686] needs-llvm-components: x86
+//[i686] min-llvm-version: 16
+//[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
+//[x86_64] needs-llvm-components: x86
+//[x86_64] min-llvm-version: 16
 
 #![crate_type = "rlib"]
 #![feature(no_core, lang_items)]

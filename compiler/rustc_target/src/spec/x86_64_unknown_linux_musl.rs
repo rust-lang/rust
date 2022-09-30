@@ -5,8 +5,7 @@ pub fn target() -> Target {
     base.cpu = "x86-64".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64"]);
-    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-    base.stack_probes = StackProbeType::Call;
+    base.stack_probes = StackProbeType::X86;
     base.static_position_independent_executables = true;
     base.supported_sanitizers = SanitizerSet::ADDRESS
         | SanitizerSet::CFI

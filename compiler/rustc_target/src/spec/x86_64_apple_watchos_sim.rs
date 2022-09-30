@@ -15,8 +15,7 @@ pub fn target() -> Target {
         arch: "x86_64".into(),
         options: TargetOptions {
             max_atomic_width: Some(64),
-            // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-            stack_probes: StackProbeType::Call,
+            stack_probes: StackProbeType::X86,
             forces_embed_bitcode: true,
             // Taken from a clang build on Xcode 11.4.1.
             // These arguments are not actually invoked - they just have

@@ -7,8 +7,7 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32"]);
     base.link_env_remove.to_mut().extend(super::apple_base::macos_link_env_remove());
-    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-    base.stack_probes = StackProbeType::Call;
+    base.stack_probes = StackProbeType::X86;
     base.frame_pointer = FramePointer::Always;
 
     // Clang automatically chooses a more specific target based on
