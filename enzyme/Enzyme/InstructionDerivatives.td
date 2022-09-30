@@ -10,13 +10,14 @@ class Inst<string mnemonic> {
 }
 
 // Define ops to rewrite.
-def T1: Type;
 
 def FDiv : Inst<"FDiv">;
 def FAdd : Inst<"FAdd">;
 def FSub : Inst<"FSub">;
 def FMul : Inst<"FMul">;
 def FNeg : Inst<"FNeg">;
+def Select : Inst<"Select">;
+def FCmpOEQ : Inst<"FCmpOEQ">;
 
 def DifR : Inst<"DifR">;
 
@@ -150,9 +151,14 @@ def : CallPattern<(Op $x),
 // Unnormalized sinc(x) = sin(x)/x
 def : CallPattern<(Op $x),
                   ["sinc", "sincf", "sincl"],
-                  [(FMul (DiffeRet<"">), (FDiv (FSub (Intrinsic<"cos", [(TypeOf<""> $x)]> $x), (Call<(SameFunc), [ReadNone,NoUnwind]> $x)), $x))]>;
+                  [(Select (FCmpOEQ $x, (ConstantFP<"0"> $x)),
+                        (ConstantFP<"0"> $x),
+                  (FMul (DiffeRet<"">), (FDiv (FSub (Intrinsic<"cos", [(TypeOf<""> $x)]> $x), (Call<(SameFunc), [ReadNone,NoUnwind]> $x)), $x)))]>;
 
 // Normalized sinc(x) = sin(pi x)/(pi x)
 def : CallPattern<(Op $x),
                   ["sincn", "sincnf", "sincnl"],
-                  [(FMul (DiffeRet<"">), (FDiv (FSub (Intrinsic<"cos", [(TypeOf<""> $x)]> (FMul (ConstantFP<"3.1415926535897962684626433"> $x), $x)), (Call<(SameFunc), [ReadNone,NoUnwind]> $x)), $x))]>;
+                  [
+                    (Select (FCmpOEQ $x, (ConstantFP<"0"> $x)),
+                        (ConstantFP<"0"> $x),
+                  (FMul (DiffeRet<"">), (FDiv (FSub (Intrinsic<"cos", [(TypeOf<""> $x)]> (FMul (ConstantFP<"3.1415926535897962684626433"> $x), $x)), (Call<(SameFunc), [ReadNone,NoUnwind]> $x)), $x)))]>;

@@ -21,11 +21,13 @@ declare double @__enzyme_autodiff(double (double)*, ...)
 
 ; CHECK: define internal { double } @diffetester(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call fast double @llvm.cos.f64(double %x)
-; CHECK-NEXT:   %1 = call fast double @sinc(double %x)
-; CHECK-NEXT:   %2 = fsub fast double %0, %1
-; CHECK-NEXT:   %3 = fdiv fast double %2, %x
-; CHECK-NEXT:   %4 = fmul fast double %differeturn, %3
-; CHECK-NEXT:   %5 = insertvalue { double } undef, double %4, 0
-; CHECK-NEXT:   ret { double } %5
+; CHECK-NEXT:   %[[cmp:.+]] = fcmp fast oeq double %x, 0.000000e+00
+; CHECK-NEXT:   %[[i0:.+]] = call fast double @llvm.cos.f64(double %x)
+; CHECK-NEXT:   %[[i1:.+]] = call fast double @sinc(double %x)
+; CHECK-NEXT:   %[[i2:.+]] = fsub fast double %[[i0]], %[[i1]]
+; CHECK-NEXT:   %[[i3:.+]] = fdiv fast double %[[i2]], %x
+; CHECK-NEXT:   %[[i4:.+]] = fmul fast double %differeturn, %[[i3]]
+; CHECK-NEXT:   %[[sel:.+]] = select {{(fast )?}}i1 %[[cmp]], double 0.000000e+00, double %[[i4]]
+; CHECK-NEXT:   %[[i5:.+]] = insertvalue { double } undef, double %[[sel]], 0
+; CHECK-NEXT:   ret { double } %[[i5]]
 ; CHECK-NEXT: }
