@@ -668,6 +668,7 @@ impl Build {
             job::setup(self);
         }
 
+        // Download rustfmt early so that it can be used in rust-analyzer configs.
         let _ = &builder::Builder::new(&self).initial_rustfmt();
         self.maybe_update_submodules();
 
