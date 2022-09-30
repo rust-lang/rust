@@ -16,8 +16,9 @@ const HARD_CODED_ALLOWED: &[&str] = &[
     "f32",
     "f64",
     "std::num::Saturating",
-    "std::string::String",
     "std::num::Wrapping",
+    "std::string::String",
+    "&str",
 ];
 
 #[derive(Debug)]
@@ -77,6 +78,11 @@ impl ArithmeticSideEffects {
         )
     }
 
+    // For example, 8i32 or &i64::MAX.
+    fn is_integral<'expr, 'tcx>(cx: &LateContext<'tcx>, expr: &'expr hir::Expr<'tcx>) -> bool {
+        cx.typeck_results().expr_ty(expr).peel_refs().is_integral()
+    }
+
     // Common entry-point to avoid code duplication.
     fn issue_lint(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
         let msg = "arithmetic operation that can potentially result in unexpected side-effects";
@@ -88,24 +94,13 @@ impl ArithmeticSideEffects {
     /// * Is `expr` is a literal integer reference like `&199`, returns the literal integer without
     ///   references.
     /// * If `expr` is anything else, returns `None`.
-    fn literal_integer<'expr, 'tcx>(
-        cx: &LateContext<'tcx>,
-        expr: &'expr hir::Expr<'tcx>,
-    ) -> Option<&'expr hir::Expr<'tcx>> {
-        let expr_refs = cx.typeck_results().expr_ty(expr).peel_refs();
-
-        if !expr_refs.is_integral() {
-            return None;
-        }
-
+    fn literal_integer<'expr, 'tcx>(expr: &'expr hir::Expr<'tcx>) -> Option<&'expr hir::Expr<'tcx>> {
         if matches!(expr.kind, hir::ExprKind::Lit(_)) {
             return Some(expr);
         }
-
         if let hir::ExprKind::AddrOf(.., inn) = expr.kind && let hir::ExprKind::Lit(_) = inn.kind {
             return Some(inn)
         }
-
         None
     }
 
@@ -134,14 +129,18 @@ impl ArithmeticSideEffects {
         ) {
             return;
         };
-        if self.is_allowed_ty(cx, lhs) || self.is_allowed_ty(cx, rhs) {
+        if self.is_allowed_ty(cx, lhs) && self.is_allowed_ty(cx, rhs) {
             return;
         }
-        let has_valid_op = match (Self::literal_integer(cx, lhs), Self::literal_integer(cx, rhs)) {
-            (None, None) => false,
-            (None, Some(local_expr)) => Self::has_valid_op(op, local_expr),
-            (Some(local_expr), None) => Self::has_valid_op(op, local_expr),
-            (Some(_), Some(_)) => true,
+        let has_valid_op = if Self::is_integral(cx, lhs) && Self::is_integral(cx, rhs) {
+            match (Self::literal_integer(lhs), Self::literal_integer(rhs)) {
+                (None, None) => false,
+                (None, Some(local_expr)) => Self::has_valid_op(op, local_expr),
+                (Some(local_expr), None) => Self::has_valid_op(op, local_expr),
+                (Some(_), Some(_)) => true,
+            }
+        } else {
+            false
         };
         if !has_valid_op {
             self.issue_lint(cx, expr);

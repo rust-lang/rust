@@ -12,6 +12,31 @@
 
 use core::num::{Saturating, Wrapping};
 
+pub struct Custom;
+
+macro_rules! impl_arith {
+    ( $( $_trait:ident, $ty:ty, $method:ident; )* ) => {
+        $(
+            impl core::ops::$_trait<$ty> for Custom {
+                type Output = Self;
+                fn $method(self, _: $ty) -> Self::Output { Self }
+            }
+        )*
+    }
+}
+
+impl_arith!(
+    Add, i32, add;
+    Div, i32, div;
+    Mul, i32, mul;
+    Sub, i32, sub;
+
+    Add, f64, add;
+    Div, f64, div;
+    Mul, f64, mul;
+    Sub, f64, sub;
+);
+
 pub fn association_with_structures_should_not_trigger_the_lint() {
     enum Foo {
         Bar = -2,
@@ -130,7 +155,7 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n = -(-1);
 }
 
-pub fn overflowing_runtime_ops() {
+pub fn runtime_ops() {
     let mut _n = i32::MAX;
 
     // Assign
@@ -162,6 +187,32 @@ pub fn overflowing_runtime_ops() {
     _n = _n * &2;
     _n = 2 * _n;
     _n = &2 * _n;
+
+    // Custom
+    let _ = Custom + 0;
+    let _ = Custom + 1;
+    let _ = Custom + 2;
+    let _ = Custom + 0.0;
+    let _ = Custom + 1.0;
+    let _ = Custom + 2.0;
+    let _ = Custom - 0;
+    let _ = Custom - 1;
+    let _ = Custom - 2;
+    let _ = Custom - 0.0;
+    let _ = Custom - 1.0;
+    let _ = Custom - 2.0;
+    let _ = Custom / 0;
+    let _ = Custom / 1;
+    let _ = Custom / 2;
+    let _ = Custom / 0.0;
+    let _ = Custom / 1.0;
+    let _ = Custom / 2.0;
+    let _ = Custom * 0;
+    let _ = Custom * 1;
+    let _ = Custom * 2;
+    let _ = Custom * 0.0;
+    let _ = Custom * 1.0;
+    let _ = Custom * 2.0;
 
     // Unary
     _n = -_n;
