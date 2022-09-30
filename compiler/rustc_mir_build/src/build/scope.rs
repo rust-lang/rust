@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         cached_drop
     }
 
-    /// This is similar to [diverge_cleanup_target] except its target is set to
+    /// This is similar to [diverge_cleanup] except its target is set to
     /// some ancestor scope instead of the current scope.
     /// It is possible to unwind to some ancestor scope if some drop panics as
     /// the program breaks out of a if-then scope.
