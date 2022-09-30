@@ -11595,6 +11595,16 @@ public:
     std::map<int, Type *> preByVal;
     std::map<int, Type *> gradByVal;
 
+    bool replaceFunction = false;
+
+    if (Mode == DerivativeMode::ReverseModeCombined && !foreignFunction) {
+      replaceFunction = legalCombinedForwardReverse(
+          orig, *replacedReturns, postCreate, userReplace, gutils,
+          unnecessaryInstructions, oldUnreachable, subretused);
+      if (replaceFunction)
+        modifyPrimal = false;
+    }
+
 #if LLVM_VERSION_MAJOR >= 14
     for (unsigned i = 0; i < orig->arg_size(); ++i)
 #else
@@ -11642,7 +11652,7 @@ public:
         {
           writeOnlyNoCapture = false;
         }
-        if (writeOnlyNoCapture) {
+        if (writeOnlyNoCapture && !replaceFunction) {
           if (EnzymeZeroCache)
             argi = ConstantPointerNull::get(cast<PointerType>(argi->getType()));
           else
@@ -11705,16 +11715,6 @@ public:
       }
       assert(argsInverted.size() ==
              cast<Function>(called)->getFunctionType()->getNumParams());
-    }
-
-    bool replaceFunction = false;
-
-    if (Mode == DerivativeMode::ReverseModeCombined && !foreignFunction) {
-      replaceFunction = legalCombinedForwardReverse(
-          orig, *replacedReturns, postCreate, userReplace, gutils,
-          unnecessaryInstructions, oldUnreachable, subretused);
-      if (replaceFunction)
-        modifyPrimal = false;
     }
 
     Value *tape = nullptr;
