@@ -355,3 +355,15 @@ impl<R: std::io::Read> std::iter::Iterator for NotableStructWithLongName<R> {
 
     fn next(&mut self) -> Option<Self::Item> { () }
 }
+
+pub trait TraitWithNoDocblocks {
+    fn first_fn(&self);
+    fn second_fn(&self);
+}
+
+pub struct TypeWithNoDocblocks;
+
+impl TypeWithNoDocblocks {
+    pub fn first_fn(&self) {}
+    pub fn second_fn(&self) {}
+}

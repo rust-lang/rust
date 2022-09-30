@@ -18,10 +18,10 @@ pub struct S<T>(T);
 // @has - '//pre[@class="rust trait"]/code/span[@class="where"]' ': Clone'
 #[const_trait]
 pub trait Tr<T> {
-    // @!has - '//div[@id="method.a"]/h4[@class="code-header"]' '~const'
-    // @has - '//div[@id="method.a"]/h4[@class="code-header"]/a[@class="trait"]' 'Clone'
-    // @!has - '//div[@id="method.a"]/h4[@class="code-header"]/span[@class="where"]' '~const'
-    // @has - '//div[@id="method.a"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
+    // @!has - '//section[@id="method.a"]/h4[@class="code-header"]' '~const'
+    // @has - '//section[@id="method.a"]/h4[@class="code-header"]/a[@class="trait"]' 'Clone'
+    // @!has - '//section[@id="method.a"]/h4[@class="code-header"]/span[@class="where"]' '~const'
+    // @has - '//section[@id="method.a"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
     fn a<A: ~const Clone + ~const Destruct>()
     where
         Option<A>: ~const Clone + ~const Destruct,
