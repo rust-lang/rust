@@ -1043,7 +1043,7 @@ impl fmt::Debug for Duration {
         /// to the formatter's `width`, if specified.
         fn fmt_decimal(
             f: &mut fmt::Formatter<'_>,
-            mut integer_part: u64,
+            integer_part: u64,
             mut fractional_part: u32,
             mut divisor: u32,
             prefix: &str,
@@ -1075,7 +1075,7 @@ impl fmt::Debug for Duration {
             // normal floating point numbers. However, we only need to do work
             // when rounding up. This happens if the first digit of the
             // remaining ones is >= 5.
-            if fractional_part > 0 && fractional_part >= divisor * 5 {
+            let integer_part = if fractional_part > 0 && fractional_part >= divisor * 5 {
                 // Round up the number contained in the buffer. We go through
                 // the buffer backwards and keep track of the carry.
                 let mut rev_pos = pos;
@@ -1099,9 +1099,18 @@ impl fmt::Debug for Duration {
                 // the whole buffer to '0's and need to increment the integer
                 // part.
                 if carry {
-                    integer_part += 1;
+                    // If `integer_part == u64::MAX` and precision < 9, any
+                    // carry of the overflow during rounding of the
+                    // `fractional_part` into the `integer_part` will cause the
+                    // `integer_part` itself to overflow. Avoid this by using an
+                    // `Option<u64>`, with `None` representing `u64::MAX + 1`.
+                    integer_part.checked_add(1)
+                } else {
+                    Some(integer_part)
                 }
-            }
+            } else {
+                Some(integer_part)
+            };
 
             // Determine the end of the buffer: if precision is set, we just
             // use as many digits from the buffer (capped to 9). If it isn't
@@ -1111,7 +1120,12 @@ impl fmt::Debug for Duration {
             // This closure emits the formatted duration without emitting any
             // padding (padding is calculated below).
             let emit_without_padding = |f: &mut fmt::Formatter<'_>| {
-                write!(f, "{}{}", prefix, integer_part)?;
+                if let Some(integer_part) = integer_part {
+                    write!(f, "{}{}", prefix, integer_part)?;
+                } else {
+                    // u64::MAX + 1 == 18446744073709551616
+                    write!(f, "{}18446744073709551616", prefix)?;
+                }
 
                 // Write the decimal point and the fractional part (if any).
                 if end > 0 {
@@ -1141,12 +1155,17 @@ impl fmt::Debug for Duration {
                     // 2. The postfix: can be "µs" so we have to count UTF8 characters.
                     let mut actual_w = prefix.len() + postfix.chars().count();
                     // 3. The integer part:
-                    if let Some(log) = integer_part.checked_ilog10() {
-                        // integer_part is > 0, so has length log10(x)+1
-                        actual_w += 1 + log as usize;
+                    if let Some(integer_part) = integer_part {
+                        if let Some(log) = integer_part.checked_ilog10() {
+                            // integer_part is > 0, so has length log10(x)+1
+                            actual_w += 1 + log as usize;
+                        } else {
+                            // integer_part is 0, so has length 1.
+                            actual_w += 1;
+                        }
                     } else {
-                        // integer_part is 0, so has length 1.
-                        actual_w += 1;
+                        // integer_part is u64::MAX + 1, so has length 20
+                        actual_w += 20;
                     }
                     // 4. The fractional part (if any):
                     if end > 0 {
