@@ -1322,11 +1322,6 @@ h3.variant {
 	font-size: 1.25rem;
 }
 
-/* Example code has the "Run" button that needs to be positioned relative to the pre */
-pre.rust.rust-example-rendered {
-	position: relative;
-}
-
 pre.rust {
 	tab-size: 4;
 	-moz-tab-size: 4;
