@@ -47,13 +47,13 @@ impl<'a> TokenTreesReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s.
     fn parse_token_trees(&mut self, is_top_level: bool) -> PResult<'a, TokenStream> {
         self.token = self.string_reader.next_token().0;
-        let mut buf = TokenStreamBuilder::default();
+        let mut buf = Vec::new();
         loop {
             match self.token.kind {
                 token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
                 token::CloseDelim(delim) => {
                     return if !is_top_level {
-                        Ok(buf.into_token_stream())
+                        Ok(TokenStream::new(buf))
                     } else {
                         Err(self.close_delim_err(delim))
                     };
@@ -62,21 +62,28 @@ impl<'a> TokenTreesReader<'a> {
                     if !is_top_level {
                         self.eof_err().emit();
                     }
-                    return Ok(buf.into_token_stream());
+                    return Ok(TokenStream::new(buf));
                 }
                 _ => {
-                    // `this_spacing` for the returned token refers to whether the token is
-                    // immediately followed by another op token. It is determined by the
-                    // next token: its kind and its `preceded_by_whitespace` status.
-                    let (next_tok, is_next_tok_preceded_by_whitespace) =
-                        self.string_reader.next_token();
-                    let this_spacing = if is_next_tok_preceded_by_whitespace || !next_tok.is_op() {
-                        Spacing::Alone
-                    } else {
-                        Spacing::Joint
+                    // Get the next normal token. This might require getting multiple adjacent
+                    // single-char tokens and joining them together.
+                    let (this_spacing, next_tok) = loop {
+                        let (next_tok, is_next_tok_preceded_by_whitespace) =
+                            self.string_reader.next_token();
+                        if !is_next_tok_preceded_by_whitespace {
+                            if let Some(glued) = self.token.glue(&next_tok) {
+                                self.token = glued;
+                            } else {
+                                let this_spacing =
+                                    if next_tok.is_op() { Spacing::Joint } else { Spacing::Alone };
+                                break (this_spacing, next_tok);
+                            }
+                        } else {
+                            break (Spacing::Alone, next_tok);
+                        }
                     };
                     let this_tok = std::mem::replace(&mut self.token, next_tok);
-                    buf.push(TokenTree::Token(this_tok, this_spacing))
+                    buf.push(TokenTree::Token(this_tok, this_spacing));
                 }
             }
         }
@@ -247,29 +254,5 @@ impl<'a> TokenTreesReader<'a> {
 
         err.span_label(self.token.span, "unexpected closing delimiter");
         err
-    }
-}
-
-#[derive(Default)]
-struct TokenStreamBuilder {
-    buf: Vec<TokenTree>,
-}
-
-impl TokenStreamBuilder {
-    #[inline(always)]
-    fn push(&mut self, tree: TokenTree) {
-        if let Some(TokenTree::Token(prev_token, Spacing::Joint)) = self.buf.last()
-            && let TokenTree::Token(token, joint) = &tree
-            && let Some(glued) = prev_token.glue(token)
-        {
-            self.buf.pop();
-            self.buf.push(TokenTree::Token(glued, *joint));
-        } else {
-            self.buf.push(tree)
-        }
-    }
-
-    fn into_token_stream(self) -> TokenStream {
-        TokenStream::new(self.buf)
     }
 }
