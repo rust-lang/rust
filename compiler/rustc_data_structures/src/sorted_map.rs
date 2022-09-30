@@ -96,6 +96,23 @@ impl<K: Ord, V> SortedMap<K, V> {
         }
     }
 
+    /// Gets a mutable reference to the value in the entry, or insert a new one.
+    #[inline]
+    pub fn get_mut_or_insert_default(&mut self, key: K) -> &mut V
+    where
+        K: Eq,
+        V: Default,
+    {
+        let index = match self.lookup_index_for(&key) {
+            Ok(index) => index,
+            Err(index) => {
+                self.data.insert(index, (key, V::default()));
+                index
+            }
+        };
+        unsafe { &mut self.data.get_unchecked_mut(index).1 }
+    }
+
     #[inline]
     pub fn clear(&mut self) {
         self.data.clear();

@@ -53,20 +53,6 @@ where
         self.0.iter_mut().find(|(key, _)| k == key.borrow()).map(|elem| &mut elem.1)
     }
 
-    /// Gets a mutable reference to the value in the entry, or insert a new one.
-    pub fn get_mut_or_insert_default(&mut self, k: K) -> &mut V
-    where
-        K: Eq,
-        V: Default,
-    {
-        let pos = self.0.iter().position(|(key, _)| &k == key).unwrap_or_else(|| {
-            let pos = self.0.len();
-            self.0.push((k, V::default()));
-            pos
-        });
-        &mut self.0[pos].1
-    }
-
     /// Returns the any value corresponding to the supplied predicate filter.
     ///
     /// The supplied predicate will be applied to each (key, value) pair and it will return a
