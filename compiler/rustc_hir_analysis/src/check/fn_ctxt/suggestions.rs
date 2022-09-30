@@ -3,7 +3,7 @@ use crate::astconv::AstConv;
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 
 use hir::def_id::DefId;
-use rustc_ast::util::parser::ExprPrecedence;
+use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
@@ -327,7 +327,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
-    ) {
+    ) -> bool {
         let expr = expr.peel_blocks();
         if let Some((sp, msg, suggestion, applicability, verbose)) =
             self.check_ref(expr, found, expected)
@@ -337,14 +337,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 err.span_suggestion(sp, &msg, suggestion, applicability);
             }
+            return true;
         } else if self.suggest_else_fn_with_closure(err, expr, found, expected)
         {
+            return true;
         } else if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
             && let ty::FnDef(def_id, ..) = &found.kind()
             && let Some(sp) = self.tcx.hir().span_if_local(*def_id)
         {
             err.span_label(sp, format!("{found} defined here"));
-        } else if !self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
+            return true;
+        } else if self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
+            return true;
+        } else {
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
             if !methods.is_empty() {
                 let mut suggestions = methods.iter()
@@ -395,6 +400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         suggestions,
                         Applicability::MaybeIncorrect,
                     );
+                    return true;
                 }
             } else if let ty::Adt(found_adt, found_substs) = found.kind()
                 && self.tcx.is_diagnostic_item(sym::Option, found_adt.did())
@@ -419,9 +425,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!(".map(|x| &*{}x)", "*".repeat(ref_cnt)),
                         Applicability::MaybeIncorrect,
                     );
+                    return true;
                 }
             }
         }
+
+        false
     }
 
     /// When encountering the expected boxed value allocated in the stack, suggest allocating it
@@ -432,13 +441,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-    ) {
+    ) -> bool {
         if self.tcx.hir().is_inside_const_context(expr.hir_id) {
             // Do not suggest `Box::new` in const context.
-            return;
+            return false;
         }
         if !expected.is_box() || found.is_box() {
-            return;
+            return false;
         }
         let boxed_found = self.tcx.mk_box(found);
         if self.can_coerce(boxed_found, expected) {
@@ -456,6 +465,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                  https://doc.rust-lang.org/rust-by-example/std/box.html, and \
                  https://doc.rust-lang.org/std/boxed/index.html",
             );
+            true
+        } else {
+            false
         }
     }
 
@@ -466,7 +478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-    ) {
+    ) -> bool {
         if let (ty::FnPtr(_), ty::Closure(def_id, _)) = (expected.kind(), found.kind()) {
             if let Some(upvars) = self.tcx.upvars_mentioned(*def_id) {
                 // Report upto four upvars being captured to reduce the amount error messages
@@ -490,8 +502,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     multi_span,
                     "closures can only be coerced to `fn` types if they do not capture any variables"
                 );
+                return true;
             }
         }
+        false
     }
 
     /// When encountering an `impl Future` where `BoxFuture` is expected, suggest `Box::pin`.
@@ -893,11 +907,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
-    ) {
+    ) -> bool {
         let sp = self.tcx.sess.source_map().start_point(expr.span);
         if let Some(sp) = self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp) {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+            true
+        } else {
+            false
         }
     }
 
@@ -910,7 +927,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut expr: &hir::Expr<'_>,
         mut expr_ty: Ty<'tcx>,
         mut expected_ty: Ty<'tcx>,
-    ) {
+    ) -> bool {
         loop {
             match (&expr.kind, expr_ty.kind(), expected_ty.kind()) {
                 (
@@ -924,9 +941,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 (hir::ExprKind::Block(blk, _), _, _) => {
                     self.suggest_block_to_brackets(diag, *blk, expr_ty, expected_ty);
-                    break;
+                    break true;
                 }
-                _ => break,
+                _ => break false,
             }
         }
     }
@@ -937,11 +954,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
-    ) {
-        let ty::Adt(adt_def, substs) = expr_ty.kind() else { return; };
-        let ty::Adt(expected_adt_def, expected_substs) = expected_ty.kind() else { return; };
+    ) -> bool {
+        let ty::Adt(adt_def, substs) = expr_ty.kind() else { return false; };
+        let ty::Adt(expected_adt_def, expected_substs) = expected_ty.kind() else { return false; };
         if adt_def != expected_adt_def {
-            return;
+            return false;
         }
 
         let mut suggest_copied_or_cloned = || {
@@ -960,6 +977,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ".copied()",
                         Applicability::MachineApplicable,
                     );
+                    return true;
                 } else if let Some(clone_did) = self.tcx.lang_items().clone_trait()
                     && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
                         self,
@@ -977,8 +995,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ".cloned()",
                         Applicability::MachineApplicable,
                     );
+                    return true;
                 }
             }
+            false
         };
 
         if let Some(result_did) = self.tcx.get_diagnostic_item(sym::Result)
@@ -986,12 +1006,67 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Check that the error types are equal
             && self.can_eq(self.param_env, substs.type_at(1), expected_substs.type_at(1)).is_ok()
         {
-            suggest_copied_or_cloned();
+            return suggest_copied_or_cloned();
         } else if let Some(option_did) = self.tcx.get_diagnostic_item(sym::Option)
             && adt_def.did() == option_did
         {
-            suggest_copied_or_cloned();
+            return suggest_copied_or_cloned();
         }
+
+        false
+    }
+
+    pub(crate) fn suggest_into(
+        &self,
+        diag: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        let expr = expr.peel_blocks();
+
+        // We have better suggestions for scalar interconversions...
+        if expr_ty.is_scalar() && expected_ty.is_scalar() {
+            return false;
+        }
+
+        // Don't suggest turning a block into another type (e.g. `{}.into()`)
+        if matches!(expr.kind, hir::ExprKind::Block(..)) {
+            return false;
+        }
+
+        // We'll later suggest `.as_ref` when noting the type error,
+        // so skip if we will suggest that instead.
+        if self.should_suggest_as_ref(expected_ty, expr_ty).is_some() {
+            return false;
+        }
+
+        if let Some(into_def_id) = self.tcx.get_diagnostic_item(sym::Into)
+            && self.predicate_must_hold_modulo_regions(&traits::Obligation::new(
+                self.misc(expr.span),
+                self.param_env,
+                ty::Binder::dummy(ty::TraitRef {
+                    def_id: into_def_id,
+                    substs: self.tcx.mk_substs_trait(expr_ty, &[expected_ty.into()]),
+                })
+                .to_poly_trait_predicate()
+                .to_predicate(self.tcx),
+            ))
+        {
+            let sugg = if expr.precedence().order() >= PREC_POSTFIX {
+                vec![(expr.span.shrink_to_hi(), ".into()".to_owned())]
+            } else {
+                vec![(expr.span.shrink_to_lo(), "(".to_owned()), (expr.span.shrink_to_hi(), ").into()".to_owned())]
+            };
+            diag.multipart_suggestion(
+                format!("call `Into::into` on this expression to convert `{expr_ty}` into `{expected_ty}`"),
+                sugg,
+                Applicability::MaybeIncorrect
+            );
+            return true;
+        }
+
+        false
     }
 
     /// Suggest wrapping the block in square brackets instead of curly braces

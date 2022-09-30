@@ -32,17 +32,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: Option<TypeError<'tcx>>,
     ) {
         self.annotate_expected_due_to_let_ty(err, expr, error);
-        self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr);
-        self.suggest_compatible_variants(err, expr, expected, expr_ty);
-        self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty);
-        if self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty) {
-            return;
-        }
-        self.suggest_no_capture_closure(err, expected, expr_ty);
-        self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
-        self.suggest_missing_parentheses(err, expr);
-        self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected);
-        self.suggest_copied_or_cloned(err, expr, expr_ty, expected);
+
+        // Use `||` to give these suggestions a precedence
+        let _ = self.suggest_missing_parentheses(err, expr)
+            || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
+            || self.suggest_compatible_variants(err, expr, expected, expr_ty)
+            || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
+            || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
+            || self.suggest_no_capture_closure(err, expected, expr_ty)
+            || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
+            || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
+            || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
+            || self.suggest_into(err, expr, expr_ty, expected);
+
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
@@ -286,7 +288,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
-    ) {
+    ) -> bool {
         if let ty::Adt(expected_adt, substs) = expected.kind() {
             if let hir::ExprKind::Field(base, ident) = expr.kind {
                 let base_ty = self.typeck_results.borrow().expr_ty(base);
@@ -299,7 +301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "",
                         Applicability::MaybeIncorrect,
                     );
-                    return
+                    return true;
                 }
             }
 
@@ -338,7 +340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else if self.tcx.is_diagnostic_item(sym::Option, expected_adt.did()) {
                                 vec!["None", "Some(())"]
                             } else {
-                                return;
+                                return false;
                             };
                             if let Some(indent) =
                                 self.tcx.sess.source_map().indentation_before(span.shrink_to_lo())
@@ -358,7 +360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
-                            return;
+                            return true;
                         }
                     }
                 }
@@ -445,6 +447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         suggestions_for(&**variant, *ctor_kind, *field_name),
                         Applicability::MaybeIncorrect,
                     );
+                    return true;
                 }
                 _ => {
                     // More than one matching variant.
@@ -460,9 +463,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                         Applicability::MaybeIncorrect,
                     );
+                    return true;
                 }
             }
         }
+
+        false
     }
 
     fn suggest_non_zero_new_unwrap(
@@ -471,19 +477,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
-    ) {
+    ) -> bool {
         let tcx = self.tcx;
         let (adt, unwrap) = match expected.kind() {
             // In case Option<NonZero*> is wanted, but * is provided, suggest calling new
             ty::Adt(adt, substs) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
                 // Unwrap option
-                let ty::Adt(adt, _) = substs.type_at(0).kind() else { return };
+                let ty::Adt(adt, _) = substs.type_at(0).kind() else { return false; };
 
                 (adt, "")
             }
             // In case NonZero* is wanted, but * is provided also add `.unwrap()` to satisfy types
             ty::Adt(adt, _) => (adt, ".unwrap()"),
-            _ => return,
+            _ => return false,
         };
 
         let map = [
@@ -502,7 +508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some((s, _)) = map
             .iter()
             .find(|&&(s, t)| self.tcx.is_diagnostic_item(s, adt.did()) && self.can_coerce(expr_ty, t))
-            else { return };
+            else { return false; };
 
         let path = self.tcx.def_path_str(adt.non_enum_variant().def_id);
 
@@ -514,6 +520,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ],
             Applicability::MaybeIncorrect,
         );
+
+        true
     }
 
     pub fn get_conversion_methods(
