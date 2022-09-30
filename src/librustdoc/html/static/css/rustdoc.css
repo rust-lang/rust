@@ -448,7 +448,6 @@ img {
 }
 
 .source .sidebar > *:not(#sidebar-toggle) {
-	opacity: 0;
 	visibility: hidden;
 }
 
@@ -457,7 +456,6 @@ img {
 }
 
 .source-sidebar-expanded .source .sidebar > *:not(#sidebar-toggle) {
-	opacity: 1;
 	visibility: visible;
 }
 
