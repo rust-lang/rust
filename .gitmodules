@@ -27,8 +27,8 @@
 	url = https://github.com/rust-lang/edition-guide.git
 [submodule "src/llvm-project"]
 	path = src/llvm-project
-	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/15.0-2022-08-09
+	url = https://github.com/nikic/llvm-project.git
+	branch = rust-constraint-elim
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git
