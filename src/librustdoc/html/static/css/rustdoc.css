@@ -1245,13 +1245,11 @@ h3.variant {
 	font-weight: 600;
 	font-size: 1.125rem;
 	margin-bottom: 10px;
-	border-bottom: none;
 }
 
 .sub-variant h4 {
 	font-size: 1rem;
 	font-weight: 400;
-	border-bottom: none;
 	margin-top: 0;
 	margin-bottom: 0;
 }
