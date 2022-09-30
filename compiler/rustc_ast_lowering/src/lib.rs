@@ -61,8 +61,8 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DesugaringKind;
@@ -1060,13 +1060,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
 
-                    let parent_def_id = self.current_hir_id_owner;
                     let impl_trait_node_id = self.next_node_id();
-                    self.create_def(
-                        parent_def_id.def_id,
-                        impl_trait_node_id,
-                        DefPathData::ImplTrait,
-                    );
 
                     self.with_dyn_type_scope(false, |this| {
                         let node_id = this.next_node_id();
@@ -1357,9 +1351,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         def_node_id,
                         bounds,
                         false,
-                        &ImplTraitContext::TypeAliasesOpaqueTy,
+                        itctx,
                     ),
                     ImplTraitContext::Universal => {
+                        self.create_def(
+                            self.current_hir_id_owner.def_id,
+                            def_node_id,
+                            DefPathData::ImplTrait,
+                        );
                         let span = t.span;
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
                         let (param, bounds, path) =
@@ -1453,7 +1452,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
+        let opaque_ty_def_id = match origin {
+            hir::OpaqueTyOrigin::TyAlias => self.create_def(
+                self.current_hir_id_owner.def_id,
+                opaque_ty_node_id,
+                DefPathData::ImplTrait,
+            ),
+            hir::OpaqueTyOrigin::FnReturn(fn_def_id) => {
+                self.create_def(fn_def_id, opaque_ty_node_id, DefPathData::ImplTrait)
+            }
+            hir::OpaqueTyOrigin::AsyncFn(..) => bug!("unreachable"),
+        };
         debug!(?opaque_ty_def_id);
 
         // Contains the new lifetime definitions created for the TAIT (if any).
