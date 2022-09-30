@@ -399,6 +399,11 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
   }
 
   if (arg->isPointerTy()) {
+#if LLVM_VERSION_MAJOR >= 15
+    if (!arg->getContext().supportsTypedPointers()) {
+      return DIFFE_TYPE::DUP_ARG;
+    }
+#endif
     switch (whatType(arg->getPointerElementType(), mode, integersAreConstant,
                      seen)) {
     case DIFFE_TYPE::OUT_DIFF:

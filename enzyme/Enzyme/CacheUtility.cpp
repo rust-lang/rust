@@ -924,8 +924,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 
         IRBuilder<> build(containedloops.back().first.incvar->getNextNode());
 #if LLVM_VERSION_MAJOR > 7
-        Value *allocation = build.CreateLoad(
-            storeInto->getType()->getPointerElementType(), storeInto);
+        Value *allocation = build.CreateLoad(allocType, storeInto);
 #else
         Value *allocation = build.CreateLoad(storeInto);
 #endif
@@ -1394,12 +1393,18 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
     }
   }
 
-  if (tostore->getType() != loc->getType()->getPointerElementType()) {
-    llvm::errs() << "val: " << *val << "\n";
-    llvm::errs() << "tostore: " << *tostore << "\n";
-    llvm::errs() << "loc: " << *loc << "\n";
+#if LLVM_VERSION_MAJOR >= 15
+  if (tostore->getContext().supportsTypedPointers()) {
+#endif
+    if (tostore->getType() != loc->getType()->getPointerElementType()) {
+      llvm::errs() << "val: " << *val << "\n";
+      llvm::errs() << "tostore: " << *tostore << "\n";
+      llvm::errs() << "loc: " << *loc << "\n";
+    }
+    assert(tostore->getType() == loc->getType()->getPointerElementType());
+#if LLVM_VERSION_MAJOR >= 15
   }
-  assert(tostore->getType() == loc->getType()->getPointerElementType());
+#endif
   StoreInst *storeinst = v.CreateStore(tostore, loc);
 
   // If the value stored doesnt change (per efficient bool cache),
@@ -1480,11 +1485,25 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
   // Iterate from outermost loop to innermost loop
   for (int i = sublimits.size() - 1; i >= 0; i--) {
     // Lookup the next allocation pointer
+    {
 #if LLVM_VERSION_MAJOR > 7
-    next = BuilderM.CreateLoad(next->getType()->getPointerElementType(), next);
-#else
-    next = BuilderM.CreateLoad(next);
+      llvm::Type *loadT;
+#if LLVM_VERSION_MAJOR >= 15
+      if (next->getContext().supportsTypedPointers()) {
 #endif
+        loadT = next->getType()->getPointerElementType();
+#if LLVM_VERSION_MAJOR >= 15
+      } else {
+        loadT = PointerType::get(
+            next->getContext(),
+            cast<PointerType>(next->getType())->getAddressSpace());
+      }
+#endif
+      next = BuilderM.CreateLoad(loadT, next);
+#else
+      next = BuilderM.CreateLoad(next);
+#endif
+    }
     if (storeInInstructionsMap && isa<AllocaInst>(cache))
       scopeInstructions[cast<AllocaInst>(cache)].push_back(
           cast<Instruction>(next));
@@ -1538,12 +1557,25 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
         assert(es);
         idx = BuilderM.CreateMul(idx, es, "", /*NUW*/ true, /*NSW*/ true);
       }
+      {
 #if LLVM_VERSION_MAJOR > 7
-      next = BuilderM.CreateGEP(next->getType()->getPointerElementType(), next,
-                                idx);
-#else
-      next = BuilderM.CreateGEP(next, idx);
+        llvm::Type *loadT;
+#if LLVM_VERSION_MAJOR >= 15
+        if (next->getContext().supportsTypedPointers()) {
 #endif
+          loadT = next->getType()->getPointerElementType();
+#if LLVM_VERSION_MAJOR >= 15
+        } else {
+          loadT = PointerType::get(
+              next->getContext(),
+              cast<PointerType>(next->getType())->getAddressSpace());
+        }
+#endif
+        next = BuilderM.CreateGEP(loadT, next, idx);
+#else
+        next = BuilderM.CreateGEP(next, idx);
+#endif
+      }
       cast<GetElementPtrInst>(next)->setIsInBounds(true);
       if (storeInInstructionsMap && isa<AllocaInst>(cache))
         scopeInstructions[cast<AllocaInst>(cache)].push_back(

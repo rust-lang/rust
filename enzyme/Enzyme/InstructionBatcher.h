@@ -51,8 +51,9 @@ public:
       ValueMap<const Value *, std::vector<Value *>> &vectorizedValues,
       ValueToValueMapTy &originalToNewFn, SmallPtrSetImpl<Value *> &toVectorize,
       EnzymeLogic &Logic)
-      : hasError(false), vectorizedValues(vectorizedValues), originalToNewFn(originalToNewFn),
-        toVectorize(toVectorize), width(width), Logic(Logic) {}
+      : hasError(false), vectorizedValues(vectorizedValues),
+        originalToNewFn(originalToNewFn), toVectorize(toVectorize),
+        width(width), Logic(Logic) {}
 
 private:
   ValueMap<const Value *, std::vector<Value *>> &vectorizedValues;

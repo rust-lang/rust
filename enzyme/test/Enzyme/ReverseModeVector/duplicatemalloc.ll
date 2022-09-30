@@ -63,9 +63,9 @@ attributes #4 = { nounwind }
 ; CALLOC-NEXT:   %[[alloc1:.+]] = call i8* @calloc(i64 1, i64 %mul.i)
 ; CALLOC-NEXT:   %[[alloc2:.+]] = call i8* @calloc(i64 1, i64 %mul.i)
 ; CALLOC-NEXT:   %[[alloc3:.+]] = call i8* @calloc(i64 1, i64 %mul.i)
-; MALLOC-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %[[alloc1]], i8 0, i64 %mul.i, i1 false)
-; MALLOC-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %[[alloc2]], i8 0, i64 %mul.i, i1 false)
-; MALLOC-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %[[alloc3]], i8 0, i64 %mul.i, i1 false)
+; MALLOC-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %[[alloc1]], i8 0, i64 %mul.i, i1 false)
+; MALLOC-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %[[alloc2]], i8 0, i64 %mul.i, i1 false)
+; MALLOC-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %[[alloc3]], i8 0, i64 %mul.i, i1 false)
 ; SHARED-NEXT:   %"'ipc.i" = bitcast i8* %[[alloc1]] to double*
 ; SHARED-NEXT:   %0 = insertvalue [3 x double*] undef, double* %"'ipc.i", 0
 ; SHARED-NEXT:   %"'ipc5.i" = bitcast i8* %[[alloc2]] to double*

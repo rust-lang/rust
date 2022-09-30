@@ -1029,7 +1029,8 @@ public:
 
     auto newFunc = Logic.CreateBatch(F, width, arg_types, ret_type);
 
-    if (!newFunc) return false;
+    if (!newFunc)
+      return false;
 
     Value *batch =
         Builder.CreateCall(newFunc->getFunctionType(), newFunc, args);
@@ -1499,12 +1500,18 @@ public:
       if (a.getType()->isFPOrFPVectorTy()) {
         dt = ConcreteType(a.getType()->getScalarType());
       } else if (a.getType()->isPointerTy()) {
-        auto et = a.getType()->getPointerElementType();
-        if (et->isFPOrFPVectorTy()) {
-          dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
-        } else if (et->isPointerTy()) {
-          dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
+#if LLVM_VERSION_MAJOR >= 15
+        if (a.getContext().supportsTypedPointers()) {
+#endif
+          auto et = a.getType()->getPointerElementType();
+          if (et->isFPOrFPVectorTy()) {
+            dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
+          } else if (et->isPointerTy()) {
+            dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
+          }
+#if LLVM_VERSION_MAJOR >= 15
         }
+#endif
         dt.insert({}, BaseType::Pointer);
       } else if (a.getType()->isIntOrIntVectorTy()) {
         dt = ConcreteType(BaseType::Integer);

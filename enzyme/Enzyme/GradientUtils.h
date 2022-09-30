@@ -1656,7 +1656,13 @@ public:
       entryBuilder.CreateStore(Constant::getNullValue(type),
                                differentials[val]);
     }
-    assert(differentials[val]->getType()->getPointerElementType() == type);
+#if LLVM_VERSION_MAJOR >= 15
+    if (val->getContext().supportsTypedPointers()) {
+#endif
+      assert(differentials[val]->getType()->getPointerElementType() == type);
+#if LLVM_VERSION_MAJOR >= 15
+    }
+#endif
     return differentials[val];
   }
 
@@ -1789,16 +1795,14 @@ public:
       for (auto i : idxs)
         sv.push_back(i);
 #if LLVM_VERSION_MAJOR > 7
-      ptr =
-          BuilderM.CreateGEP(ptr->getType()->getPointerElementType(), ptr, sv);
+      ptr = BuilderM.CreateGEP(getShadowType(val->getType()), ptr, sv);
 #else
       ptr = BuilderM.CreateGEP(ptr, sv);
 #endif
       cast<GetElementPtrInst>(ptr)->setIsInBounds(true);
     }
 #if LLVM_VERSION_MAJOR > 7
-    Value *old =
-        BuilderM.CreateLoad(ptr->getType()->getPointerElementType(), ptr);
+    Value *old = BuilderM.CreateLoad(dif->getType(), ptr);
 #else
     Value *old = BuilderM.CreateLoad(ptr);
 #endif
@@ -1964,11 +1968,17 @@ public:
       return;
     }
     Value *tostore = getDifferential(val);
-    if (toset->getType() != tostore->getType()->getPointerElementType()) {
-      llvm::errs() << "toset:" << *toset << "\n";
-      llvm::errs() << "tostore:" << *tostore << "\n";
+#if LLVM_VERSION_MAJOR >= 15
+    if (toset->getContext().supportsTypedPointers()) {
+#endif
+      if (toset->getType() != tostore->getType()->getPointerElementType()) {
+        llvm::errs() << "toset:" << *toset << "\n";
+        llvm::errs() << "tostore:" << *tostore << "\n";
+      }
+      assert(toset->getType() == tostore->getType()->getPointerElementType());
+#if LLVM_VERSION_MAJOR >= 15
     }
-    assert(toset->getType() == tostore->getType()->getPointerElementType());
+#endif
     BuilderM.CreateStore(toset, tostore);
   }
 
@@ -2010,8 +2020,17 @@ public:
     Value *metaforfree =
         unwrapM(storeInto, tbuild, antimap, UnwrapMode::LegalFullUnwrap);
 #if LLVM_VERSION_MAJOR > 7
-    LoadInst *forfree = cast<LoadInst>(tbuild.CreateLoad(
-        metaforfree->getType()->getPointerElementType(), metaforfree));
+    Type *T;
+#if LLVM_VERSION_MAJOR >= 15
+    if (metaforfree->getContext().supportsTypedPointers()) {
+#endif
+      T = metaforfree->getType()->getPointerElementType();
+#if LLVM_VERSION_MAJOR >= 15
+    } else {
+      T = PointerType::getUnqual(metaforfree->getContext());
+    }
+#endif
+    LoadInst *forfree = cast<LoadInst>(tbuild.CreateLoad(T, metaforfree));
 #else
     LoadInst *forfree = cast<LoadInst>(tbuild.CreateLoad(metaforfree));
 #endif
@@ -2044,13 +2063,12 @@ public:
   void addToInvertedPtrDiffe(Instruction *orig, Type *addingType,
                              unsigned start, unsigned size, Value *origptr,
                              Value *dif, IRBuilder<> &BuilderM,
-                             MaybeAlign align, Value *OrigOffset = nullptr,
-                             Value *mask = nullptr)
+                             MaybeAlign align, Value *mask = nullptr)
 #else
   void addToInvertedPtrDiffe(Instruction *orig, Type *addingType,
                              unsigned start, unsigned size, Value *origptr,
                              Value *dif, IRBuilder<> &BuilderM, unsigned align,
-                             Value *OrigOffset = nullptr, Value *mask = nullptr)
+                             Value *mask = nullptr)
 #endif
   {
     auto &DL = oldFunc->getParent()->getDataLayout();
@@ -2083,21 +2101,18 @@ public:
       break;
     }
 
-    assert(ptr);
-    if (OrigOffset || start != 0 ||
-        origptr->getType()->getPointerElementType() != addingType) {
-      Value *newOffset = OrigOffset
-                             ? lookupM(getNewFromOriginal(OrigOffset), BuilderM)
-                             : nullptr;
-      auto rule = [&](Value *ptr) {
-        if (newOffset) {
-#if LLVM_VERSION_MAJOR > 7
-          ptr = BuilderM.CreateGEP(ptr->getType()->getPointerElementType(), ptr,
-                                   newOffset);
-#else
-          ptr = BuilderM.CreateGEP(ptr, newOffset);
+    bool needsCast = false;
+#if LLVM_VERSION_MAJOR >= 15
+    if (orig->getContext().supportsTypedPointers()) {
 #endif
-        }
+      needsCast = origptr->getType()->getPointerElementType() != addingType;
+#if LLVM_VERSION_MAJOR >= 15
+    }
+#endif
+
+    assert(ptr);
+    if (start != 0 || needsCast) {
+      auto rule = [&](Value *ptr) {
         if (start != 0) {
           auto i8 = Type::getInt8Ty(ptr->getContext());
           ptr = BuilderM.CreatePointerCast(
@@ -2112,7 +2127,7 @@ public:
           ptr = BuilderM.CreateInBoundsGEP(ptr, off);
 #endif
         }
-        if (ptr->getType()->getPointerElementType() != addingType) {
+        if (needsCast) {
           ptr = BuilderM.CreatePointerCast(
               ptr, PointerType::get(
                        addingType,
@@ -2127,8 +2142,15 @@ public:
           BuilderM, rule, ptr);
     }
 
-    if (start != 0 ||
-        origptr->getType()->getPointerElementType() != addingType) {
+    if (getWidth() == 1)
+      needsCast = dif->getType() != addingType;
+    else if (auto AT = cast<ArrayType>(dif->getType()))
+      needsCast = AT->getElementType() != addingType;
+    else
+      needsCast =
+          cast<VectorType>(dif->getType())->getElementType() != addingType;
+
+    if (start != 0 || needsCast) {
       auto rule = [&](Value *dif) {
         if (start != 0) {
           IRBuilder<> A(inversionAllocs);
@@ -2253,8 +2275,7 @@ public:
                 ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
                 ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
 #if LLVM_VERSION_MAJOR > 7
-            auto vptr = BuilderM.CreateGEP(
-                ptr->getType()->getPointerElementType(), ptr, Idxs);
+            auto vptr = BuilderM.CreateGEP(vt->getElementType(), ptr, Idxs);
 #else
             auto vptr = BuilderM.CreateGEP(ptr, Idxs);
 #endif

@@ -1,4 +1,5 @@
-; RUN: if [ %llvmver -ge 10 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -correlated-propagation -adce -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -instsimplify -early-cse -simplifycfg -S | FileCheck %s; fi
+; RUN: if [ %llvmver -ge 15 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -correlated-propagation -adce -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -instsimplify -early-cse -simplifycfg -S | FileCheck -check-prefixes LL14,CHECK %s; fi
+; RUN: if [ %llvmver -ge 10 ] && [ %llvmver -lt 14 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -correlated-propagation -adce -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -instsimplify -early-cse -simplifycfg -S | FileCheck -check-prefixes LL13,CHECK %s; fi
 
 ; ModuleID = 'q2.ll'
 source_filename = "text"
@@ -80,9 +81,15 @@ exit:                                        ; preds = %loop2
 ; CHECK-NEXT:   %tmp30 = add nsw i64 %tmp29, 1
 ; CHECK-NEXT:   %tmp31 = icmp slt i32 %tmp28, 0
 ; CHECK-NEXT:   %tmp32 = select i1 %tmp31, i64 1, i64 %tmp30
-; CHECK-NEXT:   %smax = call i64 @llvm.smax.i64(i64 %tmp29, i64 0)
-; CHECK-NEXT:   %0 = add nuw nsw i64 %smax, 1
-; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %0, 8
+
+
+; LL13-NEXT:    %0 = sub nsw i64 %tmp32, 1
+; LL13-NEXT:    %mallocsize = mul nuw nsw i64 %tmp32, 8
+
+; LL14-NEXT:    %smax = call i64 @llvm.smax.i64(i64 %tmp29, i64 0)
+; LL14-NEXT:    %0 = add nuw nsw i64 %smax, 1
+; LL14-NEXT:    %mallocsize = mul nuw nsw i64 %0, 8
+
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %tmp35_malloccache = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   br label %loop2
@@ -120,7 +127,8 @@ exit:                                        ; preds = %loop2
 
 ; CHECK: invertloop2:                                      ; preds = %loop2, %incinvertloop2
 ; CHECK-NEXT:   %"arg'de.0" = phi double [ %[[a8]], %incinvertloop2 ], [ 0.000000e+00, %loop2 ]
-; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %[[a10:.+]], %incinvertloop2 ], [ %smax, %loop2 ]
+; LL13-NEXT:   %"iv1'ac.0" = phi i64 [ %[[a10:.+]], %incinvertloop2 ], [ %0, %loop2 ]
+; LL14-NEXT:   %"iv1'ac.0" = phi i64 [ %[[a10:.+]], %incinvertloop2 ], [ %smax, %loop2 ]
 ; CHECK-NEXT:   %[[a6:.+]] = getelementptr inbounds double, double* %tmp35_malloccache, i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %[[a7:.+]] = load double, double* %[[a6]], align 8
 ; CHECK-NEXT:   %m0diffearg = fmul fast double %differeturn, %[[a7]]

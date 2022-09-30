@@ -4725,7 +4725,8 @@ llvm::Function *EnzymeLogic::CreateBatch(Function *tobatch, unsigned width,
   for (auto val : toVectorize) {
     if (auto inst = dyn_cast<Instruction>(val)) {
       batcher->visit(inst);
-      if (batcher->hasError) break;
+      if (batcher->hasError)
+        break;
     }
   }
 

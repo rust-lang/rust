@@ -674,9 +674,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       ind.push_back(op);
     }
 #if LLVM_VERSION_MAJOR > 7
-    auto toreturn = BuilderM.CreateGEP(
-        inst->getPointerOperandType()->getPointerElementType(), ptr, ind,
-        inst->getName() + "_unwrap");
+    auto toreturn = BuilderM.CreateGEP(inst->getSourceElementType(), ptr, ind,
+                                       inst->getName() + "_unwrap");
 #else
     auto toreturn = BuilderM.CreateGEP(ptr, ind, inst->getName() + "_unwrap");
 #endif
@@ -742,8 +741,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
 #if LLVM_VERSION_MAJOR > 7
     auto toreturn =
-        BuilderM.CreateLoad(pidx->getType()->getPointerElementType(), pidx,
-                            load->getName() + "_unwrap");
+        BuilderM.CreateLoad(load->getType(), pidx, load->getName() + "_unwrap");
 #else
     auto toreturn = BuilderM.CreateLoad(pidx, load->getName() + "_unwrap");
 #endif
@@ -1881,19 +1879,16 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
     }
 
     if (!inLoop) {
-      if (malloc)
-        ret->setName(malloc->getName() + "_fromtape");
+      ret->setName(malloc->getName() + "_fromtape");
       if (omp) {
         Value *tid = ompThreadId();
 #if LLVM_VERSION_MAJOR > 7
-        Value *tPtr =
-            BuilderQ.CreateInBoundsGEP(ret->getType()->getPointerElementType(),
-                                       ret, ArrayRef<Value *>(tid));
+        Value *tPtr = BuilderQ.CreateInBoundsGEP(malloc->getType(), ret,
+                                                 ArrayRef<Value *>(tid));
 #else
         Value *tPtr = BuilderQ.CreateInBoundsGEP(ret, ArrayRef<Value *>(tid));
 #endif
-        ret =
-            BuilderQ.CreateLoad(ret->getType()->getPointerElementType(), tPtr);
+        ret = BuilderQ.CreateLoad(malloc->getType(), tPtr);
       }
     } else {
       if (idx >= 0)
@@ -4514,9 +4509,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 
     auto rule = [&](Value *ip) {
 #if LLVM_VERSION_MAJOR > 7
-      auto li =
-          bb.CreateLoad(arg->getPointerOperandType()->getPointerElementType(),
-                        ip, arg->getName() + "'ipl");
+      auto li = bb.CreateLoad(arg->getType(), ip, arg->getName() + "'ipl");
 #else
       auto li = bb.CreateLoad(ip, arg->getName() + "'ipl");
 #endif
@@ -4579,8 +4572,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 
     auto rule = [&](Value *ip) {
 #if LLVM_VERSION_MAJOR > 7
-      auto shadow = bb.CreateGEP(ip->getType()->getPointerElementType(), ip,
-                                 invertargs, arg->getName() + "'ipg");
+      auto shadow = bb.CreateGEP(arg->getSourceElementType(), ip, invertargs,
+                                 arg->getName() + "'ipg");
 #else
       auto shadow = bb.CreateGEP(ip, invertargs, arg->getName() + "'ipg");
 #endif
