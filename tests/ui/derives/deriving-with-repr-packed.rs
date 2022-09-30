@@ -1,5 +1,3 @@
-#![deny(unaligned_references)]
-
 // Check that deriving certain builtin traits on certain packed structs cause
 // errors. To avoid potentially misaligned references, field copies must be
 // used, which involves adding `T: Copy` bounds.
