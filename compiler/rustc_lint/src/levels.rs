@@ -174,8 +174,12 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         },
     }
 
-    let mut specs = levels.provider.specs;
-    specs.specs.retain(|(_, v)| !v.is_empty());
+    let specs = levels.provider.specs;
+
+    #[cfg(debug_assertions)]
+    for (_, v) in specs.specs.iter() {
+        debug_assert!(!v.is_empty());
+    }
 
     specs
 }
