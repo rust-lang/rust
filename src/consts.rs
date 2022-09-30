@@ -14,6 +14,7 @@ use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRan
 
 use crate::base;
 use crate::context::CodegenCx;
+use crate::errors::LinkageConstOrMutType;
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -368,10 +369,7 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
                 cx.layout_of(mt.ty).gcc_type(cx, true)
             }
             else {
-                cx.sess().span_fatal(
-                    span,
-                    "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
-                )
+                cx.sess().emit_fatal(LinkageConstOrMutType { span: span })
             };
         // Declare a symbol `foo` with the desired linkage.
         let global1 = cx.declare_global_with_linkage(&sym, llty2, base::global_linkage_to_gcc(linkage));
