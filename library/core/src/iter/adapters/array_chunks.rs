@@ -88,11 +88,7 @@ where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.try_fold(
-            init,
-            ConstFnMutClosure { data: &mut f, func: NeverShortCircuit::wrap_mut_2_imp },
-        )
-        .0
+        self.try_fold(init, ConstFnMutClosure::new(&mut f, NeverShortCircuit::wrap_mut_2_imp)).0
     }
 }
 
@@ -136,11 +132,7 @@ where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.try_rfold(
-            init,
-            ConstFnMutClosure { data: &mut f, func: NeverShortCircuit::wrap_mut_2_imp },
-        )
-        .0
+        self.try_rfold(init, ConstFnMutClosure::new(&mut f, NeverShortCircuit::wrap_mut_2_imp)).0
     }
 }
 

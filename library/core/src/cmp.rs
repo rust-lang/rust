@@ -1267,7 +1267,7 @@ where
     {
         f(v1).cmp(&f(v2))
     }
-    min_by(v1, v2, ConstFnMutClosure { data: &mut f, func: imp })
+    min_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
 }
 
 /// Compares and returns the maximum of two values.
@@ -1352,7 +1352,7 @@ where
     {
         f(v1).cmp(&f(v2))
     }
-    max_by(v1, v2, ConstFnMutClosure { data: &mut f, func: imp })
+    max_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
