@@ -1704,6 +1704,7 @@ impl Ident {
     /// macro (e.g., `macro` or `macro_rules!` items) and stay different if they came from different
     /// non-transparent macros.
     /// Technically, this operation strips all transparent marks from ident's syntactic context.
+    #[inline]
     pub fn normalize_to_macro_rules(self) -> Ident {
         Ident::new(self.name, self.span.normalize_to_macro_rules())
     }
@@ -1719,6 +1720,7 @@ impl Ident {
 }
 
 impl PartialEq for Ident {
+    #[inline]
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name && self.span.eq_ctxt(rhs.span)
     }
