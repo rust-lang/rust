@@ -740,20 +740,40 @@ impl<'a> Parser<'a> {
         word
     }
 
-    /// Optionally parses an integer at the current position. This doesn't deal
-    /// with overflow at all, it's just accumulating digits.
     fn integer(&mut self) -> Option<usize> {
-        let mut cur = 0;
+        let mut cur: usize = 0;
         let mut found = false;
+        let mut overflow = false;
+        let start = self.current_pos();
         while let Some(&(_, c)) = self.cur.peek() {
             if let Some(i) = c.to_digit(10) {
-                cur = cur * 10 + i as usize;
+                let (tmp, mul_overflow) = cur.overflowing_mul(10);
+                let (tmp, add_overflow) = tmp.overflowing_add(i as usize);
+                if mul_overflow || add_overflow {
+                    overflow = true;
+                }
+                cur = tmp;
                 found = true;
                 self.cur.next();
             } else {
                 break;
             }
         }
+
+        if overflow {
+            let end = self.current_pos();
+            let overflowed_int = &self.input[start..end];
+            self.err(
+                format!(
+                    "integer `{}` does not fit into the type `usize` whose range is `0..={}`",
+                    overflowed_int,
+                    usize::MAX
+                ),
+                "integer out of range for `usize`",
+                self.span(start, end),
+            );
+        }
+
         if found { Some(cur) } else { None }
     }
 
