@@ -305,7 +305,7 @@ fn not_general_enough() {
 }
 
 // https://github.com/rust-lang/rust-clippy/issues/9369
-pub fn mutable_impl_fn_mut(mut f: impl FnMut()) {
+pub fn mutable_impl_fn_mut(mut f: impl FnMut(), mut f_used_once: impl FnMut()) -> impl FnMut() {
     fn takes_fn_mut(_: impl FnMut()) {}
     takes_fn_mut(|| f());
 
@@ -313,4 +313,6 @@ pub fn mutable_impl_fn_mut(mut f: impl FnMut()) {
     takes_fn_once(|| f());
 
     f();
+
+    move || takes_fn_mut(|| f_used_once())
 }

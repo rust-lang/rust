@@ -128,5 +128,11 @@ error: redundant closure
 LL |     takes_fn_once(|| f());
    |                   ^^^^^^ help: replace the closure with the function itself: `&mut f`
 
-error: aborting due to 21 previous errors
+error: redundant closure
+  --> $DIR/eta.rs:317:26
+   |
+LL |     move || takes_fn_mut(|| f_used_once())
+   |                          ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut f_used_once`
+
+error: aborting due to 22 previous errors
 
