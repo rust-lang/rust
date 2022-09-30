@@ -1010,15 +1010,25 @@ fn fmt_type<'cx>(
                 write!(f, "]")
             }
         },
-        clean::Array(ref t, ref n) => {
-            primitive_link(f, PrimitiveType::Array, "[", cx)?;
-            fmt::Display::fmt(&t.print(cx), f)?;
-            if f.alternate() {
-                primitive_link(f, PrimitiveType::Array, &format!("; {}]", n), cx)
-            } else {
-                primitive_link(f, PrimitiveType::Array, &format!("; {}]", Escape(n)), cx)
+        clean::Array(ref t, ref n) => match **t {
+            clean::Generic(name) if !f.alternate() => primitive_link(
+                f,
+                PrimitiveType::Array,
+                &format!("[{name}; {n}]", n = Escape(n)),
+                cx,
+            ),
+            _ => {
+                write!(f, "[")?;
+                fmt::Display::fmt(&t.print(cx), f)?;
+                if f.alternate() {
+                    write!(f, "; {n}")?;
+                } else {
+                    write!(f, "; ")?;
+                    primitive_link(f, PrimitiveType::Array, &format!("{n}", n = Escape(n)), cx)?;
+                }
+                write!(f, "]")
             }
-        }
+        },
         clean::RawPointer(m, ref t) => {
             let m = match m {
                 hir::Mutability::Mut => "mut",
