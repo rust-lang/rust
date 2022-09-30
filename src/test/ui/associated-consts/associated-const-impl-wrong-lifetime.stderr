@@ -2,7 +2,7 @@ error[E0308]: const not compatible with trait
   --> $DIR/associated-const-impl-wrong-lifetime.rs:7:5
    |
 LL |     const NAME: &'a str = "unit";
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |     ^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected reference `&'static str`
               found reference `&'a str`
