@@ -19,7 +19,7 @@ jobs:
         version:
           - '1.6'
           - '1.7'
-          - 'nightly'
+          - '1.8'
         os:
           - ubuntu-latest
           - macOS-latest
