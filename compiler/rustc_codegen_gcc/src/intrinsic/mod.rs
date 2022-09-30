@@ -4,7 +4,7 @@ mod simd;
 use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
-use rustc_codegen_ssa::common::{IntPredicate, span_invalid_monomorphization_error};
+use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
@@ -20,6 +20,7 @@ use crate::abi::GccType;
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
+use crate::errors::InvalidMonomorphizationBasicInteger;
 use crate::type_of::LayoutGccExt;
 use crate::intrinsic::simd::generic_simd_intrinsic;
 
@@ -242,15 +243,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 _ => bug!(),
                             },
                             None => {
-                                span_invalid_monomorphization_error(
-                                    tcx.sess,
-                                    span,
-                                    &format!(
-                                        "invalid monomorphization of `{}` intrinsic: \
-                                      expected basic integer type, found `{}`",
-                                      name, ty
-                                    ),
-                                );
+                                tcx.sess.emit_err(InvalidMonomorphizationBasicInteger { span, name, ty });
                                 return;
                             }
                         }
