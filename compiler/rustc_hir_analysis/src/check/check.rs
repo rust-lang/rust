@@ -1046,9 +1046,8 @@ fn check_impl_items_against_trait<'tcx>(
             hir::ImplItemKind::Const(..) => {
                 // Find associated const definition.
                 let _ = tcx.compare_assoc_const_impl_item_with_trait_item((
-                    &ty_impl_item,
-                    &ty_trait_item,
-                    impl_trait_ref,
+                    impl_item.id.def_id.def_id,
+                    ty_impl_item.trait_item_def_id.unwrap(),
                 ));
             }
             hir::ImplItemKind::Fn(..) => {

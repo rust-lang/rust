@@ -184,15 +184,11 @@ fn resolve_associated_item<'tcx>(
             // error has already been/will be emitted elsewhere).
             if leaf_def.item.kind == ty::AssocKind::Const
                 && trait_item_id != leaf_def.item.def_id
-                && leaf_def.item.def_id.is_local()
+                && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {
-                let impl_item = tcx.associated_item(leaf_def.item.def_id);
-                let trait_item = tcx.associated_item(trait_item_id);
-                let impl_trait_ref = tcx.impl_trait_ref(impl_item.container_id(tcx)).unwrap();
                 tcx.compare_assoc_const_impl_item_with_trait_item((
-                    impl_item,
-                    trait_item,
-                    impl_trait_ref,
+                    leaf_def_item,
+                    trait_item_id,
                 ))?;
             }
 

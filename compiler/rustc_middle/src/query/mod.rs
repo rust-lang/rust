@@ -2102,8 +2102,8 @@ rustc_queries! {
     }
 
     query compare_assoc_const_impl_item_with_trait_item(
-        key: (&'tcx ty::AssocItem, &'tcx ty::AssocItem, ty::TraitRef<'tcx>)
+        key: (LocalDefId, DefId)
     ) -> Result<(), ErrorGuaranteed> {
-        desc { |tcx| "checking assoc const `{}` has the same type as trait item", tcx.def_path_str(key.0.def_id) }
+        desc { |tcx| "checking assoc const `{}` has the same type as trait item", tcx.def_path_str(key.0.to_def_id()) }
     }
 }
