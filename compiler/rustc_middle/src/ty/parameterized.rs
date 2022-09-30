@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -27,6 +28,10 @@ impl<A: ParameterizedOverTcx, B: ParameterizedOverTcx> ParameterizedOverTcx for 
 
 impl<I: Idx + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for IndexVec<I, T> {
     type Value<'tcx> = IndexVec<I, T::Value<'tcx>>;
+}
+
+impl<I: 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for FxHashMap<I, T> {
+    type Value<'tcx> = FxHashMap<I, T::Value<'tcx>>;
 }
 
 impl<T: ParameterizedOverTcx> ParameterizedOverTcx for ty::Binder<'static, T> {
