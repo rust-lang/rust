@@ -858,16 +858,25 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn gep(&mut self, _typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
-        let mut result = ptr;
+        let ptr_type = ptr.get_type();
+        let mut pointee_type = ptr.get_type();
+        // NOTE: we cannot use array indexing here like in inbounds_gep because array indexing is
+        // always considered in bounds in GCC (TODO(antoyo): to be verified).
+        // So, we have to cast to a number.
+        let mut result = self.context.new_bitcast(None, ptr, self.sizet_type);
+        // FIXME(antoyo): if there were more than 1 index, this code is probably wrong and would
+        // require dereferencing the pointer.
         for index in indices {
-            result = self.context.new_array_access(None, result, *index).get_address(None).to_rvalue();
+            pointee_type = pointee_type.get_pointee().expect("pointee type");
+            let pointee_size = self.context.new_rvalue_from_int(index.get_type(), pointee_type.get_size() as i32);
+            result = result + self.gcc_int_cast(*index * pointee_size, self.sizet_type);
         }
-        result
+        self.context.new_bitcast(None, result, ptr_type)
     }
 
     fn inbounds_gep(&mut self, _typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
-        // FIXME(antoyo): would be safer if doing the same thing (loop) as gep.
-        // TODO(antoyo): specify inbounds somehow.
+        // NOTE: array indexing is always considered in bounds in GCC (TODO(antoyo): to be verified).
+        // TODO: replace with a loop like gep.
         match indices.len() {
             1 => {
                 self.context.new_array_access(None, ptr, indices[0]).get_address(None)
