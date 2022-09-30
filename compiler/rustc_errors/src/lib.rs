@@ -66,7 +66,7 @@ pub type PErr<'a> = DiagnosticBuilder<'a, ErrorGuaranteed>;
 pub type PResult<'a, T> = Result<T, PErr<'a>>;
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
-// (See also the comment on `DiagnosticBuilder`'s `diagnostic` field.)
+// (See also the comment on `DiagnosticBuilderInner`'s `diagnostic` field.)
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(PResult<'_, ()>, 16);
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
