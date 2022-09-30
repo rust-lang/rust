@@ -247,7 +247,7 @@ impl<'tcx> Queries<'tcx> {
                 self.session().compile_status()?;
 
                 // If we have any delayed bugs, for example because we created TyKind::Error earlier,
-                // it's likey that codegen will only cause more ICEs, obscuring the original problem
+                // it's likely that codegen will only cause more ICEs, obscuring the original problem
                 self.session().diagnostic().flush_delayed();
 
                 // Hook for UI tests.
