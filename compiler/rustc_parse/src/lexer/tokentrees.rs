@@ -64,7 +64,20 @@ impl<'a> TokenTreesReader<'a> {
                     }
                     return Ok(buf.into_token_stream());
                 }
-                _ => buf.push(self.parse_token_tree_non_delim_non_eof()),
+                _ => {
+                    // `this_spacing` for the returned token refers to whether the token is
+                    // immediately followed by another op token. It is determined by the
+                    // next token: its kind and its `preceded_by_whitespace` status.
+                    let (next_tok, is_next_tok_preceded_by_whitespace) =
+                        self.string_reader.next_token();
+                    let this_spacing = if is_next_tok_preceded_by_whitespace || !next_tok.is_op() {
+                        Spacing::Alone
+                    } else {
+                        Spacing::Joint
+                    };
+                    let this_tok = std::mem::replace(&mut self.token, next_tok);
+                    buf.push(TokenTree::Token(this_tok, this_spacing))
+                }
             }
         }
     }
@@ -234,21 +247,6 @@ impl<'a> TokenTreesReader<'a> {
 
         err.span_label(self.token.span, "unexpected closing delimiter");
         err
-    }
-
-    #[inline]
-    fn parse_token_tree_non_delim_non_eof(&mut self) -> TokenTree {
-        // `this_spacing` for the returned token refers to whether the token is
-        // immediately followed by another op token. It is determined by the
-        // next token: its kind and its `preceded_by_whitespace` status.
-        let (next_tok, is_next_tok_preceded_by_whitespace) = self.string_reader.next_token();
-        let this_spacing = if is_next_tok_preceded_by_whitespace || !next_tok.is_op() {
-            Spacing::Alone
-        } else {
-            Spacing::Joint
-        };
-        let this_tok = std::mem::replace(&mut self.token, next_tok);
-        TokenTree::Token(this_tok, this_spacing)
     }
 }
 
