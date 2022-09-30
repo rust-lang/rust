@@ -135,6 +135,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
 #[instrument(level = "trace", skip(tcx), ret)]
 fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLevelMap {
     let store = unerased_lint_store(tcx);
+    let attrs = tcx.hir_attrs(owner);
 
     let mut levels = LintLevelsBuilder {
         sess: tcx.sess,
@@ -143,23 +144,35 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
             cur: owner.into(),
             specs: ShallowLintLevelMap::default(),
             empty: FxHashMap::default(),
+            attrs,
         },
         warn_about_weird_lints: false,
         store,
         registered_tools: &tcx.resolutions(()).registered_tools,
     };
 
-    match tcx.hir().expect_owner(owner) {
-        hir::OwnerNode::Item(item) => levels.visit_item(item),
-        hir::OwnerNode::ForeignItem(item) => levels.visit_foreign_item(item),
-        hir::OwnerNode::TraitItem(item) => levels.visit_trait_item(item),
-        hir::OwnerNode::ImplItem(item) => levels.visit_impl_item(item),
-        hir::OwnerNode::Crate(mod_) => {
-            levels.add_command_line();
-            levels.add_id(hir::CRATE_HIR_ID);
-            levels.visit_mod(mod_, mod_.spans.inner_span, hir::CRATE_HIR_ID)
-        }
-    };
+    if owner == hir::CRATE_OWNER_ID {
+        levels.add_command_line();
+    }
+
+    match attrs.map.range(..) {
+        // There is only something to do if there are attributes at all.
+        [] => {}
+        // Most of the time, there is only one attribute.  Avoid fetching HIR in that case.
+        [(local_id, _)] => levels.add_id(HirId { owner, local_id: *local_id }),
+        // Otherwise, we need to visit the attributes in source code order, so we fetch HIR and do
+        // a standard visit.
+        _ => match tcx.hir().expect_owner(owner) {
+            hir::OwnerNode::Item(item) => levels.visit_item(item),
+            hir::OwnerNode::ForeignItem(item) => levels.visit_foreign_item(item),
+            hir::OwnerNode::TraitItem(item) => levels.visit_trait_item(item),
+            hir::OwnerNode::ImplItem(item) => levels.visit_impl_item(item),
+            hir::OwnerNode::Crate(mod_) => {
+                levels.add_id(hir::CRATE_HIR_ID);
+                levels.visit_mod(mod_, mod_.spans.inner_span, hir::CRATE_HIR_ID)
+            }
+        },
+    }
 
     let mut specs = levels.provider.specs;
     specs.specs.retain(|(_, v)| !v.is_empty());
@@ -199,6 +212,7 @@ struct LintLevelQueryMap<'tcx> {
     specs: ShallowLintLevelMap,
     /// Empty hash map to simplify code.
     empty: FxHashMap<LintId, LevelAndSource>,
+    attrs: &'tcx hir::AttributeMap<'tcx>,
 }
 
 impl LintLevelsProvider for LintLevelQueryMap<'_> {
@@ -253,7 +267,11 @@ impl LintLevelsProvider for QueryMapExpectationsWrapper<'_> {
 impl<'tcx> LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn add_id(&mut self, hir_id: HirId) {
         self.provider.cur = hir_id;
-        self.add(self.provider.tcx.hir().attrs(hir_id), hir_id == hir::CRATE_HIR_ID, Some(hir_id));
+        self.add(
+            self.provider.attrs.get(hir_id.local_id),
+            hir_id == hir::CRATE_HIR_ID,
+            Some(hir_id),
+        );
     }
 }
 
