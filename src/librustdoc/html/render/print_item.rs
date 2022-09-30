@@ -718,7 +718,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         if toggled {
             write!(w, "<details class=\"rustdoc-toggle method-toggle\" open><summary>");
         }
-        write!(w, "<div id=\"{}\" class=\"method has-srclink\">", id);
+        write!(w, "<section id=\"{}\" class=\"method has-srclink\">", id);
         render_rightside(w, cx, m, t, RenderMode::Normal);
         write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(
@@ -730,7 +730,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             RenderMode::Normal,
         );
         w.write_str("</h4>");
-        w.write_str("</div>");
+        w.write_str("</section>");
         if toggled {
             write!(w, "</summary>");
             w.push_buffer(content);
