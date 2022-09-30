@@ -35,7 +35,6 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
@@ -913,38 +912,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // precise still.
         let unbound_input_types =
             stack.fresh_trait_pred.skip_binder().trait_ref.substs.types().any(|ty| ty.is_fresh());
-
-        if stack.obligation.polarity() != ty::ImplPolarity::Negative {
-            // This check was an imperfect workaround for a bug in the old
-            // intercrate mode; it should be removed when that goes away.
-            if unbound_input_types && self.intercrate {
-                debug!("evaluate_stack --> unbound argument, intercrate -->  ambiguous",);
-                // Heuristics: show the diagnostics when there are no candidates in crate.
-                if self.intercrate_ambiguity_causes.is_some() {
-                    debug!("evaluate_stack: intercrate_ambiguity_causes is some");
-                    if let Ok(candidate_set) = self.assemble_candidates(stack) {
-                        if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
-                            let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
-                            let self_ty = trait_ref.self_ty();
-                            let cause = with_no_trimmed_paths!({
-                                IntercrateAmbiguityCause::DownstreamCrate {
-                                    trait_desc: trait_ref.print_only_trait_path().to_string(),
-                                    self_desc: if self_ty.has_concrete_skeleton() {
-                                        Some(self_ty.to_string())
-                                    } else {
-                                        None
-                                    },
-                                }
-                            });
-
-                            debug!(?cause, "evaluate_stack: pushing cause");
-                            self.intercrate_ambiguity_causes.as_mut().unwrap().insert(cause);
-                        }
-                    }
-                }
-                return Ok(EvaluatedToAmbig);
-            }
-        }
 
         if unbound_input_types
             && stack.iter().skip(1).any(|prev| {
