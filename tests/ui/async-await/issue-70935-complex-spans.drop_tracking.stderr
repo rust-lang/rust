@@ -7,7 +7,7 @@ LL | fn foo(tx: std::sync::mpsc::Sender<i32>) -> impl Future + Send {
    = help: the trait `Sync` is not implemented for `Sender<i32>`
    = note: required for `&Sender<i32>` to implement `Send`
 note: required because it's used within this closure
-  --> $DIR/issue-70935-complex-spans.rs:17:13
+  --> $DIR/issue-70935-complex-spans.rs:18:13
    |
 LL |         baz(|| async{
    |             ^^
@@ -20,7 +20,7 @@ LL | | }
    | |_^
    = note: required because it captures the following types: `ResumeTy`, `impl Future<Output = ()>`, `()`
 note: required because it's used within this `async` block
-  --> $DIR/issue-70935-complex-spans.rs:16:5
+  --> $DIR/issue-70935-complex-spans.rs:17:5
    |
 LL | /     async move {
 LL | |         baz(|| async{
