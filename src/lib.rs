@@ -210,7 +210,6 @@ impl WriteBackendMethods for GccCodegenBackend {
     type Module = GccContext;
     type TargetMachine = ();
     type ModuleBuffer = ModuleBuffer;
-    type Context = ();
     type ThinData = ();
     type ThinBuffer = ThinBuffer;
 
