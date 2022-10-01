@@ -71,9 +71,7 @@ fn is_an_instant(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let expr_ty = cx.typeck_results().expr_ty(expr);
 
     match expr_ty.kind() {
-        rustc_middle::ty::Adt(def, _) => {
-            clippy_utils::match_def_path(cx, dbg!(def).did(), &clippy_utils::paths::INSTANT)
-        },
+        rustc_middle::ty::Adt(def, _) => clippy_utils::match_def_path(cx, def.did(), &clippy_utils::paths::INSTANT),
         _ => false,
     }
 }
