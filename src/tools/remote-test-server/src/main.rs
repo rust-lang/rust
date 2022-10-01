@@ -12,6 +12,7 @@
 
 #[cfg(not(windows))]
 use std::fs::Permissions;
+use std::net::SocketAddr;
 #[cfg(not(windows))]
 use std::os::unix::prelude::*;
 
@@ -41,29 +42,43 @@ static TEST: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Copy, Clone)]
 struct Config {
-    pub remote: bool,
-    pub verbose: bool,
+    verbose: bool,
+    sequential: bool,
+    bind: SocketAddr,
 }
 
 impl Config {
     pub fn default() -> Config {
-        Config { remote: false, verbose: false }
+        Config {
+            verbose: false,
+            sequential: false,
+            bind: if cfg!(target_os = "android") || cfg!(windows) {
+                ([0, 0, 0, 0], 12345).into()
+            } else {
+                ([10, 0, 2, 15], 12345).into()
+            },
+        }
     }
 
     pub fn parse_args() -> Config {
         let mut config = Config::default();
 
         let args = env::args().skip(1);
+        let mut next_is_bind = false;
         for argument in args {
             match &argument[..] {
-                "remote" => {
-                    config.remote = true;
+                bind if next_is_bind => {
+                    config.bind = t!(bind.parse());
+                    next_is_bind = false;
                 }
-                "verbose" | "-v" => {
-                    config.verbose = true;
-                }
+                "--bind" => next_is_bind = true,
+                "--sequential" => config.sequential = true,
+                "--verbose" | "-v" => config.verbose = true,
                 arg => panic!("unknown argument: {}", arg),
             }
+        }
+        if next_is_bind {
+            panic!("missing value for --bind");
         }
 
         config
@@ -81,13 +96,7 @@ fn main() {
 
     let config = Config::parse_args();
 
-    let bind_addr = if cfg!(target_os = "android") || cfg!(windows) || config.remote {
-        "0.0.0.0:12345"
-    } else {
-        "10.0.2.15:12345"
-    };
-
-    let listener = t!(TcpListener::bind(bind_addr));
+    let listener = t!(TcpListener::bind(config.bind));
     let (work, tmp): (PathBuf, PathBuf) = if cfg!(target_os = "android") {
         ("/data/tmp/work".into(), "/data/tmp/work/tmp".into())
     } else {
@@ -97,7 +106,7 @@ fn main() {
         tmp_dir.push("tmp");
         (work_dir, tmp_dir)
     };
-    println!("listening on {}!", bind_addr);
+    println!("listening on {}!", config.bind);
 
     t!(fs::create_dir_all(&work));
     t!(fs::create_dir_all(&tmp));
@@ -119,7 +128,12 @@ fn main() {
             let lock = lock.clone();
             let work = work.clone();
             let tmp = tmp.clone();
-            thread::spawn(move || handle_run(socket, &work, &tmp, &lock, config));
+            let f = move || handle_run(socket, &work, &tmp, &lock, config);
+            if config.sequential {
+                f();
+            } else {
+                thread::spawn(f);
+            }
         } else {
             panic!("unknown command {:?}", buf);
         }

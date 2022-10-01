@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Change the names for `dist` commands to match the component they generate. [#90684](https://github.com/rust-lang/rust/pull/90684)
 - The `build.fast-submodules` option has been removed. Fast submodule checkouts are enabled unconditionally. Automatic submodule handling can still be disabled with `build.submodules = false`.
 - Several unsupported `./configure` options have been removed: `optimize`, `parallel-compiler`. These can still be enabled with `--set`, although it isn't recommended.
+- `remote-test-server`'s `verbose` argument has been removed in favor of the `--verbose` flag
+- `remote-test-server`'s `remote` argument has been removed in favor of the `--bind` flag. Use `--bind 0.0.0.0:12345` to replicate the behavior of the `remote` argument.
 
 ### Non-breaking changes
 
