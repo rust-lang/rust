@@ -494,6 +494,14 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
     /// Called after `push` when the scope of a set of attributes are exited.
     pub(crate) fn pop(&mut self, push: BuilderPush) {
         self.provider.cur = push.prev;
+        std::mem::forget(push);
+    }
+}
+
+#[cfg(debug_assertions)]
+impl Drop for BuilderPush {
+    fn drop(&mut self) {
+        panic!("Found a `push` without a `pop`.");
     }
 }
 
