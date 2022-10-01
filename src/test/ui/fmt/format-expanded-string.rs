@@ -1,3 +1,9 @@
+// aux-build:format-string-proc-macro.rs
+
+#[macro_use]
+extern crate format_string_proc_macro;
+
+
 // If the format string is another macro invocation, rustc would previously
 // compute nonsensical spans, such as:
 //
@@ -11,5 +17,8 @@
 
 fn main() {
     format!(concat!("abc}"));
+    //~^ ERROR: invalid format string: unmatched `}` found
+
+    format!(err_with_input_span!(""));
     //~^ ERROR: invalid format string: unmatched `}` found
 }

@@ -159,7 +159,7 @@ pub fn make_format_args(
     append_newline: bool,
 ) -> Result<FormatArgs, ()> {
     let msg = "format argument must be a string literal";
-    let fmt_span = efmt.span;
+    let unexpanded_fmt_span = efmt.span;
     let (fmt_str, fmt_style, fmt_span) = match expr_to_spanned_string(ecx, efmt, msg) {
         Ok(mut fmt) if append_newline => {
             fmt.0 = Symbol::intern(&format!("{}\n", fmt.0));
@@ -174,7 +174,7 @@ pub fn make_format_args(
                 };
                 if !suggested {
                     err.span_suggestion(
-                        fmt_span.shrink_to_lo(),
+                        unexpanded_fmt_span.shrink_to_lo(),
                         "you might be missing a string literal to format with",
                         format!("\"{}\", ", sugg_fmt),
                         Applicability::MaybeIncorrect,
@@ -192,7 +192,7 @@ pub fn make_format_args(
     };
 
     let fmt_str = fmt_str.as_str(); // for the suggestions below
-    let fmt_snippet = ecx.source_map().span_to_snippet(fmt_span).ok();
+    let fmt_snippet = ecx.source_map().span_to_snippet(unexpanded_fmt_span).ok();
     let mut parser = parse::Parser::new(
         fmt_str,
         str_style,
