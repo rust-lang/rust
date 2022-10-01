@@ -30,6 +30,8 @@ declare_clippy_lint! {
     "usage of the lint functions of the compiler instead of the utils::* variant"
 }
 
+impl_lint_pass!(CompilerLintFunctions => [COMPILER_LINT_FUNCTIONS]);
+
 #[derive(Clone, Default)]
 pub struct CompilerLintFunctions {
     map: FxHashMap<&'static str, &'static str>,
@@ -47,8 +49,6 @@ impl CompilerLintFunctions {
         Self { map }
     }
 }
-
-impl_lint_pass!(CompilerLintFunctions => [COMPILER_LINT_FUNCTIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

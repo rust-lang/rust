@@ -25,6 +25,38 @@ declare_clippy_lint! {
     "invalid path"
 }
 
+declare_lint_pass!(InvalidPaths => [INVALID_PATHS]);
+
+impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        let local_def_id = &cx.tcx.parent_module(item.hir_id());
+        let mod_name = &cx.tcx.item_name(local_def_id.to_def_id());
+        if_chain! {
+            if mod_name.as_str() == "paths";
+            if let hir::ItemKind::Const(ty, body_id) = item.kind;
+            let ty = hir_ty_to_ty(cx.tcx, ty);
+            if let ty::Array(el_ty, _) = &ty.kind();
+            if let ty::Ref(_, el_ty, _) = &el_ty.kind();
+            if el_ty.is_str();
+            let body = cx.tcx.hir().body(body_id);
+            let typeck_results = cx.tcx.typeck_body(body_id);
+            if let Some(Constant::Vec(path)) = constant_simple(cx, typeck_results, body.value);
+            let path: Vec<&str> = path.iter().map(|x| {
+                    if let Constant::Str(s) = x {
+                        s.as_str()
+                    } else {
+                        // We checked the type of the constant above
+                        unreachable!()
+                    }
+                }).collect();
+            if !check_path(cx, &path[..]);
+            then {
+                span_lint(cx, INVALID_PATHS, item.span, "invalid path");
+            }
+        }
+    }
+}
+
 // This is not a complete resolver for paths. It works on all the paths currently used in the paths
 // module.  That's all it does and all it needs to do.
 pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
@@ -70,36 +102,4 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
     }
 
     false
-}
-
-declare_lint_pass!(InvalidPaths => [INVALID_PATHS]);
-
-impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
-    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let local_def_id = &cx.tcx.parent_module(item.hir_id());
-        let mod_name = &cx.tcx.item_name(local_def_id.to_def_id());
-        if_chain! {
-            if mod_name.as_str() == "paths";
-            if let hir::ItemKind::Const(ty, body_id) = item.kind;
-            let ty = hir_ty_to_ty(cx.tcx, ty);
-            if let ty::Array(el_ty, _) = &ty.kind();
-            if let ty::Ref(_, el_ty, _) = &el_ty.kind();
-            if el_ty.is_str();
-            let body = cx.tcx.hir().body(body_id);
-            let typeck_results = cx.tcx.typeck_body(body_id);
-            if let Some(Constant::Vec(path)) = constant_simple(cx, typeck_results, body.value);
-            let path: Vec<&str> = path.iter().map(|x| {
-                    if let Constant::Str(s) = x {
-                        s.as_str()
-                    } else {
-                        // We checked the type of the constant above
-                        unreachable!()
-                    }
-                }).collect();
-            if !check_path(cx, &path[..]);
-            then {
-                span_lint(cx, INVALID_PATHS, item.span, "invalid path");
-            }
-        }
-    }
 }
