@@ -184,17 +184,6 @@ h4.code-header {
 	margin: 0;
 	padding: 0;
 }
-.impl,
-.impl-items .method,
-.methods .method,
-.impl-items .type,
-.methods .type,
-.impl-items .associatedconstant,
-.methods .associatedconstant,
-.impl-items .associatedtype,
-.methods .associatedtype {
-	position: relative;
-}
 
 #crate-search,
 h1, h2, h3, h4, h5, h6,
