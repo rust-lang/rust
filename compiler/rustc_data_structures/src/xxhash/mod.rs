@@ -3,7 +3,7 @@
 //! in succession.
 //!
 //! The algorithm has been ported from the original C implementation. The original port can be found
-//! here: https://github.com/michaelwoerister/xxh3-port.
+//! here: <https://github.com/michaelwoerister/xxh3-port>.
 //!
 //! The implementation contains specialized versions of several functions which are enabled
 //! if the SSE2 instruction set is available.
