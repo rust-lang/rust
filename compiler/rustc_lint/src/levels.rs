@@ -29,28 +29,28 @@ use crate::errors::{
 };
 
 #[derive(Debug)]
-pub struct LintLevelSets {
-    pub list: IndexVec<LintStackIndex, LintSet>,
+struct LintLevelSets {
+    list: IndexVec<LintStackIndex, LintSet>,
 }
 
 rustc_index::newtype_index! {
-    pub struct LintStackIndex {
+    struct LintStackIndex {
         ENCODABLE = custom, // we don't need encoding
         const COMMAND_LINE = 0,
     }
 }
 
 #[derive(Debug)]
-pub struct LintSet {
+struct LintSet {
     // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
     // flag.
-    pub specs: FxHashMap<LintId, LevelAndSource>,
+    specs: FxHashMap<LintId, LevelAndSource>,
 
-    pub parent: LintStackIndex,
+    parent: LintStackIndex,
 }
 
 impl LintLevelSets {
-    pub fn new() -> Self {
+    fn new() -> Self {
         LintLevelSets { list: IndexVec::new() }
     }
 
@@ -62,15 +62,14 @@ impl LintLevelSets {
         sess: &Session,
     ) -> LevelAndSource {
         let lint = LintId::of(lint);
-        let (level, mut src) = self.get_lint_id_level(lint, idx, aux);
+        let (level, mut src) = self.raw_lint_id_level(lint, idx, aux);
         let level = reveal_actual_level(level, &mut src, sess, lint, |id| {
-            self.get_lint_id_level(id, idx, aux)
+            self.raw_lint_id_level(id, idx, aux)
         });
-
         (level, src)
     }
 
-    pub fn get_lint_id_level(
+    fn raw_lint_id_level(
         &self,
         id: LintId,
         mut idx: LintStackIndex,
@@ -292,13 +291,12 @@ pub struct LintLevelsBuilder<'s, P> {
     registered_tools: &'s RegisteredTools,
 }
 
-pub struct BuilderPush {
+pub(crate) struct BuilderPush {
     prev: LintStackIndex,
-    pub changed: bool,
 }
 
 impl<'s> LintLevelsBuilder<'s, TopDown> {
-    pub fn new(
+    pub(crate) fn new(
         sess: &'s Session,
         warn_about_weird_lints: bool,
         store: &'s LintStore,
@@ -356,11 +354,11 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
             self.provider.cur = prev;
         }
 
-        BuilderPush { prev, changed: prev != self.provider.cur }
+        BuilderPush { prev }
     }
 
     /// Called after `push` when the scope of a set of attributes are exited.
-    pub fn pop(&mut self, push: BuilderPush) {
+    pub(crate) fn pop(&mut self, push: BuilderPush) {
         self.provider.cur = push.prev;
     }
 }
@@ -929,7 +927,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
     /// Used to emit a lint-related diagnostic based on the current state of
     /// this lint context.
-    pub fn struct_lint(
+    pub(crate) fn struct_lint(
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
