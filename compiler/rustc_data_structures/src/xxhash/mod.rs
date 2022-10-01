@@ -204,7 +204,6 @@ cfg_if! {
     }
 }
 
-
 // Public interface
 impl Xxh3Hasher {
     // It's important that the fast path, where we just copy things into the state's buffer gets
@@ -774,11 +773,9 @@ fn xxh3_128bits_internal(
 
     if input_len <= 16 {
         xxh3_len_0to16_128b(input, secret, seed)
-    }
-    else if input_len <= 128 {
+    } else if input_len <= 128 {
         xxh3_len_17to128_128b(input, secret, seed)
-    }
-    else if input_len <= XXH3_MIDSIZE_MAX as usize {
+    } else if input_len <= XXH3_MIDSIZE_MAX as usize {
         xxh3_len_129to240_128b(input, secret, seed)
     } else {
         f_hl128(input, seed, secret)
@@ -806,10 +803,7 @@ fn xxh3_len_0to16_128b(input: &[u8], secret: &[u8], seed: u64) -> Hash128 {
     let secret: Ptr<u8> = secret.into();
     let bitflipl = xxh_read_le64(secret.offset(64)) ^ xxh_read_le64(secret.offset(72));
     let bitfliph = xxh_read_le64(secret.offset(80)) ^ xxh_read_le64(secret.offset(88));
-    Hash128 {
-        low64: xxh64_avalanche(seed ^ bitflipl),
-        high64: xxh64_avalanche(seed ^ bitfliph),
-    }
+    Hash128 { low64: xxh64_avalanche(seed ^ bitflipl), high64: xxh64_avalanche(seed ^ bitfliph) }
 }
 
 #[inline]
@@ -829,10 +823,10 @@ fn xxh3_len_9to16_128b(input: &[u8], secret: &[u8], seed: u64) -> Hash128 {
     let input: Ptr<u8> = input.into();
     debug_assert!(9 <= input_len && input_len <= 16);
     {
-        let bitflipl =
-            (xxh_read_le64(secret.offset(32)) ^ xxh_read_le64(secret.offset(40))).wrapping_sub(seed);
-        let bitfliph =
-            (xxh_read_le64(secret.offset(48)) ^ xxh_read_le64(secret.offset(56))).wrapping_add(seed);
+        let bitflipl = (xxh_read_le64(secret.offset(32)) ^ xxh_read_le64(secret.offset(40)))
+            .wrapping_sub(seed);
+        let bitfliph = (xxh_read_le64(secret.offset(48)) ^ xxh_read_le64(secret.offset(56)))
+            .wrapping_add(seed);
         let input_lo = xxh_read_le64(input);
         let mut input_hi = xxh_read_le64(input.offset(input_len - 8));
         let mut m128 = xxh_mul64to128(input_lo ^ input_hi ^ bitflipl, XXH_PRIME64_1);
@@ -952,7 +946,8 @@ fn xxh3_len_1to3_128b(input: &[u8], secret: &[u8], seed: u64) -> Hash128 {
     let combinedh: u32 = combinedl.swap_bytes().rotate_left(13);
     let bitflipl: u64 =
         ((xxh_read_le32(secret) ^ xxh_read_le32(secret.offset(4))) as u64).wrapping_add(seed);
-    let bitfliph: u64 = ((xxh_read_le32(secret.offset(8)) ^ xxh_read_le32(secret.offset(12))) as u64)
+    let bitfliph: u64 = ((xxh_read_le32(secret.offset(8)) ^ xxh_read_le32(secret.offset(12)))
+        as u64)
         .wrapping_sub(seed);
     let keyed_lo: u64 = combinedl as u64 ^ bitflipl;
     let keyed_hi: u64 = combinedh as u64 ^ bitfliph;
@@ -1091,9 +1086,7 @@ fn xxh3_len_129to240_128b(input: &[u8], secret: &[u8], seed: u64) -> Hash128 {
             .low64
             .wrapping_mul(XXH_PRIME64_1)
             .wrapping_add(acc.high64.wrapping_mul(XXH_PRIME64_4))
-            .wrapping_add(
-                ((input_len as u64).wrapping_sub(seed)).wrapping_mul(XXH_PRIME64_2),
-            ),
+            .wrapping_add(((input_len as u64).wrapping_sub(seed)).wrapping_mul(XXH_PRIME64_2)),
     };
     h128.low64 = xxh3_avalanche(h128.low64);
     h128.high64 = 0u64.wrapping_sub(xxh3_avalanche(h128.high64));

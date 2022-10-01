@@ -65,7 +65,7 @@ macro_rules! define_ptr {
             }
 
             #[inline]
-            fn addr(&self) -> usize {
+            pub fn addr(&self) -> usize {
                 self.ptr as usize
             }
 
