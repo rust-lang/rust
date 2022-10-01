@@ -36,6 +36,7 @@ core_simd = { git = "https://github.com/rust-lang/portable-simd" }
 
 and finally write this in `src/main.rs`:
 ```rust
+#![feature(portable_simd)]
 use core_simd::*;
 fn main() {
     let a = f32x4::splat(10.0);
