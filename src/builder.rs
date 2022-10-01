@@ -876,17 +876,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn inbounds_gep(&mut self, _typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
         // NOTE: array indexing is always considered in bounds in GCC (TODO(antoyo): to be verified).
-        // TODO: replace with a loop like gep.
-        match indices.len() {
-            1 => {
-                self.context.new_array_access(None, ptr, indices[0]).get_address(None)
-            },
-            2 => {
-                let array = ptr.dereference(None); // TODO(antoyo): assert that first index is 0?
-                self.context.new_array_access(None, array, indices[1]).get_address(None)
-            },
-            _ => unimplemented!(),
+        let mut indices = indices.into_iter();
+        let index = indices.next().expect("first index in inbounds_gep");
+        let mut result = self.context.new_array_access(None, ptr, *index);
+        for index in indices {
+            result = self.context.new_array_access(None, result, *index);
         }
+        result.get_address(None)
     }
 
     fn struct_gep(&mut self, value_type: Type<'gcc>, ptr: RValue<'gcc>, idx: u64) -> RValue<'gcc> {
