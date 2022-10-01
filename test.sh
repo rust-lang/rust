@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         "--test-rustc")
-            funcs=(test_rustc)
+            funcs+=(test_rustc)
             shift
             ;;
         "--test-successful-rustc")

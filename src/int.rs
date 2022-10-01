@@ -389,18 +389,22 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 };
             self.context.new_comparison(None, op, cmp, self.context.new_rvalue_from_int(self.int_type, limit))
         }
+        else if a_type.get_pointee().is_some() && b_type.get_pointee().is_some() {
+            // NOTE: gcc cannot compare pointers to different objects, but rustc does that, so cast them to usize.
+            lhs = self.context.new_bitcast(None, lhs, self.usize_type);
+            rhs = self.context.new_bitcast(None, rhs, self.usize_type);
+            self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
+        }
         else {
-            let left_type = lhs.get_type();
-            let right_type = rhs.get_type();
-            if left_type != right_type {
+            if a_type != b_type {
                 // NOTE: because libgccjit cannot compare function pointers.
-                if left_type.dyncast_function_ptr_type().is_some() && right_type.dyncast_function_ptr_type().is_some() {
+                if a_type.dyncast_function_ptr_type().is_some() && b_type.dyncast_function_ptr_type().is_some() {
                     lhs = self.context.new_cast(None, lhs, self.usize_type.make_pointer());
                     rhs = self.context.new_cast(None, rhs, self.usize_type.make_pointer());
                 }
                 // NOTE: hack because we try to cast a vector type to the same vector type.
-                else if format!("{:?}", left_type) != format!("{:?}", right_type) {
-                    rhs = self.context.new_cast(None, rhs, left_type);
+                else if format!("{:?}", a_type) != format!("{:?}", b_type) {
+                    rhs = self.context.new_cast(None, rhs, a_type);
                 }
             }
             self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
