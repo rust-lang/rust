@@ -608,13 +608,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// let string = String::with_capacity(1);
-    /// let ptr = string.as_ptr() as *mut _;
+    /// let ptr = string.as_ptr() as *mut u8;
     /// unsafe { ptr.write(4) }; // UNDEFINED BEHAVIOUR
     /// ```
     /// Use instead:
     /// ```rust
     /// let mut string = String::with_capacity(1);
-    /// let string = string.as_mut_ptr();
+    /// let ptr = string.as_mut_ptr();
     /// unsafe { ptr.write(4) };
     /// ```
     #[clippy::version = "1.66.0"]
