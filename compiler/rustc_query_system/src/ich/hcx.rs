@@ -12,7 +12,7 @@ use rustc_session::cstore::CrateStore;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, CachingSourceMapView, SourceFile, Span, SpanData};
+use rustc_span::{BytePos, CachingSourceMapView, SourceFile, Span, SpanData, DUMMY_SP};
 
 /// This is the context state available during incr. comp. hashing. It contains
 /// enough information to transform `DefId`s and `HirId`s into stable `DefPath`s (i.e.,
@@ -185,7 +185,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
 
     #[inline]
     fn def_span(&self, def_id: LocalDefId) -> Span {
-        self.source_span[def_id]
+        *self.source_span.get(def_id).unwrap_or(&DUMMY_SP)
     }
 
     #[inline]

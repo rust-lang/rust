@@ -9,7 +9,7 @@ note: generator is not `Send` as this value is used across a yield
   --> $DIR/generator-print-verbose-1.rs:35:9
    |
 LL |         let _non_send_gen = make_non_send_generator();
-   |             ------------- has type `Opaque(DefId(0:34 ~ generator_print_verbose_1[749a]::make_non_send_generator::{opaque#0}), [])` which is not `Send`
+   |             ------------- has type `Opaque(DefId(0:44 ~ generator_print_verbose_1[749a]::make_non_send_generator::{opaque#0}), [])` which is not `Send`
 LL |         yield;
    |         ^^^^^ yield occurs here, with `_non_send_gen` maybe used later
 LL |     };
@@ -35,17 +35,17 @@ note: required because it's used within this generator
    |
 LL |     || {
    |     ^^
-note: required because it appears within the type `Opaque(DefId(0:39 ~ generator_print_verbose_1[749a]::make_gen2::{opaque#0}), [std::sync::Arc<std::cell::RefCell<i32>>])`
+note: required because it appears within the type `Opaque(DefId(0:45 ~ generator_print_verbose_1[749a]::make_gen2::{opaque#0}), [std::sync::Arc<std::cell::RefCell<i32>>])`
   --> $DIR/generator-print-verbose-1.rs:41:30
    |
 LL | pub fn make_gen2<T>(t: T) -> impl Generator<Return = T> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required because it appears within the type `Opaque(DefId(0:42 ~ generator_print_verbose_1[749a]::make_non_send_generator2::{opaque#0}), [])`
+note: required because it appears within the type `Opaque(DefId(0:46 ~ generator_print_verbose_1[749a]::make_non_send_generator2::{opaque#0}), [])`
   --> $DIR/generator-print-verbose-1.rs:47:34
    |
 LL | fn make_non_send_generator2() -> impl Generator<Return = Arc<RefCell<i32>>> {
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: required because it captures the following types: `Opaque(DefId(0:42 ~ generator_print_verbose_1[749a]::make_non_send_generator2::{opaque#0}), [])`, `()`
+   = note: required because it captures the following types: `Opaque(DefId(0:46 ~ generator_print_verbose_1[749a]::make_non_send_generator2::{opaque#0}), [])`, `()`
 note: required because it's used within this generator
   --> $DIR/generator-print-verbose-1.rs:52:20
    |

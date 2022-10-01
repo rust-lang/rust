@@ -285,21 +285,6 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.kind {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
-            TyKind::ImplTrait(node_id, _) => {
-                let parent_def = match self.impl_trait_context {
-                    ImplTraitContext::Universal(item_def) => self.resolver.create_def(
-                        item_def,
-                        node_id,
-                        DefPathData::ImplTrait,
-                        self.expansion.to_expn_id(),
-                        ty.span,
-                    ),
-                    ImplTraitContext::Existential => {
-                        self.create_def(node_id, DefPathData::ImplTrait, ty.span)
-                    }
-                };
-                self.with_parent(parent_def, |this| visit::walk_ty(this, ty))
-            }
             _ => visit::walk_ty(self, ty),
         }
     }

@@ -448,8 +448,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let infer_lifetimes =
             (gen_pos != GenericArgPosition::Type || infer_args) && !gen_args.has_lifetime_params();
 
-        if gen_pos != GenericArgPosition::Type && !gen_args.bindings.is_empty() {
-            Self::prohibit_assoc_ty_binding(tcx, gen_args.bindings[0].span);
+        if gen_pos != GenericArgPosition::Type && let Some(b) = gen_args.bindings.first() {
+            Self::prohibit_assoc_ty_binding(tcx, b.span);
         }
 
         let explicit_late_bound =

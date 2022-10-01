@@ -47,10 +47,6 @@ pub enum TokenTree {
     Delimited(DelimSpan, Delimiter, TokenStream),
 }
 
-// This type is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(TokenTree, 32);
-
 // Ensure all fields of `TokenTree` is `Send` and `Sync`.
 #[cfg(parallel_compiler)]
 fn _dummy()
@@ -307,10 +303,6 @@ pub struct AttributesData {
 /// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
-
-// `TokenStream` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(TokenStream, 8);
 
 #[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum Spacing {
@@ -663,4 +655,17 @@ impl DelimSpan {
     pub fn entire(self) -> Span {
         self.open.with_hi(self.close.hi())
     }
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(AttrTokenStream, 8);
+    static_assert_size!(AttrTokenTree, 32);
+    static_assert_size!(LazyAttrTokenStream, 8);
+    static_assert_size!(TokenStream, 8);
+    static_assert_size!(TokenTree, 32);
 }
