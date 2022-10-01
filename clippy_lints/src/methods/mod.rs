@@ -102,9 +102,7 @@ use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_adt_constructor, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{
-    contains_return, get_trait_def_id, is_trait_method, iter_input_pats, meets_msrv, msrvs, paths, return_ty,
-};
+use clippy_utils::{contains_return, is_trait_method, iter_input_pats, meets_msrv, msrvs, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -3846,12 +3844,12 @@ impl SelfKind {
                 return m == mutability && t == parent_ty;
             }
 
-            let trait_path = match mutability {
-                hir::Mutability::Not => &paths::ASREF_TRAIT,
-                hir::Mutability::Mut => &paths::ASMUT_TRAIT,
+            let trait_sym = match mutability {
+                hir::Mutability::Not => sym::AsRef,
+                hir::Mutability::Mut => sym::AsMut,
             };
 
-            let Some(trait_def_id) = get_trait_def_id(cx, trait_path) else {
+            let Some(trait_def_id) = cx.tcx.get_diagnostic_item(trait_sym) else {
                 return false
             };
             implements_trait(cx, ty, trait_def_id, &[parent_ty.into()])

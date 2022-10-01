@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::match_function_call;
-use clippy_utils::paths::FUTURE_FROM_GENERATOR;
+use clippy_utils::match_function_call_with_def_id;
 use clippy_utils::source::{position_before_rarrow, snippet_block, snippet_opt};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -175,7 +174,11 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
 fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {
     if_chain! {
         if let Some(block_expr) = block.expr;
-        if let Some(args) = match_function_call(cx, block_expr, &FUTURE_FROM_GENERATOR);
+        if let Some(args) = cx
+            .tcx
+            .lang_items()
+            .from_generator_fn()
+            .and_then(|def_id| match_function_call_with_def_id(cx, block_expr, def_id));
         if args.len() == 1;
         if let Expr{kind: ExprKind::Closure(&Closure { body, .. }), ..} = args[0];
         let closure_body = cx.tcx.hir().body(body);

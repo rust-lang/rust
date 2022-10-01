@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::has_iter_method;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{contains_name, higher, is_integer_const, match_trait_method, paths, sugg, SpanlessEq};
+use clippy_utils::{contains_name, higher, is_integer_const, sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -302,8 +302,13 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         if_chain! {
             // a range index op
             if let ExprKind::MethodCall(meth, args_0, [args_1, ..], _) = &expr.kind;
-            if (meth.ident.name == sym::index && match_trait_method(self.cx, expr, &paths::INDEX))
-                || (meth.ident.name == sym::index_mut && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
+            if let Some(trait_id) = self
+                .cx
+                .typeck_results()
+                .type_dependent_def_id(expr.hir_id)
+                .and_then(|def_id| self.cx.tcx.trait_of_item(def_id));
+            if (meth.ident.name == sym::index && self.cx.tcx.lang_items().index_trait() == Some(trait_id))
+                || (meth.ident.name == sym::index_mut && self.cx.tcx.lang_items().index_mut_trait() == Some(trait_id));
             if !self.check(args_1, args_0, expr);
             then { return }
         }
