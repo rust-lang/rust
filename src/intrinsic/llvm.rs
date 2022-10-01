@@ -236,6 +236,11 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 let arg2 = builder.context.new_cast(None, arg2, arg2_type);
                 args = vec![new_args[0], arg2].into();
             },
+            "__builtin_prefetch" => {
+                let mut new_args = args.to_vec();
+                new_args.pop();
+                args = new_args.into();
+            },
             _ => (),
         }
     }
@@ -393,6 +398,16 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
 
 #[cfg(feature="master")]
 pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
+    match name {
+        "llvm.prefetch" => {
+            let gcc_name = "__builtin_prefetch";
+            let func = cx.context.get_builtin_function(gcc_name);
+            cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
+            return func
+        },
+        _ => (),
+    }
+
     let gcc_name = match name {
         "llvm.x86.xgetbv" => "__builtin_ia32_xgetbv",
         // NOTE: this doc specifies the equivalent GCC builtins: http://huonw.github.io/llvmint/llvmint/x86/index.html
