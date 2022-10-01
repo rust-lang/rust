@@ -2913,6 +2913,7 @@ impl<T: Ord, A: Allocator> Ord for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
+    #[inline]
     fn drop(&mut self) {
         unsafe {
             // use drop for [T]
