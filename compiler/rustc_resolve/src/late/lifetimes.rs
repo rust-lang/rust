@@ -1318,8 +1318,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         && let hir::IsAsync::NotAsync = self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id)
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {
-
-
                         let mut diag =  rustc_session::parse::feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::anonymous_lifetime_in_impl_trait,
@@ -1330,18 +1328,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         match self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.def_id) {
                             Some(generics) => {
 
-                                let mut new_param_sugg_tuple = None;
+                                let new_param_sugg_tuple;
 
-                                for i in 0..generics.params.len()  {
-                                    if !generics.span.contains(generics.params[i].span)  {
-                                        new_param_sugg_tuple = match generics.span_for_param_suggestion() {
-                                            Some(_) => {
-                                                Some((self.tcx.sess.source_map().span_through_char(generics.span, '<').shrink_to_hi(), "'a, ".to_owned()))
-                                            },
-                                            None => Some((generics.span, "<'a>".to_owned()))
-                                        }
-                                    }
-                                }
+                                new_param_sugg_tuple = match generics.span_for_param_suggestion() {
+                                    Some(_) => {
+                                        Some((self.tcx.sess.source_map().span_through_char(generics.span, '<').shrink_to_hi(), "'a, ".to_owned()))
+                                    },
+                                    None => Some((generics.span, "<'a>".to_owned()))
+                                };
 
                                 let mut multi_sugg_vec = vec![(lifetime_ref.span.shrink_to_hi(), "'a ".to_owned())];
 
@@ -1355,12 +1349,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 rustc_errors::Applicability::MaybeIncorrect);
 
                             },
-                            None => { continue; }
+                            None => { }
                         }
 
                         diag.emit();
                         return;
-
                     }
                     scope = s;
                 }
