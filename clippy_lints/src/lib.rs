@@ -542,7 +542,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|_| {
             Box::<utils::internal_lints::lint_without_lint_pass::LintWithoutLintPass>::default()
         });
-        store.register_late_pass(|_| Box::new(utils::internal_lints::unnecessary_def_path::UnnecessaryDefPath));
+        store.register_late_pass(|_| Box::<utils::internal_lints::unnecessary_def_path::UnnecessaryDefPath>::default());
         store.register_late_pass(|_| Box::new(utils::internal_lints::outer_expn_data_pass::OuterExpnDataPass));
         store.register_late_pass(|_| Box::new(utils::internal_lints::msrv_attr_impl::MsrvAttrImpl));
     }
