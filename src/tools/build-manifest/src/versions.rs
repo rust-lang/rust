@@ -117,6 +117,9 @@ impl Versions {
             Some(version) => Ok(version.clone()),
             None => {
                 let version_info = self.load_version_from_tarball(package)?;
+                if *package == PkgType::Rust && version_info.version.is_none() {
+                    panic!("missing version info for toolchain");
+                }
                 self.versions.insert(package.clone(), version_info.clone());
                 Ok(version_info)
             }
@@ -131,6 +134,7 @@ impl Versions {
             Ok(file) => file,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
                 // Missing tarballs do not return an error, but return empty data.
+                println!("warning: missing tarball {}", tarball.display());
                 return Ok(VersionInfo::default());
             }
             Err(err) => return Err(err.into()),

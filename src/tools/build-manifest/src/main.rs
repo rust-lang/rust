@@ -193,6 +193,12 @@ macro_rules! t {
             Err(e) => panic!("{} failed with {}", stringify!($e), e),
         }
     };
+    ($e:expr, $extra:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with {}: {}", stringify!($e), e, $extra),
+        }
+    };
 }
 
 struct Builder {
@@ -584,7 +590,7 @@ impl Builder {
         self.shipped_files.insert(name.clone());
 
         let dst = self.output.join(name);
-        t!(fs::write(&dst, contents));
+        t!(fs::write(&dst, contents), format!("failed to create manifest {}", dst.display()));
     }
 
     fn write_shipped_files(&self, path: &Path) {
