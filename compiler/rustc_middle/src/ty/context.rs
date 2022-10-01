@@ -542,7 +542,7 @@ pub struct TypeckResults<'tcx> {
     /// by this function. We also store the
     /// type here, so that mir-borrowck can use it as a hint for figuring out hidden types,
     /// even if they are only set in dead code (which doesn't show up in MIR).
-    pub concrete_opaque_types: VecMap<LocalDefId, Ty<'tcx>>,
+    pub concrete_opaque_types: VecMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
