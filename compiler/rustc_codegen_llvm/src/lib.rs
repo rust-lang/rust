@@ -170,7 +170,6 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
 impl WriteBackendMethods for LlvmCodegenBackend {
     type Module = ModuleLlvm;
     type ModuleBuffer = back::lto::ModuleBuffer;
-    type Context = llvm::Context;
     type TargetMachine = &'static mut llvm::TargetMachine;
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
