@@ -462,7 +462,7 @@ fn build_variant_names_type_di_node<'ll, 'tcx>(
         cx,
         "VariantNames",
         variant_names_enum_base_type(cx),
-        variants.map(|(variant_index, variant_name)| (variant_name, variant_index.as_u32() as u64)),
+        variants.map(|(variant_index, variant_name)| (variant_name, variant_index.as_u32().into())),
         containing_scope,
     )
 }
