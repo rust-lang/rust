@@ -144,7 +144,7 @@ target | std | notes
 `armv7r-none-eabihf` | * | Bare ARMv7-R, hardfloat
 `asmjs-unknown-emscripten` | ✓ | asm.js via Emscripten
 `i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE
-`i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 4.4, glibc 2.23)
+`i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17)
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android
 `i686-unknown-freebsd` | ✓ | 32-bit FreeBSD
