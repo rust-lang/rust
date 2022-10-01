@@ -171,15 +171,6 @@ impl ExtraBackendMethods for GccCodegenBackend {
             Ok(())
         })
     }
-
-    fn target_cpu<'b>(&self, _sess: &'b Session) -> &'b str {
-        unimplemented!();
-    }
-
-    fn tune_cpu<'b>(&self, _sess: &'b Session) -> Option<&'b str> {
-        None
-        // TODO(antoyo)
-    }
 }
 
 pub struct ModuleBuffer;
