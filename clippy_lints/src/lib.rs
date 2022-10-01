@@ -279,6 +279,7 @@ mod trailing_empty_array;
 mod trait_bounds;
 mod transmute;
 mod types;
+mod unchecked_duration_subtraction;
 mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninit_vec;
@@ -921,6 +922,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(from_raw_with_void_ptr::FromRawWithVoidPtr));
     store.register_late_pass(|_| Box::new(suspicious_xor_used_as_pow::ConfusingXorAndPow));
     store.register_late_pass(move |_| Box::new(manual_is_ascii_check::ManualIsAsciiCheck::new(msrv)));
+    store.register_late_pass(move || Box::new(unchecked_duration_subtraction::UncheckedDurationSubtraction::new(msrv)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
