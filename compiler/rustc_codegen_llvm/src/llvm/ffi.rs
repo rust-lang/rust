@@ -2210,6 +2210,7 @@ extern "C" {
     ) -> &'a DILocation;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
+    pub fn LLVMRustDIBuilderCreateOpLLVMFragment() -> u64;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
