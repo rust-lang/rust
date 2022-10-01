@@ -416,20 +416,12 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.codegen_unit
     }
 
-    fn used_statics(&self) -> &RefCell<Vec<RValue<'gcc>>> {
-        unimplemented!();
-    }
-
     fn set_frame_pointer_type(&self, _llfn: RValue<'gcc>) {
         // TODO(antoyo)
     }
 
     fn apply_target_cpu_attr(&self, _llfn: RValue<'gcc>) {
         // TODO(antoyo)
-    }
-
-    fn create_used_variable(&self) {
-        unimplemented!();
     }
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
@@ -442,14 +434,6 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             // instead of #[start]
             None
         }
-    }
-
-    fn compiler_used_statics(&self) -> &RefCell<Vec<RValue<'gcc>>> {
-        unimplemented!()
-    }
-
-    fn create_compiler_used_variable(&self) {
-        unimplemented!()
     }
 }
 
