@@ -67,11 +67,14 @@ impl Sysroot {
     pub fn crates<'a>(&'a self) -> impl Iterator<Item = SysrootCrate> + ExactSizeIterator + 'a {
         self.crates.iter().map(|(id, _data)| id)
     }
+}
 
+impl Sysroot {
     pub fn discover(dir: &AbsPath, extra_env: &FxHashMap<String, String>) -> Result<Sysroot> {
         tracing::debug!("Discovering sysroot for {}", dir.display());
         let sysroot_dir = discover_sysroot_dir(dir, extra_env)?;
-        let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir, dir, extra_env)?;
+        let sysroot_src_dir =
+            discover_sysroot_src_dir_or_add_component(&sysroot_dir, dir, extra_env)?;
         let res = Sysroot::load(sysroot_dir, sysroot_src_dir)?;
         Ok(res)
     }
@@ -85,6 +88,14 @@ impl Sysroot {
         discover_sysroot_dir(current_dir, extra_env)
             .ok()
             .and_then(|sysroot_dir| get_rustc_src(&sysroot_dir))
+    }
+
+    pub fn with_sysroot_dir(sysroot_dir: AbsPathBuf) -> Result<Sysroot> {
+        let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir).ok_or_else(|| {
+            format_err!("can't load standard library from sysroot {}", sysroot_dir.display())
+        })?;
+        let res = Sysroot::load(sysroot_dir, sysroot_src_dir)?;
+        Ok(res)
     }
 
     pub fn load(sysroot_dir: AbsPathBuf, sysroot_src_dir: AbsPathBuf) -> Result<Sysroot> {
@@ -162,23 +173,28 @@ fn discover_sysroot_dir(
     Ok(AbsPathBuf::assert(PathBuf::from(stdout)))
 }
 
-fn discover_sysroot_src_dir(
+fn discover_sysroot_src_dir(sysroot_path: &AbsPathBuf) -> Option<AbsPathBuf> {
+    if let Ok(path) = env::var("RUST_SRC_PATH") {
+        if let Ok(path) = AbsPathBuf::try_from(path.as_str()) {
+            let core = path.join("core");
+            if fs::metadata(&core).is_ok() {
+                tracing::debug!("Discovered sysroot by RUST_SRC_PATH: {}", path.display());
+                return Some(path);
+            }
+            tracing::debug!("RUST_SRC_PATH is set, but is invalid (no core: {:?}), ignoring", core);
+        } else {
+            tracing::debug!("RUST_SRC_PATH is set, but is invalid, ignoring");
+        }
+    }
+
+    get_rust_src(sysroot_path)
+}
+fn discover_sysroot_src_dir_or_add_component(
     sysroot_path: &AbsPathBuf,
     current_dir: &AbsPath,
     extra_env: &FxHashMap<String, String>,
 ) -> Result<AbsPathBuf> {
-    if let Ok(path) = env::var("RUST_SRC_PATH") {
-        let path = AbsPathBuf::try_from(path.as_str())
-            .map_err(|path| format_err!("RUST_SRC_PATH must be absolute: {}", path.display()))?;
-        let core = path.join("core");
-        if fs::metadata(&core).is_ok() {
-            tracing::debug!("Discovered sysroot by RUST_SRC_PATH: {}", path.display());
-            return Ok(path);
-        }
-        tracing::debug!("RUST_SRC_PATH is set, but is invalid (no core: {:?}), ignoring", core);
-    }
-
-    get_rust_src(sysroot_path)
+    discover_sysroot_src_dir(sysroot_path)
         .or_else(|| {
             let mut rustup = Command::new(toolchain::rustup());
             rustup.envs(extra_env);

@@ -188,17 +188,26 @@ impl ProjectWorkspace {
                 })?;
                 let cargo = CargoWorkspace::new(meta);
 
-                let sysroot = if config.no_sysroot {
-                    None
-                } else {
-                    Some(Sysroot::discover(cargo_toml.parent(), &config.extra_env).with_context(
-                        || {
+                let sysroot = match &config.sysroot {
+                    Some(RustcSource::Path(path)) => {
+                        Some(Sysroot::with_sysroot_dir(path.clone()).with_context(|| {
                             format!(
+                                "Failed to find sysroot for Cargo.toml file {}.",
+                                cargo_toml.display()
+                            )
+                        })?)
+                    }
+                    Some(RustcSource::Discover) => Some(
+                        Sysroot::discover(cargo_toml.parent(), &config.extra_env).with_context(
+                            || {
+                                format!(
                             "Failed to find sysroot for Cargo.toml file {}. Is rust-src installed?",
                             cargo_toml.display()
                         )
-                        },
-                    )?)
+                            },
+                        )?,
+                    ),
+                    None => None,
                 };
 
                 let rustc_dir = match &config.rustc_source {

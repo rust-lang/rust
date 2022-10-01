@@ -94,9 +94,8 @@ pub struct CargoConfig {
     pub features: CargoFeatures,
     /// rustc target
     pub target: Option<String>,
-    /// Don't load sysroot crates (`std`, `core` & friends). Might be useful
-    /// when debugging isolated issues.
-    pub no_sysroot: bool,
+    /// Sysroot loading behavior
+    pub sysroot: Option<RustcSource>,
     /// rustc private crate source
     pub rustc_source: Option<RustcSource>,
     /// crates to disable `#[cfg(test)]` on

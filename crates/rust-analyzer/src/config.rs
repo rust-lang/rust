@@ -94,8 +94,13 @@ config_data! {
         cargo_features: CargoFeaturesDef      = "[]",
         /// Whether to pass `--no-default-features` to cargo.
         cargo_noDefaultFeatures: bool    = "false",
-        /// Internal config for debugging, disables loading of sysroot crates.
-        cargo_noSysroot: bool            = "false",
+        /// Relative path to the sysroot, or "discover" to try to automatically find it via
+        /// "rustc --print sysroot".
+        ///
+        /// Unsetting this disables sysroot loading.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        cargo_sysroot: Option<String>    = "\"discover\"",
         /// Compilation target override (target triple).
         cargo_target: Option<String>     = "null",
         /// Unsets `#[cfg(test)]` for the specified crates.
@@ -1030,6 +1035,13 @@ impl Config {
                 RustcSource::Path(self.root_path.join(rustc_src))
             }
         });
+        let sysroot = self.data.cargo_sysroot.as_ref().map(|sysroot| {
+            if sysroot == "discover" {
+                RustcSource::Discover
+            } else {
+                RustcSource::Path(self.root_path.join(sysroot))
+            }
+        });
 
         CargoConfig {
             features: match &self.data.cargo_features {
@@ -1040,7 +1052,7 @@ impl Config {
                 },
             },
             target: self.data.cargo_target.clone(),
-            no_sysroot: self.data.cargo_noSysroot,
+            sysroot,
             rustc_source,
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
