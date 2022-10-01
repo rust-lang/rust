@@ -41,6 +41,14 @@ pub trait TraitEngine<'tcx>: 'tcx {
     fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>>;
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
+
+    /// Among all pending obligations, collect those are stalled on a inference variable which has
+    /// changed since the last call to `select_where_possible`.  Those obligations are marked as
+    /// successful and returned.
+    fn drain_unstalled_obligations(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>>;
 }
 
 pub trait TraitEngineExt<'tcx> {

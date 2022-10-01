@@ -545,6 +545,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         self.typeck_results.generator_interior_types =
             fcx_typeck_results.generator_interior_types.clone();
+        for (&expr_def_id, predicates) in fcx_typeck_results.generator_interior_predicates.iter() {
+            let predicates = self.resolve(predicates.clone(), &self.fcx.tcx.def_span(expr_def_id));
+            self.typeck_results.generator_interior_predicates.insert(expr_def_id, predicates);
+        }
     }
 
     #[instrument(skip(self), level = "debug")]

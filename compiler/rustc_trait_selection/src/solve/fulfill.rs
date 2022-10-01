@@ -139,4 +139,11 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
         self.obligations.clone()
     }
+
+    fn drain_unstalled_obligations(
+        &mut self,
+        _: &InferCtxt<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>> {
+        unimplemented!()
+    }
 }

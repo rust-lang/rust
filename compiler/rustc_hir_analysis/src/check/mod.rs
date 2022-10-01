@@ -105,6 +105,7 @@ pub fn provide(providers: &mut Providers) {
         region_scope_tree,
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_const: compare_impl_item::compare_impl_const_raw,
+        check_generator_obligations: check::check_generator_obligations,
         ..*providers
     };
 }
