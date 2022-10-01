@@ -1,6 +1,6 @@
 use crate::dep_graph;
 use crate::infer::canonical::{self, Canonical};
-use crate::lint::LintLevelMap;
+use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
@@ -51,6 +51,7 @@ use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
+use rustc_session::lint::LintExpectationId;
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Limits;
 use rustc_span::symbol::Symbol;

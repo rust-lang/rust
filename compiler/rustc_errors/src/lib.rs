@@ -1211,7 +1211,7 @@ impl HandlerInner {
 
         if let Some(expectation_id) = diagnostic.level.get_expectation_id() {
             self.suppressed_expected_diag = true;
-            self.fulfilled_expectations.insert(expectation_id);
+            self.fulfilled_expectations.insert(expectation_id.normalize());
         }
 
         if matches!(diagnostic.level, Warning(_))
