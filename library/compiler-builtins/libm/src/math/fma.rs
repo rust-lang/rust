@@ -126,8 +126,8 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
         rlo = res;
         rhi = rhi.wrapping_sub(zhi.wrapping_add(borrow as u64));
         if (rhi >> 63) != 0 {
-            rlo = (-(rlo as i64)) as u64;
-            rhi = (-(rhi as i64)) as u64 - (rlo != 0) as u64;
+            rlo = (rlo as i64).wrapping_neg() as u64;
+            rhi = (rhi as i64).wrapping_neg() as u64 - (rlo != 0) as u64;
             sign = (sign == 0) as i32;
         }
         nonzero = (rhi != 0) as i32;
@@ -230,6 +230,14 @@ mod tests {
         assert_eq!(
             fma(-(1.0 - f64::EPSILON), f64::MIN, f64::MIN),
             -3991680619069439e277
+        );
+    }
+
+    #[test]
+    fn fma_underflow() {
+        assert_eq!(
+            fma(1.1102230246251565e-16, -9.812526705433188e-305, 1.0894e-320),
+            0.0,
         );
     }
 }
