@@ -1,14 +1,11 @@
 use std::cmp;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, MultiSpan};
 use rustc_hir::HirId;
-use rustc_index::vec::IndexVec;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
-    FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId,
+    FutureIncompatibilityReason, Level, Lint, LintId,
 };
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
@@ -59,159 +56,51 @@ impl LintLevelSource {
 /// A tuple of a lint level and its source.
 pub type LevelAndSource = (Level, LintLevelSource);
 
-#[derive(Debug, HashStable)]
-pub struct LintLevelSets {
-    pub list: IndexVec<LintStackIndex, LintSet>,
-}
+pub fn reveal_actual_level(
+    level: Option<Level>,
+    src: &mut LintLevelSource,
+    sess: &Session,
+    lint: LintId,
+    get_lint_id_level: impl FnOnce(LintId) -> (Option<Level>, LintLevelSource),
+) -> Level {
+    // If `level` is none then we actually assume the default level for this
+    // lint.
+    let mut level = level.unwrap_or_else(|| lint.lint.default_level(sess.edition()));
 
-rustc_index::newtype_index! {
-    #[derive(HashStable)]
-    pub struct LintStackIndex {
-        const COMMAND_LINE = 0,
-    }
-}
-
-#[derive(Debug, HashStable)]
-pub struct LintSet {
-    // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
-    // flag.
-    pub specs: FxHashMap<LintId, LevelAndSource>,
-
-    pub parent: LintStackIndex,
-}
-
-impl LintLevelSets {
-    pub fn new() -> Self {
-        LintLevelSets { list: IndexVec::new() }
-    }
-
-    pub fn actual_level(
-        level: Option<Level>,
-        src: &mut LintLevelSource,
-        sess: &Session,
-        lint: &'static Lint,
-        get_lint_id_level: impl FnOnce(LintId) -> (Option<Level>, LintLevelSource),
-    ) -> Level {
-        // If `level` is none then we actually assume the default level for this
-        // lint.
-        let mut level = level.unwrap_or_else(|| lint.default_level(sess.edition()));
-
-        // If we're about to issue a warning, check at the last minute for any
-        // directives against the warnings "lint". If, for example, there's an
-        // `allow(warnings)` in scope then we want to respect that instead.
-        //
-        // We exempt `FORBIDDEN_LINT_GROUPS` from this because it specifically
-        // triggers in cases (like #80988) where you have `forbid(warnings)`,
-        // and so if we turned that into an error, it'd defeat the purpose of the
-        // future compatibility warning.
-        if level == Level::Warn && LintId::of(lint) != LintId::of(FORBIDDEN_LINT_GROUPS) {
-            let (warnings_level, warnings_src) = get_lint_id_level(LintId::of(builtin::WARNINGS));
-            if let Some(configured_warning_level) = warnings_level {
-                if configured_warning_level != Level::Warn {
-                    level = configured_warning_level;
-                    *src = warnings_src;
-                }
+    // If we're about to issue a warning, check at the last minute for any
+    // directives against the warnings "lint". If, for example, there's an
+    // `allow(warnings)` in scope then we want to respect that instead.
+    //
+    // We exempt `FORBIDDEN_LINT_GROUPS` from this because it specifically
+    // triggers in cases (like #80988) where you have `forbid(warnings)`,
+    // and so if we turned that into an error, it'd defeat the purpose of the
+    // future compatibility warning.
+    if level == Level::Warn && lint != LintId::of(FORBIDDEN_LINT_GROUPS) {
+        let (warnings_level, warnings_src) = get_lint_id_level(LintId::of(builtin::WARNINGS));
+        if let Some(configured_warning_level) = warnings_level {
+            if configured_warning_level != Level::Warn {
+                level = configured_warning_level;
+                *src = warnings_src;
             }
         }
+    }
 
-        // Ensure that we never exceed the `--cap-lints` argument
-        // unless the source is a --force-warn
-        level = if let LintLevelSource::CommandLine(_, Level::ForceWarn(_)) = src {
-            level
-        } else {
-            cmp::min(level, sess.opts.lint_cap.unwrap_or(Level::Forbid))
-        };
-
-        if let Some(driver_level) = sess.driver_lint_caps.get(&LintId::of(lint)) {
-            // Ensure that we never exceed driver level.
-            level = cmp::min(*driver_level, level);
-        }
-
+    // Ensure that we never exceed the `--cap-lints` argument
+    // unless the source is a --force-warn
+    level = if let LintLevelSource::CommandLine(_, Level::ForceWarn(_)) = src {
         level
+    } else {
+        cmp::min(level, sess.opts.lint_cap.unwrap_or(Level::Forbid))
+    };
+
+    if let Some(driver_level) = sess.driver_lint_caps.get(&lint) {
+        // Ensure that we never exceed driver level.
+        level = cmp::min(*driver_level, level);
     }
 
-    pub fn get_lint_level(
-        &self,
-        lint: &'static Lint,
-        idx: LintStackIndex,
-        aux: Option<&FxHashMap<LintId, LevelAndSource>>,
-        sess: &Session,
-    ) -> LevelAndSource {
-        let (level, mut src) = self.get_lint_id_level(LintId::of(lint), idx, aux);
-
-        let level = Self::actual_level(level, &mut src, sess, lint, |id| {
-            self.get_lint_id_level(id, idx, aux)
-        });
-
-        (level, src)
-    }
-
-    pub fn get_lint_id_level(
-        &self,
-        id: LintId,
-        mut idx: LintStackIndex,
-        aux: Option<&FxHashMap<LintId, LevelAndSource>>,
-    ) -> (Option<Level>, LintLevelSource) {
-        if let Some(specs) = aux {
-            if let Some(&(level, src)) = specs.get(&id) {
-                return (Some(level), src);
-            }
-        }
-        loop {
-            let LintSet { ref specs, parent } = self.list[idx];
-            if let Some(&(level, src)) = specs.get(&id) {
-                return (Some(level), src);
-            }
-            if idx == COMMAND_LINE {
-                return (None, LintLevelSource::Default);
-            }
-            idx = parent;
-        }
-    }
+    level
 }
 
-#[derive(Debug)]
-pub struct LintLevelMap {
-    /// This is a collection of lint expectations as described in RFC 2383, that
-    /// can be fulfilled during this compilation session. This means that at least
-    /// one expected lint is currently registered in the lint store.
-    ///
-    /// The [`LintExpectationId`] is stored as a part of the [`Expect`](Level::Expect)
-    /// lint level.
-    pub lint_expectations: Vec<(LintExpectationId, LintExpectation)>,
-    pub sets: LintLevelSets,
-    pub id_to_set: FxHashMap<HirId, LintStackIndex>,
-}
-
-impl LintLevelMap {
-    /// If the `id` was previously registered with `register_id` when building
-    /// this `LintLevelMap` this returns the corresponding lint level and source
-    /// of the lint level for the lint provided.
-    ///
-    /// If the `id` was not previously registered, returns `None`. If `None` is
-    /// returned then the parent of `id` should be acquired and this function
-    /// should be called again.
-    pub fn level_and_source(
-        &self,
-        lint: &'static Lint,
-        id: HirId,
-        session: &Session,
-    ) -> Option<LevelAndSource> {
-        self.id_to_set.get(&id).map(|idx| self.sets.get_lint_level(lint, *idx, None, session))
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let LintLevelMap { ref sets, ref id_to_set, ref lint_expectations } = *self;
-
-        id_to_set.hash_stable(hcx, hasher);
-        lint_expectations.hash_stable(hcx, hasher);
-
-        hcx.while_hashing_spans(true, |hcx| sets.hash_stable(hcx, hasher))
-    }
-}
 pub struct LintLevelQueryMap<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub cur: HirId,
@@ -258,7 +147,7 @@ impl<'tcx> LintLevelQueryMap<'tcx> {
         specs: &FxHashMap<LintId, LevelAndSource>,
     ) -> (Level, LintLevelSource) {
         let (level, mut src) = Self::get_lint_id_level(id, cur, tcx, specs);
-        let level = LintLevelSets::actual_level(level, &mut src, tcx.sess, id.lint, |id| {
+        let level = reveal_actual_level(level, &mut src, tcx.sess, id, |id| {
             Self::get_lint_id_level(id, cur, tcx, specs)
         });
         (level, src)

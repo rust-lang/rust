@@ -6,10 +6,11 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::{intravisit, HirId};
+use rustc_index::vec::IndexVec;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
-    struct_lint_level, LevelAndSource, LintExpectation, LintLevelQueryMap, LintLevelSets,
-    LintLevelSource, LintSet, LintStackIndex, COMMAND_LINE,
+    reveal_actual_level, struct_lint_level, LevelAndSource, LintExpectation, LintLevelQueryMap,
+    LintLevelSource,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
@@ -26,6 +27,72 @@ use crate::errors::{
     MalformedAttribute, MalformedAttributeSub, OverruledAttribute, OverruledAttributeSub,
     UnknownToolInScopedLint,
 };
+
+#[derive(Debug)]
+pub struct LintLevelSets {
+    pub list: IndexVec<LintStackIndex, LintSet>,
+}
+
+rustc_index::newtype_index! {
+    pub struct LintStackIndex {
+        ENCODABLE = custom, // we don't need encoding
+        const COMMAND_LINE = 0,
+    }
+}
+
+#[derive(Debug)]
+pub struct LintSet {
+    // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
+    // flag.
+    pub specs: FxHashMap<LintId, LevelAndSource>,
+
+    pub parent: LintStackIndex,
+}
+
+impl LintLevelSets {
+    pub fn new() -> Self {
+        LintLevelSets { list: IndexVec::new() }
+    }
+
+    fn get_lint_level(
+        &self,
+        lint: &'static Lint,
+        idx: LintStackIndex,
+        aux: Option<&FxHashMap<LintId, LevelAndSource>>,
+        sess: &Session,
+    ) -> LevelAndSource {
+        let lint = LintId::of(lint);
+        let (level, mut src) = self.get_lint_id_level(lint, idx, aux);
+        let level = reveal_actual_level(level, &mut src, sess, lint, |id| {
+            self.get_lint_id_level(id, idx, aux)
+        });
+
+        (level, src)
+    }
+
+    pub fn get_lint_id_level(
+        &self,
+        id: LintId,
+        mut idx: LintStackIndex,
+        aux: Option<&FxHashMap<LintId, LevelAndSource>>,
+    ) -> (Option<Level>, LintLevelSource) {
+        if let Some(specs) = aux {
+            if let Some(&(level, src)) = specs.get(&id) {
+                return (Some(level), src);
+            }
+        }
+        loop {
+            let LintSet { ref specs, parent } = self.list[idx];
+            if let Some(&(level, src)) = specs.get(&id) {
+                return (Some(level), src);
+            }
+            if idx == COMMAND_LINE {
+                return (None, LintLevelSource::Default);
+            }
+            idx = parent;
+        }
+    }
+}
 
 fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExpectation)> {
     let store = unerased_lint_store(tcx);
