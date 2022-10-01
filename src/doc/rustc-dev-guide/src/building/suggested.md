@@ -36,6 +36,7 @@ you can write: <!-- date-check: apr 2022 --><!-- the date comment is for the edi
         "./build/$TARGET_TRIPLE/stage0/bin/rustfmt",
         "--edition=2021"
     ],
+    "rust-analyzer.procMacro.server": "./build/$TARGET_TRIPLE/stage0/libexec/rust-analyzer-proc-macro-srv",
     "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.cargo.buildScripts.enable": true,
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
@@ -44,6 +45,7 @@ you can write: <!-- date-check: apr 2022 --><!-- the date comment is for the edi
         "check",
         "--json-output"
     ],
+    "rust-analyzer.cargo.sysroot": "./build/$TARGET_TRIPLE/stage0-sysroot",
     "rust-analyzer.rustc.source": "./Cargo.toml",
 }
 ```
