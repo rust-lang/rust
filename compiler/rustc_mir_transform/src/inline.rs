@@ -23,8 +23,8 @@ pub(crate) mod cycle;
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
-const LANDINGPAD_PENALTY: usize = 10;
-const RESUME_PENALTY: usize = 5;
+const LANDINGPAD_PENALTY: usize = 50;
+const RESUME_PENALTY: usize = 45;
 
 const UNKNOWN_SIZE_COST: usize = 10;
 
