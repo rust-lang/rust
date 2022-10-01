@@ -162,6 +162,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         [(local_id, _)] => levels.add_id(HirId { owner, local_id: *local_id }),
         // Otherwise, we need to visit the attributes in source code order, so we fetch HIR and do
         // a standard visit.
+        // FIXME(#102522) Just iterate on attrs once that iteration order matches HIR's.
         _ => match tcx.hir().expect_owner(owner) {
             hir::OwnerNode::Item(item) => levels.visit_item(item),
             hir::OwnerNode::ForeignItem(item) => levels.visit_foreign_item(item),
