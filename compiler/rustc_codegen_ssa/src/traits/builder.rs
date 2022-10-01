@@ -17,6 +17,7 @@ use crate::MemFlags;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
+use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
 use rustc_target::spec::HasTargetSpec;
 
@@ -71,6 +72,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn invoke(
         &mut self,
         llty: Self::Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Self::Value,
         args: &[Self::Value],
         then: Self::BasicBlock,
@@ -320,6 +322,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn call(
         &mut self,
         llty: Self::Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,

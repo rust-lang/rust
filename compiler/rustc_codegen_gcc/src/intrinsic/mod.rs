@@ -100,7 +100,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 _ if simple.is_some() => {
                     // FIXME(antoyo): remove this cast when the API supports function.
                     let func = unsafe { std::mem::transmute(simple.expect("simple")) };
-                    self.call(self.type_void(), func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
+                    self.call(self.type_void(), None, func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
                 },
                 sym::likely => {
                     self.expect(args[0].immediate(), true)
@@ -341,7 +341,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn abort(&mut self) {
         let func = self.context.get_builtin_function("abort");
         let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
-        self.call(self.type_void(), func, &[], None);
+        self.call(self.type_void(), None, func, &[], None);
     }
 
     fn assume(&mut self, value: Self::Value) {
@@ -1124,7 +1124,7 @@ fn try_intrinsic<'gcc, 'tcx>(bx: &mut Builder<'_, 'gcc, 'tcx>, try_func: RValue<
     // NOTE: the `|| true` here is to use the panic=abort strategy with panic=unwind too
     if bx.sess().panic_strategy() == PanicStrategy::Abort || true {
         // TODO(bjorn3): Properly implement unwinding and remove the `|| true` once this is done.
-        bx.call(bx.type_void(), try_func, &[data], None);
+        bx.call(bx.type_void(), None, try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         let ret_align = bx.tcx.data_layout.i32_align.abi;

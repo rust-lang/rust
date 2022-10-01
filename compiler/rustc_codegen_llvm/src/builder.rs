@@ -1,3 +1,4 @@
+use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
@@ -214,6 +215,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn invoke(
         &mut self,
         llty: &'ll Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
         args: &[&'ll Value],
         then: &'ll BasicBlock,
@@ -226,7 +228,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let bundle = funclet.map(|funclet| funclet.bundle());
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
-        unsafe {
+        let invoke = unsafe {
             llvm::LLVMRustBuildInvoke(
                 self.llbuilder,
                 llty,
@@ -238,7 +240,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 bundle,
                 UNNAMED,
             )
+        };
+        if let Some(fn_abi) = fn_abi {
+            fn_abi.apply_attrs_callsite(self, invoke);
         }
+        invoke
     }
 
     fn unreachable(&mut self) {
@@ -1145,6 +1151,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn call(
         &mut self,
         llty: &'ll Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
         args: &[&'ll Value],
         funclet: Option<&Funclet<'ll>>,
@@ -1155,7 +1162,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let bundle = funclet.map(|funclet| funclet.bundle());
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
-        unsafe {
+        let call = unsafe {
             llvm::LLVMRustBuildCall(
                 self.llbuilder,
                 llty,
@@ -1164,7 +1171,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 args.len() as c_uint,
                 bundle,
             )
+        };
+        if let Some(fn_abi) = fn_abi {
+            fn_abi.apply_attrs_callsite(self, call);
         }
+        call
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
@@ -1397,7 +1408,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     pub(crate) fn call_intrinsic(&mut self, intrinsic: &str, args: &[&'ll Value]) -> &'ll Value {
         let (ty, f) = self.cx.get_intrinsic(intrinsic);
-        self.call(ty, f, args, None)
+        self.call(ty, None, f, args, None)
     }
 
     fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
@@ -1459,7 +1470,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             format!("llvm.{}.sat.i{}.f{}", instr, int_width, float_width)
         };
         let f = self.declare_cfn(&name, llvm::UnnamedAddr::No, self.type_func(&[src_ty], dest_ty));
-        self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None)
+        self.call(self.type_func(&[src_ty], dest_ty), None, f, &[val], None)
     }
 
     pub(crate) fn landing_pad(

@@ -461,7 +461,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
         let function = intrinsic::llvm::intrinsic(llvm_name, &bx.cx);
         let function: RValue<'gcc> = unsafe { std::mem::transmute(function) };
-        let c = bx.call(fn_ty, function, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
+        let c = bx.call(fn_ty, None, function, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
         Ok(c)
     }
 
