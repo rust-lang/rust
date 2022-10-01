@@ -65,8 +65,8 @@ pub struct FilePermissions {
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct FileTimes {
-    accessed: Option<wasi::Timestamp>,
-    modified: Option<wasi::Timestamp>,
+    accessed: Option<SystemTime>,
+    modified: Option<SystemTime>,
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
@@ -120,11 +120,11 @@ impl FilePermissions {
 
 impl FileTimes {
     pub fn set_accessed(&mut self, t: SystemTime) {
-        self.accessed = Some(t.to_wasi_timestamp_or_panic());
+        self.accessed = Some(t);
     }
 
     pub fn set_modified(&mut self, t: SystemTime) {
-        self.modified = Some(t.to_wasi_timestamp_or_panic());
+        self.modified = Some(t);
     }
 }
 
@@ -476,9 +476,16 @@ impl File {
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        let to_timestamp = |time: Option<SystemTime>| {
+            match time {
+                Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
+                Some(_) => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too large to set as a file time")),
+                None => Ok(0),
+            }
+        };
         self.fd.filestat_set_times(
-            times.accessed.unwrap_or(0),
-            times.modified.unwrap_or(0),
+            to_timestamp(times.accessed)?,
+            to_timestamp(times.modified)?,
             times.accessed.map_or(0, |_| wasi::FSTFLAGS_ATIM)
                 | times.modified.map_or(0, |_| wasi::FSTFLAGS_MTIM),
         )
