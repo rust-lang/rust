@@ -1306,6 +1306,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     Placeholder,
                     Generator,
                     GeneratorWitness,
+                    GeneratorWitnessMIR,
                     Dynamic,
                     Closure,
                     Tuple,
@@ -1813,6 +1814,11 @@ impl<'tcx> TyCtxt<'tcx> {
         let context_substs = self.intern_substs(&[self.lifetimes.re_erased.into()]);
         let context_ty = self.mk_adt(context_adt_ref, context_substs);
         self.mk_mut_ref(self.lifetimes.re_erased, context_ty)
+    }
+
+    #[inline]
+    pub fn mk_generator_witness_mir(self, id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(GeneratorWitnessMIR(id, substs))
     }
 
     #[inline]

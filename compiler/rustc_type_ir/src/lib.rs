@@ -265,6 +265,9 @@ bitflags! {
 
         /// Does this value have `InferConst::Fresh`?
         const HAS_CT_FRESH                = 1 << 21;
+
+        /// Does this have `Generator` or `GeneratorWitness`?
+        const HAS_TY_GENERATOR            = 1 << 22;
     }
 }
 

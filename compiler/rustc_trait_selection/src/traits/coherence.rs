@@ -696,7 +696,9 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
             // This should only be created when checking whether we have to check whether some
             // auto trait impl applies. There will never be multiple impls, so we can just
             // act as if it were a local type here.
-            ty::GeneratorWitness(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
+            ty::GeneratorWitness(_) | ty::GeneratorWitnessMIR(..) => {
+                ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+            }
             ty::Alias(ty::Opaque, ..) => {
                 // This merits some explanation.
                 // Normally, opaque types are not involved when performing

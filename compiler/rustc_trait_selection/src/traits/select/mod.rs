@@ -2066,6 +2066,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2182,6 +2183,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Where(ty::Binder::bind_with_vars(witness_tys.to_vec(), all_vars))
             }
 
+            ty::GeneratorWitnessMIR(..) => {
+                todo!()
+            }
+
             ty::Closure(_, substs) => {
                 // (*) binder moved here
                 let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
@@ -2277,6 +2282,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::GeneratorWitness(types) => {
                 debug_assert!(!types.has_escaping_bound_vars());
                 types.map_bound(|types| types.to_vec())
+            }
+
+            ty::GeneratorWitnessMIR(..) => {
+                todo!()
             }
 
             // For `PhantomData<T>`, we pass `T`.

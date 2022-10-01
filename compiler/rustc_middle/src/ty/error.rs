@@ -325,7 +325,8 @@ impl<'tcx> Ty<'tcx> {
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
             ty::Generator(def_id, ..) => tcx.generator_kind(def_id).unwrap().descr().into(),
-            ty::GeneratorWitness(..) => "generator witness".into(),
+            ty::GeneratorWitness(..) |
+            ty::GeneratorWitnessMIR(..) => "generator witness".into(),
             ty::Tuple(..) => "tuple".into(),
             ty::Infer(ty::TyVar(_)) => "inferred type".into(),
             ty::Infer(ty::IntVar(_)) => "integer".into(),
@@ -373,7 +374,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
             ty::Generator(def_id, ..) => tcx.generator_kind(def_id).unwrap().descr().into(),
-            ty::GeneratorWitness(..) => "generator witness".into(),
+            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => "generator witness".into(),
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),

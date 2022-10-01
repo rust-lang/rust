@@ -811,6 +811,28 @@ pub trait PrettyPrinter<'tcx>:
             ty::GeneratorWitness(types) => {
                 p!(in_binder(&types));
             }
+            ty::GeneratorWitnessMIR(did, substs) => {
+                p!(write("["));
+                if !self.tcx().sess.verbose() {
+                    p!("generator witness");
+                    // FIXME(eddyb) should use `def_span`.
+                    if let Some(did) = did.as_local() {
+                        let span = self.tcx().def_span(did);
+                        p!(write(
+                            "@{}",
+                            // This may end up in stderr diagnostics but it may also be emitted
+                            // into MIR. Hence we use the remapped path if available
+                            self.tcx().sess.source_map().span_to_embeddable_string(span)
+                        ));
+                    } else {
+                        p!(write("@"), print_def_path(did, substs));
+                    }
+                } else {
+                    p!(print_def_path(did, substs));
+                }
+
+                p!("]")
+            }
             ty::Closure(did, substs) => {
                 p!(write("["));
                 if !self.should_print_verbose() {

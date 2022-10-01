@@ -473,6 +473,16 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(tcx.mk_generator_witness(types))
         }
 
+        (&ty::GeneratorWitnessMIR(a_id, a_substs), &ty::GeneratorWitnessMIR(b_id, b_substs))
+            if a_id == b_id =>
+        {
+            // All GeneratorWitness types with the same id represent
+            // the (anonymous) type of the same generator expression. So
+            // all of their regions should be equated.
+            let substs = relation.relate(a_substs, b_substs)?;
+            Ok(tcx.mk_generator_witness_mir(a_id, substs))
+        }
+
         (&ty::Closure(a_id, a_substs), &ty::Closure(b_id, b_substs)) if a_id == b_id => {
             // All Closure types with the same id represent
             // the (anonymous) type of the same closure expression. So

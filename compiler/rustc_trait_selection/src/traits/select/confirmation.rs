@@ -1285,6 +1285,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::GeneratorWitness(tys) => {
                     stack.extend(tcx.erase_late_bound_regions(tys).to_vec());
                 }
+                ty::GeneratorWitnessMIR(..) => {
+                    todo!()
+                }
 
                 // If we have a projection type, make sure to normalize it so we replace it
                 // with a fresh infer variable
