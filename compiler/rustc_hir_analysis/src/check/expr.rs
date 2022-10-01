@@ -41,6 +41,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::TypeError::FieldMisMatch;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TypeVisitable};
+use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -394,7 +395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(sp) =
                             tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
                         {
-                            tcx.sess.parse_sess.expr_parentheses_needed(&mut err, *sp);
+                            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                         }
                         err.emit();
                         oprnd_t = tcx.ty_error();
