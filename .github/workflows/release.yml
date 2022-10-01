@@ -105,3 +105,8 @@ jobs:
     - name: Run tests
       run: |
         ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests # --test-libcore # FIXME(antoyo): libcore tests fail.
+
+    - name: Run stdarch tests
+      run: |
+        cd build_sysroot/sysroot_src/library/stdarch/
+        CHANNEL=release TARGET=x86_64-unknown-linux-gnu ../../../../cargo.sh test

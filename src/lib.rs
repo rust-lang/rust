@@ -316,7 +316,8 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
             // gcc -march=native -Q --help=target
             #[cfg(feature="master")]
             {
-                (_feature.contains("sse") || _feature.contains("avx")) && !_feature.contains("avx512")
+                // NOTE: the CPU in the CI doesn't support sse4a, so disable it to make the stdarch tests pass in the CI.
+                (_feature.contains("sse") || _feature.contains("avx")) && !_feature.contains("avx512") && !_feature.contains("sse4a")
             }
             #[cfg(not(feature="master"))]
             {
