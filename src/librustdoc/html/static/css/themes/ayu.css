@@ -35,6 +35,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--keyword-link-color: #39afd7;
 	--mod-link-color: #39afd7;
 	--link-color: #39afd7;
+	--sidebar-link-color: #53b1db;
+	--sidebar-current-link-background-color: transparent;
 }
 
 .slider {
@@ -85,7 +87,6 @@ pre, .rustdoc.source .example-wrap {
 
 .sidebar .current,
 .sidebar a:hover {
-	background-color: transparent;
 	color: #ffb44c;
 }
 
@@ -118,9 +119,6 @@ pre, .rustdoc.source .example-wrap {
 }
 
 .content .item-info::before { color: #ccc; }
-
-.sidebar a { color: #53b1db; }
-.sidebar a.current.type { color: #53b1db; }
 
 pre.rust .comment { color: #788797; }
 pre.rust .doccomment { color: #a1ac88; }
@@ -283,21 +281,6 @@ a.result-constant:focus,
 a.result-static:focus {}
 a.result-primitive:focus {}
 a.result-keyword:focus {}
-
-.sidebar a.current.enum {}
-.sidebar a.current.struct {}
-.sidebar a.current.foreigntype {}
-.sidebar a.current.attr,
-.sidebar a.current.derive,
-.sidebar a.current.macro {}
-.sidebar a.current.union {}
-.sidebar a.current.constant
-.sidebar a.current.static {}
-.sidebar a.current.primitive {}
-.sidebar a.current.trait {}
-.sidebar a.current.traitalias {}
-.sidebar a.current.fn {}
-.sidebar a.current.keyword {}
 
 kbd {
 	color: #c5c5c5;

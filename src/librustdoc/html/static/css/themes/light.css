@@ -30,6 +30,8 @@
 	--keyword-link-color: #3873ad;
 	--mod-link-color: #3873ad;
 	--link-color: #3873ad;
+	--sidebar-link-color: #356da4;
+	--sidebar-current-link-background-color: #fff;
 }
 
 .slider {
@@ -46,11 +48,6 @@ input:focus + .slider {
 	/* This rule exists to force other themes to explicitly style the logo.
 	 * Rustdoc has a custom linter for this purpose.
 	 */
-}
-
-.sidebar .current,
-.sidebar a:hover {
-	background-color: #fff;
 }
 
 .src-line-numbers span { color: #c67e2d; }
@@ -89,23 +86,6 @@ a.result-primitive:focus { background-color: #e7b1a0; }
 a.result-keyword:focus { background-color: #afc6e4; }
 
 .content .item-info::before { color: #ccc; }
-
-.sidebar a { color: #356da4; }
-.sidebar a.current.enum { color: #a63283; }
-.sidebar a.current.struct { color: #a63283; }
-.sidebar a.current.type { color: #a63283; }
-.sidebar a.current.foreigntype { color: #356da4; }
-.sidebar a.current.attr,
-.sidebar a.current.derive,
-.sidebar a.current.macro { color: #067901; }
-.sidebar a.current.union { color: #a63283; }
-.sidebar a.current.constant
-.sidebar a.current.static { color: #356da4; }
-.sidebar a.current.primitive { color: #a63283; }
-.sidebar a.current.trait { color: #6849c3; }
-.sidebar a.current.traitalias { color: #4b349e; }
-.sidebar a.current.fn { color: #a67736; }
-.sidebar a.current.keyword { color: #356da4; }
 
 body.source .example-wrap pre.rust a {
 	background: #eee;

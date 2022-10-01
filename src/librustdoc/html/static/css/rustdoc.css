@@ -545,6 +545,14 @@ h2.location a {
 	margin: 0;
 }
 
+.sidebar a, .sidebar .current {
+	color: var(--sidebar-link-color);
+}
+.sidebar .current,
+.sidebar a:hover {
+	background-color: var(--sidebar-current-link-background-color);
+}
+
 .sidebar-elems .block {
 	margin-bottom: 2em;
 }
