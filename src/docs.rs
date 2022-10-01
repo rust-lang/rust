@@ -28,6 +28,7 @@ docs! {
     "approx_constant",
     "arithmetic_side_effects",
     "as_conversions",
+    "as_ptr_cast_mut",
     "as_underscore",
     "assertions_on_constants",
     "assertions_on_result_states",

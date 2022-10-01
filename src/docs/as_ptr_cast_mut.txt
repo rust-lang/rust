@@ -1,0 +1,19 @@
+### What it does
+Checks for the result of a `&self`-taking `as_ptr` being cast to a mutable pointer
+
+### Why is this bad?
+Since `as_ptr` took a `&self`, the pointer won't have write permissions, making it
+unlikely that having it as a mutable pointer is correct.
+
+### Example
+```
+let string = String::with_capacity(1);
+let ptr = string.as_ptr() as *mut _;
+unsafe { ptr.write(4) }; // UNDEFINED BEHAVIOUR
+```
+Use instead:
+```
+let mut string = String::with_capacity(1);
+let string = string.as_mut_ptr();
+unsafe { ptr.write(4) };
+```

@@ -1,3 +1,4 @@
+mod as_ptr_cast_mut;
 mod as_underscore;
 mod borrow_as_ptr;
 mod cast_abs_to_unsigned;
@@ -596,6 +597,32 @@ declare_clippy_lint! {
     "casting a slice created from a pointer and length to a slice pointer"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the result of a `&self`-taking `as_ptr` being cast to a mutable pointer
+    ///
+    /// ### Why is this bad?
+    /// Since `as_ptr` took a `&self`, the pointer won't have write permissions, making it
+    /// unlikely that having it as a mutable pointer is correct.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let string = String::with_capacity(1);
+    /// let ptr = string.as_ptr() as *mut _;
+    /// unsafe { ptr.write(4) }; // UNDEFINED BEHAVIOUR
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let mut string = String::with_capacity(1);
+    /// let string = string.as_mut_ptr();
+    /// unsafe { ptr.write(4) };
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub AS_PTR_CAST_MUT,
+    nursery,
+    "casting the result of the `&self`-taking as_ptr to a mutabe point"
+}
+
 pub struct Casts {
     msrv: Option<RustcVersion>,
 }
@@ -627,7 +654,8 @@ impl_lint_pass!(Casts => [
     CAST_ABS_TO_UNSIGNED,
     AS_UNDERSCORE,
     BORROW_AS_PTR,
-    CAST_SLICE_FROM_RAW_PARTS
+    CAST_SLICE_FROM_RAW_PARTS,
+    AS_PTR_CAST_MUT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -653,6 +681,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 return;
             }
             cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, self.msrv);
+            as_ptr_cast_mut::check(cx, expr, cast_expr, cast_to);
             fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
