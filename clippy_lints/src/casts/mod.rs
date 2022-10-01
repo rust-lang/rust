@@ -602,8 +602,8 @@ declare_clippy_lint! {
     /// Checks for the result of a `&self`-taking `as_ptr` being cast to a mutable pointer
     ///
     /// ### Why is this bad?
-    /// Since `as_ptr` took a `&self`, the pointer won't have write permissions, making it
-    /// unlikely that having it as a mutable pointer is correct.
+    /// Since `as_ptr` takes a `&self`, the pointer won't have write permissions unless interior
+    /// mutability is used, making it unlikely that having it as a mutable pointer is correct.
     ///
     /// ### Example
     /// ```rust
@@ -620,7 +620,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.66.0"]
     pub AS_PTR_CAST_MUT,
     nursery,
-    "casting the result of the `&self`-taking as_ptr to a mutabe point"
+    "casting the result of the `&self`-taking `as_ptr` to a mutabe pointer"
 }
 
 pub struct Casts {
