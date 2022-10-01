@@ -528,17 +528,23 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     // all the internal lints
     #[cfg(feature = "internal")]
     {
-        store.register_early_pass(|| Box::new(utils::internal_lints::ClippyLintsInternal));
-        store.register_early_pass(|| Box::new(utils::internal_lints::ProduceIce));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::CollapsibleCalls));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::CompilerLintFunctions::new()));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::IfChainStyle));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::InvalidPaths));
-        store.register_late_pass(|_| Box::<utils::internal_lints::InterningDefinedSymbol>::default());
-        store.register_late_pass(|_| Box::<utils::internal_lints::LintWithoutLintPass>::default());
-        store.register_late_pass(|_| Box::new(utils::internal_lints::UnnecessaryDefPath));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::OuterExpnDataPass));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::MsrvAttrImpl));
+        store.register_early_pass(|| Box::new(utils::internal_lints::clippy_lints_internal::ClippyLintsInternal));
+        store.register_early_pass(|| Box::new(utils::internal_lints::produce_ice::ProduceIce));
+        store.register_late_pass(|_| Box::new(utils::internal_lints::collapsible_calls::CollapsibleCalls));
+        store.register_late_pass(|_| {
+            Box::new(utils::internal_lints::compiler_lint_functions::CompilerLintFunctions::new())
+        });
+        store.register_late_pass(|_| Box::new(utils::internal_lints::if_chain_style::IfChainStyle));
+        store.register_late_pass(|_| Box::new(utils::internal_lints::invalid_paths::InvalidPaths));
+        store.register_late_pass(|_| {
+            Box::<utils::internal_lints::interning_defined_symbol::InterningDefinedSymbol>::default()
+        });
+        store.register_late_pass(|_| {
+            Box::<utils::internal_lints::lint_without_lint_pass::LintWithoutLintPass>::default()
+        });
+        store.register_late_pass(|_| Box::new(utils::internal_lints::unnecessary_def_path::UnnecessaryDefPath));
+        store.register_late_pass(|_| Box::new(utils::internal_lints::outer_expn_data_pass::OuterExpnDataPass));
+        store.register_late_pass(|_| Box::new(utils::internal_lints::msrv_attr_impl::MsrvAttrImpl));
     }
 
     let arithmetic_side_effects_allowed = conf.arithmetic_side_effects_allowed.clone();
