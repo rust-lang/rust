@@ -25,7 +25,7 @@ jobs:
           - macOS-latest
         arch:
           - x64
-    timeout-minutes: 30 
+    timeout-minutes: 60 
     steps:
     - uses: actions/checkout@v2
       with:
