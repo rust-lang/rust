@@ -1319,14 +1319,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             // that we do not emit the same warning twice if the uninhabited type
             // is indeed `!`.
 
+            let msg = format!("unreachable {}", descr);
             self.ir.tcx.struct_span_lint_hir(
                 lint::builtin::UNREACHABLE_CODE,
                 expr_id,
                 expr_span,
-                |lint| {
-                    let msg = format!("unreachable {}", descr);
-                    lint.build(&msg)
-                        .span_label(expr_span, &msg)
+                &msg,
+                |diag| {
+                    diag.span_label(expr_span, &msg)
                         .span_label(orig_span, "any code following this expression is unreachable")
                         .span_note(
                             orig_span,
@@ -1335,7 +1335,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                                 orig_ty
                             ),
                         )
-                        .emit();
                 },
             );
         }
@@ -1491,14 +1490,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
                                 lint::builtin::UNUSED_ASSIGNMENTS,
                                 var_hir_id,
                                 vec![span],
-                                |lint| {
-                                    lint.build(&format!(
-                                        "value captured by `{}` is never read",
-                                        name
-                                    ))
-                                    .help("did you mean to capture by reference instead?")
-                                    .emit();
-                                },
+                                format!("value captured by `{}` is never read", name),
+                                |lint| lint.help("did you mean to capture by reference instead?"),
                             );
                         }
                     }
@@ -1508,11 +1501,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             lint::builtin::UNUSED_VARIABLES,
                             var_hir_id,
                             vec![span],
-                            |lint| {
-                                lint.build(&format!("unused variable: `{}`", name))
-                                    .help("did you mean to capture by reference instead?")
-                                    .emit();
-                            },
+                            format!("unused variable: `{}`", name),
+                            |lint| lint.help("did you mean to capture by reference instead?"),
                         );
                     }
                 }
@@ -1601,20 +1591,17 @@ impl<'tcx> Liveness<'_, 'tcx> {
                         .into_iter()
                         .map(|(_, _, ident_span)| ident_span)
                         .collect::<Vec<_>>(),
-                    |lint| {
-                        lint.build(&format!("variable `{}` is assigned to, but never used", name))
-                            .note(&format!("consider using `_{}` instead", name))
-                            .emit();
-                    },
+                    format!("variable `{}` is assigned to, but never used", name),
+                    |lint| lint.note(&format!("consider using `_{}` instead", name)),
                 )
             } else if can_remove {
                 self.ir.tcx.struct_span_lint_hir(
                     lint::builtin::UNUSED_VARIABLES,
                     first_hir_id,
                     hir_ids_and_spans.iter().map(|(_, pat_span, _)| *pat_span).collect::<Vec<_>>(),
+                    format!("unused variable: `{}`", name),
                     |lint| {
-                        let mut err = lint.build(&format!("unused variable: `{}`", name));
-                        err.multipart_suggestion(
+                        lint.multipart_suggestion(
                             "try removing the field",
                             hir_ids_and_spans
                                 .iter()
@@ -1629,8 +1616,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                                 })
                                 .collect(),
                             Applicability::MachineApplicable,
-                        );
-                        err.emit();
+                        )
                     },
                 );
             } else {
@@ -1661,14 +1647,13 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             .iter()
                             .map(|(_, pat_span, _)| *pat_span)
                             .collect::<Vec<_>>(),
+                        format!("unused variable: `{}`", name),
                         |lint| {
-                            let mut err = lint.build(&format!("unused variable: `{}`", name));
-                            err.multipart_suggestion(
+                            lint.multipart_suggestion(
                                 "try ignoring the field",
                                 shorthands,
                                 Applicability::MachineApplicable,
-                            );
-                            err.emit();
+                            )
                         },
                     );
                 } else {
@@ -1684,17 +1669,16 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             .iter()
                             .map(|(_, _, ident_span)| *ident_span)
                             .collect::<Vec<_>>(),
+                        format!("unused variable: `{}`", name),
                         |lint| {
-                            let mut err = lint.build(&format!("unused variable: `{}`", name));
-                            if self.has_added_lit_match_name_span(&name, opt_body, &mut err) {
-                                err.span_label(pat.span, "unused variable");
+                            if self.has_added_lit_match_name_span(&name, opt_body, lint) {
+                                lint.span_label(pat.span, "unused variable");
                             }
-                            err.multipart_suggestion(
+                            lint.multipart_suggestion(
                                 "if this is intentional, prefix it with an underscore",
                                 non_shorthands,
                                 Applicability::MachineApplicable,
-                            );
-                            err.emit();
+                            )
                         },
                     );
                 }
@@ -1758,11 +1742,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 lint::builtin::UNUSED_ASSIGNMENTS,
                 hir_id,
                 spans,
-                |lint| {
-                    lint.build(&message(&name))
-                        .help("maybe it is overwritten before being read?")
-                        .emit();
-                },
+                message(&name),
+                |lint| lint.help("maybe it is overwritten before being read?"),
             )
         }
     }

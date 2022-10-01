@@ -29,14 +29,18 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             continue;
         }
         let hir::ItemKind::Use(path, _) = item.kind else { unreachable!() };
-        tcx.struct_span_lint_hir(lint::builtin::UNUSED_IMPORTS, item.hir_id(), path.span, |lint| {
-            let msg = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(path.span) {
-                format!("unused import: `{}`", snippet)
-            } else {
-                "unused import".to_owned()
-            };
-            lint.build(&msg).emit();
-        });
+        let msg = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(path.span) {
+            format!("unused import: `{}`", snippet)
+        } else {
+            "unused import".to_owned()
+        };
+        tcx.struct_span_lint_hir(
+            lint::builtin::UNUSED_IMPORTS,
+            item.hir_id(),
+            path.span,
+            msg,
+            |lint| lint,
+        );
     }
 
     unused_crates_lint(tcx);

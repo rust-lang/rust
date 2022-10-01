@@ -4,13 +4,13 @@ warning: any use of this value will cause an error
 LL | const X: i32 = 1 / 0;
    | ------------   ^^^^^ attempt to divide `1_i32` by zero
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-query-stack.rs:18:8
    |
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-eval-query-stack.rs:23:28
@@ -24,9 +24,9 @@ error: erroneous constant used
 LL |     let x: &'static i32 = &X;
    |                           ^^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 query stack during panic:
 #0 [mir_drops_elaborated_and_const_checked] elaborating drops for `main`
@@ -40,13 +40,13 @@ warning: any use of this value will cause an error
 LL | const X: i32 = 1 / 0;
    | ------------   ^^^^^ attempt to divide `1_i32` by zero
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const-eval-query-stack.rs:18:8
    |
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 error: erroneous constant used
@@ -55,7 +55,7 @@ error: erroneous constant used
 LL |     let x: &'static i32 = &X;
    |                           ^^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 

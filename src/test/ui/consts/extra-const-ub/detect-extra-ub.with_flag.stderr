@@ -12,11 +12,11 @@ LL | const INVALID_PTR_IN_INT: () = unsafe {
 LL |     let _x: usize = transmute(&3u8);
    |                     ^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
   --> $DIR/detect-extra-ub.rs:22:30
@@ -80,11 +80,11 @@ LL | const INVALID_PTR_IN_INT: () = unsafe {
 LL |     let _x: usize = transmute(&3u8);
    |                     ^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -96,11 +96,11 @@ LL |     let x: &[u8] = &[0; 32];
 LL |     let _x: (usize, usize) = transmute(x);
    |                              ^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -111,7 +111,7 @@ LL | const UNALIGNED_READ: () = {
 LL |     INNER;
    |     ^^^^^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 

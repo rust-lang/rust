@@ -6,8 +6,8 @@ LL | const fn f<T>(x: T) {
 LL |     f(x);
    |     ---- recursive call site
    |
-   = note: `#[warn(unconditional_recursion)]` on by default
    = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
 
 error: any use of this value will cause an error
   --> $DIR/recursive.rs:4:5
@@ -23,9 +23,9 @@ LL |     f(x);
 LL | const X: () = f(1);
    | -----------
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 error: aborting due to previous error; 1 warning emitted
 
@@ -44,7 +44,7 @@ LL |     f(x);
 LL | const X: () = f(1);
    | -----------
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 

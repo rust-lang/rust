@@ -4,12 +4,12 @@ warning: unresolved link to `Oooops`
 LL |     /// [Oooops]
    |          ^^^^^^ no item named `Oooops` in scope
    |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 note: the lint level is defined here
   --> $DIR/through-proc-macro.rs:7:9
    |
 LL | #![warn(rustdoc::broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: 1 warning emitted
 

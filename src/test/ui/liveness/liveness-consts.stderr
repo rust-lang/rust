@@ -4,13 +4,13 @@ warning: variable `a` is assigned to, but never used
 LL |     let mut a = 0;
    |             ^
    |
+   = note: consider using `_a` instead
 note: the lint level is defined here
   --> $DIR/liveness-consts.rs:2:9
    |
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
-   = note: consider using `_a` instead
 
 warning: value assigned to `b` is never read
   --> $DIR/liveness-consts.rs:17:5
@@ -18,8 +18,8 @@ warning: value assigned to `b` is never read
 LL |     b += 1;
    |     ^
    |
-   = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
    = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
 
 warning: unused variable: `e`
   --> $DIR/liveness-consts.rs:24:13

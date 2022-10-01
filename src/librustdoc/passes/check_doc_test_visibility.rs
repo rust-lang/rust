@@ -125,9 +125,8 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
                 crate::lint::MISSING_DOC_CODE_EXAMPLES,
                 hir_id,
                 sp,
-                |lint| {
-                    lint.build("missing code example in this documentation").emit();
-                },
+                "missing code example in this documentation",
+                |lint| lint,
             );
         }
     } else if tests.found_tests > 0
@@ -137,9 +136,8 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
             item.attr_span(cx.tcx),
-            |lint| {
-                lint.build("documentation test in private item").emit();
-            },
+            "documentation test in private item",
+            |lint| lint,
         );
     }
 }

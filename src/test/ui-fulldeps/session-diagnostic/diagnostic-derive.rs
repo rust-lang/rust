@@ -585,6 +585,7 @@ struct LintAttributeOnSessionDiag {}
 #[derive(LintDiagnostic)]
 #[lint(typeck::ambiguous_lifetime_bound, code = "E0123")]
 //~^ ERROR `#[lint(...)]` is not a valid attribute
+//~| ERROR `#[lint(...)]` is not a valid attribute
 //~| ERROR diagnostic slug not specified
 //~| ERROR cannot find attribute `lint` in this scope
 struct LintAttributeOnLintDiag {}

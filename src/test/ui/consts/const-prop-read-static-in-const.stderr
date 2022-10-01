@@ -4,9 +4,9 @@ error: any use of this value will cause an error
 LL | const TEST: u8 = MY_STATIC;
    | --------------   ^^^^^^^^^ constant accesses static
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 warning: skipping const checks
    |
@@ -25,7 +25,7 @@ error: any use of this value will cause an error
 LL | const TEST: u8 = MY_STATIC;
    | --------------   ^^^^^^^^^ constant accesses static
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 

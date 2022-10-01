@@ -1790,10 +1790,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &unmentioned_fields.iter().map(|(_, i)| i).collect::<Vec<_>>(),
         );
 
-        self.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, |build| {
-        let mut lint = build.build("some fields are not explicitly listed");
+        self.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, "some fields are not explicitly listed", |lint| {
         lint.span_label(pat.span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns));
-
         lint.help(
             "ensure that all fields are mentioned explicitly by adding the suggested fields",
         );
@@ -1801,7 +1799,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "the pattern is of type `{}` and the `non_exhaustive_omitted_patterns` attribute was found",
             ty,
         ));
-        lint.emit();
+
+        lint
     });
     }
 

@@ -154,9 +154,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         };
 
         if let Some(must_use_op) = must_use_op {
-            cx.struct_span_lint(UNUSED_MUST_USE, expr.span, |lint| {
-                lint.build(fluent::lint::unused_op)
-                    .set_arg("op", must_use_op)
+            cx.struct_span_lint(UNUSED_MUST_USE, expr.span, fluent::lint::unused_op, |lint| {
+                lint.set_arg("op", must_use_op)
                     .span_label(expr.span, fluent::lint::label)
                     .span_suggestion_verbose(
                         expr.span.shrink_to_lo(),
@@ -164,14 +163,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         "let _ = ",
                         Applicability::MachineApplicable,
                     )
-                    .emit();
             });
             op_warned = true;
         }
 
         if !(type_permits_lack_of_use || fn_warned || op_warned) {
-            cx.struct_span_lint(UNUSED_RESULTS, s.span, |lint| {
-                lint.build(fluent::lint::unused_result).set_arg("ty", ty).emit();
+            cx.struct_span_lint(UNUSED_RESULTS, s.span, fluent::lint::unused_result, |lint| {
+                lint.set_arg("ty", ty)
             });
         }
 
@@ -267,29 +265,35 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     }
                 },
                 ty::Closure(..) => {
-                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        // FIXME(davidtwco): this isn't properly translatable because of the
-                        // pre/post strings
-                        lint.build(fluent::lint::unused_closure)
-                            .set_arg("count", plural_len)
-                            .set_arg("pre", descr_pre)
-                            .set_arg("post", descr_post)
-                            .note(fluent::lint::note)
-                            .emit();
-                    });
+                    cx.struct_span_lint(
+                        UNUSED_MUST_USE,
+                        span,
+                        fluent::lint::unused_closure,
+                        |lint| {
+                            // FIXME(davidtwco): this isn't properly translatable because of the
+                            // pre/post strings
+                            lint.set_arg("count", plural_len)
+                                .set_arg("pre", descr_pre)
+                                .set_arg("post", descr_post)
+                                .note(fluent::lint::note)
+                        },
+                    );
                     true
                 }
                 ty::Generator(..) => {
-                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        // FIXME(davidtwco): this isn't properly translatable because of the
-                        // pre/post strings
-                        lint.build(fluent::lint::unused_generator)
-                            .set_arg("count", plural_len)
-                            .set_arg("pre", descr_pre)
-                            .set_arg("post", descr_post)
-                            .note(fluent::lint::note)
-                            .emit();
-                    });
+                    cx.struct_span_lint(
+                        UNUSED_MUST_USE,
+                        span,
+                        fluent::lint::unused_generator,
+                        |lint| {
+                            // FIXME(davidtwco): this isn't properly translatable because of the
+                            // pre/post strings
+                            lint.set_arg("count", plural_len)
+                                .set_arg("pre", descr_pre)
+                                .set_arg("post", descr_post)
+                                .note(fluent::lint::note)
+                        },
+                    );
                     true
                 }
                 _ => false,
@@ -309,18 +313,17 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             descr_post_path: &str,
         ) -> bool {
             if let Some(attr) = cx.tcx.get_attr(def_id, sym::must_use) {
-                cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
+                cx.struct_span_lint(UNUSED_MUST_USE, span, fluent::lint::unused_def, |lint| {
                     // FIXME(davidtwco): this isn't properly translatable because of the pre/post
                     // strings
-                    let mut err = lint.build(fluent::lint::unused_def);
-                    err.set_arg("pre", descr_pre_path);
-                    err.set_arg("post", descr_post_path);
-                    err.set_arg("def", cx.tcx.def_path_str(def_id));
+                    lint.set_arg("pre", descr_pre_path);
+                    lint.set_arg("post", descr_post_path);
+                    lint.set_arg("def", cx.tcx.def_path_str(def_id));
                     // check for #[must_use = "..."]
                     if let Some(note) = attr.value_str() {
-                        err.note(note.as_str());
+                        lint.note(note.as_str());
                     }
-                    err.emit();
+                    lint
                 });
                 true
             } else {
@@ -357,25 +360,34 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
-                cx.struct_span_lint(PATH_STATEMENTS, s.span, |lint| {
-                    let ty = cx.typeck_results().expr_ty(expr);
-                    if ty.needs_drop(cx.tcx, cx.param_env) {
-                        let mut lint = lint.build(fluent::lint::path_statement_drop);
-                        if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span) {
-                            lint.span_suggestion(
-                                s.span,
-                                fluent::lint::suggestion,
-                                format!("drop({});", snippet),
-                                Applicability::MachineApplicable,
-                            );
-                        } else {
-                            lint.span_help(s.span, fluent::lint::suggestion);
-                        }
-                        lint.emit();
-                    } else {
-                        lint.build(fluent::lint::path_statement_no_effect).emit();
-                    }
-                });
+                let ty = cx.typeck_results().expr_ty(expr);
+                if ty.needs_drop(cx.tcx, cx.param_env) {
+                    cx.struct_span_lint(
+                        PATH_STATEMENTS,
+                        s.span,
+                        fluent::lint::path_statement_drop,
+                        |lint| {
+                            if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span) {
+                                lint.span_suggestion(
+                                    s.span,
+                                    fluent::lint::suggestion,
+                                    format!("drop({});", snippet),
+                                    Applicability::MachineApplicable,
+                                );
+                            } else {
+                                lint.span_help(s.span, fluent::lint::suggestion);
+                            }
+                            lint
+                        },
+                    );
+                } else {
+                    cx.struct_span_lint(
+                        PATH_STATEMENTS,
+                        s.span,
+                        fluent::lint::path_statement_no_effect,
+                        |lint| lint,
+                    );
+                }
             }
         }
     }
@@ -545,22 +557,21 @@ trait UnusedDelimLint {
         } else {
             MultiSpan::from(value_span)
         };
-        cx.struct_span_lint(self.lint(), primary_span, |lint| {
-            let mut db = lint.build(fluent::lint::unused_delim);
-            db.set_arg("delim", Self::DELIM_STR);
-            db.set_arg("item", msg);
+        cx.struct_span_lint(self.lint(), primary_span, fluent::lint::unused_delim, |lint| {
+            lint.set_arg("delim", Self::DELIM_STR);
+            lint.set_arg("item", msg);
             if let Some((lo, hi)) = spans {
                 let replacement = vec![
                     (lo, if keep_space.0 { " ".into() } else { "".into() }),
                     (hi, if keep_space.1 { " ".into() } else { "".into() }),
                 ];
-                db.multipart_suggestion(
+                lint.multipart_suggestion(
                     fluent::lint::suggestion,
                     replacement,
                     Applicability::MachineApplicable,
                 );
             }
-            db.emit();
+            lint
         });
     }
 
@@ -1128,9 +1139,12 @@ impl UnusedImportBraces {
                 ast::UseTreeKind::Nested(_) => return,
             };
 
-            cx.struct_span_lint(UNUSED_IMPORT_BRACES, item.span, |lint| {
-                lint.build(fluent::lint::unused_import_braces).set_arg("node", node_name).emit();
-            });
+            cx.struct_span_lint(
+                UNUSED_IMPORT_BRACES,
+                item.span,
+                fluent::lint::unused_import_braces,
+                |lint| lint.set_arg("node", node_name),
+            );
         }
     }
 }
@@ -1179,15 +1193,17 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
 
         for adj in cx.typeck_results().expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
-                cx.struct_span_lint(UNUSED_ALLOCATION, e.span, |lint| {
-                    lint.build(match m {
+                cx.struct_span_lint(
+                    UNUSED_ALLOCATION,
+                    e.span,
+                    match m {
                         adjustment::AutoBorrowMutability::Not => fluent::lint::unused_allocation,
                         adjustment::AutoBorrowMutability::Mut { .. } => {
                             fluent::lint::unused_allocation_mut
                         }
-                    })
-                    .emit();
-                });
+                    },
+                    |lint| lint,
+                );
             }
         }
     }

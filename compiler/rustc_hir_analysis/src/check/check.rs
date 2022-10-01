@@ -48,9 +48,13 @@ pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ab
             .emit();
         }
         None => {
-            tcx.struct_span_lint_hir(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.build("use of calling convention not supported on this target").emit();
-            });
+            tcx.struct_span_lint_hir(
+                UNSUPPORTED_CALLING_CONVENTIONS,
+                hir_id,
+                span,
+                "use of calling convention not supported on this target",
+                |lint| lint,
+            );
         }
     }
 
@@ -510,10 +514,10 @@ fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
             UNINHABITED_STATIC,
             tcx.hir().local_def_id_to_hir_id(def_id),
             span,
+            "static of uninhabited type",
             |lint| {
-                lint.build("static of uninhabited type")
+                lint
                 .note("uninhabited statics cannot be initialized, and any access would be an immediate error")
-                .emit();
             },
         );
     }
@@ -1437,6 +1441,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
                 REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
                 tcx.hir().local_def_id_to_hir_id(adt.did().expect_local()),
                 span,
+                "zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types",
                 |lint| {
                     let note = if non_exhaustive {
                         "is marked with `#[non_exhaustive]`"
@@ -1444,10 +1449,9 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
                         "contains private fields"
                     };
                     let field_ty = tcx.def_path_str_with_substs(def_id, substs);
-                    lint.build("zero-sized fields in repr(transparent) cannot contain external non-exhaustive types")
+                    lint
                         .note(format!("this {descr} contains `{field_ty}`, which {note}, \
                             and makes it not a breaking change to become non-zero-sized in the future."))
-                        .emit();
                 },
             )
         }

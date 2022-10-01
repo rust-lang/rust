@@ -4,8 +4,8 @@ warning: the feature `unsized_locals` is incomplete and may not be safe to use a
 LL | #![feature(unsized_locals)]
    |            ^^^^^^^^^^^^^^
    |
-   = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0508]: cannot move out of type `[A]`, a non-copy slice
   --> $DIR/move-out-of-slice-2.rs:10:11

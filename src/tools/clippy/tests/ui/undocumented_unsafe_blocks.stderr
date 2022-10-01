@@ -4,8 +4,8 @@ error: unsafe block missing a safety comment
 LL |     /* Safety: */ unsafe {}
    |                   ^^^^^^^^^
    |
-   = note: `-D clippy::undocumented-unsafe-blocks` implied by `-D warnings`
    = help: consider adding a safety comment on the preceding line
+   = note: `-D clippy::undocumented-unsafe-blocks` implied by `-D warnings`
 
 error: unsafe block missing a safety comment
   --> $DIR/undocumented_unsafe_blocks.rs:266:5

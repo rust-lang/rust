@@ -235,14 +235,18 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                   .emit()
             }
 
-            Err(ErrorHandled::TooGeneric) => Err(if uv.has_infer_types_or_consts() {
-                NotConstEvaluatable::MentionsInfer
+            Err(ErrorHandled::TooGeneric) => {
+                let err = if uv.has_infer_types_or_consts() {
+                    NotConstEvaluatable::MentionsInfer
                 } else if uv.has_param_types_or_consts() {
-                NotConstEvaluatable::MentionsParam
-            } else {
-                let guar = infcx.tcx.sess.delay_span_bug(span, format!("Missing value for constant, but no error reported?"));
-                NotConstEvaluatable::Error(guar)
-            }),
+                    NotConstEvaluatable::MentionsParam
+                } else {
+                    let guar = infcx.tcx.sess.delay_span_bug(span, format!("Missing value for constant, but no error reported?"));
+                    NotConstEvaluatable::Error(guar)
+                };
+
+                Err(err)
+            },
             Err(ErrorHandled::Linted) => {
                 let reported =
                     infcx.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
@@ -250,23 +254,23 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
             }
             Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
             Ok(_) => {
-              if uv.substs.has_param_types_or_consts() {
-                  assert!(matches!(infcx.tcx.def_kind(uv.def.did), DefKind::AnonConst));
-                  let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(uv.def);
+                if uv.substs.has_param_types_or_consts() {
+                    assert!(matches!(infcx.tcx.def_kind(uv.def.did), DefKind::AnonConst));
+                    let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(uv.def);
 
-                  if mir_body.is_polymorphic {
-                      let Some(local_def_id) = uv.def.did.as_local() else { return Ok(()) };
-                      tcx.struct_span_lint_hir(
-                          lint::builtin::CONST_EVALUATABLE_UNCHECKED,
-                          tcx.hir().local_def_id_to_hir_id(local_def_id),
-                          span,
-                          |err| {
-                              err.build("cannot use constants which depend on generic parameters in types").emit();
-                        })
-                  }
-              }
+                    if mir_body.is_polymorphic {
+                        let Some(local_def_id) = uv.def.did.as_local() else { return Ok(()) };
+                        tcx.struct_span_lint_hir(
+                            lint::builtin::CONST_EVALUATABLE_UNCHECKED,
+                            tcx.hir().local_def_id_to_hir_id(local_def_id),
+                            span,
+                            "cannot use constants which depend on generic parameters in types",
+                            |err| err
+                        )
+                    }
+                }
 
-              Ok(())
+                Ok(())
             },
         }
     }

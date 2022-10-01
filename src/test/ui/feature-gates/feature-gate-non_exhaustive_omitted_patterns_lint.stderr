@@ -4,10 +4,10 @@ warning: unknown lint: `non_exhaustive_omitted_patterns`
 LL | #![deny(non_exhaustive_omitted_patterns)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_lints)]` on by default
    = note: the `non_exhaustive_omitted_patterns` lint is unstable
    = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+   = note: `#[warn(unknown_lints)]` on by default
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
   --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:6:1

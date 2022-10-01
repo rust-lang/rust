@@ -14,11 +14,11 @@ warning: any use of this value will cause an error
 LL |     const F: u32 = 100 / U::X;
    |     ------------   ^^^^^^^^^^ attempt to divide `100_u32` by zero
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/assoc_const_2.rs:3:10
    |
 LL | #![allow(const_err)]
    |          ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 

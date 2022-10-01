@@ -4,9 +4,9 @@ warning: irrefutable `if let` pattern
 LL |     if let a = "" {
    |        ^^^^^^^^^^
    |
-   = note: `#[warn(irrefutable_let_patterns)]` on by default
    = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
 
 warning: 1 warning emitted
 

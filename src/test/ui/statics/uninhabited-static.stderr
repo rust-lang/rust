@@ -4,14 +4,14 @@ error: static of uninhabited type
 LL |     static VOID: Void;
    |     ^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
+   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
 note: the lint level is defined here
   --> $DIR/uninhabited-static.rs:2:9
    |
 LL | #![deny(uninhabited_static)]
    |         ^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
-   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
 
 error: static of uninhabited type
   --> $DIR/uninhabited-static.rs:8:5
@@ -58,12 +58,12 @@ LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
    |                               this code causes undefined behavior when executed
    |                               help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: `#[warn(invalid_value)]` on by default
 note: enums with no inhabited variants have no valid value
   --> $DIR/uninhabited-static.rs:4:1
    |
 LL | enum Void {}
    | ^^^^^^^^^
+   = note: `#[warn(invalid_value)]` on by default
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/uninhabited-static.rs:16:32

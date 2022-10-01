@@ -40,9 +40,9 @@ error: erroneous constant used
 LL |     panic!("{:?}", 0);
    |            ^^^^^^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 error: erroneous constant used
   --> $DIR/format.rs:2:20
@@ -83,9 +83,9 @@ error: erroneous constant used
 LL |     panic!("{:?}", 0);
    |            ^^^^^^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: erroneous constant used
@@ -94,9 +94,9 @@ error: erroneous constant used
 LL |     panic!("{:?}", 0);
    |                    ^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
    = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
@@ -106,9 +106,9 @@ error: erroneous constant used
 LL |     println!("{:?}", 0);
    |              ^^^^^^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: erroneous constant used
@@ -117,8 +117,8 @@ error: erroneous constant used
 LL |     println!("{:?}", 0);
    |                      ^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 

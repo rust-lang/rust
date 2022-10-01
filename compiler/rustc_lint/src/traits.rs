@@ -100,15 +100,18 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                 if trait_predicate.trait_ref.self_ty().is_impl_trait() {
                     continue;
                 }
-                cx.struct_span_lint(DROP_BOUNDS, span, |lint| {
-                    let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
-                        return
-                    };
-                    lint.build(fluent::lint::drop_trait_constraints)
-                        .set_arg("predicate", predicate)
-                        .set_arg("needs_drop", cx.tcx.def_path_str(needs_drop))
-                        .emit();
-                });
+                let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
+                    continue;
+                };
+                cx.struct_span_lint(
+                    DROP_BOUNDS,
+                    span,
+                    fluent::lint::drop_trait_constraints,
+                    |lint| {
+                        lint.set_arg("predicate", predicate)
+                            .set_arg("needs_drop", cx.tcx.def_path_str(needs_drop))
+                    },
+                );
             }
         }
     }
@@ -119,14 +122,11 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
         };
         for bound in &bounds[..] {
             let def_id = bound.trait_ref.trait_def_id();
-            if cx.tcx.lang_items().drop_trait() == def_id {
-                cx.struct_span_lint(DYN_DROP, bound.span, |lint| {
-                    let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
-                        return
-                    };
-                    lint.build(fluent::lint::drop_glue)
-                        .set_arg("needs_drop", cx.tcx.def_path_str(needs_drop))
-                        .emit();
+            if cx.tcx.lang_items().drop_trait() == def_id
+                && let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop)
+            {
+                cx.struct_span_lint(DYN_DROP, bound.span, fluent::lint::drop_glue, |lint| {
+                    lint.set_arg("needs_drop", cx.tcx.def_path_str(needs_drop))
                 });
             }
         }

@@ -7,10 +7,10 @@ LL | | /// \__________pkt->size___________/          \_result->size_/ \__pkt->si
 LL | | /// ```
    | |_______^
    |
+   = note: error from rustc: unknown start of token: \
+   = note: error from rustc: unknown start of token: \
+   = note: error from rustc: unknown start of token: \
    = note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
-   = note: error from rustc: unknown start of token: \
-   = note: error from rustc: unknown start of token: \
-   = note: error from rustc: unknown start of token: \
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text

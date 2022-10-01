@@ -8,7 +8,6 @@ LL | |             _ => return,
 LL | |         },
    | |_________^
    |
-   = note: `-D clippy::collapsible-match` implied by `-D warnings`
 help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:12:12
    |
@@ -16,6 +15,7 @@ LL |         Ok(val) => match val {
    |            ^^^ replace this binding
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
+   = note: `-D clippy::collapsible-match` implied by `-D warnings`
 
 error: this `match` can be collapsed into the outer `match`
   --> $DIR/collapsible_match.rs:21:20

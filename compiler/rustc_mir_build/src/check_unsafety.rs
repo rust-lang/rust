@@ -89,15 +89,8 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     UNSAFE_OP_IN_UNSAFE_FN,
                     self.hir_context,
                     span,
-                    |lint| {
-                        lint.build(&format!(
-                            "{} is unsafe and requires unsafe block (error E0133)",
-                            description,
-                        ))
-                        .span_label(span, kind.simple_description())
-                        .note(note)
-                        .emit();
-                    },
+                    format!("{} is unsafe and requires unsafe block (error E0133)", description,),
+                    |lint| lint.span_label(span, kind.simple_description()).note(note),
                 )
             }
             SafetyContext::Safe => {
@@ -125,14 +118,13 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
         enclosing_unsafe: Option<(Span, &'static str)>,
     ) {
         let block_span = self.tcx.sess.source_map().guess_head_span(block_span);
-        self.tcx.struct_span_lint_hir(UNUSED_UNSAFE, hir_id, block_span, |lint| {
-            let msg = "unnecessary `unsafe` block";
-            let mut db = lint.build(msg);
-            db.span_label(block_span, msg);
+        let msg = "unnecessary `unsafe` block";
+        self.tcx.struct_span_lint_hir(UNUSED_UNSAFE, hir_id, block_span, msg, |lint| {
+            lint.span_label(block_span, msg);
             if let Some((span, kind)) = enclosing_unsafe {
-                db.span_label(span, format!("because it's nested under this `unsafe` {}", kind));
+                lint.span_label(span, format!("because it's nested under this `unsafe` {}", kind));
             }
-            db.emit();
+            lint
         });
     }
 

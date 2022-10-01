@@ -4,7 +4,7 @@
 
 use itertools::Itertools;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, Applicability, MultiSpan};
+use rustc_errors::{pluralize, Applicability, DelayDm, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -184,13 +184,14 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     lint::builtin::DEAD_CODE,
                     assign.hir_id,
                     assign.span,
-                    |lint| {
-                        lint.build(&format!(
+                    DelayDm(|| format!(
                             "useless assignment of {} of type `{}` to itself",
                             if is_field_assign { "field" } else { "variable" },
                             self.typeck_results().expr_ty(lhs),
-                        ))
-                        .emit();
+                        )),
+                    |lint| {
+                        lint
+
                     },
                 )
         }
@@ -717,6 +718,26 @@ impl<'tcx> DeadVisitor<'tcx> {
                 })
                 .collect();
 
+            let descr = tcx.def_kind(first_id).descr(first_id.to_def_id());
+            let span_len = dead_codes.len();
+            let names = match &names[..] {
+                _ if span_len > 6 => String::new(),
+                [name] => format!("`{name}` "),
+                [names @ .., last] => {
+                    format!(
+                        "{} and `{last}` ",
+                        names.iter().map(|name| format!("`{name}`")).join(", ")
+                    )
+                }
+                [] => unreachable!(),
+            };
+            let msg = format!(
+                "{these}{descr}{s} {names}{are} never {participle}",
+                these = if span_len > 6 { "multiple " } else { "" },
+                s = pluralize!(span_len),
+                are = pluralize!("is", span_len),
+            );
+
             tcx.struct_span_lint_hir(
                 if is_positional {
                     lint::builtin::UNUSED_TUPLE_STRUCT_FIELDS
@@ -725,27 +746,8 @@ impl<'tcx> DeadVisitor<'tcx> {
                 },
                 tcx.hir().local_def_id_to_hir_id(first_id),
                 MultiSpan::from_spans(spans.clone()),
-                |lint| {
-                    let descr = tcx.def_kind(first_id).descr(first_id.to_def_id());
-                    let span_len = dead_codes.len();
-                    let names = match &names[..] {
-                        _ if span_len > 6 => String::new(),
-                        [name] => format!("`{name}` "),
-                        [names @ .., last] => {
-                            format!(
-                                "{} and `{last}` ",
-                                names.iter().map(|name| format!("`{name}`")).join(", ")
-                            )
-                        }
-                        [] => unreachable!(),
-                    };
-                    let mut err = lint.build(&format!(
-                        "{these}{descr}{s} {names}{are} never {participle}",
-                        these = if span_len > 6 { "multiple " } else { "" },
-                        s = pluralize!(span_len),
-                        are = pluralize!("is", span_len),
-                    ));
-
+                msg,
+                |err| {
                     if is_positional {
                         err.multipart_suggestion(
                             &format!(
@@ -791,7 +793,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                         );
                         err.note(&msg);
                     }
-                    err.emit();
+                    err
                 },
             );
         }

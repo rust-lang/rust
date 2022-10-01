@@ -4,13 +4,13 @@ warning: unknown lint: `test_unstable_lint`
 LL | #![allow(test_unstable_lint)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: the `test_unstable_lint` lint is unstable
+   = help: add `#![feature(test_unstable_lint)]` to the crate attributes to enable
 note: the lint level is defined here
   --> $DIR/warn-unknown-unstable-lint-inline.rs:3:9
    |
 LL | #![warn(unknown_lints)]
    |         ^^^^^^^^^^^^^
-   = note: the `test_unstable_lint` lint is unstable
-   = help: add `#![feature(test_unstable_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `test_unstable_lint`
   --> $DIR/warn-unknown-unstable-lint-inline.rs:4:1

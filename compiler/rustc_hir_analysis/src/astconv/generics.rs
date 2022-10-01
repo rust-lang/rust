@@ -649,9 +649,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     LATE_BOUND_LIFETIME_ARGUMENTS,
                     args.args[0].hir_id(),
                     multispan,
-                    |lint| {
-                        lint.build(msg).emit();
-                    },
+                    msg,
+                    |lint| lint,
                 );
             }
 

@@ -14,13 +14,13 @@ warning: any use of this value will cause an error
 LL |     const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize];
    |     ----------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/issue-44578.rs:3:10
    |
 LL | #![allow(const_err)]
    |          ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 warning: erroneous constant used
@@ -29,12 +29,12 @@ warning: erroneous constant used
 LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/issue-44578.rs:3:10
    |
 LL | #![allow(const_err)]
    |          ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this warning originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 

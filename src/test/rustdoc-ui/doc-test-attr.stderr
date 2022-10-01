@@ -4,13 +4,13 @@ error: `#[doc(test(...)]` takes a list of attributes
 LL | #![doc(test)]
    |        ^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
 note: the lint level is defined here
   --> $DIR/doc-test-attr.rs:2:9
    |
 LL | #![deny(invalid_doc_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
 
 error: `#[doc(test(...)]` takes a list of attributes
   --> $DIR/doc-test-attr.rs:7:8

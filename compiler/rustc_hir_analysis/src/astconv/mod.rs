@@ -2010,30 +2010,35 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         tcx.check_stability(item.def_id, Some(hir_ref_id), span, None);
 
         if let Some(variant_def_id) = variant_resolution {
-            tcx.struct_span_lint_hir(AMBIGUOUS_ASSOCIATED_ITEMS, hir_ref_id, span, |lint| {
-                let mut err = lint.build("ambiguous associated item");
-                let mut could_refer_to = |kind: DefKind, def_id, also| {
-                    let note_msg = format!(
-                        "`{}` could{} refer to the {} defined here",
-                        assoc_ident,
-                        also,
-                        kind.descr(def_id)
+            tcx.struct_span_lint_hir(
+                AMBIGUOUS_ASSOCIATED_ITEMS,
+                hir_ref_id,
+                span,
+                "ambiguous associated item",
+                |lint| {
+                    let mut could_refer_to = |kind: DefKind, def_id, also| {
+                        let note_msg = format!(
+                            "`{}` could{} refer to the {} defined here",
+                            assoc_ident,
+                            also,
+                            kind.descr(def_id)
+                        );
+                        lint.span_note(tcx.def_span(def_id), &note_msg);
+                    };
+
+                    could_refer_to(DefKind::Variant, variant_def_id, "");
+                    could_refer_to(kind, item.def_id, " also");
+
+                    lint.span_suggestion(
+                        span,
+                        "use fully-qualified syntax",
+                        format!("<{} as {}>::{}", qself_ty, tcx.item_name(trait_did), assoc_ident),
+                        Applicability::MachineApplicable,
                     );
-                    err.span_note(tcx.def_span(def_id), &note_msg);
-                };
 
-                could_refer_to(DefKind::Variant, variant_def_id, "");
-                could_refer_to(kind, item.def_id, " also");
-
-                err.span_suggestion(
-                    span,
-                    "use fully-qualified syntax",
-                    format!("<{} as {}>::{}", qself_ty, tcx.item_name(trait_did), assoc_ident),
-                    Applicability::MachineApplicable,
-                );
-
-                err.emit();
-            });
+                    lint
+                },
+            );
         }
         Ok((ty, kind, item.def_id))
     }
@@ -3079,15 +3084,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     BARE_TRAIT_OBJECTS,
                     self_ty.hir_id,
                     self_ty.span,
+                    msg,
                     |lint| {
-                        let mut diag = lint.build(msg);
-                        diag.multipart_suggestion_verbose(
+                        lint.multipart_suggestion_verbose(
                             "use `dyn`",
                             sugg,
                             Applicability::MachineApplicable,
                         );
-                        self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
-                        diag.emit();
+                        self.maybe_lint_blanket_trait_impl(&self_ty, lint);
+                        lint
                     },
                 );
             }

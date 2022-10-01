@@ -4,13 +4,13 @@ error: irrefutable `if let` guard pattern
 LL |         Some(x) if let () = x => {}
    |                        ^^
    |
+   = note: this pattern will always match, so the guard is useless
+   = help: consider removing the guard and adding a `let` inside the match arm
 note: the lint level is defined here
   --> $DIR/warns.rs:3:8
    |
 LL | #[deny(irrefutable_let_patterns)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this pattern will always match, so the guard is useless
-   = help: consider removing the guard and adding a `let` inside the match arm
 
 error: unreachable pattern
   --> $DIR/warns.rs:15:25

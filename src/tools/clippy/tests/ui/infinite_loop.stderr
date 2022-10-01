@@ -4,8 +4,8 @@ error: variables in the condition are not mutated in the loop body
 LL |     while y < 10 {
    |           ^^^^^^
    |
-   = note: `#[deny(clippy::while_immutable_condition)]` on by default
    = note: this may lead to an infinite or to a never running loop
+   = note: `#[deny(clippy::while_immutable_condition)]` on by default
 
 error: variables in the condition are not mutated in the loop body
   --> $DIR/infinite_loop.rs:25:11

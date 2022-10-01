@@ -57,13 +57,13 @@ LL |     static FOO: AtomicUsize = AtomicUsize::new(0);
 LL |     FOO.fetch_add(1, Ordering::Relaxed)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling non-const function `AtomicUsize::fetch_add`
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const_refers_to_static.rs:3:10
    |
 LL | #![allow(const_err)]
    |          ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 warning: any use of this value will cause an error
@@ -75,13 +75,13 @@ LL |     static FOO: AtomicUsize = AtomicUsize::new(0);
 LL |     unsafe { *(&FOO as *const _ as *const usize) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const_refers_to_static.rs:3:10
    |
 LL | #![allow(const_err)]
    |          ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 warning: any use of this value will cause an error
@@ -90,11 +90,11 @@ warning: any use of this value will cause an error
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    | -------------------            ^^^^^^^ constant accesses static
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const_refers_to_static.rs:3:10
    |
 LL | #![allow(const_err)]
    |          ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 

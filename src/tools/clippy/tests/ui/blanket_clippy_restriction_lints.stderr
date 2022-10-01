@@ -4,8 +4,8 @@ error: restriction lints are not meant to be all enabled
 LL | #![warn(clippy::restriction)]
    |         ^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::blanket-clippy-restriction-lints` implied by `-D warnings`
    = help: try enabling only the lints you really need
+   = note: `-D clippy::blanket-clippy-restriction-lints` implied by `-D warnings`
 
 error: restriction lints are not meant to be all enabled
   --> $DIR/blanket_clippy_restriction_lints.rs:5:9

@@ -4,9 +4,9 @@ warning: `...` range patterns are deprecated
 LL |         0...100 => true,
    |          ^^^ help: use `..=` for an inclusive range
    |
-   = note: `--force-warn ellipsis-inclusive-range-patterns` implied by `--force-warn rust-2021-compatibility`
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `--force-warn ellipsis-inclusive-range-patterns` implied by `--force-warn rust-2021-compatibility`
 
 warning: 1 warning emitted
 

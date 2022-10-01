@@ -4,13 +4,13 @@ error: irrefutable `if let` pattern
 LL |     if let _ = 5 {}
    |        ^^^^^^^^^
    |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
 note: the lint level is defined here
   --> $DIR/deny-irrefutable-let-patterns.rs:3:9
    |
 LL | #![deny(irrefutable_let_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this pattern will always match, so the `if let` is useless
-   = help: consider replacing the `if let` with a `let`
 
 error: irrefutable `while let` pattern
   --> $DIR/deny-irrefutable-let-patterns.rs:8:11

@@ -6,6 +6,7 @@
 //!
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
 use hir::LangItem;
+use rustc_errors::DelayDm;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCause;
@@ -825,13 +826,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     DEREF_INTO_DYN_SUPERTRAIT,
                                     obligation.cause.body_id,
                                     obligation.cause.span,
-                                    |lint| {
-                                        lint.build(&format!(
-                                            "`{}` implements `Deref` with supertrait `{}` as output",
-                                            source,
-                                            deref_output_ty
-                                        )).emit();
-                                    },
+                                    DelayDm(|| format!(
+                                        "`{}` implements `Deref` with supertrait `{}` as output",
+                                        source, deref_output_ty
+                                    )),
+                                    |lint| lint,
                                 );
                                 return;
                             }

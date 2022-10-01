@@ -40,13 +40,13 @@ LL | const U8_MUT2: &u8 = {
 LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const_refers_to_static_cross_crate.rs:23:8
    |
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: could not evaluate constant pattern
   --> $DIR/const_refers_to_static_cross_crate.rs:60:9
@@ -62,13 +62,13 @@ LL | const U8_MUT3: &u8 = {
 LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const_refers_to_static_cross_crate.rs:30:8
    |
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: could not evaluate constant pattern
   --> $DIR/const_refers_to_static_cross_crate.rs:68:9
@@ -165,13 +165,13 @@ LL | const U8_MUT2: &u8 = {
 LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const_refers_to_static_cross_crate.rs:23:8
    |
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 Future breakage diagnostic:
 warning: any use of this value will cause an error
@@ -182,11 +182,11 @@ LL | const U8_MUT3: &u8 = {
 LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/const_refers_to_static_cross_crate.rs:30:8
    |
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 

@@ -328,17 +328,16 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     lint::builtin::ASM_SUB_REGISTER,
                     expr.hir_id,
                     spans,
+                    "formatting may not be suitable for sub-register argument",
                     |lint| {
-                        let msg = "formatting may not be suitable for sub-register argument";
-                        let mut err = lint.build(msg);
-                        err.span_label(expr.span, "for this argument");
-                        err.help(&format!(
+                        lint.span_label(expr.span, "for this argument");
+                        lint.help(&format!(
                             "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}`",
                         ));
-                        err.help(&format!(
+                        lint.help(&format!(
                             "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}`",
                         ));
-                        err.emit();
+                        lint
                     },
                 );
             }

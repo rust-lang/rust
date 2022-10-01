@@ -4,9 +4,9 @@ error: any use of this value will cause an error
 LL |     const B: u8 = Self::A + 1;
    |     -----------   ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/defaults-not-assumed-fail.rs:34:16
@@ -34,9 +34,9 @@ error: any use of this value will cause an error
 LL |     const B: u8 = Self::A + 1;
    |     -----------   ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
 
 Future breakage diagnostic:
 error: erroneous constant used
@@ -45,8 +45,8 @@ error: erroneous constant used
 LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
    |
-   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: `#[deny(const_err)]` on by default
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 

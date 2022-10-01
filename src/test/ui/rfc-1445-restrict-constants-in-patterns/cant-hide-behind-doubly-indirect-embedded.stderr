@@ -4,13 +4,13 @@ warning: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be a
 LL |         WRAP_DOUBLY_INDIRECT_INLINE => { panic!("WRAP_DOUBLY_INDIRECT_INLINE matched itself"); }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
 note: the lint level is defined here
   --> $DIR/cant-hide-behind-doubly-indirect-embedded.rs:7:9
    |
 LL | #![warn(indirect_structural_match)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
 
 warning: 1 warning emitted
 

@@ -16,13 +16,13 @@ warning: any use of this value will cause an error
 LL |     const VOID: () = [()][2];
    |     --------------   ^^^^^^^ index out of bounds: the length is 1 but the index is 2
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/erroneous-const2.rs:2:9
    |
 LL | #![warn(const_err, unconditional_panic)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/erroneous-const2.rs:15:17
@@ -40,11 +40,11 @@ warning: any use of this value will cause an error
 LL |     const VOID: () = [()][2];
    |     --------------   ^^^^^^^ index out of bounds: the length is 1 but the index is 2
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 note: the lint level is defined here
   --> $DIR/erroneous-const2.rs:2:9
    |
 LL | #![warn(const_err, unconditional_panic)]
    |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 

@@ -749,10 +749,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 closure_hir_id,
                 closure_head_span,
+                reasons.migration_message(),
                 |lint| {
-                    let mut diagnostics_builder = lint.build(
-                        &reasons.migration_message(),
-                    );
                     for NeededMigration { var_hir_id, diagnostics_info } in &need_migrations {
                         // Labels all the usage of the captured variable and why they are responsible
                         // for migration being needed
@@ -760,13 +758,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             match &lint_note.captures_info {
                                 UpvarMigrationInfo::CapturingPrecise { source_expr: Some(capture_expr_id), var_name: captured_name } => {
                                     let cause_span = self.tcx.hir().span(*capture_expr_id);
-                                    diagnostics_builder.span_label(cause_span, format!("in Rust 2018, this closure captures all of `{}`, but in Rust 2021, it will only capture `{}`",
+                                    lint.span_label(cause_span, format!("in Rust 2018, this closure captures all of `{}`, but in Rust 2021, it will only capture `{}`",
                                         self.tcx.hir().name(*var_hir_id),
                                         captured_name,
                                     ));
                                 }
                                 UpvarMigrationInfo::CapturingNothing { use_span } => {
-                                    diagnostics_builder.span_label(*use_span, format!("in Rust 2018, this causes the closure to capture `{}`, but in Rust 2021, it has no effect",
+                                    lint.span_label(*use_span, format!("in Rust 2018, this causes the closure to capture `{}`, but in Rust 2021, it has no effect",
                                         self.tcx.hir().name(*var_hir_id),
                                     ));
                                 }
@@ -781,13 +779,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                                 match &lint_note.captures_info {
                                     UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
-                                        diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
+                                        lint.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
                                             self.tcx.hir().name(*var_hir_id),
                                             captured_name,
                                         ));
                                     }
                                     UpvarMigrationInfo::CapturingNothing { use_span: _ } => {
-                                        diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{v}` is dropped here along with the closure, but in Rust 2021 `{v}` is not part of the closure",
+                                        lint.span_label(drop_location_span, format!("in Rust 2018, `{v}` is dropped here along with the closure, but in Rust 2021 `{v}` is not part of the closure",
                                             v = self.tcx.hir().name(*var_hir_id),
                                         ));
                                     }
@@ -800,7 +798,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 match &lint_note.captures_info {
                                     UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
                                         let var_name = self.tcx.hir().name(*var_hir_id);
-                                        diagnostics_builder.span_label(closure_head_span, format!("\
+                                        lint.span_label(closure_head_span, format!("\
                                         in Rust 2018, this closure implements {missing_trait} \
                                         as `{var_name}` implements {missing_trait}, but in Rust 2021, \
                                         this closure will no longer implement {missing_trait} \
@@ -814,7 +812,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    diagnostics_builder.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
+                    lint.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
 
                     let diagnostic_msg = format!(
                         "add a dummy let to cause {} to be fully captured",
@@ -857,7 +855,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // We take the indentation from the next non-empty line.
                             let line2 = lines.find(|line| !line.is_empty()).unwrap_or_default();
                             let indent = line2.split_once(|c: char| !c.is_whitespace()).unwrap_or_default().0;
-                            diagnostics_builder.span_suggestion(
+                            lint.span_suggestion(
                                 closure_body_span.with_lo(closure_body_span.lo() + BytePos::from_usize(line1.len())).shrink_to_lo(),
                                 &diagnostic_msg,
                                 format!("\n{indent}{migration_string};"),
@@ -868,7 +866,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // braces, but with more than just the opening
                             // brace on the first line. We put the `let`
                             // directly after the `{`.
-                            diagnostics_builder.span_suggestion(
+                            lint.span_suggestion(
                                 closure_body_span.with_lo(closure_body_span.lo() + BytePos(1)).shrink_to_lo(),
                                 &diagnostic_msg,
                                 format!(" {migration_string};"),
@@ -877,7 +875,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             // This is a closure without braces around the body.
                             // We add braces to add the `let` before the body.
-                            diagnostics_builder.multipart_suggestion(
+                            lint.multipart_suggestion(
                                 &diagnostic_msg,
                                 vec![
                                     (closure_body_span.shrink_to_lo(), format!("{{ {migration_string}; ")),
@@ -887,7 +885,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         }
                     } else {
-                        diagnostics_builder.span_suggestion(
+                        lint.span_suggestion(
                             closure_span,
                             &diagnostic_msg,
                             migration_string,
@@ -895,7 +893,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
 
-                    diagnostics_builder.emit();
+                    lint
                 },
             );
         }

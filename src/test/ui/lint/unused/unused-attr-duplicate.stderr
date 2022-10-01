@@ -4,16 +4,16 @@ error: unused attribute
 LL | #[no_link]
    | ^^^^^^^^^^ help: remove this attribute
    |
-note: the lint level is defined here
-  --> $DIR/unused-attr-duplicate.rs:12:9
-   |
-LL | #![deny(unused_attributes)]
-   |         ^^^^^^^^^^^^^^^^^
 note: attribute also specified here
   --> $DIR/unused-attr-duplicate.rs:32:1
    |
 LL | #[no_link]
    | ^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/unused-attr-duplicate.rs:12:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:37:1

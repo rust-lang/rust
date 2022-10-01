@@ -13,8 +13,8 @@ LL | |         do_stuff(lock);
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::if-let-mutex` implied by `-D warnings`
    = help: move the lock call outside of the `if let ...` expression
+   = note: `-D clippy::if-let-mutex` implied by `-D warnings`
 
 error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
   --> $DIR/if_let_mutex.rs:22:5

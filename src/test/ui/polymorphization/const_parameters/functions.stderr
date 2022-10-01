@@ -4,8 +4,8 @@ warning: the feature `generic_const_exprs` is incomplete and may not be safe to 
 LL | #![feature(generic_const_exprs, rustc_attrs)]
    |            ^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
 
 error: item has unused generic parameters
   --> $DIR/functions.rs:15:8

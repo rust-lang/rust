@@ -4,8 +4,8 @@ error: this will panic at run-time if the environment variable doesn't exist at 
 LL |     let _ = option_env!("PATH").unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::option-env-unwrap` implied by `-D warnings`
    = help: consider using the `env!` macro instead
+   = note: `-D clippy::option-env-unwrap` implied by `-D warnings`
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
   --> $DIR/option_env_unwrap.rs:19:13

@@ -65,9 +65,13 @@ fn check_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, abi: Abi) {
     if abi == Abi::Rust {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let span = tcx.def_span(def_id);
-        tcx.struct_span_lint_hir(UNDEFINED_NAKED_FUNCTION_ABI, hir_id, span, |lint| {
-            lint.build("Rust ABI is unsupported in naked functions").emit();
-        });
+        tcx.struct_span_lint_hir(
+            UNDEFINED_NAKED_FUNCTION_ABI,
+            hir_id,
+            span,
+            "Rust ABI is unsupported in naked functions",
+            |lint| lint,
+        );
     }
 }
 

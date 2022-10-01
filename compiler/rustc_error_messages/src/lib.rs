@@ -358,6 +358,17 @@ impl<S: Into<String>> From<S> for DiagnosticMessage {
     }
 }
 
+/// A workaround for "good path" ICEs when formatting types in disables lints.
+///
+/// Delays formatting until `.into(): DiagnosticMessage` is used.
+pub struct DelayDm<F>(pub F);
+
+impl<F: FnOnce() -> String> From<DelayDm<F>> for DiagnosticMessage {
+    fn from(DelayDm(f): DelayDm<F>) -> Self {
+        DiagnosticMessage::from(f())
+    }
+}
+
 /// Translating *into* a subdiagnostic message from a diagnostic message is a little strange - but
 /// the subdiagnostic functions (e.g. `span_label`) take a `SubdiagnosticMessage` and the
 /// subdiagnostic derive refers to typed identifiers that are `DiagnosticMessage`s, so need to be

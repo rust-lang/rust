@@ -4,8 +4,8 @@ error: for loop over `option`, which is an `Option`. This is more readably writt
 LL |     for x in option {
    |              ^^^^^^
    |
-   = note: `-D clippy::for-loops-over-fallibles` implied by `-D warnings`
    = help: consider replacing `for x in option` with `if let Some(x) = option`
+   = note: `-D clippy::for-loops-over-fallibles` implied by `-D warnings`
 
 error: for loop over `option`, which is an `Option`. This is more readably written as an `if let` statement
   --> $DIR/for_loops_over_fallibles.rs:14:14

@@ -240,9 +240,8 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                     Some(sp) => sp,
                     None => item.attr_span(tcx),
                 };
-                tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, |lint| {
+                tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, msg, |lint| {
                     use rustc_lint_defs::Applicability;
-                    let mut diag = lint.build(msg);
                     // If a tag looks like `<this>`, it might actually be a generic.
                     // We don't try to detect stuff `<like, this>` because that's not valid HTML,
                     // and we don't try to detect stuff `<like this>` because that's not valid Rust.
@@ -305,11 +304,10 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                         if (generics_start > 0 && dox.as_bytes()[generics_start - 1] == b'<')
                             || (generics_end < dox.len() && dox.as_bytes()[generics_end] == b'>')
                         {
-                            diag.emit();
-                            return;
+                            return lint;
                         }
                         // multipart form is chosen here because ``Vec<i32>`` would be confusing.
-                        diag.multipart_suggestion(
+                        lint.multipart_suggestion(
                             "try marking as source code",
                             vec![
                                 (generics_sp.shrink_to_lo(), String::from("`")),
@@ -318,7 +316,8 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                             Applicability::MaybeIncorrect,
                         );
                     }
-                    diag.emit()
+
+                    lint
                 });
             };
 

@@ -4,8 +4,8 @@ error: `to_string()` called on a `String`
 LL |     let mut v = message.to_string();
    |                 ^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::string-to-string` implied by `-D warnings`
    = help: consider using `.clone()`
+   = note: `-D clippy::string-to-string` implied by `-D warnings`
 
 error: aborting due to previous error
 

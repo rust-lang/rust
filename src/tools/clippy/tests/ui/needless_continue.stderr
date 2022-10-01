@@ -7,7 +7,6 @@ LL | |             continue;
 LL | |         }
    | |_________^
    |
-   = note: `-D clippy::needless-continue` implied by `-D warnings`
    = help: consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block
                    if i % 2 == 0 && i % 3 == 0 {
                        println!("{}", i);
@@ -33,6 +32,7 @@ LL | |         }
                        }
                        println!("bleh");
                    }
+   = note: `-D clippy::needless-continue` implied by `-D warnings`
 
 error: there is no need for an explicit `else` block for this `if` expression
   --> $DIR/needless_continue.rs:44:9

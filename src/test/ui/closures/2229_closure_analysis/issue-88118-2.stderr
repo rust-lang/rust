@@ -4,9 +4,9 @@ warning: irrefutable `if let` guard pattern
 LL |             Registry if let _ = registry.try_find_description() => { }
    |                             ^
    |
-   = note: `#[warn(irrefutable_let_patterns)]` on by default
    = note: this pattern will always match, so the guard is useless
    = help: consider removing the guard and adding a `let` inside the match arm
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
 
 warning: 1 warning emitted
 

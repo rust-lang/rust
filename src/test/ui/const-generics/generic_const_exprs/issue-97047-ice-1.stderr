@@ -4,8 +4,8 @@ warning: the feature `adt_const_params` is incomplete and may not be safe to use
 LL | #![feature(adt_const_params, generic_const_exprs)]
    |            ^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+   = note: `#[warn(incomplete_features)]` on by default
 
 warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/issue-97047-ice-1.rs:3:30

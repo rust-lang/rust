@@ -4,8 +4,8 @@ warning: unexpected `cfg` condition value
 LL | #[cfg(target(os = "linux", arch = "X"))]
    |                            ^^^^^^^^^^
    |
-   = note: `#[warn(unexpected_cfgs)]` on by default
    = note: expected values for `target_arch` are: aarch64, arm, avr, bpf, hexagon, m68k, mips, mips64, msp430, nvptx64, powerpc, powerpc64, riscv32, riscv64, s390x, sparc, sparc64, wasm32, wasm64, x86, x86_64
+   = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: 1 warning emitted
 

@@ -4,8 +4,8 @@ warning: the feature `unsized_locals` is incomplete and may not be safe to use a
 LL | #![feature(unsized_locals, unsized_fn_params)]
    |            ^^^^^^^^^^^^^^
    |
-   = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/borrow-after-move.rs:21:24

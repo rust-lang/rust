@@ -4,8 +4,8 @@ error: an implementation of `From` is preferred since it gives you `Into<_>` for
 LL | impl Into<StringWrapper> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::from-over-into` implied by `-D warnings`
    = help: consider to implement `From<std::string::String>` instead
+   = note: `-D clippy::from-over-into` implied by `-D warnings`
 
 error: aborting due to previous error
 

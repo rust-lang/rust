@@ -32,9 +32,9 @@ warning: anonymous parameters are deprecated and will be removed in the next edi
 LL |     fn call(export_name);
    |             ^^^^^^^^^^^ help: try naming the parameter or explicitly ignoring it: `_: export_name`
    |
-   = note: `#[warn(anonymous_parameters)]` on by default
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
+   = note: `#[warn(anonymous_parameters)]` on by default
 
 error[E0718]: `fn` language item must be applied to a trait with 1 generic argument
   --> $DIR/issue-83471.rs:11:1

@@ -7,12 +7,12 @@ LL |         let _val: &'static T = mem::zeroed();
    |                                this code causes undefined behavior when executed
    |                                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
+   = note: references must be non-null
 note: the lint level is defined here
   --> $DIR/invalid_value.rs:6:9
    |
 LL | #![deny(invalid_value)]
    |         ^^^^^^^^^^^^^
-   = note: references must be non-null
 
 error: the type `&T` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:51:32

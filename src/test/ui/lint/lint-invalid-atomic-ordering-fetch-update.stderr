@@ -4,8 +4,8 @@ error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since
 LL |     let _ = x.fetch_update(Ordering::Relaxed, Ordering::AcqRel, |old| Some(old + 1));
    |                                               ^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = note: `#[deny(invalid_atomic_ordering)]` on by default
    = help: consider using `Acquire` or `Relaxed` failure ordering instead
+   = note: `#[deny(invalid_atomic_ordering)]` on by default
 
 error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-fetch-update.rs:28:47

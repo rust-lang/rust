@@ -16,8 +16,8 @@ error: indexing may panic
 LL |     x[index];
    |     ^^^^^^^^
    |
-   = note: `-D clippy::indexing-slicing` implied by `-D warnings`
    = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = note: `-D clippy::indexing-slicing` implied by `-D warnings`
 
 error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:38:5

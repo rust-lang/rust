@@ -28,9 +28,9 @@ error: extern crate `core` is private, and cannot be re-exported (error E0365), 
 LL | pub use core as reexported_core;
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[deny(pub_use_of_private_extern_crate)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: `#[deny(pub_use_of_private_extern_crate)]` on by default
 
 error: aborting due to 3 previous errors
 
