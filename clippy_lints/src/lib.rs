@@ -204,7 +204,6 @@ mod disallowed_names;
 mod disallowed_script_idents;
 mod disallowed_types;
 mod doc;
-mod doc_link_with_quotes;
 mod double_parens;
 mod drop_forget_ref;
 mod duplicate_mod;
@@ -864,7 +863,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(single_char_lifetime_names::SingleCharLifetimeNames));
     store.register_late_pass(move |_| Box::new(manual_bits::ManualBits::new(msrv)));
     store.register_late_pass(|_| Box::new(default_union_representation::DefaultUnionRepresentation));
-    store.register_early_pass(|| Box::new(doc_link_with_quotes::DocLinkWithQuotes));
     store.register_late_pass(|_| Box::<only_used_in_recursion::OnlyUsedInRecursion>::default());
     let allow_dbg_in_tests = conf.allow_dbg_in_tests;
     store.register_late_pass(move |_| Box::new(dbg_macro::DbgMacro::new(allow_dbg_in_tests)));
