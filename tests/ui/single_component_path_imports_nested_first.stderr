@@ -4,8 +4,8 @@ error: this import is redundant
 LL |     use {regex, serde};
    |          ^^^^^
    |
-   = note: `-D clippy::single-component-path-imports` implied by `-D warnings`
    = help: remove this import
+   = note: `-D clippy::single-component-path-imports` implied by `-D warnings`
 
 error: this import is redundant
   --> $DIR/single_component_path_imports_nested_first.rs:13:17

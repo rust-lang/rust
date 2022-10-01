@@ -10,8 +10,8 @@ LL |             mutex.lock().unwrap().bar();
 LL |     };
    |      - temporary lives until here
    |
-   = note: `-D clippy::significant-drop-in-scrutinee` implied by `-D warnings`
    = note: this might lead to deadlocks or other unexpected behavior
+   = note: `-D clippy::significant-drop-in-scrutinee` implied by `-D warnings`
 help: try moving the temporary above the match
    |
 LL ~     let value = mutex.lock().unwrap().foo();

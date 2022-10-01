@@ -4,8 +4,8 @@ error: approximate value of `f{32, 64}::consts::E` found
 LL |     let my_e = 2.7182;
    |                ^^^^^^
    |
-   = note: `-D clippy::approx-constant` implied by `-D warnings`
    = help: consider using the constant directly
+   = note: `-D clippy::approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::E` found
   --> $DIR/approx_const.rs:5:20

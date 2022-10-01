@@ -4,8 +4,8 @@ error: used import from `std` instead of `core`
 LL |     use std::hash::Hasher;
    |         ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::std-instead-of-core` implied by `-D warnings`
    = help: consider importing the item from `core`
+   = note: `-D clippy::std-instead-of-core` implied by `-D warnings`
 
 error: used import from `std` instead of `core`
   --> $DIR/std_instead_of_core.rs:11:9
@@ -69,8 +69,8 @@ error: used import from `std` instead of `alloc`
 LL |     use std::vec;
    |         ^^^^^^^^
    |
-   = note: `-D clippy::std-instead-of-alloc` implied by `-D warnings`
    = help: consider importing the item from `alloc`
+   = note: `-D clippy::std-instead-of-alloc` implied by `-D warnings`
 
 error: used import from `std` instead of `alloc`
   --> $DIR/std_instead_of_core.rs:33:9
@@ -86,8 +86,8 @@ error: used import from `alloc` instead of `core`
 LL |     use alloc::slice::from_ref;
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::alloc-instead-of-core` implied by `-D warnings`
    = help: consider importing the item from `core`
+   = note: `-D clippy::alloc-instead-of-core` implied by `-D warnings`
 
 error: aborting due to 11 previous errors
 

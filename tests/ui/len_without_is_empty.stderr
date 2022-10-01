@@ -92,8 +92,8 @@ error: this returns a `Result<_, ()>`
 LL |     pub fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::result-unit-err` implied by `-D warnings`
    = help: use a custom `Error` type instead
+   = note: `-D clippy::result-unit-err` implied by `-D warnings`
 
 error: this returns a `Result<_, ()>`
   --> $DIR/len_without_is_empty.rs:240:5

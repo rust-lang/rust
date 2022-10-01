@@ -6,8 +6,8 @@ LL | |         "A.to_string()".to_string()
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::inherent-to-string` implied by `-D warnings`
    = help: implement trait `Display` for type `A` instead
+   = note: `-D clippy::inherent-to-string` implied by `-D warnings`
 
 error: type `C` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`
   --> $DIR/inherent_to_string.rs:44:5
@@ -17,12 +17,12 @@ LL | |         "C.to_string()".to_string()
 LL | |     }
    | |_____^
    |
+   = help: remove the inherent method from type `C`
 note: the lint level is defined here
   --> $DIR/inherent_to_string.rs:2:9
    |
 LL | #![deny(clippy::inherent_to_string_shadow_display)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: remove the inherent method from type `C`
 
 error: aborting due to 2 previous errors
 

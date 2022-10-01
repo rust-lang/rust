@@ -4,8 +4,8 @@ error: using `pub use`
 LL |     pub use inner::Test;
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::pub-use` implied by `-D warnings`
    = help: move the exported item to a public module instead
+   = note: `-D clippy::pub-use` implied by `-D warnings`
 
 error: aborting due to previous error
 

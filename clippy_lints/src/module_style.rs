@@ -117,11 +117,13 @@ impl EarlyLintPass for ModStyle {
                     cx.struct_span_lint(
                         SELF_NAMED_MODULE_FILES,
                         Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
-                        |build| {
-                            let mut lint =
-                                build.build(&format!("`mod.rs` files are required, found `{}`", path.display()));
-                            lint.help(&format!("move `{}` to `{}`", path.display(), correct.display(),));
-                            lint.emit();
+                        format!("`mod.rs` files are required, found `{}`", path.display()),
+                        |lint| {
+                            lint.help(format!(
+                                "move `{}` to `{}`",
+                                path.display(),
+                                correct.display(),
+                            ))
                         },
                     );
                 }
@@ -156,11 +158,8 @@ fn check_self_named_mod_exists(cx: &EarlyContext<'_>, path: &Path, file: &Source
         cx.struct_span_lint(
             MOD_MODULE_FILES,
             Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
-            |build| {
-                let mut lint = build.build(&format!("`mod.rs` files are not allowed, found `{}`", path.display()));
-                lint.help(&format!("move `{}` to `{}`", path.display(), mod_file.display(),));
-                lint.emit();
-            },
+            format!("`mod.rs` files are not allowed, found `{}`", path.display()),
+            |lint| lint.help(format!("move `{}` to `{}`", path.display(), mod_file.display())),
         );
     }
 }

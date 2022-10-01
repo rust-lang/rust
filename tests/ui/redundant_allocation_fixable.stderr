@@ -4,8 +4,8 @@ error: usage of `Box<&T>`
 LL |     pub fn box_test1<T>(foo: Box<&T>) {}
    |                              ^^^^^^^ help: try: `&T`
    |
-   = note: `-D clippy::redundant-allocation` implied by `-D warnings`
    = note: `&T` is already a pointer, `Box<&T>` allocates a pointer on the heap
+   = note: `-D clippy::redundant-allocation` implied by `-D warnings`
 
 error: usage of `Box<&MyStruct>`
   --> $DIR/redundant_allocation_fixable.rs:28:27

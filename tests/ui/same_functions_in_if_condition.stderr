@@ -4,12 +4,12 @@ error: this `if` has the same function call as a previous `if`
 LL |     } else if function() {
    |               ^^^^^^^^^^
    |
-   = note: `-D clippy::same-functions-in-if-condition` implied by `-D warnings`
 note: same as this
   --> $DIR/same_functions_in_if_condition.rs:30:8
    |
 LL |     if function() {
    |        ^^^^^^^^^^
+   = note: `-D clippy::same-functions-in-if-condition` implied by `-D warnings`
 
 error: this `if` has the same function call as a previous `if`
   --> $DIR/same_functions_in_if_condition.rs:36:15

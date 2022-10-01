@@ -4,8 +4,8 @@ error: initializing a reference-counted pointer in `vec![elem; len]`
 LL |     let v = vec![SyncWeak::<u32>::new(); 2];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::rc-clone-in-vec-init` implied by `-D warnings`
    = note: each element will point to the same `Weak` instance
+   = note: `-D clippy::rc-clone-in-vec-init` implied by `-D warnings`
 help: consider initializing each `Weak` element individually
    |
 LL ~     let v = {

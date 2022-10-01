@@ -4,12 +4,12 @@ error: stripping a prefix manually
 LL |             assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
    |                        ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-strip` implied by `-D warnings`
 note: the prefix was tested here
   --> $DIR/min_rust_version_attr.rs:203:9
    |
 LL |         if s.starts_with("hello, ") {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::manual-strip` implied by `-D warnings`
 help: try using the `strip_prefix` method
    |
 LL ~         if let Some(<stripped>) = s.strip_prefix("hello, ") {

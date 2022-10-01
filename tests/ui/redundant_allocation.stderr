@@ -4,9 +4,9 @@ error: usage of `Box<Rc<T>>`
 LL |     pub fn box_test6<T>(foo: Box<Rc<T>>) {}
    |                              ^^^^^^^^^^
    |
-   = note: `-D clippy::redundant-allocation` implied by `-D warnings`
    = note: `Rc<T>` is already on the heap, `Box<Rc<T>>` makes an extra allocation
    = help: consider using just `Box<T>` or `Rc<T>`
+   = note: `-D clippy::redundant-allocation` implied by `-D warnings`
 
 error: usage of `Box<Arc<T>>`
   --> $DIR/redundant_allocation.rs:19:30
