@@ -59,7 +59,7 @@ use std::collections::Spam;
 "#,
     )
     .with_config(serde_json::json!({
-        "cargo": { "noSysroot": false }
+        "cargo": { "sysroot": "discover" }
     }))
     .server()
     .wait_until_workspace_is_loaded();
@@ -614,7 +614,7 @@ fn main() {{}}
         librs, libs
     ))
     .with_config(serde_json::json!({
-        "cargo": { "noSysroot": false }
+        "cargo": { "sysroot": "discover" }
     }))
     .server()
     .wait_until_workspace_is_loaded();
@@ -742,7 +742,7 @@ fn main() {
             "buildScripts": {
                 "enable": true
             },
-            "noSysroot": true,
+            "sysroot": null,
         }
     }))
     .server()
@@ -900,7 +900,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
             "buildScripts": {
                 "enable": true
             },
-            "noSysroot": true,
+            "sysroot": null,
         },
         "procMacro": {
             "enable": true,
