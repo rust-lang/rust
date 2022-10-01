@@ -11,10 +11,6 @@ use crate::intrinsic::ArgAbiExt;
 use crate::type_of::LayoutGccExt;
 
 impl<'a, 'gcc, 'tcx> AbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
-    fn apply_attrs_callsite(&mut self, _fn_abi: &FnAbi<'tcx, Ty<'tcx>>, _callsite: Self::Value) {
-        // TODO(antoyo)
-    }
-
     fn get_param(&mut self, index: usize) -> Self::Value {
         let func = self.current_func();
         let param = func.get_param(index as i32);
