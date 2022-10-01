@@ -937,9 +937,19 @@ impl<'hir> Map<'hir> {
 
         let span = match self.find(hir_id)? {
             // Function-like.
-            Node::Item(Item { kind: ItemKind::Fn(sig, ..), .. })
-            | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, ..), .. })
-            | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, ..), .. }) => sig.span,
+            Node::Item(Item { kind: ItemKind::Fn(sig, ..), span: outer_span, .. })
+            | Node::TraitItem(TraitItem {
+                kind: TraitItemKind::Fn(sig, ..),
+                span: outer_span,
+                ..
+            })
+            | Node::ImplItem(ImplItem {
+                kind: ImplItemKind::Fn(sig, ..), span: outer_span, ..
+            }) => {
+                // Ensure that the returned span has the item's SyntaxContext, and not the
+                // SyntaxContext of the visibility.
+                sig.span.find_ancestor_in_same_ctxt(*outer_span).unwrap_or(*outer_span)
+            }
             // Constants and Statics.
             Node::Item(Item {
                 kind:
@@ -981,7 +991,11 @@ impl<'hir> Map<'hir> {
             }
             // Other cases.
             Node::Item(item) => match &item.kind {
-                ItemKind::Use(path, _) => path.span,
+                ItemKind::Use(path, _) => {
+                    // Ensure that the returned span has the item's SyntaxContext, and not the
+                    // SyntaxContext of the path.
+                    path.span.find_ancestor_in_same_ctxt(item.span).unwrap_or(item.span)
+                }
                 _ => named_span(item.span, item.ident, item.kind.generics()),
             },
             Node::Variant(variant) => named_span(variant.span, variant.ident, None),
@@ -991,11 +1005,17 @@ impl<'hir> Map<'hir> {
                 _ => named_span(item.span, item.ident, None),
             },
             Node::Ctor(_) => return self.opt_span(self.get_parent_node(hir_id)),
-            Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl_span, .. }), .. }) => {
-                *fn_decl_span
+            Node::Expr(Expr {
+                kind: ExprKind::Closure(Closure { fn_decl_span, .. }),
+                span,
+                ..
+            }) => {
+                // Ensure that the returned span has the item's SyntaxContext.
+                fn_decl_span.find_ancestor_in_same_ctxt(*span).unwrap_or(*span)
             }
             _ => self.span_with_body(hir_id),
         };
+        debug_assert_eq!(span.ctxt(), self.span_with_body(hir_id).ctxt());
         Some(span)
     }
 
