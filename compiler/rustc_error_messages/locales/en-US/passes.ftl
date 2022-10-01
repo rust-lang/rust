@@ -383,9 +383,6 @@ passes_unknown_lang_item =
     definition of an unknown language item: `{$name}`
     .label = definition of unknown language item `{$name}`
 
-passes_local_duplicate_lang_item =
-    found duplicate lang item `{$name}`
-
 passes_invalid_attr_at_crate_level =
     `{$name}` attribute cannot be used at crate level
     .suggestion = perhaps you meant to use an outer attribute
@@ -534,3 +531,30 @@ passes_no_main_function =
     .consider_adding_main_at_crate = consider adding a `main` function at the crate level
     .teach_note = If you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/
     .non_function_main = non-function item at `crate::main` is found
+
+passes_duplicate_lang_item =
+    {$message ->
+        *[duplicate] found duplicate lang item `{$lang_item_name}`
+        [duplicate_in_crate] duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`.
+        [duplicate_in_crate_depends] duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`.
+    }
+    .first_defined_span = the lang item is first defined here
+    .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
+    .second_definition_local = second definition in the local crate (`{$crate_name}`)
+    .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
+    .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
+
+passes_incorrect_target =
+    `{$name}` language item must be applied to a {$kind} with {$at_least ->
+        [true] at least {$num}
+        *[false] {$num}
+    } generic {$num ->
+        [one] argument
+        *[other] arguments
+    }
+    .label = this {$kind} has {$actual_num} generic {$actual_num ->
+        [one] argument
+        *[other] arguments
+    }

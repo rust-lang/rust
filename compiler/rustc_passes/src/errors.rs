@@ -1191,3 +1191,77 @@ impl<'a> IntoDiagnostic<'a> for NoMainErr {
         diag
     }
 }
+
+pub struct DuplicateLangItem<'a> {
+    pub local_span: Option<Span>,
+    pub lang_item_name: Symbol,
+    pub crate_name: Symbol,
+    pub dependency_of: Symbol,
+    pub is_local: bool,
+    pub path: String,
+    pub first_defined_span: Option<Span>,
+    pub orig_crate_name: Symbol,
+    pub orig_dependency_of: Symbol,
+    pub orig_is_local: bool,
+    pub orig_path: String,
+    pub message: &'a str,
+}
+
+impl<'a, 'b> IntoDiagnostic<'a> for DuplicateLangItem<'b> {
+    fn into_diagnostic(
+        self,
+        handler: &'a rustc_errors::Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
+        let mut diag = handler.struct_err_with_code(
+            rustc_errors::fluent::passes::duplicate_lang_item,
+            error_code!(E0152),
+        );
+        diag.set_arg("lang_item_name", self.lang_item_name);
+        diag.set_arg("crate_name", self.crate_name);
+        diag.set_arg("dependency_of", self.dependency_of);
+        diag.set_arg("path", self.path);
+        diag.set_arg("orig_crate_name", self.orig_crate_name);
+        diag.set_arg("orig_dependency_of", self.orig_dependency_of);
+        diag.set_arg("orig_path", self.orig_path);
+        diag.set_arg("message", self.message);
+        if let Some(span) = self.local_span {
+            diag.set_span(span);
+        }
+        if let Some(span) = self.first_defined_span {
+            diag.span_note(span, rustc_errors::fluent::passes::first_defined_span);
+        } else {
+            if self.orig_dependency_of.is_empty() {
+                diag.note(rustc_errors::fluent::passes::first_defined_crate);
+            } else {
+                diag.note(rustc_errors::fluent::passes::first_defined_crate_depends);
+            }
+
+            if self.orig_is_local {
+                diag.note(rustc_errors::fluent::passes::first_definition_local);
+            } else {
+                diag.note(rustc_errors::fluent::passes::first_definition_path);
+            }
+
+            if self.is_local {
+                diag.note(rustc_errors::fluent::passes::second_definition_local);
+            } else {
+                diag.note(rustc_errors::fluent::passes::second_definition_path);
+            }
+        }
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::incorrect_target, code = "E0718")]
+pub struct IncorrectTarget<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub generics_span: Span,
+    pub name: &'a str,
+    pub kind: &'static str,
+    pub num: usize,
+    pub actual_num: usize,
+    pub at_least: bool,
+}
