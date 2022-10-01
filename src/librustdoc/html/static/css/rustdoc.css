@@ -193,7 +193,6 @@ h4.code-header {
 .methods .associatedconstant,
 .impl-items .associatedtype,
 .methods .associatedtype {
-	flex-basis: 100%;
 	position: relative;
 }
 
