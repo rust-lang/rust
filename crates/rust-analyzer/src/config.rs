@@ -7,7 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{ffi::OsString, fmt, iter, path::PathBuf};
+use std::{fmt, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use ide::{
@@ -975,15 +975,17 @@ impl Config {
         self.data.lru_capacity
     }
 
-    pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, Vec<OsString>)> {
+    pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, /* is path explicitly set */ bool)> {
         if !self.data.procMacro_enable {
             return None;
         }
-        let path = match &self.data.procMacro_server {
-            Some(it) => self.root_path.join(it),
-            None => AbsPathBuf::assert(std::env::current_exe().ok()?),
-        };
-        Some((path, vec!["proc-macro".into()]))
+        Some(match &self.data.procMacro_server {
+            Some(it) => (
+                AbsPathBuf::try_from(it.clone()).unwrap_or_else(|path| self.root_path.join(path)),
+                true,
+            ),
+            None => (AbsPathBuf::assert(std::env::current_exe().ok()?), false),
+        })
     }
 
     pub fn dummy_replacements(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
