@@ -37,6 +37,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--link-color: #39afd7;
 	--sidebar-link-color: #53b1db;
 	--sidebar-current-link-background-color: transparent;
+	--search-result-link-focus-background-color: #3c3c3c;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 }
@@ -249,30 +250,6 @@ pre.rust .kw {}
 #titles > button:hover, #titles > button.selected {}
 pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val, pre.rust .attribute {}
 pre.rust .kw-2, pre.rust .prelude-ty {}
-
-.search-results a:focus span {}
-a.result-trait:focus {}
-a.result-traitalias:focus {}
-a.result-mod:focus,
-a.result-externcrate:focus {}
-a.result-mod:focus {}
-a.result-externcrate:focus {}
-a.result-enum:focus {}
-a.result-struct:focus {}
-a.result-union:focus {}
-a.result-fn:focus,
-a.result-method:focus,
-a.result-tymethod:focus {}
-a.result-type:focus {}
-a.result-associatedtype:focus {}
-a.result-foreigntype:focus {}
-a.result-attr:focus,
-a.result-derive:focus,
-a.result-macro:focus {}
-a.result-constant:focus,
-a.result-static:focus {}
-a.result-primitive:focus {}
-a.result-keyword:focus {}
 
 kbd {
 	color: #c5c5c5;
