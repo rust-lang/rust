@@ -254,7 +254,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
     }
 
     #[cfg(feature="master")]
-    if name == sym::simd_cast {
+    if name == sym::simd_cast || name == sym::simd_as {
         require_simd!(ret_ty, "return");
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(

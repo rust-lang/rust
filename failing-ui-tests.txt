@@ -31,7 +31,6 @@ src/test/ui/sepcomp/sepcomp-fns-backwards.rs
 src/test/ui/sepcomp/sepcomp-fns.rs
 src/test/ui/sepcomp/sepcomp-statics.rs
 src/test/ui/simd/intrinsic/generic-arithmetic-pass.rs
-src/test/ui/simd/intrinsic/generic-as.rs
 src/test/ui/simd/intrinsic/generic-bitmask-pass.rs
 src/test/ui/simd/intrinsic/generic-gather-pass.rs
 src/test/ui/simd/intrinsic/generic-select-pass.rs
