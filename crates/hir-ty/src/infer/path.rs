@@ -12,8 +12,7 @@ use crate::{
     builder::ParamKind,
     consteval,
     method_resolution::{self, VisibleFromModule},
-    GenericArgData, Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
-    ValueTyDefId,
+    Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, ValueTyDefId,
 };
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
@@ -104,9 +103,7 @@ impl<'a> InferenceContext<'a> {
             .use_parent_substs(&parent_substs)
             .fill(|x| {
                 it.next().unwrap_or_else(|| match x {
-                    ParamKind::Type => {
-                        GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
-                    }
+                    ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
                     ParamKind::Const(ty) => consteval::unknown_const_as_generic(ty.clone()),
                 })
             })

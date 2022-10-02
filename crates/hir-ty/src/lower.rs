@@ -678,7 +678,7 @@ impl<'a> TyLoweringContext<'a> {
         let total_len =
             parent_params + self_params + type_params + const_params + impl_trait_params;
 
-        let ty_error = GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner);
+        let ty_error = TyKind::Error.intern(Interner).cast(Interner);
 
         let mut def_generic_iter = def_generics.iter_id();
 
@@ -696,7 +696,7 @@ impl<'a> TyLoweringContext<'a> {
         let fill_self_params = || {
             for x in explicit_self_ty
                 .into_iter()
-                .map(|x| GenericArgData::Ty(x).intern(Interner))
+                .map(|x| x.cast(Interner))
                 .chain(iter::repeat(ty_error.clone()))
                 .take(self_params)
             {

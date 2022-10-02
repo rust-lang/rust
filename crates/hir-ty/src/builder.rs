@@ -6,7 +6,7 @@ use chalk_ir::{
     cast::{Cast, CastTo, Caster},
     fold::TypeFoldable,
     interner::HasInterner,
-    AdtId, BoundVar, DebruijnIndex, Scalar,
+    AdtId, DebruijnIndex, Scalar,
 };
 use hir_def::{
     builtin_type::BuiltinType, generics::TypeOrConstParamData, ConstParamId, DefWithBodyId,
@@ -16,9 +16,9 @@ use smallvec::SmallVec;
 
 use crate::{
     consteval::unknown_const_as_generic, db::HirDatabase, infer::unify::InferenceTable, primitive,
-    to_assoc_type_id, to_chalk_trait_id, utils::generics, Binders, CallableSig, ConstData,
-    ConstValue, GenericArg, GenericArgData, Interner, ProjectionTy, Substitution, TraitRef, Ty,
-    TyDefId, TyExt, TyKind, ValueTyDefId,
+    to_assoc_type_id, to_chalk_trait_id, utils::generics, Binders, BoundVar, CallableSig,
+    GenericArg, Interner, ProjectionTy, Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind,
+    ValueTyDefId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,20 +79,12 @@ impl<D> TyBuilder<D> {
     pub fn fill_with_bound_vars(self, debruijn: DebruijnIndex, starting_from: usize) -> Self {
         // self.fill is inlined to make borrow checker happy
         let mut this = self;
-        let other = this.param_kinds.iter().skip(this.vec.len());
+        let other = &this.param_kinds[this.vec.len()..];
         let filler = (starting_from..).zip(other).map(|(idx, kind)| match kind {
-            ParamKind::Type => {
-                GenericArgData::Ty(TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(Interner))
-                    .intern(Interner)
+            ParamKind::Type => BoundVar::new(debruijn, idx).to_ty(Interner).cast(Interner),
+            ParamKind::Const(ty) => {
+                BoundVar::new(debruijn, idx).to_const(Interner, ty.clone()).cast(Interner)
             }
-            ParamKind::Const(ty) => GenericArgData::Const(
-                ConstData {
-                    value: ConstValue::BoundVar(BoundVar::new(debruijn, idx)),
-                    ty: ty.clone(),
-                }
-                .intern(Interner),
-            )
-            .intern(Interner),
         });
         this.vec.extend(filler.take(this.remaining()).casted(Interner));
         assert_eq!(this.remaining(), 0);
@@ -102,8 +94,8 @@ impl<D> TyBuilder<D> {
     pub fn fill_with_unknown(self) -> Self {
         // self.fill is inlined to make borrow checker happy
         let mut this = self;
-        let filler = this.param_kinds.iter().skip(this.vec.len()).map(|x| match x {
-            ParamKind::Type => GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner),
+        let filler = this.param_kinds[this.vec.len()..].iter().map(|x| match x {
+            ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
             ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
         });
         this.vec.extend(filler.casted(Interner));
@@ -113,15 +105,13 @@ impl<D> TyBuilder<D> {
 
     pub(crate) fn fill_with_inference_vars(self, table: &mut InferenceTable<'_>) -> Self {
         self.fill(|x| match x {
-            ParamKind::Type => GenericArgData::Ty(table.new_type_var()).intern(Interner),
-            ParamKind::Const(ty) => {
-                GenericArgData::Const(table.new_const_var(ty.clone())).intern(Interner)
-            }
+            ParamKind::Type => table.new_type_var().cast(Interner),
+            ParamKind::Const(ty) => table.new_const_var(ty.clone()).cast(Interner),
         })
     }
 
     pub fn fill(mut self, filler: impl FnMut(&ParamKind) -> GenericArg) -> Self {
-        self.vec.extend(self.param_kinds.iter().skip(self.vec.len()).map(filler));
+        self.vec.extend(self.param_kinds[self.vec.len()..].iter().map(filler));
         assert_eq!(self.remaining(), 0);
         self
     }
@@ -255,7 +245,8 @@ impl TyBuilder<hir_def::AdtId> {
     ) -> Self {
         let defaults = db.generic_defaults(self.data.into());
         for default_ty in defaults.iter().skip(self.vec.len()) {
-            if let GenericArgData::Ty(x) = default_ty.skip_binders().data(Interner) {
+            // NOTE(skip_binders): we only check if the arg type is error type.
+            if let Some(x) = default_ty.skip_binders().ty(Interner) {
                 if x.is_unknown() {
                     self.vec.push(fallback().cast(Interner));
                     continue;

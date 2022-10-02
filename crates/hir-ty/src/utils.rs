@@ -4,7 +4,7 @@
 use std::iter;
 
 use base_db::CrateId;
-use chalk_ir::{fold::Shift, BoundVar, DebruijnIndex};
+use chalk_ir::{cast::Cast, fold::Shift, BoundVar, DebruijnIndex};
 use hir_def::{
     db::DefDatabase,
     generics::{
@@ -24,8 +24,7 @@ use smallvec::{smallvec, SmallVec};
 use syntax::SmolStr;
 
 use crate::{
-    db::HirDatabase, ChalkTraitId, ConstData, ConstValue, GenericArgData, Interner, Substitution,
-    TraitRef, TraitRefExt, TyKind, WhereClause,
+    db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, WhereClause,
 };
 
 pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: CrateId) -> impl Iterator<Item = TraitId> {
@@ -282,8 +281,8 @@ impl Generics {
         }
     }
 
-    fn parent_generics(&self) -> Option<&Generics> {
-        self.parent_generics.as_ref().map(|it| &**it)
+    pub(crate) fn parent_generics(&self) -> Option<&Generics> {
+        self.parent_generics.as_deref()
     }
 
     /// Returns a Substitution that replaces each parameter by a bound variable.
@@ -295,18 +294,10 @@ impl Generics {
         Substitution::from_iter(
             Interner,
             self.iter_id().enumerate().map(|(idx, id)| match id {
-                Either::Left(_) => GenericArgData::Ty(
-                    TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(Interner),
-                )
-                .intern(Interner),
-                Either::Right(id) => GenericArgData::Const(
-                    ConstData {
-                        value: ConstValue::BoundVar(BoundVar::new(debruijn, idx)),
-                        ty: db.const_param_ty(id),
-                    }
-                    .intern(Interner),
-                )
-                .intern(Interner),
+                Either::Left(_) => BoundVar::new(debruijn, idx).to_ty(Interner).cast(Interner),
+                Either::Right(id) => BoundVar::new(debruijn, idx)
+                    .to_const(Interner, db.const_param_ty(id))
+                    .cast(Interner),
             }),
         )
     }
@@ -316,18 +307,12 @@ impl Generics {
         Substitution::from_iter(
             Interner,
             self.iter_id().map(|id| match id {
-                Either::Left(id) => GenericArgData::Ty(
-                    TyKind::Placeholder(crate::to_placeholder_idx(db, id.into())).intern(Interner),
-                )
-                .intern(Interner),
-                Either::Right(id) => GenericArgData::Const(
-                    ConstData {
-                        value: ConstValue::Placeholder(crate::to_placeholder_idx(db, id.into())),
-                        ty: db.const_param_ty(id),
-                    }
-                    .intern(Interner),
-                )
-                .intern(Interner),
+                Either::Left(id) => {
+                    crate::to_placeholder_idx(db, id.into()).to_ty(Interner).cast(Interner)
+                }
+                Either::Right(id) => crate::to_placeholder_idx(db, id.into())
+                    .to_const(Interner, db.const_param_ty(id))
+                    .cast(Interner),
             }),
         )
     }
