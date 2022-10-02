@@ -2426,15 +2426,20 @@ impl<T> [T] {
     where
         F: FnMut(&'a T) -> Ordering,
     {
+        // INVARIANTS:
+        // - 0 <= left <= left + size = right <= self.len()
+        // - f returns Less for everything in self[..left]
+        // - f returns Greater for everything in self[right..]
         let mut size = self.len();
         let mut left = 0;
         let mut right = size;
         while left < right {
             let mid = left + size / 2;
 
-            // SAFETY: the call is made safe by the following invariants:
-            // - `mid >= 0`
-            // - `mid < size`: `mid` is limited by `[left; right)` bound.
+            // SAFETY: the while condition means `size` is strictly positive, so
+            // `size/2 < size`.  Thus `left + size/2 < left + size`, which
+            // coupled with the `left + size <= self.len()` invariant means
+            // we have `left + size/2 < self.len()`, and this is in-bounds.
             let cmp = f(unsafe { self.get_unchecked(mid) });
 
             // The reason why we use if/else control flow rather than match
@@ -2452,6 +2457,10 @@ impl<T> [T] {
 
             size = right - left;
         }
+
+        // SAFETY: directly true from the overall invariant.
+        // Note that this is `<=`, unlike the assume in the `Ok` path.
+        unsafe { crate::intrinsics::assume(left <= self.len()) };
         Err(left)
     }
 
