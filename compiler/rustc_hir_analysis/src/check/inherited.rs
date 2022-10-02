@@ -72,6 +72,7 @@ pub struct Inherited<'a, 'tcx> {
 
 impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
     type Target = InferCtxt<'a, 'tcx>;
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.infcx
     }

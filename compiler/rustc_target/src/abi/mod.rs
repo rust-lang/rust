@@ -1355,6 +1355,7 @@ pub struct TyAndLayout<'a, Ty> {
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
     type Target = &'a LayoutS<'a>;
+    #[inline]
     fn deref(&self) -> &&'a LayoutS<'a> {
         &self.layout.0.0
     }

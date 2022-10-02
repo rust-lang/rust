@@ -1009,10 +1009,12 @@ impl<'tcx, T> Binder<'tcx, T> {
     /// - extracting the `DefId` from a PolyTraitRef;
     /// - comparing the self type of a PolyTraitRef to see if it is equal to
     ///   a type parameter `X`, since the type `X` does not reference any regions
+    #[inline]
     pub fn skip_binder(self) -> T {
         self.0
     }
 
+    #[inline]
     pub fn bound_vars(&self) -> &'tcx List<BoundVariableKind> {
         self.1
     }

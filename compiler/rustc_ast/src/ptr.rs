@@ -79,12 +79,14 @@ impl<T: 'static> P<T> {
 impl<T: ?Sized> Deref for P<T> {
     type Target = T;
 
+    #[inline]
     fn deref(&self) -> &T {
         &self.ptr
     }
 }
 
 impl<T: ?Sized> DerefMut for P<T> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut T {
         &mut self.ptr
     }

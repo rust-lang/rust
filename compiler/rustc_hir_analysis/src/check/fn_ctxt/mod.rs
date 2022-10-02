@@ -175,6 +175,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     type Target = Inherited<'a, 'tcx>;
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.inh
     }

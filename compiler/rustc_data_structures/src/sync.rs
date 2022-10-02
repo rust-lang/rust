@@ -360,9 +360,13 @@ cfg_if! {
     }
 }
 
+#[inline]
 pub fn assert_sync<T: ?Sized + Sync>() {}
+#[inline]
 pub fn assert_send<T: ?Sized + Send>() {}
+#[inline]
 pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
+#[inline]
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
 
 pub trait HashMapExt<K, V> {

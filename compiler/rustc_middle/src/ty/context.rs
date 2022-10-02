@@ -2987,6 +2987,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
 
 // We are comparing types with different invariant lifetimes, so `ptr::eq`
 // won't work for us.
+#[inline]
 fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
     t as *const () == u as *const ()
 }
