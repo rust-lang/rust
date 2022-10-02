@@ -1,0 +1,4 @@
+warning: the `doc_auto_cfg` feature is used but `#![doc(auto_cfg)]` isn't so it won't do anything
+
+warning: 1 warning emitted
+
