@@ -1,8 +1,4 @@
-//! Build a dist manifest, hash and sign everything.
-//! This gets called by `promote-release`
-//! (https://github.com/rust-lang/rust-central-station/tree/master/promote-release)
-//! via `x.py dist hash-and-sign`; the cmdline arguments are set up
-//! by rustbuild (in `src/bootstrap/dist.rs`).
+#![doc = include_str!("../README.md")]
 
 mod checksum;
 mod manifest;
