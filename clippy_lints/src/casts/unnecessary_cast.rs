@@ -31,8 +31,10 @@ pub(super) fn check<'tcx>(
         }
     }
 
+    let cast_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
+
     if let Some(lit) = get_numeric_literal(cast_expr) {
-        let literal_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
+        let literal_str = &cast_str;
 
         if_chain! {
             if let LitKind::Int(n, _) = lit.node;
@@ -50,12 +52,16 @@ pub(super) fn check<'tcx>(
 
         match lit.node {
             LitKind::Int(_, LitIntType::Unsuffixed) if cast_to.is_integral() => {
-                lint_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
+                lint_unnecessary_cast(cx, expr, literal_str, cast_from, cast_to);
+                return false;
             },
             LitKind::Float(_, LitFloatType::Unsuffixed) if cast_to.is_floating_point() => {
-                lint_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
+                lint_unnecessary_cast(cx, expr, literal_str, cast_from, cast_to);
+                return false;
             },
-            LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
+            LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {
+                return false;
+            },
             LitKind::Int(_, LitIntType::Signed(_) | LitIntType::Unsigned(_))
             | LitKind::Float(_, LitFloatType::Suffixed(_))
                 if cast_from.kind() == cast_to.kind() =>
@@ -63,24 +69,25 @@ pub(super) fn check<'tcx>(
                 if let Some(src) = snippet_opt(cx, cast_expr.span) {
                     if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node) {
                         lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
+                        return true;
                     }
                 }
             },
-            _ => {
-                if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
-                    span_lint_and_sugg(
-                        cx,
-                        UNNECESSARY_CAST,
-                        expr.span,
-                        &format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
-                        "try",
-                        literal_str,
-                        Applicability::MachineApplicable,
-                    );
-                    return true;
-                }
-            },
+            _ => {},
         }
+    }
+
+    if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
+        span_lint_and_sugg(
+            cx,
+            UNNECESSARY_CAST,
+            expr.span,
+            &format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
+            "try",
+            cast_str,
+            Applicability::MachineApplicable,
+        );
+        return true;
     }
 
     false

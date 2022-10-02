@@ -174,5 +174,11 @@ error: casting float literal to `f64` is unnecessary
 LL |         let _: f64 = -(8.0 as f64).exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
    |                       ^^^^^^^^^^^^ help: try: `8.0_f64`
 
-error: aborting due to 29 previous errors
+error: casting to the same type is unnecessary (`f32` -> `f32`)
+  --> $DIR/unnecessary_cast.rs:112:20
+   |
+LL |         let _num = foo() as f32;
+   |                    ^^^^^^^^^^^^ help: try: `foo()`
+
+error: aborting due to 30 previous errors
 

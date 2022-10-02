@@ -1,5 +1,6 @@
 // run-rustfix
 #![warn(clippy::suboptimal_flops)]
+#![allow(clippy::unnecessary_cast)]
 
 fn main() {
     let one = 1;
