@@ -320,6 +320,20 @@ enum class ValueType {
   Both = Primal | Shadow,
 };
 
+static inline std::string to_string(ValueType mode) {
+  switch (mode) {
+  case ValueType::None:
+    return "None";
+  case ValueType::Primal:
+    return "Primal";
+  case ValueType::Shadow:
+    return "Shadow";
+  case ValueType::Both:
+    return "Both";
+  }
+  llvm_unreachable("illegal valuetype");
+}
+
 typedef std::pair<const llvm::Value *, ValueType> UsageKey;
 
 static inline std::string to_string(DerivativeMode mode) {

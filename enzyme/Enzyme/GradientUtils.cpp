@@ -108,6 +108,10 @@ llvm::cl::opt<bool>
 llvm::cl::opt<bool>
     EnzymeVectorSplitPhi("enzyme-vector-split-phi", cl::init(true), cl::Hidden,
                          cl::desc("Split phis according to vector size"));
+
+llvm::cl::opt<bool>
+    EnzymePrintDiffUse("enzyme-print-diffuse", cl::init(false), cl::Hidden,
+                       cl::desc("Print differential use analysis"));
 }
 
 SmallVector<unsigned int, 9> MD_ToCopy = {

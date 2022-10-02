@@ -29,6 +29,10 @@
 
 #include "GradientUtils.h"
 
+extern "C" {
+extern llvm::cl::opt<bool> EnzymePrintDiffUse;
+}
+
 // Determine if a value is needed directly to compute the adjoint
 // of the given instruction user
 static inline bool is_use_directly_needed_in_reverse(
@@ -52,6 +56,10 @@ static inline bool is_use_directly_needed_in_reverse(
     if (EnzymeRuntimeActivityCheck &&
         TR.query(const_cast<llvm::Instruction *>(user))[{-1}].isFloat() &&
         !gutils->isConstantInstruction(const_cast<llvm::Instruction *>(user))) {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need direct primal of " << *val
+                     << " in reverse from runtime active load " << *user
+                     << "\n";
       return true;
     }
     return false;
@@ -70,8 +78,12 @@ static inline bool is_use_directly_needed_in_reverse(
                 F->getName() == "__kmpc_for_static_init_8" ||
                 F->getName() == "__kmpc_for_static_init_8u") {
               if (CI->getArgOperand(4) == val || CI->getArgOperand(5) == val ||
-                  CI->getArgOperand(6))
+                  CI->getArgOperand(6)) {
+                if (EnzymePrintDiffUse)
+                  llvm::errs() << " Need direct primal of " << *val
+                               << " in reverse from omp " << *user << "\n";
                 return true;
+              }
             }
           }
         }
@@ -82,6 +94,9 @@ static inline bool is_use_directly_needed_in_reverse(
       if (!TR.query(const_cast<Value *>(SI->getValueOperand()))[{-1}].isFloat())
         for (auto pair : gutils->backwardsOnlyShadows)
           if (pair.second.stores.count(SI)) {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need direct primal of " << *val
+                           << " in reverse from remat store " << *user << "\n";
             return true;
           }
     }
@@ -94,12 +109,22 @@ static inline bool is_use_directly_needed_in_reverse(
     if (MTI->getArgOperand(1) == val || MTI->getArgOperand(2) == val) {
       for (auto pair : gutils->backwardsOnlyShadows)
         if (pair.second.stores.count(MTI)) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need direct primal of " << *val
+                         << " in reverse from remat memtransfer " << *user
+                         << "\n";
           return true;
         }
     }
     if (MTI->getArgOperand(2) != val)
       return false;
-    return !gutils->isConstantValue(MTI->getArgOperand(0));
+    bool res = !gutils->isConstantValue(MTI->getArgOperand(0));
+    if (res) {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need direct primal of " << *val
+                     << " in reverse from memtransfer " << *user << "\n";
+    }
+    return res;
   }
 
   // Preserve the length of memsets of backward creation shadows,
@@ -108,9 +133,18 @@ static inline bool is_use_directly_needed_in_reverse(
     if (MS->getArgOperand(1) == val || MS->getArgOperand(2) == val) {
       for (auto pair : gutils->backwardsOnlyShadows)
         if (pair.second.stores.count(MS)) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need direct primal of " << *val
+                         << " in reverse from remat memset " << *user << "\n";
           return true;
         }
-      return !gutils->isConstantValue(MS->getArgOperand(0));
+      bool res = !gutils->isConstantValue(MS->getArgOperand(0));
+      if (res) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need direct primal of " << *val
+                       << " in reverse from memset " << *user << "\n";
+      }
+      return res;
     }
   }
 
@@ -140,6 +174,11 @@ static inline bool is_use_directly_needed_in_reverse(
             BaseType::Pointer)
       return false;
     // Otherwise, we need the value.
+    if (EnzymePrintDiffUse)
+      llvm::errs() << " Need direct primal of " << *val
+                   << " in reverse from non-pointer insertelem " << *user << " "
+                   << TR.query(const_cast<InsertElementInst *>(IEI)).str()
+                   << "\n";
     return true;
   }
   if (auto EEI = dyn_cast<ExtractElementInst>(user)) {
@@ -155,6 +194,12 @@ static inline bool is_use_directly_needed_in_reverse(
             BaseType::Pointer)
       return false;
     // Otherwise, we need the value.
+    if (EnzymePrintDiffUse)
+      llvm::errs() << " Need direct primal of " << *val
+                   << " in reverse from non-pointer extractelem " << *user
+                   << " "
+                   << TR.query(const_cast<ExtractElementInst *>(EEI)).str()
+                   << "\n";
     return true;
   }
 
@@ -177,6 +222,11 @@ static inline bool is_use_directly_needed_in_reverse(
         TR.query(const_cast<InsertValueInst *>(IVI))[{-1}] == BaseType::Pointer)
       return false;
     // Otherwise, we need the value.
+    if (EnzymePrintDiffUse)
+      llvm::errs() << " Need direct primal of " << *val
+                   << " in reverse from non-pointer insertval " << *user << " "
+                   << TR.query(const_cast<InsertValueInst *>(IVI)).str()
+                   << "\n";
     return true;
   }
 
@@ -200,6 +250,11 @@ static inline bool is_use_directly_needed_in_reverse(
             BaseType::Pointer)
       return false;
     // Otherwise, we need the value.
+    if (EnzymePrintDiffUse)
+      llvm::errs() << " Need direct primal of " << *val
+                   << " in reverse from non-pointer extractval " << *user << " "
+                   << TR.query(const_cast<ExtractValueInst *>(EVI)).str()
+                   << "\n";
     return true;
   }
 
@@ -224,6 +279,11 @@ static inline bool is_use_directly_needed_in_reverse(
       if (user->getOperand(1) == val &&
           !gutils->isConstantValue(user->getOperand(0)))
         needed = true;
+      if (needed) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need direct primal of " << *val
+                       << " in reverse from fma " << *user << "\n";
+      }
       return needed;
     }
   }
@@ -240,6 +300,11 @@ static inline bool is_use_directly_needed_in_reverse(
       if (op->getOperand(1) == val &&
           !gutils->isConstantValue(op->getOperand(0)))
         needed = true;
+      if (needed) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need direct primal of " << *val
+                       << " in reverse from fmul " << *user << "\n";
+      }
       return needed;
     } else if (op->getOpcode() == Instruction::FDiv) {
       bool needed = false;
@@ -252,6 +317,11 @@ static inline bool is_use_directly_needed_in_reverse(
       if (op->getOperand(0) == val &&
           !gutils->isConstantValue(op->getOperand(1)))
         needed = true;
+      if (needed) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need direct primal of " << *val
+                       << " in reverse from fdiv " << *user << "\n";
+      }
       return needed;
     }
   }
@@ -263,7 +333,13 @@ static inline bool is_use_directly_needed_in_reverse(
     }
 
     // only need the condition if select is active
-    return !gutils->isConstantValue(const_cast<SelectInst *>(si));
+    bool needed = !gutils->isConstantValue(const_cast<SelectInst *>(si));
+    if (needed) {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need direct primal of " << *val
+                     << " in reverse from select " << *user << "\n";
+    }
+    return needed;
   }
 
   if (auto CI = dyn_cast<CallInst>(user)) {
@@ -288,13 +364,21 @@ static inline bool is_use_directly_needed_in_reverse(
         return false;
     // Since adjoint of barrier is another barrier in reverse
     // we still need even if instruction is inactive
-    if (funcName == "__kmpc_barrier" || funcName == "MPI_Barrier")
+    if (funcName == "__kmpc_barrier" || funcName == "MPI_Barrier") {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need direct primal of " << *val
+                     << " in reverse from barrier " << *user << "\n";
       return true;
+    }
 
     // Since adjoint of GC preserve is another preserve in reverse
     // we still need even if instruction is inactive
-    if (funcName == "llvm.julia.gc_preserve_begin")
+    if (funcName == "llvm.julia.gc_preserve_begin") {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need direct primal of " << *val
+                     << " in reverse from gc " << *user << "\n";
       return true;
+    }
 
     bool writeOnlyNoCapture = true;
     auto F = getFunctionFromCall(const_cast<CallInst *>(CI));
@@ -334,8 +418,14 @@ static inline bool is_use_directly_needed_in_reverse(
       return false;
   }
 
-  return !gutils->isConstantInstruction(user) ||
-         !gutils->isConstantValue(const_cast<Instruction *>(user));
+  bool neededFB = !gutils->isConstantInstruction(user) ||
+                  !gutils->isConstantValue(const_cast<Instruction *>(user));
+  if (neededFB) {
+    if (EnzymePrintDiffUse)
+      llvm::errs() << " Need direct primal of " << *val
+                   << " in reverse from fallback " << *user << "\n";
+  }
+  return neededFB;
 }
 
 template <ValueType VT, bool OneLevel = false>
@@ -360,6 +450,9 @@ static inline bool is_value_needed_in_reverse(
       if (op->getOpcode() == Instruction::FDiv) {
         if (!gutils->isConstantValue(const_cast<Value *>(inst)) &&
             !gutils->isConstantValue(op->getOperand(1))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as is active div\n";
           return seen[idx] = true;
         }
       }
@@ -387,8 +480,12 @@ static inline bool is_value_needed_in_reverse(
         if (TR.query(const_cast<Value *>(inst))[{-1}].isFloat())
           goto endShadow;
 
-      if (!user)
+      if (!user) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                       << " in reverse as unknown user " << *use << "\n";
         return seen[idx] = true;
+      }
 
       if (auto SI = dyn_cast<StoreInst>(user)) {
         if (mode == DerivativeMode::ReverseModeGradient ||
@@ -421,9 +518,12 @@ static inline bool is_value_needed_in_reverse(
         }
 
         if (!gutils->isConstantValue(
-                const_cast<Value *>(SI->getPointerOperand())))
+                const_cast<Value *>(SI->getPointerOperand()))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow store  " << *SI << "\n";
           return seen[idx] = true;
-        else
+        } else
           goto endShadow;
       }
 
@@ -432,9 +532,12 @@ static inline bool is_value_needed_in_reverse(
           goto endShadow;
 
         if (!gutils->isConstantValue(
-                const_cast<Value *>(MTI->getArgOperand(0))))
+                const_cast<Value *>(MTI->getArgOperand(0)))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow MTI  " << *MTI << "\n";
           return seen[idx] = true;
-        else
+        } else
           goto endShadow;
       }
 
@@ -442,9 +545,13 @@ static inline bool is_value_needed_in_reverse(
         if (MS->getArgOperand(0) != inst)
           goto endShadow;
 
-        if (!gutils->isConstantValue(const_cast<Value *>(MS->getArgOperand(0))))
+        if (!gutils->isConstantValue(
+                const_cast<Value *>(MS->getArgOperand(0)))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow MS  " << *MS << "\n";
           return seen[idx] = true;
-        else
+        } else
           goto endShadow;
       }
 
@@ -462,28 +569,48 @@ static inline bool is_value_needed_in_reverse(
         }
         StringRef funcName = getFuncNameFromCall(const_cast<CallInst *>(CI));
 
+        // Don't need shadow inputs for alloc function
+        if (isAllocationFunction(funcName, gutils->TLI))
+          goto endShadow;
+
         // Only need shadow request for reverse
         if (funcName == "MPI_Irecv" || funcName == "PMPI_Irecv") {
           if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
             goto endShadow;
           // Need shadow request
-          if (inst == CI->getArgOperand(6))
+          if (inst == CI->getArgOperand(6)) {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                           << " in reverse as shadow MPI " << *CI << "\n";
             return seen[idx] = true;
+          }
           // Need shadow buffer in forward pass
           if (mode != DerivativeMode::ReverseModeGradient)
-            if (inst == CI->getArgOperand(0))
+            if (inst == CI->getArgOperand(0)) {
+              if (EnzymePrintDiffUse)
+                llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                             << " in reverse as shadow MPI " << *CI << "\n";
               return seen[idx] = true;
+            }
           goto endShadow;
         }
         if (funcName == "MPI_Isend" || funcName == "PMPI_Isend") {
           if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
             goto endShadow;
           // Need shadow request
-          if (inst == CI->getArgOperand(6))
+          if (inst == CI->getArgOperand(6)) {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                           << " in reverse as shadow MPI " << *CI << "\n";
             return seen[idx] = true;
+          }
           // Need shadow buffer in reverse pass or forward mode
-          if (inst == CI->getArgOperand(0))
+          if (inst == CI->getArgOperand(0)) {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                           << " in reverse as shadow MPI " << *CI << "\n";
             return seen[idx] = true;
+          }
           goto endShadow;
         }
 
@@ -494,8 +621,12 @@ static inline bool is_value_needed_in_reverse(
             goto endShadow;
           // Need shadow request in forward pass only
           if (mode != DerivativeMode::ReverseModeGradient)
-            if (inst == CI->getArgOperand(0))
+            if (inst == CI->getArgOperand(0)) {
+              if (EnzymePrintDiffUse)
+                llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                             << " in reverse as shadow MPI " << *CI << "\n";
               return seen[idx] = true;
+            }
           goto endShadow;
         }
 
@@ -506,8 +637,12 @@ static inline bool is_value_needed_in_reverse(
             goto endShadow;
           // Need shadow request in forward pass
           if (mode != DerivativeMode::ReverseModeGradient)
-            if (inst == CI->getArgOperand(1))
+            if (inst == CI->getArgOperand(1)) {
+              if (EnzymePrintDiffUse)
+                llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                             << " in reverse as shadow MPI " << *CI << "\n";
               return seen[idx] = true;
+            }
           goto endShadow;
         }
 
@@ -515,6 +650,10 @@ static inline bool is_value_needed_in_reverse(
         // though the instruction is active.
         if (mode != DerivativeMode::ReverseModeGradient &&
             funcName == "julia.write_barrier") {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow write_barrier " << *CI
+                         << "\n";
           return seen[idx] = true;
         }
 
@@ -568,6 +707,9 @@ static inline bool is_value_needed_in_reverse(
         if (FV == inst) {
           if (!gutils->isConstantInstruction(const_cast<Instruction *>(user)) ||
               !gutils->isConstantValue(const_cast<Value *>((Value *)user))) {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                           << " in reverse as shadow call " << *CI << "\n";
             return seen[idx] = true;
           }
         }
@@ -575,9 +717,12 @@ static inline bool is_value_needed_in_reverse(
 
       if (isa<ReturnInst>(user)) {
         if (gutils->ATA->ActiveReturns == DIFFE_TYPE::DUP_ARG ||
-            gutils->ATA->ActiveReturns == DIFFE_TYPE::DUP_NONEED)
+            gutils->ATA->ActiveReturns == DIFFE_TYPE::DUP_NONEED) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow return " << *user << "\n";
           return seen[idx] = true;
-        else
+        } else
           goto endShadow;
       }
 
@@ -588,7 +733,11 @@ static inline bool is_value_needed_in_reverse(
           (!isa<ExtractValueInst>(user) && !isa<ExtractElementInst>(user) &&
            !isa<InsertValueInst>(user) && !isa<InsertElementInst>(user) &&
            !isa<CastInst>(user) && !isa<GetElementPtrInst>(user))) {
-        if (!gutils->isConstantInstruction(const_cast<Instruction *>(user))) {
+        if (!inst_cv &&
+            !gutils->isConstantInstruction(const_cast<Instruction *>(user))) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as shadow inst " << *user << "\n";
           return seen[idx] = true;
         }
       }
@@ -607,6 +756,9 @@ static inline bool is_value_needed_in_reverse(
 
       if (!OneLevel && is_value_needed_in_reverse<ValueType::Shadow>(
                            gutils, user, mode, seen, oldUnreachable)) {
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                       << " in reverse as shadow sub-need " << *user << "\n";
         return seen[idx] = true;
       }
     endShadow:
@@ -619,6 +771,9 @@ static inline bool is_value_needed_in_reverse(
     // If a sub user needs, we need
     if (!OneLevel && is_value_needed_in_reverse<VT>(gutils, user, mode, seen,
                                                     oldUnreachable)) {
+      if (EnzymePrintDiffUse)
+        llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                     << " in reverse as sub-need " << *user << "\n";
       return seen[idx] = true;
     }
 
@@ -637,6 +792,9 @@ static inline bool is_value_needed_in_reverse(
             for (LoadInst *L : pair.second.loads)
               if (is_value_needed_in_reverse<VT>(gutils, L, mode, seen,
                                                  oldUnreachable)) {
+                if (EnzymePrintDiffUse)
+                  llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                               << " in reverse as rematload " << *L << "\n";
                 return seen[idx] = true;
               }
             for (auto &pair : pair.second.loadLikeCalls)
@@ -644,6 +802,10 @@ static inline bool is_value_needed_in_reverse(
                       gutils, pair.operand, pair.loadCall, oldUnreachable) ||
                   is_value_needed_in_reverse<VT>(gutils, pair.loadCall, mode,
                                                  seen, oldUnreachable)) {
+                if (EnzymePrintDiffUse)
+                  llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                               << " in reverse as rematloadcall "
+                               << *pair.loadCall << "\n";
                 return seen[idx] = true;
               }
           }
@@ -675,6 +837,9 @@ static inline bool is_value_needed_in_reverse(
         }
         if (num <= 1)
           continue;
+        if (EnzymePrintDiffUse)
+          llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                       << " in reverse as control-flow " << *user << "\n";
         return seen[idx] = true;
       }
 
@@ -684,6 +849,9 @@ static inline bool is_value_needed_in_reverse(
               F->getName() == "__kmpc_for_static_init_4u" ||
               F->getName() == "__kmpc_for_static_init_8" ||
               F->getName() == "__kmpc_for_static_init_8u") {
+            if (EnzymePrintDiffUse)
+              llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                           << " in reverse as omp init " << *user << "\n";
             return seen[idx] = true;
           }
         }
@@ -706,6 +874,24 @@ static inline bool is_value_needed_in_reverse(
       if (!idxUsed)
         primalUsedInShadowPointer = false;
     }
+    if (auto IVI = dyn_cast<InsertValueInst>(user)) {
+      bool valueIsIndex = false;
+      for (unsigned i = 2; i < IVI->getNumOperands(); ++i) {
+        if (IVI->getOperand(i) == inst) {
+          valueIsIndex = true;
+        }
+      }
+      primalUsedInShadowPointer = valueIsIndex;
+    }
+    if (auto EVI = dyn_cast<ExtractValueInst>(user)) {
+      bool valueIsIndex = false;
+      for (unsigned i = 2; i < EVI->getNumOperands(); ++i) {
+        if (EVI->getOperand(i) == inst) {
+          valueIsIndex = true;
+        }
+      }
+      primalUsedInShadowPointer = valueIsIndex;
+    }
 
     if (primalUsedInShadowPointer)
       if (!user->getType()->isVoidTy() &&
@@ -714,6 +900,10 @@ static inline bool is_value_needed_in_reverse(
               .isPossiblePointer()) {
         if (is_value_needed_in_reverse<ValueType::Shadow>(
                 gutils, user, mode, seen, oldUnreachable)) {
+          if (EnzymePrintDiffUse)
+            llvm::errs() << " Need: " << to_string(VT) << " of " << *inst
+                         << " in reverse as used to compute shadow ptr "
+                         << *user << "\n";
           return seen[idx] = true;
         }
       }
