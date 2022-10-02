@@ -400,7 +400,7 @@ impl Build {
     /// line and the filesystem `config`.
     ///
     /// By default all build output will be placed in the current directory.
-    pub fn new(config: Config) -> Build {
+    pub fn new(mut config: Config) -> Build {
         let src = config.src.clone();
         let out = config.out.clone();
 
@@ -472,6 +472,10 @@ impl Build {
                 "`rustc` not found in {}, run `cargo build --bins` before `cargo run`",
                 bootstrap_out.display()
             )
+        }
+
+        if rust_info.is_from_tarball() && config.description.is_none() {
+            config.description = Some("built from a source tarball".to_owned());
         }
 
         let mut build = Build {
@@ -573,7 +577,9 @@ impl Build {
 
         // NOTE: The check for the empty directory is here because when running x.py the first time,
         // the submodule won't be checked out. Check it out now so we can build it.
-        if !channel::GitInfo::new(false, &absolute_path).is_git() && !dir_is_empty(&absolute_path) {
+        if !channel::GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
+            && !dir_is_empty(&absolute_path)
+        {
             return;
         }
 
@@ -644,7 +650,7 @@ impl Build {
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
             let submodule = Path::new(line.splitn(2, ' ').nth(1).unwrap());
             // Don't update the submodule unless it's already been cloned.
-            if channel::GitInfo::new(false, submodule).is_git() {
+            if channel::GitInfo::new(false, submodule).is_managed_git_subrepository() {
                 self.update_submodule(submodule);
             }
         }
@@ -1260,7 +1266,7 @@ impl Build {
         match &self.config.channel[..] {
             "stable" => num.to_string(),
             "beta" => {
-                if self.rust_info.is_git() && !self.config.ignore_git {
+                if self.rust_info.is_managed_git_subrepository() && !self.config.ignore_git {
                     format!("{}-beta.{}", num, self.beta_prerelease_version())
                 } else {
                     format!("{}-beta", num)

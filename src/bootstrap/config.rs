@@ -1334,11 +1334,22 @@ impl Config {
         git
     }
 
-    pub(crate) fn artifact_channel(&self, commit: &str) -> String {
-        let mut channel = self.git();
-        channel.arg("show").arg(format!("{}:src/ci/channel", commit));
-        let channel = output(&mut channel);
-        channel.trim().to_owned()
+    pub(crate) fn artifact_channel(&self, builder: &Builder<'_>, commit: &str) -> String {
+        if builder.rust_info.is_managed_git_subrepository() {
+            let mut channel = self.git();
+            channel.arg("show").arg(format!("{}:src/ci/channel", commit));
+            let channel = output(&mut channel);
+            channel.trim().to_owned()
+        } else if let Ok(channel) = fs::read_to_string(builder.src.join("src/ci/channel")) {
+            channel.trim().to_owned()
+        } else {
+            let src = builder.src.display();
+            eprintln!("error: failed to determine artifact channel");
+            eprintln!(
+                "help: either use git or ensure that {src}/src/ci/channel contains the name of the channel to use"
+            );
+            panic!();
+        }
     }
 
     /// Try to find the relative path of `bindir`, otherwise return it in full.
@@ -1475,7 +1486,7 @@ impl Config {
     }
 
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
-        self.submodules.unwrap_or(rust_info.is_git())
+        self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
     }
 }
 
@@ -1580,7 +1591,7 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
 
 fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     builder.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
-    let channel = builder.config.artifact_channel(commit);
+    let channel = builder.config.artifact_channel(builder, commit);
     let host = builder.config.build.triple;
     let bin_root = builder.out.join(host).join("ci-rustc");
     let rustc_stamp = bin_root.join(".rustc-stamp");

@@ -525,6 +525,12 @@ changelog-seen = 2
 # A descriptive string to be appended to `rustc --version` output, which is
 # also used in places like debuginfo `DW_AT_producer`. This may be useful for
 # supplementary build information, like distro-specific package versions.
+#
+# The Rust compiler will differentiate between versions of itself, including
+# based on this string, which means that if you wish to be compatible with
+# upstream Rust you need to set this to "". However, note that if you are not
+# actually compatible -- for example if you've backported patches that change
+# behavior -- this may lead to miscompilations or other bugs.
 #description = <none> (string)
 
 # The root location of the musl installation directory. The library directory

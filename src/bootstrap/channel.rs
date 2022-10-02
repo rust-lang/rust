@@ -5,10 +5,12 @@
 //! `package_vers`, and otherwise indicating to the compiler what it should
 //! print out as part of its version information.
 
+use std::fs;
 use std::path::Path;
 use std::process::Command;
 
 use crate::util::output;
+use crate::util::t;
 use crate::Build;
 
 pub enum GitInfo {
@@ -18,19 +20,25 @@ pub enum GitInfo {
     /// If the info should be used (`ignore_git` is false), this will be
     /// `Some`, otherwise it will be `None`.
     Present(Option<Info>),
+    /// This is not a git repostory, but the info can be fetched from the
+    /// `git-commit-info` file.
+    RecordedForTarball(Info),
 }
 
 pub struct Info {
-    commit_date: String,
-    sha: String,
-    short_sha: String,
+    pub commit_date: String,
+    pub sha: String,
+    pub short_sha: String,
 }
 
 impl GitInfo {
     pub fn new(ignore_git: bool, dir: &Path) -> GitInfo {
         // See if this even begins to look like a git dir
         if !dir.join(".git").exists() {
-            return GitInfo::Absent;
+            match read_commit_info_file(dir) {
+                Some(info) => return GitInfo::RecordedForTarball(info),
+                None => return GitInfo::Absent,
+            }
         }
 
         // Make sure git commands work
@@ -65,10 +73,11 @@ impl GitInfo {
         }))
     }
 
-    fn info(&self) -> Option<&Info> {
+    pub fn info(&self) -> Option<&Info> {
         match self {
-            GitInfo::Present(info) => info.as_ref(),
             GitInfo::Absent => None,
+            GitInfo::Present(info) => info.as_ref(),
+            GitInfo::RecordedForTarball(info) => Some(info),
         }
     }
 
@@ -96,10 +105,48 @@ impl GitInfo {
         version
     }
 
-    pub fn is_git(&self) -> bool {
+    /// Returns whether this directory has a `.git` directory which should be managed by bootstrap.
+    pub fn is_managed_git_subrepository(&self) -> bool {
         match self {
-            GitInfo::Absent => false,
+            GitInfo::Absent | GitInfo::RecordedForTarball(_) => false,
             GitInfo::Present(_) => true,
         }
     }
+
+    /// Returns whether this is being built from a tarball.
+    pub fn is_from_tarball(&self) -> bool {
+        match self {
+            GitInfo::Absent | GitInfo::Present(_) => false,
+            GitInfo::RecordedForTarball(_) => true,
+        }
+    }
+}
+
+/// Read the commit information from the `git-commit-info` file given the
+/// project root.
+pub fn read_commit_info_file(root: &Path) -> Option<Info> {
+    if let Ok(contents) = fs::read_to_string(root.join("git-commit-info")) {
+        let mut lines = contents.lines();
+        let sha = lines.next();
+        let short_sha = lines.next();
+        let commit_date = lines.next();
+        let info = match (commit_date, sha, short_sha) {
+            (Some(commit_date), Some(sha), Some(short_sha)) => Info {
+                commit_date: commit_date.to_owned(),
+                sha: sha.to_owned(),
+                short_sha: short_sha.to_owned(),
+            },
+            _ => panic!("the `git-comit-info` file is malformed"),
+        };
+        Some(info)
+    } else {
+        None
+    }
+}
+
+/// Write the commit information to the `git-commit-info` file given the project
+/// root.
+pub fn write_commit_info_file(root: &Path, info: &Info) {
+    let commit_info = format!("{}\n{}\n{}\n", info.sha, info.short_sha, info.commit_date);
+    t!(fs::write(root.join("git-commit-info"), &commit_info));
 }

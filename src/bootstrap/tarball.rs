@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::builder::Builder;
+use crate::channel;
 use crate::util::t;
 
 #[derive(Copy, Clone)]
@@ -297,8 +298,8 @@ impl<'a> Tarball<'a> {
     fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> GeneratedTarball {
         t!(std::fs::create_dir_all(&self.overlay_dir));
         self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
-        if let Some(sha) = self.builder.rust_sha() {
-            self.builder.create(&self.overlay_dir.join("git-commit-hash"), &sha);
+        if let Some(info) = self.builder.rust_info.info() {
+            channel::write_commit_info_file(&self.overlay_dir, info);
         }
         for file in self.overlay.legal_and_readme() {
             self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
