@@ -499,6 +499,31 @@ impl Builder {
         let output_capture = crate::io::set_output_capture(None);
         crate::io::set_output_capture(output_capture.clone());
 
+        // Pass `f` in `MaybeUninit` because actually that closure might *run longer than the lifetime of `F`*.
+        // See <https://github.com/rust-lang/rust/issues/101983> for more details.
+        // To prevent leaks we use a wrapper that drops its contents.
+        #[repr(transparent)]
+        struct MaybeDangling<T>(mem::MaybeUninit<T>);
+        impl<T> MaybeDangling<T> {
+            fn new(x: T) -> Self {
+                MaybeDangling(mem::MaybeUninit::new(x))
+            }
+            fn into_inner(self) -> T {
+                // SAFETY: we are always initiailized.
+                let ret = unsafe { self.0.assume_init_read() };
+                // Make sure we don't drop.
+                mem::forget(self);
+                ret
+            }
+        }
+        impl<T> Drop for MaybeDangling<T> {
+            fn drop(&mut self) {
+                // SAFETY: we are always initiailized.
+                unsafe { self.0.assume_init_drop() };
+            }
+        }
+
+        let f = MaybeDangling::new(f);
         let main = move || {
             if let Some(name) = their_thread.cname() {
                 imp::Thread::set_name(name);
@@ -506,6 +531,8 @@ impl Builder {
 
             crate::io::set_output_capture(output_capture);
 
+            // SAFETY: we constructed `f` initialized.
+            let f = f.into_inner();
             // SAFETY: the stack guard passed is the one for the current thread.
             // This means the current thread's stack and the new thread's stack
             // are properly set and protected from each other.
@@ -518,6 +545,12 @@ impl Builder {
             // same `JoinInner` as this closure meaning the mutation will be
             // safe (not modify it and affect a value far away).
             unsafe { *their_packet.result.get() = Some(try_result) };
+            // Here `their_packet` gets dropped, and if this is the last `Arc` for that packet that
+            // will call `decrement_num_running_threads` and therefore signal that this thread is
+            // done.
+            drop(their_packet);
+            // Here, the lifetime `'a` and even `'scope` can end. `main` keeps running for a bit
+            // after that before returning itself.
         };
 
         if let Some(scope_data) = &my_packet.scope {
