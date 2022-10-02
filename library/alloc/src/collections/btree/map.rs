@@ -2392,7 +2392,11 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_len", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn len(&self) -> usize {
         self.length
     }
@@ -2413,7 +2417,11 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_len", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
