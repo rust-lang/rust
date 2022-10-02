@@ -5,7 +5,7 @@ as well as to help new contributors get involved in rustc development.
 
 There are seven parts to this guide:
 
-1. [Building and debugging `rustc`][p1]:
+1. [Building `rustc`][p1]:
    Contains information that should be useful no matter how you are contributing,
    about building, debugging, profiling, etc.
 2. [Contributing to `rustc`][p2]:
