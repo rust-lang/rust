@@ -988,11 +988,7 @@ impl Handler {
     }
 
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
-        if self.inner.borrow().has_errors() {
-            Some(ErrorGuaranteed(()))
-        } else {
-            None
-        }
+        if self.inner.borrow().has_errors() { Some(ErrorGuaranteed(())) } else { None }
     }
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
         if self.inner.borrow().has_errors_or_lint_errors() {

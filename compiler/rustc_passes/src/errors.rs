@@ -7,7 +7,7 @@ use rustc_ast::Label;
 use rustc_errors::{error_code, Applicability, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::MainDefinition;
+use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
 #[derive(LintDiagnostic)]
@@ -1264,4 +1264,11 @@ pub struct IncorrectTarget<'a> {
     pub num: usize,
     pub actual_num: usize,
     pub at_least: bool,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes::useless_assignment)]
+pub struct UselessAssignment<'a> {
+    pub is_field_assign: bool,
+    pub ty: Ty<'a>,
 }

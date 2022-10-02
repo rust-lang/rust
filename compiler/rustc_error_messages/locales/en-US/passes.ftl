@@ -558,3 +558,9 @@ passes_incorrect_target =
         [one] argument
         *[other] arguments
     }
+
+passes_useless_assignment =
+    useless assignment of {$is_field_assign ->
+        [true] field
+        *[false] variable
+    } of type `{$ty}` to itself
