@@ -172,9 +172,9 @@ build/
   # hand.
   x86_64-unknown-linux-gnu/
 
-    # The build artifacts for the `compiler-rt` library for the target that 
-    # this folder is under. The exact layout here will likely depend on the 
-    # platform, and this is also built with CMake, so the build system is 
+    # The build artifacts for the `compiler-rt` library for the target that
+    # this folder is under. The exact layout here will likely depend on the
+    # platform, and this is also built with CMake, so the build system is
     # also likely different.
     compiler-rt/
       build/
