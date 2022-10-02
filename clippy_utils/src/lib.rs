@@ -2295,6 +2295,29 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
     });
 }
 
+/// Return all the comments a given span contains
+/// Comments are returned wrapped with their relevant delimiters
+pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
+    let snippet = sm.span_to_snippet(span).unwrap_or_default();
+    let mut comments_buf: Vec<String> = Vec::new();
+    let mut index: usize = 0;
+
+    for token in tokenize(&snippet) {
+        let token_range = index..(index + token.len as usize);
+        index += token.len as usize;
+        match token.kind {
+            TokenKind::BlockComment { .. } | TokenKind::LineComment { .. } => {
+                if let Some(comment) = snippet.get(token_range) {
+                    comments_buf.push(comment.to_string());
+                }
+            },
+            _ => (),
+        }
+    }
+
+    comments_buf.join("\n")
+}
+
 macro_rules! op_utils {
     ($($name:ident $assign:ident)*) => {
         /// Binary operation traits like `LangItem::Add`
