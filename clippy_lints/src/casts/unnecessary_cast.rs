@@ -53,13 +53,15 @@ pub(super) fn check<'tcx>(
         match lit.node {
             LitKind::Int(_, LitIntType::Unsuffixed) if cast_to.is_integral() => {
                 lint_unnecessary_cast(cx, expr, literal_str, cast_from, cast_to);
-                return true;
+                return false;
             },
             LitKind::Float(_, LitFloatType::Unsuffixed) if cast_to.is_floating_point() => {
                 lint_unnecessary_cast(cx, expr, literal_str, cast_from, cast_to);
-                return true;
+                return false;
             },
-            LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
+            LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {
+                return false;
+            },
             LitKind::Int(_, LitIntType::Signed(_) | LitIntType::Unsigned(_))
             | LitKind::Float(_, LitFloatType::Suffixed(_))
                 if cast_from.kind() == cast_to.kind() =>
