@@ -656,8 +656,6 @@ impl Build {
             job::setup(self);
         }
 
-        // Download rustfmt early so that it can be used in rust-analyzer configs.
-        let _ = &builder::Builder::new(&self).initial_rustfmt();
         self.maybe_update_submodules();
 
         if let Subcommand::Format { check, paths } = &self.config.cmd {
@@ -671,6 +669,9 @@ impl Build {
         if let Subcommand::Setup { profile } = &self.config.cmd {
             return setup::setup(&self.config, *profile);
         }
+
+        // Download rustfmt early so that it can be used in rust-analyzer configs.
+        let _ = &builder::Builder::new(&self).initial_rustfmt();
 
         {
             let builder = builder::Builder::new(&self);
