@@ -1230,14 +1230,17 @@ void mayExecuteAfter(llvm::SmallVectorImpl<llvm::Instruction *> &results,
     if (instBlk == storeBlk) {
       // if store doesn't come before, exit.
 
-      BasicBlock::const_iterator It = storeBlk->begin();
-      for (; &*It != store && &*It != inst; ++It)
-        /*empty*/;
-      // if inst comes first (e.g. before store) in the
-      // block, return true
-      if (&*It == inst) {
-        results.push_back(store);
+      if (store != inst) {
+        BasicBlock::const_iterator It = storeBlk->begin();
+        for (; &*It != store && &*It != inst; ++It)
+          /*empty*/;
+        // if inst comes first (e.g. before store) in the
+        // block, return true
+        if (&*It == inst) {
+          results.push_back(store);
+        }
       }
+      maybeBlocks[storeBlk].push_back(store);
     } else {
       maybeBlocks[storeBlk].push_back(store);
     }

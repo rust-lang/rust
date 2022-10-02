@@ -511,12 +511,54 @@ static inline bool is_value_needed_in_reverse(
           return seen[idx] = true;
         }
 
-#if LLVM_VERSION_MAJOR >= 11
-        const Value *F = CI->getCalledOperand();
+        bool writeOnlyNoCapture = true;
+        auto F = getFunctionFromCall(const_cast<CallInst *>(CI));
+#if LLVM_VERSION_MAJOR >= 14
+        for (size_t i = 0; i < CI->arg_size(); i++)
 #else
-        const Value *F = CI->getCalledValue();
+        for (size_t i = 0; i < CI->getNumArgOperands(); i++)
 #endif
-        if (F == inst) {
+        {
+          if (inst == CI->getArgOperand(i)) {
+#if LLVM_VERSION_MAJOR >= 8
+            if (!CI->doesNotCapture(i))
+#else
+            if (!(CI->dataOperandHasImpliedAttr(i + 1, Attribute::NoCapture) ||
+                  (F && F->hasParamAttribute(i, Attribute::NoCapture))))
+#endif
+            {
+              writeOnlyNoCapture = false;
+              break;
+            }
+#if LLVM_VERSION_MAJOR >= 14
+            if (!CI->onlyWritesMemory(i))
+#else
+            if (!(CI->dataOperandHasImpliedAttr(i + 1, Attribute::WriteOnly) ||
+                  CI->dataOperandHasImpliedAttr(i + 1, Attribute::ReadNone) ||
+                  (F && (F->hasParamAttribute(i, Attribute::WriteOnly) ||
+                         F->hasParamAttribute(i, Attribute::ReadNone)))))
+#endif
+            {
+              writeOnlyNoCapture = false;
+              break;
+            }
+          }
+        }
+        // Don't need the shadow argument if it is a pointer to pointers, which
+        // is only written since the shadow pointer store will have been
+        // completed in the forward pass.
+        if (writeOnlyNoCapture &&
+            TR.query(const_cast<Value *>(inst))[{-1, -1}] ==
+                BaseType::Pointer &&
+            mode == DerivativeMode::ReverseModeGradient)
+          return false;
+
+#if LLVM_VERSION_MAJOR >= 11
+        const Value *FV = CI->getCalledOperand();
+#else
+        const Value *FV = CI->getCalledValue();
+#endif
+        if (FV == inst) {
           if (!gutils->isConstantInstruction(const_cast<Instruction *>(user)) ||
               !gutils->isConstantValue(const_cast<Value *>((Value *)user))) {
             return seen[idx] = true;

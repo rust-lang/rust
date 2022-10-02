@@ -1,6 +1,6 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -simplifycfg -instsimplify -gvn -adce -S | FileCheck %s
 
-define void @set(double* nocapture %a, double %x) {
+define void @set(double* nocapture writeonly %a, double %x) {
 entry:
   store double %x, double* %a, align 8
   ret void
@@ -33,46 +33,38 @@ declare dso_local double @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal { double } @diffemsg(double %in, double %differeturn) 
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %hst_augmented = call { i8*, double } @augmented_above(double %in)
-; CHECK-NEXT:   %subcache = extractvalue { i8*, double } %hst_augmented, 0
-; CHECK-NEXT:   %hst = extractvalue { i8*, double } %hst_augmented, 1
+; CHECK-NEXT:   %hst = call fast double @augmented_above(double %in)
 ; CHECK-NEXT:   %m0diffehst = fmul fast double %differeturn, %hst
 ; CHECK-NEXT:   %[[i1:.+]] = fadd fast double %m0diffehst, %m0diffehst
-; CHECK-NEXT:   %[[i2:.+]] = call { double } @diffeabove(double %in, double %[[i1]], i8* %subcache)
+; CHECK-NEXT:   %[[i2:.+]] = call { double } @diffeabove(double %in, double %[[i1]])
 ; CHECK-NEXT:   ret { double } %[[i2]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @augmented_set(double* nocapture %a, double* nocapture %"a'", double %x) 
+; CHECK: define internal void @augmented_set(double* nocapture writeonly %a, double* nocapture %"a'", double %x) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   store double %x, double* %a, align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i8*, double } @augmented_above(double %i10) 
+; CHECK: define internal double @augmented_above(double %i10) 
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8), !enzyme_fromstack !
-; CHECK-NEXT:   %m = bitcast i8* %malloccall to double*
+; CHECK-NEXT:   %m = alloca double, i64 1, align 8
 ; CHECK-NEXT:   call void @augmented_set(double* %m, double* undef, double %i10)
 ; CHECK-NEXT:   %i12 = load double, double* %m, align 8
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8*, double } {{(undef|poison)}}, i8* %malloccall, 0
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { i8*, double } %.fca.0.insert, double %i12, 1
-; CHECK-NEXT:   ret { i8*, double } %.fca.1.insert
+; CHECK-NEXT:   ret double %i12
 ; CHECK-NEXT: }
  
-; TODO not need to cache the primal
-; CHECK: define internal { double } @diffeabove(double %i10, double %differeturn, i8* %malloccall) 
+; CHECK: define internal { double } @diffeabove(double %i10, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"m'ai" = alloca double, i64 1, align 8
 ; CHECK-NEXT:   %0 = bitcast double* %"m'ai" to i8*
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %0, i8 0, i64 8, i1 false)
-; CHECK-NEXT:   %m = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   store double %differeturn, double* %"m'ai", align 8
-; CHECK-NEXT:   %1 = call { double } @diffeset(double* %m, double* %"m'ai", double %i10)
-; CHECK-NEXT:   tail call void @free(i8* %malloccall)
+; CHECK-NEXT:   %1 = call { double } @diffeset(double* undef, double* %"m'ai", double %i10)
 ; CHECK-NEXT:   ret { double } %1
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffeset(double* nocapture %a, double* nocapture %"a'", double %x) 
+; CHECK: define internal { double } @diffeset(double* nocapture writeonly %a, double* nocapture %"a'", double %x) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %"a'", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"a'", align 8

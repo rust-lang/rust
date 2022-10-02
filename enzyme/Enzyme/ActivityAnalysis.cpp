@@ -1588,7 +1588,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
     Hypothesis->ActiveValues.insert(Val);
     if (auto VI = dyn_cast<Instruction>(Val)) {
       for (auto V : DeducingPointers) {
-        UpHypothesis->InsertConstantValue(TR, V);
+        // UpHypothesis->InsertConstantValue(TR, V);
       }
       if (UpHypothesis->isInstructionInactiveFromOrigin(TR, VI)) {
         Hypothesis->DeducingPointers.insert(Val);
@@ -1784,13 +1784,37 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
           // active
           if (!Hypothesis->isConstantValue(TR, I)) {
             potentiallyActiveLoad = true;
-            if (TR.query(I)[{-1}].isPossiblePointer()) {
-              if (EnzymePrintActivity)
-                llvm::errs()
-                    << "potential active store via pointer in load: " << *I
-                    << " of " << *Val << "\n";
-              potentiallyActiveStore = true;
-            }
+            // returns whether seen
+            std::function<bool(Value * V, SmallPtrSetImpl<Value *> &)>
+                loadCheck = [&](Value *V, SmallPtrSetImpl<Value *> &Seen) {
+                  if (Seen.count(V))
+                    return false;
+                  Seen.insert(V);
+                  if (TR.query(V)[{-1}].isPossiblePointer()) {
+                    for (auto UU : V->users()) {
+                      auto U = cast<Instruction>(UU);
+                      if (U->mayWriteToMemory()) {
+                        if (!Hypothesis->isConstantInstruction(TR, U)) {
+                          if (EnzymePrintActivity)
+                            llvm::errs() << "potential active store via "
+                                            "pointer in load: "
+                                         << *I << " of " << *Val << " via "
+                                         << *U << "\n";
+                          potentiallyActiveStore = true;
+                          return true;
+                        }
+                      }
+
+                      if (U != Val && !Hypothesis->isConstantValue(TR, U)) {
+                        if (loadCheck(U, Seen))
+                          return true;
+                      }
+                    }
+                  }
+                  return false;
+                };
+            SmallPtrSet<Value *, 2> Seen;
+            loadCheck(I, Seen);
           }
         } else if (auto MTI = dyn_cast<MemTransferInst>(I)) {
           if (!Hypothesis->isConstantValue(TR, MTI->getArgOperand(0))) {
@@ -1959,7 +1983,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
       if (DeducingPointers.size() == 0)
         UpHypothesis->insertConstantsFrom(TR, *Hypothesis);
       for (auto V : DeducingPointers) {
-        UpHypothesis->InsertConstantValue(TR, V);
+        // UpHypothesis->InsertConstantValue(TR, V);
       }
       assert(directions & UP);
       bool ActiveUp = !isa<Argument>(Val) &&

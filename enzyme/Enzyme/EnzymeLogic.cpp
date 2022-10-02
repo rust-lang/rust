@@ -442,6 +442,7 @@ struct CacheAnalysis {
     }
 
     SmallVector<Value *, 4> args;
+    SmallVector<Value *, 4> objs;
     SmallVector<bool, 4> args_safe;
 
     // First, we need to propagate the uncacheable status from the parent
@@ -465,6 +466,8 @@ struct CacheAnalysis {
           callsite_op->getArgOperand(i),
           callsite_op->getParent()->getModule()->getDataLayout(), 100);
 #endif
+
+      objs.push_back(obj);
 
       bool init_safe = !is_value_mustcache_from_origin(obj);
       if (!init_safe) {
@@ -526,6 +529,12 @@ struct CacheAnalysis {
       for (unsigned i = 0; i < args.size(); ++i) {
         if (!args_safe[i])
           continue;
+
+        // Any use of an arg from a rematerializable allocation
+        // is definitionally reloadable in sub.
+        if (rematerializableAllocations.count(objs[i]))
+          return false;
+
         auto CD = TR.query(args[i])[{-1}];
         if (CD == BaseType::Integer || CD.isFloat())
           continue;

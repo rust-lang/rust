@@ -1047,32 +1047,19 @@ public:
     return false;
   }
 
-  SmallVector<PHINode *, 1> rematerializedShadowPHIs;
+  SmallVector<llvm::Instruction *, 1> rematerializedPrimalOrShadowAllocations;
 
   void eraseFictiousPHIs() {
     {
-      SetVector<Instruction *> seen;
-      SmallVector<Instruction *, 1> todo;
-      for (auto P : rematerializedShadowPHIs)
-        todo.push_back(P);
-      while (todo.size()) {
-        auto P = todo.back();
-        todo.pop_back();
-        if (seen.count(P))
-          continue;
-        seen.insert(P);
-        for (auto U : P->users())
-          if (auto I = dyn_cast<Instruction>(U))
-            todo.push_back(I);
-      }
-
-      for (auto v : llvm::reverse(seen)) {
-        for (auto &use : v->uses())
-          if (!seen.count(dyn_cast<Instruction>(use.getUser())))
-            assert(false);
-
-        v->replaceAllUsesWith(UndefValue::get(v->getType()));
-        erase(v);
+      for (auto P : rematerializedPrimalOrShadowAllocations) {
+        Value *replacement;
+        if (EnzymeZeroCache)
+          replacement =
+              ConstantPointerNull::get(cast<PointerType>(P->getType()));
+        else
+          replacement = UndefValue::get(P->getType());
+        P->replaceAllUsesWith(replacement);
+        erase(P);
       }
     }
     SmallVector<std::pair<PHINode *, Value *>, 4> phis;
