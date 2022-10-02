@@ -65,6 +65,7 @@ mod noop_method_call;
 mod pass_by_value;
 mod passes;
 mod redundant_semicolon;
+mod rpit_hidden_inferred_bound;
 mod traits;
 mod types;
 mod unused;
@@ -95,6 +96,7 @@ use nonstandard_style::*;
 use noop_method_call::*;
 use pass_by_value::*;
 use redundant_semicolon::*;
+use rpit_hidden_inferred_bound::*;
 use traits::*;
 use types::*;
 use unused::*;
@@ -223,6 +225,7 @@ macro_rules! late_lint_mod_passes {
                 EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
                 InvalidAtomicOrdering: InvalidAtomicOrdering,
                 NamedAsmLabels: NamedAsmLabels,
+                RpitHiddenInferredBound: RpitHiddenInferredBound,
             ]
         );
     };
