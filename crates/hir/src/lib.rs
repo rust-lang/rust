@@ -61,7 +61,6 @@ use hir_ty::{
     diagnostics::BodyValidationDiagnostic,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
-    subst_prefix,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
     GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
@@ -1090,7 +1089,7 @@ impl Adt {
     pub fn ty_with_args(self, db: &dyn HirDatabase, args: &[Type]) -> Type {
         let id = AdtId::from(self);
         let mut it = args.iter().map(|t| t.ty.clone());
-        let ty = TyBuilder::def_ty(db, id.into())
+        let ty = TyBuilder::def_ty(db, id.into(), None)
             .fill(|x| {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
                 match x {
@@ -2547,7 +2546,7 @@ impl TypeParam {
         let resolver = self.id.parent().resolver(db.upcast());
         let ty = params.get(local_idx)?.clone();
         let subst = TyBuilder::placeholder_subst(db, self.id.parent());
-        let ty = ty.substitute(Interner, &subst_prefix(&subst, local_idx));
+        let ty = ty.substitute(Interner, &subst);
         match ty.data(Interner) {
             GenericArgData::Ty(x) => Some(Type::new_with_resolver_inner(db, &resolver, x.clone())),
             _ => None,
@@ -2801,7 +2800,18 @@ impl Type {
     }
 
     fn from_def(db: &dyn HirDatabase, def: impl HasResolver + Into<TyDefId>) -> Type {
-        let ty = TyBuilder::def_ty(db, def.into()).fill_with_unknown().build();
+        let ty_def = def.into();
+        let parent_subst = match ty_def {
+            TyDefId::TypeAliasId(id) => match id.lookup(db.upcast()).container {
+                ItemContainerId::TraitId(id) => {
+                    let subst = TyBuilder::subst_for_def(db, id, None).fill_with_unknown().build();
+                    Some(subst)
+                }
+                _ => None,
+            },
+            _ => None,
+        };
+        let ty = TyBuilder::def_ty(db, ty_def, parent_subst).fill_with_unknown().build();
         Type::new(db, def, ty)
     }
 
@@ -2941,7 +2951,11 @@ impl Type {
         alias: TypeAlias,
     ) -> Option<Type> {
         let mut args = args.iter();
-        let projection = TyBuilder::assoc_type_projection(db, alias.id)
+        let trait_id = match alias.id.lookup(db.upcast()).container {
+            ItemContainerId::TraitId(id) => id,
+            _ => unreachable!("non assoc type alias reached in normalize_trait_assoc_type()"),
+        };
+        let parent_subst = TyBuilder::subst_for_def(db, trait_id, None)
             .push(self.ty.clone())
             .fill(|x| {
                 // FIXME: this code is not covered in tests.
@@ -2953,6 +2967,8 @@ impl Type {
                 }
             })
             .build();
+        // FIXME: We don't handle GATs yet.
+        let projection = TyBuilder::assoc_type_projection(db, alias.id, Some(parent_subst)).build();
 
         let ty = db.normalize_projection(projection, self.env.clone());
         if ty.is_unknown() {

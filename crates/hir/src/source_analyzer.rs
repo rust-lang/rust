@@ -22,7 +22,7 @@ use hir_def::{
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
     type_ref::Mutability,
     AsMacroCall, AssocItemId, DefWithBodyId, FieldId, FunctionId, ItemContainerId, LocalFieldId,
-    Lookup, ModuleDefId, VariantId,
+    Lookup, ModuleDefId, TraitId, VariantId,
 };
 use hir_expand::{
     builtin_fn_macro::BuiltinFnLikeExpander,
@@ -302,10 +302,15 @@ impl SourceAnalyzer {
             }
         }
 
+        let future_trait = db
+            .lang_item(self.resolver.krate(), hir_expand::name![future_trait].to_smol_str())?
+            .as_trait()?;
         let poll_fn = db
             .lang_item(self.resolver.krate(), hir_expand::name![poll].to_smol_str())?
             .as_function()?;
-        let substs = hir_ty::TyBuilder::subst_for_def(db, poll_fn).push(ty.clone()).build();
+        // HACK: subst for `poll()` coincides with that for `Future` because `poll()` itself
+        // doesn't have any generic parameters, so we skip building another subst for `poll()`.
+        let substs = hir_ty::TyBuilder::subst_for_def(db, future_trait, None).push(ty).build();
         Some(self.resolve_impl_method_or_trait_def(db, poll_fn, &substs))
     }
 
@@ -321,8 +326,10 @@ impl SourceAnalyzer {
         };
         let ty = self.ty_of_expr(db, &prefix_expr.expr()?.into())?;
 
-        let op_fn = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
-        let substs = hir_ty::TyBuilder::subst_for_def(db, op_fn).push(ty.clone()).build();
+        let (op_trait, op_fn) = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
+        // HACK: subst for all methods coincides with that for their trait because the methods
+        // don't have any generic parameters, so we skip building another subst for the methods.
+        let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None).push(ty.clone()).build();
 
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
     }
@@ -337,8 +344,10 @@ impl SourceAnalyzer {
 
         let lang_item_name = name![index];
 
-        let op_fn = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
-        let substs = hir_ty::TyBuilder::subst_for_def(db, op_fn)
+        let (op_trait, op_fn) = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
+        // HACK: subst for all methods coincides with that for their trait because the methods
+        // don't have any generic parameters, so we skip building another subst for the methods.
+        let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None)
             .push(base_ty.clone())
             .push(index_ty.clone())
             .build();
@@ -354,10 +363,14 @@ impl SourceAnalyzer {
         let lhs = self.ty_of_expr(db, &binop_expr.lhs()?.into())?;
         let rhs = self.ty_of_expr(db, &binop_expr.rhs()?.into())?;
 
-        let op_fn = lang_names_for_bin_op(op)
+        let (op_trait, op_fn) = lang_names_for_bin_op(op)
             .and_then(|(name, lang_item)| self.lang_trait_fn(db, &lang_item, &name))?;
-        let substs =
-            hir_ty::TyBuilder::subst_for_def(db, op_fn).push(lhs.clone()).push(rhs.clone()).build();
+        // HACK: subst for `index()` coincides with that for `Index` because `index()` itself
+        // doesn't have any generic parameters, so we skip building another subst for `index()`.
+        let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None)
+            .push(lhs.clone())
+            .push(rhs.clone())
+            .build();
 
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
     }
@@ -371,7 +384,13 @@ impl SourceAnalyzer {
 
         let op_fn =
             db.lang_item(self.resolver.krate(), name![branch].to_smol_str())?.as_function()?;
-        let substs = hir_ty::TyBuilder::subst_for_def(db, op_fn).push(ty.clone()).build();
+        let op_trait = match op_fn.lookup(db.upcast()).container {
+            ItemContainerId::TraitId(id) => id,
+            _ => return None,
+        };
+        // HACK: subst for `branch()` coincides with that for `Try` because `branch()` itself
+        // doesn't have any generic parameters, so we skip building another subst for `branch()`.
+        let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None).push(ty.clone()).build();
 
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
     }
@@ -799,9 +818,10 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         lang_trait: &Name,
         method_name: &Name,
-    ) -> Option<FunctionId> {
-        db.trait_data(db.lang_item(self.resolver.krate(), lang_trait.to_smol_str())?.as_trait()?)
-            .method_by_name(method_name)
+    ) -> Option<(TraitId, FunctionId)> {
+        let trait_id = db.lang_item(self.resolver.krate(), lang_trait.to_smol_str())?.as_trait()?;
+        let fn_id = db.trait_data(trait_id).method_by_name(method_name)?;
+        Some((trait_id, fn_id))
     }
 
     fn ty_of_expr(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<&Ty> {

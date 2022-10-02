@@ -382,13 +382,12 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         // `resume_type`, `yield_type`, and `return_type` of the generator in question.
         let subst = TyBuilder::subst_for_generator(self.db, parent).fill_with_unknown().build();
 
-        let len = subst.len(Interner);
         let input_output = rust_ir::GeneratorInputOutputDatum {
-            resume_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, len - 3))
+            resume_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
                 .intern(Interner),
-            yield_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, len - 2))
+            yield_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 1))
                 .intern(Interner),
-            return_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, len - 1))
+            return_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 2))
                 .intern(Interner),
             // FIXME: calculate upvars
             upvars: vec![],
@@ -476,10 +475,15 @@ pub(crate) fn associated_ty_data_query(
     let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
     let ctx = crate::TyLoweringContext::new(db, &resolver)
         .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
-    let pro_ty = TyBuilder::assoc_type_projection(db, type_alias)
+
+    let trait_subst = TyBuilder::subst_for_def(db, trait_, None)
+        .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, generic_params.len_self())
+        .build();
+    let pro_ty = TyBuilder::assoc_type_projection(db, type_alias, Some(trait_subst))
         .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, 0)
         .build();
     let self_ty = TyKind::Alias(AliasTy::Projection(pro_ty)).intern(Interner);
+
     let mut bounds: Vec<_> = type_alias_data
         .bounds
         .iter()

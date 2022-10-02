@@ -26,8 +26,8 @@ use hir_def::{
     path::{path, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::TypeRef,
-    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule, Lookup,
-    TraitId, TypeAliasId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule,
+    ItemContainerId, Lookup, TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{name, Name};
 use itertools::Either;
@@ -713,6 +713,8 @@ impl<'a> InferenceContext<'a> {
         &mut self,
         inner_ty: Ty,
         assoc_ty: Option<TypeAliasId>,
+        // FIXME(GATs): these are args for the trait ref, args for assoc type itself should be
+        // handled when we support them.
         params: &[GenericArg],
     ) -> Ty {
         match assoc_ty {
@@ -804,7 +806,18 @@ impl<'a> InferenceContext<'a> {
                 self.resolve_variant_on_alias(ty, unresolved, path)
             }
             TypeNs::TypeAliasId(it) => {
-                let ty = TyBuilder::def_ty(self.db, it.into())
+                let container = it.lookup(self.db.upcast()).container;
+                let parent_subst = match container {
+                    ItemContainerId::TraitId(id) => {
+                        let subst = TyBuilder::subst_for_def(self.db, id, None)
+                            .fill_with_inference_vars(&mut self.table)
+                            .build();
+                        Some(subst)
+                    }
+                    // Type aliases do not exist in impls.
+                    _ => None,
+                };
+                let ty = TyBuilder::def_ty(self.db, it.into(), parent_subst)
                     .fill_with_inference_vars(&mut self.table)
                     .build();
                 self.resolve_variant_on_alias(ty, unresolved, path)
