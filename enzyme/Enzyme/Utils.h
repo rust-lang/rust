@@ -70,7 +70,8 @@ enum class ErrorType {
   NoDerivative = 0,
   NoShadow = 1,
   IllegalTypeAnalysis = 2,
-  NoType = 3
+  NoType = 3,
+  IllegalFirstPointer = 4
 };
 
 extern "C" {

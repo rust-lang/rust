@@ -1055,7 +1055,7 @@ public:
       auto &DL = gutils->newFunc->getParent()->getDataLayout();
       auto valType = I.getValOperand()->getType();
       auto storeSize = DL.getTypeSizeInBits(valType) / 8;
-      auto fp = TR.firstPointer(storeSize, I.getPointerOperand(),
+      auto fp = TR.firstPointer(storeSize, I.getPointerOperand(), &I,
                                 /*errifnotfound*/ false,
                                 /*pointerIntSame*/ true);
       if (!fp.isKnown() && valType->isIntOrIntVectorTy()) {
@@ -1179,8 +1179,9 @@ public:
     if (valType->isFPOrFPVectorTy()) {
       FT = valType->getScalarType();
     } else if (!valType->isPointerTy()) {
-      auto fp = TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/ false,
-                                /*pointerIntSame*/ true);
+      auto fp =
+          TR.firstPointer(storeSize, orig_ptr, &I, /*errifnotfound*/ false,
+                          /*pointerIntSame*/ true);
       if (fp.isKnown()) {
         FT = fp.isFloat();
       } else if (looseTypeAnalysis && (isa<ConstantInt>(orig_val) ||
@@ -1198,7 +1199,7 @@ public:
         }
         EmitFailure("CannotDeduceType", I.getDebugLoc(), &I,
                     "failed to deduce type of store ", I);
-        TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/ true,
+        TR.firstPointer(storeSize, orig_ptr, &I, /*errifnotfound*/ true,
                         /*pointerIntSame*/ true);
       }
     }
@@ -3140,7 +3141,7 @@ public:
       EmitFailure("CannotDeduceType", MS.getDebugLoc(), &MS,
                   "failed to deduce type of memset ", MS);
 
-      TR.firstPointer(size, MS.getOperand(0), /*errifnotfound*/ true,
+      TR.firstPointer(size, MS.getOperand(0), &MS, /*errifnotfound*/ true,
                       /*pointerIntSame*/ true);
       llvm_unreachable("bad msi");
     }
@@ -3460,7 +3461,7 @@ public:
       EmitFailure("CannotDeduceType", MTI.getDebugLoc(), &MTI,
                   "failed to deduce type of copy ", MTI);
 
-      TR.firstPointer(size, orig_dst, /*errifnotfound*/ true,
+      TR.firstPointer(size, orig_dst, &MTI, /*errifnotfound*/ true,
                       /*pointerIntSame*/ true);
       llvm_unreachable("bad mti");
     }
@@ -5481,7 +5482,7 @@ public:
       EmitFailure("CannotDeduceType", call.getDebugLoc(), &call,
                   "failed to deduce type of copy ", call);
 
-      TR.firstPointer(size, origArg, /*errifnotfound*/ true,
+      TR.firstPointer(size, origArg, &call, /*errifnotfound*/ true,
                       /*pointerIntSame*/ true);
       llvm_unreachable("bad mti");
     }
@@ -7329,7 +7330,7 @@ public:
           shadow = Builder2.CreateIntToPtr(
               shadow, Type::getInt8PtrTy(call.getContext()));
 
-        ConcreteType CT = TR.firstPointer(1, call.getOperand(0));
+        ConcreteType CT = TR.firstPointer(1, call.getOperand(0), &call);
         Type *MPI_OP_Ptr_type =
             PointerType::getUnqual(Type::getInt8PtrTy(call.getContext()));
 
@@ -8541,7 +8542,7 @@ public:
             CreateAllocation(Builder2, Type::getInt8Ty(call.getContext()),
                              sendlen_arg, "mpireduce_malloccache");
 
-        ConcreteType CT = TR.firstPointer(1, orig_sendbuf);
+        ConcreteType CT = TR.firstPointer(1, orig_sendbuf, &call);
         Type *MPI_OP_Ptr_type =
             PointerType::getUnqual(Type::getInt8PtrTy(call.getContext()));
 

@@ -159,7 +159,7 @@ public:
   /// Returns whether in the first num bytes there is pointer, int, float, or
   /// none If pointerIntSame is set to true, then consider either as the same
   /// (and thus mergable)
-  ConcreteType firstPointer(size_t num, llvm::Value *val,
+  ConcreteType firstPointer(size_t num, llvm::Value *val, llvm::Instruction *I,
                             bool errIfNotFound = true,
                             bool pointerIntSame = false) const;
 

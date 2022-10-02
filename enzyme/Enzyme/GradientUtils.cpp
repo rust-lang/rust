@@ -2601,7 +2601,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                     FT = valType->getScalarType();
                   } else if (!valType->isPointerTy()) {
                     if (looseTypeAnalysis) {
-                      auto fp = TR.firstPointer(storeSize, orig_ptr,
+                      auto fp = TR.firstPointer(storeSize, orig_ptr, &I,
                                                 /*errifnotfound*/ false,
                                                 /*pointerIntSame*/ true);
                       if (fp.isKnown()) {
@@ -2613,7 +2613,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                             << "\n";
                         FT = nullptr;
                       } else {
-                        TR.firstPointer(storeSize, orig_ptr,
+                        TR.firstPointer(storeSize, orig_ptr, &I,
                                         /*errifnotfound*/ true,
                                         /*pointerIntSame*/ true);
                         llvm::errs()
@@ -2621,7 +2621,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                         assert(0 && "cannot deduce");
                       }
                     } else {
-                      FT = TR.firstPointer(storeSize, orig_ptr,
+                      FT = TR.firstPointer(storeSize, orig_ptr, &I,
                                            /*errifnotfound*/ true,
                                            /*pointerIntSame*/ true)
                                .isFloat();

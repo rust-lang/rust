@@ -5035,7 +5035,7 @@ Type *TypeResults::addingType(size_t num, Value *val) const {
   return dt.isFloat();
 }
 
-ConcreteType TypeResults::firstPointer(size_t num, Value *val,
+ConcreteType TypeResults::firstPointer(size_t num, Value *val, Instruction *I,
                                        bool errIfNotFound,
                                        bool pointerIntSame) const {
   assert(val);
@@ -5048,10 +5048,22 @@ ConcreteType TypeResults::firstPointer(size_t num, Value *val,
   }
   assert(val->getType()->isPointerTy() || q[{}] == BaseType::Pointer);
 
-  auto dt = q[{0}];
-  dt.orIn(q[{-1}], pointerIntSame);
-  for (size_t i = 1; i < num; ++i) {
-    dt.orIn(q[{(int)i}], pointerIntSame);
+  auto dt = q[{-1}];
+  for (size_t i = 0; i < num; ++i) {
+    bool Legal = true;
+    dt.checkedOrIn(q[{(int)i}], pointerIntSame, Legal);
+    if (!Legal) {
+      std::string str;
+      raw_string_ostream ss(str);
+      ss << "Illegal firstPointer, num: " << num << " q: " << q.str() << "\n";
+      ss << " at " << *val << " from " << *I << "\n";
+      if (CustomErrorHandler) {
+        CustomErrorHandler(str.c_str(), wrap(I), ErrorType::IllegalFirstPointer,
+                           nullptr);
+      }
+      llvm::errs() << ss.str() << "\n";
+      llvm_unreachable("Illegal firstPointer");
+    }
   }
 
   if (errIfNotFound && (!dt.isKnown() || dt == BaseType::Anything)) {
