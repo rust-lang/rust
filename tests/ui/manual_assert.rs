@@ -4,8 +4,7 @@
 // run-rustfix
 
 #![warn(clippy::manual_assert)]
-#![allow(clippy::nonminimal_bool)]
-#![allow(dead_code)]
+#![allow(dead_code, unused_doc_comments, clippy::nonminimal_bool)]
 
 macro_rules! one {
     () => {
@@ -68,9 +67,9 @@ fn main() {
     }
 }
 
-fn issue7730() {
+fn issue7730(a: u8) {
     // Suggestion should preserve comment
-    if true {
+    if a > 2 {
         // comment
         /* this is a
         multiline
