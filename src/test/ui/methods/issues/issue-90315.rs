@@ -2,7 +2,7 @@
 fn main() {
     let arr = &[0, 1, 2, 3];
     for _i in 0..arr.len().rev() {
-        //~^ ERROR not an iterator
+        //~^ ERROR can't call method
         //~| surround the range in parentheses
         // The above error used to say “the method `rev` exists for type `usize`”.
         // This regression test ensures it doesn't say that any more.
@@ -10,40 +10,40 @@ fn main() {
 
     // Test for #102396
     for i in 1..11.rev() {
-        //~^ ERROR not an iterator
+        //~^ ERROR can't call method
         //~| HELP surround the range in parentheses
     }
 
     let end: usize = 10;
     for i in 1..end.rev() {
-        //~^ ERROR not an iterator
+        //~^ ERROR can't call method
         //~| HELP surround the range in parentheses
     }
 
     for i in 1..(end + 1).rev() {
-        //~^ ERROR not an iterator
+        //~^ ERROR can't call method
         //~| HELP surround the range in parentheses
     }
 
     if 1..(end + 1).is_empty() {
-        //~^ ERROR not an iterator
+        //~^ ERROR can't call method
         //~| ERROR mismatched types [E0308]
         //~| HELP surround the range in parentheses
     }
 
     if 1..(end + 1).is_sorted() {
         //~^ ERROR mismatched types [E0308]
-        //~| ERROR `usize` is not an iterator [E0599]
+        //~| ERROR can't call method
         //~| HELP surround the range in parentheses
     }
 
     let _res: i32 = 3..6.take(2).sum();
-    //~^ ERROR `{integer}` is not an iterator [E0599]
+    //~^ ERROR can't call method
     //~| ERROR mismatched types [E0308]
     //~| HELP surround the range in parentheses
 
     let _sum: i32 = 3..6.sum();
-    //~^ ERROR `{integer}` is not an iterator [E0599]
+    //~^ ERROR can't call method
     //~| ERROR mismatched types [E0308]
     //~| HELP surround the range in parentheses
 
@@ -51,12 +51,12 @@ fn main() {
     let b = 10 as usize;
 
     for _a in a..=b.rev() {
-        //~^ ERROR not an iterator
+        //~^ ERROR can't call method
         //~| HELP surround the range in parentheses
     }
 
     let _res = ..10.contains(3);
-    //~^ ERROR not an iterator
+    //~^ ERROR can't call method
     //~| HELP surround the range in parentheses
 
     if 1..end.error_method() {
@@ -66,5 +66,11 @@ fn main() {
     }
 
     let _res = b.take(1)..a;
-    //~^ ERROR not an iterator
+    //~^ ERROR `usize` is not an iterator
+
+    let _res: i32 = ..6.take(2).sum();
+    //~^ can't call method `take` on ambiguous numeric type
+    //~| ERROR mismatched types [E0308]
+    //~| HELP you must specify a concrete type for this numeric value
+    // Won't suggest because `RangeTo` dest not implemented `take`
 }

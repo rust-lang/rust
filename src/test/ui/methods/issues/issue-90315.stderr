@@ -1,52 +1,52 @@
-error[E0599]: `usize` is not an iterator
+error[E0689]: can't call method `rev` on type `usize`
   --> $DIR/issue-90315.rs:4:28
    |
 LL |     for _i in 0..arr.len().rev() {
-   |                            ^^^ `usize` is not an iterator
+   |                            ^^^ can't call method `rev` on type `usize`
    |
 help: you must surround the range in parentheses to call the `rev` function
    |
 LL |     for _i in (0..arr.len()).rev() {
    |               +            +
 
-error[E0599]: `{integer}` is not an iterator
+error[E0689]: can't call method `rev` on type `{integer}`
   --> $DIR/issue-90315.rs:12:20
    |
 LL |     for i in 1..11.rev() {
-   |                    ^^^ `{integer}` is not an iterator
+   |                    ^^^ can't call method `rev` on type `{integer}`
    |
 help: you must surround the range in parentheses to call the `rev` function
    |
 LL |     for i in (1..11).rev() {
    |              +     +
 
-error[E0599]: `usize` is not an iterator
+error[E0689]: can't call method `rev` on type `usize`
   --> $DIR/issue-90315.rs:18:21
    |
 LL |     for i in 1..end.rev() {
-   |                     ^^^ `usize` is not an iterator
+   |                     ^^^ can't call method `rev` on type `usize`
    |
 help: you must surround the range in parentheses to call the `rev` function
    |
 LL |     for i in (1..end).rev() {
    |              +      +
 
-error[E0599]: `usize` is not an iterator
+error[E0689]: can't call method `rev` on type `usize`
   --> $DIR/issue-90315.rs:23:27
    |
 LL |     for i in 1..(end + 1).rev() {
-   |                           ^^^ `usize` is not an iterator
+   |                           ^^^ can't call method `rev` on type `usize`
    |
 help: you must surround the range in parentheses to call the `rev` function
    |
 LL |     for i in (1..(end + 1)).rev() {
    |              +            +
 
-error[E0599]: `usize` is not an iterator
+error[E0689]: can't call method `is_empty` on type `usize`
   --> $DIR/issue-90315.rs:28:21
    |
 LL |     if 1..(end + 1).is_empty() {
-   |                     ^^^^^^^^ `usize` is not an iterator
+   |                     ^^^^^^^^ can't call method `is_empty` on type `usize`
    |
 help: you must surround the range in parentheses to call the `is_empty` function
    |
@@ -62,11 +62,11 @@ LL |     if 1..(end + 1).is_empty() {
    = note: expected type `bool`
             found struct `std::ops::Range<{integer}>`
 
-error[E0599]: `usize` is not an iterator
+error[E0689]: can't call method `is_sorted` on type `usize`
   --> $DIR/issue-90315.rs:34:21
    |
 LL |     if 1..(end + 1).is_sorted() {
-   |                     ^^^^^^^^^ `usize` is not an iterator
+   |                     ^^^^^^^^^ can't call method `is_sorted` on type `usize`
    |
 help: you must surround the range in parentheses to call the `is_sorted` function
    |
@@ -82,11 +82,11 @@ LL |     if 1..(end + 1).is_sorted() {
    = note: expected type `bool`
             found struct `std::ops::Range<{integer}>`
 
-error[E0599]: `{integer}` is not an iterator
+error[E0689]: can't call method `take` on type `{integer}`
   --> $DIR/issue-90315.rs:40:26
    |
 LL |     let _res: i32 = 3..6.take(2).sum();
-   |                          ^^^^ `{integer}` is not an iterator
+   |                          ^^^^ can't call method `take` on type `{integer}`
    |
 help: you must surround the range in parentheses to call the `take` function
    |
@@ -104,11 +104,11 @@ LL |     let _res: i32 = 3..6.take(2).sum();
    = note: expected type `i32`
             found struct `std::ops::Range<{integer}>`
 
-error[E0599]: `{integer}` is not an iterator
+error[E0689]: can't call method `sum` on type `{integer}`
   --> $DIR/issue-90315.rs:45:26
    |
 LL |     let _sum: i32 = 3..6.sum();
-   |                          ^^^ `{integer}` is not an iterator
+   |                          ^^^ can't call method `sum` on type `{integer}`
    |
 help: you must surround the range in parentheses to call the `sum` function
    |
@@ -126,22 +126,22 @@ LL |     let _sum: i32 = 3..6.sum();
    = note: expected type `i32`
             found struct `std::ops::Range<{integer}>`
 
-error[E0599]: `usize` is not an iterator
+error[E0689]: can't call method `rev` on type `usize`
   --> $DIR/issue-90315.rs:53:21
    |
 LL |     for _a in a..=b.rev() {
-   |                     ^^^ `usize` is not an iterator
+   |                     ^^^ can't call method `rev` on type `usize`
    |
 help: you must surround the range in parentheses to call the `rev` function
    |
 LL |     for _a in (a..=b).rev() {
    |               +     +
 
-error[E0599]: `{integer}` is not an iterator
+error[E0689]: can't call method `contains` on type `{integer}`
   --> $DIR/issue-90315.rs:58:21
    |
 LL |     let _res = ..10.contains(3);
-   |                     ^^^^^^^^ `{integer}` is not an iterator
+   |                     ^^^^^^^^ can't call method `contains` on type `{integer}`
    |
 help: you must surround the range in parentheses to call the `contains` function
    |
@@ -173,7 +173,29 @@ LL |     let _res = b.take(1)..a;
            `usize: Iterator`
            which is required by `&mut usize: Iterator`
 
-error: aborting due to 17 previous errors
+error[E0689]: can't call method `take` on ambiguous numeric type `{integer}`
+  --> $DIR/issue-90315.rs:71:25
+   |
+LL |     let _res: i32 = ..6.take(2).sum();
+   |                         ^^^^
+   |
+help: you must specify a concrete type for this numeric value, like `i32`
+   |
+LL |     let _res: i32 = ..6_i32.take(2).sum();
+   |                       ~~~~~
 
-Some errors have detailed explanations: E0308, E0599.
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:71:21
+   |
+LL |     let _res: i32 = ..6.take(2).sum();
+   |               ---   ^^^^^^^^^^^^^^^^^ expected `i32`, found struct `RangeTo`
+   |               |
+   |               expected due to this
+   |
+   = note: expected type `i32`
+            found struct `RangeTo<_>`
+
+error: aborting due to 19 previous errors
+
+Some errors have detailed explanations: E0308, E0599, E0689.
 For more information about an error, try `rustc --explain E0308`.
