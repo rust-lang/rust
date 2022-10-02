@@ -354,7 +354,6 @@ pub fn struct_lint_level<'s, 'd>(
             (Level::Deny | Level::Forbid, None) => sess.diagnostic().struct_err_lint(""),
         };
 
-        err.set_primary_message(msg);
         err.set_is_lint();
 
         // If this code originates in a foreign macro, aka something that this crate
@@ -378,6 +377,10 @@ pub fn struct_lint_level<'s, 'd>(
                 return;
             }
         }
+
+        // Delay evaluating and setting the primary message until after we've
+        // suppressed the lint due to macros.
+        err.set_primary_message(msg);
 
         // Lint diagnostics that are covered by the expect level will not be emitted outside
         // the compiler. It is therefore not necessary to add any information for the user.
