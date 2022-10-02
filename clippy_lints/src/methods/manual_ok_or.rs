@@ -55,7 +55,7 @@ fn is_ok_wrapping(cx: &LateContext<'_>, map_expr: &Expr<'_>) -> bool {
         if let ExprKind::Closure(&Closure { body, .. }) = map_expr.kind;
         let body = cx.tcx.hir().body(body);
         if let PatKind::Binding(_, param_id, ..) = body.params[0].pat.kind;
-        if let ExprKind::Call(Expr { kind: ExprKind::Path(ok_path), .. }, &[ref ok_arg]) = body.value.kind;
+        if let ExprKind::Call(Expr { kind: ExprKind::Path(ok_path), .. }, [ok_arg]) = body.value.kind;
         if is_lang_ctor(cx, ok_path, ResultOk);
         then { path_to_local_id(ok_arg, param_id) } else { false }
     }
