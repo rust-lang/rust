@@ -71,6 +71,12 @@ pub struct FrameExtra {
     protected_tags: SmallVec<[SbTag; 2]>,
 }
 
+impl VisitTags for FrameExtra {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+        // `protected_tags` are fine to GC.
+    }
+}
+
 /// Extra per-allocation state.
 #[derive(Clone, Debug)]
 pub struct Stacks {
@@ -107,6 +113,13 @@ pub struct GlobalStateInner {
     tracked_call_ids: FxHashSet<CallId>,
     /// Whether to recurse into datatypes when searching for pointers to retag.
     retag_fields: bool,
+}
+
+impl VisitTags for GlobalStateInner {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+        // The only candidate is base_ptr_tags, and that does not need visiting since we don't ever
+        // GC the bottommost tag.
+    }
 }
 
 /// We need interior mutable access to the global state.
@@ -513,10 +526,10 @@ impl Stacks {
     }
 }
 
-impl VisitMachineValues for Stacks {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
+impl VisitTags for Stacks {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
         for tag in self.exposed_tags.iter().copied() {
-            visit.visit(tag);
+            visit(tag);
         }
     }
 }

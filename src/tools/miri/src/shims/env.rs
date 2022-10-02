@@ -36,15 +36,13 @@ pub struct EnvVars<'tcx> {
     pub(crate) environ: Option<MPlaceTy<'tcx, Provenance>>,
 }
 
-impl VisitMachineValues for EnvVars<'_> {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
+impl VisitTags for EnvVars<'_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
         let EnvVars { map, environ } = self;
 
+        environ.visit_tags(visit);
         for ptr in map.values() {
-            visit.visit(*ptr);
-        }
-        if let Some(env) = environ {
-            visit.visit(**env);
+            ptr.visit_tags(visit);
         }
     }
 }

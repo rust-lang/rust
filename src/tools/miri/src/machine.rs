@@ -63,13 +63,12 @@ impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
     }
 }
 
-impl VisitMachineValues for FrameData<'_> {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
-        let FrameData { catch_unwind, stacked_borrows: _, timing: _ } = self;
+impl VisitTags for FrameData<'_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let FrameData { catch_unwind, stacked_borrows, timing: _ } = self;
 
-        if let Some(catch_unwind) = catch_unwind {
-            catch_unwind.visit_machine_values(visit);
-        }
+        catch_unwind.visit_tags(visit);
+        stacked_borrows.visit_tags(visit);
     }
 }
 
@@ -261,17 +260,13 @@ pub struct AllocExtra {
     pub weak_memory: Option<weak_memory::AllocExtra>,
 }
 
-impl VisitMachineValues for AllocExtra {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
-        let AllocExtra { stacked_borrows, data_race: _, weak_memory } = self;
+impl VisitTags for AllocExtra {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let AllocExtra { stacked_borrows, data_race, weak_memory } = self;
 
-        if let Some(stacked_borrows) = stacked_borrows {
-            stacked_borrows.borrow().visit_machine_values(visit);
-        }
-
-        if let Some(weak_memory) = weak_memory {
-            weak_memory.visit_machine_values(visit);
-        }
+        stacked_borrows.visit_tags(visit);
+        data_race.visit_tags(visit);
+        weak_memory.visit_tags(visit);
     }
 }
 
@@ -615,8 +610,9 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     }
 }
 
-impl VisitMachineValues for MiriMachine<'_, '_> {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
+impl VisitTags for MiriMachine<'_, '_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        #[rustfmt::skip]
         let MiriMachine {
             threads,
             tls,
@@ -626,25 +622,52 @@ impl VisitMachineValues for MiriMachine<'_, '_> {
             cmd_line,
             extern_statics,
             dir_handler,
-            ..
+            stacked_borrows,
+            data_race,
+            intptrcast,
+            file_handler,
+            tcx: _,
+            isolated_op: _,
+            validate: _,
+            enforce_abi: _,
+            clock: _,
+            layouts: _,
+            static_roots: _,
+            profiler: _,
+            string_cache: _,
+            exported_symbols_cache: _,
+            panic_on_unsupported: _,
+            backtrace_style: _,
+            local_crates: _,
+            rng: _,
+            tracked_alloc_ids: _,
+            check_alignment: _,
+            cmpxchg_weak_failure_rate: _,
+            mute_stdout_stderr: _,
+            weak_memory: _,
+            preemption_rate: _,
+            report_progress: _,
+            basic_block_count: _,
+            #[cfg(unix)]
+            external_so_lib: _,
+            gc_interval: _,
+            since_gc: _,
+            num_cpus: _,
         } = self;
 
-        threads.visit_machine_values(visit);
-        tls.visit_machine_values(visit);
-        env_vars.visit_machine_values(visit);
-        dir_handler.visit_machine_values(visit);
-
-        if let Some(argc) = argc {
-            visit.visit(argc);
-        }
-        if let Some(argv) = argv {
-            visit.visit(argv);
-        }
-        if let Some(cmd_line) = cmd_line {
-            visit.visit(cmd_line);
-        }
-        for ptr in extern_statics.values().copied() {
-            visit.visit(ptr);
+        threads.visit_tags(visit);
+        tls.visit_tags(visit);
+        env_vars.visit_tags(visit);
+        dir_handler.visit_tags(visit);
+        file_handler.visit_tags(visit);
+        data_race.visit_tags(visit);
+        stacked_borrows.visit_tags(visit);
+        intptrcast.visit_tags(visit);
+        argc.visit_tags(visit);
+        argv.visit_tags(visit);
+        cmd_line.visit_tags(visit);
+        for ptr in extern_statics.values() {
+            ptr.visit_tags(visit);
         }
     }
 }

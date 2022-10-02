@@ -851,6 +851,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // We return success for now and override it in the timeout callback.
         this.write_scalar(Scalar::from_i32(0), dest)?;
 
+        struct Callback<'tcx> {
+            active_thread: ThreadId,
+            mutex_id: MutexId,
+            id: CondvarId,
+            dest: PlaceTy<'tcx, Provenance>,
+        }
+
+        impl<'tcx> VisitTags for Callback<'tcx> {
+            fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+                let Callback { active_thread: _, mutex_id: _, id: _, dest } = self;
+                dest.visit_tags(visit);
+            }
+        }
+
+        impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
+            fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+                // We are not waiting for the condvar any more, wait for the
+                // mutex instead.
+                reacquire_cond_mutex(ecx, self.active_thread, self.mutex_id)?;
+
+                // Remove the thread from the conditional variable.
+                ecx.condvar_remove_waiter(self.id, self.active_thread);
+
+                // Set the return value: we timed out.
+                let etimedout = ecx.eval_libc("ETIMEDOUT")?;
+                ecx.write_scalar(etimedout, &self.dest)?;
+
+                Ok(())
+            }
+        }
+
         // Register the timeout callback.
         let dest = dest.clone();
         this.register_timeout_callback(
@@ -882,39 +913,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // FIXME: delete interpreter state associated with this condvar.
 
         Ok(0)
-    }
-}
-
-struct Callback<'tcx> {
-    active_thread: ThreadId,
-    mutex_id: MutexId,
-    id: CondvarId,
-    dest: PlaceTy<'tcx, Provenance>,
-}
-
-impl<'tcx> VisitMachineValues for Callback<'tcx> {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
-        let Callback { active_thread: _, mutex_id: _, id: _, dest } = self;
-        if let Place::Ptr(place) = **dest {
-            visit.visit(place);
-        }
-    }
-}
-
-impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
-    fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-        // We are not waiting for the condvar any more, wait for the
-        // mutex instead.
-        reacquire_cond_mutex(ecx, self.active_thread, self.mutex_id)?;
-
-        // Remove the thread from the conditional variable.
-        ecx.condvar_remove_waiter(self.id, self.active_thread);
-
-        // Set the return value: we timed out.
-        let etimedout = ecx.eval_libc("ETIMEDOUT")?;
-        ecx.write_scalar(etimedout, &self.dest)?;
-
-        Ok(())
     }
 }
 

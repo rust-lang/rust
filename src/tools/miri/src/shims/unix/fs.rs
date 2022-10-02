@@ -256,6 +256,12 @@ pub struct FileHandler {
     handles: BTreeMap<i32, Box<dyn FileDescriptor>>,
 }
 
+impl VisitTags for FileHandler {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+        // All our FileDescriptor do not have any tags.
+    }
+}
+
 impl FileHandler {
     pub(crate) fn new(mute_stdout_stderr: bool) -> FileHandler {
         let mut handles: BTreeMap<_, Box<dyn FileDescriptor>> = BTreeMap::new();
@@ -462,12 +468,12 @@ impl Default for DirHandler {
     }
 }
 
-impl VisitMachineValues for DirHandler {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
+impl VisitTags for DirHandler {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
         let DirHandler { streams, next_id: _ } = self;
 
         for dir in streams.values() {
-            visit.visit(dir.entry);
+            dir.entry.visit_tags(visit);
         }
     }
 }

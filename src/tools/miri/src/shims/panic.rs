@@ -35,11 +35,12 @@ pub struct CatchUnwindData<'tcx> {
     ret: mir::BasicBlock,
 }
 
-impl VisitMachineValues for CatchUnwindData<'_> {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
-        let CatchUnwindData { catch_fn, data, dest: _, ret: _ } = self;
-        visit.visit(catch_fn);
-        visit.visit(data);
+impl VisitTags for CatchUnwindData<'_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let CatchUnwindData { catch_fn, data, dest, ret: _ } = self;
+        catch_fn.visit_tags(visit);
+        data.visit_tags(visit);
+        dest.visit_tags(visit);
     }
 }
 

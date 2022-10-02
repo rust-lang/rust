@@ -32,7 +32,7 @@ pub enum SchedulingAction {
 
 /// Timeout callbacks can be created by synchronization primitives to tell the
 /// scheduler that they should be called once some period of time passes.
-pub trait MachineCallback<'mir, 'tcx>: VisitMachineValues {
+pub trait MachineCallback<'mir, 'tcx>: VisitTags {
     fn call(&self, ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx>;
 }
 
@@ -183,25 +183,21 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
     }
 }
 
-impl VisitMachineValues for Thread<'_, '_> {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
+impl VisitTags for Thread<'_, '_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
         let Thread { panic_payload, last_error, stack, state: _, thread_name: _, join_status: _ } =
             self;
 
-        if let Some(payload) = panic_payload {
-            visit.visit(*payload);
-        }
-        if let Some(error) = last_error {
-            visit.visit(**error);
-        }
+        panic_payload.visit_tags(visit);
+        last_error.visit_tags(visit);
         for frame in stack {
-            frame.visit_machine_values(visit)
+            frame.visit_tags(visit)
         }
     }
 }
 
-impl VisitMachineValues for Frame<'_, '_, Provenance, FrameData<'_>> {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
+impl VisitTags for Frame<'_, '_, Provenance, FrameData<'_>> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
         let Frame {
             return_place,
             locals,
@@ -210,21 +206,20 @@ impl VisitMachineValues for Frame<'_, '_, Provenance, FrameData<'_>> {
             instance: _,
             return_to_block: _,
             loc: _,
+            // There are some private fields we cannot access; they contain no tags.
             ..
         } = self;
 
         // Return place.
-        if let Place::Ptr(mplace) = **return_place {
-            visit.visit(mplace);
-        }
+        return_place.visit_tags(visit);
         // Locals.
         for local in locals.iter() {
             if let LocalValue::Live(value) = &local.value {
-                visit.visit(value);
+                value.visit_tags(visit);
             }
         }
 
-        extra.visit_machine_values(visit);
+        extra.visit_tags(visit);
     }
 }
 
@@ -300,8 +295,8 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
     }
 }
 
-impl VisitMachineValues for ThreadManager<'_, '_> {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
+impl VisitTags for ThreadManager<'_, '_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
         let ThreadManager {
             threads,
             thread_local_alloc_ids,
@@ -312,13 +307,13 @@ impl VisitMachineValues for ThreadManager<'_, '_> {
         } = self;
 
         for thread in threads {
-            thread.visit_machine_values(visit);
+            thread.visit_tags(visit);
         }
-        for ptr in thread_local_alloc_ids.borrow().values().copied() {
-            visit.visit(ptr);
+        for ptr in thread_local_alloc_ids.borrow().values() {
+            ptr.visit_tags(visit);
         }
         for callback in timeout_callbacks.values() {
-            callback.callback.visit_machine_values(visit);
+            callback.callback.visit_tags(visit);
         }
     }
 }

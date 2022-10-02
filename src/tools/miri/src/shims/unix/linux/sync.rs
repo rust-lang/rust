@@ -189,6 +189,31 @@ pub fn futex<'tcx>(
                 // Register a timeout callback if a timeout was specified.
                 // This callback will override the return value when the timeout triggers.
                 if let Some(timeout_time) = timeout_time {
+                    struct Callback<'tcx> {
+                        thread: ThreadId,
+                        addr_usize: u64,
+                        dest: PlaceTy<'tcx, Provenance>,
+                    }
+
+                    impl<'tcx> VisitTags for Callback<'tcx> {
+                        fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+                            let Callback { thread: _, addr_usize: _, dest } = self;
+                            dest.visit_tags(visit);
+                        }
+                    }
+
+                    impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
+                        fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+                            this.unblock_thread(self.thread);
+                            this.futex_remove_waiter(self.addr_usize, self.thread);
+                            let etimedout = this.eval_libc("ETIMEDOUT")?;
+                            this.set_last_error(etimedout)?;
+                            this.write_scalar(Scalar::from_machine_isize(-1, this), &self.dest)?;
+
+                            Ok(())
+                        }
+                    }
+
                     let dest = dest.clone();
                     this.register_timeout_callback(
                         thread,
@@ -251,31 +276,4 @@ pub fn futex<'tcx>(
     }
 
     Ok(())
-}
-
-struct Callback<'tcx> {
-    thread: ThreadId,
-    addr_usize: u64,
-    dest: PlaceTy<'tcx, Provenance>,
-}
-
-impl<'tcx> VisitMachineValues for Callback<'tcx> {
-    fn visit_machine_values(&self, visit: &mut ProvenanceVisitor) {
-        let Callback { thread: _, addr_usize: _, dest } = self;
-        if let Place::Ptr(place) = **dest {
-            visit.visit(place);
-        }
-    }
-}
-
-impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
-    fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-        this.unblock_thread(self.thread);
-        this.futex_remove_waiter(self.addr_usize, self.thread);
-        let etimedout = this.eval_libc("ETIMEDOUT")?;
-        this.set_last_error(etimedout)?;
-        this.write_scalar(Scalar::from_machine_isize(-1, this), &self.dest)?;
-
-        Ok(())
-    }
 }
