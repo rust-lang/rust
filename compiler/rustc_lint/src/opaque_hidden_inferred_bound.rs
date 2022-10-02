@@ -45,7 +45,7 @@ declare_lint! {
     /// consider the return type to be well-formed with this lint. It can be
     /// fixed by changing `impl Sized` into `impl Sized + Send`.
     pub OPAQUE_HIDDEN_INFERRED_BOUND,
-    Warn,
+    Deny,
     "detects the use of nested `impl Trait` types in associated type bounds that are not general enough"
 }
 
