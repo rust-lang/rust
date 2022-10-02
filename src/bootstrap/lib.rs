@@ -229,6 +229,8 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "span_locations", None),
     (Some(Mode::ToolRustc), "span_locations", None),
+    // Can be passed in RUSTFLAGS to prevent direct syscalls in rustix.
+    (None, "rustix_use_libc", None),
 ];
 
 /// A structure representing a Rust compiler.
