@@ -797,7 +797,10 @@ fn make_test_closure(
     let config = config.clone();
     let testpaths = testpaths.clone();
     let revision = revision.cloned();
-    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths, revision.as_deref())))
+    test::DynTestFn(Box::new(move || {
+        runtest::run(config, &testpaths, revision.as_deref());
+        Ok(())
+    }))
 }
 
 /// Returns `true` if the given target is an Android target for the

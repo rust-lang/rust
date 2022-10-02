@@ -1134,6 +1134,7 @@ impl Tester for Collector {
 
                     panic::resume_unwind(Box::new(()));
                 }
+                Ok(())
             })),
         });
     }
