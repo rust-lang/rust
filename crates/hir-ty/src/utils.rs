@@ -220,23 +220,30 @@ impl Generics {
         })
     }
 
-    /// Iterator over types and const params of parent, then self.
+    /// Iterator over types and const params of self, then parent.
     pub(crate) fn iter<'a>(
         &'a self,
     ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
         let to_toc_id = |it: &'a Generics| {
             move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p)
         };
-        self.parent_generics()
-            .into_iter()
-            .flat_map(move |it| it.params.iter().map(to_toc_id(it)))
-            .chain(self.params.iter().map(to_toc_id(self)))
+        self.params.iter().map(to_toc_id(self)).chain(self.iter_parent())
+    }
+
+    /// Iterate over types and const params without parent params.
+    pub(crate) fn iter_self<'a>(
+        &'a self,
+    ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
+        let to_toc_id = |it: &'a Generics| {
+            move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p)
+        };
+        self.params.iter().map(to_toc_id(self))
     }
 
     /// Iterator over types and const params of parent.
     pub(crate) fn iter_parent<'a>(
         &'a self,
-    ) -> impl Iterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
+    ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
         self.parent_generics().into_iter().flat_map(|it| {
             let to_toc_id =
                 move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p);
@@ -244,10 +251,16 @@ impl Generics {
         })
     }
 
+    /// Returns total number of generic parameters in scope, including those from parent.
     pub(crate) fn len(&self) -> usize {
         let parent = self.parent_generics().map_or(0, Generics::len);
         let child = self.params.type_or_consts.len();
         parent + child
+    }
+
+    /// Returns numbers of generic parameters excluding those from parent.
+    pub(crate) fn len_self(&self) -> usize {
+        self.params.type_or_consts.len()
     }
 
     /// (parent total, self param, type param list, const param list, impl trait)
@@ -274,10 +287,12 @@ impl Generics {
         if param.parent == self.def {
             let (idx, (_local_id, data)) =
                 self.params.iter().enumerate().find(|(_, (idx, _))| *idx == param.local_id)?;
-            let parent_len = self.parent_generics().map_or(0, Generics::len);
-            Some((parent_len + idx, data))
+            Some((idx, data))
         } else {
-            self.parent_generics().and_then(|g| g.find_param(param))
+            self.parent_generics()
+                .and_then(|g| g.find_param(param))
+                // Remember that parent parameters come after parameters for self.
+                .map(|(idx, data)| (self.len_self() + idx, data))
         }
     }
 

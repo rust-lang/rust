@@ -1641,6 +1641,19 @@ pub enum ValueTyDefId {
 }
 impl_from!(FunctionId, StructId, UnionId, EnumVariantId, ConstId, StaticId for ValueTyDefId);
 
+impl ValueTyDefId {
+    pub(crate) fn to_generic_def_id(self) -> Option<GenericDefId> {
+        match self {
+            Self::FunctionId(id) => Some(id.into()),
+            Self::StructId(id) => Some(id.into()),
+            Self::UnionId(id) => Some(id.into()),
+            Self::EnumVariantId(var) => Some(var.parent.into()),
+            Self::ConstId(id) => Some(id.into()),
+            Self::StaticId(_) => None,
+        }
+    }
+}
+
 /// Build the declared type of an item. This depends on the namespace; e.g. for
 /// `struct Foo(usize)`, we have two types: The type of the struct itself, and
 /// the constructor function `(usize) -> Foo` which lives in the values
