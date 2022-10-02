@@ -1,5 +1,6 @@
 use clippy_utils::consts::constant_simple;
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_integer_literal;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::source_map::Span;
@@ -50,11 +51,9 @@ impl Context {
                 hir::BinOpKind::Div | hir::BinOpKind::Rem => match &r.kind {
                     hir::ExprKind::Lit(_lit) => (),
                     hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
-                        if let hir::ExprKind::Lit(lit) = &expr.kind {
-                            if let rustc_ast::ast::LitKind::Int(1, _) = lit.node {
-                                span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
-                                self.expr_id = Some(expr.hir_id);
-                            }
+                        if is_integer_literal(expr, 1) {
+                            span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
+                            self.expr_id = Some(expr.hir_id);
                         }
                     },
                     _ => {

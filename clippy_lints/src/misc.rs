@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_opt};
 use if_chain::if_chain;
-use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
@@ -15,7 +14,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{ExpnKind, Span};
 
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, in_constant, iter_input_pats, last_path_segment, SpanlessEq};
+use clippy_utils::{get_parent_expr, in_constant, is_integer_literal, iter_input_pats, last_path_segment, SpanlessEq};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -314,8 +313,7 @@ fn non_macro_local(cx: &LateContext<'_>, res: def::Res) -> bool {
 fn check_cast(cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &hir::Ty<'_>) {
     if_chain! {
         if let TyKind::Ptr(ref mut_ty) = ty.kind;
-        if let ExprKind::Lit(ref lit) = e.kind;
-        if let LitKind::Int(0, _) = lit.node;
+        if is_integer_literal(e, 0);
         if !in_constant(cx, e.hir_id);
         then {
             let (msg, sugg_fn) = match mut_ty.mutbl {

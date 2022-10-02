@@ -44,25 +44,19 @@ impl ArithmeticSideEffects {
     /// Assuming that `expr` is a literal integer, checks operators (+=, -=, *, /) in a
     /// non-constant environment that won't overflow.
     fn has_valid_op(op: &Spanned<hir::BinOpKind>, expr: &hir::Expr<'_>) -> bool {
-        if let hir::BinOpKind::Add | hir::BinOpKind::Sub = op.node
-            && let hir::ExprKind::Lit(ref lit) = expr.kind
-            && let ast::LitKind::Int(0, _) = lit.node
+        if let hir::ExprKind::Lit(ref lit) = expr.kind &&
+            let ast::LitKind::Int(value, _) = lit.node
         {
-            return true;
+            match (&op.node, value) {
+                (hir::BinOpKind::Add | hir::BinOpKind::Sub, 0) |
+                (hir::BinOpKind::Mul, 0 | 1) => true,
+                (hir::BinOpKind::Div | hir::BinOpKind::Rem, 0) => false,
+                (hir::BinOpKind::Div | hir::BinOpKind::Rem, _) => true,
+                _ => false,
+            }
+        } else {
+            false
         }
-        if let hir::BinOpKind::Div | hir::BinOpKind::Rem = op.node
-            && let hir::ExprKind::Lit(ref lit) = expr.kind
-            && !matches!(lit.node, ast::LitKind::Int(0, _))
-        {
-            return true;
-        }
-        if let hir::BinOpKind::Mul = op.node
-            && let hir::ExprKind::Lit(ref lit) = expr.kind
-            && let ast::LitKind::Int(0 | 1, _) = lit.node
-        {
-            return true;
-        }
-        false
     }
 
     /// Checks if the given `expr` has any of the inner `allowed` elements.
