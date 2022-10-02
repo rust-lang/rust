@@ -96,6 +96,7 @@ previous source code:
 
 ```rust
 #![feature(doc_auto_cfg)]
+#![doc(auto_cfg)] // To enable the "auto_cfg" discovery.
 
 /// Token struct that can only be used on Windows.
 #[cfg(any(windows, doc))]
