@@ -13,11 +13,37 @@ declare_lint! {
     /// `impl Trait` in associated type bounds are not written generally enough
     /// to satisfy the bounds of the associated type. This functionality was
     /// removed in #97346, but then rolled back in #99860 because it was made
-    /// into a hard error too quickly.
+    /// into a hard error too quickly and caused regressions.
     ///
-    /// We plan on reintroducing this as a hard error, but in the mean time, this
-    /// lint serves to warn and suggest fixes for any use-cases which rely on this
-    /// behavior.
+    /// We plan on reintroducing this as a hard error, but in the mean time,
+    /// this lint serves to warn and suggest fixes for any use-cases which rely
+    /// on this behavior.
+    ///
+    /// ### Example
+    ///
+    /// ```
+    /// trait Trait {
+    ///     type Assoc: Send;
+    /// }
+    ///
+    /// struct Struct;
+    ///
+    /// impl Trait for Struct {
+    ///     type Assoc = i32;
+    /// }
+    ///
+    /// fn test() -> impl Trait<Assoc = impl Sized> {
+    ///     Struct
+    /// }
+    /// ```
+    ///
+    /// In this example, `test` declares that the associated type `Assoc` for
+    /// `impl Trait` is `impl Sized`, which does not satisfy the `Send` bound
+    /// on the associated type.
+    ///
+    /// Although the hidden type, `i32` does satisfy this bound, we do not
+    /// consider the return type to be well-formed with this lint. It can be
+    /// fixed by changing `impl Sized` into `impl Sized + Send`.
     pub OPAQUE_HIDDEN_INFERRED_BOUND,
     Warn,
     "detects the use of nested `impl Trait` types in associated type bounds that are not general enough"
