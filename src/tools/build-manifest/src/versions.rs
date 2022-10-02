@@ -17,7 +17,7 @@ macro_rules! pkg_type {
         }
 
         impl PkgType {
-            fn is_preview(&self) -> bool {
+            pub(crate) fn is_preview(&self) -> bool {
                 match self {
                     $( $( $($is_preview)? PkgType::$variant => true, )? )+
                     _ => false,
@@ -32,7 +32,7 @@ macro_rules! pkg_type {
             }
 
             /// First part of the tarball name.
-            fn tarball_component_name(&self) -> &str {
+            pub(crate) fn tarball_component_name(&self) -> &str {
                 match self {
                     $( PkgType::$variant => $component,)+
                     PkgType::Other(component) => component,
