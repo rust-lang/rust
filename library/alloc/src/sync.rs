@@ -1980,33 +1980,26 @@ impl<T: ?Sized> Weak<T> {
         // We use a CAS loop to increment the strong count instead of a
         // fetch_add as this function should never take the reference count
         // from zero to one.
-        let inner = self.inner()?;
-
-        // Relaxed load because any write of 0 that we can observe
-        // leaves the field in a permanently zero state (so a
-        // "stale" read of 0 is fine), and any other value is
-        // confirmed via the CAS below.
-        let mut n = inner.strong.load(Relaxed);
-
-        loop {
-            if n == 0 {
-                return None;
-            }
-
-            // See comments in `Arc::clone` for why we do this (for `mem::forget`).
-            if n > MAX_REFCOUNT {
-                abort();
-            }
-
+        self.inner()?
+            .strong
             // Relaxed is fine for the failure case because we don't have any expectations about the new state.
             // Acquire is necessary for the success case to synchronise with `Arc::new_cyclic`, when the inner
             // value can be initialized after `Weak` references have already been created. In that case, we
             // expect to observe the fully initialized value.
-            match inner.strong.compare_exchange_weak(n, n + 1, Acquire, Relaxed) {
-                Ok(_) => return Some(unsafe { Arc::from_inner(self.ptr) }), // null checked above
-                Err(old) => n = old,
-            }
-        }
+            .fetch_update(Acquire, Relaxed, |n| {
+                // Any write of 0 we can observe leaves the field in permanently zero state.
+                if n == 0 {
+                    return None;
+                }
+                // See comments in `Arc::clone` for why we do this (for `mem::forget`).
+                if n > MAX_REFCOUNT {
+                    abort();
+                }
+                Some(n + 1)
+            })
+            .ok()
+            // null checked above
+            .map(|_| unsafe { Arc::from_inner(self.ptr) })
     }
 
     /// Gets the number of strong (`Arc`) pointers pointing to this allocation.
