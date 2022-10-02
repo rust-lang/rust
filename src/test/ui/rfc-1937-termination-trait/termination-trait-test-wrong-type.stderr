@@ -13,7 +13,7 @@ LL | | }
 note: required by a bound in `assert_test_result`
   --> $SRC_DIR/test/src/lib.rs:LL:COL
    |
-LL | pub fn assert_test_result<T: Termination>(result: T) {
+LL | pub fn assert_test_result<T: Termination>(result: T) -> Result<(), String> {
    |                              ^^^^^^^^^^^ required by this bound in `assert_test_result`
    = note: this error originates in the attribute macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
