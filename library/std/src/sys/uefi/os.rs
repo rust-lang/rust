@@ -10,7 +10,7 @@ use crate::os::uefi;
 use crate::path::{self, PathBuf};
 use crate::{error::Error as StdError, os::uefi::ffi::OsStringExt};
 
-// Return EFI_ABORTED as Status
+// Return EFI_SUCCESS as Status
 pub fn errno() -> i32 {
     r_efi::efi::Status::SUCCESS.as_usize() as i32
 }
@@ -169,7 +169,7 @@ pub fn unsetenv(key: &OsStr) -> io::Result<()> {
 }
 
 pub fn temp_dir() -> PathBuf {
-    panic!("no filesystem on this platform")
+    panic!("no supported on this platform")
 }
 
 pub fn home_dir() -> Option<PathBuf> {

@@ -123,6 +123,9 @@ impl From<r_efi::system::Time> for SystemTime {
 
 // FIXME: Don't know how to use Daylight Saving thing
 fn uefi_time_to_duration(t: r_efi::system::Time) -> Duration {
+    assert!(t.month <= 12);
+    assert!(t.month != 0);
+
     const MONTH_DAYS: [u64; 12] = [0, 31, 59, 90, 120, 151, 181, 211, 242, 272, 303, 333];
 
     let localtime_epoch: u64 = u64::from(t.year - 1970) * SEC_IN_YEAR

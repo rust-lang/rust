@@ -114,7 +114,7 @@ pub use core::time::TryFromFloatSecsError;
 /// | SOLID     | `get_tim`                                                            |
 /// | WASI      | [__wasi_clock_time_get (Monotonic Clock)]                            |
 /// | Windows   | [QueryPerformanceCounter]                                            |
-/// | UEFI      | EFI_RUNTIME_SERVICES->GetTime()                                      |
+/// | UEFI      | EFI_TIMESTAMP_PROTOCOL->GetTimestamp()                               |
 ///
 /// [currently]: crate::io#platform-specific-behavior
 /// [QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter

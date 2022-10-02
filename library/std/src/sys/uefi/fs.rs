@@ -400,12 +400,19 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     let open_mode = file::MODE_READ | file::MODE_WRITE;
     let file = uefi_fs::FileProtocol::from_path(old, open_mode, 0)?;
 
-    // Delete if new already exists
-    if let Ok(f) = uefi_fs::FileProtocol::from_path(new, open_mode, 0) {
-        f.delete()?;
+    // If tbe device prefix is same or both path are relative (in which case None will be
+    // returned), then we can just use `set_file_name`.
+    if super::path::device_prefix(old.as_os_str()) == super::path::device_prefix(new.as_os_str()) {
+        // Delete if new already exists
+        if let Ok(f) = uefi_fs::FileProtocol::from_path(new, open_mode, 0) {
+            f.delete()?;
+        }
+        file.set_file_name(new.as_os_str())
+    } else {
+        // Use simple copy if the new path is in a different device.
+        copy(old, new)?;
+        file.delete()
     }
-
-    file.set_file_name(new.as_os_str())
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
@@ -475,9 +482,23 @@ pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
     unsupported()
 }
 
-// FIXME: Find an efficient implementation
-pub fn copy(_from: &Path, _to: &Path) -> io::Result<u64> {
-    unsupported()
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    let from_file = uefi_fs::FileProtocol::from_path(from, file::MODE_READ, 0)?;
+    let to_file = uefi_fs::FileProtocol::from_path(
+        to,
+        file::MODE_READ | file::MODE_WRITE | file::MODE_CREATE,
+        0,
+    )?;
+    // Truncate destination file.
+    to_file.set_file_size(0)?;
+
+    let info = from_file.get_file_info()?;
+    let file_size = unsafe { (*info.as_ptr()).file_size };
+    let mut buffer = Vec::<u8>::with_capacity(file_size as usize);
+    let mut buffer_size = buffer.capacity();
+    from_file.read(&mut buffer, &mut buffer_size)?;
+    unsafe { buffer.set_len(buffer_size) };
+    Ok(to_file.write(&buffer)? as u64)
 }
 
 // Liberal Cascade Delete
