@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::get_parent_expr;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
@@ -85,22 +86,38 @@ pub(super) fn check<'tcx>(
     false
 }
 
-fn lint_unnecessary_cast(cx: &LateContext<'_>, expr: &Expr<'_>, literal_str: &str, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+fn lint_unnecessary_cast(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    raw_literal_str: &str,
+    cast_from: Ty<'_>,
+    cast_to: Ty<'_>,
+) {
     let literal_kind_name = if cast_from.is_integral() { "integer" } else { "float" };
-    let replaced_literal;
-    let matchless = if literal_str.contains(['(', ')']) {
-        replaced_literal = literal_str.replace(['(', ')'], "");
-        &replaced_literal
-    } else {
-        literal_str
+    // first we remove all matches so `-(1)` become `-1`, and remove trailing dots, so `1.` become `1`
+    let literal_str = raw_literal_str
+        .replace(['(', ')'], "")
+        .trim_end_matches('.')
+        .to_string();
+    // we know need to check if the parent is a method call, to add parenthesis accordingly (eg:
+    // (-1).foo() instead of -1.foo())
+    let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr)
+        && let ExprKind::MethodCall(..) = parent_expr.kind
+        && literal_str.starts_with('-')
+        {
+            format!("({literal_str}_{cast_to})")
+
+        } else {
+            format!("{literal_str}_{cast_to}")
     };
+
     span_lint_and_sugg(
         cx,
         UNNECESSARY_CAST,
         expr.span,
         &format!("casting {literal_kind_name} literal to `{cast_to}` is unnecessary"),
         "try",
-        format!("{}_{cast_to}", matchless.trim_end_matches('.')),
+        sugg,
         Applicability::MachineApplicable,
     );
 }
