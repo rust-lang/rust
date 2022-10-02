@@ -19,6 +19,7 @@ pub fn target() -> Target {
                 | SanitizerSet::MEMTAG
                 | SanitizerSet::SHADOWCALLSTACK
                 | SanitizerSet::ADDRESS,
+            supports_xray: true,
             ..super::android_base::opts()
         },
     }

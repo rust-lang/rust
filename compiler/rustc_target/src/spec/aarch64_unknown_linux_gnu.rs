@@ -17,6 +17,7 @@ pub fn target() -> Target {
                 | SanitizerSet::MEMTAG
                 | SanitizerSet::THREAD
                 | SanitizerSet::HWADDRESS,
+            supports_xray: true,
             ..super::linux_gnu_base::opts()
         },
     }

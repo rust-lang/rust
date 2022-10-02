@@ -3,6 +3,7 @@ use crate::spec::{Target, TargetOptions};
 pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
     base.max_atomic_width = Some(128);
+    base.supports_xray = true;
 
     Target {
         llvm_target: "aarch64-unknown-linux-musl".into(),
