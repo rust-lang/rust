@@ -922,7 +922,7 @@ declare_clippy_lint! {
     /// ```rust
     /// Some(0).filter(|&x| x % 2 == 0);
     /// ```
-    #[clippy::version = "1.65.0"]
+    #[clippy::version = "1.66.0"]
     pub MANUAL_FILTER,
     complexity,
     "reimplentation of `filter`"
