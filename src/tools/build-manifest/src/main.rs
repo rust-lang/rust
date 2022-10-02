@@ -365,12 +365,11 @@ impl Builder {
         let mut rename = |from: &str, to: &str| {
             manifest.renames.insert(from.to_owned(), Rename { to: to.to_owned() })
         };
-        rename("rls", "rls-preview");
-        rename("rustfmt", "rustfmt-preview");
-        rename("clippy", "clippy-preview");
-        rename("miri", "miri-preview");
-        rename("rust-docs-json", "rust-docs-json-preview");
-        rename("rust-analyzer", "rust-analyzer-preview");
+        for pkg in PkgType::all() {
+            if pkg.is_preview() {
+                rename(pkg.tarball_component_name(), &pkg.manifest_component_name());
+            }
+        }
     }
 
     fn rust_package(&mut self, manifest: &Manifest) -> Package {
