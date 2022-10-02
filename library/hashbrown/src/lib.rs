@@ -14,7 +14,6 @@
     feature = "nightly",
     feature(
         test,
-        const_fn_trait_bound,
         core_intrinsics,
         dropck_eyepatch,
         min_specialization,
