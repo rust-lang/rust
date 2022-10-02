@@ -147,21 +147,32 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .into_iter(),
             )
             .collect();
-        // This feature is enabled by default starting the 2024 edition.
-        self.cx.cache.doc_auto_cfg_active = self.cx.tcx.sess.edition() > Edition::Edition2021;
-        if let Some(attr) = self
-            .cx
-            .tcx
-            .hir()
-            .attrs(CRATE_HIR_ID)
-            .iter()
-            .filter(|attr| attr.has_name(sym::doc))
-            .flat_map(|attr| attr.meta_item_list().into_iter().flatten())
-            .find(|attr| attr.has_name(sym::auto_cfg) || attr.has_name(sym::no_auto_cfg))
-        {
-            // If we find one of the two attributes, we update the default value of
-            // `doc_auto_cfg_active`.
-            self.cx.cache.doc_auto_cfg_active = attr.has_name(sym::auto_cfg);
+        if self.cx.tcx.features().doc_auto_cfg {
+            // This feature is enabled by default starting the 2024 edition.
+            self.cx.cache.doc_auto_cfg_active = self.cx.tcx.sess.edition() > Edition::Edition2021;
+            if let Some(attr) = self
+                .cx
+                .tcx
+                .hir()
+                .attrs(CRATE_HIR_ID)
+                .iter()
+                .filter(|attr| attr.has_name(sym::doc))
+                .flat_map(|attr| attr.meta_item_list().into_iter().flatten())
+                .find(|attr| attr.has_name(sym::auto_cfg) || attr.has_name(sym::no_auto_cfg))
+            {
+                // If we find one of the two attributes, we update the default value of
+                // `doc_auto_cfg_active`.
+                self.cx.cache.doc_auto_cfg_active = attr.has_name(sym::auto_cfg);
+            } else {
+                self.cx
+                    .sess()
+                    .diagnostic()
+                    .struct_warn(
+                        "the `doc_auto_cfg` feature is used but `#![doc(auto_cfg)]` isn't so it \
+                         won't do anything",
+                    )
+                    .emit();
+            }
         }
 
         self.cx.cache.exact_paths = self.exact_paths;
