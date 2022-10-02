@@ -1,6 +1,6 @@
 // aux-build:option_helpers.rs
-
 #![warn(clippy::map_unwrap_or)]
+#![allow(clippy::uninlined_format_args)]
 
 #[macro_use]
 extern crate option_helpers;

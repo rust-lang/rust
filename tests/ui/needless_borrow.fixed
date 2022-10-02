@@ -1,9 +1,9 @@
 // run-rustfix
-
 #![feature(custom_inner_attributes, lint_reasons)]
 
 #[warn(clippy::all, clippy::needless_borrow)]
-#[allow(unused_variables, clippy::unnecessary_mut_passed)]
+#[allow(unused_variables)]
+#[allow(clippy::uninlined_format_args, clippy::unnecessary_mut_passed)]
 fn main() {
     let a = 5;
     let ref_a = &a;

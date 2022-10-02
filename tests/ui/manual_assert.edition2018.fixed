@@ -4,7 +4,8 @@
 // run-rustfix
 
 #![warn(clippy::manual_assert)]
-#![allow(dead_code, unused_doc_comments, clippy::nonminimal_bool)]
+#![allow(dead_code, unused_doc_comments)]
+#![allow(clippy::nonminimal_bool, clippy::uninlined_format_args)]
 
 macro_rules! one {
     () => {
