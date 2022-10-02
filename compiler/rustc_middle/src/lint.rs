@@ -274,29 +274,28 @@ pub fn explain_lint_level_source(
     }
 }
 
-pub fn struct_lint_level<'s, 'd>(
-    sess: &'s Session,
+pub fn struct_lint_level(
+    sess: &Session,
     lint: &'static Lint,
     level: Level,
     src: LintLevelSource,
     span: Option<MultiSpan>,
     msg: impl Into<DiagnosticMessage>,
-    decorate: impl 'd
-    + for<'a, 'b> FnOnce(
+    decorate: impl for<'a, 'b> FnOnce(
         &'b mut DiagnosticBuilder<'a, ()>,
     ) -> &'b mut DiagnosticBuilder<'a, ()>,
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
-    fn struct_lint_level_impl<'s, 'd>(
-        sess: &'s Session,
+    fn struct_lint_level_impl(
+        sess: &Session,
         lint: &'static Lint,
         level: Level,
         src: LintLevelSource,
         span: Option<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
         decorate: Box<
-            dyn 'd
+            dyn '_
                 + for<'a, 'b> FnOnce(
                     &'b mut DiagnosticBuilder<'a, ()>,
                 ) -> &'b mut DiagnosticBuilder<'a, ()>,
