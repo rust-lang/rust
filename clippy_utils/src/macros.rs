@@ -861,10 +861,12 @@ impl<'tcx> FormatArgsExpn<'tcx> {
             let e_ctxt = e.span.ctxt();
             if e_ctxt == expr.span.ctxt() {
                 ControlFlow::Continue(Descend::Yes)
-            } else if e_ctxt.outer_expn().is_descendant_of(expn_id)
-                && let Some(args) = FormatArgsExpn::parse(cx, e)
-            {
-                ControlFlow::Break(args)
+            } else if e_ctxt.outer_expn().is_descendant_of(expn_id) {
+                if let Some(args) = FormatArgsExpn::parse(cx, e) {
+                    ControlFlow::Break(args)
+                } else {
+                    ControlFlow::Continue(Descend::No)
+                }
             } else {
                 ControlFlow::Continue(Descend::No)
             }
