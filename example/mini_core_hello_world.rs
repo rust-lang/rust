@@ -228,6 +228,7 @@ fn main() {
     } as Box<dyn SomeTrait>;
 
     const FUNC_REF: Option<fn()> = Some(main);
+    #[allow(unreachable_code)]
     match FUNC_REF {
         Some(_) => {},
         None => assert!(false),
