@@ -1,5 +1,6 @@
 // Checks that the last `-Z instrument-xray` option wins.
 //
+// needs-xray
 // compile-flags: -Z instrument-xray=always
 // compile-flags: -Z instrument-xray=never
 
