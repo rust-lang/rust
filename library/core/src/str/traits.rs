@@ -507,7 +507,6 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 ///
 /// ```
 /// use std::str::FromStr;
-/// use std::num::ParseIntError;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Point {
@@ -515,18 +514,21 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 ///     y: i32
 /// }
 ///
+/// #[derive(Debug, PartialEq, Eq)]
+/// struct ParsePointError;
+///
 /// impl FromStr for Point {
-///     type Err = ParseIntError;
+///     type Err = ParsePointError;
 ///
 ///     fn from_str(s: &str) -> Result<Self, Self::Err> {
 ///         let (x, y) = s
 ///             .strip_prefix('(')
 ///             .and_then(|s| s.strip_suffix(')'))
 ///             .and_then(|s| s.split_once(','))
-///             .unwrap();
+///             .ok_or(ParsePointError)?;
 ///
-///         let x_fromstr = x.parse::<i32>()?;
-///         let y_fromstr = y.parse::<i32>()?;
+///         let x_fromstr = x.parse::<i32>().map_err(|_| ParsePointError)?;
+///         let y_fromstr = y.parse::<i32>().map_err(|_| ParsePointError)?;
 ///
 ///         Ok(Point { x: x_fromstr, y: y_fromstr })
 ///     }
@@ -538,6 +540,8 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// // Implicit calls, through parse
 /// assert_eq!("(1,2)".parse(), expected);
 /// assert_eq!("(1,2)".parse::<Point>(), expected);
+/// // Invalid input string
+/// assert!(Point::from_str("(1 2)").is_err());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromStr: Sized {
