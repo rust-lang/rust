@@ -538,7 +538,9 @@ fn map_lib_features(
                 becoming_feature = None;
                 if line.contains("rustc_const_unstable(") {
                     // `const fn` features are handled specially.
-                    let feature_name = match find_attr_val(line, "feature") {
+                    let feature_name = match find_attr_val(line, "feature").or_else(|| {
+                        iter_lines.peek().and_then(|next| find_attr_val(next.1, "feature"))
+                    }) {
                         Some(name) => name,
                         None => err!("malformed stability attribute: missing `feature` key"),
                     };
