@@ -458,11 +458,9 @@ impl<'tcx> AdtDef<'tcx> {
                     Some(Discr { val: b, ty })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
-                    crate::mir::interpret::struct_error(
-                        tcx.at(tcx.def_span(expr_did)),
-                        "constant evaluation of enum discriminant resulted in non-integer",
-                    )
-                    .emit();
+                    tcx.sess.emit_err(crate::error::ConstEvalNonIntError {
+                        span: tcx.def_span(expr_did),
+                    });
                     None
                 }
             }

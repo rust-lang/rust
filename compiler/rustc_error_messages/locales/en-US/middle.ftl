@@ -15,3 +15,6 @@ middle_previous_use_here =
 middle_limit_invalid =
     `limit` must be a non-negative integer
     .label = {$error_str}
+
+middle_const_eval_non_int =
+    constant evaluation of enum discriminant resulted in non-integer
