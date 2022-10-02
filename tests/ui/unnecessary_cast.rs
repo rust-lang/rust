@@ -103,4 +103,12 @@ mod fixable {
         #[allow(clippy::precedence)]
         let _: f64 = -(8.0 as f64).exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
     }
+
+    fn issue_9562_non_literal() {
+        fn foo() -> f32 {
+            0.
+        }
+
+        let _num = foo() as f32;
+    }
 }

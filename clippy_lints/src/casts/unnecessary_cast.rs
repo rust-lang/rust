@@ -31,8 +31,10 @@ pub(super) fn check<'tcx>(
         }
     }
 
+    let cast_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
+
     if let Some(lit) = get_numeric_literal(cast_expr) {
-        let literal_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
+        let literal_str = cast_str;
 
         if_chain! {
             if let LitKind::Int(n, _) = lit.node;
@@ -81,6 +83,17 @@ pub(super) fn check<'tcx>(
                 }
             },
         }
+    } else if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
+        span_lint_and_sugg(
+            cx,
+            UNNECESSARY_CAST,
+            expr.span,
+            &format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
+            "try",
+            cast_str,
+            Applicability::MachineApplicable,
+        );
+        return true;
     }
 
     false
