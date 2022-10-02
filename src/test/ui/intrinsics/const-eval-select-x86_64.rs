@@ -1,6 +1,5 @@
 // run-pass
 // only-x86_64
-// ignore-uefi llvm bug
 
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]

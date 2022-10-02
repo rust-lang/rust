@@ -6,6 +6,7 @@
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-fuchsia must translate zircon signal to SIGABRT, FIXME (#58590)
+// ignore-uefi overflowing stack restarts qemu
 
 #![feature(core_intrinsics)]
 #![feature(rustc_private)]
@@ -61,8 +62,10 @@ fn main() {
     } else if args.len() > 1 && args[1] == "loud-thread" {
         thread::spawn(loud_recurse).join();
     } else {
-        let mut modes =
-            if !cfg!(target_os = "uefi") { vec!["silent-thread", "loud-thread"] } else { vec![] };
+        let mut modes = vec![
+            "silent-thread",
+            "loud-thread"
+        ];
 
         // On linux it looks like the main thread can sometimes grow its stack
         // basically without bounds, so we only test the child thread cases

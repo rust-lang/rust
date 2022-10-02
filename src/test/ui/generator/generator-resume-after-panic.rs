@@ -2,7 +2,6 @@
 // needs-unwind
 // error-pattern:generator resumed after panicking
 // ignore-emscripten no processes
-// ignore-uefi no unwind
 
 // Test that we get the correct message for resuming a panicked generator.
 

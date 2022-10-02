@@ -9,8 +9,6 @@
 // ignore-sgx no processes
 // ignore-vxworks no 'cat' and 'sleep'
 // ignore-fuchsia no 'cat'
-// ignore-uef no kill support
-// ignore-uefi no kill support
 
 // N.B., these tests kill child processes. Valgrind sees these children as leaking
 // memory, which makes for some *confusing* logs. That's why these are here

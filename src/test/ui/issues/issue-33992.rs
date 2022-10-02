@@ -1,6 +1,5 @@
 // run-pass
 // ignore-windows
-// ignore-uefi
 // ignore-macos
 // ignore-emscripten common linkage not implemented right now
 

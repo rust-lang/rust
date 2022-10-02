@@ -1,6 +1,5 @@
 // needs-asm-support
 // only-x86_64
-// ignore-uefi sse is disabled here
 // Make sure rustc doesn't ICE on asm! for a foreign architecture.
 
 #![crate_type = "rlib"]

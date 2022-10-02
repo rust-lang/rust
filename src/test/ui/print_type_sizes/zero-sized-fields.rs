@@ -1,7 +1,6 @@
 // compile-flags: -Z print-type-sizes
 // build-pass
 // ignore-pass
-// ignore-uefi Cannot be fixed until a better way to hook into rust start comes along
 
 // At one point, zero-sized fields such as those in this file were causing
 // incorrect output from `-Z print-type-sizes`.

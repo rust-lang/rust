@@ -1,7 +1,6 @@
 // run-pass
 #![allow(dead_code)]
 // ignore-wasm32-bare no libc to test ffi with
-// ignore-uefi no rust_test_helpers
 
 #[repr(C)]
 #[derive(Copy, Clone)]

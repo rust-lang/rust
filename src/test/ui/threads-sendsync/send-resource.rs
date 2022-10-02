@@ -5,7 +5,6 @@
 
 // pretty-expanded FIXME #23616
 // ignore-emscripten no threads support
-// ignore-uefi no threads support
 
 use std::thread;
 use std::sync::mpsc::channel;

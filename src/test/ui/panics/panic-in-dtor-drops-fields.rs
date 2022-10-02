@@ -4,7 +4,6 @@
 #![allow(non_upper_case_globals)]
 
 // ignore-emscripten no threads support
-// ignore-uefi no threads support
 
 use std::thread;
 

@@ -1,5 +1,4 @@
 // run-pass
-// ignore-uefi sse is disabled
 
 #![allow(stable_features)]
 #![feature(cfg_target_feature)]

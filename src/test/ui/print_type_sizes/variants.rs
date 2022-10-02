@@ -1,6 +1,5 @@
 // compile-flags: -Z print-type-sizes
 // build-pass
-// ignore-uefi Cannot be fixed until a better way to hook into rust start comes along
 
 // This file illustrates two things:
 //

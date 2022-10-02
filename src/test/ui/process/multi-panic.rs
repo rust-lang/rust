@@ -1,7 +1,6 @@
 // run-pass
 // ignore-emscripten no processes
 // ignore-sgx no processes
-// ignore-uefi no unwind
 // needs-unwind
 
 fn check_for_no_backtrace(test: std::process::Output) {

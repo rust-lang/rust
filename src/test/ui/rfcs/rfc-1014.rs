@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 // ignore-wasm32-bare no libc
 // ignore-sgx no libc
-// ignore-uefi no libc
 
 #![feature(rustc_private)]
 

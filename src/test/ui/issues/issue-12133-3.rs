@@ -5,7 +5,6 @@
 // ignore-emscripten no dylib support
 // ignore-musl
 // ignore-sgx no dylib support
-// ignore-uefi no dylib support
 
 // pretty-expanded FIXME #23616
 

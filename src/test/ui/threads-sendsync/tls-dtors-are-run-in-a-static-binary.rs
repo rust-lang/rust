@@ -1,7 +1,6 @@
 // run-pass
 // no-prefer-dynamic
 // ignore-emscripten no threads support
-// ignore-uefi no threads support
 
 static mut HIT: bool = false;
 

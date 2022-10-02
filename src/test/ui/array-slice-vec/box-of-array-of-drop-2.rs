@@ -6,7 +6,6 @@
 // destructor.
 
 // ignore-emscripten no threads support
-// ignore-uefi no threads support
 
 use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};

@@ -2,7 +2,6 @@
 // aux-build:issue-25185-1.rs
 // aux-build:issue-25185-2.rs
 // ignore-wasm32-bare no libc for ffi testing
-// ignore-uefi rust_test_helpers do not work
 
 extern crate issue_25185_2;
 

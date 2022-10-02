@@ -3,7 +3,6 @@
 
 #![allow(non_camel_case_types)]
 // ignore-emscripten no threads support
-// ignore-uefi no threads support
 
 use std::sync::mpsc::{channel, Sender};
 use std::thread;

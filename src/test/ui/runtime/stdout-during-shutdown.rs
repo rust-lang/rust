@@ -1,7 +1,6 @@
 // run-pass
 // check-run-results
 // ignore-emscripten
-// ignore-uefi: No libc
 
 // Emscripten doesn't flush its own stdout buffers on exit, which would fail
 // this test. So this test is disabled on this platform.

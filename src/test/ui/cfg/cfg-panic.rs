@@ -2,6 +2,7 @@
 // compile-flags: -C panic=unwind
 // needs-unwind
 
+
 #[cfg(panic = "abort")]
 pub fn bad() -> i32 { }
 

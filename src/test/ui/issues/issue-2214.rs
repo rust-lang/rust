@@ -1,7 +1,6 @@
 // run-pass
 // ignore-wasm32-bare no libc to test ffi with
 // ignore-sgx no libc
-// ignore-uefi no libc
 #![feature(rustc_private)]
 
 extern crate libc;

@@ -1,6 +1,5 @@
 // aux-build:common.rs
 // only-x86_64
-// ignore-uefi no unwind
 // run-pass
 // needs-unwind Asserting on contents of error message
 

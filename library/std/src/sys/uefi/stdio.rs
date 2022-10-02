@@ -159,12 +159,6 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        // Since wrtiting to stderr might be tried due to a panic caused by unintialized GLOBALS,
-        // this check ensures we do not cause an inifinte panic loop.
-        if !uefi::env::GLOBALS.is_completed() {
-            return Err(io::const_io_error!(io::ErrorKind::Other, "Globals not intialized"));
-        }
-
         if let Some(command_protocol) = common::get_current_handle_protocol::<
             uefi_command_protocol::Protocol,
         >(uefi_command_protocol::PROTOCOL_GUID)
@@ -193,7 +187,7 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 
 #[inline]
 pub fn panic_output() -> Option<impl io::Write> {
-    Some(Stderr::new())
+    if uefi::env::GLOBALS.is_completed() { Some(Stderr::new()) } else { None }
 }
 
 fn utf8_to_ucs2(buf: &[u8], output: &mut [u16]) -> io::Result<usize> {

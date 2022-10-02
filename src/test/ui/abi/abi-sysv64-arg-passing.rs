@@ -28,7 +28,6 @@
 // ignore-arm
 // ignore-aarch64
 // ignore-windows
-// ignore-uefi rust_test_helpers do not work
 
 // note: windows is ignored as rust_test_helpers does not have the sysv64 abi on windows
 

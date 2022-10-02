@@ -4,7 +4,6 @@
 // these platforms also.
 
 // ignore-windows
-// ignore-uefi
 // ignore-emscripten
 // ignore-sgx no processes
 

@@ -2,7 +2,6 @@
 #![allow(non_snake_case)]
 
 // ignore-wasm32-bare no libc to test ffi with
-// ignore-uefi no rust_test_helpers
 
 #[derive(Clone, Copy)]
 #[repr(C)]

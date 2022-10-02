@@ -1,7 +1,6 @@
 // edition:2021
 // ignore-tidy-linelength
 // only-x86_64
-// ignore-uefi no unwind
 // run-pass
 // needs-unwind Asserting on contents of error message
 

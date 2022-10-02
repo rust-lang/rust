@@ -1,6 +1,5 @@
 // run-pass
 // ignore-emscripten no threads support
-// ignore-uefi no threads support
 
 // Regression test for unwrapping the result of `join`, issue #21291
 

@@ -1,6 +1,5 @@
 // run-pass
 // ignore-wasm32-bare no libc for ffi testing
-// ignore-uefi no rust_test_helpers
 
 // Test a call to a function that takes/returns a u64.
 

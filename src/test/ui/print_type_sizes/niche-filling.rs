@@ -2,7 +2,6 @@
 // build-pass
 // ignore-pass
 // ^-- needed because `--pass check` does not emit the output needed.
-// ignore-uefi Cannot be fixed until a better way to hook into rust start comes along
 //     FIXME: consider using an attribute instead of side-effects.
 
 // This file illustrates how niche-filling enums are handled,

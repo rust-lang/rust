@@ -1,6 +1,5 @@
 // run-pass
 // ignore-wasm32-bare no libc to test ffi with
-// ignore-uefi rust_test_helpers does not work
 // compile-flags: -lstatic=wronglibrary:rust_test_helpers
 
 #[link(name = "wronglibrary", kind = "dylib")]

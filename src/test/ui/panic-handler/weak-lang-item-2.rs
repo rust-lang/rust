@@ -2,7 +2,6 @@
 // aux-build:weak-lang-items.rs
 
 // ignore-emscripten no threads support
-// ignore-uefi no threads support
 // pretty-expanded FIXME #23616
 
 extern crate weak_lang_items as other;

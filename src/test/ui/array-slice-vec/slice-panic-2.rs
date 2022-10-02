@@ -2,7 +2,6 @@
 // needs-unwind
 
 // ignore-emscripten no threads support
-// ignore-uefi no threads support
 
 // Test that if a slicing expr[..] fails, the correct cleanups happen.
 

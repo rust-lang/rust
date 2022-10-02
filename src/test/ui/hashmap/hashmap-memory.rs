@@ -4,7 +4,6 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 // ignore-emscripten No support for threads
-// ignore-uefi No support for threads
 
 /**
    A somewhat reduced test case to expose some Valgrind issues.

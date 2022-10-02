@@ -1,6 +1,5 @@
 // run-pass
 // ignore-wasm32-bare no libc to test ffi with
-// ignore-uefi no rust_test_helpers
 #![feature(c_variadic)]
 
 use std::ffi::VaList;

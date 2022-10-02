@@ -2,7 +2,6 @@
 // dont-check-compiler-stderr (rust-lang/rust#54222)
 
 // ignore-wasm32-bare no libc to test ffi with
-// ignore-uefi no rust_test_helpers
 
 // compile-flags: -lrust_test_helpers
 

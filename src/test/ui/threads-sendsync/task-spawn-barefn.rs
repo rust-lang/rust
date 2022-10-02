@@ -1,7 +1,6 @@
 // run-fail
 // error-pattern:Ensure that the child thread runs by panicking
 // ignore-emscripten Needs threads.
-// ignore-uefi Needs threads.
 
 use std::thread;
 

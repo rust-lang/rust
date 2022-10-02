@@ -5,7 +5,6 @@
 // ignore-windows
 // ignore-emscripten no execve
 // ignore-sgx no execve
-// ignore-uefi no execve
 // ignore-vxworks no execve
 // ignore-fuchsia no 'execve'
 // no-prefer-dynamic

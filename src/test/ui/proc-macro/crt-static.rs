@@ -4,7 +4,6 @@
 // compile-flags: --crate-type proc-macro -Ctarget-feature=
 // ignore-wasm32
 // ignore-sgx no support for proc-macro crate type
-// ignore-uefi no support for proc-macro crate type
 // build-pass
 #![crate_type = "proc-macro"]
 

@@ -3,7 +3,6 @@
 // aux-build:issue-29485.rs
 // needs-unwind
 // ignore-emscripten no threads
-// ignore-uefi no threads
 
 #[feature(recover)]
 

@@ -4,7 +4,6 @@
 
 #![allow(stable_features)]
 // ignore-windows - this is a unix-specific test
-// ignore-uefi - this is a unix-specific test
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-fuchsia no execvp syscall

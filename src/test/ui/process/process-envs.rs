@@ -3,7 +3,6 @@
 // ignore-sgx no processes
 // ignore-vxworks no 'env'
 // ignore-fuchsia no 'env'
-// ignore-uefi no 'env'
 
 use std::process::Command;
 use std::env;

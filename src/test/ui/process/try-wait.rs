@@ -3,7 +3,7 @@
 #![allow(stable_features)]
 // ignore-emscripten no processes
 // ignore-sgx no processes
-// ignore-uefi spawn function is blocking. Also kill not implemented.
+// ignore-uefi Command::spawn is blocking
 
 #![feature(process_try_wait)]
 

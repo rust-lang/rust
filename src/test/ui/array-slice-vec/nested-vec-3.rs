@@ -3,7 +3,6 @@
 #![allow(overflowing_literals)]
 
 // ignore-emscripten no threads support
-// ignore-uefi no threads support
 
 // Test that using the `vec!` macro nested within itself works when
 // the contents implement Drop and we hit a panic in the middle of

@@ -1,6 +1,5 @@
 // run-pass
 // ignore-wasm32
-// ignore-uefi no rust_test_helpers
 
 #![feature(decl_macro)]
 

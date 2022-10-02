@@ -1,6 +1,5 @@
 // build-pass
 // ignore-sgx
-// ignore-uefi no uefi family
 
 // pretty-expanded FIXME #23616
 

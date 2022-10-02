@@ -1,6 +1,5 @@
 // compile-flags: -Z print-type-sizes
 // build-pass
-// ignore-uefi Cannot be fixed until a better way to hook into rust start comes along
 
 // All of the types that occur in this function are uninteresting, in
 // that one cannot control the sizes of these types with the same sort

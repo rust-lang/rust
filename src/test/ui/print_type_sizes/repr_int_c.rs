@@ -1,6 +1,5 @@
 // compile-flags: -Z print-type-sizes
 // build-pass
-// ignore-uefi Cannot be fixed until a better way to hook into rust start comes along
 
 // This test makes sure that the tag is not grown for `repr(C)` or `repr(u8)`
 // variants (see https://github.com/rust-lang/rust/issues/50098 for the original bug).

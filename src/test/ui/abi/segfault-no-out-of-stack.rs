@@ -4,7 +4,6 @@
 // ignore-emscripten can't run commands
 // ignore-sgx no processes
 // ignore-fuchsia must translate zircon signal to SIGSEGV/SIGBUS, FIXME (#58590)
-// ignore-uefi no libc
 #![feature(rustc_private)]
 
 extern crate libc;
