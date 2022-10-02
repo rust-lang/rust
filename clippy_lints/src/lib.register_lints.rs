@@ -24,8 +24,6 @@ store.register_lints(&[
     #[cfg(feature = "internal")]
     utils::internal_lints::LINT_WITHOUT_LINT_PASS,
     #[cfg(feature = "internal")]
-    utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
-    #[cfg(feature = "internal")]
     utils::internal_lints::MISSING_CLIPPY_VERSION_ATTRIBUTE,
     #[cfg(feature = "internal")]
     utils::internal_lints::MISSING_MSRV_ATTR_IMPL,
@@ -33,6 +31,8 @@ store.register_lints(&[
     utils::internal_lints::OUTER_EXPN_EXPN_DATA,
     #[cfg(feature = "internal")]
     utils::internal_lints::PRODUCE_ICE,
+    #[cfg(feature = "internal")]
+    utils::internal_lints::UNNECESSARY_DEF_PATH,
     #[cfg(feature = "internal")]
     utils::internal_lints::UNNECESSARY_SYMBOL_STR,
     almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE,

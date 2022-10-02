@@ -34,7 +34,6 @@ pub const DEFAULT_TRAIT_METHOD: [&str; 4] = ["core", "default", "Default", "defa
 pub const DEREF_MUT_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "DerefMut", "deref_mut"];
 /// Preferably use the diagnostic item `sym::deref_method` where possible
 pub const DEREF_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "Deref", "deref"];
-pub const DIR_BUILDER: [&str; 3] = ["std", "fs", "DirBuilder"];
 pub const DISPLAY_TRAIT: [&str; 3] = ["core", "fmt", "Display"];
 #[cfg(feature = "internal")]
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
@@ -64,8 +63,6 @@ pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
 pub const INDEX: [&str; 3] = ["core", "ops", "Index"];
 pub const INDEX_MUT: [&str; 3] = ["core", "ops", "IndexMut"];
 pub const INSERT_STR: [&str; 4] = ["alloc", "string", "String", "insert_str"];
-pub const IO_READ: [&str; 3] = ["std", "io", "Read"];
-pub const IO_WRITE: [&str; 3] = ["std", "io", "Write"];
 pub const ITER_COUNT: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "count"];
 pub const ITER_EMPTY: [&str; 5] = ["core", "iter", "sources", "empty", "Empty"];
 pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat"];

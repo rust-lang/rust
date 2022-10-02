@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::source::snippet_with_macro_callsite;
-use clippy_utils::{contains_return, higher, is_else_clause, is_lang_ctor, meets_msrv, msrvs, peel_blocks};
+use clippy_utils::{
+    contains_return, higher, is_else_clause, is_res_lang_ctor, meets_msrv, msrvs, path_res, peel_blocks,
+};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -76,10 +78,8 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && let ExprKind::Block(then_block, _) = then.kind
             && let Some(then_expr) = then_block.expr
             && let ExprKind::Call(then_call, [then_arg]) = then_expr.kind
-            && let ExprKind::Path(ref then_call_qpath) = then_call.kind
-            && is_lang_ctor(cx, then_call_qpath, OptionSome)
-            && let ExprKind::Path(ref qpath) = peel_blocks(els).kind
-            && is_lang_ctor(cx, qpath, OptionNone)
+            && is_res_lang_ctor(cx, path_res(cx, then_call), OptionSome)
+            && is_res_lang_ctor(cx, path_res(cx, peel_blocks(els)), OptionNone)
             && !stmts_contains_early_return(then_block.stmts)
         {
             let cond_snip = snippet_with_macro_callsite(cx, cond.span, "[condition]");

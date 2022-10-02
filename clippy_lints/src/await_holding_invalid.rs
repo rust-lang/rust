@@ -6,7 +6,7 @@ use rustc_hir::{def::Res, AsyncGeneratorKind, Body, BodyId, GeneratorKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::GeneratorInteriorTypeCause;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 use crate::utils::conf::DisallowedType;
 
@@ -276,9 +276,9 @@ fn emit_invalid_type(cx: &LateContext<'_>, span: Span, disallowed: &DisallowedTy
 }
 
 fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {
-    match_def_path(cx, def_id, &paths::MUTEX_GUARD)
-        || match_def_path(cx, def_id, &paths::RWLOCK_READ_GUARD)
-        || match_def_path(cx, def_id, &paths::RWLOCK_WRITE_GUARD)
+    cx.tcx.is_diagnostic_item(sym::MutexGuard, def_id)
+        || cx.tcx.is_diagnostic_item(sym::RwLockReadGuard, def_id)
+        || cx.tcx.is_diagnostic_item(sym::RwLockWriteGuard, def_id)
         || match_def_path(cx, def_id, &paths::PARKING_LOT_MUTEX_GUARD)
         || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_READ_GUARD)
         || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_WRITE_GUARD)

@@ -238,17 +238,67 @@ pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
     }
 }
 
-/// Checks if a `QPath` resolves to a constructor of a `LangItem`.
+/// Checks if a `Res` refers to a constructor of a `LangItem`
 /// For example, use this to check whether a function call or a pattern is `Some(..)`.
-pub fn is_lang_ctor(cx: &LateContext<'_>, qpath: &QPath<'_>, lang_item: LangItem) -> bool {
+pub fn is_res_lang_ctor(cx: &LateContext<'_>, res: Res, lang_item: LangItem) -> bool {
+    if let Res::Def(DefKind::Ctor(..), id) = res
+        && let Ok(lang_id) = cx.tcx.lang_items().require(lang_item)
+        && let Some(id) = cx.tcx.opt_parent(id)
+    {
+        id == lang_id
+    } else {
+        false
+    }
+}
+
+pub fn is_res_diagnostic_ctor(cx: &LateContext<'_>, res: Res, diag_item: Symbol) -> bool {
+    if let Res::Def(DefKind::Ctor(..), id) = res
+        && let Some(id) = cx.tcx.opt_parent(id)
+    {
+        cx.tcx.is_diagnostic_item(diag_item, id)
+    } else {
+        false
+    }
+}
+
+/// Checks if a `QPath` resolves to a constructor of a diagnostic item.
+pub fn is_diagnostic_ctor(cx: &LateContext<'_>, qpath: &QPath<'_>, diagnostic_item: Symbol) -> bool {
     if let QPath::Resolved(_, path) = qpath {
         if let Res::Def(DefKind::Ctor(..), ctor_id) = path.res {
-            if let Ok(item_id) = cx.tcx.lang_items().require(lang_item) {
-                return cx.tcx.parent(ctor_id) == item_id;
-            }
+            return cx.tcx.is_diagnostic_item(diagnostic_item, cx.tcx.parent(ctor_id));
         }
     }
     false
+}
+
+/// Checks if the `DefId` matches the given diagnostic item or it's constructor.
+pub fn is_diagnostic_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: Symbol) -> bool {
+    let did = match cx.tcx.def_kind(did) {
+        DefKind::Ctor(..) => cx.tcx.parent(did),
+        // Constructors for types in external crates seem to have `DefKind::Variant`
+        DefKind::Variant => match cx.tcx.opt_parent(did) {
+            Some(did) if matches!(cx.tcx.def_kind(did), DefKind::Variant) => did,
+            _ => did,
+        },
+        _ => did,
+    };
+
+    cx.tcx.is_diagnostic_item(item, did)
+}
+
+/// Checks if the `DefId` matches the given `LangItem` or it's constructor.
+pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) -> bool {
+    let did = match cx.tcx.def_kind(did) {
+        DefKind::Ctor(..) => cx.tcx.parent(did),
+        // Constructors for types in external crates seem to have `DefKind::Variant`
+        DefKind::Variant => match cx.tcx.opt_parent(did) {
+            Some(did) if matches!(cx.tcx.def_kind(did), DefKind::Variant) => did,
+            _ => did,
+        },
+        _ => did,
+    };
+
+    cx.tcx.lang_items().require(item).map_or(false, |id| id == did)
 }
 
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
@@ -486,6 +536,13 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
                 .copied()
                 .find(|assoc_def_id| tcx.item_name(*assoc_def_id).as_str() == name)
                 .map(|assoc_def_id| Res::Def(tcx.def_kind(assoc_def_id), assoc_def_id)),
+            DefKind::Struct | DefKind::Union => tcx
+                .adt_def(def_id)
+                .non_enum_variant()
+                .fields
+                .iter()
+                .find(|f| f.name.as_str() == name)
+                .map(|f| Res::Def(DefKind::Field, f.did)),
             _ => None,
         }
     }
@@ -738,7 +795,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             }
         },
         ExprKind::Call(repl_func, _) => is_default_equivalent_call(cx, repl_func),
-        ExprKind::Path(qpath) => is_lang_ctor(cx, qpath, OptionNone),
+        ExprKind::Path(qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, e.hir_id), OptionNone),
         ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
         _ => false,
     }
@@ -1553,7 +1610,7 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
         if_chain! {
             if let PatKind::TupleStruct(ref path, pat, ddpos) = arm.pat.kind;
             if ddpos.as_opt_usize().is_none();
-            if is_lang_ctor(cx, path, ResultOk);
+            if is_res_lang_ctor(cx, cx.qpath_res(path, arm.pat.hir_id), ResultOk);
             if let PatKind::Binding(_, hir_id, _, None) = pat[0].kind;
             if path_to_local_id(arm.body, hir_id);
             then {
@@ -1565,7 +1622,7 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
 
     fn is_err(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
         if let PatKind::TupleStruct(ref path, _, _) = arm.pat.kind {
-            is_lang_ctor(cx, path, ResultErr)
+            is_res_lang_ctor(cx, cx.qpath_res(path, arm.pat.hir_id), ResultErr)
         } else {
             false
         }

@@ -2,7 +2,7 @@ use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_copy;
 use clippy_utils::usage::mutated_variables;
-use clippy_utils::{is_lang_ctor, is_trait_method, path_to_local_id};
+use clippy_utils::{is_res_lang_ctor, is_trait_method, path_res, path_to_local_id};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -61,15 +61,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
 
 // returns (found_mapping, found_filtering)
 fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> (bool, bool) {
-    match &expr.kind {
+    match expr.kind {
         hir::ExprKind::Call(func, args) => {
-            if let hir::ExprKind::Path(ref path) = func.kind {
-                if is_lang_ctor(cx, path, OptionSome) {
-                    if path_to_local_id(&args[0], arg_id) {
-                        return (false, false);
-                    }
-                    return (true, false);
+            if is_res_lang_ctor(cx, path_res(cx, func), OptionSome) {
+                if path_to_local_id(&args[0], arg_id) {
+                    return (false, false);
                 }
+                return (true, false);
             }
             (true, true)
         },
@@ -80,7 +78,7 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
         hir::ExprKind::Match(_, arms, _) => {
             let mut found_mapping = false;
             let mut found_filtering = false;
-            for arm in *arms {
+            for arm in arms {
                 let (m, f) = check_expression(cx, arg_id, arm.body);
                 found_mapping |= m;
                 found_filtering |= f;
@@ -93,7 +91,9 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
             let else_check = check_expression(cx, arg_id, else_arm);
             (if_check.0 | else_check.0, if_check.1 | else_check.1)
         },
-        hir::ExprKind::Path(path) if is_lang_ctor(cx, path, OptionNone) => (false, true),
+        hir::ExprKind::Path(ref path) if is_res_lang_ctor(cx, cx.qpath_res(path, expr.hir_id), OptionNone) => {
+            (false, true)
+        },
         _ => (true, true),
     }
 }
