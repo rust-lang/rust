@@ -22,7 +22,7 @@ chalk-solve = { version = "0.84.0", default-features = false }
 chalk-ir = "0.84.0"
 chalk-recursive = { version = "0.84.0", default-features = false }
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
-once_cell = "1.12.0"
+once_cell = "1.15.0"
 typed-arena = "2.0.1"
 
 stdx = { path = "../stdx", version = "0.0.0" }

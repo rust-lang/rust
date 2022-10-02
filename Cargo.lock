@@ -1371,10 +1371,17 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "fs-err"
 version = "2.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64db3e262960f0662f43a6366788d5f10f7f244b8f7d7d987f560baf5ded5c50"
+=======
+name = "once_cell"
+version = "1.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e82dad04139b71a90c080c8463fe0dc7902db5192d939bd0950f074d014339e1"
+>>>>>>> Bump once_cell
 
 [[package]]
 name = "fs_extra"
