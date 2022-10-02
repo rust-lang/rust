@@ -50,18 +50,14 @@ impl Instant {
         if let Some(ns) = get_timestamp() {
             return Instant(Duration::from_nanos(ns));
         }
+        let runtime_services = common::runtime_services();
 
-        if let Some(runtime_services) = common::get_runtime_services() {
-            // Finally just use `EFI_RUNTIME_SERVICES.GetTime()`
-            let mut t = r_efi::efi::Time::default();
-            let r =
-                unsafe { ((*runtime_services.as_ptr()).get_time)(&mut t, crate::ptr::null_mut()) };
+        // Finally just use `EFI_RUNTIME_SERVICES.GetTime()`
+        let mut t = r_efi::efi::Time::default();
+        let r = unsafe { ((*runtime_services.as_ptr()).get_time)(&mut t, crate::ptr::null_mut()) };
 
-            if r.is_error() {
-                panic!("time not implemented on this platform")
-            } else {
-                return Instant(uefi_time_to_duration(t));
-            }
+        if !r.is_error() {
+            return Instant(uefi_time_to_duration(t));
         }
 
         // Panic if nothing works
@@ -87,19 +83,15 @@ impl Instant {
 // Using Unix representation of Time.
 impl SystemTime {
     pub fn now() -> SystemTime {
-        if let Some(runtime_services) = common::get_runtime_services() {
-            let mut t = r_efi::efi::Time::default();
-            let r =
-                unsafe { ((*runtime_services.as_ptr()).get_time)(&mut t, crate::ptr::null_mut()) };
+        let runtime_services = common::runtime_services();
+        let mut t = r_efi::efi::Time::default();
+        let r = unsafe { ((*runtime_services.as_ptr()).get_time)(&mut t, crate::ptr::null_mut()) };
 
-            if r.is_error() {
-                panic!("time not implemented on this platform")
-            } else {
-                SystemTime::from(t)
-            }
-        } else {
-            panic!("Runtime Services are needed for Time to work")
+        if !r.is_error() {
+            return SystemTime::from(t);
         }
+
+        panic!("Failed to create SystemTime")
     }
 
     #[inline]

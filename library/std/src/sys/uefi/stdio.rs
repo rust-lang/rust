@@ -159,6 +159,12 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        // Since wrtiting to stderr might be tried due to a panic caused by unintialized GLOBALS,
+        // this check ensures we do not cause an inifinte panic loop.
+        if !uefi::env::GLOBALS.is_completed() {
+            return Err(io::const_io_error!(io::ErrorKind::Other, "Globals not intialized"));
+        }
+
         if let Some(command_protocol) = common::get_current_handle_protocol::<
             uefi_command_protocol::Protocol,
         >(uefi_command_protocol::PROTOCOL_GUID)
@@ -249,7 +255,7 @@ fn get_con_in(
 
 #[inline]
 fn get_wait_for_event() -> io::Result<BootWaitForEvent> {
-    let boot_services = common::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
+    let boot_services = common::boot_services();
     Ok(unsafe { (*boot_services.as_ptr()).wait_for_event })
 }
 

@@ -79,19 +79,17 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
 }
 
 pub fn abort_internal() -> ! {
-    if uefi::env::GLOBALS.is_completed() {
-        let handle = uefi::env::image_handle();
-        // First try to use EFI_BOOT_SERVICES.Exit()
-        if let Some(boot_services) = common::get_boot_services() {
-            let _ = unsafe {
-                ((*boot_services.as_ptr()).exit)(
-                    handle.as_ptr(),
-                    r_efi::efi::Status::ABORTED,
-                    0,
-                    crate::ptr::null_mut(),
-                )
-            };
-        }
+    if let (Some(boot_services), Some(handle)) =
+        (common::try_boot_services(), uefi::env::try_image_handle())
+    {
+        let _ = unsafe {
+            ((*boot_services.as_ptr()).exit)(
+                handle.as_ptr(),
+                r_efi::efi::Status::ABORTED,
+                0,
+                crate::ptr::null_mut(),
+            )
+        };
     }
 
     // In case SystemTable and ImageHandle cannot be reached, use `core::intrinsics::abort`
@@ -146,16 +144,14 @@ pub unsafe extern "efiapi" fn efi_main(
     handle: r_efi::efi::Handle,
     st: *mut r_efi::efi::SystemTable,
 ) -> r_efi::efi::Status {
-    // Null SystemTable and ImageHandle is an ABI violoation
-    assert!(!st.is_null());
-    assert!(!handle.is_null());
-
-    let system_table = unsafe { NonNull::new_unchecked(st) };
-    let image_handle = unsafe { NonNull::new_unchecked(handle) };
+    let system_table = NonNull::new(st).unwrap();
+    let image_handle = NonNull::new(handle).unwrap();
     unsafe { uefi::env::init_globals(image_handle, system_table.cast()) };
 
-    match unsafe { main(0, crate::ptr::null()) } {
-        0 => r_efi::efi::Status::SUCCESS,
-        _ => r_efi::efi::Status::ABORTED, // Or some other status code
+    let res = unsafe { main(0, crate::ptr::null()) };
+
+    match usize::try_from(res) {
+        Ok(x) => r_efi::efi::Status::from_usize(x),
+        Err(_) => r_efi::efi::Status::ABORTED,
     }
 }

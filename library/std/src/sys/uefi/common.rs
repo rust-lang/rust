@@ -8,11 +8,6 @@ use crate::os::uefi;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::ptr::NonNull;
 
-pub(crate) const BOOT_SERVICES_ERROR: io::Error =
-    const_io_error!(io::ErrorKind::Other, "failed to acquire boot services",);
-pub(crate) const RUNTIME_SERVICES_ERROR: io::Error =
-    const_io_error!(io::ErrorKind::Other, "failed to acquire runtime services",);
-
 /// Get the Protocol for current system handle.
 /// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
 pub(crate) fn get_current_handle_protocol<T>(protocol_guid: Guid) -> Option<NonNull<T>> {
@@ -42,7 +37,7 @@ impl Event {
         notify_function: Option<EventNotify>,
         notify_context: Option<NonNull<crate::ffi::c_void>>,
     ) -> io::Result<Self> {
-        let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+        let boot_services = boot_services();
 
         let mut event: r_efi::efi::Event = crate::ptr::null_mut();
         let notify_context = match notify_context {
@@ -69,7 +64,7 @@ impl Event {
     }
 
     pub(crate) fn wait(&self) -> io::Result<()> {
-        let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+        let boot_services = boot_services();
 
         let mut index = 0usize;
         let r = unsafe {
@@ -91,10 +86,9 @@ impl Event {
 
 impl Drop for Event {
     fn drop(&mut self) {
-        if let Some(boot_services) = get_boot_services() {
-            // Always returns EFI_SUCCESS
-            let _ = unsafe { ((*boot_services.as_ptr()).close_event)(self.inner.as_ptr()) };
-        }
+        let boot_services = boot_services();
+        // Always returns EFI_SUCCESS
+        let _ = unsafe { ((*boot_services.as_ptr()).close_event)(self.inner.as_ptr()) };
     }
 }
 
@@ -203,7 +197,7 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
-    let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+    let boot_services = boot_services();
     let mut buf_len = 0usize;
 
     match inner(&mut guid, boot_services, &mut buf_len, crate::ptr::null_mut()) {
@@ -235,7 +229,7 @@ pub(crate) fn open_protocol<T>(
     handle: NonNull<crate::ffi::c_void>,
     mut protocol_guid: Guid,
 ) -> io::Result<NonNull<T>> {
-    let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+    let boot_services = boot_services();
     let system_handle = uefi::env::image_handle();
     let mut protocol: MaybeUninit<*mut T> = MaybeUninit::uninit();
 
@@ -376,7 +370,7 @@ pub(crate) fn install_protocol<T>(
     mut guid: r_efi::efi::Guid,
     interface: &mut T,
 ) -> io::Result<()> {
-    let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+    let boot_services = boot_services();
     let r = unsafe {
         ((*boot_services.as_ptr()).install_protocol_interface)(
             handle,
@@ -393,7 +387,7 @@ pub(crate) fn uninstall_protocol<T>(
     mut guid: r_efi::efi::Guid,
     interface: &mut T,
 ) -> io::Result<()> {
-    let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+    let boot_services = boot_services();
     let r = unsafe {
         ((*boot_services.as_ptr()).uninstall_protocol_interface)(
             handle,
@@ -464,17 +458,24 @@ where
 }
 
 /// Get the BootServices Pointer.
-pub(crate) fn get_boot_services() -> Option<NonNull<r_efi::efi::BootServices>> {
+pub(crate) fn boot_services() -> NonNull<r_efi::efi::BootServices> {
     let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table().cast();
+    let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
+    NonNull::new(boot_services).unwrap()
+}
+/// Get the BootServices Pointer.
+/// This function is mostly intended for places where panic is not an option
+pub(crate) fn try_boot_services() -> Option<NonNull<r_efi::efi::BootServices>> {
+    let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::try_system_table()?.cast();
     let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
     NonNull::new(boot_services)
 }
 
 /// Get the RuntimeServices Pointer.
-pub(crate) fn get_runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>> {
+pub(crate) fn runtime_services() -> NonNull<r_efi::efi::RuntimeServices> {
     let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table().cast();
     let runtime_services = unsafe { (*system_table.as_ptr()).runtime_services };
-    NonNull::new(runtime_services)
+    NonNull::new(runtime_services).unwrap()
 }
 
 // Create UCS-2 Vector from OsStr

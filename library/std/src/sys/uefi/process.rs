@@ -309,7 +309,7 @@ mod uefi_command {
 
     impl Command {
         pub(crate) fn load_image(p: &OsStr) -> io::Result<Self> {
-            let boot_services = common::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
+            let boot_services = common::boot_services();
             let system_handle = uefi::env::image_handle();
             let mut path = super::super::path::device_path_from_os_str(p)?;
             let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
@@ -337,7 +337,7 @@ mod uefi_command {
         }
 
         pub(crate) fn start_image(&self) -> io::Result<r_efi::efi::Status> {
-            let boot_services = common::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
+            let boot_services = common::boot_services();
             let mut exit_data_size: MaybeUninit<usize> = MaybeUninit::uninit();
             let mut exit_data: MaybeUninit<*mut u16> = MaybeUninit::uninit();
             let r = unsafe {
@@ -373,10 +373,9 @@ mod uefi_command {
     impl Drop for Command {
         // Unload Image
         fn drop(&mut self) {
-            if let Some(boot_services) = common::get_boot_services() {
-                self.command_protocol = None;
-                let _ = unsafe { ((*boot_services.as_ptr()).unload_image)(self.handle.as_ptr()) };
-            }
+            let boot_services = common::boot_services();
+            self.command_protocol = None;
+            let _ = unsafe { ((*boot_services.as_ptr()).unload_image)(self.handle.as_ptr()) };
         }
     }
 }

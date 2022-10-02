@@ -18,7 +18,7 @@ unsafe impl GlobalAlloc for System {
 
         // Return NULL pointer if boot_services pointer cannot be obtained. The only time this
         // should happen is if SystemTable has not been initialized
-        let boot_services = match common::get_boot_services() {
+        let boot_services = match common::try_boot_services() {
             Some(x) => x,
             None => return ptr::null_mut(),
         };
@@ -38,7 +38,7 @@ unsafe impl GlobalAlloc for System {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        let boot_services = match common::get_boot_services() {
+        let boot_services = match common::try_boot_services() {
             Some(x) => x,
             None => return,
         };

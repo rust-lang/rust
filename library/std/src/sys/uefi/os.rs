@@ -182,9 +182,10 @@ pub fn exit(code: i32) -> ! {
         Err(_) => r_efi::efi::Status::ABORTED,
     };
 
-    let handle = uefi::env::image_handle().cast();
     // First try to use EFI_BOOT_SERVICES.Exit()
-    if let Some(boot_services) = common::get_boot_services() {
+    if let (Some(handle), Some(boot_services)) =
+        (uefi::env::try_image_handle(), common::try_boot_services())
+    {
         let _ = unsafe {
             ((*boot_services.as_ptr()).exit)(handle.as_ptr(), code, 0, crate::ptr::null_mut())
         };
@@ -304,8 +305,7 @@ pub(crate) mod uefi_vars {
         data_size: usize,
         data: *mut crate::ffi::c_void,
     ) -> io::Result<()> {
-        let runtime_services =
-            common::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
+        let runtime_services = common::runtime_services();
         let r = unsafe {
             ((*runtime_services.as_ptr()).set_variable)(
                 variable_name,
@@ -324,8 +324,7 @@ pub(crate) mod uefi_vars {
         data_size: &mut usize,
         data: *mut crate::ffi::c_void,
     ) -> io::Result<()> {
-        let runtime_services =
-            common::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
+        let runtime_services = common::runtime_services();
         let r = unsafe {
             ((*runtime_services.as_ptr()).get_variable)(
                 key,
@@ -343,8 +342,7 @@ pub(crate) mod uefi_vars {
         variable_name: *mut u16,
         vendor_guid: *mut r_efi::efi::Guid,
     ) -> io::Result<()> {
-        let runtime_services =
-            common::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
+        let runtime_services = common::runtime_services();
         let r = unsafe {
             ((*runtime_services.as_ptr()).get_next_variable_name)(
                 variable_name_size,

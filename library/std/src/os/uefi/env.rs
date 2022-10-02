@@ -31,15 +31,29 @@ pub unsafe fn init_globals(handle: NonNull<c_void>, system_table: NonNull<c_void
 }
 
 /// Get the SystemTable Pointer.
+/// Note: This function panics if the System Table and Image Handle is Not initialized
 #[unstable(feature = "uefi_std", issue = "100499")]
 pub fn system_table() -> NonNull<c_void> {
-    assert!(GLOBALS.is_completed());
-    unsafe { NonNull::new_unchecked(GLOBAL_SYSTEM_TABLE.load(Ordering::Acquire)) }
+    try_system_table().unwrap()
+}
+
+/// Get the SystemTable Pointer.
+/// This function is mostly intended for places where panic is not an option
+#[unstable(feature = "uefi_std", issue = "100499")]
+pub fn try_system_table() -> Option<NonNull<c_void>> {
+    NonNull::new(GLOBAL_SYSTEM_TABLE.load(Ordering::Acquire))
 }
 
 /// Get the SystemHandle Pointer.
+/// Note: This function panics if the System Table and Image Handle is Not initialized
 #[unstable(feature = "uefi_std", issue = "100499")]
 pub fn image_handle() -> NonNull<c_void> {
-    assert!(GLOBALS.is_completed());
-    unsafe { NonNull::new_unchecked(GLOBAL_IMAGE_HANDLE.load(Ordering::Acquire)) }
+    try_image_handle().unwrap()
+}
+
+/// Get the SystemHandle Pointer.
+/// This function is mostly intended for places where panic is not an option
+#[unstable(feature = "uefi_std", issue = "100499")]
+pub fn try_image_handle() -> Option<NonNull<c_void>> {
+    NonNull::new(GLOBAL_IMAGE_HANDLE.load(Ordering::Acquire))
 }

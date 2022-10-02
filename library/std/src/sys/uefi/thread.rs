@@ -24,11 +24,8 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        if let Some(boot_services) = common::get_boot_services() {
-            let _ = unsafe { ((*boot_services.as_ptr()).stall)(dur.as_micros() as usize) };
-        } else {
-            panic!("Boot services needed for sleep")
-        }
+        let boot_services = common::boot_services();
+        let _ = unsafe { ((*boot_services.as_ptr()).stall)(dur.as_micros() as usize) };
     }
 
     pub fn join(self) {
