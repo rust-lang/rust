@@ -229,6 +229,8 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "span_locations", None),
     (Some(Mode::ToolRustc), "span_locations", None),
+    // Can be passed in RUSTFLAGS to prevent direct syscalls in rustix.
+    (None, "rustix_use_libc", None),
 ];
 
 /// A structure representing a Rust compiler.
@@ -654,8 +656,6 @@ impl Build {
             job::setup(self);
         }
 
-        // Download rustfmt early so that it can be used in rust-analyzer configs.
-        let _ = &builder::Builder::new(&self).initial_rustfmt();
         self.maybe_update_submodules();
 
         if let Subcommand::Format { check, paths } = &self.config.cmd {
@@ -669,6 +669,9 @@ impl Build {
         if let Subcommand::Setup { profile } = &self.config.cmd {
             return setup::setup(&self.config, *profile);
         }
+
+        // Download rustfmt early so that it can be used in rust-analyzer configs.
+        let _ = &builder::Builder::new(&self).initial_rustfmt();
 
         {
             let builder = builder::Builder::new(&self);
