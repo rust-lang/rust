@@ -173,31 +173,6 @@ pub(super) fn associated_type_by_name_including_super_traits(
 
 pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
-    if parent_generics.is_some() && matches!(def, GenericDefId::TypeAliasId(_)) {
-        let params = db.generic_params(def);
-        let parent_params = &parent_generics.as_ref().unwrap().params;
-        let has_consts =
-            params.iter().any(|(_, x)| matches!(x, TypeOrConstParamData::ConstParamData(_)));
-        let parent_has_consts =
-            parent_params.iter().any(|(_, x)| matches!(x, TypeOrConstParamData::ConstParamData(_)));
-        return if has_consts || parent_has_consts {
-            // XXX: treat const generic associated types as not existing to avoid crashes
-            // (#11769)
-            //
-            // Note: Also crashes when the parent has const generics (also even if the GAT
-            // doesn't use them), see `tests::regression::gat_crash_3` for an example.
-            // Avoids that by disabling GATs when the parent (i.e. `impl` block) has
-            // const generics (#12193).
-            //
-            // Chalk expects the inner associated type's parameters to come
-            // *before*, not after the trait's generics as we've always done it.
-            // Adapting to this requires a larger refactoring
-            cov_mark::hit!(ignore_gats);
-            Generics { def, params: Interned::new(Default::default()), parent_generics }
-        } else {
-            Generics { def, params, parent_generics }
-        };
-    }
     Generics { def, params: db.generic_params(def), parent_generics }
 }
 
