@@ -6,7 +6,8 @@
 //! benchmarks themselves) should be done via the `#[test]` and
 //! `#[bench]` attributes.
 //!
-//! See the [Testing Chapter](../book/ch11-00-testing.html) of the book for more details.
+//! See the [Testing Chapter](../book/ch11-00-testing.html) of the book for more
+//! details.
 
 // Currently, not much of this is meant for users. It is intended to
 // support the simplest interface possible for representing and
@@ -76,6 +77,7 @@ mod types;
 #[cfg(test)]
 mod tests;
 
+use core::any::Any;
 use event::{CompletedTest, TestEvent};
 use helpers::concurrency::get_concurrency;
 use helpers::exit_code::get_exit_code;
@@ -175,17 +177,20 @@ fn make_owned_test(test: &&TestDescAndFn) -> TestDescAndFn {
     }
 }
 
-/// Invoked when unit tests terminate. Should panic if the unit
-/// Tests is considered a failure. By default, invokes `report()`
-/// and checks for a `0` result.
-pub fn assert_test_result<T: Termination>(result: T) {
+/// Invoked when unit tests terminate. Returns `Result::Err` if the test is
+/// considered a failure. By default, invokes `report() and checks for a `0`
+/// result.
+pub fn assert_test_result<T: Termination>(result: T) -> Result<(), String> {
     let code = result.report().to_i32();
-    assert_eq!(
-        code, 0,
-        "the test returned a termination value with a non-zero status code ({}) \
-         which indicates a failure",
-        code
-    );
+    if code == 0 {
+        Ok(())
+    } else {
+        Err(format!(
+            "the test returned a termination value with a non-zero status code \
+             ({}) which indicates a failure",
+            code
+        ))
+    }
 }
 
 pub fn run_tests<F>(
@@ -478,7 +483,7 @@ pub fn run_test(
         id: TestId,
         desc: TestDesc,
         monitor_ch: Sender<CompletedTest>,
-        testfn: Box<dyn FnOnce() + Send>,
+        testfn: Box<dyn FnOnce() -> Result<(), String> + Send>,
         opts: TestRunOpts,
     ) -> Option<thread::JoinHandle<()>> {
         let concurrency = opts.concurrency;
@@ -567,11 +572,11 @@ pub fn run_test(
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
 #[inline(never)]
-fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
-    f();
+fn __rust_begin_short_backtrace<T, F: FnOnce() -> T>(f: F) -> T {
+    let result = f();
 
     // prevent this frame from being tail-call optimised away
-    black_box(());
+    black_box(result)
 }
 
 fn run_test_in_process(
@@ -579,7 +584,7 @@ fn run_test_in_process(
     desc: TestDesc,
     nocapture: bool,
     report_time: bool,
-    testfn: Box<dyn FnOnce() + Send>,
+    testfn: Box<dyn FnOnce() -> Result<(), String> + Send>,
     monitor_ch: Sender<CompletedTest>,
     time_opts: Option<time::TestTimeOptions>,
 ) {
@@ -591,7 +596,7 @@ fn run_test_in_process(
     }
 
     let start = report_time.then(Instant::now);
-    let result = catch_unwind(AssertUnwindSafe(testfn));
+    let result = fold_err(catch_unwind(AssertUnwindSafe(testfn)));
     let exec_time = start.map(|start| {
         let duration = start.elapsed();
         TestExecTime(duration)
@@ -606,6 +611,19 @@ fn run_test_in_process(
     let stdout = data.lock().unwrap_or_else(|e| e.into_inner()).to_vec();
     let message = CompletedTest::new(id, desc, test_result, exec_time, stdout);
     monitor_ch.send(message).unwrap();
+}
+
+fn fold_err<T, E>(
+    result: Result<Result<T, E>, Box<dyn Any + Send>>,
+) -> Result<T, Box<dyn Any + Send>>
+where
+    E: Send + 'static,
+{
+    match result {
+        Ok(Err(e)) => Err(Box::new(e)),
+        Ok(Ok(v)) => Ok(v),
+        Err(e) => Err(e),
+    }
 }
 
 fn spawn_test_subprocess(
@@ -663,7 +681,10 @@ fn spawn_test_subprocess(
     monitor_ch.send(message).unwrap();
 }
 
-fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<dyn FnOnce() + Send>) -> ! {
+fn run_test_in_spawned_subprocess(
+    desc: TestDesc,
+    testfn: Box<dyn FnOnce() -> Result<(), String> + Send>,
+) -> ! {
     let builtin_panic_hook = panic::take_hook();
     let record_result = Arc::new(move |panic_info: Option<&'_ PanicInfo<'_>>| {
         let test_result = match panic_info {
@@ -689,7 +710,9 @@ fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<dyn FnOnce() + Sen
     });
     let record_result2 = record_result.clone();
     panic::set_hook(Box::new(move |info| record_result2(Some(&info))));
-    testfn();
+    if let Err(message) = testfn() {
+        panic!("{}", message);
+    }
     record_result(None);
     unreachable!("panic=abort callback should have exited the process")
 }
