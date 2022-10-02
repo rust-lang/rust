@@ -348,12 +348,13 @@ pub struct ExpectedUsedSymbol {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis::missing_parentheses_in_range, code = "E0599")]
+#[diag(hir_analysis::missing_parentheses_in_range, code = "E0689")]
 pub struct MissingParentheseInRange {
     #[primary_span]
     #[label(hir_analysis::missing_parentheses_in_range)]
     pub span: Span,
     pub ty_str: String,
+    pub method_name: String,
 
     #[subdiagnostic]
     pub add_missing_parentheses: Option<AddMissingParenthesesInRange>,

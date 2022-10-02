@@ -13,7 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{is_range_literal, ExprKind, Node, QPath};
+use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
@@ -1214,50 +1214,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty_str: &str,
     ) -> bool {
         if let SelfSource::MethodCall(expr) = source {
-            let mut search_limit = 5;
-            for (_, parent) in tcx.hir().parent_iter(expr.hir_id) {
-                search_limit -= 1;
-                if search_limit == 0 {
-                    break;
-                }
-
-                if let Node::Expr(parent_expr) = parent && is_range_literal(parent_expr) {
-                    let span_included = match parent_expr.kind {
-                            hir::ExprKind::Struct(_, eps, _) =>
-                                eps.len() > 0 && eps.last().map_or(false, |ep| ep.span.contains(span)),
+            for (_, parent) in tcx.hir().parent_iter(expr.hir_id).take(5) {
+                if let Node::Expr(parent_expr) = parent {
+                    let lang_item = match parent_expr.kind {
+                        ExprKind::Struct(ref qpath, _, _) => match **qpath {
+                            QPath::LangItem(LangItem::Range, ..) => Some(LangItem::Range),
+                            QPath::LangItem(LangItem::RangeTo, ..) => Some(LangItem::RangeTo),
+                            QPath::LangItem(LangItem::RangeToInclusive, ..) => {
+                                Some(LangItem::RangeToInclusive)
+                            }
+                            _ => None,
+                        },
+                        ExprKind::Call(ref func, _) => match func.kind {
                             // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
-                            hir::ExprKind::Call(ref func, ..) => func.span.contains(span),
-                            _ => false,
+                            ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)) => {
+                                Some(LangItem::RangeInclusiveStruct)
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+
+                    if lang_item.is_none() {
+                        continue;
+                    }
+
+                    let span_included = match parent_expr.kind {
+                        hir::ExprKind::Struct(_, eps, _) => {
+                            eps.len() > 0 && eps.last().map_or(false, |ep| ep.span.contains(span))
+                        }
+                        // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
+                        hir::ExprKind::Call(ref func, ..) => func.span.contains(span),
+                        _ => false,
                     };
 
                     if !span_included {
                         continue;
                     }
 
-                    let range_def_id = self.tcx.lang_items().range_struct().unwrap();
-                    let range_ty = self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
+                    debug!("lang_item: {:?}", lang_item);
+                    let range_def_id = self.tcx.require_lang_item(lang_item.unwrap(), None);
+                    let range_ty =
+                        self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
 
-                    // avoid suggesting when the method name is not implemented for a `range`
-                    let pick =  self.lookup_probe(
-                        span,
-                        item_name,
-                        range_ty,
-                        expr,
-                        ProbeScope::AllTraits
-                    );
-
+                    let pick =
+                        self.lookup_probe(span, item_name, range_ty, expr, ProbeScope::AllTraits);
                     if pick.is_ok() {
                         let range_span = parent_expr.span.with_hi(expr.span.hi());
                         tcx.sess.emit_err(errors::MissingParentheseInRange {
-                            span: span,
+                            span,
                             ty_str: ty_str.to_string(),
-                            add_missing_parentheses: Some(
-                                errors::AddMissingParenthesesInRange {
-                                    func_name: item_name.name.as_str().to_string(),
-                                    left: range_span.shrink_to_lo(),
-                                    right: range_span.shrink_to_hi(),
-                                }
-                            )
+                            method_name: item_name.as_str().to_string(),
+                            add_missing_parentheses: Some(errors::AddMissingParenthesesInRange {
+                                func_name: item_name.name.as_str().to_string(),
+                                left: range_span.shrink_to_lo(),
+                                right: range_span.shrink_to_hi(),
+                            }),
                         });
                         return true;
                     }
