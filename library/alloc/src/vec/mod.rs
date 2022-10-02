@@ -59,7 +59,7 @@ use core::cmp::Ordering;
 use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::assume;
+use core::intrinsics::{assume, needs_drop};
 use core::iter;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::FromIterator;
@@ -2915,11 +2915,16 @@ impl<T: Ord, A: Allocator> Ord for Vec<T, A> {
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
     #[inline]
     fn drop(&mut self) {
-        unsafe {
-            // use drop for [T]
-            // use a raw slice to refer to the elements of the vector as weakest necessary type;
-            // could avoid questions of validity in certain cases
-            ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len))
+        if needs_drop::<T>() {
+            unsafe fn drop_via_slice<T, A: Allocator>(vec: &mut Vec<T, A>) {
+                unsafe {
+                    // use drop for [T]
+                    // use a raw slice to refer to the elements of the vector as weakest
+                    // necessary type; could avoid questions of validity in certain cases
+                    ptr::drop_in_place(ptr::slice_from_raw_parts_mut(vec.as_mut_ptr(), vec.len))
+                }
+            }
+            unsafe { drop_via_slice(self); }
         }
         // RawVec handles deallocation
     }
