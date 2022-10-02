@@ -30,4 +30,4 @@ rustc-workspace-hack = "1.0.0"
 serde = { version = "*", features = ["derive"] }
 
 [build-dependencies]
-vergen = { version = "7.4", default_features = false, features = ["git"] }
+vergen = { version = "7", default_features = false, features = ["git"] }
