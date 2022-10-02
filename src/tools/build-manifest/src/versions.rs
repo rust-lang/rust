@@ -8,58 +8,48 @@ use tar::Archive;
 
 const DEFAULT_TARGET: &str = "x86_64-unknown-linux-gnu";
 
-#[derive(Debug, Hash, Eq, PartialEq, Clone)]
-pub(crate) enum PkgType {
-    Rust,
-    RustSrc,
-    Rustc,
-    Cargo,
-    Rls,
-    RustAnalyzer,
-    Clippy,
-    Rustfmt,
-    LlvmTools,
-    Miri,
-    JsonDocs,
-    Other(String),
+macro_rules! pkg_type {
+    ( $($variant:ident = $component:literal $(; preview = true $(@$is_preview:tt)? )? ),+ $(,)? ) => {
+        #[derive(Debug, Hash, Eq, PartialEq, Clone)]
+        pub(crate) enum PkgType {
+            $($variant,)+
+            Other(String),
+        }
+
+        impl PkgType {
+            pub(crate) fn from_component(component: &str) -> Self {
+                match component {
+                    $( $component  $( | concat!($($is_preview)? $component, "-preview") )? => PkgType::$variant,)+
+                    _ => PkgType::Other(component.into()),
+                }
+            }
+
+            /// First part of the tarball name.
+            fn tarball_component_name(&self) -> &str {
+                match self {
+                    $( PkgType::$variant => $component,)+
+                    PkgType::Other(component) => component,
+                }
+            }
+        }
+    }
+}
+
+pkg_type! {
+    Rust = "rust",
+    RustSrc = "rust-src",
+    Rustc = "rustc",
+    Cargo = "cargo",
+    Rls = "rls"; preview = true,
+    RustAnalyzer = "rust-analyzer"; preview = true,
+    Clippy = "clippy"; preview = true,
+    Rustfmt = "rustfmt"; preview = true,
+    LlvmTools = "llvm-tools"; preview = true,
+    Miri = "miri"; preview = true,
+    JsonDocs = "rust-docs-json"; preview = true,
 }
 
 impl PkgType {
-    pub(crate) fn from_component(component: &str) -> Self {
-        match component {
-            "rust" => PkgType::Rust,
-            "rust-src" => PkgType::RustSrc,
-            "rustc" => PkgType::Rustc,
-            "cargo" => PkgType::Cargo,
-            "rls" | "rls-preview" => PkgType::Rls,
-            "rust-analyzer" | "rust-analyzer-preview" => PkgType::RustAnalyzer,
-            "clippy" | "clippy-preview" => PkgType::Clippy,
-            "rustfmt" | "rustfmt-preview" => PkgType::Rustfmt,
-            "llvm-tools" | "llvm-tools-preview" => PkgType::LlvmTools,
-            "miri" | "miri-preview" => PkgType::Miri,
-            "rust-docs-json" | "rust-docs-json-preview" => PkgType::JsonDocs,
-            other => PkgType::Other(other.into()),
-        }
-    }
-
-    /// First part of the tarball name.
-    fn tarball_component_name(&self) -> &str {
-        match self {
-            PkgType::Rust => "rust",
-            PkgType::RustSrc => "rust-src",
-            PkgType::Rustc => "rustc",
-            PkgType::Cargo => "cargo",
-            PkgType::Rls => "rls",
-            PkgType::RustAnalyzer => "rust-analyzer",
-            PkgType::Clippy => "clippy",
-            PkgType::Rustfmt => "rustfmt",
-            PkgType::LlvmTools => "llvm-tools",
-            PkgType::Miri => "miri",
-            PkgType::JsonDocs => "rust-docs-json",
-            PkgType::Other(component) => component,
-        }
-    }
-
     /// Whether this package has the same version as Rust itself, or has its own `version` and
     /// `git-commit-hash` files inside the tarball.
     fn should_use_rust_version(&self) -> bool {
