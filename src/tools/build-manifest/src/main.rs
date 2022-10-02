@@ -401,42 +401,55 @@ impl Builder {
         let mut components = Vec::new();
         let mut extensions = Vec::new();
 
-        let host_component = |pkg| Component::from_str(pkg, host);
+        let host_component = |pkg: &_| Component::from_str(pkg, host);
 
-        // rustc/rust-std/cargo/docs are all required,
-        // and so is rust-mingw if it's available for the target.
-        components.extend(vec![
-            host_component("rustc"),
-            host_component("rust-std"),
-            host_component("cargo"),
-            host_component("rust-docs"),
-        ]);
-        if host.contains("pc-windows-gnu") {
-            components.push(host_component("rust-mingw"));
+        for pkg in PkgType::all() {
+            match pkg {
+                // rustc/rust-std/cargo/docs are all required
+                PkgType::Rustc | PkgType::Cargo | PkgType::HtmlDocs => {
+                    components.push(host_component(&pkg.manifest_component_name()));
+                }
+                PkgType::RustStd => {
+                    components.push(host_component(&pkg.manifest_component_name()));
+                    extensions.extend(
+                        TARGETS.iter().filter(|&&target| target != host).map(|target| {
+                            Component::from_str(&pkg.manifest_component_name(), target)
+                        }),
+                    );
+                }
+                // so is rust-mingw if it's available for the target
+                PkgType::RustMingw => {
+                    if host.contains("pc-windows-gnu") {
+                        components.push(host_component("rust-mingw"));
+                    }
+                }
+                // Tools are always present in the manifest,
+                // but might be marked as unavailable if they weren't built.
+                PkgType::Clippy
+                | PkgType::Miri
+                | PkgType::Rls
+                | PkgType::RustAnalyzer
+                | PkgType::Rustfmt
+                | PkgType::LlvmTools
+                | PkgType::RustAnalysis
+                | PkgType::JsonDocs => {
+                    extensions.push(host_component(&pkg.manifest_component_name()));
+                }
+                PkgType::RustcDev | PkgType::RustcDocs => {
+                    extensions.extend(
+                        HOSTS.iter().map(|target| {
+                            Component::from_str(&pkg.manifest_component_name(), target)
+                        }),
+                    );
+                }
+                PkgType::RustSrc => {
+                    extensions.push(Component::from_str(&pkg.manifest_component_name(), "*"));
+                }
+                PkgType::Rust | PkgType::Other(_) => {}
+                // FIXME: is this correct? maybe we should add it so rustup knows about it ...
+                PkgType::ReproducibleArtifacts => {}
+            }
         }
-
-        // Tools are always present in the manifest,
-        // but might be marked as unavailable if they weren't built.
-        extensions.extend(vec![
-            host_component("clippy-preview"),
-            host_component("miri-preview"),
-            host_component("rls-preview"),
-            host_component("rust-analyzer-preview"),
-            host_component("rustfmt-preview"),
-            host_component("llvm-tools-preview"),
-            host_component("rust-analysis"),
-            host_component("rust-docs-json-preview"),
-        ]);
-
-        extensions.extend(
-            TARGETS
-                .iter()
-                .filter(|&&target| target != host)
-                .map(|target| Component::from_str("rust-std", target)),
-        );
-        extensions.extend(HOSTS.iter().map(|target| Component::from_str("rustc-dev", target)));
-        extensions.extend(HOSTS.iter().map(|target| Component::from_str("rustc-docs", target)));
-        extensions.push(Component::from_str("rust-src", "*"));
 
         // If the components/extensions don't actually exist for this
         // particular host/target combination then nix it entirely from our
