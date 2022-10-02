@@ -56,9 +56,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
                     comments += "\n";
                 }
                 let (cond, not) = match cond.kind {
-                     ExprKind::Unary(UnOp::Not, e) => (e, ""),
-                     _ => (cond, "!"),
-                 };
+                    ExprKind::Unary(UnOp::Not, e) => (e, ""),
+                    _ => (cond, "!"),
+                };
                 let cond_sugg = sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability).maybe_par();
                 let sugg = format!("assert!({not}{cond_sugg}, {format_args_snip});");
                 // we show to the user the suggestion without the comments, but when applicating the fix, include the comments in the block
