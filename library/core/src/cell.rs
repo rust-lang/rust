@@ -405,6 +405,7 @@ impl<T> Cell<T> {
     /// assert_eq!(cell.replace(10), 5);
     /// assert_eq!(cell.get(), 10);
     /// ```
+    #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn replace(&self, val: T) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
