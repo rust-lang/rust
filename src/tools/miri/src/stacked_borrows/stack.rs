@@ -211,7 +211,7 @@ impl<'tcx> Stack {
         }
 
         // Couldn't find it in the stack; but if there is an unknown bottom it might be there.
-        let found = self.unknown_bottom.is_some_and(|&unknown_limit| {
+        let found = self.unknown_bottom.is_some_and(|unknown_limit| {
             tag.0 < unknown_limit.0 // unknown_limit is an upper bound for what can be in the unknown bottom.
         });
         if found { Ok(None) } else { Err(()) }

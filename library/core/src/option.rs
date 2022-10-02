@@ -559,22 +559,25 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_some_with)]
+    /// #![feature(is_some_and)]
     ///
     /// let x: Option<u32> = Some(2);
-    /// assert_eq!(x.is_some_and(|&x| x > 1), true);
+    /// assert_eq!(x.is_some_and(|x| x > 1), true);
     ///
     /// let x: Option<u32> = Some(0);
-    /// assert_eq!(x.is_some_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_some_and(|x| x > 1), false);
     ///
     /// let x: Option<u32> = None;
-    /// assert_eq!(x.is_some_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_some_and(|x| x > 1), false);
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_some_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
-        matches!(self, Some(x) if f(x))
+    #[unstable(feature = "is_some_and", issue = "93050")]
+    pub fn is_some_and(self, f: impl FnOnce(T) -> bool) -> bool {
+        match self {
+            None => false,
+            Some(x) => f(x),
+        }
     }
 
     /// Returns `true` if the option is a [`None`] value.

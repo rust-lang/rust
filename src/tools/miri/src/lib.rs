@@ -7,7 +7,7 @@
 #![feature(int_log)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
-#![feature(is_some_with)]
+#![feature(is_some_and)]
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
 #![cfg_attr(bootstrap, feature(let_else))]
