@@ -154,8 +154,7 @@ struct CacheAnalysis {
       assert(found != uncacheable_args.end());
       if (found->second) {
         mustcache = true;
-        // EmitWarning("UncacheableOrigin", arg->getDebugLoc(), oldFunc,
-        // arg->getParent()->getEntryBlock(),
+        // EmitWarning("UncacheableOrigin", *arg,
         //            "origin arg may need caching ", *arg);
       }
     } else if (auto pn = dyn_cast<PHINode>(obj)) {
@@ -163,22 +162,22 @@ struct CacheAnalysis {
       for (auto &val : pn->incoming_values()) {
         if (is_value_mustcache_from_origin(val)) {
           mustcache = true;
-          EmitWarning("UncacheableOrigin", pn->getDebugLoc(), oldFunc,
-                      pn->getParent(), "origin pn may need caching ", *pn);
+          EmitWarning("UncacheableOrigin", *pn, "origin pn may need caching ",
+                      *pn);
           break;
         }
       }
     } else if (auto ci = dyn_cast<CastInst>(obj)) {
       mustcache = is_value_mustcache_from_origin(ci->getOperand(0));
       if (mustcache) {
-        EmitWarning("UncacheableOrigin", ci->getDebugLoc(), oldFunc,
-                    ci->getParent(), "origin ci may need caching ", *ci);
+        EmitWarning("UncacheableOrigin", *ci, "origin ci may need caching ",
+                    *ci);
       }
     } else if (auto gep = dyn_cast<GetElementPtrInst>(obj)) {
       mustcache = is_value_mustcache_from_origin(gep->getPointerOperand());
       if (mustcache) {
-        EmitWarning("UncacheableOrigin", gep->getDebugLoc(), oldFunc,
-                    gep->getParent(), "origin gep may need caching ", *gep);
+        EmitWarning("UncacheableOrigin", *gep, "origin gep may need caching ",
+                    *gep);
       }
     } else {
 
@@ -200,9 +199,8 @@ struct CacheAnalysis {
         } else {
           // OP is a non malloc/free call so we need to cache
           mustcache = true;
-          EmitWarning("UncacheableOrigin", obj_op->getDebugLoc(), oldFunc,
-                      obj_op->getParent(), "origin call may need caching ",
-                      *obj_op);
+          EmitWarning("UncacheableOrigin", *obj_op,
+                      "origin call may need caching ", *obj_op);
         }
       } else if (isa<AllocaInst>(obj)) {
         // No change to modref if alloca since the memory only exists in
@@ -217,10 +215,8 @@ struct CacheAnalysis {
         // In absence of more information, assume that the underlying object for
         // pointer operand is uncacheable in caller.
         mustcache = true;
-        if (isa<Instruction>(obj))
-          EmitWarning("UncacheableOrigin",
-                      cast<Instruction>(obj)->getDebugLoc(), oldFunc,
-                      cast<Instruction>(obj)->getParent(),
+        if (auto I = dyn_cast<Instruction>(obj))
+          EmitWarning("UncacheableOrigin", *I,
                       "unknown origin may need caching ", *obj);
       }
     }
@@ -339,16 +335,14 @@ struct CacheAnalysis {
                   }
 
                   can_modref = true;
-                  EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc,
-                              li.getParent(), "Load may need caching ", li,
+                  EmitWarning("Uncacheable", li, "Load may need caching ", li,
                               " due to ", *mid, " via ", *II);
                   return true;
                 },
                 [&]() {
                   // if gone past entry
                   if (mode != DerivativeMode::ReverseModeCombined) {
-                    EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc,
-                                li.getParent(), "Load may need caching ", li,
+                    EmitWarning("Uncacheable", li, "Load may need caching ", li,
                                 " due to entry via ", *II);
                     can_modref = true;
                   }
@@ -360,15 +354,15 @@ struct CacheAnalysis {
           }
         }
         can_modref = true;
-        EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc, li.getParent(),
-                    "Load may need caching ", li, " due to ", *inst2);
+        EmitWarning("Uncacheable", li, "Load may need caching ", li, " due to ",
+                    *inst2);
         // Early exit
         return true;
       });
     } else {
 
-      EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc, li.getParent(),
-                  "Load may need caching ", li, " due to origin ", *obj);
+      EmitWarning("Uncacheable", li, "Load may need caching ", li,
+                  " due to origin ", *obj);
     }
 
     return can_modref;
@@ -477,10 +471,10 @@ struct CacheAnalysis {
       }
       if (!init_safe && !isa<UndefValue>(obj) && !isa<ConstantInt>(obj) &&
           !isa<Function>(obj)) {
-        EmitWarning("UncacheableOrigin", callsite_op->getDebugLoc(), oldFunc,
-                    callsite_op->getParent(), "Callsite ", *callsite_op,
-                    " arg ", i, " ", *callsite_op->getArgOperand(i),
-                    " uncacheable from origin ", *obj);
+        EmitWarning("UncacheableOrigin", *callsite_op, "Callsite ",
+                    *callsite_op, " arg ", i, " ",
+                    *callsite_op->getArgOperand(i), " uncacheable from origin ",
+                    *obj);
       }
       args_safe.push_back(init_safe);
     }
@@ -543,10 +537,10 @@ struct CacheAnalysis {
                 inst2, MemoryLocation::getForArgument(callsite_op, i, TLI)))) {
           if (!isa<ConstantInt>(callsite_op->getArgOperand(i)) &&
               !isa<UndefValue>(callsite_op->getArgOperand(i)))
-            EmitWarning("UncacheableArg", callsite_op->getDebugLoc(), oldFunc,
-                        callsite_op->getParent(), "Callsite ", *callsite_op,
-                        " arg ", i, " ", *callsite_op->getArgOperand(i),
-                        " uncacheable due to ", *inst2);
+            EmitWarning("UncacheableArg", *callsite_op, "Callsite ",
+                        *callsite_op, " arg ", i, " ",
+                        *callsite_op->getArgOperand(i), " uncacheable due to ",
+                        *inst2);
           args_safe[i] = false;
         }
       }
@@ -1249,13 +1243,21 @@ bool legalCombinedForwardReverse(
       return;
     }
 
-    // Even though there is a dependency on this value here, we can ignore it if
-    // it isn't going to be used Unless this is a call that could have a
-    // combined forward-reverse
+    // Even though the value `I` depends on (perhaps indirectly) the call being
+    // checked for, if neither `I` nor its pointer-valued shadow are used in the
+    // reverse pass, we can ignore the dependency as long as `I` is not going to
+    // have a combined forward and reverse pass.
     if (I != origop && unnecessaryInstructions.count(I)) {
-      if (gutils->isConstantInstruction(I) || !isa<CallInst>(I)) {
-        userReplace.push_back(I);
-        return;
+      bool needShadow = false;
+      if (!gutils->isConstantValue(I)) {
+        needShadow = is_value_needed_in_reverse<ValueType::Shadow>(
+            gutils, I, DerivativeMode::ReverseModeCombined, oldUnreachable);
+      }
+      if (!needShadow) {
+        if (gutils->isConstantInstruction(I) || !isa<CallInst>(I)) {
+          userReplace.push_back(I);
+          return;
+        }
       }
     }
 
@@ -1281,7 +1283,8 @@ bool legalCombinedForwardReverse(
       }
       return;
     }
-    if (is_value_needed_in_reverse<ValueType::Primal>(
+    if (!I->getType()->isVoidTy() &&
+        is_value_needed_in_reverse<ValueType::Primal>(
             gutils, I, DerivativeMode::ReverseModeCombined, oldUnreachable)) {
       legal = false;
       if (EnzymePrintPerf) {
@@ -1290,6 +1293,21 @@ bool legalCombinedForwardReverse(
                        << (called->getName()) << " due to " << *I << "\n";
         else
           llvm::errs() << " [nv] failed to replace function " << (*calledValue)
+                       << " due to " << *I << "\n";
+      }
+      return;
+    }
+    if (!I->getType()->isVoidTy() &&
+        gutils->TR.query(I)[{-1}].isPossiblePointer() &&
+        is_value_needed_in_reverse<ValueType::Shadow>(
+            gutils, I, DerivativeMode::ReverseModeCombined, oldUnreachable)) {
+      legal = false;
+      if (EnzymePrintPerf) {
+        if (called)
+          llvm::errs() << " [ns] failed to replace function "
+                       << (called->getName()) << " due to " << *I << "\n";
+        else
+          llvm::errs() << " [ns] failed to replace function " << (*calledValue)
                        << " due to " << *I << "\n";
       }
       return;
@@ -1341,6 +1359,7 @@ bool legalCombinedForwardReverse(
         if (writesToMemoryReadBy(gutils->OrigAA, gutils->TLI,
                                  /*maybeReader*/ user,
                                  /*maybeWriter*/ inst)) {
+
           propagate(user);
           // Fast return if not legal
           if (!legal)
@@ -1769,7 +1788,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     }
 
     if (hasconstant) {
-      EmitWarning("NoCustom", todiff,
+      EmitWarning("NoCustom", *todiff,
                   "Massaging provided custom augmented forward pass to handle "
                   "constant argumented");
       SmallVector<Type *, 3> dupargs;
@@ -3398,7 +3417,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     auto foundcalled = cast<Function>(gvemd->getValue());
 
     if (hasconstant) {
-      EmitWarning("NoCustom", key.todiff,
+      EmitWarning("NoCustom", *key.todiff,
                   "Massaging provided custom reverse pass");
       SmallVector<Type *, 3> dupargs;
       std::vector<DIFFE_TYPE> next_constant_args(key.constant_args);
@@ -3623,8 +3642,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           ->second;
     }
 
-    EmitWarning("NoCustom", key.todiff->getEntryBlock().begin()->getDebugLoc(),
-                key.todiff, &key.todiff->getEntryBlock(),
+    EmitWarning("NoCustom", *key.todiff,
                 "Not using provided custom reverse pass as require either "
                 "return or non-constant");
   }
@@ -4253,8 +4271,7 @@ Function *EnzymeLogic::CreateForwardDiff(
       return ForwardCachedFunctions[tup] = NewF;
     }
 
-    EmitWarning("NoCustom", todiff->getEntryBlock().begin()->getDebugLoc(),
-                todiff, &todiff->getEntryBlock(),
+    EmitWarning("NoCustom", *todiff,
                 "Cannot use provided custom derivative pass");
   }
   if (todiff->empty() && CustomErrorHandler) {
@@ -4756,8 +4773,173 @@ llvm::Function *EnzymeLogic::CreateBatch(Function *tobatch, unsigned width,
   return BatchCachedFunctions[tup] = NewF;
 };
 
+llvm::Value *EnzymeLogic::CreateNoFree(llvm::Value *todiff) {
+  if (auto F = dyn_cast<Function>(todiff))
+    return CreateNoFree(F);
+  llvm::errs() << " unhandled, create no free of: " << *todiff << "\n";
+  llvm_unreachable("unhandled, create no free");
+}
+
+llvm::Function *EnzymeLogic::CreateNoFree(Function *F) {
+  if (NoFreeCachedFunctions.find(F) != NoFreeCachedFunctions.end()) {
+    return NoFreeCachedFunctions.find(F)->second;
+  }
+  bool hasNoFree = false;
+#if LLVM_VERSION_MAJOR >= 9
+  hasNoFree |= F->hasFnAttribute(Attribute::NoFree);
+#endif
+  hasNoFree |= F->hasFnAttribute("nofree");
+  if (hasNoFree)
+    return F;
+
+  TargetLibraryInfo &TLI = PPC.FAM.getResult<TargetLibraryAnalysis>(*F);
+
+  if (isAllocationFunction(F->getName(), TLI))
+    return F;
+
+  std::set<std::string> NoFrees = {
+      "_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1EPKcRKS3_",
+      "_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_"
+      "PKS3_l",
+      "_ZNSo3putEc",
+      "_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_assignERKS4_",
+      "_ZNSaIcED1Ev",
+      "_ZNSaIcEC1Ev"};
+
+  if (F->getName().startswith("_ZNSolsE") || NoFrees.count(F->getName().str()))
+    return F;
+
+  switch (F->getIntrinsicID()) {
+  case Intrinsic::lifetime_start:
+  case Intrinsic::lifetime_end:
+  case Intrinsic::memcpy:
+  case Intrinsic::memmove:
+  case Intrinsic::memset:
+    return F;
+  default:;
+  }
+
+  if (F->empty()) {
+    if (CustomErrorHandler) {
+      std::string s;
+      llvm::raw_string_ostream ss(s);
+      ss << "No create nofree of empty function " << F->getName() << "\n";
+      ss << *F << "\n";
+      CustomErrorHandler(ss.str().c_str(), wrap(F), ErrorType::NoDerivative,
+                         nullptr);
+    }
+    llvm::errs() << " unhandled, create no free of empty function: " << *F
+                 << "\n";
+    llvm_unreachable("unhandled, create no free");
+  }
+
+  Function *NewF = Function::Create(F->getFunctionType(), F->getLinkage(),
+                                    "nofree_" + F->getName(), F->getParent());
+  NewF->setLinkage(Function::LinkageTypes::InternalLinkage);
+  NewF->setAttributes(F->getAttributes());
+#if LLVM_VERSION_MAJOR >= 9
+  NewF->addAttribute(AttributeList::FunctionIndex,
+                     Attribute::get(NewF->getContext(), Attribute::NoFree));
+#else
+  NewF->addAttribute(AttributeList::FunctionIndex,
+                     Attribute::get(NewF->getContext(), "nofree"));
+#endif
+
+  NoFreeCachedFunctions[F] = NewF;
+
+  ValueToValueMapTy VMap;
+
+  for (auto i = F->arg_begin(), j = NewF->arg_begin(); i != F->arg_end();) {
+    VMap[i] = j;
+    j->setName(i->getName());
+    ++j;
+    ++i;
+  }
+
+  SmallVector<ReturnInst *, 4> Returns;
+#if LLVM_VERSION_MAJOR >= 13
+  CloneFunctionInto(NewF, F, VMap, CloneFunctionChangeType::LocalChangesOnly,
+                    Returns, "", nullptr);
+#else
+  CloneFunctionInto(NewF, F, VMap, true, Returns, "", nullptr);
+#endif
+
+  const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
+      getGuaranteedUnreachable(NewF);
+
+  SmallVector<Instruction *, 2> toErase;
+  for (BasicBlock &BB : *NewF) {
+    if (guaranteedUnreachable.count(&BB))
+      continue;
+    for (Instruction &I : BB) {
+      StringRef funcName = "";
+      if (auto CI = dyn_cast<CallInst>(&I)) {
+#if LLVM_VERSION_MAJOR >= 9
+        if (CI->hasFnAttr(Attribute::NoFree))
+          continue;
+#endif
+        if (CI->hasFnAttr("nofree"))
+          continue;
+        funcName = getFuncNameFromCall(CI);
+      }
+      if (auto CI = dyn_cast<InvokeInst>(&I)) {
+#if LLVM_VERSION_MAJOR >= 9
+        if (CI->hasFnAttr(Attribute::NoFree))
+          continue;
+#endif
+        if (CI->hasFnAttr("nofree"))
+          continue;
+        funcName = getFuncNameFromCall(CI);
+      }
+      if (isDeallocationFunction(funcName, TLI))
+        toErase.push_back(&I);
+      else {
+        if (auto CI = dyn_cast<CallInst>(&I)) {
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = CI->getCalledOperand();
+#else
+          auto callval = CI->getCalledValue();
+#endif
+#if LLVM_VERSION_MAJOR >= 9
+          CI->setCalledOperand(CreateNoFree(callval));
+#else
+          CI->setCalledFunction(CreateNoFree(callval));
+#endif
+        }
+        if (auto CI = dyn_cast<InvokeInst>(&I)) {
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = CI->getCalledOperand();
+#else
+          auto callval = CI->getCalledValue();
+#endif
+#if LLVM_VERSION_MAJOR >= 9
+          CI->setCalledOperand(CreateNoFree(callval));
+#else
+          CI->setCalledFunction(CreateNoFree(callval));
+#endif
+        }
+      }
+    }
+  }
+
+  if (llvm::verifyFunction(*NewF, &llvm::errs())) {
+    llvm::errs() << *F << "\n";
+    llvm::errs() << *NewF << "\n";
+    report_fatal_error("function failed verification (4)");
+  }
+
+  for (auto E : toErase) {
+    E->eraseFromParent();
+  }
+
+  return NewF;
+}
+
 void EnzymeLogic::clear() {
   PPC.clear();
   AugmentedCachedFunctions.clear();
   ReverseCachedFunctions.clear();
+  NoFreeCachedFunctions.clear();
+  ForwardCachedFunctions.clear();
+  BatchCachedFunctions.clear();
 }

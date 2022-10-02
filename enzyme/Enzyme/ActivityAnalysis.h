@@ -47,6 +47,7 @@
 extern "C" {
 extern llvm::cl::opt<bool> EnzymePrintActivity;
 extern llvm::cl::opt<bool> EnzymeNonmarkedGlobalsInactive;
+extern llvm::cl::opt<bool> EnzymeGlobalActivity;
 }
 
 class PreProcessCache;

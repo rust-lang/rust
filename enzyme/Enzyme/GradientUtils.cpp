@@ -714,10 +714,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (!legalMove) {
       auto &warnMap = UnwrappedWarnings[load];
       if (!warnMap.count(BuilderM.GetInsertBlock())) {
-        EmitWarning("UncacheableUnwrap", load->getDebugLoc(),
-                    load->getParent()->getParent(), load->getParent(),
-                    "Load cannot be unwrapped ", *load, " in ",
-                    BuilderM.GetInsertBlock()->getName(), " - ",
+        EmitWarning("UncacheableUnwrap", *load, "Load cannot be unwrapped ",
+                    *load, " in ", BuilderM.GetInsertBlock()->getName(), " - ",
                     BuilderM.GetInsertBlock()->getParent()->getName(), " mode ",
                     unwrapMode);
         warnMap.insert(BuilderM.GetInsertBlock());
@@ -838,8 +836,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         if (!legalMove) {
           auto &warnMap = UnwrappedWarnings[phi];
           if (!warnMap.count(BuilderM.GetInsertBlock())) {
-            EmitWarning("UncacheableUnwrap", dli->getDebugLoc(),
-                        dli->getParent()->getParent(), dli->getParent(),
+            EmitWarning("UncacheableUnwrap", *dli,
                         "Differential Load cannot be unwrapped ", *dli, " in ",
                         BuilderM.GetInsertBlock()->getName(), " mode ",
                         unwrapMode);
@@ -1784,8 +1781,7 @@ endCheck:
     assert(val->getName() != "<badref>");
     auto &warnMap = UnwrappedWarnings[inst];
     if (!warnMap.count(BuilderM.GetInsertBlock())) {
-      EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
-                  "Cannot unwrap ", *val, " in ",
+      EmitWarning("NoUnwrap", *inst, "Cannot unwrap ", *val, " in ",
                   BuilderM.GetInsertBlock()->getName());
       warnMap.insert(BuilderM.GetInsertBlock());
     }
@@ -3161,11 +3157,10 @@ bool GradientUtils::legalRecompute(const Value *val,
                           /*maybeReader*/ const_cast<Instruction *>(orig),
                           /*maybeWriter*/ I)) {
                     failed = true;
-                    EmitWarning("UncacheableLoad", orig->getDebugLoc(), oldFunc,
-                                orig->getParent(), "Load must be recomputed ",
-                                *orig, " in reverse_",
-                                BuilderM->GetInsertBlock()->getName(),
-                                " due to ", *I);
+                    EmitWarning(
+                        "UncacheableLoad", *orig, "Load must be recomputed ",
+                        *orig, " in reverse_",
+                        BuilderM->GetInsertBlock()->getName(), " due to ", *I);
                     return /*earlyBreak*/ true;
                   }
                   return /*earlyBreak*/ false;
@@ -3193,8 +3188,7 @@ bool GradientUtils::legalRecompute(const Value *val,
                             /*maybeReader*/ const_cast<Instruction *>(orig),
                             /*maybeWriter*/ I)) {
                       failed = true;
-                      EmitWarning("UncacheableLoad", orig->getDebugLoc(),
-                                  oldFunc, orig->getParent(),
+                      EmitWarning("UncacheableLoad", *orig,
                                   "Load must be recomputed ", *orig, " in ",
                                   BuilderM->GetInsertBlock()->getName(),
                                   " due to ", *I);
@@ -3338,8 +3332,7 @@ bool GradientUtils::shouldRecompute(const Value *val,
           }
         }
       forceCache:;
-        EmitWarning("ChosenCache", inst->getDebugLoc(), oldFunc,
-                    inst->getParent(), "Choosing to cache use ", *inst,
+        EmitWarning("ChosenCache", *inst, "Choosing to cache use ", *inst,
                     " due to ", *op);
         return false;
       }
@@ -5969,22 +5962,20 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
             assert(result->getType() == inst->getType());
             lookup_cache[BuilderM.GetInsertBlock()][val] = result;
 
-            if (scopeMap.find(inst) == scopeMap.end())
-              EmitWarning("Uncacheable", inst->getDebugLoc(), newFunc,
-                          inst->getParent(), "Caching instruction ", *inst,
-                          " legalRecompute: ", lrc, " shouldRecompute: ", src,
-                          " tryLegalRecomputeCheck: ", tryLegalRecomputeCheck);
+            EmitWarning("Uncacheable", *inst, "Caching instruction ", *inst,
+                        " legalRecompute: ", lrc, " shouldRecompute: ", src,
+                        " tryLegalRecomputeCheck: ", tryLegalRecomputeCheck);
             return result;
           }
         }
     noSpeedCache:;
     }
 
-  if (scopeMap.find(inst) == scopeMap.end())
-    EmitWarning("Uncacheable", inst->getDebugLoc(), newFunc, inst->getParent(),
-                "Caching instruction ", *inst, " legalRecompute: ", lrc,
-                " shouldRecompute: ", src,
+  if (scopeMap.find(inst) == scopeMap.end()) {
+    EmitWarning("Uncacheable", *inst, "Caching instruction ", *inst,
+                " legalRecompute: ", lrc, " shouldRecompute: ", src,
                 " tryLegalRecomputeCheck: ", tryLegalRecomputeCheck);
+  }
 
   BasicBlock *scope = inst->getParent();
   if (auto origInst = isOriginal(inst)) {
@@ -7182,8 +7173,7 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
     } else if (auto store = dyn_cast<StoreInst>(cur)) {
       // TODO only add store to shadow iff non float type
       if (store->getValueOperand() == prev) {
-        EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
-                    cur->getParent(), " Could not promote allocation ", *V,
+        EmitWarning("NotPromotable", *cur, " Could not promote allocation ", *V,
                     " due to capturing store ", *cur);
         promotable = false;
         shadowpromotable = false;
@@ -7220,9 +7210,8 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
           if (arg == prev) {
             promotable = false;
             shadowpromotable = false;
-            EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
-                        cur->getParent(), " Could not promote allocation ", *V,
-                        " due to memset use ", *cur);
+            EmitWarning("NotPromotable", *cur, " Could not promote allocation ",
+                        *V, " due to memset use ", *cur);
             break;
           }
           break;
@@ -7237,8 +7226,7 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
       default:
         promotable = false;
         shadowpromotable = false;
-        EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
-                    cur->getParent(), " Could not promote allocation ", *V,
+        EmitWarning("NotPromotable", *cur, " Could not promote allocation ", *V,
                     " due to unknown intrinsic ", *cur);
         break;
       }
@@ -7301,9 +7289,8 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
         if (!NoCapture) {
           shadowpromotable = false;
           promotable = false;
-          EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
-                      cur->getParent(), " Could not promote allocation ", *V,
-                      " due to unknown capturing call ", *cur);
+          EmitWarning("NotPromotable", *cur, " Could not promote allocation ",
+                      *V, " due to unknown capturing call ", *cur);
           idx++;
           continue;
         }
@@ -7326,9 +7313,8 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
         if (!ReadOnly) {
           if (primalNeededInReverse) {
             promotable = false;
-            EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
-                        cur->getParent(), " Could not promote allocation ", *V,
-                        " due to unknown writing call ", *cur);
+            EmitWarning("NotPromotable", *cur, " Could not promote allocation ",
+                        *V, " due to unknown writing call ", *cur);
           }
           storingOps.insert(cur);
         }
@@ -7352,8 +7338,7 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
     } else {
       promotable = false;
       shadowpromotable = false;
-      EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
-                  cur->getParent(), " Could not promote allocation ", *V,
+      EmitWarning("NotPromotable", *cur, " Could not promote allocation ", *V,
                   " due to unknown instruction ", *cur);
     }
   }
@@ -7381,9 +7366,9 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
       for (auto res : results) {
         if (overwritesToMemoryReadBy(OrigAA, TLI, SE, OrigLI, OrigDT, LI, res,
                                      outer)) {
-          EmitWarning("NotPromotable", LI->getDebugLoc(), oldFunc,
-                      LI->getParent(), " Could not promote shadow allocation ",
-                      *V, " due to pointer load ", *LI,
+          EmitWarning("NotPromotable", *LI,
+                      " Could not promote shadow allocation ", *V,
+                      " due to pointer load ", *LI,
                       " which does not postdominates store ", *res);
           shadowpromotable = false;
           goto exitL;
@@ -7414,8 +7399,7 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
     for (auto res : results) {
       if (overwritesToMemoryReadBy(OrigAA, TLI, SE, OrigLI, OrigDT, LI, res,
                                    outer)) {
-        EmitWarning("NotPromotable", LI->getDebugLoc(), oldFunc,
-                    LI->getParent(), " Could not promote allocation ", *V,
+        EmitWarning("NotPromotable", *LI, " Could not promote allocation ", *V,
                     " due to load ", *LI,
                     " which does not postdominates store ", *res);
         return;
@@ -7431,9 +7415,9 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
     for (auto res : results) {
       if (overwritesToMemoryReadBy(OrigAA, TLI, SE, OrigLI, OrigDT, LI.loadCall,
                                    res, outer)) {
-        EmitWarning("NotPromotable", LI.loadCall->getDebugLoc(), oldFunc,
-                    LI.loadCall->getParent(), " Could not promote allocation ",
-                    *V, " due to load-like call ", *LI.loadCall,
+        EmitWarning("NotPromotable", *LI.loadCall,
+                    " Could not promote allocation ", *V,
+                    " due to load-like call ", *LI.loadCall,
                     " which does not postdominates store ", *res);
         return;
       }

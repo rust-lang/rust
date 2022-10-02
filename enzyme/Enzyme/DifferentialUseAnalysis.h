@@ -366,6 +366,8 @@ static inline bool is_value_needed_in_reverse(
     }
   }
 
+  bool inst_cv = gutils->isConstantValue(const_cast<Value *>(inst));
+
   // Consider all users of this value, do any of them need this in the reverse?
   for (auto use : inst->users()) {
     if (use == inst)
@@ -377,9 +379,14 @@ static inline bool is_value_needed_in_reverse(
     // is used in an active instruction.
     // If inst is a constant value, the primal may be used in its place and
     // thus required.
-    if (VT == ValueType::Shadow ||
-        (gutils->isConstantValue(const_cast<Value *>(inst)) &&
-         !TR.query(const_cast<Value *>(inst))[{-1}].isFloat())) {
+    if (VT == ValueType::Shadow || inst_cv) {
+
+      // Floating point numbers cannot be used as a shadow pointer/etc
+      if (inst_cv || (mode != DerivativeMode::ForwardMode &&
+                      mode != DerivativeMode::ForwardModeSplit))
+        if (TR.query(const_cast<Value *>(inst))[{-1}].isFloat())
+          goto endShadow;
+
       if (!user)
         return seen[idx] = true;
 
@@ -574,9 +581,16 @@ static inline bool is_value_needed_in_reverse(
           goto endShadow;
       }
 
-      // Assume active instructions require the operand.
-      if (!gutils->isConstantInstruction(const_cast<Instruction *>(user))) {
-        return seen[idx] = true;
+      // With certain exceptions, assume active instructions require the
+      // shadow of the operand.
+      if (mode == DerivativeMode::ForwardMode ||
+          mode == DerivativeMode::ForwardModeSplit ||
+          (!isa<ExtractValueInst>(user) && !isa<ExtractElementInst>(user) &&
+           !isa<InsertValueInst>(user) && !isa<InsertElementInst>(user) &&
+           !isa<CastInst>(user) && !isa<GetElementPtrInst>(user))) {
+        if (!gutils->isConstantInstruction(const_cast<Instruction *>(user))) {
+          return seen[idx] = true;
+        }
       }
 
       // Now the remaining instructions are inactive, however note that

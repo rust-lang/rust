@@ -330,6 +330,10 @@ public:
     }
   };
 
+  std::map<llvm::Function *, llvm::Function *> NoFreeCachedFunctions;
+  llvm::Function *CreateNoFree(llvm::Function *todiff);
+  llvm::Value *CreateNoFree(llvm::Value *todiff);
+
   std::map<AugmentedCacheKey, AugmentedReturn> AugmentedCachedFunctions;
 
   /// Create an augmented forward pass.

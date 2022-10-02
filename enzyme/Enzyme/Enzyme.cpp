@@ -409,6 +409,32 @@ handleFunctionLike(llvm::Module &M, llvm::GlobalVariable &g,
 }
 
 static void handleKnownFunctions(llvm::Function &F) {
+  if (F.getName() == "memcmp") {
+    F.addFnAttr(Attribute::ReadOnly);
+    F.addFnAttr(Attribute::ArgMemOnly);
+    F.addFnAttr(Attribute::NoUnwind);
+    F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
+    F.addFnAttr(Attribute::WillReturn);
+    F.addFnAttr(Attribute::NoFree);
+    F.addFnAttr(Attribute::NoSync);
+#else
+    F.addFnAttr("nofree");
+#endif
+    for (int i = 0; i < 2; i++)
+      if (F.getFunctionType()->getParamType(i)->isPointerTy()) {
+        F.addParamAttr(i, Attribute::NoCapture);
+        F.addParamAttr(i, Attribute::WriteOnly);
+      }
+  }
+  if (F.getName() ==
+      "_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_createERmm") {
+#if LLVM_VERSION_MAJOR >= 9
+    F.addFnAttr(Attribute::NoFree);
+#else
+    F.addFnAttr("nofree");
+#endif
+  }
   if (F.getName() == "MPI_Irecv" || F.getName() == "PMPI_Irecv") {
     F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
     F.addFnAttr(Attribute::NoUnwind);
@@ -757,7 +783,8 @@ public:
   EnzymeLogic Logic;
   static char ID;
   Enzyme(bool PostOpt = false)
-      : ModulePass(ID), Logic(PostOpt | EnzymePostOpt) {
+      : ModulePass(ID),
+        Logic(EnzymePostOpt.getNumOccurrences() ? EnzymePostOpt : PostOpt) {
     // initializeLowerAutodiffIntrinsicPass(*PassRegistry::getPassRegistry());
   }
 
@@ -1280,6 +1307,7 @@ public:
         if (sizeOnly) {
           assert(opt_ty);
           constants.push_back(*opt_ty);
+          truei++;
           continue;
         }
         ++i;
@@ -1459,6 +1487,10 @@ public:
 #endif
               element = Builder.CreateBitCast(element, elementPtrTy);
             } else {
+              EmitFailure(
+                  "NonPointerBatch", CI->getDebugLoc(), CI,
+                  "Batched argument at index ", i,
+                  " must be of pointer type, found: ", *element->getType());
               return false;
             }
           }
@@ -1490,6 +1522,14 @@ public:
       }
 
       ++truei;
+    }
+    if (truei < FT->getNumParams()) {
+      auto numParams = FT->getNumParams();
+      EmitFailure(
+          "EnzymeInsufficientArgs", CI->getDebugLoc(), CI,
+          "Insufficient number of args passed to derivative call required ",
+          numParams, " primal args, found ", truei);
+      return false;
     }
 
     std::map<Argument *, bool> volatile_args;
@@ -1661,8 +1701,13 @@ public:
     }
     }
 
-    if (!newFunc)
+    if (!newFunc) {
+      StringRef n = fn->getName();
+      EmitFailure("FailedToDifferentiate", fn->getSubprogram(),
+                  &*fn->getEntryBlock().begin(),
+                  "Could not generate derivative function of ", n);
       return false;
+    }
 
     if (differentialReturn) {
       if (differet)
@@ -1717,7 +1762,6 @@ public:
       assert(tape->getType() == tapeType);
       args.push_back(tape);
     }
-    assert(newFunc);
 
     if (EnzymePrint) {
       llvm::errs() << "postfn:\n" << *newFunc << "\n";
@@ -2483,14 +2527,6 @@ public:
 
       bool successful = true;
       changed |= lowerEnzymeCalls(F, successful, done);
-
-      if (!successful) {
-        M.getContext().diagnose(
-            (EnzymeFailure("FailedToDifferentiate", F.getSubprogram(),
-                           &*F.getEntryBlock().begin())
-             << "EnzymeFailure when replacing __enzyme_autodiff calls in "
-             << F.getName()));
-      }
     }
 
     SmallVector<CallInst *, 4> toErase;

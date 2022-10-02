@@ -376,20 +376,11 @@ CallInst *CreateDealloc(llvm::IRBuilder<> &Builder, llvm::Value *ToFree) {
   return res;
 }
 
-EnzymeFailure::EnzymeFailure(llvm::StringRef RemarkName,
+EnzymeFailure::EnzymeFailure(llvm::Twine RemarkName,
                              const llvm::DiagnosticLocation &Loc,
                              const llvm::Instruction *CodeRegion)
-    : DiagnosticInfoIROptimization(
-          EnzymeFailure::ID(), DS_Error, "enzyme", RemarkName,
-          *CodeRegion->getParent()->getParent(), Loc, CodeRegion) {}
-
-llvm::DiagnosticKind EnzymeFailure::ID() {
-  static auto id = llvm::getNextAvailablePluginDiagnosticKind();
-  return (llvm::DiagnosticKind)id;
-}
-
-/// \see DiagnosticInfoOptimizationBase::isEnabled.
-bool EnzymeFailure::isEnabled() const { return true; }
+    : DiagnosticInfoUnsupported(*CodeRegion->getParent()->getParent(),
+                                RemarkName, Loc) {}
 
 /// Convert a floating type to a string
 static inline std::string tofltstr(Type *T) {

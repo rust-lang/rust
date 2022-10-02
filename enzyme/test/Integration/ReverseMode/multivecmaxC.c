@@ -13,8 +13,6 @@
 #include <stdio.h>
 #include <math.h>
 
-#include <vector>
-
 #include "test_utils.h"
 
 extern void __enzyme_autodiff(void*, double*, double*, int);
@@ -24,21 +22,24 @@ extern void __enzyme_autodiff(void*, double*, double*, int);
 
 double reduce_max(double* vec, int size) {
   double ret = -INFINITY;
-  std::vector<double> maxes;
+  double *maxes = (double*)malloc(sizeof(double)*size);
+  int count = 0;
   for (int i = 0; i < size; i++) {
     if (vec[i] > ret) {
-      maxes.clear();
+      count = 0;
       ret = vec[i];
     }
     if (vec[i] == ret) {
-      maxes.push_back(vec[i]);
+      maxes[count] = vec[i];
+      count++;
     }
   }
   ret = 0;
-  for(auto a : maxes) {
-    ret += a;
+  for(int i=0; i<count; i++) {
+    ret += maxes[i];
   }
-  ret /= maxes.size();
+  ret /= count;
+  free(maxes);
   return ret;
 }
 

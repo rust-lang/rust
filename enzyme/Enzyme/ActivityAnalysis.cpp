@@ -87,7 +87,12 @@ const char *KnownInactiveFunctionsStartingWith[] = {
     "f90io",
     "$ss5print",
     "_ZTv0_n24_NSoD", //"1Ev, 0Ev
+    "_ZNSt16allocator_traitsISaIdEE10deallocate",
+    "_ZNSaIcED1Ev",
+    "_ZNSaIcEC1Ev",
 #if LLVM_VERSION_MAJOR <= 8
+    // TODO this returns allocated memory and thus can be an active value
+    // "_ZNSt16allocator_traits",
     "_ZN4core3fmt",
     "_ZN3std2io5stdio6_print",
     "_ZNSt7__cxx1112basic_string",
@@ -278,7 +283,8 @@ const std::set<std::string> KnownInactiveFunctions = {
 };
 
 const char *DemangledKnownInactiveFunctionsStartingWith[] = {
-    "std::allocator",
+    // TODO this returns allocated memory and thus can be an active value
+    // "std::allocator",
     "std::string",
     "std::cerr",
     "std::istream",

@@ -473,6 +473,7 @@ public:
       return;
     }
   }
+
   void visitICmpInst(llvm::ICmpInst &I) { eraseIfUnused(I); }
 
   void visitFCmpInst(llvm::FCmpInst &I) { eraseIfUnused(I); }
@@ -539,8 +540,7 @@ public:
           vd = TypeTree(BaseType::Pointer).Only(-1);
           goto known;
         }
-        EmitWarning("CannotDeduceType", I.getDebugLoc(), gutils->oldFunc,
-                    I.getParent(), &I, "failed to deduce type of load ", I);
+        EmitWarning("CannotDeduceType", I, "failed to deduce type of load ", I);
         vd = TypeTree(BaseType::Pointer).Only(-1);
         goto known;
       }
@@ -1232,7 +1232,7 @@ public:
               LoadInst *dif1 = Builder2.CreateLoad(dif1Ptr, isVolatile);
 #endif
               if (align)
-#if LLVM_VERSION_MAJOR >= 10
+#if LLVM_VERSION_MAJOR >= 11
                 dif1->setAlignment(*align);
 #else
                 dif1->setAlignment(align);
@@ -3125,8 +3125,7 @@ public:
             }
           }
         }
-        EmitWarning("CannotDeduceType", MS.getDebugLoc(), gutils->oldFunc,
-                    MS.getParent(), &MS, "failed to deduce type of memset ",
+        EmitWarning("CannotDeduceType", MS, "failed to deduce type of memset ",
                     MS);
         vd = TypeTree(BaseType::Pointer).Only(0);
         goto known;
@@ -3446,8 +3445,7 @@ public:
             }
           }
         }
-        EmitWarning("CannotDeduceType", MTI.getDebugLoc(), gutils->oldFunc,
-                    MTI.getParent(), &MTI, "failed to deduce type of copy ",
+        EmitWarning("CannotDeduceType", MTI, "failed to deduce type of copy ",
                     MTI);
         vd = TypeTree(BaseType::Pointer).Only(0);
         goto known;
@@ -11458,6 +11456,48 @@ public:
     }
 
     if (gutils->isConstantInstruction(orig) && gutils->isConstantValue(orig)) {
+      bool noFree = false;
+#if LLVM_VERSION_MAJOR >= 9
+      noFree |= orig->hasFnAttr(Attribute::NoFree);
+#endif
+      noFree |= orig->hasFnAttr("nofree");
+      if (!noFree && called) {
+#if LLVM_VERSION_MAJOR >= 9
+        noFree |= called->hasFnAttribute(Attribute::NoFree);
+#endif
+        noFree |= called->hasFnAttribute("nofree");
+      }
+      if (!noFree && !EnzymeGlobalActivity) {
+        bool mayActiveFree = false;
+#if LLVM_VERSION_MAJOR >= 14
+        for (unsigned i = 0; i < orig->arg_size(); ++i)
+#else
+        for (unsigned i = 0; i < orig->getNumArgOperands(); ++i)
+#endif
+        {
+          Value *a = orig->getOperand(i);
+          if (gutils->isConstantValue(a))
+            continue;
+          if (!TR.query(a)[{-1}].isPossiblePointer())
+            continue;
+          mayActiveFree = true;
+          break;
+        }
+        if (!mayActiveFree)
+          noFree = true;
+      }
+      if (!noFree) {
+#if LLVM_VERSION_MAJOR >= 11
+        auto callval = orig->getCalledOperand();
+#else
+        auto callval = orig->getCalledValue();
+#endif
+#if LLVM_VERSION_MAJOR >= 9
+        newCall->setCalledOperand(gutils->Logic.CreateNoFree(callval));
+#else
+        newCall->setCalledFunction(gutils->Logic.CreateNoFree(callval));
+#endif
+      }
       if (gutils->knownRecomputeHeuristic.find(orig) !=
           gutils->knownRecomputeHeuristic.end()) {
         if (!gutils->knownRecomputeHeuristic[orig]) {
