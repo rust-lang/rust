@@ -434,6 +434,6 @@ lint_check_name_warning = {$msg}
 
 lint_check_name_deprecated = lint name `{$lint_name}` is deprecated and does not have an effect anymore. Use: {$new_name}
 
-lint_rpit_hidden_inferred_bound = return-position `{$ty}` does not satisfy its associated type bounds
+lint_opaque_hidden_inferred_bound = opaque type `{$ty}` does not satisfy its associated type bounds
     .specifically = this associated type bound is unsatisfied for `{$proj_ty}`
     .suggestion = add this bound

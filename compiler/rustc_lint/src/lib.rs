@@ -62,10 +62,10 @@ mod non_ascii_idents;
 mod non_fmt_panic;
 mod nonstandard_style;
 mod noop_method_call;
+mod opaque_hidden_inferred_bound;
 mod pass_by_value;
 mod passes;
 mod redundant_semicolon;
-mod rpit_hidden_inferred_bound;
 mod traits;
 mod types;
 mod unused;
@@ -94,9 +94,9 @@ use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
 use noop_method_call::*;
+use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;
 use redundant_semicolon::*;
-use rpit_hidden_inferred_bound::*;
 use traits::*;
 use types::*;
 use unused::*;
@@ -225,7 +225,7 @@ macro_rules! late_lint_mod_passes {
                 EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
                 InvalidAtomicOrdering: InvalidAtomicOrdering,
                 NamedAsmLabels: NamedAsmLabels,
-                RpitHiddenInferredBound: RpitHiddenInferredBound,
+                OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             ]
         );
     };
