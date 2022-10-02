@@ -1589,6 +1589,10 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     {
         sess.emit_err(errors::SplitDebugInfoUnstablePlatform { debuginfo: sess.split_debuginfo() });
     }
+
+    if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {
+        sess.emit_err(errors::InstrumentationNotSupported { us: "XRay".to_string() });
+    }
 }
 
 /// Holds data on the current incremental compilation session, if there is one.

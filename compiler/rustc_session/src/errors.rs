@@ -72,6 +72,12 @@ pub struct ProfileSampleUseFileDoesNotExist<'a> {
 pub struct TargetRequiresUnwindTables;
 
 #[derive(Diagnostic)]
+#[diag(session_instrumentation_not_supported)]
+pub struct InstrumentationNotSupported {
+    pub us: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(session_sanitizer_not_supported)]
 pub struct SanitizerNotSupported {
     pub us: String,
