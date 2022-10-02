@@ -17,6 +17,13 @@ macro_rules! pkg_type {
         }
 
         impl PkgType {
+            fn is_preview(&self) -> bool {
+                match self {
+                    $( $( $($is_preview)? PkgType::$variant => true, )? )+
+                    _ => false,
+                }
+            }
+
             pub(crate) fn from_component(component: &str) -> Self {
                 match component {
                     $( $component  $( | concat!($($is_preview)? $component, "-preview") )? => PkgType::$variant,)+
@@ -31,6 +38,11 @@ macro_rules! pkg_type {
                     PkgType::Other(component) => component,
                 }
             }
+
+            /// Component name in the manifest. In particular, this includes the `-preview` suffix where appropriate.
+            pub(crate) fn all() -> &'static [PkgType] {
+                &[ $(PkgType::$variant),+ ]
+            }
         }
     }
 }
@@ -39,7 +51,14 @@ pkg_type! {
     Rust = "rust",
     RustSrc = "rust-src",
     Rustc = "rustc",
+    RustcDev = "rustc-dev",
+    RustcDocs = "rustc-docs",
+    ReproducibleArtifacts = "reproducible-artifacts",
+    RustMingw = "rust-mingw",
+    RustStd = "rust-std",
     Cargo = "cargo",
+    HtmlDocs = "rust-docs",
+    RustAnalysis = "rust-analysis",
     Rls = "rls"; preview = true,
     RustAnalyzer = "rust-analyzer"; preview = true,
     Clippy = "clippy"; preview = true,
@@ -50,6 +69,15 @@ pkg_type! {
 }
 
 impl PkgType {
+    // / Component name in the manifest. In particular, this includes the `-preview` suffix where appropriate.
+    pub(crate) fn manifest_component_name(&self) -> String {
+        if self.is_preview() {
+            format!("{}-preview", self.tarball_component_name())
+        } else {
+            self.tarball_component_name().to_string()
+        }
+    }
+
     /// Whether this package has the same version as Rust itself, or has its own `version` and
     /// `git-commit-hash` files inside the tarball.
     fn should_use_rust_version(&self) -> bool {
@@ -63,16 +91,58 @@ impl PkgType {
             PkgType::Miri => false,
 
             PkgType::Rust => true,
+            PkgType::RustStd => true,
             PkgType::RustSrc => true,
             PkgType::Rustc => true,
             PkgType::JsonDocs => true,
+            PkgType::HtmlDocs => true,
+            PkgType::RustcDev => true,
+            PkgType::RustcDocs => true,
+            PkgType::ReproducibleArtifacts => true,
+            PkgType::RustMingw => true,
+            PkgType::RustAnalysis => true,
             PkgType::Other(_) => true,
+        }
+    }
+
+    pub(crate) fn targets(&self) -> &[&str] {
+        use crate::{HOSTS, MINGW, TARGETS};
+        use PkgType::*;
+
+        match self {
+            Rust => HOSTS, // doesn't matter in practice, but return something to avoid panicking
+            Rustc => HOSTS,
+            RustcDev => HOSTS,
+            ReproducibleArtifacts => HOSTS,
+            RustcDocs => HOSTS,
+            Cargo => HOSTS,
+            RustMingw => MINGW,
+            RustStd => TARGETS,
+            HtmlDocs => HOSTS,
+            JsonDocs => HOSTS,
+            RustSrc => &["*"],
+            Rls => HOSTS,
+            RustAnalyzer => HOSTS,
+            Clippy => HOSTS,
+            Miri => HOSTS,
+            Rustfmt => HOSTS,
+            RustAnalysis => TARGETS,
+            LlvmTools => TARGETS,
+            Other(pkg) => panic!("add {pkg} to the list of known `PkgType`s"),
         }
     }
 
     /// Whether this package is target-independent or not.
     fn target_independent(&self) -> bool {
         *self == PkgType::RustSrc
+    }
+
+    /// Whether to package these target-specific docs for another similar target.
+    pub(crate) fn use_docs_fallback(&self) -> bool {
+        match self {
+            PkgType::JsonDocs | PkgType::HtmlDocs => true,
+            _ => false,
+        }
     }
 }
 

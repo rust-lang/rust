@@ -283,28 +283,15 @@ impl Builder {
     }
 
     fn add_packages_to(&mut self, manifest: &mut Manifest) {
-        macro_rules! package {
-            ($name:expr, $targets:expr) => {
-                self.package($name, &mut manifest.pkg, $targets, &[])
-            };
+        for pkg in PkgType::all() {
+            let fallback = if pkg.use_docs_fallback() { DOCS_FALLBACK } else { &[] };
+            self.package(
+                &pkg.manifest_component_name(),
+                &mut manifest.pkg,
+                pkg.targets(),
+                fallback,
+            );
         }
-        package!("rustc", HOSTS);
-        package!("rustc-dev", HOSTS);
-        package!("reproducible-artifacts", HOSTS);
-        package!("rustc-docs", HOSTS);
-        package!("cargo", HOSTS);
-        package!("rust-mingw", MINGW);
-        package!("rust-std", TARGETS);
-        self.package("rust-docs", &mut manifest.pkg, HOSTS, DOCS_FALLBACK);
-        self.package("rust-docs-json-preview", &mut manifest.pkg, HOSTS, DOCS_FALLBACK);
-        package!("rust-src", &["*"]);
-        package!("rls-preview", HOSTS);
-        package!("rust-analyzer-preview", HOSTS);
-        package!("clippy-preview", HOSTS);
-        package!("miri-preview", HOSTS);
-        package!("rustfmt-preview", HOSTS);
-        package!("rust-analysis", TARGETS);
-        package!("llvm-tools-preview", TARGETS);
     }
 
     fn add_artifacts_to(&mut self, manifest: &mut Manifest) {
@@ -500,6 +487,12 @@ impl Builder {
         targets: &[&str],
         fallback: &[(&str, &str)],
     ) {
+        if pkgname == "rust" {
+            // This is handled specially by `rust_package` later.
+            // Order is important, so don't call `rust_package` here.
+            return;
+        }
+
         let version_info = self
             .versions
             .version(&PkgType::from_component(pkgname))
