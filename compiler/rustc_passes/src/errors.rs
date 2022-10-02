@@ -1272,3 +1272,44 @@ pub struct UselessAssignment<'a> {
     pub is_field_assign: bool,
     pub ty: Ty<'a>,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(passes::only_has_effect_on)]
+pub struct OnlyHasEffectOn {
+    pub attr_name: Symbol,
+    pub target_name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::object_lifetime_err)]
+pub struct ObjectLifetimeErr {
+    #[primary_span]
+    pub span: Span,
+    pub repr: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::unrecognized_repr_hint, code = "E0552")]
+#[help]
+pub struct UnrecognizedReprHint {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::attribute_should_be_applied_to, code = "E0517")]
+pub struct AttributeShouldBeAppliedTo<'a> {
+    #[primary_span]
+    pub hint_span: Span,
+    #[label]
+    pub span: Span,
+    pub what: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::transparent_incompatible, code = "E0692")]
+pub struct TransparentIncompatible {
+    #[primary_span]
+    pub hint_spans: Vec<Span>,
+    pub target: String,
+}

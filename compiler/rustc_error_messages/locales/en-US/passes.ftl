@@ -564,3 +564,39 @@ passes_useless_assignment =
         [true] field
         *[false] variable
     } of type `{$ty}` to itself
+
+passes_only_has_effect_on =
+    `#[{$attr_name}]` only has an effect on {$target_name ->
+        [function] functions
+        [module] modules
+        [implementation_block] implementation blocks
+        *[unspecified] (unspecified--this is a compiler bug)
+    }
+
+passes_object_lifetime_err =
+    {$repr}
+
+passes_unrecognized_repr_hint =
+    unrecognized representation hint
+    .help = valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+
+passes_attribute_should_be_applied_to =
+    attribute should be applied to {$what ->
+        [enum] an enum
+        [struct] a struct
+        [struct-union] a struct or union
+        [struct-enum-union] a struct, enum, or union
+        [struct-enum-function-union] a struct, enum, function, or union
+        *[unspecified] (unspecified--this is a compiler bug)
+    }
+    .label = not {$what ->
+        [enum] an enum
+        [struct] a struct
+        [struct-union] a struct or union
+        [struct-enum-union] a struct, enum, or union
+        [struct-enum-function-union] a struct, enum, function, or union
+        *[unspecified] (unspecified--this is a compiler bug)
+    }
+
+passes_transparent_incompatible =
+    transparent {$target} cannot have other repr hints
