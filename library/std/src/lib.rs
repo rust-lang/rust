@@ -351,6 +351,7 @@
 // Only used in tests/benchmarks:
 //
 // Only for const-ness:
+#![feature(const_collections_with_hasher)]
 #![feature(const_io_structs)]
 #![feature(const_ip)]
 #![feature(const_ipv4)]
