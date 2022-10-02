@@ -705,8 +705,6 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
         pub const fn ilog(self, base: Self) -> u32 {
             assert!(base >= 2, "base of integer logarithm must be at least 2");
             self.checked_ilog(base).expect("argument of integer logarithm must be positive")
@@ -729,8 +727,6 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
         pub const fn ilog2(self) -> u32 {
             self.checked_ilog2().expect("argument of integer logarithm must be positive")
         }
@@ -752,8 +748,6 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
         pub const fn ilog10(self) -> u32 {
             self.checked_ilog10().expect("argument of integer logarithm must be positive")
         }
