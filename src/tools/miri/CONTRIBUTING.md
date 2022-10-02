@@ -38,7 +38,7 @@ for you. If you don't want all of these to happen, you can add individual `.auto
 ## Building and testing Miri
 
 Invoking Miri requires getting a bunch of flags right and setting up a custom
-sysroot with xargo. The `miri` script takes care of that for you. With the
+sysroot. The `miri` script takes care of that for you. With the
 build environment prepared, compiling Miri is just one command away:
 
 ```
