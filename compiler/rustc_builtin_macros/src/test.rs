@@ -115,7 +115,7 @@ pub fn expand_test_or_bench(
             // reworked in the future to not need it, it'd be nice.
             _ => diag.struct_span_err(attr_sp, msg).forget_guarantee(),
         };
-        err.span_label(attr_sp, "the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions")
+        err.span_label(attr_sp, "the `#[test]` macro causes a function to be run on a test and has no effect on non-functions")
             .span_label(item.span, format!("expected a non-associated function, found {} {}", item.kind.article(), item.kind.descr()))
             .span_suggestion(attr_sp, "replace with conditional compilation to make the item only exist when tests are being run", "#[cfg(test)]", Applicability::MaybeIncorrect)
             .emit();

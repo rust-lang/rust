@@ -225,7 +225,7 @@ fn path_cmp_short(a: &ast::Path, b: &ast::Path) -> Ordering {
 }
 
 /// Compares two paths, if one ends earlier than the other the has_tl parameters decide which is
-/// greater as a a path that has a tree list should be greater, while one that just ends without
+/// greater as a path that has a tree list should be greater, while one that just ends without
 /// a tree list should be considered less.
 pub(super) fn use_tree_path_cmp(
     a: &ast::Path,
