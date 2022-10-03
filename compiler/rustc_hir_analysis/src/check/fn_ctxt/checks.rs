@@ -50,8 +50,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_transmutes(&self) {
         let mut deferred_transmute_checks = self.deferred_transmute_checks.borrow_mut();
         debug!("FnCtxt::check_transmutes: {} deferred checks", deferred_transmute_checks.len());
-        for (from, to, span) in deferred_transmute_checks.drain(..) {
-            self.check_transmute(span, from, to);
+        for (from, to, hir_id) in deferred_transmute_checks.drain(..) {
+            self.check_transmute(from, to, hir_id);
         }
     }
 
