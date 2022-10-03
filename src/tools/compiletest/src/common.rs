@@ -385,7 +385,8 @@ impl Config {
     }
 
     fn target_cfg(&self) -> &TargetCfg {
-        self.target_cfg.borrow_with(|| TargetCfg::new(&self.rustc_path, &self.target))
+        self.target_cfg
+            .borrow_with(|| TargetCfg::new(&self.rustc_path, &self.target, &self.target_rustcflags))
     }
 
     pub fn matches_arch(&self, arch: &str) -> bool {
@@ -456,11 +457,12 @@ pub enum Endian {
 }
 
 impl TargetCfg {
-    fn new(rustc_path: &Path, target: &str) -> TargetCfg {
+    fn new(rustc_path: &Path, target: &str, target_rustcflags: &Option<String>) -> TargetCfg {
         let output = match Command::new(rustc_path)
             .arg("--print=cfg")
             .arg("--target")
             .arg(target)
+            .args(target_rustcflags.into_iter().map(|s| s.split_whitespace()).flatten())
             .output()
         {
             Ok(output) => output,
