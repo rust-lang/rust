@@ -48,3 +48,10 @@ pub struct LimitInvalid<'a> {
     pub value_span: Span,
     pub error_str: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(middle::const_eval_non_int)]
+pub struct ConstEvalNonIntError {
+    #[primary_span]
+    pub span: Span,
+}
