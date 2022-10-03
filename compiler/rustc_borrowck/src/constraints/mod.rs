@@ -96,6 +96,9 @@ pub struct OutlivesConstraint<'tcx> {
 
     /// Variance diagnostic information
     pub variance_info: VarianceDiagInfo<'tcx>,
+
+    /// If this constraint is promoted from closure requirements.
+    pub from_closure: bool,
 }
 
 impl<'tcx> fmt::Debug for OutlivesConstraint<'tcx> {
