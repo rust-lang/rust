@@ -223,8 +223,14 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
     unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
 }
 
-/// Performs the same functionality as [`from_ptr_range`], except that a
+/// Forms a mutable slice from a pointer range.
+///
+/// This is the same functionality as [`from_ptr_range`], except that a
 /// mutable slice is returned.
+///
+/// This function is useful for interacting with foreign interfaces which
+/// use two pointers to refer to a range of elements in memory, as is
+/// common in C++.
 ///
 /// # Safety
 ///
@@ -254,6 +260,14 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 /// # Panics
 ///
 /// This function panics if `T` is a Zero-Sized Type (“ZST”).
+///
+/// # Caveat
+///
+/// The lifetime for the returned slice is inferred from its usage. To
+/// prevent accidental misuse, it's suggested to tie the lifetime to whichever
+/// source lifetime is safe in the context, such as by providing a helper
+/// function taking the lifetime of a host value for the slice, or by explicit
+/// annotation.
 ///
 /// # Examples
 ///
