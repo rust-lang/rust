@@ -52,8 +52,10 @@ impl<'a> DiagnosticDerive<'a> {
                 }
             };
 
+            let formatting_init = &builder.formatting_init;
             quote! {
                 #init
+                #formatting_init
                 #preamble
                 #body
                 #diag
@@ -101,9 +103,10 @@ impl<'a> LintDiagnosticDerive<'a> {
             let body = builder.body(&variant);
 
             let diag = &builder.parent.diag;
-
+            let formatting_init = &builder.formatting_init;
             quote! {
                 #preamble
+                #formatting_init
                 #body
                 #diag
             }
