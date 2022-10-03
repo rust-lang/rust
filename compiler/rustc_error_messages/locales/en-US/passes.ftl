@@ -600,3 +600,53 @@ passes_attribute_should_be_applied_to =
 
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints
+
+passes_deprecated_attribute =
+    deprecated attribute must be paired with either stable or unstable attribute
+
+passes_useless_stability =
+    this stability annotation is useless
+    .label = useless stability annotation
+    .item = the stability attribute annotates this item
+
+passes_invalid_stability =
+    invalid stability version found
+    .label = invalid stability version
+    .item = the stability attribute annotates this item
+
+passes_cannot_stabilize_deprecated =
+    an API can't be stabilized after it is deprecated
+    .label = invalid version
+    .item = the stability attribute annotates this item
+
+passes_invalid_deprecation_version =
+    invalid deprecation version found
+    .label = invalid deprecation version
+    .item = the stability attribute annotates this item
+
+passes_missing_stability_attr =
+    {$descr} has missing stability attribute
+
+passes_missing_const_stab_attr =
+    {$descr} has missing const stability attribute
+
+passes_trait_impl_const_stable =
+    trait implementations cannot be const stable yet
+    .note = see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+
+passes_feature_only_on_nightly =
+    `#![feature]` may not be used on the {$release_channel} release channel
+
+passes_unknown_feature =
+    unknown feature `{$feature}`
+
+passes_implied_feature_not_exist =
+    feature `{$implied_by}` implying `{$feature}` does not exist
+
+passes_duplicate_feature_err =
+    the feature `{$feature}` has already been declared
+
+passes_missing_const_err =
+    attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
+    .help = make the function or method const
+    .label = attribute specified here

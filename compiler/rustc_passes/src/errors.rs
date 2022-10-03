@@ -1313,3 +1313,116 @@ pub struct TransparentIncompatible {
     pub hint_spans: Vec<Span>,
     pub target: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes::deprecated_attribute, code = "E0549")]
+pub struct DeprecatedAttribute {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::useless_stability)]
+pub struct UselessStability {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(passes::item)]
+    pub item_sp: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::invalid_stability)]
+pub struct InvalidStability {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(passes::item)]
+    pub item_sp: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::cannot_stabilize_deprecated)]
+pub struct CannotStabilizeDeprecated {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(passes::item)]
+    pub item_sp: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::invalid_deprecation_version)]
+pub struct InvalidDeprecationVersion {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(passes::item)]
+    pub item_sp: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::missing_stability_attr)]
+pub struct MissingStabilityAttr<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub descr: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::missing_const_stab_attr)]
+pub struct MissingConstStabAttr<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub descr: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::trait_impl_const_stable)]
+#[note]
+pub struct TraitImplConstStable {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::feature_only_on_nightly, code = "E0554")]
+pub struct FeatureOnlyOnNightly {
+    #[primary_span]
+    pub span: Span,
+    pub release_channel: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::unknown_feature, code = "E0635")]
+pub struct UnknownFeature {
+    #[primary_span]
+    pub span: Span,
+    pub feature: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::implied_feature_not_exist)]
+pub struct ImpliedFeatureNotExist {
+    #[primary_span]
+    pub span: Span,
+    pub feature: Symbol,
+    pub implied_by: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::duplicate_feature_err, code = "E0636")]
+pub struct DuplicateFeatureErr {
+    #[primary_span]
+    pub span: Span,
+    pub feature: Symbol,
+}
+#[derive(Diagnostic)]
+#[diag(passes::missing_const_err)]
+pub struct MissingConstErr {
+    #[primary_span]
+    #[help]
+    pub fn_sig_span: Span,
+    #[label]
+    pub const_span: Span,
+}
