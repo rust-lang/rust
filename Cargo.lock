@@ -3781,8 +3781,6 @@ dependencies = [
  "either",
  "gsgdt",
  "polonius-engine",
- "rand 0.8.5",
- "rand_xoshiro",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_apfloat",
@@ -4228,6 +4226,8 @@ dependencies = [
 name = "rustc_ty_utils"
 version = "0.0.0"
 dependencies = [
+ "rand 0.8.5",
+ "rand_xoshiro",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
