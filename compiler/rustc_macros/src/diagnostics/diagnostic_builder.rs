@@ -426,7 +426,8 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             SubdiagnosticKind::Suggestion {
                 suggestion_kind,
                 applicability: static_applicability,
-                code,
+                code_field,
+                code_init,
             } => {
                 let (span_field, mut applicability) = self.span_and_applicability_of_ty(info)?;
 
@@ -440,10 +441,11 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 let style = suggestion_kind.to_suggestion_style();
 
                 Ok(quote! {
+                    #code_init
                     #diag.span_suggestion_with_style(
                         #span_field,
                         rustc_errors::fluent::#slug,
-                        #code,
+                        #code_field,
                         #applicability,
                         #style
                     );
