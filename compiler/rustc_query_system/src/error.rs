@@ -1,20 +1,13 @@
-use rustc_errors::{AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
 
+#[derive(Subdiagnostic)]
+#[note(query_system::cycle_stack_middle)]
 pub struct CycleStack {
+    #[primary_span]
     pub span: Span,
     pub desc: String,
-}
-
-impl AddToDiagnostic for CycleStack {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        diag.span_note(self.span, &format!("...which requires {}...", self.desc));
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -56,7 +49,7 @@ pub struct Cycle {
     #[primary_span]
     pub span: Span,
     pub stack_bottom: String,
-    #[subdiagnostic]
+    #[subdiagnostic(eager)]
     pub cycle_stack: Vec<CycleStack>,
     #[subdiagnostic]
     pub stack_count: StackCount,
