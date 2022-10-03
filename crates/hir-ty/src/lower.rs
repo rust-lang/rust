@@ -653,9 +653,13 @@ impl<'a> TyLoweringContext<'a> {
         infer_args: bool,
     ) -> Substitution {
         let last = path.segments().last().expect("path should have at least one segment");
-        let generic_def = resolved.to_generic_def_id();
-        let segment = match resolved {
-            ValueTyDefId::EnumVariantId(_) => {
+        let (segment, generic_def) = match resolved {
+            ValueTyDefId::FunctionId(it) => (last, Some(it.into())),
+            ValueTyDefId::StructId(it) => (last, Some(it.into())),
+            ValueTyDefId::UnionId(it) => (last, Some(it.into())),
+            ValueTyDefId::ConstId(it) => (last, Some(it.into())),
+            ValueTyDefId::StaticId(_) => (last, None),
+            ValueTyDefId::EnumVariantId(var) => {
                 // the generic args for an enum variant may be either specified
                 // on the segment referring to the enum, or on the segment
                 // referring to the variant. So `Option::<T>::None` and
@@ -663,12 +667,12 @@ impl<'a> TyLoweringContext<'a> {
                 // preferred). See also `def_ids_for_path_segments` in rustc.
                 let len = path.segments().len();
                 let penultimate = len.checked_sub(2).and_then(|idx| path.segments().get(idx));
-                match penultimate {
+                let segment = match penultimate {
                     Some(segment) if segment.args_and_bindings.is_some() => segment,
                     _ => last,
-                }
+                };
+                (segment, Some(var.parent.into()))
             }
-            _ => last,
         };
         self.substs_from_path_segment(segment, generic_def, infer_args, None)
     }
@@ -1660,7 +1664,7 @@ impl ValueTyDefId {
             Self::FunctionId(id) => Some(id.into()),
             Self::StructId(id) => Some(id.into()),
             Self::UnionId(id) => Some(id.into()),
-            Self::EnumVariantId(var) => Some(var.parent.into()),
+            Self::EnumVariantId(var) => Some(var.into()),
             Self::ConstId(id) => Some(id.into()),
             Self::StaticId(_) => None,
         }
