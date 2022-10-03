@@ -194,13 +194,10 @@ h1, h2, h3, h4, h5, h6,
 .item-left > a,
 .out-of-band,
 span.since,
-details.rustdoc-toggle > summary::before,
 a.srclink,
 #help-button > button,
 details.rustdoc-toggle.top-doc > summary,
-details.rustdoc-toggle.top-doc > summary::before,
 details.rustdoc-toggle.non-exhaustive > summary,
-details.rustdoc-toggle.non-exhaustive > summary::before,
 .scraped-example-title,
 .more-examples-toggle summary, .more-examples-toggle .hide-more,
 .example-links a,
@@ -1567,7 +1564,6 @@ details.rustdoc-toggle > summary::before {
 }
 
 details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before,
 .more-examples-toggle summary, .more-examples-toggle .hide-more {
 	color: var(--toggles-color);
 }
