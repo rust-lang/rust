@@ -815,6 +815,23 @@ fn ttl() {
 
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
+fn hop_limit() {
+    let hlim: u32 = 100;
+
+    let addr = next_test_ip6();
+    let listener = t!(TcpListener::bind(&addr));
+
+    t!(listener.set_hop_limit_v6(hlim));
+    assert_eq!(hlim, t!(listener.hop_limit_v6()));
+
+    let stream = t!(TcpStream::connect(&addr));
+
+    t!(stream.set_hop_limit_v6(hlim));
+    assert_eq!(hlim, t!(stream.hop_limit_v6()));
+}
+
+#[test]
+#[cfg_attr(target_env = "sgx", ignore)]
 fn set_nonblocking() {
     let addr = next_test_ip4();
     let listener = t!(TcpListener::bind(&addr));

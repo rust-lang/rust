@@ -554,6 +554,82 @@ impl UdpSocket {
         self.0.ttl()
     }
 
+    /// Sets the value for the `IPV6_UNICAST_HOPS` option on this socket.
+    ///
+    /// This value sets the unicast hop limit field that is used in every packet
+    /// sent from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:54321").expect("couldn't bind to address");
+    /// socket.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn set_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
+        self.0.set_hop_limit_v6(limit)
+    }
+
+    /// Gets the value of the `IPV6_UNICAST_HOPS` option on this socket.
+    ///
+    /// For more information about this option, see [`UdpSocket::set_hop_limit_v6`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:54321").expect("couldn't bind to address");
+    /// socket.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
+    /// assert_eq!(socket.hop_limit_v6().unwrap(), 88);
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn hop_limit_v6(&self) -> io::Result<u32> {
+        self.0.hop_limit_v6()
+    }
+
+    /// Sets the value for the `IPV6_MULTICAST_HOPS` option on this socket.
+    ///
+    /// This value sets the hop limit field for outgoing multicast packets
+    /// sent from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:54321").expect("couldn't bind to address");
+    /// socket.set_multicast_hop_limit_v6(88).expect("set_multicast_hop_limit_v6 call failed");
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn set_multicast_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
+        self.0.set_multicast_hop_limit_v6(limit)
+    }
+
+    /// Gets the value of the `IPV6_MULTICAST_HOPS` option on this socket.
+    ///
+    /// For more information about this option, see [`UdpSocket::set_multicast_hop_limit_v6`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:54321").expect("couldn't bind to address");
+    /// socket.set_multicast_hop_limit_v6(88).expect("set_multicast_hop_limit_v6 call failed");
+    /// assert_eq!(socket.multicast_hop_limit_v6().unwrap(), 88);
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
+        self.0.multicast_hop_limit_v6()
+    }
+
     /// Executes an operation of the `IP_ADD_MEMBERSHIP` type.
     ///
     /// This function specifies a new multicast group for this socket to join.

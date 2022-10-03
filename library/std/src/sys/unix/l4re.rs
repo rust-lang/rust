@@ -271,6 +271,22 @@ pub mod net {
             unimpl!();
         }
 
+        pub fn set_hop_limit_v6(&self, _: u32) -> io::Result<()> {
+            unimpl!()
+        }
+
+        pub fn hop_limit_v6(&self) -> io::Result<u32> {
+            unimpl!()
+        }
+
+        pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
+            unimpl!()
+        }
+
+        pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
+            unimpl!()
+        }
+
         pub fn ttl(&self) -> io::Result<u32> {
             unimpl!();
         }
@@ -331,6 +347,22 @@ pub mod net {
 
         pub fn ttl(&self) -> io::Result<u32> {
             unimpl!();
+        }
+
+        pub fn set_hop_limit_v6(&self, _: u32) -> io::Result<()> {
+            unimpl!()
+        }
+
+        pub fn hop_limit_v6(&self) -> io::Result<u32> {
+            unimpl!()
+        }
+
+        pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
+            unimpl!()
+        }
+
+        pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
+            unimpl!()
         }
 
         pub fn set_only_v6(&self, _: bool) -> io::Result<()> {
@@ -473,6 +505,22 @@ pub mod net {
 
         pub fn ttl(&self) -> io::Result<u32> {
             unimpl!();
+        }
+
+        pub fn set_hop_limit_v6(&self, _: u32) -> io::Result<()> {
+            unimpl!()
+        }
+
+        pub fn hop_limit_v6(&self) -> io::Result<u32> {
+            unimpl!()
+        }
+
+        pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
+            unimpl!()
+        }
+
+        pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
+            unimpl!()
         }
 
         pub fn take_error(&self) -> io::Result<Option<io::Error>> {

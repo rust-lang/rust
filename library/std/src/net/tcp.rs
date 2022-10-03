@@ -541,6 +541,86 @@ impl TcpStream {
         self.0.ttl()
     }
 
+    /// Sets the value for the `IPV6_UNICAST_HOPS` option on this socket.
+    ///
+    /// This value sets the unicast hop limit field that is used in every packet
+    /// sent from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:54321")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn set_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
+        self.0.set_hop_limit_v6(limit)
+    }
+
+    /// Gets the value of the `IPV6_UNICAST_HOPS` option on this socket.
+    ///
+    /// For more information about this option, see [`TcpStream::set_hop_limit_v6`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:54321")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
+    /// assert_eq!(stream.hop_limit_v6().unwrap(), 88);
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn hop_limit_v6(&self) -> io::Result<u32> {
+        self.0.hop_limit_v6()
+    }
+
+    /// Sets the value for the `IPV6_MULTICAST_HOPS` option on this socket.
+    ///
+    /// This value sets the hop limit field for outgoing multicast packets
+    /// sent from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:54321")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_multicast_hop_limit_v6(88).expect("set_multicast_hop_limit_v6 call failed");
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn set_multicast_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
+        self.0.set_multicast_hop_limit_v6(limit)
+    }
+
+    /// Gets the value of the `IPV6_MULTICAST_HOPS` option on this socket.
+    ///
+    /// For more information about this option, see [`TcpStream::set_multicast_hop_limit_v6`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:54321")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_multicast_hop_limit_v6(88).expect("set_multicast_hop_limit_v6 call failed");
+    /// assert_eq!(stream.multicast_hop_limit_v6().unwrap(), 88);
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
+        self.0.multicast_hop_limit_v6()
+    }
+
     /// Gets the value of the `SO_ERROR` option on this socket.
     ///
     /// This will retrieve the stored error in the underlying socket, clearing
@@ -913,6 +993,82 @@ impl TcpListener {
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn ttl(&self) -> io::Result<u32> {
         self.0.ttl()
+    }
+
+    /// Sets the value for the `IPV6_UNICAST_HOPS` option on this socket.
+    ///
+    /// This value sets the unicast hop limit field that is used in every packet
+    /// sent from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::TcpListener;
+    ///
+    /// let listener = TcpListener::bind("127.0.0.1:54321").unwrap();
+    /// listener.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn set_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
+        self.0.set_hop_limit_v6(limit)
+    }
+
+    /// Gets the value of the `IPV6_UNICAST_HOPS` option on this socket.
+    ///
+    /// For more information about this option, see [`TcpListener::set_hop_limit_v6`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::TcpListener;
+    ///
+    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// listener.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
+    /// assert_eq!(listener.hop_limit_v6().unwrap(), 88);
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn hop_limit_v6(&self) -> io::Result<u32> {
+        self.0.hop_limit_v6()
+    }
+
+    /// Sets the value for the `IPV6_MULTICAST_HOPS` option on this socket.
+    ///
+    /// This value sets the hop limit field for outgoing multicast packets
+    /// sent from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::TcpListener;
+    ///
+    /// let listener = TcpListener::bind("127.0.0.1:54321").unwrap();
+    /// listener.set_multicast_hop_limit_v6(88).expect("set_multicast_hop_limit_v6 call failed");
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn set_multicast_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
+        self.0.set_multicast_hop_limit_v6(limit)
+    }
+
+    /// Gets the value of the `IPV6_MULTICAST_HOPS` option on this socket.
+    ///
+    /// For more information about this option, see [`TcpListener::set_multicast_hop_limit_v6`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(ipv6_hop_limit)]
+    /// use std::net::TcpListener;
+    ///
+    /// let listener = TcpListener::bind("127.0.0.1:54321").unwrap();
+    /// listener.set_multicast_hop_limit_v6(88).expect("set_multicast_hop_limit_v6 call failed");
+    /// assert_eq!(listener.multicast_hop_limit_v6().unwrap(), 88);
+    /// ```
+    #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
+        self.0.multicast_hop_limit_v6()
     }
 
     #[stable(feature = "net2_mutators", since = "1.9.0")]
