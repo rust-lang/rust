@@ -34,6 +34,7 @@ impl AsFd for Stdin {
 impl<'a> AsFd for io::StdinLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stdin out from under the standard library
         unsafe { BorrowedFd::borrow_raw(0) }
     }
 }
@@ -77,6 +78,7 @@ impl AsFd for Stdout {
 impl<'a> AsFd for io::StdoutLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stdout out from under the standard library
         unsafe { BorrowedFd::borrow_raw(1) }
     }
 }
@@ -123,6 +125,7 @@ impl AsFd for Stderr {
 impl<'a> AsFd for io::StderrLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stderr out from under the standard library
         unsafe { BorrowedFd::borrow_raw(2) }
     }
 }
