@@ -85,6 +85,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(functions::RESULT_UNIT_ERR),
     LintId::of(functions::TOO_MANY_ARGUMENTS),
     LintId::of(if_let_mutex::IF_LET_MUTEX),
+    LintId::of(implicit_saturating_add::IMPLICIT_SATURATING_ADD),
     LintId::of(indexing_slicing::OUT_OF_BOUNDS_INDEXING),
     LintId::of(infinite_iter::INFINITE_ITER),
     LintId::of(inherent_to_string::INHERENT_TO_STRING),

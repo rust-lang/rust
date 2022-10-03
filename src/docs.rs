@@ -191,6 +191,7 @@ docs! {
     "implicit_clone",
     "implicit_hasher",
     "implicit_return",
+    "implicit_saturating_add",
     "implicit_saturating_sub",
     "imprecise_flops",
     "inconsistent_digit_grouping",

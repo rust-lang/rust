@@ -238,6 +238,7 @@ mod if_not_else;
 mod if_then_some_else_none;
 mod implicit_hasher;
 mod implicit_return;
+mod implicit_saturating_add;
 mod implicit_saturating_sub;
 mod inconsistent_struct_constructor;
 mod index_refutable_slice;
@@ -904,6 +905,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(multi_assignments::MultiAssignments));
     store.register_late_pass(|_| Box::new(bool_to_int_with_if::BoolToIntWithIf));
     store.register_late_pass(|_| Box::new(box_default::BoxDefault));
+    store.register_late_pass(|_| Box::new(implicit_saturating_add::ImplicitSaturatingAdd));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
