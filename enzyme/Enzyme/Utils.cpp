@@ -52,8 +52,8 @@ LLVMValueRef (*CustomAllocator)(LLVMBuilderRef, LLVMTypeRef,
 LLVMValueRef (*CustomDeallocator)(LLVMBuilderRef, LLVMValueRef) = nullptr;
 void (*CustomRuntimeInactiveError)(LLVMBuilderRef, LLVMValueRef,
                                    LLVMValueRef) = nullptr;
-LLVMValueRef (*EnzymePostCacheStore)(LLVMValueRef, LLVMBuilderRef,
-                                     LLVMValueRef *) = nullptr;
+LLVMValueRef *(*EnzymePostCacheStore)(LLVMValueRef, LLVMBuilderRef,
+                                      uint64_t *size) = nullptr;
 LLVMTypeRef (*EnzymeDefaultTapeType)(LLVMContextRef) = nullptr;
 }
 
@@ -61,12 +61,13 @@ llvm::SmallVector<llvm::Instruction *, 2> PostCacheStore(llvm::StoreInst *SI,
                                                          llvm::IRBuilder<> &B) {
   SmallVector<llvm::Instruction *, 2> res;
   if (EnzymePostCacheStore) {
+    uint64_t size = 0;
     LLVMValueRef V2 = nullptr;
-    auto I = EnzymePostCacheStore(wrap(SI), wrap(&B), &V2);
-    if (V2)
-      res.push_back(cast<Instruction>(unwrap(V2)));
-    if (I)
-      res.push_back(cast<Instruction>(unwrap(I)));
+    auto ptr = EnzymePostCacheStore(wrap(SI), wrap(&B), &size);
+    for (size_t i = 0; i < size; i++) {
+      res.push_back(cast<Instruction>(unwrap(ptr[i])));
+    }
+    free(ptr);
   }
   return res;
 }
