@@ -1427,6 +1427,7 @@ declare_lint! {
     "trait-object types were treated as different depending on marker-trait order",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
 }
 
