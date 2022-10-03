@@ -710,4 +710,8 @@ LLVMMetadataRef EnzymeMakeNonConstTBAA(LLVMMetadataRef MD) {
       ConstantAsMetadata::get(ConstantInt::get(CAM->getValue()->getType(), 0));
   return wrap(MDNode::get(M->getContext(), MDs));
 }
+void EnzymeCopyMetadata(LLVMValueRef inst1, LLVMValueRef inst2) {
+  cast<Instruction>(unwrap(inst1))
+      ->copyMetadata(*cast<Instruction>(unwrap(inst2)));
+}
 }
