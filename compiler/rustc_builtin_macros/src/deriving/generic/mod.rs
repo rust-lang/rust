@@ -174,6 +174,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use std::cell::RefCell;
 use std::iter;
+use std::ops::Not;
 use std::vec;
 use thin_vec::thin_vec;
 use ty::{Bounds, Path, Ref, Self_, Ty};
@@ -186,6 +187,9 @@ pub struct TraitDef<'a> {
 
     /// Path of the trait, including any type parameters
     pub path: Path,
+
+    /// Whether to skip adding the current trait as a bound to the type parameters of the type.
+    pub skip_path_as_bound: bool,
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
@@ -596,7 +600,7 @@ impl<'a> TraitDef<'a> {
                         cx.trait_bound(p.to_path(cx, self.span, type_ident, generics))
                     }).chain(
                         // require the current trait
-                        iter::once(cx.trait_bound(trait_path.clone()))
+                        self.skip_path_as_bound.not().then(|| cx.trait_bound(trait_path.clone()))
                     ).chain(
                         // also add in any bounds from the declaration
                         param.bounds.iter().cloned()

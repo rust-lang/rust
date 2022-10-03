@@ -25,6 +25,7 @@ pub fn expand_deriving_eq(
     let trait_def = TraitDef {
         span,
         path: path_std!(cmp::Eq),
+        skip_path_as_bound: false,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         supports_unions: true,
