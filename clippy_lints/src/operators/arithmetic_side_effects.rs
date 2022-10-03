@@ -45,10 +45,10 @@ impl ArithmeticSideEffects {
             let ast::LitKind::Int(value, _) = lit.node
         {
             match (&op.node, value) {
-                (hir::BinOpKind::Add | hir::BinOpKind::Sub, 0) |
-                (hir::BinOpKind::Mul, 0 | 1) => true,
                 (hir::BinOpKind::Div | hir::BinOpKind::Rem, 0) => false,
-                (hir::BinOpKind::Div | hir::BinOpKind::Rem, _) => true,
+                (hir::BinOpKind::Add | hir::BinOpKind::Sub, 0)
+                    | (hir::BinOpKind::Div | hir::BinOpKind::Rem, _)
+                    | (hir::BinOpKind::Mul, 0 | 1) => true,
                 _ => false,
             }
         } else {
@@ -74,7 +74,7 @@ impl ArithmeticSideEffects {
         self.expr_span = Some(expr.span);
     }
 
-    /// If `expr` does not match any variant of [LiteralIntegerTy], returns `None`.
+    /// If `expr` does not match any variant of `LiteralIntegerTy`, returns `None`.
     fn literal_integer<'expr, 'tcx>(expr: &'expr hir::Expr<'tcx>) -> Option<LiteralIntegerTy<'expr, 'tcx>> {
         if matches!(expr.kind, hir::ExprKind::Lit(_)) {
             return Some(LiteralIntegerTy::Value(expr));
@@ -118,11 +118,9 @@ impl ArithmeticSideEffects {
         }
         let has_valid_op = if Self::is_integral(lhs_ty) && Self::is_integral(rhs_ty) {
             match (Self::literal_integer(lhs), Self::literal_integer(rhs)) {
-                (None, None) => false,
-                (None, Some(lit_int_ty)) => Self::has_valid_op(op, lit_int_ty.into()),
-                (Some(lit_int_ty), None) => Self::has_valid_op(op, lit_int_ty.into()),
+                (None, Some(lit_int_ty)) | (Some(lit_int_ty), None) => Self::has_valid_op(op, lit_int_ty.into()),
                 (Some(LiteralIntegerTy::Value(_)), Some(LiteralIntegerTy::Value(_))) => true,
-                (Some(_), Some(_)) => false,
+                (None, None) | (Some(_), Some(_)) => false,
             }
         } else {
             false
@@ -180,9 +178,9 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
     }
 }
 
-/// Tells if an expression is a integer passed by value or by reference.
+/// Tells if an expression is a integer declared by value or by reference.
 ///
-/// If [LiteralIntegerTy::Ref], then the contained value will be `hir::ExprKind::Lit` rather
+/// If `LiteralIntegerTy::Ref`, then the contained value will be `hir::ExprKind::Lit` rather
 /// than `hirExprKind::Addr`.
 enum LiteralIntegerTy<'expr, 'tcx> {
     /// For example, `&199`
@@ -194,8 +192,7 @@ enum LiteralIntegerTy<'expr, 'tcx> {
 impl<'expr, 'tcx> From<LiteralIntegerTy<'expr, 'tcx>> for &'expr hir::Expr<'tcx> {
     fn from(from: LiteralIntegerTy<'expr, 'tcx>) -> Self {
         match from {
-            LiteralIntegerTy::Ref(elem) => elem,
-            LiteralIntegerTy::Value(elem) => elem,
+            LiteralIntegerTy::Ref(elem) | LiteralIntegerTy::Value(elem) => elem,
         }
     }
 }
