@@ -6154,9 +6154,13 @@ void GradientUtils::branchToCorrespondingTarget(
     }
   }
 
-  IntegerType *T = (targetToPreds.size() == 2)
-                       ? Type::getInt1Ty(BuilderM.getContext())
-                       : Type::getInt8Ty(BuilderM.getContext());
+  IntegerType *T;
+  if (targetToPreds.size() == 2)
+    T = Type::getInt1Ty(BuilderM.getContext());
+  else if (targetToPreds.size() < 256)
+    T = Type::getInt8Ty(BuilderM.getContext());
+  else
+    T = Type::getInt32Ty(BuilderM.getContext());
 
   Instruction *equivalentTerminator = nullptr;
 

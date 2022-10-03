@@ -69,6 +69,16 @@ void CacheUtility::erase(Instruction *I) {
   SE.eraseValueFromMap(I);
 
   if (!I->use_empty()) {
+    if (CustomErrorHandler) {
+      std::string str;
+      raw_string_ostream ss(str);
+      ss << "Erased value with a use:\n";
+      ss << *newFunc->getParent() << "\n";
+      ss << *newFunc << "\n";
+      ss << *I << "\n";
+      CustomErrorHandler(str.c_str(), wrap(I), ErrorType::InternalError,
+                         nullptr);
+    }
     llvm::errs() << *newFunc->getParent() << "\n";
     llvm::errs() << *newFunc << "\n";
     llvm::errs() << *I << "\n";

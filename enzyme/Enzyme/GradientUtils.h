@@ -1226,6 +1226,7 @@ public:
 
         PHINode *anti =
             BuilderZ.CreatePHI(antiTy, 1, op->getName() + "'ip_phi");
+        anti->setDebugLoc(getNewFromOriginal(op->getDebugLoc()));
         invertedPointers.insert(
             std::make_pair((const Value *)inst, InvertedPointerVH(this, anti)));
 

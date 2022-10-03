@@ -71,7 +71,8 @@ enum class ErrorType {
   NoShadow = 1,
   IllegalTypeAnalysis = 2,
   NoType = 3,
-  IllegalFirstPointer = 4
+  IllegalFirstPointer = 4,
+  InternalError = 5
 };
 
 extern "C" {
