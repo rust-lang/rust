@@ -148,7 +148,6 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n = 1 * _n;
     _n = &1 * _n;
     _n = 23 + 85;
-    _n = &23 + &85;
 
     // Unary
     _n = -1;
@@ -187,6 +186,9 @@ pub fn runtime_ops() {
     _n = _n * &2;
     _n = 2 * _n;
     _n = &2 * _n;
+    _n = 23 + &85;
+    _n = &23 + 85;
+    _n = &23 + &85;
 
     // Custom
     let _ = Custom + 0;
