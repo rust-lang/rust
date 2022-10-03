@@ -164,6 +164,7 @@
 #![feature(const_slice_index)]
 #![feature(const_is_char_boundary)]
 #![feature(const_cstr_methods)]
+#![feature(is_ascii_octdigit)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
