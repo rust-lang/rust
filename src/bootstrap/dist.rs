@@ -920,6 +920,7 @@ impl Step for PlainSourceTarball {
         // Create the version file
         builder.create(&plain_dst_src.join("version"), &builder.rust_version());
         if let Some(info) = builder.rust_info.info() {
+            channel::write_commit_hash_file(&plain_dst_src, &info.sha);
             channel::write_commit_info_file(&plain_dst_src, info);
         }
 

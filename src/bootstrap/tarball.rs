@@ -299,6 +299,7 @@ impl<'a> Tarball<'a> {
         t!(std::fs::create_dir_all(&self.overlay_dir));
         self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
         if let Some(info) = self.builder.rust_info.info() {
+            channel::write_commit_hash_file(&self.overlay_dir, &info.sha);
             channel::write_commit_info_file(&self.overlay_dir, info);
         }
         for file in self.overlay.legal_and_readme() {
