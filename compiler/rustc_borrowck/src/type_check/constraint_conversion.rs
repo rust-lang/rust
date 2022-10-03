@@ -169,10 +169,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 .type_must_outlive(origin, t1, r2, constraint_category);
             }
 
-            GenericArgKind::Const(_) => {
-                // Consts cannot outlive one another, so we
-                // don't need to handle any relations here.
-            }
+            GenericArgKind::Const(_) => unreachable!(),
         }
     }
 
@@ -202,7 +199,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         verify_bound: VerifyBound<'tcx>,
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
-        TypeTest { generic_kind, lower_bound, locations: self.locations, verify_bound }
+        TypeTest { generic_kind, lower_bound, span: self.span, verify_bound }
     }
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {
