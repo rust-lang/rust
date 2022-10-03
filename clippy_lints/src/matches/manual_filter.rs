@@ -1,39 +1,20 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+
 use rustc_hir::LangItem::OptionSome;
-use rustc_hir::{Arm, Block, BlockCheckMode, Expr, ExprKind, HirId, Pat, PatKind, UnsafeSource};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::{sym, SyntaxContext};
 
-use super::manual_map::{check_with, SomeExpr};
+use super::manual_utils::{check_with, SomeExpr};
 use super::MANUAL_FILTER;
 
-#[derive(Default)]
-struct NeedsUnsafeBlock(pub bool);
-
-impl<'tcx> Visitor<'tcx> for NeedsUnsafeBlock {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        match expr.kind {
-            ExprKind::Block(
-                Block {
-                    rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
-                    ..
-                },
-                _,
-            ) => {
-                self.0 = true;
-            },
-            _ => walk_expr(self, expr),
-        }
-    }
-}
-
-// Function called on the `expr` of `[&+]Some((ref | ref mut) x) => <expr>`
-// Need to check if it's of the `if <cond> {<then_expr>} else {<else_expr>}`
+// Function called on the <expr> of `[&+]Some((ref | ref mut) x) => <expr>`
+// Need to check if it's of the form `<expr>=if <cond> {<then_expr>} else {<else_expr>}`
 // AND that only one `then/else_expr` resolves to `Some(x)` while the other resolves to `None`
-// return `cond` if
+// return the `cond` expression if so.
 fn get_cond_expr<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &Pat<'_>,
@@ -45,15 +26,13 @@ fn get_cond_expr<'tcx>(
         if let ExprKind::If(cond, then_expr, Some(else_expr)) = block_expr.kind;
         if let PatKind::Binding(_,target, ..) = pat.kind;
         if let (then_visitor, else_visitor)
-            = (handle_if_or_else_expr(cx, target, ctxt, then_expr),
-                handle_if_or_else_expr(cx, target, ctxt, else_expr));
+            = (is_some_expr(cx, target, ctxt, then_expr),
+                is_some_expr(cx, target, ctxt, else_expr));
         if then_visitor != else_visitor; // check that one expr resolves to `Some(x)`, the other to `None`
         then {
-            let mut needs_unsafe_block = NeedsUnsafeBlock::default();
-            needs_unsafe_block.visit_expr(expr);
             return Some(SomeExpr {
                     expr: peels_blocks_incl_unsafe(cond.peel_drop_temps()),
-                    needs_unsafe_block: needs_unsafe_block.0,
+                    needs_unsafe_block: contains_unsafe_block(cx, expr),
                     needs_negated: !then_visitor // if the `then_expr` resolves to `None`, need to negate the cond
                 })
             }
@@ -63,7 +42,7 @@ fn get_cond_expr<'tcx>(
 
 fn peels_blocks_incl_unsafe_opt<'a>(expr: &'a Expr<'a>) -> Option<&'a Expr<'a>> {
     // we don't want to use `peel_blocks` here because we don't care if the block is unsafe, it's
-    // checked by `NeedsUnsafeBlock`
+    // checked by `contains_unsafe_block`
     if let ExprKind::Block(block, None) = expr.kind {
         if block.stmts.is_empty() {
             return block.expr;
@@ -76,23 +55,18 @@ fn peels_blocks_incl_unsafe<'a>(expr: &'a Expr<'a>) -> &'a Expr<'a> {
     peels_blocks_incl_unsafe_opt(expr).unwrap_or(expr)
 }
 
-// function called for each <ifelse> expression:
+// function called for each <expr> expression:
 // Some(x) => if <cond> {
-//    <ifelse>
+//    <expr>
 // } else {
-//    <ifelse>
+//    <expr>
 // }
-// Returns true if <ifelse> resolves to `Some(x)`, `false` otherwise
-fn handle_if_or_else_expr<'tcx>(
-    cx: &LateContext<'_>,
-    target: HirId,
-    ctxt: SyntaxContext,
-    if_or_else_expr: &'tcx Expr<'_>,
-) -> bool {
-    if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(if_or_else_expr) {
+// Returns true if <expr> resolves to `Some(x)`, `false` otherwise
+fn is_some_expr<'tcx>(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: &'tcx Expr<'_>) -> bool {
+    if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr) {
         // there can be not statements in the block as they would be removed when switching to `.filter`
         if let ExprKind::Call(callee, [arg]) = inner_expr.kind {
-            return ctxt == if_or_else_expr.span.ctxt()
+            return ctxt == expr.span.ctxt()
                 && is_res_lang_ctor(cx, path_res(cx, callee), OptionSome)
                 && path_to_local_id(arg, target);
         }
@@ -119,15 +93,13 @@ pub(super) fn check_match<'tcx>(
     expr: &'tcx Expr<'_>,
 ) {
     let ty = cx.typeck_results().expr_ty(expr);
-    if_chain! {
-        if is_type_diagnostic_item(cx, ty, sym::Option);
-        if arms.len() == 2;
-        if arms[0].guard.is_none();
-        if arms[1].guard.is_none();
-        then {
-            check(cx, expr, scrutinee, arms[0].pat, arms[0].body, Some(arms[1].pat), arms[1].body)
+    if is_type_diagnostic_item(cx, ty, sym::Option)
+    && let [first_arm, second_arm] = arms
+    && first_arm.guard.is_none()
+    && second_arm.guard.is_none()
+         {
+            check(cx, expr, scrutinee, first_arm.pat, first_arm.body, Some(second_arm.pat), second_arm.body);
         }
-    }
 }
 
 pub(super) fn check_if_let<'tcx>(

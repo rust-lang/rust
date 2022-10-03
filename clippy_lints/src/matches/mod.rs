@@ -3,6 +3,7 @@ mod infallible_destructuring_match;
 mod manual_filter;
 mod manual_map;
 mod manual_unwrap_or;
+mod manual_utils;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;

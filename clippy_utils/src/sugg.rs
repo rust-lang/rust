@@ -112,7 +112,7 @@ impl<'a> Sugg<'a> {
         if expr.span.ctxt() == ctxt {
             Self::hir_from_snippet(expr, |span| snippet(cx, span, default))
         } else {
-            let snip = snippet_with_context(cx, expr.span, ctxt, default, applicability).0;
+            let (snip, _) = snippet_with_context(cx, expr.span, ctxt, default, applicability);
             Sugg::NonParen(snip)
         }
     }
