@@ -114,10 +114,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f8cb5d814eb646a863c4f24978cff2880c4be96ad8cde2c0f0678732902e271"
 
 [[package]]
+<<<<<<< HEAD
 name = "arrayvec"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a2f58b0bb10c380af2b26e57212856b8c9a59e0925b4c20f4a174a49734eaf7"
+=======
+name = "arbitrary"
+version = "1.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d86fd10d912cab78764cc44307d9cd5f164e09abbeb87fb19fb6d95937e8da5f"
+>>>>>>> Bump anyhow, arbitrary, itertools, semver, serde
 
 [[package]]
 name = "askama"
@@ -654,8 +661,15 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "clippy"
 version = "0.1.66"
+=======
+name = "derive_arbitrary"
+version = "1.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "226ad66541d865d7a7173ad6a9e691c33fdb910ac723f4bc734b3e5294a1f931"
+>>>>>>> Bump anyhow, arbitrary, itertools, semver, serde
 dependencies = [
  "clippy_lints",
  "clippy_utils",
@@ -1104,10 +1118,17 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "directories"
 version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f51c5d4ddabd36886dd3e1438cb358cdcb0d7c499cb99cb4ac2e38e18b5cb210"
+=======
+name = "itertools"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+>>>>>>> Bump anyhow, arbitrary, itertools, semver, serde
 dependencies = [
  "dirs-sys",
 ]
@@ -4647,8 +4668,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
+<<<<<<< HEAD
 name = "std"
 version = "0.0.0"
+=======
+name = "semver"
+version = "1.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e25dfac463d778e353db5be2449d1cce89bd6fd23c9f1ea21310ce6e5a1b29c4"
+>>>>>>> Bump anyhow, arbitrary, itertools, semver, serde
 dependencies = [
  "addr2line 0.16.0",
  "alloc",
@@ -4673,6 +4701,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "std_detect"
 version = "0.1.5"
 dependencies = [
@@ -4688,6 +4717,12 @@ name = "string_cache"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33994d0838dc2d152d17a62adf608a869b5e846b65b389af7f3dbc1de45c5b26"
+=======
+name = "serde"
+version = "1.0.145"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "728eb6351430bccb993660dfffc5a72f91ccc1295abaa8ce19b27ebe4f75568b"
+>>>>>>> Bump anyhow, arbitrary, itertools, semver, serde
 dependencies = [
  "lazy_static",
  "new_debug_unreachable",
@@ -4698,10 +4733,17 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "string_cache_codegen"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bb30289b722be4ff74a408c3cc27edeaad656e06cb1fe8fa9231fa59c728988"
+=======
+name = "serde_derive"
+version = "1.0.145"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81fa1584d3d1bcacd84c277a0dfe21f5b0f6accf4a23d04d4c6d61f1af522b4c"
+>>>>>>> Bump anyhow, arbitrary, itertools, semver, serde
 dependencies = [
  "phf_generator",
  "phf_shared",
@@ -4710,10 +4752,17 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "strip-ansi-escapes"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d63676e2abafa709460982ddc02a3bb586b6d15a49b75c212e06edd3933acee"
+=======
+name = "serde_json"
+version = "1.0.86"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41feea4228a6f1cd09ec7a3593a682276702cd67b5273544757dae23c096f074"
+>>>>>>> Bump anyhow, arbitrary, itertools, semver, serde
 dependencies = [
  "vte",
 ]
