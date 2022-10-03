@@ -324,7 +324,7 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
         outer_arg: &'tcx Expr<'tcx>,
         span: Span,
     ) -> Option<ClampSuggestion<'tcx>> {
-        if let ExprKind::Call(inner_fn, &[ref first, ref second]) = &inner_call.kind
+        if let ExprKind::Call(inner_fn, [first, second]) = &inner_call.kind
             && let Some(inner_seg) = segment(cx, inner_fn)
             && let Some(outer_seg) = segment(cx, outer_fn)
         {
@@ -377,9 +377,7 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
 /// # ;
 /// ```
 fn is_match_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<ClampSuggestion<'tcx>> {
-    if let ExprKind::Match(value, &[ref first_arm, ref second_arm, ref last_arm], rustc_hir::MatchSource::Normal) =
-        &expr.kind
-    {
+    if let ExprKind::Match(value, [first_arm, second_arm, last_arm], rustc_hir::MatchSource::Normal) = &expr.kind {
         // Find possible min/max branches
         let minmax_values = |a: &'tcx Arm<'tcx>| {
             if let PatKind::Binding(_, var_hir_id, _, None) = &a.pat.kind

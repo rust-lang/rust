@@ -131,12 +131,12 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
         },
         hir::ExprKind::Block(block, _) => {
             match (block.stmts, block.expr.as_ref()) {
-                (&[], Some(inner_expr)) => {
+                ([], Some(inner_expr)) => {
                     // If block only contains an expression,
                     // reduce `{ X }` to `X`
                     reduce_unit_expression(cx, inner_expr)
                 },
-                (&[ref inner_stmt], None) => {
+                ([inner_stmt], None) => {
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.kind {

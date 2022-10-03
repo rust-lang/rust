@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    can_move_expr_to_closure, eager_or_lazy, higher, in_constant, is_else_clause, is_lang_ctor, peel_blocks,
+    can_move_expr_to_closure, eager_or_lazy, higher, in_constant, is_else_clause, is_res_lang_ctor, peel_blocks,
     peel_hir_expr_while, CaptureKind,
 };
 use if_chain::if_chain;
@@ -174,7 +174,8 @@ fn try_get_option_occurrence<'tcx>(
 
 fn try_get_inner_pat<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<&'tcx Pat<'tcx>> {
     if let PatKind::TupleStruct(ref qpath, [inner_pat], ..) = pat.kind {
-        if is_lang_ctor(cx, qpath, OptionSome) || is_lang_ctor(cx, qpath, ResultOk) {
+        let res = cx.qpath_res(qpath, pat.hir_id);
+        if is_res_lang_ctor(cx, res, OptionSome) || is_res_lang_ctor(cx, res, ResultOk) {
             return Some(inner_pat);
         }
     }
@@ -226,9 +227,10 @@ fn try_convert_match<'tcx>(
 
 fn is_none_or_err_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     match arm.pat.kind {
-        PatKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
+        PatKind::Path(ref qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone),
         PatKind::TupleStruct(ref qpath, [first_pat], _) => {
-            is_lang_ctor(cx, qpath, ResultErr) && matches!(first_pat.kind, PatKind::Wild)
+            is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), ResultErr)
+                && matches!(first_pat.kind, PatKind::Wild)
         },
         PatKind::Wild => true,
         _ => false,

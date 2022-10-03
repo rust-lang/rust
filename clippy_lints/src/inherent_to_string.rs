@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{get_trait_def_id, paths, return_ty, trait_ref_of_method};
+use clippy_utils::{return_ty, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -118,7 +118,10 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
 }
 
 fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
-    let display_trait_id = get_trait_def_id(cx, &paths::DISPLAY_TRAIT).expect("Failed to get trait ID of `Display`!");
+    let display_trait_id = cx
+        .tcx
+        .get_diagnostic_item(sym::Display)
+        .expect("Failed to get trait ID of `Display`!");
 
     // Get the real type of 'self'
     let self_type = cx.tcx.fn_sig(item.def_id).input(0);

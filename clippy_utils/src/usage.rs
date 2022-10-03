@@ -1,5 +1,6 @@
 use crate as utils;
-use crate::visitors::{expr_visitor, expr_visitor_no_bodies};
+use crate::visitors::{for_each_expr, for_each_expr_with_closures, Descend};
+use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirIdSet;
@@ -148,28 +149,17 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
 }
 
 pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
-    let mut seen_return_break_continue = false;
-    expr_visitor_no_bodies(|ex| {
-        if seen_return_break_continue {
-            return false;
-        }
-        match &ex.kind {
-            ExprKind::Ret(..) | ExprKind::Break(..) | ExprKind::Continue(..) => {
-                seen_return_break_continue = true;
-            },
+    for_each_expr(expression, |e| {
+        match e.kind {
+            ExprKind::Ret(..) | ExprKind::Break(..) | ExprKind::Continue(..) => ControlFlow::Break(()),
             // Something special could be done here to handle while or for loop
             // desugaring, as this will detect a break if there's a while loop
             // or a for loop inside the expression.
-            _ => {
-                if ex.span.from_expansion() {
-                    seen_return_break_continue = true;
-                }
-            },
+            _ if e.span.from_expansion() => ControlFlow::Break(()),
+            _ => ControlFlow::Continue(()),
         }
-        !seen_return_break_continue
     })
-    .visit_expr(expression);
-    seen_return_break_continue
+    .is_some()
 }
 
 pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr<'_>) -> bool {
@@ -200,23 +190,16 @@ pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr
         return true;
     }
 
-    let mut used_after_expr = false;
     let mut past_expr = false;
-    expr_visitor(cx, |expr| {
-        if used_after_expr {
-            return false;
-        }
-
-        if expr.hir_id == after.hir_id {
+    for_each_expr_with_closures(cx, block, |e| {
+        if e.hir_id == after.hir_id {
             past_expr = true;
-            return false;
+            ControlFlow::Continue(Descend::No)
+        } else if past_expr && utils::path_to_local_id(e, local_id) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(Descend::Yes)
         }
-
-        if past_expr && utils::path_to_local_id(expr, local_id) {
-            used_after_expr = true;
-        }
-        !used_after_expr
     })
-    .visit_block(block);
-    used_after_expr
+    .is_some()
 }

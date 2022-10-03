@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::higher;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{higher, match_def_path, path_def_id, paths};
 use rustc_hir::{BorrowKind, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -168,9 +168,16 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
         },
         ExprKind::Block(block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
         ExprKind::Box(e) | ExprKind::AddrOf(BorrowKind::Ref, _, e) => is_infinite(cx, e),
-        ExprKind::Call(path, _) => path_def_id(cx, path)
-            .map_or(false, |id| match_def_path(cx, id, &paths::ITER_REPEAT))
-            .into(),
+        ExprKind::Call(path, _) => {
+            if let ExprKind::Path(ref qpath) = path.kind {
+                cx.qpath_res(qpath, path.hir_id)
+                    .opt_def_id()
+                    .map_or(false, |id| cx.tcx.is_diagnostic_item(sym::iter_repeat, id))
+                    .into()
+            } else {
+                Finite
+            }
+        },
         ExprKind::Struct(..) => higher::Range::hir(expr).map_or(false, |r| r.end.is_none()).into(),
         _ => Finite,
     }

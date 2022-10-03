@@ -92,7 +92,7 @@ fn check_into_iter(
         && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
         && let hir::ExprKind::MethodCall(_, struct_expr, [], _) = &into_iter_expr.kind
         && let Some(into_iter_def_id) = cx.typeck_results().type_dependent_def_id(into_iter_expr.hir_id)
-        && match_def_path(cx, into_iter_def_id, &paths::CORE_ITER_INTO_ITER)
+        && cx.tcx.lang_items().require(hir::LangItem::IntoIterIntoIter).ok() == Some(into_iter_def_id)
         && match_acceptable_type(cx, left_expr, msrv)
         && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr) {
         suggest(cx, parent_expr, left_expr, target_expr);
