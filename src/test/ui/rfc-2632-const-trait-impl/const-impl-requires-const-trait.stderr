@@ -10,5 +10,11 @@ note: this trait must be annotated with `#[const_trait]`
 LL | pub trait A {}
    | ^^^^^^^^^^^
 
-error: aborting due to previous error
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-requires-const-trait.rs:6:12
+   |
+LL | impl const A for () {}
+   |            ^
+
+error: aborting due to 2 previous errors
 

@@ -308,6 +308,10 @@ impl<'tcx> WfPredicates<'tcx> {
         let obligations = if trait_pred.constness == ty::BoundConstness::NotConst {
             self.nominal_obligations_without_const(trait_ref.def_id, trait_ref.substs)
         } else {
+            if !tcx.has_attr(trait_ref.def_id, rustc_span::sym::const_trait) {
+                tcx.sess
+                    .span_err(self.span, "~const can only be applied to `#[const_trait]` traits");
+            }
             self.nominal_obligations(trait_ref.def_id, trait_ref.substs)
         };
 
