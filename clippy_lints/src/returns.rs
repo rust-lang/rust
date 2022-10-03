@@ -1,9 +1,11 @@
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
+use clippy_utils::visitors::{for_each_expr, Descend};
 use clippy_utils::{fn_def_id, path_to_local_id};
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, HirId, MatchSource, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -270,33 +272,20 @@ fn emit_return_lint(
 }
 
 fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    let mut visitor = BorrowVisitor { cx, borrows: false };
-    walk_expr(&mut visitor, expr);
-    visitor.borrows
-}
-
-struct BorrowVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    borrows: bool,
-}
-
-impl<'tcx> Visitor<'tcx> for BorrowVisitor<'_, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.borrows || expr.span.from_expansion() {
-            return;
-        }
-
-        if let Some(def_id) = fn_def_id(self.cx, expr) {
-            self.borrows = self
-                .cx
+    for_each_expr(expr, |e| {
+        if let Some(def_id) = fn_def_id(cx, e)
+            && cx
                 .tcx
                 .fn_sig(def_id)
-                .output()
                 .skip_binder()
+                .output()
                 .walk()
-                .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)));
+                .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)))
+        {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(Descend::from(!expr.span.from_expansion()))
         }
-
-        walk_expr(self, expr);
-    }
+    })
+    .is_some()
 }

@@ -2,7 +2,7 @@
 
 use crate::is_path_diagnostic_item;
 use crate::source::snippet_opt;
-use crate::visitors::expr_visitor_no_bodies;
+use crate::visitors::{for_each_expr, Descend};
 
 use arrayvec::ArrayVec;
 use itertools::{izip, Either, Itertools};
@@ -270,20 +270,19 @@ fn find_assert_args_inner<'a, const N: usize>(
     };
     let mut args = ArrayVec::new();
     let mut panic_expn = None;
-    expr_visitor_no_bodies(|e| {
+    let _: Option<!> = for_each_expr(expr, |e| {
         if args.is_full() {
             if panic_expn.is_none() && e.span.ctxt() != expr.span.ctxt() {
                 panic_expn = PanicExpn::parse(cx, e);
             }
-            panic_expn.is_none()
+            ControlFlow::Continue(Descend::from(panic_expn.is_none()))
         } else if is_assert_arg(cx, e, expn) {
             args.push(e);
-            false
+            ControlFlow::Continue(Descend::No)
         } else {
-            true
+            ControlFlow::Continue(Descend::Yes)
         }
-    })
-    .visit_expr(expr);
+    });
     let args = args.into_inner().ok()?;
     // if no `panic!(..)` is found, use `PanicExpn::Empty`
     // to indicate that the default assertion message is used
@@ -297,22 +296,19 @@ fn find_assert_within_debug_assert<'a>(
     expn: ExpnId,
     assert_name: Symbol,
 ) -> Option<(&'a Expr<'a>, ExpnId)> {
-    let mut found = None;
-    expr_visitor_no_bodies(|e| {
-        if found.is_some() || !e.span.from_expansion() {
-            return false;
+    for_each_expr(expr, |e| {
+        if !e.span.from_expansion() {
+            return ControlFlow::Continue(Descend::No);
         }
         let e_expn = e.span.ctxt().outer_expn();
         if e_expn == expn {
-            return true;
+            ControlFlow::Continue(Descend::Yes)
+        } else if e_expn.expn_data().macro_def_id.map(|id| cx.tcx.item_name(id)) == Some(assert_name) {
+            ControlFlow::Break((e, e_expn))
+        } else {
+            ControlFlow::Continue(Descend::No)
         }
-        if e_expn.expn_data().macro_def_id.map(|id| cx.tcx.item_name(id)) == Some(assert_name) {
-            found = Some((e, e_expn));
-        }
-        false
     })
-    .visit_expr(expr);
-    found
 }
 
 fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> bool {
@@ -396,16 +392,14 @@ impl FormatString {
         });
 
         let mut parts = Vec::new();
-        expr_visitor_no_bodies(|expr| {
-            if let ExprKind::Lit(lit) = &expr.kind {
-                if let LitKind::Str(symbol, _) = lit.node {
-                    parts.push(symbol);
-                }
+        let _: Option<!> = for_each_expr(pieces, |expr| {
+            if let ExprKind::Lit(lit) = &expr.kind
+                && let LitKind::Str(symbol, _) = lit.node
+            {
+                parts.push(symbol);
             }
-
-            true
-        })
-        .visit_expr(pieces);
+            ControlFlow::Continue(())
+        });
 
         Some(Self {
             span,
@@ -431,7 +425,7 @@ impl<'tcx> FormatArgsValues<'tcx> {
     fn new(args: &'tcx Expr<'tcx>, format_string_span: SpanData) -> Self {
         let mut pos_to_value_index = Vec::new();
         let mut value_args = Vec::new();
-        expr_visitor_no_bodies(|expr| {
+        let _: Option<!> = for_each_expr(args, |expr| {
             if expr.span.ctxt() == args.span.ctxt() {
                 // ArgumentV1::new_<format_trait>(<val>)
                 // ArgumentV1::from_usize(<val>)
@@ -453,16 +447,13 @@ impl<'tcx> FormatArgsValues<'tcx> {
 
                     pos_to_value_index.push(val_idx);
                 }
-
-                true
+                ControlFlow::Continue(Descend::Yes)
             } else {
                 // assume that any expr with a differing span is a value
                 value_args.push(expr);
-
-                false
+                ControlFlow::Continue(Descend::No)
             }
-        })
-        .visit_expr(args);
+        });
 
         Self {
             value_args,
@@ -866,22 +857,20 @@ impl<'tcx> FormatArgsExpn<'tcx> {
     }
 
     pub fn find_nested(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expn_id: ExpnId) -> Option<Self> {
-        let mut format_args = None;
-        expr_visitor_no_bodies(|e| {
-            if format_args.is_some() {
-                return false;
-            }
+        for_each_expr(expr, |e| {
             let e_ctxt = e.span.ctxt();
             if e_ctxt == expr.span.ctxt() {
-                return true;
+                ControlFlow::Continue(Descend::Yes)
+            } else if e_ctxt.outer_expn().is_descendant_of(expn_id) {
+                if let Some(args) = FormatArgsExpn::parse(cx, e) {
+                    ControlFlow::Break(args)
+                } else {
+                    ControlFlow::Continue(Descend::No)
+                }
+            } else {
+                ControlFlow::Continue(Descend::No)
             }
-            if e_ctxt.outer_expn().is_descendant_of(expn_id) {
-                format_args = FormatArgsExpn::parse(cx, e);
-            }
-            false
         })
-        .visit_expr(expr);
-        format_args
     }
 
     /// Source callsite span of all inputs

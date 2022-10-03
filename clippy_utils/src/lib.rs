@@ -3,6 +3,7 @@
 #![feature(control_flow_enum)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
+#![feature(never_type)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
@@ -65,6 +66,7 @@ pub use self::hir_utils::{
     both, count_eq, eq_expr_value, hash_expr, hash_stmt, over, HirEqInterExpr, SpanlessEq, SpanlessHash,
 };
 
+use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 use std::sync::OnceLock;
@@ -113,7 +115,7 @@ use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
 use crate::ty::{can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type, ty_is_fn_once_param};
-use crate::visitors::expr_visitor_no_bodies;
+use crate::visitors::for_each_expr;
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
@@ -1193,17 +1195,14 @@ pub fn contains_name(name: Symbol, expr: &Expr<'_>) -> bool {
 
 /// Returns `true` if `expr` contains a return expression
 pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
-    let mut found = false;
-    expr_visitor_no_bodies(|expr| {
-        if !found {
-            if let hir::ExprKind::Ret(..) = &expr.kind {
-                found = true;
-            }
+    for_each_expr(expr, |e| {
+        if matches!(e.kind, hir::ExprKind::Ret(..)) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
-        !found
     })
-    .visit_expr(expr);
-    found
+    .is_some()
 }
 
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
