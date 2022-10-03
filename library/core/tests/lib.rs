@@ -100,6 +100,7 @@
 #![feature(slice_flatten)]
 #![feature(provide_any)]
 #![feature(utf8_chunks)]
+#![feature(is_ascii_octdigit)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;
