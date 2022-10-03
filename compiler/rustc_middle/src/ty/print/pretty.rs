@@ -2057,8 +2057,8 @@ struct RegionFolder<'a, 'tcx> {
     region_map: BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
     name: &'a mut (
                 dyn FnMut(
-        Option<ty::DebruijnIndex>,
-        ty::DebruijnIndex,
+        Option<ty::DebruijnIndex>, // Debruijn index of the folded late-bound region
+        ty::DebruijnIndex,         // Index corresponding to binder level
         ty::BoundRegion,
     ) -> ty::Region<'tcx>
                     + 'a
@@ -2246,15 +2246,21 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             })
         } else {
             let tcx = self.tcx;
-            let mut name = |db: Option<ty::DebruijnIndex>,
-                            binder_level: ty::DebruijnIndex,
+
+            // Closure used in `RegionFolder` to create names for anonymous late-bound
+            // regions. We use two `DebruijnIndex`es (one for the currently folded
+            // late-bound region and the other for the binder level) to determine
+            // whether a name has already been created for the currently folded region,
+            // see issue #102392.
+            let mut name = |lifetime_idx: Option<ty::DebruijnIndex>,
+                            binder_level_idx: ty::DebruijnIndex,
                             br: ty::BoundRegion| {
                 let (name, kind) = match br.kind {
                     ty::BrAnon(_) | ty::BrEnv => {
                         let name = next_name(&self);
 
-                        if let Some(db) = db {
-                            if db > binder_level {
+                        if let Some(lt_idx) = lifetime_idx {
+                            if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(CRATE_DEF_ID.to_def_id(), name);
                                 return tcx.mk_region(ty::ReLateBound(
                                     ty::INNERMOST,
@@ -2268,8 +2274,8 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     ty::BrNamed(def_id, kw::UnderscoreLifetime) => {
                         let name = next_name(&self);
 
-                        if let Some(db) = db {
-                            if db > binder_level {
+                        if let Some(lt_idx) = lifetime_idx {
+                            if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(def_id, name);
                                 return tcx.mk_region(ty::ReLateBound(
                                     ty::INNERMOST,
@@ -2281,8 +2287,8 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         (name, ty::BrNamed(def_id, name))
                     }
                     ty::BrNamed(_, name) => {
-                        if let Some(db) = db {
-                            if db > binder_level {
+                        if let Some(lt_idx) = lifetime_idx {
+                            if lt_idx > binder_level_idx {
                                 let kind = br.kind;
                                 return tcx.mk_region(ty::ReLateBound(
                                     ty::INNERMOST,
