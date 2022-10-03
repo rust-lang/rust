@@ -152,7 +152,7 @@ impl TyExt for Ty {
             TyKind::FnDef(def, parameters) => {
                 let callable_def = db.lookup_intern_callable_def((*def).into());
                 let sig = db.callable_item_signature(callable_def);
-                Some(sig.substitute(Interner, &parameters))
+                Some(sig.substitute(Interner, parameters))
             }
             TyKind::Closure(.., substs) => {
                 let sig_param = substs.at(Interner, 0).assert_ty_ref(Interner);
