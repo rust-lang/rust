@@ -5,13 +5,12 @@ use proc_macro::Span;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt;
 use std::str::FromStr;
 use syn::{spanned::Spanned, Attribute, Field, Meta, Type, TypeTuple};
 use syn::{MetaList, MetaNameValue, NestedMeta, Path};
-use synstructure::{BindStyle, BindingInfo, VariantInfo};
+use synstructure::{BindingInfo, VariantInfo};
 
 use super::error::invalid_nested_attr;
 
@@ -650,65 +649,8 @@ impl quote::IdentFragment for SubdiagnosticKind {
     }
 }
 
-/// Wrapper around `synstructure::BindStyle` which implements `Ord`.
-#[derive(PartialEq, Eq)]
-pub(super) struct OrderedBindStyle(pub(super) BindStyle);
-
-impl OrderedBindStyle {
-    /// Is `BindStyle::Move` or `BindStyle::MoveMut`?
-    pub(super) fn is_move(&self) -> bool {
-        matches!(self.0, BindStyle::Move | BindStyle::MoveMut)
-    }
-}
-
-impl Ord for OrderedBindStyle {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match (self.is_move(), other.is_move()) {
-            // If both `self` and `other` are the same, then ordering is equal.
-            (true, true) | (false, false) => Ordering::Equal,
-            // If `self` is not a move then it should be considered less than `other` (so that
-            // references are sorted first).
-            (false, _) => Ordering::Less,
-            // If `self` is a move then it must be greater than `other` (again, so that references
-            // are sorted first).
-            (true, _) => Ordering::Greater,
-        }
-    }
-}
-
-impl PartialOrd for OrderedBindStyle {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 /// Returns `true` if `field` should generate a `set_arg` call rather than any other diagnostic
 /// call (like `span_label`).
 pub(super) fn should_generate_set_arg(field: &Field) -> bool {
     field.attrs.is_empty()
-}
-
-/// Returns `true` if `field` needs to have code generated in the by-move branch of the
-/// generated derive rather than the by-ref branch.
-pub(super) fn bind_style_of_field(field: &Field) -> OrderedBindStyle {
-    let generates_set_arg = should_generate_set_arg(field);
-    let is_multispan = type_matches_path(&field.ty, &["rustc_errors", "MultiSpan"]);
-    // FIXME(davidtwco): better support for one field needing to be in the by-move and
-    // by-ref branches.
-    let is_subdiagnostic = field
-        .attrs
-        .iter()
-        .map(|attr| attr.path.segments.last().unwrap().ident.to_string())
-        .any(|attr| attr == "subdiagnostic");
-
-    // `set_arg` calls take their argument by-move..
-    let needs_move = generates_set_arg
-        // If this is a `MultiSpan` field then it needs to be moved to be used by any
-        // attribute..
-        || is_multispan
-        // If this a `#[subdiagnostic]` then it needs to be moved as the other diagnostic is
-        // unlikely to be `Copy`..
-        || is_subdiagnostic;
-
-    OrderedBindStyle(if needs_move { BindStyle::Move } else { BindStyle::Ref })
 }

@@ -5,9 +5,9 @@ use crate::diagnostics::error::{
     DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    bind_style_of_field, build_field_mapping, report_error_if_not_applied_to_span,
-    report_type_error, should_generate_set_arg, type_is_unit, type_matches_path, FieldInfo,
-    FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
+    build_field_mapping, report_error_if_not_applied_to_span, report_type_error,
+    should_generate_set_arg, type_is_unit, type_matches_path, FieldInfo, FieldInnerTy, FieldMap,
+    HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
@@ -39,6 +39,9 @@ pub(crate) struct DiagnosticDeriveBuilder {
 pub(crate) struct DiagnosticDeriveVariantBuilder<'parent> {
     /// The parent builder for the entire type.
     pub parent: &'parent DiagnosticDeriveBuilder,
+
+    /// Initialization of format strings for code suggestions.
+    pub formatting_init: TokenStream,
 
     /// Span of the struct or the enum variant.
     pub span: proc_macro::Span,
@@ -88,19 +91,7 @@ impl DiagnosticDeriveBuilder {
             }
         }
 
-        for variant in structure.variants_mut() {
-            // First, change the binding style of each field based on the code that will be
-            // generated for the field - e.g. `set_arg` calls needs by-move bindings, whereas
-            // `set_primary_span` only needs by-ref.
-            variant.bind_with(|bi| bind_style_of_field(bi.ast()).0);
-
-            // Then, perform a stable sort on bindings which generates code for by-ref bindings
-            // before code generated for by-move bindings. Any code generated for the by-ref
-            // bindings which creates a reference to the by-move fields will happen before the
-            // by-move bindings move those fields and make them inaccessible.
-            variant.bindings_mut().sort_by_cached_key(|bi| bind_style_of_field(bi.ast()));
-        }
-
+        structure.bind_with(|_| synstructure::BindStyle::Move);
         let variants = structure.each_variant(|variant| {
             let span = match structure.ast().data {
                 syn::Data::Struct(..) => span,
@@ -112,6 +103,7 @@ impl DiagnosticDeriveBuilder {
                 parent: &self,
                 span,
                 field_map: build_field_mapping(variant),
+                formatting_init: TokenStream::new(),
                 slug: None,
                 code: None,
             };
@@ -143,16 +135,14 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
 
     /// Generates calls to `span_label` and similar functions based on the attributes on fields or
     /// calls to `set_arg` when no attributes are present.
-    ///
-    /// Expects use of `Self::each_variant` which will have sorted bindings so that by-ref bindings
-    /// (which may create references to by-move bindings) have their code generated first -
-    /// necessary as code for suggestions uses formatting machinery and the value of other fields
-    /// (any given field can be referenced multiple times, so must be accessed through a borrow);
-    /// and when passing fields to `add_subdiagnostic` or `set_arg` for Fluent, fields must be
-    /// accessed by-move.
     pub fn body<'s>(&mut self, variant: &VariantInfo<'s>) -> TokenStream {
         let mut body = quote! {};
-        for binding in variant.bindings() {
+        // Generate `set_arg` calls first..
+        for binding in variant.bindings().iter().filter(|bi| should_generate_set_arg(bi.ast())) {
+            body.extend(self.generate_field_code(binding));
+        }
+        // ..and then subdiagnostic additions.
+        for binding in variant.bindings().iter().filter(|bi| !should_generate_set_arg(bi.ast())) {
             body.extend(self.generate_field_attrs_code(binding));
         }
         body
@@ -274,24 +264,27 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         }
     }
 
+    fn generate_field_code(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
+        let diag = &self.parent.diag;
+
+        let field = binding_info.ast();
+        let field_binding = &binding_info.binding;
+
+        let ident = field.ident.as_ref().unwrap();
+        let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
+
+        quote! {
+            #diag.set_arg(
+                stringify!(#ident),
+                #field_binding
+            );
+        }
+    }
+
     fn generate_field_attrs_code(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
         let field = binding_info.ast();
         let field_binding = &binding_info.binding;
 
-        if should_generate_set_arg(&field) {
-            let diag = &self.parent.diag;
-            let ident = field.ident.as_ref().unwrap();
-            // strip `r#` prefix, if present
-            let ident = format_ident!("{}", ident);
-            return quote! {
-                #diag.set_arg(
-                    stringify!(#ident),
-                    #field_binding
-                );
-            };
-        }
-
-        let needs_move = bind_style_of_field(&field).is_move();
         let inner_ty = FieldInnerTy::from_type(&field.ty);
 
         field
@@ -304,10 +297,8 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 let (binding, needs_destructure) = if needs_clone {
                     // `primary_span` can accept a `Vec<Span>` so don't destructure that.
                     (quote! { #field_binding.clone() }, false)
-                } else if needs_move {
-                    (quote! { #field_binding }, true)
                 } else {
-                    (quote! { *#field_binding }, true)
+                    (quote! { #field_binding }, true)
                 };
 
                 let generated_code = self
@@ -440,8 +431,8 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                     .unwrap_or_else(|| quote! { rustc_errors::Applicability::Unspecified });
                 let style = suggestion_kind.to_suggestion_style();
 
+                self.formatting_init.extend(code_init);
                 Ok(quote! {
-                    #code_init
                     #diag.span_suggestion_with_style(
                         #span_field,
                         rustc_errors::fluent::#slug,
@@ -490,7 +481,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             // If `ty` is `Span` w/out applicability, then use `Applicability::Unspecified`.
             ty @ Type::Path(..) if type_matches_path(ty, &["rustc_span", "Span"]) => {
                 let binding = &info.binding.binding;
-                Ok((quote!(*#binding), None))
+                Ok((quote!(#binding), None))
             }
             // If `ty` is `(Span, Applicability)` then return tokens accessing those.
             Type::Tuple(tup) => {
