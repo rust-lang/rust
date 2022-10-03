@@ -105,8 +105,8 @@ impl<'a> LintDiagnosticDerive<'a> {
         });
 
         let msg = builder.each_variant(&mut structure, |mut builder, variant| {
-            // HACK(wafflelapkin): initialize slug (???)
-            let _preamble = builder.preamble(&variant);
+            // Collect the slug by generating the preamble.
+            let _ = builder.preamble(&variant);
 
             match builder.slug.value_ref() {
                 None => {
@@ -125,7 +125,10 @@ impl<'a> LintDiagnosticDerive<'a> {
         let diag = &builder.diag;
         structure.gen_impl(quote! {
             gen impl<'__a> rustc_errors::DecorateLint<'__a, ()> for @Self {
-                fn decorate_lint<'__b>(self, #diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>) -> &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()> {
+                fn decorate_lint<'__b>(
+                    self,
+                    #diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>
+                ) -> &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()> {
                     use rustc_errors::IntoDiagnosticArg;
                     #implementation
                 }
