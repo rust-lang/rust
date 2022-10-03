@@ -1,10 +1,11 @@
+use super::MANUAL_MAP;
 use crate::{map_unit_fn::OPTION_MAP_UNIT_FN, matches::MATCH_AS_REF};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
-use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable, type_is_unsafe_function};
+use clippy_utils::ty::{is_copy, is_type_diagnostic_item, peel_mid_ty_refs_is_mutable, type_is_unsafe_function};
 use clippy_utils::{
     can_move_expr_to_closure, is_else_clause, is_lint_allowed, is_res_lang_ctor, path_res, path_to_local_id,
-    peel_blocks, peel_hir_expr_refs, peel_hir_expr_while, CaptureKind,
+    peel_blocks, peel_hir_expr_refs, peel_hir_expr_while, sugg::Sugg, CaptureKind,
 };
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
@@ -15,8 +16,6 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use rustc_span::{sym, SyntaxContext};
-
-use super::MANUAL_MAP;
 
 pub(super) fn check_match<'tcx>(
     cx: &LateContext<'tcx>,
@@ -43,7 +42,6 @@ pub(super) fn check_if_let<'tcx>(
     check(cx, expr, let_expr, let_pat, then_expr, None, else_expr);
 }
 
-#[expect(clippy::too_many_lines)]
 fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
@@ -53,12 +51,59 @@ fn check<'tcx>(
     else_pat: Option<&'tcx Pat<'_>>,
     else_body: &'tcx Expr<'_>,
 ) {
+    if let Some(sugg_info) = check_with(
+        cx,
+        expr,
+        scrutinee,
+        then_pat,
+        then_body,
+        else_pat,
+        else_body,
+        get_some_expr,
+    ) {
+        span_lint_and_sugg(
+            cx,
+            MANUAL_MAP,
+            expr.span,
+            "manual implementation of `Option::map`",
+            "try this",
+            if sugg_info.needs_brackets {
+                format!(
+                    "{{ {}{}.map({}) }}",
+                    sugg_info.scrutinee_str, sugg_info.as_ref_str, sugg_info.body_str
+                )
+            } else {
+                format!(
+                    "{}{}.map({})",
+                    sugg_info.scrutinee_str, sugg_info.as_ref_str, sugg_info.body_str
+                )
+            },
+            sugg_info.app,
+        );
+    }
+}
+
+#[expect(clippy::too_many_arguments)]
+#[expect(clippy::too_many_lines)]
+pub(super) fn check_with<'tcx, F>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    scrutinee: &'tcx Expr<'_>,
+    then_pat: &'tcx Pat<'_>,
+    then_body: &'tcx Expr<'_>,
+    else_pat: Option<&'tcx Pat<'_>>,
+    else_body: &'tcx Expr<'_>,
+    get_some_expr_fn: F,
+) -> Option<SuggInfo<'tcx>>
+where
+    F: Fn(&LateContext<'tcx>, &'tcx Pat<'_>, &'tcx Expr<'_>, SyntaxContext) -> Option<SomeExpr<'tcx>>,
+{
     let (scrutinee_ty, ty_ref_count, ty_mutability) =
         peel_mid_ty_refs_is_mutable(cx.typeck_results().expr_ty(scrutinee));
     if !(is_type_diagnostic_item(cx, scrutinee_ty, sym::Option)
         && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Option))
     {
-        return;
+        return None;
     }
 
     let expr_ctxt = expr.span.ctxt();
@@ -78,29 +123,29 @@ fn check<'tcx>(
         (Some(OptionPat::Some { pattern, ref_count }), Some(OptionPat::None)) if is_none_expr(cx, else_body) => {
             (then_body, pattern, ref_count, false)
         },
-        _ => return,
+        _ => return None,
     };
 
     // Top level or patterns aren't allowed in closures.
     if matches!(some_pat.kind, PatKind::Or(_)) {
-        return;
+        return None;
     }
 
-    let some_expr = match get_some_expr(cx, some_expr, false, expr_ctxt) {
+    let some_expr = match get_some_expr_fn(cx, some_pat, some_expr, expr_ctxt) {
         Some(expr) => expr,
-        None => return,
+        None => return None,
     };
 
     // These two lints will go back and forth with each other.
     if cx.typeck_results().expr_ty(some_expr.expr) == cx.tcx.types.unit
         && !is_lint_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id)
     {
-        return;
+        return None;
     }
 
     // `map` won't perform any adjustments.
     if !cx.typeck_results().expr_adjustments(some_expr.expr).is_empty() {
-        return;
+        return None;
     }
 
     // Determine which binding mode to use.
@@ -125,16 +170,16 @@ fn check<'tcx>(
                 });
                 if let ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(l), .. })) = e.kind {
                     match captures.get(l) {
-                        Some(CaptureKind::Value | CaptureKind::Ref(Mutability::Mut)) => return,
+                        Some(CaptureKind::Value | CaptureKind::Ref(Mutability::Mut)) => return None,
                         Some(CaptureKind::Ref(Mutability::Not)) if binding_ref_mutability == Mutability::Mut => {
-                            return;
+                            return None;
                         },
                         Some(CaptureKind::Ref(Mutability::Not)) | None => (),
                     }
                 }
             }
         },
-        None => return,
+        None => return None,
     };
 
     let mut app = Applicability::MachineApplicable;
@@ -149,6 +194,7 @@ fn check<'tcx>(
         scrutinee_str.into()
     };
 
+    let closure_expr_snip = some_expr.to_snippet_with_context(cx, expr_ctxt, &mut app);
     let body_str = if let PatKind::Binding(annotation, id, some_binding, None) = some_pat.kind {
         if_chain! {
             if !some_expr.needs_unsafe_block;
@@ -161,7 +207,7 @@ fn check<'tcx>(
                     && !is_lint_allowed(cx, MATCH_AS_REF, expr.hir_id)
                     && binding_ref.is_some()
                 {
-                    return;
+                    return None;
                 }
 
                 // `ref` and `ref mut` annotations were handled earlier.
@@ -170,41 +216,47 @@ fn check<'tcx>(
                 } else {
                     ""
                 };
-                let expr_snip = snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0;
+
                 if some_expr.needs_unsafe_block {
-                    format!("|{annotation}{some_binding}| unsafe {{ {expr_snip} }}")
+                    format!("|{annotation}{some_binding}| unsafe {{ {closure_expr_snip} }}")
                 } else {
-                    format!("|{annotation}{some_binding}| {expr_snip}")
+                    format!("|{annotation}{some_binding}| {closure_expr_snip}")
                 }
             }
         }
     } else if !is_wild_none && explicit_ref.is_none() {
         // TODO: handle explicit reference annotations.
         let pat_snip = snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0;
-        let expr_snip = snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0;
         if some_expr.needs_unsafe_block {
-            format!("|{pat_snip}| unsafe {{ {expr_snip} }}")
+            format!("|{pat_snip}| unsafe {{ {closure_expr_snip} }}")
         } else {
-            format!("|{pat_snip}| {expr_snip}")
+            format!("|{pat_snip}| {closure_expr_snip}")
         }
     } else {
         // Refutable bindings and mixed reference annotations can't be handled by `map`.
-        return;
+        return None;
     };
 
-    span_lint_and_sugg(
-        cx,
-        MANUAL_MAP,
-        expr.span,
-        "manual implementation of `Option::map`",
-        "try this",
-        if else_pat.is_none() && is_else_clause(cx.tcx, expr) {
-            format!("{{ {scrutinee_str}{as_ref_str}.map({body_str}) }}")
-        } else {
-            format!("{scrutinee_str}{as_ref_str}.map({body_str})")
-        },
+    // relies on the fact that Option<T>: Copy where T: copy
+    let scrutinee_impl_copy = is_copy(cx, scrutinee_ty);
+
+    Some(SuggInfo {
+        needs_brackets: else_pat.is_none() && is_else_clause(cx.tcx, expr),
+        scrutinee_impl_copy,
+        scrutinee_str,
+        as_ref_str,
+        body_str,
         app,
-    );
+    })
+}
+
+pub struct SuggInfo<'a> {
+    pub needs_brackets: bool,
+    pub scrutinee_impl_copy: bool,
+    pub scrutinee_str: String,
+    pub as_ref_str: &'a str,
+    pub body_str: String,
+    pub app: Applicability,
 }
 
 // Checks whether the expression could be passed as a function, or whether a closure is needed.
@@ -222,7 +274,8 @@ fn can_pass_as_func<'tcx>(cx: &LateContext<'tcx>, binding: HirId, expr: &'tcx Ex
     }
 }
 
-enum OptionPat<'a> {
+#[derive(Debug)]
+pub(super) enum OptionPat<'a> {
     Wild,
     None,
     Some {
@@ -234,14 +287,39 @@ enum OptionPat<'a> {
     },
 }
 
-struct SomeExpr<'tcx> {
-    expr: &'tcx Expr<'tcx>,
-    needs_unsafe_block: bool,
+pub(super) struct SomeExpr<'tcx> {
+    pub expr: &'tcx Expr<'tcx>,
+    pub needs_unsafe_block: bool,
+    pub needs_negated: bool, // for `manual_filter` lint
+}
+
+impl<'tcx> SomeExpr<'tcx> {
+    pub fn new_no_negated(expr: &'tcx Expr<'tcx>, needs_unsafe_block: bool) -> Self {
+        Self {
+            expr,
+            needs_unsafe_block,
+            needs_negated: false,
+        }
+    }
+
+    pub fn to_snippet_with_context(
+        &self,
+        cx: &LateContext<'tcx>,
+        ctxt: SyntaxContext,
+        app: &mut Applicability,
+    ) -> Sugg<'tcx> {
+        let sugg = Sugg::hir_with_context(cx, self.expr, ctxt, "..", app);
+        if self.needs_negated { !sugg } else { sugg }
+    }
 }
 
 // Try to parse into a recognized `Option` pattern.
 // i.e. `_`, `None`, `Some(..)`, or a reference to any of those.
-fn try_parse_pattern<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, ctxt: SyntaxContext) -> Option<OptionPat<'tcx>> {
+pub(super) fn try_parse_pattern<'tcx>(
+    cx: &LateContext<'tcx>,
+    pat: &'tcx Pat<'_>,
+    ctxt: SyntaxContext,
+) -> Option<OptionPat<'tcx>> {
     fn f<'tcx>(
         cx: &LateContext<'tcx>,
         pat: &'tcx Pat<'_>,
@@ -268,36 +346,41 @@ fn try_parse_pattern<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, ctxt: Syn
 // Checks for an expression wrapped by the `Some` constructor. Returns the contained expression.
 fn get_some_expr<'tcx>(
     cx: &LateContext<'tcx>,
+    _: &'tcx Pat<'_>,
     expr: &'tcx Expr<'_>,
-    needs_unsafe_block: bool,
     ctxt: SyntaxContext,
 ) -> Option<SomeExpr<'tcx>> {
-    // TODO: Allow more complex expressions.
-    match expr.kind {
-        ExprKind::Call(callee, [arg])
-            if ctxt == expr.span.ctxt() && is_res_lang_ctor(cx, path_res(cx, callee), OptionSome) =>
-        {
-            Some(SomeExpr {
-                expr: arg,
-                needs_unsafe_block,
-            })
-        },
-        ExprKind::Block(
-            Block {
-                stmts: [],
-                expr: Some(expr),
-                rules,
-                ..
+    fn get_some_expr_internal<'tcx>(
+        cx: &LateContext<'tcx>,
+        expr: &'tcx Expr<'_>,
+        needs_unsafe_block: bool,
+        ctxt: SyntaxContext,
+    ) -> Option<SomeExpr<'tcx>> {
+        // TODO: Allow more complex expressions.
+        match expr.kind {
+            ExprKind::Call(callee, [arg])
+                if ctxt == expr.span.ctxt() && is_res_lang_ctor(cx, path_res(cx, callee), OptionSome) =>
+            {
+                Some(SomeExpr::new_no_negated(arg, needs_unsafe_block))
             },
-            _,
-        ) => get_some_expr(
-            cx,
-            expr,
-            needs_unsafe_block || *rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
-            ctxt,
-        ),
-        _ => None,
+            ExprKind::Block(
+                Block {
+                    stmts: [],
+                    expr: Some(expr),
+                    rules,
+                    ..
+                },
+                _,
+            ) => get_some_expr_internal(
+                cx,
+                expr,
+                needs_unsafe_block || *rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
+                ctxt,
+            ),
+            _ => None,
+        }
     }
+    get_some_expr_internal(cx, expr, false, ctxt)
 }
 
 // Checks for the `None` value.
