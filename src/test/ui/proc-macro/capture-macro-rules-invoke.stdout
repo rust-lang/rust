@@ -177,12 +177,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: $DIR/capture-macro-rules-invoke.rs:45:16: 45:18 (#0),
+                span: $DIR/capture-macro-rules-invoke.rs:45:16: 45:17 (#0),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/capture-macro-rules-invoke.rs:45:16: 45:18 (#0),
+                span: $DIR/capture-macro-rules-invoke.rs:45:17: 45:18 (#0),
             },
             Ident {
                 ident: "option",
@@ -191,12 +191,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: $DIR/capture-macro-rules-invoke.rs:45:24: 45:26 (#0),
+                span: $DIR/capture-macro-rules-invoke.rs:45:24: 45:25 (#0),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/capture-macro-rules-invoke.rs:45:24: 45:26 (#0),
+                span: $DIR/capture-macro-rules-invoke.rs:45:25: 45:26 (#0),
             },
             Ident {
                 ident: "Option",
@@ -231,12 +231,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                     Punct {
                         ch: ':',
                         spacing: Joint,
-                        span: $DIR/capture-macro-rules-invoke.rs:46:24: 46:26 (#0),
+                        span: $DIR/capture-macro-rules-invoke.rs:46:24: 46:25 (#0),
                     },
                     Punct {
                         ch: ':',
                         spacing: Alone,
-                        span: $DIR/capture-macro-rules-invoke.rs:46:24: 46:26 (#0),
+                        span: $DIR/capture-macro-rules-invoke.rs:46:25: 46:26 (#0),
                     },
                     Ident {
                         ident: "path",
