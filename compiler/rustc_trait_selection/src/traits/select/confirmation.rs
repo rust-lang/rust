@@ -11,9 +11,10 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
-use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
-use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
+use rustc_middle::ty::{
+    self, GenericArg, GenericArgKind, GenericParamDefKind, InternalSubsts, SubstsRef,
+    ToPolyTraitRef, ToPredicate, Ty, TyCtxt,
+};
 use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
@@ -289,8 +290,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let scope = type_at(2).skip_binder();
 
-        let assume =
-            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, const_at(3));
+        let Some(assume) =
+            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, const_at(3)) else {
+                return Err(Unimplemented);
+            };
 
         let cause = obligation.cause.clone();
 

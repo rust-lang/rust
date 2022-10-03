@@ -1,11 +1,11 @@
 error[E0412]: cannot find type `Dst` in this scope
-  --> $DIR/issues-101739.rs:8:9
+  --> $DIR/issue-101739-1.rs:8:9
    |
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME_ALIGNMENT>,
    |         ^^^ not found in this scope
 
 error[E0308]: mismatched types
-  --> $DIR/issues-101739.rs:8:50
+  --> $DIR/issue-101739-1.rs:8:50
    |
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME_ALIGNMENT>,
    |                                                  ^^^^^^^^^^^^^^^^ expected struct `Assume`, found `bool`
