@@ -169,13 +169,17 @@ impl FlycheckActor {
     }
     fn next_event(&self, inbox: &Receiver<Restart>) -> Option<Event> {
         let check_chan = self.cargo_handle.as_ref().map(|cargo| &cargo.receiver);
+        if let Ok(msg) = inbox.try_recv() {
+            // give restarts a preference so check outputs don't block a restart or stop
+            return Some(Event::Restart(msg));
+        }
         select! {
             recv(inbox) -> msg => msg.ok().map(Event::Restart),
             recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
         }
     }
     fn run(mut self, inbox: Receiver<Restart>) {
-        while let Some(event) = self.next_event(&inbox) {
+        'event: while let Some(event) = self.next_event(&inbox) {
             match event {
                 Event::Restart(Restart::No) => {
                     self.cancel_check_process();
@@ -183,7 +187,12 @@ impl FlycheckActor {
                 Event::Restart(Restart::Yes) => {
                     // Cancel the previously spawned process
                     self.cancel_check_process();
-                    while let Ok(_) = inbox.recv_timeout(Duration::from_millis(50)) {}
+                    while let Ok(restart) = inbox.recv_timeout(Duration::from_millis(50)) {
+                        // restart chained with a stop, so just cancel
+                        if let Restart::No = restart {
+                            continue 'event;
+                        }
+                    }
 
                     let command = self.check_command();
                     tracing::debug!(?command, "will restart flycheck");
