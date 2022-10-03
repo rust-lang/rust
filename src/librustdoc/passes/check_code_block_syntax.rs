@@ -1,8 +1,9 @@
 //! Validates syntax inside Rust code blocks (\`\`\`rust).
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{
-    emitter::Emitter, translation::Translate, Applicability, Diagnostic, Handler,
-    LazyFallbackBundle,
+    emitter::Emitter,
+    translation::{to_fluent_args, Translate},
+    Applicability, Diagnostic, Handler, LazyFallbackBundle,
 };
 use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
@@ -193,7 +194,7 @@ impl Emitter for BufferEmitter {
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
         let mut buffer = self.buffer.borrow_mut();
 
-        let fluent_args = self.to_fluent_args(diag.args());
+        let fluent_args = to_fluent_args(diag.args());
         let translated_main_message = self.translate_message(&diag.message[0].0, &fluent_args);
 
         buffer.messages.push(format!("error from rustc: {}", translated_main_message));
