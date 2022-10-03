@@ -1050,6 +1050,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	margin-bottom: 5px;
 	font-size: 0.875rem;
 	font-weight: normal;
+	color: var(--main-color);
+	background-color: var(--stab-background-color);
+}
+
+.stab.portability > code {
+	background: none;
+	color: var(--stab-code-color);
 }
 
 .stab .emoji {

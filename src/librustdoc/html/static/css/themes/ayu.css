@@ -37,6 +37,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--link-color: #39afd7;
 	--sidebar-link-color: #53b1db;
 	--sidebar-current-link-background-color: transparent;
+	--stab-background-color: #314559;
+	--stab-code-color: #e6e1cf;
 }
 
 .slider {
@@ -153,16 +155,6 @@ details.rustdoc-toggle > summary::before {
 .module-item .stab,
 .import-item .stab {
 	color: #000;
-}
-
-.stab {
-	color: #c5c5c5;
-	background: #314559 !important;
-}
-
-.stab.portability > code {
-	color: #e6e1cf;
-	background: none;
 }
 
 .result-name .primitive > i, .result-name .keyword > i {
