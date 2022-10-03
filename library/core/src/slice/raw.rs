@@ -188,6 +188,10 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///
 /// Note that a range created from [`slice::as_ptr_range`] fulfills these requirements.
 ///
+/// # Panics
+///
+/// This function panics if `T` is a Zero-Sized Type (“ZST”).
+///
 /// # Caveat
 ///
 /// The lifetime for the returned slice is inferred from its usage. To
@@ -246,6 +250,10 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///   See the safety documentation of [`pointer::offset`].
 ///
 /// Note that a range created from [`slice::as_mut_ptr_range`] fulfills these requirements.
+///
+/// # Panics
+///
+/// This function panics if `T` is a Zero-Sized Type (“ZST”).
 ///
 /// # Examples
 ///
