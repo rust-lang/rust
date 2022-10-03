@@ -55,7 +55,9 @@ pub trait Translate {
     ) -> Cow<'_, str> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
-            DiagnosticMessage::Str(msg) => return Cow::Borrowed(&msg),
+            DiagnosticMessage::Str(msg) | DiagnosticMessage::Eager(msg) => {
+                return Cow::Borrowed(&msg);
+            }
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
         };
 
