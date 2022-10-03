@@ -542,7 +542,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // been resolved or we errored. This is important as we can only check transmute
                 // on concrete types, but the output type may not be known yet (it would only
                 // be known if explicitly specified via turbofish).
-                self.deferred_transmute_checks.borrow_mut().push((from, to, expr.span));
+                self.deferred_transmute_checks.borrow_mut().push((from, to, expr.hir_id));
             }
             if !tcx.features().unsized_fn_params {
                 // We want to remove some Sized bounds from std functions,
