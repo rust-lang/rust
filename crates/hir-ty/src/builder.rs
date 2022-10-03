@@ -192,9 +192,7 @@ impl TyBuilder<()> {
         parent_subst: Option<Substitution>,
     ) -> TyBuilder<()> {
         let generics = generics(db.upcast(), def.into());
-        // FIXME: this assertion should hold but some adjustment around
-        // `ValueTyDefId::EnumVariantId` is needed.
-        // assert!(generics.parent_generics().is_some() == parent_subst.is_some());
+        assert!(generics.parent_generics().is_some() == parent_subst.is_some());
         let params = generics
             .iter_self()
             .map(|(id, data)| match data {
