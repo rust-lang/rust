@@ -10,27 +10,31 @@ use synstructure::Structure;
 /// The central struct for constructing the `into_diagnostic` method from an annotated struct.
 pub(crate) struct DiagnosticDerive<'a> {
     structure: Structure<'a>,
-    handler: syn::Ident,
     builder: DiagnosticDeriveBuilder,
 }
 
 impl<'a> DiagnosticDerive<'a> {
     pub(crate) fn new(diag: syn::Ident, handler: syn::Ident, structure: Structure<'a>) -> Self {
         Self {
-            builder: DiagnosticDeriveBuilder { diag, kind: DiagnosticDeriveKind::Diagnostic },
-            handler,
+            builder: DiagnosticDeriveBuilder {
+                diag,
+                kind: DiagnosticDeriveKind::Diagnostic { handler },
+            },
             structure,
         }
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
-        let DiagnosticDerive { mut structure, handler, mut builder } = self;
+        let DiagnosticDerive { mut structure, mut builder } = self;
 
         let implementation = builder.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(&variant);
             let body = builder.body(&variant);
 
             let diag = &builder.parent.diag;
+            let DiagnosticDeriveKind::Diagnostic { handler } = &builder.parent.kind  else {
+                unreachable!()
+            };
             let init = match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
@@ -56,6 +60,7 @@ impl<'a> DiagnosticDerive<'a> {
             }
         });
 
+        let DiagnosticDeriveKind::Diagnostic { handler } = &builder.kind  else { unreachable!() };
         structure.gen_impl(quote! {
             gen impl<'__diagnostic_handler_sess, G>
                     rustc_errors::IntoDiagnostic<'__diagnostic_handler_sess, G>

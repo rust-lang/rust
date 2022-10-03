@@ -533,6 +533,46 @@ LL | #[label]
    |
    = help: `#[label]` and `#[suggestion]` can only be applied to fields
 
+error: `#[subdiagnostic(bad)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:685:21
+   |
+LL |     #[subdiagnostic(bad)]
+   |                     ^^^
+   |
+   = help: `eager` is the only supported nested attribute for `subdiagnostic`
+
+error: `#[subdiagnostic = ...]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:693:5
+   |
+LL |     #[subdiagnostic = "bad"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `eager` is the only supported nested attribute for `subdiagnostic`
+
+error: `#[subdiagnostic(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:701:5
+   |
+LL |     #[subdiagnostic(bad, bad)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `eager` is the only supported nested attribute for `subdiagnostic`
+
+error: `#[subdiagnostic("...")]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:709:21
+   |
+LL |     #[subdiagnostic("bad")]
+   |                     ^^^^^
+   |
+   = help: `eager` is the only supported nested attribute for `subdiagnostic`
+
+error: `#[subdiagnostic(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:717:5
+   |
+LL |     #[subdiagnostic(eager)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: eager subdiagnostics are not supported on lints
+
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive.rs:55:3
    |
@@ -607,7 +647,7 @@ LL |         arg: impl IntoDiagnosticArg,
    |                   ^^^^^^^^^^^^^^^^^ required by this bound in `DiagnosticBuilder::<'a, G>::set_arg`
    = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 75 previous errors
+error: aborting due to 80 previous errors
 
 Some errors have detailed explanations: E0277, E0425.
 For more information about an error, try `rustc --explain E0277`.

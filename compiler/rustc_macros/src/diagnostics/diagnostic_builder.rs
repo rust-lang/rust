@@ -17,9 +17,9 @@ use syn::{
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub(crate) enum DiagnosticDeriveKind {
-    Diagnostic,
+    Diagnostic { handler: syn::Ident },
     LintDiagnostic,
 }
 
@@ -340,18 +340,15 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         let diag = &self.parent.diag;
         let meta = attr.parse_meta()?;
 
-        if let Meta::Path(_) = meta {
-            let ident = &attr.path.segments.last().unwrap().ident;
-            let name = ident.to_string();
-            let name = name.as_str();
-            match name {
-                "skip_arg" => {
-                    // Don't need to do anything - by virtue of the attribute existing, the
-                    // `set_arg` call will not be generated.
-                    return Ok(quote! {});
-                }
-                "primary_span" => match self.parent.kind {
-                    DiagnosticDeriveKind::Diagnostic => {
+        let ident = &attr.path.segments.last().unwrap().ident;
+        let name = ident.to_string();
+        match (&meta, name.as_str()) {
+            // Don't need to do anything - by virtue of the attribute existing, the
+            // `set_arg` call will not be generated.
+            (Meta::Path(_), "skip_arg") => return Ok(quote! {}),
+            (Meta::Path(_), "primary_span") => {
+                match self.parent.kind {
+                    DiagnosticDeriveKind::Diagnostic { .. } => {
                         report_error_if_not_applied_to_span(attr, &info)?;
 
                         return Ok(quote! {
@@ -363,10 +360,50 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                             diag.help("the `primary_span` field attribute is not valid for lint diagnostics")
                         })
                     }
-                },
-                "subdiagnostic" => return Ok(quote! { #diag.subdiagnostic(#binding); }),
-                _ => {}
+                }
             }
+            (Meta::Path(_), "subdiagnostic") => {
+                return Ok(quote! { #diag.subdiagnostic(#binding); });
+            }
+            (Meta::NameValue(_), "subdiagnostic") => {
+                throw_invalid_attr!(attr, &meta, |diag| {
+                    diag.help("`eager` is the only supported nested attribute for `subdiagnostic`")
+                })
+            }
+            (Meta::List(MetaList { ref nested, .. }), "subdiagnostic") => {
+                if nested.len() != 1 {
+                    throw_invalid_attr!(attr, &meta, |diag| {
+                        diag.help(
+                            "`eager` is the only supported nested attribute for `subdiagnostic`",
+                        )
+                    })
+                }
+
+                let handler = match &self.parent.kind {
+                    DiagnosticDeriveKind::Diagnostic { handler } => handler,
+                    DiagnosticDeriveKind::LintDiagnostic => {
+                        throw_invalid_attr!(attr, &meta, |diag| {
+                            diag.help("eager subdiagnostics are not supported on lints")
+                        })
+                    }
+                };
+
+                let nested_attr = nested.first().expect("pop failed for single element list");
+                match nested_attr {
+                    NestedMeta::Meta(meta @ Meta::Path(_))
+                        if meta.path().segments.last().unwrap().ident.to_string().as_str()
+                            == "eager" =>
+                    {
+                        return Ok(quote! { #diag.eager_subdiagnostic(#handler, #binding); });
+                    }
+                    _ => {
+                        throw_invalid_nested_attr!(attr, nested_attr, |diag| {
+                            diag.help("`eager` is the only supported nested attribute for `subdiagnostic`")
+                        })
+                    }
+                }
+            }
+            _ => (),
         }
 
         let (subdiag, slug) = self.parse_subdiag_attribute(attr)?;
