@@ -678,3 +678,50 @@ enum ExampleEnum {
 struct RawIdentDiagnosticArg {
     pub r#type: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticBad {
+    #[subdiagnostic(bad)]
+//~^ ERROR `#[subdiagnostic(bad)]` is not a valid attribute
+    note: Note,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticBadStr {
+    #[subdiagnostic = "bad"]
+//~^ ERROR `#[subdiagnostic = ...]` is not a valid attribute
+    note: Note,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticBadTwice {
+    #[subdiagnostic(bad, bad)]
+//~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    note: Note,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticBadLitStr {
+    #[subdiagnostic("bad")]
+//~^ ERROR `#[subdiagnostic("...")]` is not a valid attribute
+    note: Note,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticEagerLint {
+    #[subdiagnostic(eager)]
+//~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    note: Note,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticEagerCorrect {
+    #[subdiagnostic(eager)]
+    note: Note,
+}
