@@ -148,7 +148,7 @@ authors can request rebuilds, which will be run with the latest rustdoc.
 
 Docs.rs performs some transformations on rustdoc's output in order to save
 storage and display a navigation bar at the top. In particular, certain static
-files (like main.js and rustdoc.css may be shared across multiple invocations
+files, like main.js and rustdoc.css, may be shared across multiple invocations
 of the same version of rustdoc. Others, like crates.js and sidebar-items.js, are
 different for different invocations. Still others, like fonts, will never
 change. These categories are distinguished using the `SharedResource` enum in
