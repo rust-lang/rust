@@ -1,4 +1,7 @@
-use rustc_errors::{fluent, AddToDiagnostic, ErrorGuaranteed, Handler, IntoDiagnostic};
+use rustc_errors::{
+    fluent, AddToDiagnostic, Diagnostic, ErrorGuaranteed, Handler, IntoDiagnostic,
+    SubdiagnosticMessage,
+};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
@@ -23,7 +26,10 @@ pub enum OverruledAttributeSub {
 }
 
 impl AddToDiagnostic for OverruledAttributeSub {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         match self {
             OverruledAttributeSub::DefaultSource { id } => {
                 diag.note(fluent::lint::default_source);
@@ -88,7 +94,10 @@ pub struct RequestedLevel {
 }
 
 impl AddToDiagnostic for RequestedLevel {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         diag.note(fluent::lint::requested_level);
         diag.set_arg(
             "level",

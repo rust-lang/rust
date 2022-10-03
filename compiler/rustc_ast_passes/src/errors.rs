@@ -1,6 +1,6 @@
 //! Errors emitted by ast_passes.
 
-use rustc_errors::{fluent, AddToDiagnostic, Applicability, Diagnostic};
+use rustc_errors::{fluent, AddToDiagnostic, Applicability, Diagnostic, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -17,7 +17,10 @@ pub struct ForbiddenLet {
 }
 
 impl AddToDiagnostic for ForbiddenLetReason {
-    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         match self {
             Self::GenericForbidden => {}
             Self::NotSupportedOr(span) => {
@@ -228,7 +231,10 @@ pub struct ExternBlockSuggestion {
 }
 
 impl AddToDiagnostic for ExternBlockSuggestion {
-    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         let start_suggestion = if let Some(abi) = self.abi {
             format!("extern \"{}\" {{", abi)
         } else {

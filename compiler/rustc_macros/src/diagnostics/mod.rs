@@ -9,7 +9,7 @@ use diagnostic::{DiagnosticDerive, LintDiagnosticDerive};
 pub(crate) use fluent::fluent_messages;
 use proc_macro2::TokenStream;
 use quote::format_ident;
-use subdiagnostic::SubdiagnosticDerive;
+use subdiagnostic::SubdiagnosticDeriveBuilder;
 use synstructure::Structure;
 
 /// Implements `#[derive(Diagnostic)]`, which allows for errors to be specified as a struct,
@@ -155,5 +155,5 @@ pub fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// diag.subdiagnostic(RawIdentifierSuggestion { span, applicability, ident });
 /// ```
 pub fn session_subdiagnostic_derive(s: Structure<'_>) -> TokenStream {
-    SubdiagnosticDerive::new(s).into_tokens()
+    SubdiagnosticDeriveBuilder::new().into_tokens(s)
 }
