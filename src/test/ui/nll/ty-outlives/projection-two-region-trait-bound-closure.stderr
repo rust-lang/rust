@@ -24,10 +24,10 @@ LL | |     T: Anything<'b, 'c>,
    = note: defining type: no_relationships_late::<'_#1r, '_#2r, T>
 
 error[E0309]: the associated type `<T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)>>::AssocType` may not live long enough
-  --> $DIR/projection-two-region-trait-bound-closure.rs:38:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:38:39
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                       ^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `<T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)>>::AssocType: 'a`...
    = note: ...so that the type `<T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)>>::AssocType` will meet its required lifetime bounds
@@ -58,10 +58,10 @@ LL | |     'a: 'a,
    = note: defining type: no_relationships_early::<'_#1r, '_#2r, '_#3r, T>
 
 error[E0309]: the associated type `<T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType` may not live long enough
-  --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:48:39
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                       ^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `<T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: 'a`...
    = note: ...so that the type `<T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType` will meet its required lifetime bounds

@@ -214,8 +214,8 @@ pub struct TypeTest<'tcx> {
     /// The region `'x` that the type must outlive.
     pub lower_bound: RegionVid,
 
-    /// Where did this constraint arise and why?
-    pub locations: Locations,
+    /// The span to blame.
+    pub span: Span,
 
     /// A test which, if met by the region `'x`, proves that this type
     /// constraint is satisfied.
@@ -870,13 +870,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if deduplicate_errors.insert((
                 erased_generic_kind,
                 type_test.lower_bound,
-                type_test.locations,
+                type_test.span,
             )) {
                 debug!(
                     "check_type_test: reporting error for erased_generic_kind={:?}, \
                      lower_bound_region={:?}, \
-                     type_test.locations={:?}",
-                    erased_generic_kind, type_test.lower_bound, type_test.locations,
+                     type_test.span={:?}",
+                    erased_generic_kind, type_test.lower_bound, type_test.span,
                 );
 
                 errors_buffer.push(RegionErrorKind::TypeTestError { type_test: type_test.clone() });
@@ -919,7 +919,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> bool {
         let tcx = infcx.tcx;
 
-        let TypeTest { generic_kind, lower_bound, locations, verify_bound: _ } = type_test;
+        let TypeTest { generic_kind, lower_bound, span: _, verify_bound: _ } = type_test;
 
         let generic_ty = generic_kind.to_ty(tcx);
         let Some(subject) = self.try_promote_type_test_subject(infcx, generic_ty) else {
@@ -947,7 +947,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                 subject,
                 outlived_free_region: static_r,
-                blame_span: locations.span(body),
+                blame_span: type_test.span,
                 category: ConstraintCategory::Boring,
             });
 
@@ -999,7 +999,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let requirement = ClosureOutlivesRequirement {
                     subject,
                     outlived_free_region: upper_bound,
-                    blame_span: locations.span(body),
+                    blame_span: type_test.span,
                     category: ConstraintCategory::Boring,
                 };
                 debug!("try_promote_type_test: pushing {:#?}", requirement);
