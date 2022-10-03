@@ -2482,6 +2482,11 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     if (nf->hasParamAttribute(attrIndex, Attribute::NoAlias)) {
       NewF->addParamAttr(attrIndex, Attribute::NoAlias);
     }
+    for (auto name : {"enzyme_sret", "enzyme_sret_v"})
+      if (nf->getAttributes().hasParamAttr(attrIndex, name)) {
+        NewF->addParamAttr(attrIndex,
+                           nf->getAttributes().getParamAttr(attrIndex, name));
+      }
 
     j->setName(i->getName());
     ++j;
