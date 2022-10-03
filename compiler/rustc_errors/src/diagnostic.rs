@@ -203,9 +203,20 @@ impl IntoDiagnosticArg for ast::token::TokenKind {
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
 #[cfg_attr(bootstrap, rustc_diagnostic_item = "AddSubdiagnostic")]
 #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "AddToDiagnostic")]
-pub trait AddToDiagnostic {
+pub trait AddToDiagnostic
+where
+    Self: Sized,
+{
     /// Add a subdiagnostic to an existing diagnostic.
-    fn add_to_diagnostic(self, diag: &mut Diagnostic);
+    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
+        self.add_to_diagnostic_with(diag, |_, m| m);
+    }
+
+    /// Add a subdiagnostic to an existing diagnostic where `f` is invoked on every message used
+    /// (to optionally perform eager translation).
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, f: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage;
 }
 
 /// Trait implemented by lint types. This should not be implemented manually. Instead, use
@@ -921,8 +932,8 @@ impl Diagnostic {
         self
     }
 
-    /// Add a subdiagnostic from a type that implements `Subdiagnostic` - see
-    /// [rustc_macros::Subdiagnostic].
+    /// Add a subdiagnostic from a type that implements `Subdiagnostic` (see
+    /// [rustc_macros::Subdiagnostic]).
     pub fn subdiagnostic(&mut self, subdiagnostic: impl AddToDiagnostic) -> &mut Self {
         subdiagnostic.add_to_diagnostic(self);
         self

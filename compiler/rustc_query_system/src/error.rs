@@ -1,4 +1,4 @@
-use rustc_errors::AddToDiagnostic;
+use rustc_errors::{AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
@@ -9,7 +9,10 @@ pub struct CycleStack {
 }
 
 impl AddToDiagnostic for CycleStack {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         diag.span_note(self.span, &format!("...which requires {}...", self.desc));
     }
 }

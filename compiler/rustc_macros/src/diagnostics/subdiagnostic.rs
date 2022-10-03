@@ -15,19 +15,19 @@ use syn::{spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, NestedMeta
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
-pub(crate) struct SubdiagnosticDerive<'a> {
-    structure: Structure<'a>,
+pub(crate) struct SubdiagnosticDeriveBuilder {
     diag: syn::Ident,
+    f: syn::Ident,
 }
 
-impl<'a> SubdiagnosticDerive<'a> {
-    pub(crate) fn new(structure: Structure<'a>) -> Self {
+impl SubdiagnosticDeriveBuilder {
+    pub(crate) fn new() -> Self {
         let diag = format_ident!("diag");
-        Self { structure, diag }
+        let f = format_ident!("f");
+        Self { diag, f }
     }
 
-    pub(crate) fn into_tokens(self) -> TokenStream {
-        let SubdiagnosticDerive { mut structure, diag } = self;
+    pub(crate) fn into_tokens<'a>(self, mut structure: Structure<'a>) -> TokenStream {
         let implementation = {
             let ast = structure.ast();
             let span = ast.span().unwrap();
@@ -53,8 +53,8 @@ impl<'a> SubdiagnosticDerive<'a> {
 
             structure.bind_with(|_| synstructure::BindStyle::Move);
             let variants_ = structure.each_variant(|variant| {
-                let mut builder = SubdiagnosticDeriveBuilder {
-                    diag: &diag,
+                let mut builder = SubdiagnosticDeriveVariantBuilder {
+                    parent: &self,
                     variant,
                     span,
                     fields: build_field_mapping(variant),
@@ -72,9 +72,17 @@ impl<'a> SubdiagnosticDerive<'a> {
             }
         };
 
+        let diag = &self.diag;
+        let f = &self.f;
         let ret = structure.gen_impl(quote! {
             gen impl rustc_errors::AddToDiagnostic for @Self {
-                fn add_to_diagnostic(self, #diag: &mut rustc_errors::Diagnostic) {
+                fn add_to_diagnostic_with<__F>(self, #diag: &mut rustc_errors::Diagnostic, #f: __F)
+                where
+                    __F: Fn(
+                        &mut rustc_errors::Diagnostic,
+                        rustc_errors::SubdiagnosticMessage
+                    ) -> rustc_errors::SubdiagnosticMessage,
+                {
                     use rustc_errors::{Applicability, IntoDiagnosticArg};
                     #implementation
                 }
@@ -88,9 +96,9 @@ impl<'a> SubdiagnosticDerive<'a> {
 /// for the final generated method. This is a separate struct to `SubdiagnosticDerive`
 /// only to be able to destructure and split `self.builder` and the `self.structure` up to avoid a
 /// double mut borrow later on.
-struct SubdiagnosticDeriveBuilder<'a> {
+struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     /// The identifier to use for the generated `DiagnosticBuilder` instance.
-    diag: &'a syn::Ident,
+    parent: &'parent SubdiagnosticDeriveBuilder,
 
     /// Info for the current variant (or the type if not an enum).
     variant: &'a VariantInfo<'a>,
@@ -112,7 +120,7 @@ struct SubdiagnosticDeriveBuilder<'a> {
     has_suggestion_parts: bool,
 }
 
-impl<'a> HasFieldMap for SubdiagnosticDeriveBuilder<'a> {
+impl<'parent, 'a> HasFieldMap for SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     fn get_field_binding(&self, field: &String) -> Option<&TokenStream> {
         self.fields.get(field)
     }
@@ -156,7 +164,7 @@ impl<'a> FromIterator<&'a SubdiagnosticKind> for KindsStatistics {
     }
 }
 
-impl<'a> SubdiagnosticDeriveBuilder<'a> {
+impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     fn identify_kind(&mut self) -> Result<Vec<(SubdiagnosticKind, Path)>, DiagnosticDeriveError> {
         let mut kind_slugs = vec![];
 
@@ -187,7 +195,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
         let ast = binding.ast();
         assert_eq!(ast.attrs.len(), 0, "field with attribute used as diagnostic arg");
 
-        let diag = &self.diag;
+        let diag = &self.parent.diag;
         let ident = ast.ident.as_ref().unwrap();
         // strip `r#` prefix, if present
         let ident = format_ident!("{}", ident);
@@ -442,11 +450,14 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
 
         let span_field = self.span_field.value_ref();
 
-        let diag = &self.diag;
+        let diag = &self.parent.diag;
+        let f = &self.parent.f;
         let mut calls = TokenStream::new();
         for (kind, slug) in kind_slugs {
+            let message = format_ident!("__message");
+            calls.extend(quote! { let #message = #f(#diag, rustc_errors::fluent::#slug.into()); });
+
             let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
-            let message = quote! { rustc_errors::fluent::#slug };
             let call = match kind {
                 SubdiagnosticKind::Suggestion { suggestion_kind, applicability, code } => {
                     let applicability = applicability
