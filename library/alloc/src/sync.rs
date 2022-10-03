@@ -3,6 +3,10 @@
 //! Thread-safe reference-counting pointers.
 //!
 //! See the [`Arc<T>`][Arc] documentation for more details.
+//!
+//! **Note**: This module is only available on platforms that support atomic
+//! loads and stores of pointers. This may be detected at compile time using
+//! `#[cfg(target_has_atomic = "ptr")]`.
 
 use core::any::Any;
 use core::borrow;
@@ -81,6 +85,11 @@ macro_rules! acquire {
 /// inside an `Arc`. If you need to mutate through an `Arc`, use
 /// [`Mutex`][mutex], [`RwLock`][rwlock], or one of the [`Atomic`][atomic]
 /// types.
+///
+/// **Note**: This type is only available on platforms that support atomic
+/// loads and stores of pointers, which includes all platforms that support
+/// the `std` crate but not all those which only support [`alloc`](crate).
+/// This may be detected at compile time using `#[cfg(target_has_atomic = "ptr")]`.
 ///
 /// ## Thread Safety
 ///
