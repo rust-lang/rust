@@ -27,7 +27,7 @@ pub(super) struct TokenTreesReader<'a> {
 }
 
 impl<'a> TokenTreesReader<'a> {
-    pub(super) fn parse_token_trees(
+    pub(super) fn parse_all_token_trees(
         string_reader: StringReader<'a>,
     ) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
         let mut tt_reader = TokenTreesReader {
@@ -40,36 +40,51 @@ impl<'a> TokenTreesReader<'a> {
             last_delim_empty_block_spans: FxHashMap::default(),
             matching_block_spans: Vec::new(),
         };
-        let res = tt_reader.parse_all_token_trees();
+        let res = tt_reader.parse_token_trees(/* is_delimited */ false);
         (res, tt_reader.unmatched_braces)
     }
 
-    // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
-    fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
+    // Parse a stream of tokens into a list of `TokenTree`s.
+    fn parse_token_trees(&mut self, is_delimited: bool) -> PResult<'a, TokenStream> {
         self.token = self.string_reader.next_token().0;
-        let mut buf = TokenStreamBuilder::default();
+        let mut buf = Vec::new();
         loop {
             match self.token.kind {
                 token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
-                token::CloseDelim(delim) => return Err(self.close_delim_err(delim)),
-                token::Eof => return Ok(buf.into_token_stream()),
-                _ => buf.push(self.parse_token_tree_non_delim_non_eof()),
-            }
-        }
-    }
-
-    // Parse a stream of tokens into a list of `TokenTree`s, up to a `CloseDelim`.
-    fn parse_token_trees_until_close_delim(&mut self) -> TokenStream {
-        let mut buf = TokenStreamBuilder::default();
-        loop {
-            match self.token.kind {
-                token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
-                token::CloseDelim(..) => return buf.into_token_stream(),
-                token::Eof => {
-                    self.eof_err().emit();
-                    return buf.into_token_stream();
+                token::CloseDelim(delim) => {
+                    return if is_delimited {
+                        Ok(TokenStream::new(buf))
+                    } else {
+                        Err(self.close_delim_err(delim))
+                    };
                 }
-                _ => buf.push(self.parse_token_tree_non_delim_non_eof()),
+                token::Eof => {
+                    if is_delimited {
+                        self.eof_err().emit();
+                    }
+                    return Ok(TokenStream::new(buf));
+                }
+                _ => {
+                    // Get the next normal token. This might require getting multiple adjacent
+                    // single-char tokens and joining them together.
+                    let (this_spacing, next_tok) = loop {
+                        let (next_tok, is_next_tok_preceded_by_whitespace) =
+                            self.string_reader.next_token();
+                        if !is_next_tok_preceded_by_whitespace {
+                            if let Some(glued) = self.token.glue(&next_tok) {
+                                self.token = glued;
+                            } else {
+                                let this_spacing =
+                                    if next_tok.is_op() { Spacing::Joint } else { Spacing::Alone };
+                                break (this_spacing, next_tok);
+                            }
+                        } else {
+                            break (Spacing::Alone, next_tok);
+                        }
+                    };
+                    let this_tok = std::mem::replace(&mut self.token, next_tok);
+                    buf.push(TokenTree::Token(this_tok, this_spacing));
+                }
             }
         }
     }
@@ -113,14 +128,12 @@ impl<'a> TokenTreesReader<'a> {
         // The span for beginning of the delimited section
         let pre_span = self.token.span;
 
-        // Move past the open delimiter.
         self.open_braces.push((open_delim, self.token.span));
-        self.token = self.string_reader.next_token().0;
 
         // Parse the token trees within the delimiters.
         // We stop at any delimiter so we can try to recover if the user
         // uses an incorrect delimiter.
-        let tts = self.parse_token_trees_until_close_delim();
+        let tts = self.parse_token_trees(/* is_delimited */ true).unwrap();
 
         // Expand to cover the entire delimited token tree
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
@@ -241,44 +254,5 @@ impl<'a> TokenTreesReader<'a> {
 
         err.span_label(self.token.span, "unexpected closing delimiter");
         err
-    }
-
-    #[inline]
-    fn parse_token_tree_non_delim_non_eof(&mut self) -> TokenTree {
-        // `this_spacing` for the returned token refers to whether the token is
-        // immediately followed by another op token. It is determined by the
-        // next token: its kind and its `preceded_by_whitespace` status.
-        let (next_tok, is_next_tok_preceded_by_whitespace) = self.string_reader.next_token();
-        let this_spacing = if is_next_tok_preceded_by_whitespace || !next_tok.is_op() {
-            Spacing::Alone
-        } else {
-            Spacing::Joint
-        };
-        let this_tok = std::mem::replace(&mut self.token, next_tok);
-        TokenTree::Token(this_tok, this_spacing)
-    }
-}
-
-#[derive(Default)]
-struct TokenStreamBuilder {
-    buf: Vec<TokenTree>,
-}
-
-impl TokenStreamBuilder {
-    #[inline(always)]
-    fn push(&mut self, tree: TokenTree) {
-        if let Some(TokenTree::Token(prev_token, Spacing::Joint)) = self.buf.last()
-            && let TokenTree::Token(token, joint) = &tree
-            && let Some(glued) = prev_token.glue(token)
-        {
-            self.buf.pop();
-            self.buf.push(TokenTree::Token(glued, *joint));
-        } else {
-            self.buf.push(tree)
-        }
-    }
-
-    fn into_token_stream(self) -> TokenStream {
-        TokenStream::new(self.buf)
     }
 }

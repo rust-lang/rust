@@ -304,9 +304,20 @@ pub struct AttributesData {
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
 
+/// Similar to `proc_macro::Spacing`, but for tokens.
+///
+/// Note that all `ast::TokenTree::Token` instances have a `Spacing`, but when
+/// we convert to `proc_macro::TokenTree` for proc macros only `Punct`
+/// `TokenTree`s have a `proc_macro::Spacing`.
 #[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum Spacing {
+    /// The token is not immediately followed by an operator token (as
+    /// determined by `Token::is_op`). E.g. a `+` token is `Alone` in `+ =`,
+    /// `+/*foo*/=`, `+ident`, and `+()`.
     Alone,
+
+    /// The token is immediately followed by an operator token. E.g. a `+`
+    /// token is `Joint` in `+=` and `++`.
     Joint,
 }
 

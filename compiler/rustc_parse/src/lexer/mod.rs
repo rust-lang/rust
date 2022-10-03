@@ -52,7 +52,7 @@ pub(crate) fn parse_token_trees<'a>(
     let cursor = Cursor::new(src);
     let string_reader =
         StringReader { sess, start_pos, pos: start_pos, src, cursor, override_span };
-    tokentrees::TokenTreesReader::parse_token_trees(string_reader)
+    tokentrees::TokenTreesReader::parse_all_token_trees(string_reader)
 }
 
 struct StringReader<'a> {

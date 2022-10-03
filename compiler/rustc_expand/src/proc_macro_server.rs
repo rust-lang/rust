@@ -110,10 +110,14 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 tokenstream::TokenTree::Token(token, spacing) => (token, spacing == Joint),
             };
 
+            // Split the operator into one or more `Punct`s, one per character.
+            // The final one inherits the jointness of the original token. Any
+            // before that get `joint = true`.
             let mut op = |s: &str| {
                 assert!(s.is_ascii());
-                trees.extend(s.as_bytes().iter().enumerate().map(|(idx, &ch)| {
-                    TokenTree::Punct(Punct { ch, joint: joint || idx != s.len() - 1, span })
+                trees.extend(s.bytes().enumerate().map(|(idx, ch)| {
+                    let is_final = idx == s.len() - 1;
+                    TokenTree::Punct(Punct { ch, joint: if is_final { joint } else { true }, span })
                 }));
             };
 

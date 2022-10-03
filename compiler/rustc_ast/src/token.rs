@@ -345,17 +345,14 @@ impl Token {
     }
 
     pub fn is_op(&self) -> bool {
-        !matches!(
-            self.kind,
-            OpenDelim(..)
-                | CloseDelim(..)
-                | Literal(..)
-                | DocComment(..)
-                | Ident(..)
-                | Lifetime(..)
-                | Interpolated(..)
-                | Eof
-        )
+        match self.kind {
+            Eq | Lt | Le | EqEq | Ne | Ge | Gt | AndAnd | OrOr | Not | Tilde | BinOp(_)
+            | BinOpEq(_) | At | Dot | DotDot | DotDotDot | DotDotEq | Comma | Semi | Colon
+            | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
+
+            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
+            | Lifetime(..) | Interpolated(..) | Eof => false,
+        }
     }
 
     pub fn is_like_plus(&self) -> bool {
