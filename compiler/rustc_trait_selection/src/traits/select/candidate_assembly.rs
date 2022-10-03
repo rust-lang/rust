@@ -899,6 +899,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
+        if obligation.references_error() {
+            return;
+        }
+
         candidates.vec.push(TransmutabilityCandidate);
     }
 
