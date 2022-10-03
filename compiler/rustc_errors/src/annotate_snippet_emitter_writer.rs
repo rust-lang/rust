@@ -7,7 +7,7 @@
 
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
-use crate::translation::Translate;
+use crate::translation::{to_fluent_args, Translate};
 use crate::{
     CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, Emitter, FluentBundle,
     LazyFallbackBundle, Level, MultiSpan, Style, SubDiagnostic,
@@ -46,7 +46,7 @@ impl Translate for AnnotateSnippetEmitterWriter {
 impl Emitter for AnnotateSnippetEmitterWriter {
     /// The entry point for the diagnostics generation
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
-        let fluent_args = self.to_fluent_args(diag.args());
+        let fluent_args = to_fluent_args(diag.args());
 
         let mut children = diag.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&diag, &fluent_args);
