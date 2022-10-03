@@ -13,7 +13,7 @@ doctest = false
 rustc-hash = "1.1.0"
 either = "1.7.0"
 arrayvec = "0.7.2"
-itertools = "0.10.3"
+itertools = "0.10.5"
 smallvec = "1.9.0"
 once_cell = "1.15.0"
 
