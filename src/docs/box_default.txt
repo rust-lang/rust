@@ -7,12 +7,6 @@ First, it's more complex, involving two calls instead of one.
 Second, `Box::default()` can be faster
 [in certain cases](https://nnethercote.github.io/perf-book/standard-library-types.html#box).
 
-### Known problems
-The lint may miss some cases (e.g. Box::new(String::from(""))).
-On the other hand, it will trigger on cases where the `default`
-code comes from a macro that does something different based on
-e.g. target operating system.
-
 ### Example
 ```
 let x: Box<String> = Box::new(Default::default());
