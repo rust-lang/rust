@@ -573,8 +573,8 @@ impl Error for JoinPathsError {
 /// # Deprecation
 ///
 /// This function is deprecated because the behaviour on Windows is not correct.
-/// The 'HOME' environment variable has no meaning on Windows so it should not
-/// be checked. This result is that under Cygwin or Mingw it will return `/home/you`
+/// The 'HOME' environment variable is not standard on Windows, and may not produce
+/// desired results; for instance, under Cygwin or Mingw it will return `/home/you`
 /// when it should return `C:\Users\you`.
 ///
 /// # Examples
