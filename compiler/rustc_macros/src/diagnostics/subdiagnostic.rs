@@ -5,7 +5,7 @@ use crate::diagnostics::error::{
     DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    build_field_mapping, report_error_if_not_applied_to_applicability,
+    build_field_mapping, new_code_ident, report_error_if_not_applied_to_applicability,
     report_error_if_not_applied_to_span, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap, SetOnce,
     SpannedOption, SubdiagnosticKind,
 };
@@ -57,6 +57,7 @@ impl SubdiagnosticDeriveBuilder {
                     parent: &self,
                     variant,
                     span,
+                    formatting_init: TokenStream::new(),
                     fields: build_field_mapping(variant),
                     span_field: None,
                     applicability: None,
@@ -104,6 +105,9 @@ struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     variant: &'a VariantInfo<'a>,
     /// Span for the entire type.
     span: proc_macro::Span,
+
+    /// Initialization of format strings for code suggestions.
+    formatting_init: TokenStream,
 
     /// Store a map of field name to its corresponding field. This is built on construction of the
     /// derive builder.
@@ -230,7 +234,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 };
 
                 let generated = self
-                    .generate_field_code_inner(kind_stats, attr, info)
+                    .generate_field_code_inner(kind_stats, attr, info, inner_ty.will_iterate())
                     .unwrap_or_else(|v| v.to_compile_error());
 
                 inner_ty.with(binding, generated)
@@ -243,13 +247,18 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         kind_stats: KindsStatistics,
         attr: &Attribute,
         info: FieldInfo<'_>,
+        clone_suggestion_code: bool,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let meta = attr.parse_meta()?;
         match meta {
             Meta::Path(path) => self.generate_field_code_inner_path(kind_stats, attr, info, path),
-            Meta::List(list @ MetaList { .. }) => {
-                self.generate_field_code_inner_list(kind_stats, attr, info, list)
-            }
+            Meta::List(list @ MetaList { .. }) => self.generate_field_code_inner_list(
+                kind_stats,
+                attr,
+                info,
+                list,
+                clone_suggestion_code,
+            ),
             _ => throw_invalid_attr!(attr, &meta),
         }
     }
@@ -353,6 +362,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         attr: &Attribute,
         info: FieldInfo<'_>,
         list: MetaList,
+        clone_suggestion_code: bool,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let span = attr.span().unwrap();
         let ident = &list.path.segments.last().unwrap().ident;
@@ -390,7 +400,8 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     match nested_name {
                         "code" => {
                             let formatted_str = self.build_format(&value.value(), value.span());
-                            code.set_once(formatted_str, span);
+                            let code_field = new_code_ident();
+                            code.set_once((code_field, formatted_str), span);
                         }
                         _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
                             diag.help("`code` is the only valid nested attribute")
@@ -398,14 +409,20 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     }
                 }
 
-                let Some((code, _)) = code else {
+                let Some((code_field, formatted_str)) = code.value() else {
                     span_err(span, "`#[suggestion_part(...)]` attribute without `code = \"...\"`")
                         .emit();
                     return Ok(quote! {});
                 };
                 let binding = info.binding;
 
-                Ok(quote! { suggestions.push((#binding, #code)); })
+                self.formatting_init.extend(quote! { let #code_field = #formatted_str; });
+                let code_field = if clone_suggestion_code {
+                    quote! { #code_field.clone() }
+                } else {
+                    quote! { #code_field }
+                };
+                Ok(quote! { suggestions.push((#binding, #code_field)); })
             }
             _ => throw_invalid_attr!(attr, &Meta::List(list), |diag| {
                 let mut span_attrs = vec![];
@@ -459,7 +476,14 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
             let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
             let call = match kind {
-                SubdiagnosticKind::Suggestion { suggestion_kind, applicability, code } => {
+                SubdiagnosticKind::Suggestion {
+                    suggestion_kind,
+                    applicability,
+                    code_init,
+                    code_field,
+                } => {
+                    self.formatting_init.extend(code_init);
+
                     let applicability = applicability
                         .value()
                         .map(|a| quote! { #a })
@@ -468,8 +492,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
                     if let Some(span) = span_field {
                         let style = suggestion_kind.to_suggestion_style();
-
-                        quote! { #diag.#name(#span, #message, #code, #applicability, #style); }
+                        quote! { #diag.#name(#span, #message, #code_field, #applicability, #style); }
                     } else {
                         span_err(self.span, "suggestion without `#[primary_span]` field").emit();
                         quote! { unreachable!(); }
@@ -510,6 +533,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     }
                 }
             };
+
             calls.extend(call);
         }
 
@@ -521,11 +545,13 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .map(|binding| self.generate_field_set_arg(binding))
             .collect();
 
+        let formatting_init = &self.formatting_init;
         Ok(quote! {
             #init
+            #formatting_init
             #attr_args
-            #calls
             #plain_args
+            #calls
         })
     }
 }

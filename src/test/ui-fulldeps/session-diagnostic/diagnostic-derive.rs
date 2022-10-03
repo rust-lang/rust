@@ -725,3 +725,27 @@ struct SubdiagnosticEagerCorrect {
     #[subdiagnostic(eager)]
     note: Note,
 }
+
+// Check that formatting of `correct` in suggestion doesn't move the binding for that field, making
+// the `set_arg` call a compile error; and that isn't worked around by moving the `set_arg` call
+// after the `span_suggestion` call - which breaks eager translation.
+
+#[derive(Subdiagnostic)]
+#[suggestion_short(
+    parser::use_instead,
+    applicability = "machine-applicable",
+    code = "{correct}"
+)]
+pub(crate) struct SubdiagnosticWithSuggestion {
+    #[primary_span]
+    span: Span,
+    invalid: String,
+    correct: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticEagerSuggestion {
+    #[subdiagnostic(eager)]
+    sub: SubdiagnosticWithSuggestion,
+}
