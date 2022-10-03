@@ -418,7 +418,11 @@ pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::format;
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::option;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::rc;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::result;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::slice;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -479,14 +483,10 @@ pub use core::marker;
 pub use core::mem;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ops;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::option;
 #[stable(feature = "pin", since = "1.33.0")]
 pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::result;
 #[stable(feature = "i128", since = "1.26.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::u128;

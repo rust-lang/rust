@@ -515,6 +515,7 @@ use crate::{
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[rustc_diagnostic_item = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_has_incoherent_inherent_impls]
 pub enum Option<T> {
     /// No value.
     #[lang = "None"]
