@@ -6,8 +6,7 @@ pub fn target() -> Target {
     base.cpu = "x86-64".into();
     base.vendor = "sun".into();
     base.max_atomic_width = Some(64);
-    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-    base.stack_probes = StackProbeType::Call;
+    base.stack_probes = StackProbeType::X86;
 
     Target {
         llvm_target: "x86_64-pc-solaris".into(),

@@ -6,8 +6,7 @@ pub fn target() -> Target {
     base.abi = "x32".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gcc, &["-mx32"]);
-    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-    base.stack_probes = StackProbeType::Call;
+    base.stack_probes = StackProbeType::X86;
     base.has_thread_local = false;
     // BUG(GabrielMajeri): disabling the PLT on x86_64 Linux with x32 ABI
     // breaks code gen. See LLVM bug 36743

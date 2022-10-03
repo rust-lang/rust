@@ -635,6 +635,10 @@ pub enum StackProbeType {
 }
 
 impl StackProbeType {
+    // LLVM X86 targets (ix86 and x86_64) can use inline-asm stack probes starting with LLVM 16.
+    // Notable past issues were rust#83139 (fixed in 14) and rust#84667 (fixed in 16).
+    const X86: Self = Self::InlineOrCall { min_llvm_version_for_inline: (16, 0, 0) };
+
     fn from_json(json: &Json) -> Result<Self, String> {
         let object = json.as_object().ok_or_else(|| "expected a JSON object")?;
         let kind = object

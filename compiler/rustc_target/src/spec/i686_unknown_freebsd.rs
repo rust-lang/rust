@@ -5,8 +5,7 @@ pub fn target() -> Target {
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32", "-Wl,-znotext"]);
-    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-    base.stack_probes = StackProbeType::Call;
+    base.stack_probes = StackProbeType::X86;
 
     Target {
         llvm_target: "i686-unknown-freebsd".into(),
