@@ -14,7 +14,7 @@ use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{kw::Empty, sym, Symbol};
 
 use crate::errors::{DuplicateDiagnosticItem, DuplicateDiagnosticItemInCrate};
 
@@ -46,7 +46,7 @@ fn collect_item(tcx: TyCtxt<'_>, items: &mut DiagnosticItems, name: Symbol, item
                 None => tcx.sess.emit_err(DuplicateDiagnosticItemInCrate {
                     span: orig_span,
                     // FIXME: We should not provide `name` to `orig_crate_name`. How do you create a blank/empty symbol?
-                    orig_crate_name: orig_crate_name.unwrap_or(name),
+                    orig_crate_name: orig_crate_name.unwrap_or(Empty),
                     have_orig_crate_name: orig_crate_name.map(|_| ()),
                     crate_name: tcx.crate_name(item_def_id.krate),
                     name,

@@ -526,7 +526,7 @@ passes_no_main_function =
     .main_must_be_defined_at_crate = the main function must be defined at the crate level{$has_filename ->
         [true] {" "}(in `{$filename}`)
         *[false] {""}
-        }
+    }
     .consider_adding_main_to_file = consider adding a `main` function to `{$filename}`
     .consider_adding_main_at_crate = consider adding a `main` function at the crate level
     .teach_note = If you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/

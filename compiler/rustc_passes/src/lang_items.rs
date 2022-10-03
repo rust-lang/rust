@@ -20,7 +20,7 @@ use rustc_hir::lang_items::{extract, GenericRequirement, ITEM_REFS};
 use rustc_hir::{HirId, LangItem, LanguageItems, Target};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::ExternCrate;
-use rustc_span::{Span, Symbol};
+use rustc_span::{symbol::kw::Empty, Span};
 
 use rustc_middle::ty::query::Providers;
 
@@ -66,7 +66,7 @@ impl<'tcx> LanguageItemCollector<'tcx> {
                 let local_span = self.tcx.hir().span_if_local(item_def_id);
                 let lang_item_name = LangItem::from_u32(item_index as u32).unwrap().name();
                 let crate_name = self.tcx.crate_name(item_def_id.krate);
-                let mut dependency_of = Symbol::intern("");
+                let mut dependency_of = Empty;
                 let is_local = item_def_id.is_local();
                 let path = if is_local {
                     String::new()
@@ -80,8 +80,8 @@ impl<'tcx> LanguageItemCollector<'tcx> {
                         .into()
                 };
                 let first_defined_span = self.tcx.hir().span_if_local(original_def_id);
-                let mut orig_crate_name = Symbol::intern("");
-                let mut orig_dependency_of = Symbol::intern("");
+                let mut orig_crate_name = Empty;
+                let mut orig_dependency_of = Empty;
                 let orig_is_local = original_def_id.is_local();
                 let orig_path = if orig_is_local {
                     String::new()

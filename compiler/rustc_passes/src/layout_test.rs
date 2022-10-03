@@ -3,11 +3,12 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, TargetDataLayout};
 
-use crate::errors::{Abi, Align, HomogeneousAggregate, Layout, LayoutOf, Size, UnrecognizedField};
+use crate::errors::{Abi, Align, HomogeneousAggregate, LayoutOf, Size, UnrecognizedField};
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {
@@ -91,9 +92,9 @@ fn dump_layout_of<'tcx>(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId, attr: &Attri
         }
 
         Err(layout_error) => {
-            tcx.sess.emit_err(Layout {
+            tcx.sess.emit_fatal(Spanned {
+                node: layout_error,
                 span: tcx.def_span(item_def_id.to_def_id()),
-                layout_error: format!("{:?}", layout_error),
             });
         }
     }

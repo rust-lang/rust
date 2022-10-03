@@ -831,14 +831,6 @@ pub struct UnrecognizedField {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes::layout)]
-pub struct Layout {
-    #[primary_span]
-    pub span: Span,
-    pub layout_error: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes::feature_stable_twice, code = "E0711")]
 pub struct FeatureStableTwice {
     #[primary_span]
@@ -1259,7 +1251,7 @@ pub struct IncorrectTarget<'a> {
     pub span: Span,
     #[label]
     pub generics_span: Span,
-    pub name: &'a str,
+    pub name: &'a str, // cannot be symbol because it renders e.g. `r#fn` instead of `fn`
     pub kind: &'static str,
     pub num: usize,
     pub actual_num: usize,

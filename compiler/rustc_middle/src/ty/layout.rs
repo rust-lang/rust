@@ -191,10 +191,29 @@ pub enum LayoutError<'tcx> {
 
 impl<'a> IntoDiagnostic<'a, !> for LayoutError<'a> {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, !> {
-        handler.struct_fatal(self.to_string())
+        let mut diag = handler.struct_fatal("");
+
+        match self {
+            LayoutError::Unknown(ty) => {
+                diag.set_arg("ty", ty);
+                diag.set_primary_message(rustc_errors::fluent::middle::unknown_layout);
+            }
+            LayoutError::SizeOverflow(ty) => {
+                diag.set_arg("ty", ty);
+                diag.set_primary_message(rustc_errors::fluent::middle::values_too_big);
+            }
+            LayoutError::NormalizationFailure(ty, e) => {
+                diag.set_arg("ty", ty);
+                diag.set_arg("failure_ty", e.get_type_for_failure());
+                diag.set_primary_message(rustc_errors::fluent::middle::cannot_be_normalized);
+            }
+        }
+        diag
     }
 }
 
+// FIXME: Once the other errors that embed this error have been converted to translateable
+// diagnostics, this Display impl should be removed.
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
