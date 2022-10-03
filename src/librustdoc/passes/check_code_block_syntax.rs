@@ -192,8 +192,11 @@ impl Translate for BufferEmitter {
 impl Emitter for BufferEmitter {
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
         let mut buffer = self.buffer.borrow_mut();
-        // FIXME(davidtwco): need to support translation here eventually
-        buffer.messages.push(format!("error from rustc: {}", diag.message[0].0.expect_str()));
+
+        let fluent_args = self.to_fluent_args(diag.args());
+        let translated_main_message = self.translate_message(&diag.message[0].0, &fluent_args);
+
+        buffer.messages.push(format!("error from rustc: {}", translated_main_message));
         if diag.is_error() {
             buffer.has_errors = true;
         }

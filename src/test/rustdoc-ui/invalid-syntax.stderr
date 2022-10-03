@@ -150,5 +150,20 @@ help: mark blocks that do not contain Rust code as text
 LL | /// ```text
    |        ++++
 
-warning: 12 warnings emitted
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:103:5
+   |
+LL |   /// ```
+   |  _____^
+LL | | /// fn wook_at_my_beautifuw_bwaces_plz() {);
+LL | | /// ```
+   | |_______^
+   |
+   = note: error from rustc: mismatched closing delimiter: `)`
+help: mark blocks that do not contain Rust code as text
+   |
+LL | /// ```text
+   |        ++++
+
+warning: 13 warnings emitted
 
