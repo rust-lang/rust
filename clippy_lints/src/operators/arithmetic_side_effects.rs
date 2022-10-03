@@ -9,6 +9,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::{Span, Spanned};
 
@@ -16,8 +17,9 @@ const HARD_CODED_ALLOWED: &[&str] = &[
     "f32",
     "f64",
     "std::num::Saturating",
-    "std::string::String",
     "std::num::Wrapping",
+    "std::string::String",
+    "&str",
 ];
 
 #[derive(Debug)]
@@ -60,15 +62,14 @@ impl ArithmeticSideEffects {
     }
 
     /// Checks if the given `expr` has any of the inner `allowed` elements.
-    fn is_allowed_ty(&self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-        self.allowed.contains(
-            cx.typeck_results()
-                .expr_ty(expr)
-                .to_string()
-                .split('<')
-                .next()
-                .unwrap_or_default(),
-        )
+    fn is_allowed_ty(&self, ty: Ty<'_>) -> bool {
+        self.allowed
+            .contains(ty.to_string().split('<').next().unwrap_or_default())
+    }
+
+    // For example, 8i32 or &i64::MAX.
+    fn is_integral(ty: Ty<'_>) -> bool {
+        ty.peel_refs().is_integral()
     }
 
     // Common entry-point to avoid code duplication.
@@ -82,24 +83,13 @@ impl ArithmeticSideEffects {
     /// * Is `expr` is a literal integer reference like `&199`, returns the literal integer without
     ///   references.
     /// * If `expr` is anything else, returns `None`.
-    fn literal_integer<'expr, 'tcx>(
-        cx: &LateContext<'tcx>,
-        expr: &'expr hir::Expr<'tcx>,
-    ) -> Option<&'expr hir::Expr<'tcx>> {
-        let expr_refs = cx.typeck_results().expr_ty(expr).peel_refs();
-
-        if !expr_refs.is_integral() {
-            return None;
-        }
-
+    fn literal_integer<'expr, 'tcx>(expr: &'expr hir::Expr<'tcx>) -> Option<&'expr hir::Expr<'tcx>> {
         if matches!(expr.kind, hir::ExprKind::Lit(_)) {
             return Some(expr);
         }
-
         if let hir::ExprKind::AddrOf(.., inn) = expr.kind && let hir::ExprKind::Lit(_) = inn.kind {
             return Some(inn)
         }
-
         None
     }
 
@@ -128,14 +118,21 @@ impl ArithmeticSideEffects {
         ) {
             return;
         };
-        if self.is_allowed_ty(cx, lhs) || self.is_allowed_ty(cx, rhs) {
+        let lhs_ty = cx.typeck_results().expr_ty(lhs);
+        let rhs_ty = cx.typeck_results().expr_ty(rhs);
+        let lhs_and_rhs_have_the_same_ty = lhs_ty == rhs_ty;
+        if lhs_and_rhs_have_the_same_ty && self.is_allowed_ty(lhs_ty) && self.is_allowed_ty(rhs_ty) {
             return;
         }
-        let has_valid_op = match (Self::literal_integer(cx, lhs), Self::literal_integer(cx, rhs)) {
-            (None, None) => false,
-            (None, Some(local_expr)) => Self::has_valid_op(op, local_expr),
-            (Some(local_expr), None) => Self::has_valid_op(op, local_expr),
-            (Some(_), Some(_)) => true,
+        let has_valid_op = if Self::is_integral(lhs_ty) && Self::is_integral(rhs_ty) {
+            match (Self::literal_integer(lhs), Self::literal_integer(rhs)) {
+                (None, None) => false,
+                (None, Some(local_expr)) => Self::has_valid_op(op, local_expr),
+                (Some(local_expr), None) => Self::has_valid_op(op, local_expr),
+                (Some(_), Some(_)) => true,
+            }
+        } else {
+            false
         };
         if !has_valid_op {
             self.issue_lint(cx, expr);
