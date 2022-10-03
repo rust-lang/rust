@@ -9,6 +9,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::{Span, Spanned};
 
@@ -67,20 +68,14 @@ impl ArithmeticSideEffects {
     }
 
     /// Checks if the given `expr` has any of the inner `allowed` elements.
-    fn is_allowed_ty(&self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-        self.allowed.contains(
-            cx.typeck_results()
-                .expr_ty(expr)
-                .to_string()
-                .split('<')
-                .next()
-                .unwrap_or_default(),
-        )
+    fn is_allowed_ty(&self, ty: Ty<'_>) -> bool {
+        self.allowed
+            .contains(ty.to_string().split('<').next().unwrap_or_default())
     }
 
     // For example, 8i32 or &i64::MAX.
-    fn is_integral<'expr, 'tcx>(cx: &LateContext<'tcx>, expr: &'expr hir::Expr<'tcx>) -> bool {
-        cx.typeck_results().expr_ty(expr).peel_refs().is_integral()
+    fn is_integral(ty: Ty<'_>) -> bool {
+        ty.peel_refs().is_integral()
     }
 
     // Common entry-point to avoid code duplication.
@@ -129,10 +124,13 @@ impl ArithmeticSideEffects {
         ) {
             return;
         };
-        if self.is_allowed_ty(cx, lhs) && self.is_allowed_ty(cx, rhs) {
+        let lhs_ty = cx.typeck_results().expr_ty(lhs);
+        let rhs_ty = cx.typeck_results().expr_ty(rhs);
+        let lhs_and_rhs_have_the_same_ty = lhs_ty == rhs_ty;
+        if lhs_and_rhs_have_the_same_ty && self.is_allowed_ty(lhs_ty) && self.is_allowed_ty(rhs_ty) {
             return;
         }
-        let has_valid_op = if Self::is_integral(cx, lhs) && Self::is_integral(cx, rhs) {
+        let has_valid_op = if Self::is_integral(lhs_ty) && Self::is_integral(rhs_ty) {
             match (Self::literal_integer(lhs), Self::literal_integer(rhs)) {
                 (None, None) => false,
                 (None, Some(local_expr)) => Self::has_valid_op(op, local_expr),
