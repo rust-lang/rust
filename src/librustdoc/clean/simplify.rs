@@ -14,7 +14,6 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
-use rustc_span::Symbol;
 
 use crate::clean;
 use crate::clean::GenericArgs as PP;
@@ -26,21 +25,17 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     //
     // We use `FxIndexMap` so that the insertion order is preserved to prevent messing up to
     // the order of the generated bounds.
-    let mut params: FxIndexMap<Symbol, (Vec<_>, Vec<_>)> = FxIndexMap::default();
+    let mut tybounds = FxIndexMap::default();
     let mut lifetimes = Vec::new();
     let mut equalities = Vec::new();
-    let mut tybounds = Vec::new();
 
     for clause in clauses {
         match clause {
-            WP::BoundPredicate { ty, bounds, bound_params } => match ty {
-                clean::Generic(s) => {
-                    let (b, p) = params.entry(s).or_default();
-                    b.extend(bounds);
-                    p.extend(bound_params);
-                }
-                t => tybounds.push((t, (bounds, bound_params))),
-            },
+            WP::BoundPredicate { ty, bounds, bound_params } => {
+                let (b, p): &mut (Vec<_>, Vec<_>) = tybounds.entry(ty).or_default();
+                b.extend(bounds);
+                p.extend(bound_params);
+            }
             WP::RegionPredicate { lifetime, bounds } => {
                 lifetimes.push((lifetime, bounds));
             }
@@ -49,14 +44,17 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     }
 
     // Look for equality predicates on associated types that can be merged into
-    // general bound predicates
+    // general bound predicates.
     equalities.retain(|&(ref lhs, ref rhs)| {
-        let Some((self_, trait_did, name)) = lhs.projection() else {
-            return true;
-        };
-        let clean::Generic(generic) = self_ else { return true };
-        let Some((bounds, _)) = params.get_mut(generic) else { return true };
-
+        let Some((ty, trait_did, name)) = lhs.projection() else { return true; };
+        // FIXME(fmease): We don't handle HRTBs correctly here.
+        //                Pass `_bound_params` (higher-rank lifetimes) to a modified version of
+        //                `merge_bounds`. That vector is currently always empty though since we
+        //                don't keep track of late-bound lifetimes when cleaning projection
+        //                predicates to cleaned equality predicates while we should first query
+        //                them with `collect_referenced_late_bound_regions` and then store them
+        //                (or something similar). For prior art, see `clean::auto_trait`.
+        let Some((bounds, _bound_params)) = tybounds.get_mut(ty) else { return true };
         merge_bounds(cx, bounds, trait_did, name, rhs)
     });
 
@@ -65,11 +63,6 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     clauses.extend(
         lifetimes.into_iter().map(|(lt, bounds)| WP::RegionPredicate { lifetime: lt, bounds }),
     );
-    clauses.extend(params.into_iter().map(|(k, (bounds, params))| WP::BoundPredicate {
-        ty: clean::Generic(k),
-        bounds,
-        bound_params: params,
-    }));
     clauses.extend(tybounds.into_iter().map(|(ty, (bounds, bound_params))| WP::BoundPredicate {
         ty,
         bounds,

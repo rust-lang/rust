@@ -32,6 +32,8 @@
 	--link-color: #d2991d;
 	--sidebar-link-color: #fdbf35;
 	--sidebar-current-link-background-color: #444;
+	--stab-background-color: #314559;
+	--stab-code-color: #e6e1cf;
 }
 
 .slider {
@@ -112,13 +114,6 @@ details.rustdoc-toggle > summary::before {
 }
 #crate-search-div:hover::after, #crate-search-div:focus-within::after {
 	filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg) brightness(100%) contrast(91%);
-}
-
-.stab { background: #314559; }
-
-.stab.portability > code {
-	color: #e6e1cf;
-	background: none;
 }
 
 .src-line-numbers :target { background-color: transparent; }

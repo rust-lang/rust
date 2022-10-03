@@ -32,6 +32,8 @@
 	--link-color: #3873ad;
 	--sidebar-link-color: #356da4;
 	--sidebar-current-link-background-color: #fff;
+	--stab-background-color: #fff5d6;
+	--stab-code-color: #000;
 }
 
 .slider {
@@ -101,9 +103,6 @@ body.source .example-wrap pre.rust a {
 #crate-search-div:hover::after, #crate-search-div:focus-within::after {
 	filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg) brightness(96%) contrast(93%);
 }
-
-.stab { background: #FFF5D6; border-color: #FFC600; }
-.stab.portability > code { background: none; }
 
 .src-line-numbers :target { background-color: transparent; }
 

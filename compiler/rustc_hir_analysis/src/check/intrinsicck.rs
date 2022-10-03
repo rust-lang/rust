@@ -1,3 +1,4 @@
+use hir::HirId;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
@@ -6,7 +7,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitable, UintTy};
 use rustc_session::lint;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};
 use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
 
@@ -40,11 +41,13 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {
+    pub fn check_transmute(&self, from: Ty<'tcx>, to: Ty<'tcx>, hir_id: HirId) {
+        let tcx = self.tcx;
+        let span = tcx.hir().span(hir_id);
         let convert = |ty: Ty<'tcx>| {
             let ty = self.resolve_vars_if_possible(ty);
-            let ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
-            (SizeSkeleton::compute(ty, self.tcx, self.param_env), ty)
+            let ty = tcx.normalize_erasing_regions(self.param_env, ty);
+            (SizeSkeleton::compute(ty, tcx, self.param_env), ty)
         };
         let (sk_from, from) = convert(from);
         let (sk_to, to) = convert(to);
@@ -57,9 +60,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Special-case transmuting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
-            let from = unpack_option_like(self.tcx, from);
-            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) && size_to == Pointer.size(&self.tcx) {
-                struct_span_err!(self.tcx.sess, span, E0591, "can't transmute zero-sized type")
+            let from = unpack_option_like(tcx, from);
+            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) && size_to == Pointer.size(&tcx) {
+                struct_span_err!(tcx.sess, span, E0591, "can't transmute zero-sized type")
                     .note(&format!("source type: {from}"))
                     .note(&format!("target type: {to}"))
                     .help("cast with `as` to a pointer instead")
@@ -83,7 +86,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut err = struct_span_err!(
-            self.tcx.sess,
+            tcx.sess,
             span,
             E0512,
             "cannot transmute between types of different sizes, \

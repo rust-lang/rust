@@ -927,7 +927,7 @@ pub trait PrettyPrinter<'tcx>:
                         // unless we can find out what generator return type it comes from.
                         let term = if let Some(ty) = term.skip_binder().ty()
                             && let ty::Projection(proj) = ty.kind()
-                            && let assoc = tcx.associated_item(proj.item_def_id)
+                            && let Some(assoc) = tcx.opt_associated_item(proj.item_def_id)
                             && assoc.trait_container(tcx) == tcx.lang_items().gen_trait()
                             && assoc.name == rustc_span::sym::Return
                         {
