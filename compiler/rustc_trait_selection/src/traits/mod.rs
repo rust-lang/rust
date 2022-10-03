@@ -221,7 +221,7 @@ fn do_normalize_predicates<'tcx>(
     mut causes: impl Iterator<Item = ObligationCause<'tcx>> + Debug,
     elaborated_env: ty::ParamEnv<'tcx>,
     predicates: Vec<ty::Predicate<'tcx>>,
-    outlives: bool,
+    normalize_outlive_predicates: bool,
 ) -> Result<Vec<ty::Predicate<'tcx>>, ErrorGuaranteed> {
     // FIXME. We should really... do something with these region
     // obligations. But this call just continues the older
@@ -237,24 +237,27 @@ fn do_normalize_predicates<'tcx>(
     // them here too, and we will remove this function when
     // we move over to lazy normalization *anyway*.
     tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
-        let predicates = match predicates.try_map_id(|predicate| {
-            if outlives
-                != matches!(predicate.kind().skip_binder(), ty::PredicateKind::TypeOutlives(..))
+        let normalized_predicates = match predicates.try_map_id(|origin_predicate| {
+            if normalize_outlive_predicates
+                != matches!(
+                    origin_predicate.kind().skip_binder(),
+                    ty::PredicateKind::TypeOutlives(..)
+                )
             {
                 causes.next().unwrap();
-                Ok(predicate)
+                Ok(origin_predicate)
             } else {
-                fully_normalize(&infcx, causes.next().unwrap(), elaborated_env, predicate)
+                fully_normalize(&infcx, causes.next().unwrap(), elaborated_env, origin_predicate)
             }
         }) {
-            Ok(predicates) => predicates,
+            Ok(normalized) => normalized,
             Err(errors) => {
                 let reported = infcx.report_fulfillment_errors(&errors, None, false);
                 return Err(reported);
             }
         };
 
-        debug!("do_normalize_predictes: normalized predicates = {:?}", predicates);
+        debug!("do_normalize_predictes: normalized predicates = {:?}", normalized_predicates);
 
         // We can use the `elaborated_env` here; the region code only
         // cares about declarations like `'a: 'b`.
@@ -273,17 +276,17 @@ fn do_normalize_predicates<'tcx>(
             );
         }
 
-        match predicates.try_map_id(|predicate| {
-            if outlives
-                != matches!(predicate.kind().skip_binder(), ty::PredicateKind::TypeOutlives(..))
-            {
-                Ok(predicate)
-            } else {
-                infcx.fully_resolve(predicate)
-            }
-        }) {
-            Ok(predicates) => Ok(predicates),
-            Err(fixup_err) => {
+        normalized_predicates
+            .try_map_id(|predicate| {
+                if normalize_outlive_predicates
+                    != matches!(predicate.kind().skip_binder(), ty::PredicateKind::TypeOutlives(..))
+                {
+                    Ok(predicate)
+                } else {
+                    infcx.fully_resolve(predicate)
+                }
+            })
+            .map_err(|fixup_err| {
                 // If we encounter a fixup error, it means that some type
                 // variable wound up unconstrained. I actually don't know
                 // if this can happen, and I certainly don't expect it to
@@ -298,8 +301,7 @@ fn do_normalize_predicates<'tcx>(
                     "inference variables in normalized parameter environment: {}",
                     fixup_err
                 );
-            }
-        }
+            })
     })
 }
 
