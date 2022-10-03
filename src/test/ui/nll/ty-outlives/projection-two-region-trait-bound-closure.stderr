@@ -167,7 +167,7 @@ LL | |     T: Anything<'b, 'b>,
    = note: defining type: two_regions::<'_#1r, T>
 
 error: lifetime may not live long enough
-  --> $DIR/projection-two-region-trait-bound-closure.rs:87:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:87:5
    |
 LL | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                --  -- lifetime `'b` defined here
@@ -175,9 +175,12 @@ LL | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                lifetime `'a` defined here
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ closure body requires that `'b` must outlive `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<&'_#8r ()>`, which makes the generic argument `&'_#8r ()` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:97:29
