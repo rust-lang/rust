@@ -1551,7 +1551,7 @@ declare_lint_pass!(
 );
 
 impl<'tcx> LateLintPass<'tcx> for UnusedBrokenConst {
-    fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
+    /*fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         match it.kind {
             hir::ItemKind::Const(_, body_id) => {
                 let def_id = cx.tcx.hir().body_owner_def_id(body_id).to_def_id();
@@ -1564,7 +1564,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedBrokenConst {
             }
             _ => {}
         }
-    }
+    }*/
 }
 
 declare_lint! {
