@@ -1367,6 +1367,7 @@ impl Step for Extended {
         }
 
         add_component!("rust-docs" => Docs { host: target });
+        add_component!("rust-json-docs" => JsonDocs { host: target });
         add_component!("rust-demangler"=> RustDemangler { compiler, target });
         add_component!("cargo" => Cargo { compiler, target });
         add_component!("rustfmt" => Rustfmt { compiler, target });
