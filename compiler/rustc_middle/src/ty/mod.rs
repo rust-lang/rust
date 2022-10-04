@@ -2694,6 +2694,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     closure::provide(providers);
     context::provide(providers);
     erase_regions::provide(providers);
+    inhabitedness::provide(providers);
     util::provide(providers);
     print::provide(providers);
     super::util::bug::provide(providers);
@@ -2701,7 +2702,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,
-        type_uninhabited_from: inhabitedness::type_uninhabited_from,
         const_param_default: consts::const_param_default,
         vtable_allocation: vtable::vtable_allocation_provider,
         ..*providers
