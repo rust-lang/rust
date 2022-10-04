@@ -19,7 +19,8 @@ impl const Drop for ConstImplWithDropGlue {
     fn drop(&mut self) {}
 }
 
-trait A { fn a() { println!("A"); } }
+#[const_trait]
+trait A { fn a() { } }
 
 impl A for NonTrivialDrop {}
 

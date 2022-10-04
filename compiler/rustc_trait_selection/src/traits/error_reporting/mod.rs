@@ -661,7 +661,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     );
                                 }
                             }
-                        } else if !trait_ref.has_infer_types_or_consts()
+                        } else if !trait_ref.has_non_region_infer()
                             && self.predicate_can_apply(obligation.param_env, trait_ref)
                         {
                             // If a where-clause may be useful, remind the
@@ -2093,7 +2093,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 // Pick the first substitution that still contains inference variables as the one
                 // we're going to emit an error for. If there are none (see above), fall back to
                 // a more general error.
-                let subst = data.trait_ref.substs.iter().find(|s| s.has_infer_types_or_consts());
+                let subst = data.trait_ref.substs.iter().find(|s| s.has_non_region_infer());
 
                 let mut err = if let Some(subst) = subst {
                     self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0283, true)
@@ -2323,7 +2323,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     .substs
                     .iter()
                     .chain(Some(data.term.into_arg()))
-                    .find(|g| g.has_infer_types_or_consts());
+                    .find(|g| g.has_non_region_infer());
                 if let Some(subst) = subst {
                     let mut err = self.emit_inference_failure_err(
                         body_id,
@@ -2352,7 +2352,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 if predicate.references_error() || self.is_tainted_by_errors() {
                     return;
                 }
-                let subst = data.substs.iter().find(|g| g.has_infer_types_or_consts());
+                let subst = data.substs.iter().find(|g| g.has_non_region_infer());
                 if let Some(subst) = subst {
                     let err = self.emit_inference_failure_err(
                         body_id,

@@ -174,7 +174,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?stack, ?candidates, "winnowed to {} candidates", candidates.len());
 
-        let needs_infer = stack.obligation.predicate.has_infer_types_or_consts();
+        let needs_infer = stack.obligation.predicate.has_non_region_infer();
 
         // If there are STILL multiple candidates, we can further
         // reduce the list by dropping duplicates -- including
@@ -889,11 +889,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        if obligation.has_param_types_or_consts() {
+        if obligation.has_non_region_param() {
             return;
         }
 
-        if obligation.has_infer_types_or_consts() {
+        if obligation.has_non_region_infer() {
             candidates.ambiguous = true;
             return;
         }

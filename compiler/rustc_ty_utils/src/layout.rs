@@ -351,7 +351,7 @@ fn layout_of_uncached<'tcx>(
     let univariant = |fields: &[TyAndLayout<'_>], repr: &ReprOptions, kind| {
         Ok(tcx.intern_layout(univariant_uninterned(cx, ty, fields, repr, kind)?))
     };
-    debug_assert!(!ty.has_infer_types_or_consts());
+    debug_assert!(!ty.has_non_region_infer());
 
     Ok(match *ty.kind() {
         // Basic scalars.
@@ -1688,7 +1688,7 @@ fn record_layout_for_printing_outlined<'tcx>(
     // Ignore layouts that are done with non-empty environments or
     // non-monomorphic layouts, as the user only wants to see the stuff
     // resulting from the final codegen session.
-    if layout.ty.has_param_types_or_consts() || !cx.param_env.caller_bounds().is_empty() {
+    if layout.ty.has_non_region_param() || !cx.param_env.caller_bounds().is_empty() {
         return;
     }
 

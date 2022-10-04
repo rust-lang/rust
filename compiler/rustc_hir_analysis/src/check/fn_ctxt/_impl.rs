@@ -91,14 +91,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) -> Ty<'tcx> {
         // No Infer()? Nothing needs doing.
-        if !ty.has_infer_types_or_consts() {
+        if !ty.has_non_region_infer() {
             debug!("no inference var, nothing needs doing");
             return ty;
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
         ty = self.resolve_vars_if_possible(ty);
-        if !ty.has_infer_types_or_consts() {
+        if !ty.has_non_region_infer() {
             debug!(?ty);
             return ty;
         }

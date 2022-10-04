@@ -79,7 +79,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // implied bounds in some cases, mostly when dealing with projections.
         fulfill_cx.register_predicate_obligations(
             infcx,
-            obligations.iter().filter(|o| o.predicate.has_infer_types_or_consts()).cloned(),
+            obligations.iter().filter(|o| o.predicate.has_non_region_infer()).cloned(),
         );
 
         // From the full set of obligations, just filter down to the

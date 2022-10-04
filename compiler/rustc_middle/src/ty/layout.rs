@@ -244,7 +244,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
-        debug_assert!(!ty.has_infer_types_or_consts());
+        debug_assert!(!ty.has_non_region_infer());
 
         // First try computing a static layout.
         let err = match tcx.layout_of(param_env.and(ty)) {
@@ -260,7 +260,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
                 match tail.kind() {
                     ty::Param(_) | ty::Projection(_) => {
-                        debug_assert!(tail.has_param_types_or_consts());
+                        debug_assert!(tail.has_non_region_param());
                         Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
                     }
                     _ => bug!(
