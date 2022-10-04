@@ -30,6 +30,15 @@ impl AsFd for Stdin {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StdinLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stdin out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(0) }
+    }
+}
+
 impl io::Read for Stdin {
     fn read(&mut self, data: &mut [u8]) -> io::Result<usize> {
         self.read_vectored(&mut [IoSliceMut::new(data)])
@@ -61,6 +70,15 @@ impl AsRawFd for Stdout {
 impl AsFd for Stdout {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(1) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StdoutLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stdout out from under the standard library
         unsafe { BorrowedFd::borrow_raw(1) }
     }
 }
@@ -99,6 +117,15 @@ impl AsRawFd for Stderr {
 impl AsFd for Stderr {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(2) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StderrLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stderr out from under the standard library
         unsafe { BorrowedFd::borrow_raw(2) }
     }
 }
