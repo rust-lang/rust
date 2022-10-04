@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -6,7 +6,7 @@ RUN apt-get update && \
   curl \
   gcc \
   libc-dev \
-  python \
+  python-is-python3 \
   unzip \
   file \
   make

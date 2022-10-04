@@ -1,17 +1,16 @@
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 
-RUN dpkg --add-architecture i386 && \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
   file \
   make \
   curl \
   ca-certificates \
-  python \
+  python-is-python3 \
   unzip \
   expect \
-  openjdk-9-jre \
-  libstdc++6:i386 \
+  openjdk-8-jre \
+  libstdc++6-i386-cross \
   libpulse0 \
   gcc \
   libc6-dev
