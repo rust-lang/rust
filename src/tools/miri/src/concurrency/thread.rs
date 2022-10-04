@@ -32,9 +32,11 @@ pub enum SchedulingAction {
 
 /// Timeout callbacks can be created by synchronization primitives to tell the
 /// scheduler that they should be called once some period of time passes.
-type TimeoutCallback<'mir, 'tcx> = Box<
-    dyn FnOnce(&mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx> + 'tcx,
->;
+pub trait MachineCallback<'mir, 'tcx>: VisitTags {
+    fn call(&self, ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx>;
+}
+
+type TimeoutCallback<'mir, 'tcx> = Box<dyn MachineCallback<'mir, 'tcx> + 'tcx>;
 
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -181,6 +183,46 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
     }
 }
 
+impl VisitTags for Thread<'_, '_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let Thread { panic_payload, last_error, stack, state: _, thread_name: _, join_status: _ } =
+            self;
+
+        panic_payload.visit_tags(visit);
+        last_error.visit_tags(visit);
+        for frame in stack {
+            frame.visit_tags(visit)
+        }
+    }
+}
+
+impl VisitTags for Frame<'_, '_, Provenance, FrameData<'_>> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let Frame {
+            return_place,
+            locals,
+            extra,
+            body: _,
+            instance: _,
+            return_to_block: _,
+            loc: _,
+            // There are some private fields we cannot access; they contain no tags.
+            ..
+        } = self;
+
+        // Return place.
+        return_place.visit_tags(visit);
+        // Locals.
+        for local in locals.iter() {
+            if let LocalValue::Live(value) = &local.value {
+                value.visit_tags(visit);
+            }
+        }
+
+        extra.visit_tags(visit);
+    }
+}
+
 /// A specific moment in time.
 #[derive(Debug)]
 pub enum Time {
@@ -249,6 +291,29 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
             thread_local_alloc_ids: Default::default(),
             yield_active_thread: false,
             timeout_callbacks: FxHashMap::default(),
+        }
+    }
+}
+
+impl VisitTags for ThreadManager<'_, '_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let ThreadManager {
+            threads,
+            thread_local_alloc_ids,
+            timeout_callbacks,
+            active_thread: _,
+            yield_active_thread: _,
+            sync: _,
+        } = self;
+
+        for thread in threads {
+            thread.visit_tags(visit);
+        }
+        for ptr in thread_local_alloc_ids.borrow().values() {
+            ptr.visit_tags(visit);
+        }
+        for callback in timeout_callbacks.values() {
+            callback.callback.visit_tags(visit);
         }
     }
 }
@@ -625,33 +690,6 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 }
 
-impl VisitMachineValues for ThreadManager<'_, '_> {
-    fn visit_machine_values(&self, visit: &mut impl FnMut(&Operand<Provenance>)) {
-        // FIXME some other fields also contain machine values
-        let ThreadManager { threads, .. } = self;
-
-        for thread in threads {
-            // FIXME: implement VisitMachineValues for `Thread` and `Frame` instead.
-            // In particular we need to visit the `last_error` and `catch_unwind` fields.
-            if let Some(payload) = thread.panic_payload {
-                visit(&Operand::Immediate(Immediate::Scalar(payload)))
-            }
-            for frame in &thread.stack {
-                // Return place.
-                if let Place::Ptr(mplace) = *frame.return_place {
-                    visit(&Operand::Indirect(mplace));
-                }
-                // Locals.
-                for local in frame.locals.iter() {
-                    if let LocalValue::Live(value) = &local.value {
-                        visit(value);
-                    }
-                }
-            }
-        }
-    }
-}
-
 // Public interface to thread management.
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
@@ -930,7 +968,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // 2. Make the scheduler the only place that can change the active
         //    thread.
         let old_thread = this.set_active_thread(thread);
-        callback(this)?;
+        callback.call(this)?;
         this.set_active_thread(old_thread);
         Ok(())
     }

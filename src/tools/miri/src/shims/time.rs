@@ -1,5 +1,6 @@
 use std::time::{Duration, SystemTime};
 
+use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
@@ -218,10 +219,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.register_timeout_callback(
             active_thread,
             Time::Monotonic(timeout_time),
-            Box::new(move |ecx| {
-                ecx.unblock_thread(active_thread);
-                Ok(())
-            }),
+            Box::new(UnblockCallback { thread_to_unblock: active_thread }),
         );
 
         Ok(0)
@@ -244,12 +242,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.register_timeout_callback(
             active_thread,
             Time::Monotonic(timeout_time),
-            Box::new(move |ecx| {
-                ecx.unblock_thread(active_thread);
-                Ok(())
-            }),
+            Box::new(UnblockCallback { thread_to_unblock: active_thread }),
         );
 
+        Ok(())
+    }
+}
+
+struct UnblockCallback {
+    thread_to_unblock: ThreadId,
+}
+
+impl VisitTags for UnblockCallback {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {}
+}
+
+impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for UnblockCallback {
+    fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+        ecx.unblock_thread(self.thread_to_unblock);
         Ok(())
     }
 }

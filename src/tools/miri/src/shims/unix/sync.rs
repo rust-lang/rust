@@ -3,7 +3,7 @@ use std::time::SystemTime;
 use rustc_hir::LangItem;
 use rustc_middle::ty::{layout::TyAndLayout, query::TyCtxtAt, Ty};
 
-use crate::concurrency::thread::Time;
+use crate::concurrency::thread::{MachineCallback, Time};
 use crate::*;
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
@@ -851,25 +851,43 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // We return success for now and override it in the timeout callback.
         this.write_scalar(Scalar::from_i32(0), dest)?;
 
+        struct Callback<'tcx> {
+            active_thread: ThreadId,
+            mutex_id: MutexId,
+            id: CondvarId,
+            dest: PlaceTy<'tcx, Provenance>,
+        }
+
+        impl<'tcx> VisitTags for Callback<'tcx> {
+            fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+                let Callback { active_thread: _, mutex_id: _, id: _, dest } = self;
+                dest.visit_tags(visit);
+            }
+        }
+
+        impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
+            fn call(&self, ecx: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+                // We are not waiting for the condvar any more, wait for the
+                // mutex instead.
+                reacquire_cond_mutex(ecx, self.active_thread, self.mutex_id)?;
+
+                // Remove the thread from the conditional variable.
+                ecx.condvar_remove_waiter(self.id, self.active_thread);
+
+                // Set the return value: we timed out.
+                let etimedout = ecx.eval_libc("ETIMEDOUT")?;
+                ecx.write_scalar(etimedout, &self.dest)?;
+
+                Ok(())
+            }
+        }
+
         // Register the timeout callback.
         let dest = dest.clone();
         this.register_timeout_callback(
             active_thread,
             timeout_time,
-            Box::new(move |ecx| {
-                // We are not waiting for the condvar any more, wait for the
-                // mutex instead.
-                reacquire_cond_mutex(ecx, active_thread, mutex_id)?;
-
-                // Remove the thread from the conditional variable.
-                ecx.condvar_remove_waiter(id, active_thread);
-
-                // Set the return value: we timed out.
-                let etimedout = ecx.eval_libc("ETIMEDOUT")?;
-                ecx.write_scalar(etimedout, &dest)?;
-
-                Ok(())
-            }),
+            Box::new(Callback { active_thread, mutex_id, id, dest }),
         );
 
         Ok(())
