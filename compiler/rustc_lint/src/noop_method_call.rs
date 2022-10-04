@@ -1,5 +1,4 @@
 use crate::context::LintContext;
-use crate::rustc_middle::ty::TypeVisitable;
 use crate::LateContext;
 use crate::LateLintPass;
 use rustc_errors::fluent;
@@ -65,11 +64,6 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         let substs = cx
             .tcx
             .normalize_erasing_regions(cx.param_env, cx.typeck_results().node_substs(expr.hir_id));
-        if substs.needs_subst() {
-            // We can't resolve on types that require monomorphization, so we don't handle them if
-            // we need to perform substitution.
-            return;
-        }
         // Resolve the trait method instance.
         let Ok(Some(i)) = ty::Instance::resolve(cx.tcx, cx.param_env, did, substs) else {
             return

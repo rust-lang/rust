@@ -28,12 +28,20 @@ LL |     let non_borrow_type_borrow: &PlainType<u32> = non_borrow_type.borrow();
    = note: the type `&PlainType<u32>` which `borrow` is being called on is the same as the type returned from `borrow`, so the method call does not do anything and can be removed
 
 warning: call to `.clone()` on a reference in this situation does nothing
-  --> $DIR/noop-method-call.rs:52:19
+  --> $DIR/noop-method-call.rs:48:19
+   |
+LL |     non_clone_type.clone();
+   |                   ^^^^^^^^ unnecessary method call
+   |
+   = note: the type `&PlainType<T>` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
+
+warning: call to `.clone()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:53:19
    |
 LL |     non_clone_type.clone();
    |                   ^^^^^^^^ unnecessary method call
    |
    = note: the type `&PlainType<u32>` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
 
-warning: 4 warnings emitted
+warning: 5 warnings emitted
 

@@ -46,6 +46,7 @@ fn main() {
 
 fn generic<T>(non_clone_type: &PlainType<T>) {
     non_clone_type.clone();
+    //~^ WARNING call to `.clone()` on a reference in this situation does nothing
 }
 
 fn non_generic(non_clone_type: &PlainType<u32>) {
