@@ -357,7 +357,7 @@ where
             // In NLL, we don't have type inference variables
             // floating around, so we can do this rather imprecise
             // variant of the occurs-check.
-            assert!(!generalized_ty.has_infer_types_or_consts());
+            assert!(!generalized_ty.has_non_region_infer());
         }
 
         self.infcx.inner.borrow_mut().type_variables().instantiate(vid, generalized_ty);

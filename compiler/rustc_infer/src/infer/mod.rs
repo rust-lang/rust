@@ -712,9 +712,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> bool {
         // Reject any attempt to unify two unevaluated constants that contain inference
         // variables, since inference variables in queries lead to ICEs.
-        if a.substs.has_infer_types_or_consts()
-            || b.substs.has_infer_types_or_consts()
-            || param_env.has_infer_types_or_consts()
+        if a.substs.has_non_region_infer()
+            || b.substs.has_non_region_infer()
+            || param_env.has_non_region_infer()
         {
             debug!("a or b or param_env contain infer vars in its substs -> cannot unify");
             return false;
@@ -1734,7 +1734,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
-        if substs.has_infer_types_or_consts() {
+        if substs.has_non_region_infer() {
             let ac = AbstractConst::new(self.tcx, unevaluated);
             match ac {
                 Ok(None) => {
@@ -2072,21 +2072,17 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
 ) -> SubstsRef<'tcx> {
     tcx.mk_substs(substs.iter().enumerate().map(|(idx, arg)| {
         match arg.unpack() {
-            GenericArgKind::Type(_)
-                if arg.has_param_types_or_consts() || arg.has_infer_types_or_consts() =>
-            {
+            GenericArgKind::Type(_) if arg.has_non_region_param() || arg.has_non_region_infer() => {
                 tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::ROOT,
                     name: ty::BoundVar::from_usize(idx),
                 }))
                 .into()
             }
-            GenericArgKind::Const(ct)
-                if ct.has_infer_types_or_consts() || ct.has_param_types_or_consts() =>
-            {
+            GenericArgKind::Const(ct) if ct.has_non_region_infer() || ct.has_non_region_param() => {
                 let ty = ct.ty();
                 // If the type references param or infer, replace that too...
-                if ty.has_param_types_or_consts() || ty.has_infer_types_or_consts() {
+                if ty.has_non_region_param() || ty.has_non_region_infer() {
                     bug!("const `{ct}`'s type should not reference params or types");
                 }
                 tcx.mk_const(ty::ConstS {

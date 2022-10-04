@@ -279,7 +279,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
         debug!(?obligation, "pre-resolve");
 
-        if obligation.predicate.has_infer_types_or_consts() {
+        if obligation.predicate.has_non_region_infer() {
             obligation.predicate =
                 self.selcx.infcx().resolve_vars_if_possible(obligation.predicate);
         }
@@ -569,7 +569,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             )
                         }
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
-                            if c1.has_infer_types_or_consts() || c2.has_infer_types_or_consts() {
+                            if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 ProcessResult::Unchanged
                             } else {
                                 // Two different constants using generic parameters ~> error.
@@ -726,11 +726,11 @@ fn substs_infer_vars<'a, 'tcx>(
         .resolve_vars_if_possible(substs)
         .skip_binder() // ok because this check doesn't care about regions
         .iter()
-        .filter(|arg| arg.has_infer_types_or_consts())
+        .filter(|arg| arg.has_non_region_infer())
         .flat_map(|arg| {
             let mut walker = arg.walk();
             while let Some(c) = walker.next() {
-                if !c.has_infer_types_or_consts() {
+                if !c.has_non_region_infer() {
                     walker.visited.remove(&c);
                     walker.skip_current_subtree();
                 }

@@ -236,9 +236,9 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
             }
 
             Err(ErrorHandled::TooGeneric) => {
-                let err = if uv.has_infer_types_or_consts() {
+                let err = if uv.has_non_region_infer() {
                     NotConstEvaluatable::MentionsInfer
-                } else if uv.has_param_types_or_consts() {
+                } else if uv.has_non_region_param() {
                     NotConstEvaluatable::MentionsParam
                 } else {
                     let guar = infcx.tcx.sess.delay_span_bug(span, format!("Missing value for constant, but no error reported?"));
@@ -254,7 +254,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
             }
             Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
             Ok(_) => {
-                if uv.substs.has_param_types_or_consts() {
+                if uv.substs.has_non_region_param() {
                     assert!(matches!(infcx.tcx.def_kind(uv.def.did), DefKind::AnonConst));
                     let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(uv.def);
 

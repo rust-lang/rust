@@ -104,8 +104,8 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
             None
         }
     }
-    fn has_param_types_or_consts(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_CT_PARAM)
+    fn has_non_region_param(&self) -> bool {
+        self.has_type_flags(TypeFlags::NEEDS_SUBST - TypeFlags::HAS_RE_PARAM)
     }
     fn has_infer_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_INFER)
@@ -113,8 +113,8 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     fn has_infer_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
     }
-    fn has_infer_types_or_consts(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_CT_INFER)
+    fn has_non_region_infer(&self) -> bool {
+        self.has_type_flags(TypeFlags::NEEDS_INFER - TypeFlags::HAS_RE_INFER)
     }
     fn needs_infer(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_INFER)

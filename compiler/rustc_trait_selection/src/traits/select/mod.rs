@@ -728,7 +728,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             )
                         }
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
-                            if c1.has_infer_types_or_consts() || c2.has_infer_types_or_consts() {
+                            if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 Ok(EvaluatedToAmbig)
                             } else {
                                 // Two different constants using generic parameters ~> error.
@@ -1520,7 +1520,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             if !generics.params.is_empty()
                 && obligation.predicate.substs[generics.parent_count..]
                     .iter()
-                    .any(|&p| p.has_infer_types_or_consts() && self.infcx.shallow_resolve(p) != p)
+                    .any(|&p| p.has_non_region_infer() && self.infcx.shallow_resolve(p) != p)
             {
                 ProjectionMatchesProjection::Ambiguous
             } else {

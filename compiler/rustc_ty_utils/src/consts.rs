@@ -135,30 +135,30 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
         impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             fn expr_is_poly(&mut self, expr: &thir::Expr<'tcx>) -> bool {
-                if expr.ty.has_param_types_or_consts() {
+                if expr.ty.has_non_region_param() {
                     return true;
                 }
 
                 match expr.kind {
-                    thir::ExprKind::NamedConst { substs, .. } => substs.has_param_types_or_consts(),
+                    thir::ExprKind::NamedConst { substs, .. } => substs.has_non_region_param(),
                     thir::ExprKind::ConstParam { .. } => true,
                     thir::ExprKind::Repeat { value, count } => {
                         self.visit_expr(&self.thir()[value]);
-                        count.has_param_types_or_consts()
+                        count.has_non_region_param()
                     }
                     _ => false,
                 }
             }
 
             fn pat_is_poly(&mut self, pat: &thir::Pat<'tcx>) -> bool {
-                if pat.ty.has_param_types_or_consts() {
+                if pat.ty.has_non_region_param() {
                     return true;
                 }
 
                 match pat.kind {
-                    thir::PatKind::Constant { value } => value.has_param_types_or_consts(),
+                    thir::PatKind::Constant { value } => value.has_non_region_param(),
                     thir::PatKind::Range(box thir::PatRange { lo, hi, .. }) => {
-                        lo.has_param_types_or_consts() || hi.has_param_types_or_consts()
+                        lo.has_non_region_param() || hi.has_non_region_param()
                     }
                     _ => false,
                 }

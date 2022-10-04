@@ -290,7 +290,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !c.has_param_types_or_consts() {
+        if !c.has_non_region_param() {
             return ControlFlow::CONTINUE;
         }
 
@@ -311,7 +311,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     }
 
     fn visit_mir_const(&mut self, constant: ConstantKind<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !constant.has_param_types_or_consts() {
+        if !constant.has_non_region_param() {
             return ControlFlow::CONTINUE;
         }
 
@@ -336,7 +336,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !ty.has_param_types_or_consts() {
+        if !ty.has_non_region_param() {
             return ControlFlow::CONTINUE;
         }
 
@@ -373,7 +373,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !c.has_param_types_or_consts() {
+        if !c.has_non_region_param() {
             return ControlFlow::CONTINUE;
         }
 
@@ -391,7 +391,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !ty.has_param_types_or_consts() {
+        if !ty.has_non_region_param() {
             return ControlFlow::CONTINUE;
         }
 

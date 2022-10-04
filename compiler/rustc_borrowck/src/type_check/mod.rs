@@ -236,7 +236,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
                 .unwrap();
             let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
             trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
-            if hidden_type.has_infer_types_or_consts() {
+            if hidden_type.has_non_region_infer() {
                 infcx.tcx.sess.delay_span_bug(
                     decl.hidden_type.span,
                     &format!("could not resolve {:#?}", hidden_type.ty.kind()),
