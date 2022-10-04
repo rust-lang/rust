@@ -18,10 +18,11 @@ if [[ -n "${CI_ONLY_WHEN_SUBMODULES_CHANGED-}" ]]; then
         # Submodules pseudo-files inside git have the 160000 permissions, so when
         # those files are present in the diff a submodule was updated.
         echo "Submodules were updated"
-    elif ! git diff --quiet "$BASE_COMMIT" -- src/tools/clippy src/tools/rustfmt; then
+    elif ! (git diff --quiet "$BASE_COMMIT" -- \
+             src/tools/clippy src/tools/rustfmt src/tools/miri); then
         # There is not an easy blanket search for subtrees. For now, manually list
         # the subtrees.
-        echo "Clippy or rustfmt subtrees were updated"
+        echo "Tool subtrees were updated"
     elif ! (git diff --quiet "$BASE_COMMIT" -- \
              src/test/rustdoc-gui \
              src/librustdoc \

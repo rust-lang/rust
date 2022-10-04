@@ -494,16 +494,6 @@ impl Step for Miri {
         // sysroot does not seem to populate it, so we do that first.
         builder.ensure(compile::Std::new(compiler_std, host));
         let sysroot = builder.sysroot(compiler_std);
-        let mut cargo =
-            builder.cargo(compiler, Mode::ToolRustc, SourceType::Submodule, host, "install");
-        cargo.arg("xargo");
-        // Configure `cargo install` path. cargo adds a `bin/`.
-        cargo.env("CARGO_INSTALL_ROOT", &builder.out);
-
-        let mut cargo = Command::from(cargo);
-        if !try_run(builder, &mut cargo) {
-            return;
-        }
 
         // # Run `cargo miri setup`.
         let mut cargo = tool::prepare_tool_cargo(
@@ -525,8 +515,6 @@ impl Step for Miri {
         cargo.env("MIRI", &miri);
         // Debug things.
         cargo.env("RUST_BACKTRACE", "1");
-        // Let cargo-miri know where xargo ended up.
-        cargo.env("XARGO_CHECK", builder.out.join("bin").join("xargo-check"));
 
         let mut cargo = Command::from(cargo);
         builder.run(&mut cargo);
