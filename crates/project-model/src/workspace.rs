@@ -717,7 +717,6 @@ fn cargo_to_crate_graph(
                 load_proc_macro,
                 &mut pkg_to_lib_crate,
                 &public_deps,
-                libproc_macro,
                 cargo,
                 &pkg_crates,
                 build_scripts,
@@ -783,7 +782,6 @@ fn handle_rustc_crates(
     load_proc_macro: &mut dyn FnMut(&str, &AbsPath) -> ProcMacroLoadResult,
     pkg_to_lib_crate: &mut FxHashMap<Package, CrateId>,
     public_deps: &SysrootPublicDeps,
-    libproc_macro: Option<CrateId>,
     cargo: &CargoWorkspace,
     pkg_crates: &FxHashMap<Package, Vec<(CrateId, TargetKind)>>,
     build_scripts: &WorkspaceBuildScripts,
@@ -845,19 +843,6 @@ fn handle_rustc_crates(
                         rustc_workspace[tgt].is_proc_macro,
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
-
-                    // Even crates that don't set proc-macro = true are allowed to depend on proc_macro
-                    // (just none of the APIs work when called outside of a proc macro).
-                    if let Some(proc_macro) = libproc_macro {
-                        add_dep_with_prelude(
-                            crate_graph,
-                            crate_id,
-                            CrateName::new("proc_macro").unwrap(),
-                            proc_macro,
-                            cargo[tgt].is_proc_macro,
-                        );
-                    }
-
                     // Add dependencies on core / std / alloc for this crate
                     public_deps.add(crate_id, crate_graph);
                     rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
