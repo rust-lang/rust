@@ -48,7 +48,8 @@ void (*CustomErrorHandler)(const char *, LLVMValueRef, ErrorType,
                            void *) = nullptr;
 LLVMValueRef (*CustomAllocator)(LLVMBuilderRef, LLVMTypeRef,
                                 /*Count*/ LLVMValueRef,
-                                /*Align*/ LLVMValueRef, uint8_t) = nullptr;
+                                /*Align*/ LLVMValueRef, uint8_t,
+                                LLVMValueRef *) = nullptr;
 LLVMValueRef (*CustomDeallocator)(LLVMBuilderRef, LLVMValueRef) = nullptr;
 void (*CustomRuntimeInactiveError)(LLVMBuilderRef, LLVMValueRef,
                                    LLVMValueRef) = nullptr;
@@ -91,10 +92,6 @@ Function *getOrInsertExponentialAllocator(Module &M, Function *newFunc,
     CreateAllocation(B, RT, P, "tapemem", &malloccall, nullptr)->getType();
     if (auto F = getFunctionFromCall(malloccall)) {
       custom = F->getName() != "malloc";
-      if (F->getName() == "julia.gc_alloc_obj" ||
-          F->getName() == "jl_gc_alloc_typed" ||
-          F->getName() == "ijl_gc_alloc_typed")
-        ZeroInit = false;
     }
     allocType = cast<PointerType>(malloccall->getType());
     BB->eraseFromParent();
@@ -173,7 +170,8 @@ Function *getOrInsertExponentialAllocator(Module &M, Function *newFunc,
         next->getType(),
         newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(RT) / 8);
     auto elSize = B.CreateUDiv(next, tsize, "", /*isExact*/ true);
-    gVal = CreateAllocation(B, RT, elSize, "", nullptr, nullptr);
+    Instruction *SubZero = nullptr;
+    gVal = CreateAllocation(B, RT, elSize, "", nullptr, &SubZero);
 
     gVal = B.CreatePointerCast(
         gVal, PointerType::get(
@@ -187,6 +185,21 @@ Function *getOrInsertExponentialAllocator(Module &M, Function *newFunc,
                    margs[2]->getType()};
     auto memsetF = Intrinsic::getDeclaration(&M, Intrinsic::memcpy, tys);
     B.CreateCall(memsetF, margs);
+    if (SubZero) {
+      ZeroInit = false;
+      IRBuilder<> BB(SubZero);
+      Value *zeroSize = BB.CreateSub(next, prevSize);
+      Value *tmp = SubZero->getOperand(0);
+
+#if LLVM_VERSION_MAJOR > 7
+      tmp = BB.CreateInBoundsGEP(tmp->getType()->getPointerElementType(), tmp,
+                                 prevSize);
+#else
+      tmp = BB.CreateInBoundsGEP(tmp, prevSize);
+#endif
+      SubZero->setOperand(0, tmp);
+      SubZero->setOperand(2, zeroSize);
+    }
   }
 
   if (ZeroInit) {
@@ -255,14 +268,20 @@ Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
   auto Align = ConstantInt::get(Count->getType(), AlignI);
   CallInst *malloccall = nullptr;
   if (CustomAllocator) {
+    LLVMValueRef wzeromem = nullptr;
     res = unwrap(CustomAllocator(wrap(&Builder), wrap(T), wrap(Count),
-                                 wrap(Align), isDefault));
+                                 wrap(Align), isDefault,
+                                 ZeroMem ? &wzeromem : nullptr));
     if (auto I = dyn_cast<Instruction>(res))
       I->setName(Name);
 
     malloccall = dyn_cast<CallInst>(res);
     if (malloccall == nullptr) {
       malloccall = cast<CallInst>(cast<Instruction>(res)->getOperand(0));
+    }
+    if (ZeroMem) {
+      *ZeroMem = cast_or_null<Instruction>(unwrap(wzeromem));
+      ZeroMem = nullptr;
     }
   } else {
     if (Builder.GetInsertPoint() == Builder.GetInsertBlock()->end()) {
@@ -324,11 +343,6 @@ Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
   if (caller) {
     *caller = malloccall;
   }
-  if (auto F = getFunctionFromCall(malloccall))
-    if (F->getName() == "julia.gc_alloc_obj" ||
-        F->getName() == "jl_gc_alloc_typed" ||
-        F->getName() == "ijl_gc_alloc_typed")
-      ZeroMem = nullptr;
   if (ZeroMem) {
     auto PT = cast<PointerType>(malloccall->getType());
     Value *tozero = malloccall;
