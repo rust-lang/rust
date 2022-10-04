@@ -2324,6 +2324,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// issue #102320, for `unwrap_or` with closure as argument, suggest `unwrap_or_else`
+    /// FIXME: currently not working for suggesting `map_or_else`, see #102408
+    pub(crate) fn suggest_else_fn_with_closure(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        found: Ty<'tcx>,
+        expected: Ty<'tcx>,
+    ) -> bool {
+        let Some((_def_id_or_name, output, _inputs)) = self.extract_callable_info(expr, found)
+        else { return false; };
+
+        if !self.can_coerce(output, expected) {
+            return false;
+        }
+
+        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        if  let Some(Node::Expr(call_expr)) = self.tcx.hir().find(parent) &&
+            let hir::ExprKind::MethodCall(
+                hir::PathSegment { ident: method_name, .. },
+                self_expr,
+                args,
+                ..,
+             ) = call_expr.kind &&
+            let Some(self_ty) = self.typeck_results.borrow().expr_ty_opt(self_expr) {
+            let new_name = Ident {
+                name: Symbol::intern(&format!("{}_else", method_name.as_str())),
+                span: method_name.span,
+            };
+            let probe = self.lookup_probe(
+                expr.span,
+                new_name,
+                self_ty,
+                self_expr,
+                ProbeScope::TraitsInScope,
+            );
+
+            // check the method arguments number
+            if let Ok(pick) = probe &&
+                let fn_sig = self.tcx.fn_sig(pick.item.def_id) &&
+                let fn_args = fn_sig.skip_binder().inputs() &&
+                fn_args.len() == args.len() + 1 {
+                err.span_suggestion_verbose(
+                    method_name.span.shrink_to_hi(),
+                    &format!("try calling `{}` instead", new_name.name.as_str()),
+                    "_else",
+                    Applicability::MaybeIncorrect,
+                );
+                return true;
+            }
+        }
+        false
+    }
+
     /// Checks whether there is a local type somewhere in the chain of
     /// autoderefs of `rcvr_ty`.
     fn type_derefs_to_local(
