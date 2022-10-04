@@ -148,6 +148,13 @@ h1, h2, h3, h4 {
 h1.fqn {
 	margin: 0;
 	padding: 0;
+	flex-grow: 1;
+	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
+	   `anywhere`: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap */
+	overflow-wrap: break-word;
+	/* Then override it with `anywhere`, which is required to make non-Safari browsers break
+	   more aggressively when we want them to. */
+	overflow-wrap: anywhere;
 }
 .main-heading {
 	display: flex;
@@ -214,7 +221,7 @@ pre.rust a,
 .sidebar h2 a,
 .sidebar h3 a,
 .mobile-topbar h2 a,
-.in-band a,
+h1.fqn a,
 .search-results a,
 .module-item .stab,
 .import-item .stab,
@@ -654,19 +661,6 @@ pre.example-line-numbers {
 	font-weight: normal;
 }
 
-.in-band {
-	flex-grow: 1;
-	margin: 0px;
-	padding: 0px;
-	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
-	   `anywhere`: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap */
-	overflow-wrap: break-word;
-	/* Then override it with `anywhere`, which is required to make non-Safari browsers break
-	   more aggressively when we want them to. */
-	overflow-wrap: anywhere;
-	background-color: var(--main-background-color);
-}
-
 .docblock code, .docblock-short code,
 pre, .rustdoc.source .example-wrap {
 	background-color: var(--code-block-background-color);
@@ -752,7 +746,7 @@ a {
 	display: initial;
 }
 
-.in-band:hover > .anchor, .impl:hover > .anchor, .method.trait-impl:hover > .anchor,
+.impl:hover > .anchor, .method.trait-impl:hover > .anchor,
 .type.trait-impl:hover > .anchor, .associatedconstant.trait-impl:hover > .anchor,
 .associatedtype.trait-impl:hover > .anchor {
 	display: inline-block;

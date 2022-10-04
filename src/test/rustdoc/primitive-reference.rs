@@ -9,7 +9,7 @@
 // @has - '//div[@class="sidebar-elems"]//li/a/@href' '#primitives'
 // @has foo/primitive.reference.html
 // @has - '//a[@class="primitive"]' 'reference'
-// @has - '//span[@class="in-band"]' 'Primitive Type reference'
+// @has - '//h1[@class="fqn"]' 'Primitive Type reference'
 // @has - '//section[@id="main-content"]//div[@class="docblock"]//p' 'this is a test!'
 
 // There should be only one implementation listed.

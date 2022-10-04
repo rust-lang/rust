@@ -634,9 +634,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 write!(
                     buf,
                     "<div class=\"main-heading\">\
-                     <h1 class=\"fqn\">\
-                         <span class=\"in-band\">Rustdoc settings</span>\
-                     </h1>\
+                     <h1 class=\"fqn\">Rustdoc settings</h1>\
                      <span class=\"out-of-band\">\
                          <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
                             Back\
