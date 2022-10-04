@@ -6,6 +6,7 @@ use rustc_span::{symbol::Ident, Span, Symbol};
 
 use crate::LateContext;
 
+// array_into_iter.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_array_into_iter)]
 pub struct ArrayIntoIterDiag<'a> {
@@ -32,6 +33,7 @@ pub enum ArrayIntoIterDiagSub {
     },
 }
 
+// enum_intrinsics_non_enums.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_enum_intrinsics_mem_discriminant)]
 pub struct EnumIntrinsicsMemDiscriminate<'a> {
@@ -47,6 +49,7 @@ pub struct EnumIntrinsicsMemVariant<'a> {
     pub ty_param: Ty<'a>,
 }
 
+// methods.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_cstring_ptr)]
 #[note]
@@ -57,6 +60,8 @@ pub struct CStringPtr {
     #[label(unwrap_label)]
     pub unwrap: Span,
 }
+
+// non_ascii_idents.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_identifier_non_ascii_char)]
 pub struct IdentifierNonAsciiChar;
@@ -83,6 +88,7 @@ pub struct MixedScriptConfusables {
     pub includes: String,
 }
 
+// non_fmt_panic.rs
 pub struct NonFmtPanicUnused {
     pub count: usize,
     pub suggestion: Option<Span>,
@@ -126,6 +132,7 @@ pub struct NonFmtPanicBraces {
     pub suggestion: Option<Span>,
 }
 
+// nonstandard_style.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_non_camel_case_type)]
 pub struct NonCamelCaseType<'a> {
@@ -236,6 +243,7 @@ pub enum NonUpperCaseGlobalSub {
     },
 }
 
+// noop_method_call.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_noop_method_call)]
 #[note]
@@ -246,6 +254,7 @@ pub struct NoopMethodCallDiag<'a> {
     pub label: Span,
 }
 
+// pass_by_value.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_pass_by_value)]
 pub struct PassByValueDiag {
@@ -254,6 +263,7 @@ pub struct PassByValueDiag {
     pub suggestion: Span,
 }
 
+// redundant_semicolon.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_redundant_semicolons)]
 pub struct RedundantSemicolonsDiag {
@@ -262,6 +272,7 @@ pub struct RedundantSemicolonsDiag {
     pub suggestion: Span,
 }
 
+// traits.rs
 pub struct DropTraitConstraintsDiag<'a> {
     pub predicate: Predicate<'a>,
     pub tcx: TyCtxt<'a>,
@@ -300,6 +311,7 @@ impl<'a> DecorateLint<'a, ()> for DropGlue<'_> {
     }
 }
 
+// types.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_range_endpoint_out_of_range)]
 pub struct RangeEndpointOutOfRange<'a> {
@@ -457,6 +469,7 @@ pub struct InvalidAtomicOrderingDiag {
     pub fail_order_arg_span: Span,
 }
 
+// unused.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_op)]
 pub struct UnusedOp<'a> {
