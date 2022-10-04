@@ -91,13 +91,13 @@ pub fn get_linker<'a>(
                     arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a));
                     cmd.arg(&arg);
                 } else {
-                    sess.emit_warning(errors::UnsupportedArch);
+                    warn!("arch is not supported");
                 }
             } else {
-                sess.emit_warning(errors::MsvcPathNotFound);
+                warn!("MSVC root path lib location not found");
             }
         } else {
-            sess.emit_warning(errors::LinkExeNotFound);
+            warn!("link.exe not found");
         }
     }
 

@@ -40,9 +40,10 @@ fluent_messages! {
     attr => "../locales/en-US/attr.ftl",
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
+    codegen_gcc => "../locales/en-US/codegen_gcc.ftl",
+    codegen_ssa => "../locales/en-US/codegen_ssa.ftl",
     compiletest => "../locales/en-US/compiletest.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
-    codegen_gcc => "../locales/en-US/codegen_gcc.ftl",
     driver => "../locales/en-US/driver.ftl",
     expand => "../locales/en-US/expand.ftl",
     hir_analysis => "../locales/en-US/hir_analysis.ftl",
@@ -63,7 +64,6 @@ fluent_messages! {
     symbol_mangling => "../locales/en-US/symbol_mangling.ftl",
     trait_selection => "../locales/en-US/trait_selection.ftl",
     ty_utils => "../locales/en-US/ty_utils.ftl",
-    codegen_ssa => "../locales/en-US/codegen_ssa.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};

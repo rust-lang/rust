@@ -4,12 +4,6 @@ codegen_ssa_version_script_write_failure = failed to write version script: {$err
 
 codegen_ssa_symbol_file_write_failure = failed to write symbols file: {$error}
 
-codegen_ssa_unsupported_arch = arch is not supported
-
-codegen_ssa_msvc_path_not_found = MSVC root path lib location not found
-
-codegen_ssa_link_exe_not_found = link.exe not found
-
 codegen_ssa_ld64_unimplemented_modifier = `as-needed` modifier not implemented yet for ld64
 
 codegen_ssa_linker_unsupported_modifier = `as-needed` modifier not supported for current linker

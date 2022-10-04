@@ -362,10 +362,7 @@ fn link_rlib<'a>(
                 continue;
             }
             ab.add_archive(&location, Box::new(|_| false)).unwrap_or_else(|error| {
-                sess.emit_fatal(errors::AddNativeLibrary {
-                    library_path: &location.to_string_lossy(),
-                    error,
-                });
+                sess.emit_fatal(errors::AddNativeLibrary { library_path: location, error });
             });
         }
     }
@@ -381,10 +378,7 @@ fn link_rlib<'a>(
         );
 
         ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|error| {
-            sess.emit_fatal(errors::AddNativeLibrary {
-                library_path: &output_path.display().to_string(),
-                error,
-            });
+            sess.emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
         });
     }
 

@@ -31,18 +31,6 @@ pub struct SymbolFileWriteFailure {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa::unsupported_arch)]
-pub struct UnsupportedArch;
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa::msvc_path_not_found)]
-pub struct MsvcPathNotFound;
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa::link_exe_not_found)]
-pub struct LinkExeNotFound;
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa::ld64_unimplemented_modifier)]
 pub struct Ld64UnimplementedModifier;
 
@@ -115,8 +103,8 @@ pub struct IncompatibleLinkingModifiers;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa::add_native_library)]
-pub struct AddNativeLibrary<'a> {
-    pub library_path: &'a str,
+pub struct AddNativeLibrary {
+    pub library_path: PathBuf,
     pub error: Error,
 }
 
@@ -129,30 +117,16 @@ pub struct MultipleExternalFuncDecl<'a> {
     pub library_name: &'a str,
 }
 
+#[derive(Diagnostic)]
 pub enum LinkRlibError {
+    #[diag(codegen_ssa::rlib_missing_format)]
     MissingFormat,
-    OnlyRmetaFound { crate_name: Symbol },
-    NotFound { crate_name: Symbol },
-}
 
-impl IntoDiagnostic<'_, !> for LinkRlibError {
-    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
-        match self {
-            LinkRlibError::MissingFormat => {
-                handler.struct_fatal(fluent::codegen_ssa::rlib_missing_format)
-            }
-            LinkRlibError::OnlyRmetaFound { crate_name } => {
-                let mut diag = handler.struct_fatal(fluent::codegen_ssa::rlib_only_rmeta_found);
-                diag.set_arg("crate_name", crate_name);
-                diag
-            }
-            LinkRlibError::NotFound { crate_name } => {
-                let mut diag = handler.struct_fatal(fluent::codegen_ssa::rlib_not_found);
-                diag.set_arg("crate_name", crate_name);
-                diag
-            }
-        }
-    }
+    #[diag(codegen_ssa::rlib_only_rmeta_found)]
+    OnlyRmetaFound { crate_name: Symbol },
+
+    #[diag(codegen_ssa::rlib_not_found)]
+    NotFound { crate_name: Symbol },
 }
 
 #[derive(Diagnostic)]
