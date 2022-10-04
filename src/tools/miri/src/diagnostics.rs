@@ -60,7 +60,10 @@ impl MachineStopType for TerminationInfo {}
 
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
-    CreatedPointerTag(NonZeroU64, Option<(AllocId, AllocRange)>),
+    /// (new_tag, new_kind, (alloc_id, base_offset, orig_tag))
+    ///
+    /// new_kind is `None` for base tags.
+    CreatedPointerTag(NonZeroU64, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
     /// This `Item` was popped from the borrow stack, either due to an access with the given tag or
     /// a deallocation when the second argument is `None`.
     PoppedPointerTag(Item, Option<(ProvenanceExtra, AccessKind)>),
@@ -376,7 +379,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             MiriInterpCx::generate_stacktrace_from_stack(self.threads.active_thread_stack());
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
-        let (title, diag_level) = match e {
+        let (title, diag_level) = match &e {
             RejectedIsolatedOp(_) => ("operation rejected by isolation", DiagLevel::Warning),
             Int2Ptr { .. } => ("integer-to-pointer cast", DiagLevel::Warning),
             CreatedPointerTag(..)
@@ -388,10 +391,13 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             | WeakMemoryOutdatedLoad => ("tracking was triggered", DiagLevel::Note),
         };
 
-        let msg = match e {
-            CreatedPointerTag(tag, None) => format!("created tag {tag:?}"),
-            CreatedPointerTag(tag, Some((alloc_id, range))) =>
-                format!("created tag {tag:?} at {alloc_id:?}{range:?}"),
+        let msg = match &e {
+            CreatedPointerTag(tag, None, _) => format!("created base tag {tag:?}"),
+            CreatedPointerTag(tag, Some(kind), None) => format!("created {tag:?} for {kind}"),
+            CreatedPointerTag(tag, Some(kind), Some((alloc_id, range, orig_tag))) =>
+                format!(
+                    "created tag {tag:?} for {kind} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
+                ),
             PoppedPointerTag(item, tag) =>
                 match tag {
                     None => format!("popped tracked tag for item {item:?} due to deallocation",),
@@ -418,7 +424,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 format!("weak memory emulation: outdated value returned from load"),
         };
 
-        let notes = match e {
+        let notes = match &e {
             ProgressReport { block_count } => {
                 // It is important that each progress report is slightly different, since
                 // identical diagnostics are being deduplicated.
@@ -427,7 +433,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             _ => vec![],
         };
 
-        let helps = match e {
+        let helps = match &e {
             Int2Ptr { details: true } =>
                 vec![
                     (
