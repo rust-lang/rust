@@ -17,13 +17,13 @@ shown below:
 
 ```rust,ignore
 #[derive(Diagnostic)]
-#[diag(typeck::field_already_declared, code = "E0124")]
+#[diag(hir_analysis::field_already_declared, code = "E0124")]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(typeck::previous_decl_label)]
+    #[label(hir_analysis::previous_decl_label)]
     pub prev_span: Span,
 }
 ```
@@ -47,13 +47,13 @@ In our example, the Fluent message for the "field already declared" diagnostic
 looks like this:
 
 ```fluent
-typeck_field_already_declared =
+hir_analysis_field_already_declared =
     field `{$field_name}` is already declared
     .label = field already declared
     .previous_decl_label = `{$field_name}` first declared here
 ```
 
-`typeck_field_already_declared` is the slug from our example and is followed
+`hir_analysis_field_already_declared` is the slug from our example and is followed
 by the diagnostic message.
 
 Every field of the `Diagnostic` which does not have an annotation is
@@ -73,7 +73,7 @@ type `Span`. Applying any of these attributes will create the corresponding
 subdiagnostic with that `Span`. These attributes will look for their
 diagnostic message in a Fluent attribute attached to the primary Fluent
 message. In our example, `#[label]` will look for
-`typeck_field_already_declared.label` (which has the message "field already
+`hir_analysis_field_already_declared.label` (which has the message "field already
 declared"). If there is more than one subdiagnostic of the same type, then
 these attributes can also take a value that is the attribute name to look for
 (e.g. `previous_decl_label` in our example).
@@ -113,15 +113,15 @@ In the end, the `Diagnostic` derive will generate an implementation of
 ```rust,ignore
 impl IntoDiagnostic<'_> for FieldAlreadyDeclared {
     fn into_diagnostic(self, handler: &'_ rustc_errors::Handler) -> DiagnosticBuilder<'_> {
-        let mut diag = handler.struct_err(rustc_errors::fluent::typeck::field_already_declared);
+        let mut diag = handler.struct_err(rustc_errors::fluent::hir_analysis::field_already_declared);
         diag.set_span(self.span);
         diag.span_label(
             self.span,
-            rustc_errors::fluent::typeck::label
+            rustc_errors::fluent::hir_analysis::label
         );
         diag.span_label(
             self.prev_span,
-            rustc_errors::fluent::typeck::previous_decl_label
+            rustc_errors::fluent::hir_analysis::previous_decl_label
         );
         diag
     }
@@ -154,9 +154,9 @@ following attributes:
     - A path to an item in `rustc_errors::fluent`. Always in a module starting
       with a Fluent resource name (which is typically the name of the crate
       that the diagnostic is from), e.g.
-      `rustc_errors::fluent::typeck::field_already_declared`
+      `rustc_errors::fluent::hir_analysis::field_already_declared`
       (`rustc_errors::fluent` is implicit in the attribute, so just
-      `typeck::field_already_declared`).
+      `hir_analysis::field_already_declared`).
     - See [translation documentation](./translation.md).
   - `code = "..."` (_Optional_)
     - Specifies the error code.
@@ -194,11 +194,11 @@ following attributes:
     - A path to an item in `rustc_errors::fluent`. Always in a module starting
       with a Fluent resource name (which is typically the name of the crate
       that the diagnostic is from), e.g.
-      `rustc_errors::fluent::typeck::field_already_declared`
+      `rustc_errors::fluent::hir_analysis::field_already_declared`
       (`rustc_errors::fluent` is implicit in the attribute, so just
-      `typeck::field_already_declared`). Fluent attributes for all messages
-      exist as top-level items in that module (so `typeck_message.attr` is just
-      `typeck::attr`).
+      `hir_analysis::field_already_declared`). Fluent attributes for all messages
+      exist as top-level items in that module (so `hir_analysis_message.attr` is just
+      `hir_analysis::attr`).
     - See [translation documentation](./translation.md).
     - Defaults to `rustc_errors::fluent::_subdiag::suggestion` (or
     - `.suggestion` in Fluent).
@@ -233,12 +233,12 @@ shown below:
 ```rust
 #[derive(Subdiagnostic)]
 pub enum ExpectedReturnTypeLabel<'tcx> {
-    #[label(typeck::expected_default_return_type)]
+    #[label(hir_analysis::expected_default_return_type)]
     Unit {
         #[primary_span]
         span: Span,
     },
-    #[label(typeck::expected_return_type)]
+    #[label(hir_analysis::expected_return_type)]
     Other {
         #[primary_span]
         span: Span,
@@ -268,9 +268,9 @@ In our example, the Fluent message for the "expected return type" label
 looks like this:
 
 ```fluent
-typeck_expected_default_return_type = expected `()` because of default return type
+hir_analysis_expected_default_return_type = expected `()` because of default return type
 
-typeck_expected_return_type = expected `{$expected}` because of return type
+hir_analysis_expected_return_type = expected `{$expected}` because of return type
 ```
 
 Using the `#[primary_span]` attribute on a field (with type `Span`) will denote
@@ -315,11 +315,11 @@ impl<'tcx> AddToDiagnostic for ExpectedReturnTypeLabel<'tcx> {
         use rustc_errors::{Applicability, IntoDiagnosticArg};
         match self {
             ExpectedReturnTypeLabel::Unit { span } => {
-                diag.span_label(span, rustc_errors::fluent::typeck::expected_default_return_type)
+                diag.span_label(span, rustc_errors::fluent::hir_analysis::expected_default_return_type)
             }
             ExpectedReturnTypeLabel::Other { span, expected } => {
                 diag.set_arg("expected", expected);
-                diag.span_label(span, rustc_errors::fluent::typeck::expected_return_type)
+                diag.span_label(span, rustc_errors::fluent::hir_analysis::expected_return_type)
             }
 
         }
@@ -345,9 +345,9 @@ diagnostic struct.
     - A path to an item in `rustc_errors::fluent`. Always in a module starting
       with a Fluent resource name (which is typically the name of the crate
       that the diagnostic is from), e.g.
-      `rustc_errors::fluent::typeck::field_already_declared`
+      `rustc_errors::fluent::hir_analysis::field_already_declared`
       (`rustc_errors::fluent` is implicit in the attribute, so just
-      `typeck::field_already_declared`).
+      `hir_analysis::field_already_declared`).
     - See [translation documentation](./translation.md).
 - `#[suggestion{,_hidden,_short,_verbose}(slug, code = "...", applicability = "...")]`
   - _Applied to struct or enum variant. Mutually exclusive with struct/enum variant attributes._
@@ -357,11 +357,11 @@ diagnostic struct.
     - A path to an item in `rustc_errors::fluent`. Always in a module starting
       with a Fluent resource name (which is typically the name of the crate
       that the diagnostic is from), e.g.
-      `rustc_errors::fluent::typeck::field_already_declared`
+      `rustc_errors::fluent::hir_analysis::field_already_declared`
       (`rustc_errors::fluent` is implicit in the attribute, so just
-      `typeck::field_already_declared`). Fluent attributes for all messages
-      exist as top-level items in that module (so `typeck_message.attr` is just
-      `typeck::attr`).
+      `hir_analysis::field_already_declared`). Fluent attributes for all messages
+      exist as top-level items in that module (so `hir_analysis_message.attr` is just
+      `hir_analysis::attr`).
     - See [translation documentation](./translation.md).
     - Defaults to `rustc_errors::fluent::_subdiag::suggestion` (or
     - `.suggestion` in Fluent).
@@ -399,9 +399,9 @@ to multipart suggestions)
   - _Applied to any field._
   - Prevents the field from being provided as a diagnostic argument.
 
-[defn]: https://github.com/rust-lang/rust/blob/bbe9d27b8ff36da56638aa43d6d0cdfdf89a4e57/compiler/rustc_typeck/src/errors.rs#L65-L74
-[use]: https://github.com/rust-lang/rust/blob/eb82facb1626166188d49599a3313fc95201f556/compiler/rustc_typeck/src/collect.rs#L981-L985
+[defn]: https://github.com/rust-lang/rust/blob/6201eabde85db854c1ebb57624be5ec699246b50/compiler/rustc_hir_analysis/src/errors.rs#L68-L77
+[use]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/rustc_hir_analysis/src/collect.rs#L823-L827
 
-[subdiag_defn]: https://github.com/rust-lang/rust/blob/e70c60d34b9783a2fd3171d88d248c2e0ec8ecdd/compiler/rustc_typeck/src/errors.rs#L220-L233
-[subdiag_use_1]: https://github.com/rust-lang/rust/blob/e70c60d34b9783a2fd3171d88d248c2e0ec8ecdd/compiler/rustc_typeck/src/check/fn_ctxt/suggestions.rs#L556-L560
-[subdiag_use_2]: https://github.com/rust-lang/rust/blob/e70c60d34b9783a2fd3171d88d248c2e0ec8ecdd/compiler/rustc_typeck/src/check/fn_ctxt/suggestions.rs#L575-L579
+[subdiag_defn]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/rustc_hir_analysis/src/errors.rs#L221-L234
+[subdiag_use_1]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/rustc_hir_analysis/src/check/fn_ctxt/suggestions.rs#L670-L674
+[subdiag_use_2]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/rustc_hir_analysis/src/check/fn_ctxt/suggestions.rs#L704-L707
