@@ -108,7 +108,7 @@ pub struct InlineAsmCtxt<'a, 'tcx> {
     get_operand_ty: Box<dyn Fn(&'tcx hir::Expr<'tcx>) -> Ty<'tcx> + 'a>,
 }
 
-impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
+impl<'a, 'tcx: 'a> InlineAsmCtxt<'a, 'tcx> {
     pub fn new_global_asm(tcx: TyCtxt<'tcx>) -> Self {
         InlineAsmCtxt {
             tcx,

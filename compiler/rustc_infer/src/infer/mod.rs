@@ -335,7 +335,7 @@ pub struct InferCtxt<'tcx> {
     universe: Cell<ty::UniverseIndex>,
 
     normalize_fn_sig_for_diagnostic:
-        Option<Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
+        Option<Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> + 'tcx>>,
 }
 
 /// See the `error_reporting` module for more details.
@@ -552,7 +552,7 @@ pub struct InferCtxtBuilder<'tcx> {
     defining_use_anchor: DefiningAnchor,
     considering_regions: bool,
     normalize_fn_sig_for_diagnostic:
-        Option<Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
+        Option<Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> + 'tcx>>,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -589,7 +589,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 
     pub fn with_normalize_fn_sig_for_diagnostic(
         mut self,
-        fun: Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>,
+        fun: Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> + 'tcx>,
     ) -> Self {
         self.normalize_fn_sig_for_diagnostic = Some(fun);
         self
