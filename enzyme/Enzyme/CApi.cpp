@@ -675,6 +675,11 @@ void EnzymeMoveBefore(LLVMValueRef inst1, LLVMValueRef inst2,
   }
 }
 
+void EnzymeSetForMemSet(LLVMValueRef inst1) {
+  Instruction *I1 = cast<Instruction>(unwrap(inst1));
+  I1->setMetadata("enzyme_formemset", MDNode::get(I1->getContext(), {}));
+}
+
 void EnzymeSetMustCache(LLVMValueRef inst1) {
   Instruction *I1 = cast<Instruction>(unwrap(inst1));
   I1->setMetadata("enzyme_mustcache", MDNode::get(I1->getContext(), {}));

@@ -901,8 +901,13 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
           }
         }
 
-        if (ZeroInst)
+        if (ZeroInst) {
+          if (ZeroInst->getOperand(0) != malloccall) {
+            scopeInstructions[alloc].push_back(
+                cast<Instruction>(ZeroInst->getOperand(0)));
+          }
           scopeInstructions[alloc].push_back(ZeroInst);
+        }
         storealloc = allocationBuilder.CreateStore(firstallocation, storeInto);
 
         scopeAllocs[alloc].push_back(malloccall);
