@@ -14,6 +14,7 @@ use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_target::abi::Size;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
@@ -285,6 +286,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bug!("Only valid to do a DynStar cast into a DynStar type")
                             };
                         let vtable = get_vtable(bx.cx(), source.ty(self.mir, bx.tcx()), trait_ref);
+                        let data = match operand.layout.pointee_info_at(bx.cx(), Size::ZERO) {
+                            Some(_) => bx.ptrtoint(data, bx.cx().type_isize()),
+                            None => data,
+                        };
                         OperandValue::Pair(data, vtable)
                     }
                     mir::CastKind::Pointer(
