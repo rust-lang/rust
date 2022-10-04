@@ -7,7 +7,7 @@ fn bar(_1: Bar) -> usize {
 
     bb0: {
         _2 = discriminant(_1);           // scope 0 at $DIR/enum_cast.rs:+1:5: +1:17
-        _0 = move _2 as usize (Misc);    // scope 0 at $DIR/enum_cast.rs:+1:5: +1:17
+        _0 = move _2 as usize (IntToInt); // scope 0 at $DIR/enum_cast.rs:+1:5: +1:17
         return;                          // scope 0 at $DIR/enum_cast.rs:+2:2: +2:2
     }
 }

@@ -823,9 +823,10 @@ where
             // tmp = &raw mut P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
+            let mir_cast_kind = ty::cast::mir_cast_kind(iter_ty, tmp_ty);
             vec![
                 self.assign(tmp, Rvalue::AddressOf(Mutability::Mut, self.place)),
-                self.assign(cur, Rvalue::Cast(CastKind::Misc, Operand::Move(tmp), iter_ty)),
+                self.assign(cur, Rvalue::Cast(mir_cast_kind, Operand::Move(tmp), iter_ty)),
                 self.assign(
                     length_or_end,
                     Rvalue::BinaryOp(

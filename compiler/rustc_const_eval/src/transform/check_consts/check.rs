@@ -553,7 +553,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 unimplemented!()
             }
 
-            Rvalue::Cast(CastKind::Misc, _, _) => {}
+            Rvalue::Cast(_, _, _) => {}
 
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
             Rvalue::ShallowInitBox(_, _) => {}

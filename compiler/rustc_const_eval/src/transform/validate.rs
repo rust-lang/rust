@@ -557,7 +557,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             Rvalue::Cast(kind, operand, target_type) => {
                 match kind {
-                    CastKind::Misc => {
+                    CastKind::DynStar => {
+                        // FIXME(dyn-star): make sure nothing needs to be done here.
+                    }
+                    // Nothing to check here
+                    CastKind::PointerFromExposedAddress
+                    | CastKind::PointerExposeAddress
+                    | CastKind::Pointer(_) => {}
+                    _ => {
                         let op_ty = operand.ty(self.body, self.tcx);
                         if op_ty.is_enum() {
                             self.fail(
@@ -568,13 +575,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
-                    CastKind::DynStar => {
-                        // FIXME(dyn-star): make sure nothing needs to be done here.
-                    }
-                    // Nothing to check here
-                    CastKind::PointerFromExposedAddress
-                    | CastKind::PointerExposeAddress
-                    | CastKind::Pointer(_) => {}
                 }
             }
             Rvalue::Repeat(_, _)

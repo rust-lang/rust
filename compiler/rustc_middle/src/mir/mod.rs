@@ -1834,7 +1834,14 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::AddressOf(_, _)
             | Rvalue::Len(_)
             | Rvalue::Cast(
-                CastKind::Misc | CastKind::Pointer(_) | CastKind::PointerFromExposedAddress,
+                CastKind::IntToInt
+                | CastKind::FloatToInt
+                | CastKind::FloatToFloat
+                | CastKind::IntToFloat
+                | CastKind::FnPtrToPtr
+                | CastKind::PtrToPtr
+                | CastKind::Pointer(_)
+                | CastKind::PointerFromExposedAddress,
                 _,
                 _,
             )
