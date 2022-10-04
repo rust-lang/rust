@@ -90,6 +90,8 @@ fn main() {
         check!(edition, &compiler_path);
         check!(edition, &library_path);
 
+        check!(alphabetical, &compiler_path);
+
         let collected = {
             while handles.len() >= concurrency.get() {
                 handles.pop_front().unwrap().join().unwrap();
