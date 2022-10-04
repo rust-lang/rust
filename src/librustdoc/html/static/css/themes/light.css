@@ -36,6 +36,20 @@
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--search-color: #000;
+	--code-highlight-kw-color: #8959a8;
+	--code-highlight-kw-2-color: #4271ae;
+	--code-highlight-lifetime-color: #b76514;
+	--code-highlight-prelude-color: #4271ae;
+	--code-highlight-prelude-val-color: #c82829;
+	--code-highlight-number-color: #718c00;
+	--code-highlight-string-color: #718c00;
+	--code-highlight-literal-color: #c82829;
+	--code-highlight-attribute-color: #c82829;
+	--code-highlight-self-color: #c82829;
+	--code-highlight-macro-color: #3e999f;
+	--code-highlight-question-mark-color: #ff9011;
+	--code-highlight-comment-color: #8e908c;
+	--code-highlight-doc-comment-color: #4d4d4c;
 }
 
 .slider {
@@ -77,20 +91,6 @@ body.source .example-wrap pre.rust a {
 }
 
 .src-line-numbers :target { background-color: transparent; }
-
-/* Code highlighting */
-pre.rust .kw { color: #8959A8; }
-pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
-pre.rust .number, pre.rust .string { color: #718C00; }
-pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .attribute { color: #C82829; }
-pre.rust .comment { color: #8E908C; }
-pre.rust .doccomment { color: #4D4D4C; }
-pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
-pre.rust .lifetime { color: #B76514; }
-pre.rust .question-mark {
-	color: #ff9011;
-}
 
 pre.example-line-numbers {
 	border-color: #c7c7c7;
