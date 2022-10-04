@@ -1694,3 +1694,16 @@ fn foo(a: &dyn DoesNotExist) {
         "#,
     );
 }
+
+#[test]
+fn self_assoc_with_const_generics_crash() {
+    check_no_mismatches(
+        r#"
+trait Trait { type Item; }
+impl<T, const N: usize> Trait for [T; N] {
+    type Item = ();
+    fn f<U>(_: Self::Item) {}
+}
+        "#,
+    );
+}
