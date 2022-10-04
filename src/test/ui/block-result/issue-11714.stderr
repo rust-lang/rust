@@ -7,7 +7,7 @@ LL | fn blah() -> i32 {
    |    implicitly returns `()` as its body has no tail or `return` expression
 ...
 LL |     ;
-   |     - help: remove this semicolon
+   |     - help: remove this semicolon to return this value
 
 error: aborting due to previous error
 
