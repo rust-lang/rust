@@ -1,10 +1,9 @@
 #![feature(const_trait_impl)]
 
 pub trait A {}
-//~^ NOTE: this trait must be annotated with `#[const_trait]`
+//~^ HELP: mark `A` as const
 
 impl const A for () {}
-//~^ ERROR: const `impl`s must be for traits marked with `#[const_trait]`
-//~| ERROR: ~const can only be applied to `#[const_trait]` traits
+//~^ ERROR: const `impl` for trait `A` which is not marked with `#[const_trait]`
 
 fn main() {}
