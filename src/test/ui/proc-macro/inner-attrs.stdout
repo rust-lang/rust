@@ -627,12 +627,12 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/inner-attrs.rs:39:15: 39:17 (#0),
+                                        span: $DIR/inner-attrs.rs:39:15: 39:16 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/inner-attrs.rs:39:15: 39:17 (#0),
+                                        span: $DIR/inner-attrs.rs:39:16: 39:17 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,

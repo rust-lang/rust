@@ -545,7 +545,7 @@ pub trait From<T>: Sized {
     #[lang = "from"]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from(_: T) -> Self;
+    fn from(value: T) -> Self;
 }
 
 /// An attempted conversion that consumes `self`, which may or may not be

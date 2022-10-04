@@ -489,12 +489,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/issue-75930-derive-cfg.rs:33:32: 33:34 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:33:32: 33:33 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/issue-75930-derive-cfg.rs:33:32: 33:34 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:33:33: 33:34 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,
@@ -567,12 +567,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:62 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:61 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:62 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:34:61: 34:62 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,
@@ -591,12 +591,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:17 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:16 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:17 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:35:16: 35:17 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,
@@ -1519,12 +1519,12 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:62 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:61 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:62 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:34:61: 34:62 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,
@@ -1543,12 +1543,12 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:17 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:16 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:17 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:35:16: 35:17 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,

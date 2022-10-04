@@ -41,12 +41,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                     Punct {
                         ch: '=',
                         spacing: Joint,
-                        span: $DIR/issue-76182-leading-vert-pat.rs:15:21: 15:23 (#0),
+                        span: $DIR/issue-76182-leading-vert-pat.rs:15:21: 15:22 (#0),
                     },
                     Punct {
                         ch: '>',
                         spacing: Alone,
-                        span: $DIR/issue-76182-leading-vert-pat.rs:15:21: 15:23 (#0),
+                        span: $DIR/issue-76182-leading-vert-pat.rs:15:22: 15:23 (#0),
                     },
                     Group {
                         delimiter: Parenthesis,

@@ -115,8 +115,20 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
             // before that get `joint = true`.
             let mut op = |s: &str| {
                 assert!(s.is_ascii());
-                trees.extend(s.bytes().enumerate().map(|(idx, ch)| {
-                    let is_final = idx == s.len() - 1;
+                trees.extend(s.bytes().enumerate().map(|(i, ch)| {
+                    let is_final = i == s.len() - 1;
+                    // Split the token span into single chars. Unless the span
+                    // is an unusual one, e.g. due to proc macro expansion. We
+                    // determine this by assuming any span with a length that
+                    // matches the operator length is a normal one, and any
+                    // span with a different length is an unusual one.
+                    let span = if (span.hi() - span.lo()).to_usize() == s.len() {
+                        let lo = span.lo() + BytePos::from_usize(i);
+                        let hi = lo + BytePos::from_usize(1);
+                        span.with_lo(lo).with_hi(hi)
+                    } else {
+                        span
+                    };
                     TokenTree::Punct(Punct { ch, joint: if is_final { joint } else { true }, span })
                 }));
             };

@@ -65,7 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// When encountering an fn-like type, try accessing the output of the type
-    /// // and suggesting calling it if it satisfies a predicate (i.e. if the
+    /// and suggesting calling it if it satisfies a predicate (i.e. if the
     /// output has a method or a field):
     /// ```compile_fail,E0308
     /// fn foo(x: usize) -> usize { x }
@@ -139,7 +139,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sugg,
                 applicability,
             );
-
             return true;
         }
         false
@@ -338,6 +337,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 err.span_suggestion(sp, &msg, suggestion, applicability);
             }
+        } else if self.suggest_else_fn_with_closure(err, expr, found, expected)
+        {
         } else if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
             && let ty::FnDef(def_id, ..) = &found.kind()
             && let Some(sp) = self.tcx.hir().span_if_local(*def_id)
