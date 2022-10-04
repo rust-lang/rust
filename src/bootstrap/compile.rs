@@ -1102,6 +1102,8 @@ impl Step for Sysroot {
         let host_dir = builder.out.join(&compiler.host.triple);
         let sysroot = if compiler.stage == 0 {
             host_dir.join("stage0-sysroot")
+        } else if builder.download_rustc() {
+            host_dir.join("ci-rustc-sysroot")
         } else {
             host_dir.join(format!("stage{}", compiler.stage))
         };
@@ -1115,7 +1117,7 @@ impl Step for Sysroot {
                 "Cross-compiling is not yet supported with `download-rustc`",
             );
 
-            // #102002, cleanup stage1 and stage0-sysroot folders when using download-rustc
+            // #102002, cleanup stage1 and stage0-sysroot folders when using download-rustc so people don't use old versions of the toolchain by accident.
             let _ = fs::remove_dir_all(host_dir.join("stage1"));
             let _ = fs::remove_dir_all(host_dir.join("stage0-sysroot"));
 

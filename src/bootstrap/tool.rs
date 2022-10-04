@@ -512,10 +512,8 @@ impl Step for Rustdoc {
         // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
         // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
         // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-        // rustc compiler it's paired with, so it must be built with the previous stage compiler,
-        // if download_rustc is true, we will use the same target stage.
-        let target_stage = target_compiler.stage - if builder.download_rustc() { 0 } else { 1 };
-        let build_compiler = builder.compiler(target_stage, builder.config.build);
+        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
+        let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
 
         // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
         // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
