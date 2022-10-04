@@ -130,7 +130,6 @@ mod erase_regions;
 mod generics;
 mod impls_ty;
 mod instance;
-mod layout_sanity_check;
 mod list;
 mod parameterized;
 mod rvalue_scopes;
@@ -2593,7 +2592,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     closure::provide(providers);
     context::provide(providers);
     erase_regions::provide(providers);
-    layout::provide(providers);
     util::provide(providers);
     print::provide(providers);
     super::util::bug::provide(providers);

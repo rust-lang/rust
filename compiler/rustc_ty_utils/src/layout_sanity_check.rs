@@ -1,4 +1,4 @@
-use crate::ty::{
+use rustc_middle::ty::{
     layout::{LayoutCx, TyAndLayout},
     TyCtxt,
 };
