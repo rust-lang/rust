@@ -39,23 +39,23 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
             WP::RegionPredicate { lifetime, bounds } => {
                 lifetimes.push((lifetime, bounds));
             }
-            WP::EqPredicate { lhs, rhs } => equalities.push((lhs, rhs)),
+            WP::EqPredicate { lhs, rhs, bound_params } => equalities.push((lhs, rhs, bound_params)),
         }
     }
 
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates.
-    equalities.retain(|&(ref lhs, ref rhs)| {
+    equalities.retain(|&(ref lhs, ref rhs, ref bound_params)| {
         let Some((ty, trait_did, name)) = lhs.projection() else { return true; };
-        // FIXME(fmease): We don't handle HRTBs correctly here.
-        //                Pass `_bound_params` (higher-rank lifetimes) to a modified version of
-        //                `merge_bounds`. That vector is currently always empty though since we
-        //                don't keep track of late-bound lifetimes when cleaning projection
-        //                predicates to cleaned equality predicates while we should first query
-        //                them with `collect_referenced_late_bound_regions` and then store them
-        //                (or something similar). For prior art, see `clean::auto_trait`.
-        let Some((bounds, _bound_params)) = tybounds.get_mut(ty) else { return true };
-        merge_bounds(cx, bounds, trait_did, name, rhs)
+        let Some((bounds, _)) = tybounds.get_mut(ty) else { return true };
+        let bound_params = bound_params
+            .into_iter()
+            .map(|param| clean::GenericParamDef {
+                name: param.0,
+                kind: clean::GenericParamDefKind::Lifetime { outlives: Vec::new() },
+            })
+            .collect();
+        merge_bounds(cx, bounds, bound_params, trait_did, name, rhs)
     });
 
     // And finally, let's reassemble everything
@@ -68,13 +68,18 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
         bounds,
         bound_params,
     }));
-    clauses.extend(equalities.into_iter().map(|(lhs, rhs)| WP::EqPredicate { lhs, rhs }));
+    clauses.extend(equalities.into_iter().map(|(lhs, rhs, bound_params)| WP::EqPredicate {
+        lhs,
+        rhs,
+        bound_params,
+    }));
     clauses
 }
 
 pub(crate) fn merge_bounds(
     cx: &clean::DocContext<'_>,
     bounds: &mut Vec<clean::GenericBound>,
+    mut bound_params: Vec<clean::GenericParamDef>,
     trait_did: DefId,
     assoc: clean::PathSegment,
     rhs: &clean::Term,
@@ -91,6 +96,14 @@ pub(crate) fn merge_bounds(
             return false;
         }
         let last = trait_ref.trait_.segments.last_mut().expect("segments were empty");
+
+        trait_ref.generic_params.append(&mut bound_params);
+        // Since the parameters (probably) originate from `tcx.collect_*_late_bound_regions` which
+        // returns a hash set, sort them alphabetically to guarantee a stable and deterministic
+        // output (and to fully deduplicate them).
+        trait_ref.generic_params.sort_unstable_by(|p, q| p.name.as_str().cmp(q.name.as_str()));
+        trait_ref.generic_params.dedup_by_key(|p| p.name);
+
         match last.args {
             PP::AngleBracketed { ref mut bindings, .. } => {
                 bindings.push(clean::TypeBinding {

@@ -14,6 +14,7 @@ pub trait Main {
     type Out10<'q>: Support<Output<'q> = ()>;
     type Out11: for<'r, 's> Helper<A<'s> = &'s (), B<'r> = ()>;
     type Out12: for<'w> Helper<B<'w> = std::borrow::Cow<'w, str>, A<'w> = bool>;
+    type Out13: for<'fst, 'snd> Aid<'snd, Result<'fst> = &'fst mut str>;
 
     fn make<F>(_: F, _: impl FnMut(&str) -> bool)
     where
@@ -37,4 +38,8 @@ pub trait Unrelated {}
 pub trait Helper {
     type A<'q>;
     type B<'q>;
+}
+
+pub trait Aid<'src> {
+    type Result<'inter>;
 }
