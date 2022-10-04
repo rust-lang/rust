@@ -1158,11 +1158,28 @@ fn named_associated_type_shorthand_candidates<R>(
     };
 
     match res {
-        TypeNs::SelfType(impl_id) => search(
+        TypeNs::SelfType(impl_id) => {
             // we're _in_ the impl -- the binders get added back later. Correct,
             // but it would be nice to make this more explicit
-            db.impl_trait(impl_id)?.into_value_and_skipped_binders().0,
-        ),
+            let trait_ref = db.impl_trait(impl_id)?.into_value_and_skipped_binders().0;
+
+            let impl_id_as_generic_def: GenericDefId = impl_id.into();
+            if impl_id_as_generic_def != def {
+                // `trait_ref` contains `BoundVar`s bound by impl's `Binders`, but here we need
+                // `BoundVar`s from `def`'s point of view.
+                // FIXME: A `HirDatabase` query may be handy if this process is needed in more
+                // places. It'd be almost identical as `impl_trait_query` where `resolver` would be
+                // of `def` instead of `impl_id`.
+                let starting_idx = generics(db.upcast(), def).len_self();
+                let subst = TyBuilder::subst_for_def(db, impl_id, None)
+                    .fill_with_bound_vars(DebruijnIndex::INNERMOST, starting_idx)
+                    .build();
+                let trait_ref = subst.apply(trait_ref, Interner);
+                search(trait_ref)
+            } else {
+                search(trait_ref)
+            }
+        }
         TypeNs::GenericParam(param_id) => {
             let predicates = db.generic_predicates_for_param(def, param_id.into(), assoc_name);
             let res = predicates.iter().find_map(|pred| match pred.skip_binders().skip_binders() {
