@@ -662,8 +662,7 @@ fn link_dwarf_object<'a>(
     }) {
         Ok(()) => {}
         Err(e) => {
-            let thorin_error = errors::ThorinErrorWrapper(e);
-            sess.emit_err(errors::ThorinDwarfLinking { thorin_error });
+            sess.emit_err(errors::ThorinErrorWrapper(e));
             sess.abort_if_errors();
         }
     }
