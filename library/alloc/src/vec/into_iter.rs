@@ -95,13 +95,16 @@ impl<T, A: Allocator> IntoIter<T, A> {
     }
 
     /// Drops remaining elements and relinquishes the backing allocation.
+    /// This method guarantees it won't panic before relinquishing
+    /// the backing allocation.
     ///
     /// This is roughly equivalent to the following, but more efficient
     ///
     /// ```
     /// # let mut into_iter = Vec::<u8>::with_capacity(10).into_iter();
+    /// let mut into_iter = std::mem::replace(&mut into_iter, Vec::new().into_iter());
     /// (&mut into_iter).for_each(core::mem::drop);
-    /// unsafe { core::ptr::write(&mut into_iter, Vec::new().into_iter()); }
+    /// std::mem::forget(into_iter);
     /// ```
     ///
     /// This method is used by in-place iteration, refer to the vec::in_place_collect
@@ -118,6 +121,8 @@ impl<T, A: Allocator> IntoIter<T, A> {
         self.ptr = self.buf.as_ptr();
         self.end = self.buf.as_ptr();
 
+        // Dropping the remaining elements can panic, so this needs to be
+        // done only after updating the other fields.
         unsafe {
             ptr::drop_in_place(remaining);
         }

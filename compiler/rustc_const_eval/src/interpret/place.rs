@@ -640,11 +640,17 @@ where
         // avoid force_allocation.
         let src = match self.read_immediate_raw(src)? {
             Ok(src_val) => {
-                assert!(!src.layout.is_unsized(), "cannot copy unsized immediates");
-                assert!(
-                    !dest.layout.is_unsized(),
-                    "the src is sized, so the dest must also be sized"
-                );
+                // FIXME(const_prop): Const-prop can possibly evaluate an
+                // unsized copy operation when it thinks that the type is
+                // actually sized, due to a trivially false where-clause
+                // predicate like `where Self: Sized` with `Self = dyn Trait`.
+                // See #102553 for an example of such a predicate.
+                if src.layout.is_unsized() {
+                    throw_inval!(SizeOfUnsizedType(src.layout.ty));
+                }
+                if dest.layout.is_unsized() {
+                    throw_inval!(SizeOfUnsizedType(dest.layout.ty));
+                }
                 assert_eq!(src.layout.size, dest.layout.size);
                 // Yay, we got a value that we can write directly.
                 return if layout_compat {
