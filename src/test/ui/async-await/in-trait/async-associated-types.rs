@@ -6,7 +6,7 @@
 use std::fmt::Debug;
 
 trait MyTrait<'a, 'b, T> where Self: 'a, T: Debug + Sized + 'b {
-    type MyAssoc;// = (&'a T, &'b U);
+    type MyAssoc;
 
     async fn foo(&'a self, key: &'b T) -> Self::MyAssoc;
 }
