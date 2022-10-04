@@ -1,6 +1,7 @@
 #![feature(const_trait_impl)]
 #![feature(associated_type_bounds)]
 
+#[const_trait]
 trait T {}
 struct S;
 impl T for S {}

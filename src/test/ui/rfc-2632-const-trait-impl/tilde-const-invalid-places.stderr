@@ -1,5 +1,5 @@
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:8:19
+  --> $DIR/tilde-const-invalid-places.rs:9:19
    |
 LL | fn rpit() -> impl ~const T { S }
    |                   ^^^^^^^^
@@ -7,7 +7,7 @@ LL | fn rpit() -> impl ~const T { S }
    = note: only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:11:17
+  --> $DIR/tilde-const-invalid-places.rs:12:17
    |
 LL | fn apit(_: impl ~const T) {}
    |                 ^^^^^^^^
@@ -15,7 +15,7 @@ LL | fn apit(_: impl ~const T) {}
    = note: only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:14:50
+  --> $DIR/tilde-const-invalid-places.rs:15:50
    |
 LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
    |                                                  ^^^^^^^^
@@ -23,7 +23,7 @@ LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
    = note: only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:17:48
+  --> $DIR/tilde-const-invalid-places.rs:18:48
    |
 LL | fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T>) {}
    |                                                ^^^^^^^^
@@ -31,7 +31,7 @@ LL | fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T>) {}
    = note: only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions
 
 error: `~const` and `?` are mutually exclusive
-  --> $DIR/tilde-const-invalid-places.rs:20:25
+  --> $DIR/tilde-const-invalid-places.rs:21:25
    |
 LL | struct TildeQuestion<T: ~const ?Sized>(std::marker::PhantomData<T>);
    |                         ^^^^^^^^^^^^^

@@ -191,32 +191,6 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let tcx = self.tcx;
-        if let hir::ItemKind::Impl(hir::Impl {
-            constness: hir::Constness::Const,
-            of_trait: Some(trait_ref),
-            ..
-        }) = item.kind
-            && let Some(def_id) = trait_ref.trait_def_id()
-        {
-            let source_map = tcx.sess.source_map();
-            if !tcx.has_attr(def_id, sym::const_trait) {
-                tcx.sess
-                    .struct_span_err(
-                        source_map.guess_head_span(item.span),
-                        "const `impl`s must be for traits marked with `#[const_trait]`",
-                    )
-                    .span_note(
-                        source_map.guess_head_span(tcx.def_span(def_id)),
-                        "this trait must be annotated with `#[const_trait]`",
-                    )
-                    .emit();
-            }
-        }
-        intravisit::walk_item(self, item);
-    }
-
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {
         let kind = Some(hir::ConstContext::Const);
         self.recurse_into(kind, None, |this| intravisit::walk_anon_const(this, anon));
