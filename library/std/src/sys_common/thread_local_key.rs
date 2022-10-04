@@ -113,11 +113,6 @@ pub struct Key {
     key: imp::Key,
 }
 
-/// Constant initialization value for static TLS keys.
-///
-/// This value specifies no destructor by default.
-pub const INIT: StaticKey = StaticKey::new(None);
-
 impl StaticKey {
     #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
     pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> StaticKey {
@@ -170,24 +165,9 @@ impl StaticKey {
             return key;
         }
 
-        // POSIX allows the key created here to be 0, but the compare_exchange
-        // below relies on using 0 as a sentinel value to check who won the
-        // race to set the shared TLS key. As far as I know, there is no
-        // guaranteed value that cannot be returned as a posix_key_create key,
-        // so there is no value we can initialize the inner key with to
-        // prove that it has not yet been set. As such, we'll continue using a
-        // value of 0, but with some gyrations to make sure we have a non-0
-        // value returned from the creation routine.
-        // FIXME: this is clearly a hack, and should be cleaned up.
-        let key1 = imp::create(self.dtor);
-        let key = if key1 != 0 {
-            key1
-        } else {
-            let key2 = imp::create(self.dtor);
-            imp::destroy(key1);
-            key2
-        };
-        rtassert!(key != 0);
+        let key = imp::create(self.dtor);
+        // Implementations have to ensure key values are not zero.
+        debug_assert_ne!(key, 0);
         match self.key.compare_exchange(0, key as usize, Ordering::SeqCst, Ordering::SeqCst) {
             // The CAS succeeded, so we've created the actual key
             Ok(_) => key as usize,
