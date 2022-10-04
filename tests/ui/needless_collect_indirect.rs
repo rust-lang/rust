@@ -1,3 +1,5 @@
+#![allow(clippy::uninlined_format_args)]
+
 use std::collections::{BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 
 fn main() {

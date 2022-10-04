@@ -1,14 +1,14 @@
 // run-rustfix
-
-#![allow(
-    unused,
-    clippy::no_effect,
-    clippy::redundant_closure_call,
-    clippy::needless_pass_by_value,
-    clippy::option_map_unit_fn,
-    clippy::needless_borrow
-)]
 #![warn(clippy::redundant_closure, clippy::redundant_closure_for_method_calls)]
+#![allow(unused)]
+#![allow(
+    clippy::needless_borrow,
+    clippy::needless_pass_by_value,
+    clippy::no_effect,
+    clippy::option_map_unit_fn,
+    clippy::redundant_closure_call,
+    clippy::uninlined_format_args
+)]
 
 use std::path::{Path, PathBuf};
 

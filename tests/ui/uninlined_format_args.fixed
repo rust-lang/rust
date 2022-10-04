@@ -1,12 +1,8 @@
 // run-rustfix
-
-#![allow(clippy::eq_op)]
-#![allow(clippy::format_in_format_args)]
-#![allow(clippy::print_literal)]
-#![allow(named_arguments_used_positionally)]
-#![allow(unused_variables, unused_imports, unused_macros)]
-#![warn(clippy::uninlined_format_args)]
 #![feature(custom_inner_attributes)]
+#![warn(clippy::uninlined_format_args)]
+#![allow(named_arguments_used_positionally, unused_imports, unused_macros, unused_variables)]
+#![allow(clippy::eq_op, clippy::format_in_format_args, clippy::print_literal)]
 
 macro_rules! no_param_str {
     () => {
