@@ -87,8 +87,8 @@ pub trait ValueAnalysis<'tcx> {
                 // But discriminants are currently not tracked, so we do nothing.
                 // Related: https://github.com/rust-lang/unsafe-code-guidelines/issues/84
             }
-            StatementKind::CopyNonOverlapping(..) => {
-                // FIXME: What to do here?
+            StatementKind::Intrinsic(box intrinsic) => {
+                self.handle_intrinsic(intrinsic, state);
             }
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 // It is UB to read from an unitialized or unallocated local.
@@ -104,6 +104,22 @@ pub trait ValueAnalysis<'tcx> {
             | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..) => (),
         }
+    }
+
+    fn handle_intrinsic(
+        &self,
+        intrinsic: &NonDivergingIntrinsic<'tcx>,
+        state: &mut State<Self::Value>,
+    ) {
+        self.super_intrinsic(intrinsic, state);
+    }
+
+    fn super_intrinsic(
+        &self,
+        _intrinsic: &NonDivergingIntrinsic<'tcx>,
+        _state: &mut State<Self::Value>,
+    ) {
+        todo!();
     }
 
     fn handle_assign(

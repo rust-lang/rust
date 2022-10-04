@@ -16,7 +16,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:9: +2:10
           StorageLive(_2);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:30
           StorageLive(_3);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
-          _3 = const FOO;                  // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
+          _3 = const _;                    // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
                                            // mir::Constant
                                            // + span: $DIR/const_prop_fails_gracefully.rs:8:13: 8:16
                                            // + literal: Const { ty: &i32, val: Unevaluated(FOO, [], None) }

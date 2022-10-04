@@ -52,7 +52,7 @@
           _6 = &mut _5;                    // scope 5 at $DIR/ref_mut.rs:+8:13: +8:19
           StorageLive(_7);                 // scope 6 at $DIR/ref_mut.rs:+9:10: +9:12
           StorageLive(_8);                 // scope 6 at $DIR/ref_mut.rs:+9:10: +9:12
-          _11 = const main::promoted[0];   // scope 6 at $DIR/ref_mut.rs:+9:10: +9:12
+          _11 = const _;                   // scope 6 at $DIR/ref_mut.rs:+9:10: +9:12
                                            // mir::Constant
                                            // + span: $DIR/ref_mut.rs:13:10: 13:12
                                            // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[0])) }
