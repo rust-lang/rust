@@ -499,7 +499,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         debug_assert!(
             mir_assign_valid_types(
                 *self.tcx,
-                self.param_env,
+                self.param_env(),
                 self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
                     mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty
                 )?)?,
@@ -570,7 +570,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let cid = GlobalId { instance, promoted: None };
                         let _valtree = self
                             .tcx
-                            .eval_to_valtree(self.param_env.and(cid))?
+                            .eval_to_valtree(self.param_env().and(cid))?
                             .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"));
 
                         Ok(self.eval_to_allocation(cid)?.into())
@@ -606,7 +606,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Scalar::Int(int) => Scalar::Int(int),
             })
         };
-        let layout = from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty))?;
+        let layout = from_known_layout(self.tcx, self.param_env(), layout, || self.layout_of(ty))?;
         let op = match val_val {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.create_memory_alloc(alloc);

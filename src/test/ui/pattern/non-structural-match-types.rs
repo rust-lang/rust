@@ -9,6 +9,7 @@ fn main() {
         const { || {} } => {}, //~ ERROR cannot be used in patterns
     }
     match loop {} {
-        const { async {} } => {}, //~ ERROR cannot be used in patterns
+        const { async {} } => {},
+        //~^ ERROR `impl Future<Output = ()>` cannot be used in patterns
     }
 }

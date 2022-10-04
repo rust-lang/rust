@@ -426,7 +426,7 @@ where
         debug_assert!(
             mir_assign_valid_types(
                 *self.tcx,
-                self.param_env,
+                self.param_env(),
                 self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
                     mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty
                 )?)?,
@@ -626,7 +626,7 @@ where
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
         let layout_compat =
-            mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout);
+            mir_assign_valid_types(*self.tcx, self.param_env(), src.layout, dest.layout);
         if !allow_transmute && !layout_compat {
             span_bug!(
                 self.cur_span(),

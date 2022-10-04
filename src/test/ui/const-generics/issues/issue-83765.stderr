@@ -10,11 +10,11 @@ note: ...which requires computing candidate for `<LazyUpdim<'_, T, { T::DIM }, D
 LL | trait TensorDimension {
    | ^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires resolving instance `<LazyUpdim<'_, T, { T::DIM }, DIM> as TensorDimension>::DIM`, completing the cycle
-note: cycle used when computing candidate for `<LazyUpdim<'_, T, { T::DIM }, DIM> as TensorDimension>`
-  --> $DIR/issue-83765.rs:4:1
+note: cycle used when const-evaluating + checking `TensorSize::size::{constant#0}`
+  --> $DIR/issue-83765.rs:16:31
    |
-LL | trait TensorDimension {
-   | ^^^^^^^^^^^^^^^^^^^^^
+LL |     fn size(&self) -> [usize; Self::DIM];
+   |                               ^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -2175,17 +2175,13 @@ impl<'tcx> ConstantKind<'tcx> {
             Self::Ty(ct) => ct.try_eval_bits(tcx, param_env, ty),
             Self::Val(val, t) => {
                 assert_eq!(*t, ty);
-                let size =
-                    tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
+                let size = tcx.layout_of(param_env.and(ty)).ok()?.size;
                 val.try_to_bits(size)
             }
             Self::Unevaluated(uneval, ty) => {
                 match tcx.const_eval_resolve(param_env, *uneval, None) {
                     Ok(val) => {
-                        let size = tcx
-                            .layout_of(param_env.with_reveal_all_normalized(tcx).and(*ty))
-                            .ok()?
-                            .size;
+                        let size = tcx.layout_of(param_env.and(*ty)).ok()?.size;
                         val.try_to_bits(size)
                     }
                     Err(_) => None,

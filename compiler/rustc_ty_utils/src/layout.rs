@@ -35,7 +35,6 @@ fn layout_of<'tcx>(
     let (param_env, ty) = query.into_parts();
     debug!(?ty);
 
-    let param_env = param_env.with_reveal_all_normalized(tcx);
     let unnormalized_ty = ty;
 
     // FIXME: We might want to have two different versions of `layout_of`:
@@ -48,6 +47,8 @@ fn layout_of<'tcx>(
             return Err(LayoutError::NormalizationFailure(ty, normalization_error));
         }
     };
+
+    let (param_env, ty) = tcx.reveal_opaque_types_in_value(param_env, ty);
 
     if ty != unnormalized_ty {
         // Ensure this layout is also cached for the normalized type.
@@ -1335,13 +1336,13 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Types with no meaningful known layout.
-        ty::Projection(_) | ty::Opaque(..) => {
+        ty::Projection(_) => {
             // NOTE(eddyb) `layout_of` query should've normalized these away,
             // if that was possible, so there's no reason to try again here.
             return Err(LayoutError::Unknown(ty));
         }
 
-        ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Infer(_) => {
+        ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Infer(_) | ty::Opaque(..) => {
             bug!("Layout::compute: unexpected type `{}`", ty)
         }
 

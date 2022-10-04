@@ -136,7 +136,6 @@ fn resolve_associated_item<'tcx>(
                 });
 
             let substs = tcx.infer_ctxt().enter(|infcx| {
-                let param_env = param_env.with_reveal_all_normalized(tcx);
                 let substs = rcvr_substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
                 let substs = translate_substs(
                     &infcx,
@@ -173,7 +172,11 @@ fn resolve_associated_item<'tcx>(
 
             // If the item does not have a value, then we cannot return an instance.
             if !leaf_def.item.defaultness(tcx).has_value() {
-                return Ok(None);
+                let guard = tcx.sess.delay_span_bug(
+                    tcx.def_span(leaf_def.item.def_id),
+                    "missing value for assoc item in impl",
+                );
+                return Err(guard);
             }
 
             let substs = tcx.erase_regions(substs);

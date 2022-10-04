@@ -37,7 +37,9 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub tcx: TyCtxtAt<'tcx>,
 
     /// Bounds in scope for polymorphic evaluations.
-    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    ///
+    /// This has to be mutable as we may only lazily reveal opaque types.
+    pub(crate) param_env: Cell<ty::ParamEnv<'tcx>>,
 
     /// The virtual memory system.
     pub memory: Memory<'mir, 'tcx, M>,
@@ -298,7 +300,7 @@ where
     M: Machine<'mir, 'tcx>,
 {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+        self.param_env.get()
     }
 }
 
@@ -405,7 +407,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         InterpCx {
             machine,
             tcx: tcx.at(root_span),
-            param_env,
+            param_env: Cell::new(param_env),
             memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
         }
@@ -416,6 +418,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
         // more than just panics.
         self.stack().last().map_or(self.tcx.span, |f| f.current_span())
+    }
+
+    #[inline(always)]
+    pub fn param_env(&self) -> ParamEnv<'tcx> {
+        self.param_env.get()
     }
 
     #[inline(always)]
@@ -465,7 +472,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, self.param_env)
+        ty.is_freeze(self.tcx, self.param_env())
+    }
+
+    pub fn reveal_opaque_types_in_value<T: TypeFoldable<'tcx>>(&self, value: T) -> T {
+        let (param_env, value) = self.tcx.reveal_opaque_types_in_value(self.param_env.get(), value);
+        self.param_env.set(param_env);
+        value
     }
 
     pub fn load_mir(
@@ -505,7 +518,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> Result<T, InterpError<'tcx>> {
         frame
             .instance
-            .try_subst_mir_and_normalize_erasing_regions(*self.tcx, self.param_env, value)
+            .try_subst_mir_and_normalize_erasing_regions(*self.tcx, self.param_env(), value)
+            .map(|value| {
+                let (param_env, value) =
+                    self.tcx.reveal_opaque_types_in_value(self.param_env.get(), value);
+                self.param_env.set(param_env);
+                value
+            })
             .map_err(|e| {
                 self.tcx.sess.delay_span_bug(
                     self.cur_span(),
@@ -517,15 +536,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
+    #[instrument(level = "trace", skip(self), fields(param_env = ?self.param_env), ret)]
     pub(super) fn resolve(
         &self,
         def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
-        trace!("resolve: {:?}, {:#?}", def, substs);
-        trace!("param_env: {:#?}", self.param_env);
-        trace!("substs: {:#?}", substs);
-        match ty::Instance::resolve_opt_const_arg(*self.tcx, self.param_env, def, substs) {
+        match ty::Instance::resolve_opt_const_arg(*self.tcx, self.param_env(), def, substs) {
             Ok(Some(instance)) => Ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
@@ -545,7 +562,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // have to support that case (mostly by skipping all caching).
         match frame.locals.get(local).and_then(|state| state.layout.get()) {
             None => {
-                let layout = from_known_layout(self.tcx, self.param_env, layout, || {
+                let layout = from_known_layout(self.tcx, self.param_env(), layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty =
                         self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
@@ -914,7 +931,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let param_env = if self.tcx.is_static(gid.instance.def_id()) {
             ty::ParamEnv::reveal_all()
         } else {
-            self.param_env
+            self.param_env()
         };
         let param_env = param_env.with_const();
         // Use a precise span for better cycle errors.

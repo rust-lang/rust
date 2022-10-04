@@ -64,7 +64,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,
-                            self.param_env,
+                            self.param_env(),
                             def_id,
                             substs,
                         )
@@ -301,14 +301,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         // A<Struct> -> A<Trait> conversion
         let (src_pointee_ty, dest_pointee_ty) =
-            self.tcx.struct_lockstep_tails_erasing_lifetimes(source_ty, cast_ty, self.param_env);
+            self.tcx.struct_lockstep_tails_erasing_lifetimes(source_ty, cast_ty, self.param_env());
 
         match (&src_pointee_ty.kind(), &dest_pointee_ty.kind()) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_scalar(src)?;
                 // u64 cast is from usize to u64, which is always good
                 let val =
-                    Immediate::new_slice(ptr, length.eval_usize(*self.tcx, self.param_env), self);
+                    Immediate::new_slice(ptr, length.eval_usize(*self.tcx, self.param_env()), self);
                 self.write_immediate(val, dest)
             }
             (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {

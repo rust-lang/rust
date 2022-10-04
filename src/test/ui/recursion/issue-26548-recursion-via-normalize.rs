@@ -1,10 +1,10 @@
-//~ ERROR cycle detected when computing layout of `core::option::Option<S>`
+//~ ERROR  cycle detected when computing layout of `core::option::Option<<S as Mirror>::It>`
+//~| NOTE ...which requires computing layout of `core::option::Option<S>`...
 //~| NOTE ...which requires computing layout of `S`...
-//~| NOTE ...which requires computing layout of `core::option::Option<<S as Mirror>::It>`...
-//~| NOTE ...which again requires computing layout of `core::option::Option<S>`, completing the cycle
-//~| NOTE cycle used when computing layout of `core::option::Option<<S as Mirror>::It>`
+//~| NOTE ...which again requires computing layout of `core::option::Option<<S as Mirror>::It>`, completing the cycle
 
 trait Mirror {
+    //~^ NOTE cycle used when checking deathness of variables in top-level module
     type It: ?Sized;
 }
 impl<T: ?Sized> Mirror for T {

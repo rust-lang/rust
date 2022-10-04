@@ -1622,27 +1622,6 @@ impl<'tcx> ParamEnv<'tcx> {
         *self = self.with_constness(constness.and(self.constness()))
     }
 
-    /// Returns a new parameter environment with the same clauses, but
-    /// which "reveals" the true results of projections in all cases
-    /// (even for associated types that are specializable). This is
-    /// the desired behavior during codegen and certain other special
-    /// contexts; normally though we want to use `Reveal::UserFacing`,
-    /// which is the default.
-    /// All opaque types in the caller_bounds of the `ParamEnv`
-    /// will be normalized to their underlying types.
-    /// See PR #65989 and issue #65918 for more details
-    pub fn with_reveal_all_normalized(self, tcx: TyCtxt<'tcx>) -> Self {
-        if self.packed.tag().reveal == traits::Reveal::All {
-            return self;
-        }
-
-        ParamEnv::new(
-            tcx.normalize_opaque_types(self.caller_bounds()),
-            Reveal::All,
-            self.constness(),
-        )
-    }
-
     /// Returns this same environment but with no caller bounds.
     #[inline]
     pub fn without_caller_bounds(self) -> Self {

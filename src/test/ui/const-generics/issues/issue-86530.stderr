@@ -1,3 +1,12 @@
+error: unable to use constant with a hidden value in the type system
+  --> $DIR/issue-86530.rs:16:5
+   |
+LL |     z(" ");
+   |     ^
+   |
+   = note: this most often happens when trying to look into an opaque type
+   = note: the type system cannot access the hidden type of opaque types
+
 error[E0277]: the trait bound `&str: X` is not satisfied
   --> $DIR/issue-86530.rs:16:7
    |
@@ -15,6 +24,6 @@ LL | where
 LL |     T: X,
    |        ^ required by this bound in `z`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

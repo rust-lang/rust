@@ -14,4 +14,5 @@ fn test<T, const P: usize>() where Bool<{core::mem::size_of::<T>() > 4}>: True {
 fn main() {
     test::<2>();
     //~^ ERROR this function takes 2 generic arguments
+    //~| ERROR unable to use constant with a hidden value in the type system
 }

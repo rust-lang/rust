@@ -15,6 +15,7 @@ where
 fn unit_literals() {
     z(" ");
     //~^ ERROR: the trait bound `&str: X` is not satisfied
+    //~| ERROR: unable to use constant with a hidden value in the type system
 }
 
 fn main() {}

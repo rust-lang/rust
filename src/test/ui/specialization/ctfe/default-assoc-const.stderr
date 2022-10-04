@@ -1,0 +1,33 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/default-assoc-const.rs:4:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/default-assoc-const.rs:17:5
+   |
+LL | fn foo() -> [u8; 0] {
+   |             ------- expected `[u8; 0]` because of return type
+LL |     [0; <u32 as Foo>::ASSOC]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ expected `0`, found `<u32 as Foo>::ASSOC`
+   |
+   = note: expected array `[u8; 0]`
+              found array `[u8; _]`
+
+error: unable to use constant with a hidden value in the type system
+  --> $DIR/default-assoc-const.rs:17:9
+   |
+LL |     [0; <u32 as Foo>::ASSOC]
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this most often happens when trying to look into an opaque type
+   = note: the type system cannot access the hidden type of opaque types
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

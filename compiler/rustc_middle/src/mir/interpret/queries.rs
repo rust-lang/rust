@@ -20,7 +20,9 @@ impl<'tcx> TyCtxt<'tcx> {
         let substs = InternalSubsts::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, substs);
         let cid = GlobalId { instance, promoted: None };
-        let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
+        // This function isn't used in the type system, so we're free to use
+        // `param_env_reveal_all_normalized` here.
+        let param_env = self.param_env_reveal_all_normalized(def_id);
         self.const_eval_global_id(param_env, cid, None)
     }
     /// Resolves and evaluates a constant.
@@ -188,8 +190,9 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         let substs = InternalSubsts::identity_for_item(self.tcx, def_id);
         let instance = ty::Instance::new(def_id, substs);
         let cid = GlobalId { instance, promoted: None };
-        let param_env =
-            self.tcx.param_env(def_id).with_reveal_all_normalized(self.tcx).with_const();
+        // This function isn't used in the type system, so we're free to use
+        // `param_env_reveal_all_normalized` here.
+        let param_env = self.tcx.param_env_reveal_all_normalized(def_id).with_const();
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.tcx.erase_regions(param_env.and(cid));

@@ -1,6 +1,7 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::mir;
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::{
@@ -12,6 +13,7 @@ use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -645,6 +647,79 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let expanded_type = visitor.expand_opaque_ty(def_id, substs).unwrap();
         if visitor.found_recursion { Err(expanded_type) } else { Ok(expanded_type) }
+    }
+
+    /// Only reveals the opaque types in `value` while keeping other opaque types
+    /// in the `param_env` opaque.
+    ///
+    /// This is used to allow the use of opaque types in const evaluation and layout
+    /// computation without causing cycles by revealing unrelated opaque types in
+    /// the environment.
+    pub fn reveal_opaque_types_in_value<T: TypeFoldable<'tcx>>(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        value: T,
+    ) -> (ty::ParamEnv<'tcx>, T) {
+        if !value.has_opaque_types() {
+            return (param_env, value);
+        }
+
+        struct GatherAndReveal<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            should_gather: bool,
+            to_reveal: SmallVec<[DefId; 1]>,
+            cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
+        }
+        impl<'tcx> TypeFolder<'tcx> for GatherAndReveal<'tcx> {
+            fn tcx(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                if t.has_opaque_types() {
+                    if let Some(&value) = self.cache.get(&t) {
+                        return value;
+                    }
+
+                    let result = match t.kind() {
+                        &ty::Opaque(def_id, substs) if self.should_gather => {
+                            if !self.to_reveal.contains(&def_id) {
+                                self.to_reveal.push(def_id);
+                            }
+                            self.tcx.bound_type_of(def_id).subst(self.tcx, substs.fold_with(self))
+                        }
+                        &ty::Opaque(def_id, substs) if self.to_reveal.contains(&def_id) => {
+                            self.tcx.bound_type_of(def_id).subst(self.tcx, substs.fold_with(self))
+                        }
+                        _ => t.super_fold_with(self),
+                    };
+                    self.cache.insert(t, result);
+                    result
+                } else {
+                    t
+                }
+            }
+
+            fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+                if p.has_opaque_types() { p.super_fold_with(self) } else { p }
+            }
+
+            fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+                c.super_fold_with(self)
+            }
+        }
+
+        let mut folder = GatherAndReveal {
+            tcx: self,
+            should_gather: true,
+            to_reveal: Default::default(),
+            cache: Default::default(),
+        };
+
+        let value = value.fold_with(&mut folder);
+        folder.should_gather = false;
+        let param_env = param_env.fold_with(&mut folder);
+        (param_env, value)
     }
 
     pub fn bound_type_of(self, def_id: DefId) -> ty::EarlyBinder<Ty<'tcx>> {

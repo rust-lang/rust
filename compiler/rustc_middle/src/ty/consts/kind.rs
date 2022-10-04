@@ -179,16 +179,7 @@ impl<'tcx> ConstKind<'tcx> {
         if let ConstKind::Unevaluated(unevaluated) = self {
             use crate::mir::interpret::ErrorHandled;
 
-            // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
-            // also does later, but we want to do it before checking for
-            // inference variables.
-            // Note that we erase regions *before* calling `with_reveal_all_normalized`,
-            // so that we don't try to invoke this query with
-            // any region variables.
-            let param_env_and = tcx
-                .erase_regions(param_env)
-                .with_reveal_all_normalized(tcx)
-                .and(tcx.erase_regions(unevaluated));
+            let param_env_and = tcx.erase_regions(param_env).and(tcx.erase_regions(unevaluated));
 
             // HACK(eddyb) when the query key would contain inference variables,
             // attempt using identity substs and `ParamEnv` instead, that will succeed

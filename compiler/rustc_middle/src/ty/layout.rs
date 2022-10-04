@@ -246,6 +246,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
     ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
         debug_assert!(!ty.has_infer_types_or_consts());
 
+        let (param_env, ty) = tcx.reveal_opaque_types_in_value(param_env, ty);
+
         // First try computing a static layout.
         let err = match tcx.layout_of(param_env.and(ty)) {
             Ok(layout) => {
@@ -337,7 +339,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            ty::Projection(_) | ty::Opaque(..) => {
+            ty::Projection(_) => {
                 let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     Err(err)

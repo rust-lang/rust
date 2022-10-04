@@ -15,8 +15,8 @@
           StorageLive(_2);                 // scope 0 at $DIR/issue-78442.rs:+4:5: +4:17
           StorageLive(_3);                 // scope 0 at $DIR/issue-78442.rs:+4:5: +4:15
           StorageLive(_4);                 // scope 0 at $DIR/issue-78442.rs:+4:5: +4:15
--         _4 = hide_foo() -> [return: bb1, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:+4:5: +4:15
-+         _4 = hide_foo() -> [return: bb1, unwind: bb3]; // scope 0 at $DIR/issue-78442.rs:+4:5: +4:15
+-         _4 = hide_foo() -> [return: bb1, unwind: bb6]; // scope 0 at $DIR/issue-78442.rs:+4:5: +4:15
++         _4 = hide_foo() -> [return: bb1, unwind: bb5]; // scope 0 at $DIR/issue-78442.rs:+4:5: +4:15
                                            // mir::Constant
                                            // + span: $DIR/issue-78442.rs:11:5: 11:13
                                            // + literal: Const { ty: fn() -> impl Fn() {hide_foo}, val: Value(<ZST>) }
@@ -26,43 +26,52 @@
           _3 = &_4;                        // scope 0 at $DIR/issue-78442.rs:+4:5: +4:15
           StorageLive(_5);                 // scope 0 at $DIR/issue-78442.rs:+4:5: +4:17
           Deinit(_5);                      // scope 0 at $DIR/issue-78442.rs:+4:5: +4:17
--         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:+4:5: +4:17
+-         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/issue-78442.rs:+4:5: +4:17
 -                                          // mir::Constant
 -                                          // + span: $DIR/issue-78442.rs:11:5: 11:15
 -                                          // + literal: Const { ty: for<'a> extern "rust-call" fn(&'a fn() {foo}, ()) -> <fn() {foo} as FnOnce<()>>::Output {<fn() {foo} as Fn<()>>::call}, val: Value(<ZST>) }
-+         _2 = move (*_3)() -> [return: bb5, unwind: bb3]; // scope 1 at $SRC_DIR/core/src/ops/function.rs:LL:COL
++         _2 = move (*_3)() -> [return: bb7, unwind: bb4]; // scope 1 at $SRC_DIR/core/src/ops/function.rs:LL:COL
       }
   
       bb2: {
 -         StorageDead(_5);                 // scope 0 at $DIR/issue-78442.rs:+4:16: +4:17
 -         StorageDead(_3);                 // scope 0 at $DIR/issue-78442.rs:+4:16: +4:17
--         StorageDead(_4);                 // scope 0 at $DIR/issue-78442.rs:+4:17: +4:18
--         StorageDead(_2);                 // scope 0 at $DIR/issue-78442.rs:+4:17: +4:18
--         _0 = const ();                   // scope 0 at $DIR/issue-78442.rs:+3:3: +5:2
--         drop(_1) -> [return: bb3, unwind: bb5]; // scope 0 at $DIR/issue-78442.rs:+5:1: +5:2
-+         return;                          // scope 0 at $DIR/issue-78442.rs:+5:2: +5:2
-      }
-  
+-         drop(_4) -> [return: bb3, unwind: bb6]; // scope 0 at $DIR/issue-78442.rs:+4:17: +4:18
+-     }
+- 
 -     bb3: {
--         return;                          // scope 0 at $DIR/issue-78442.rs:+5:2: +5:2
-+     bb3 (cleanup): {
-+         drop(_1) -> bb4;                 // scope 0 at $DIR/issue-78442.rs:+5:1: +5:2
+          StorageDead(_4);                 // scope 0 at $DIR/issue-78442.rs:+4:17: +4:18
+          StorageDead(_2);                 // scope 0 at $DIR/issue-78442.rs:+4:17: +4:18
+          _0 = const ();                   // scope 0 at $DIR/issue-78442.rs:+3:3: +5:2
+-         drop(_1) -> [return: bb4, unwind: bb7]; // scope 0 at $DIR/issue-78442.rs:+5:1: +5:2
++         drop(_1) -> [return: bb3, unwind: bb6]; // scope 0 at $DIR/issue-78442.rs:+5:1: +5:2
       }
   
-      bb4 (cleanup): {
--         drop(_1) -> bb5;                 // scope 0 at $DIR/issue-78442.rs:+5:1: +5:2
+-     bb4: {
++     bb3: {
+          return;                          // scope 0 at $DIR/issue-78442.rs:+5:2: +5:2
+      }
+  
++     bb4 (cleanup): {
++         drop(_4) -> bb5;                 // scope 0 at $DIR/issue-78442.rs:+4:17: +4:18
++     }
++ 
+      bb5 (cleanup): {
+-         drop(_4) -> bb6;                 // scope 0 at $DIR/issue-78442.rs:+4:17: +4:18
++         drop(_1) -> bb6;                 // scope 0 at $DIR/issue-78442.rs:+5:1: +5:2
+      }
+  
+      bb6 (cleanup): {
+-         drop(_1) -> bb7;                 // scope 0 at $DIR/issue-78442.rs:+5:1: +5:2
 +         resume;                          // scope 0 at $DIR/issue-78442.rs:+0:1: +5:2
       }
   
--     bb5 (cleanup): {
+-     bb7 (cleanup): {
 -         resume;                          // scope 0 at $DIR/issue-78442.rs:+0:1: +5:2
-+     bb5: {
++     bb7: {
 +         StorageDead(_5);                 // scope 0 at $DIR/issue-78442.rs:+4:16: +4:17
 +         StorageDead(_3);                 // scope 0 at $DIR/issue-78442.rs:+4:16: +4:17
-+         StorageDead(_4);                 // scope 0 at $DIR/issue-78442.rs:+4:17: +4:18
-+         StorageDead(_2);                 // scope 0 at $DIR/issue-78442.rs:+4:17: +4:18
-+         _0 = const ();                   // scope 0 at $DIR/issue-78442.rs:+3:3: +5:2
-+         drop(_1) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:+5:1: +5:2
++         drop(_4) -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/issue-78442.rs:+4:17: +4:18
       }
   }
   

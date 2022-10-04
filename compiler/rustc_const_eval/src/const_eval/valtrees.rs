@@ -162,7 +162,7 @@ fn create_mplace_from_layout<'tcx>(
     ty: Ty<'tcx>,
 ) -> MPlaceTy<'tcx> {
     let tcx = ecx.tcx;
-    let param_env = ecx.param_env;
+    let param_env = ecx.param_env();
     let layout = tcx.layout_of(param_env.and(ty)).unwrap();
     debug!(?layout);
 

@@ -73,7 +73,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
                 let fn_sig =
-                    self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
+                    self.tcx.normalize_erasing_late_bound_regions(self.param_env(), fn_sig_binder);
                 let extra_args = &args[fn_sig.inputs().len()..];
                 let extra_args = self.tcx.mk_type_list(extra_args.iter().map(|arg| arg.layout.ty));
 
@@ -86,6 +86,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::FnDef(def_id, substs) => {
                         let instance =
                             self.resolve(ty::WithOptConstParam::unknown(def_id), substs)?;
+                        let instance = self.reveal_opaque_types_in_value(instance);
                         (
                             FnVal::Instance(instance),
                             self.fn_abi_of_instance(instance, extra_args)?,
@@ -563,7 +564,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Obtain the underlying trait we are working on.
                 let receiver_tail = self
                     .tcx
-                    .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
+                    .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env());
                 let ty::Dynamic(data, ..) = receiver_tail.kind() else {
                     span_bug!(self.cur_span(), "dynamic call on non-`dyn` type {}", receiver_tail)
                 };
@@ -599,7 +600,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                     let concrete_method = Instance::resolve_for_vtable(
                         tcx,
-                        self.param_env,
+                        self.param_env(),
                         def_id,
                         instance.substs.rebase_onto(tcx, trait_def_id, concrete_trait_ref.substs),
                     )

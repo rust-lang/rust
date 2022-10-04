@@ -71,13 +71,17 @@ pub enum Reveal {
     /// Also, `impl Trait` is normalized to the concrete type,
     /// which has to be already collected by type-checking.
     ///
-    /// NOTE: as `impl Trait`'s concrete type should *never*
-    /// be observable directly by the user, `Reveal::All`
-    /// should not be used by checks which may expose
-    /// type equality or type contents to the user.
-    /// There are some exceptions, e.g., around auto traits and
-    /// transmute-checking, which expose some details, but
-    /// not the whole concrete type of the `impl Trait`.
+    /// **This should not be used at any point before borrowck**
+    ///
+    /// The concrete type of an opaque type should *never*
+    /// be observable directly by the user and doing so can cause
+    /// cycles if done before borrowck. Therefore, `Reveal::All`
+    /// should not be used by checks which may expose type equality
+    /// or type contents to the user.
+    ///
+    /// There are some places where we do observe some details about
+    /// the concrete type of opaque types, e.g., around auto traits and
+    /// transmute-checking, but these shouldn't rely on `Reveal::All`.
     All,
 }
 
