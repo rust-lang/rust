@@ -313,7 +313,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             tainted_by_errors,
         };
-        body.is_polymorphic = body.has_param_types_or_consts();
+        body.is_polymorphic = body.has_non_region_param();
         body
     }
 
@@ -339,7 +339,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             tainted_by_errors: None,
         };
-        body.is_polymorphic = body.has_param_types_or_consts();
+        body.is_polymorphic = body.has_non_region_param();
         body
     }
 
@@ -2760,7 +2760,7 @@ fn pretty_print_const_value<'tcx>(
             }
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
             //
-            // NB: the `has_param_types_or_consts` check ensures that we can use
+            // NB: the `has_non_region_param` check ensures that we can use
             // the `destructure_const` query with an empty `ty::ParamEnv` without
             // introducing ICEs (e.g. via `layout_of`) from missing bounds.
             // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
@@ -2768,7 +2768,7 @@ fn pretty_print_const_value<'tcx>(
             //
             // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
             // correct `ty::ParamEnv` to allow printing *all* constant values.
-            (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_param_types_or_consts() => {
+            (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_non_region_param() => {
                 let ct = tcx.lift(ct).unwrap();
                 let ty = tcx.lift(ty).unwrap();
                 if let Some(contents) = tcx.try_destructure_mir_constant(

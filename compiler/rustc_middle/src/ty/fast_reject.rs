@@ -132,7 +132,7 @@ pub fn simplify_type<'tcx>(
             // don't unify with anything else as long as they are fully normalized.
             //
             // We will have to be careful with lazy normalization here.
-            TreatParams::AsPlaceholder if !ty.has_infer_types_or_consts() => {
+            TreatParams::AsPlaceholder if !ty.has_non_region_infer() => {
                 debug!("treating `{}` as a placeholder", ty);
                 Some(PlaceholderSimplifiedType)
             }

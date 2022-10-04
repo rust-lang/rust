@@ -1231,7 +1231,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return;
             }
             let trait_pred = self.resolve_vars_if_possible(trait_pred);
-            if trait_pred.has_infer_types_or_consts() {
+            if trait_pred.has_non_region_infer() {
                 // Do not ICE while trying to find if a reborrow would succeed on a trait with
                 // unresolved bindings.
                 return;

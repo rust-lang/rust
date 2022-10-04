@@ -471,7 +471,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // This has nothing here because it means we did string
                         // concatenation (e.g., "Hello " + "World!"). This means
                         // we don't want the note in the else clause to be emitted
-                    } else if lhs_ty.has_param_types_or_consts() {
+                    } else if lhs_ty.has_non_region_param() {
                         // Look for a TraitPredicate in the Fulfillment errors,
                         // and use it to generate a suggestion.
                         //
@@ -657,7 +657,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("cannot apply unary operator `{}`", op.as_str()),
                     );
 
-                    if operand_ty.has_param_types_or_consts() {
+                    if operand_ty.has_non_region_param() {
                         let predicates = errors.iter().filter_map(|error| {
                             error.obligation.predicate.to_opt_poly_trait_pred()
                         });

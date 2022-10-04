@@ -45,7 +45,7 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // When trying to evaluate constants containing inference variables,
         // use `Infcx::const_eval_resolve` instead.
-        if ct.substs.has_infer_types_or_consts() {
+        if ct.substs.has_non_region_infer() {
             bug!("did not expect inference variables here");
         }
 
@@ -76,7 +76,7 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // When trying to evaluate constants containing inference variables,
         // use `Infcx::const_eval_resolve` instead.
-        if ct.substs.has_infer_types_or_consts() {
+        if ct.substs.has_non_region_infer() {
             bug!("did not expect inference variables here");
         }
 

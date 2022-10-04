@@ -1428,9 +1428,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             let substituted_pred = predicates.rebind(pred).subst(tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
-            if substituted_pred.has_param_types_or_consts()
-                || param_count.params.len() > 1
-                || has_region
+            if substituted_pred.has_non_region_param() || param_count.params.len() > 1 || has_region
             {
                 None
             } else if predicates.0.predicates.iter().any(|&(p, _)| p == substituted_pred) {

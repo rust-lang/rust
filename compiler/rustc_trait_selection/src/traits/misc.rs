@@ -57,7 +57,7 @@ pub fn can_type_implement_copy<'tcx>(
                 // to begin with, and point to the bad field's span instead.
                 let cause = if field
                     .ty(tcx, traits::InternalSubsts::identity_for_item(tcx, adt.did()))
-                    .has_param_types_or_consts()
+                    .has_non_region_param()
                 {
                     parent_cause.clone()
                 } else {
