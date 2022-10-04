@@ -41,6 +41,20 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--search-color: #fff;
+	--code-highlight-kw-color: #ff7733;
+	--code-highlight-kw-2-color: #ff7733;
+	--code-highlight-lifetime-color: #ff7733;
+	--code-highlight-prelude-color: #69f2df;
+	--code-highlight-prelude-val-color: #ff7733;
+	--code-highlight-number-color: #b8cc52;
+	--code-highlight-string-color: #b8cc52;
+	--code-highlight-literal-color: #ff7733;
+	--code-highlight-attribute-color: #e6e1cf;
+	--code-highlight-self-color: #36a3d9;
+	--code-highlight-macro-color: #a37acc;
+	--code-highlight-question-mark-color: #ff9011;
+	--code-highlight-comment-color: #788797;
+	--code-highlight-doc-comment-color: #a1ac88;
 }
 
 .slider {
@@ -124,9 +138,6 @@ pre, .rustdoc.source .example-wrap {
 
 .content .item-info::before { color: #ccc; }
 
-pre.rust .comment { color: #788797; }
-pre.rust .doccomment { color: #a1ac88; }
-
 .sidebar h2 a,
 .sidebar h3 a {
 	color: white;
@@ -160,23 +171,6 @@ details.rustdoc-toggle > summary::before {
 }
 
 .src-line-numbers :target { background-color: transparent; }
-
-/* Code highlighting */
-pre.rust .number, pre.rust .string { color: #b8cc52; }
-pre.rust .kw, pre.rust .kw-2, pre.rust .prelude-ty,
-pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .lifetime { color: #ff7733; }
-pre.rust .macro, pre.rust .macro-nonterminal { color: #a37acc; }
-pre.rust .question-mark {
-	color: #ff9011;
-}
-pre.rust .self {
-	color: #36a3d9;
-	font-style: italic;
-}
-pre.rust .attribute {
-	color: #e6e1cf;
-}
 
 pre.example-line-numbers {
 	color: #5c67736e;
