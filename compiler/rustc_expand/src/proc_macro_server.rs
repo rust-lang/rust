@@ -246,18 +246,49 @@ impl ToInternal<TokenStream> for (TokenTree<TokenStream, Span, Symbol>, &mut Rus
         use rustc_ast::token::*;
 
         let (tree, rustc) = self;
-        let (ch, joint, span) = match tree {
-            TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),
+        match tree {
+            TokenTree::Punct(Punct { ch, joint, span }) => {
+                let kind = match ch {
+                    b'=' => Eq,
+                    b'<' => Lt,
+                    b'>' => Gt,
+                    b'!' => Not,
+                    b'~' => Tilde,
+                    b'+' => BinOp(Plus),
+                    b'-' => BinOp(Minus),
+                    b'*' => BinOp(Star),
+                    b'/' => BinOp(Slash),
+                    b'%' => BinOp(Percent),
+                    b'^' => BinOp(Caret),
+                    b'&' => BinOp(And),
+                    b'|' => BinOp(Or),
+                    b'@' => At,
+                    b'.' => Dot,
+                    b',' => Comma,
+                    b';' => Semi,
+                    b':' => Colon,
+                    b'#' => Pound,
+                    b'$' => Dollar,
+                    b'?' => Question,
+                    b'\'' => SingleQuote,
+                    _ => unreachable!(),
+                };
+                if joint {
+                    tokenstream::TokenStream::token_joint(kind, span)
+                } else {
+                    tokenstream::TokenStream::token_alone(kind, span)
+                }
+            }
             TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
-                return tokenstream::TokenStream::delimited(
+                tokenstream::TokenStream::delimited(
                     tokenstream::DelimSpan { open, close },
                     delimiter.to_internal(),
                     stream.unwrap_or_default(),
-                );
+                )
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
                 rustc.sess().symbol_gallery.insert(sym, span);
-                return tokenstream::TokenStream::token_alone(Ident(sym, is_raw), span);
+                tokenstream::TokenStream::token_alone(Ident(sym, is_raw), span)
             }
             TokenTree::Literal(self::Literal {
                 kind: self::LitKind::Integer,
@@ -270,7 +301,7 @@ impl ToInternal<TokenStream> for (TokenTree<TokenStream, Span, Symbol>, &mut Rus
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
                 let a = tokenstream::TokenTree::token_alone(minus, span);
                 let b = tokenstream::TokenTree::token_alone(integer, span);
-                return [a, b].into_iter().collect();
+                [a, b].into_iter().collect()
             }
             TokenTree::Literal(self::Literal {
                 kind: self::LitKind::Float,
@@ -283,46 +314,14 @@ impl ToInternal<TokenStream> for (TokenTree<TokenStream, Span, Symbol>, &mut Rus
                 let float = TokenKind::lit(token::Float, symbol, suffix);
                 let a = tokenstream::TokenTree::token_alone(minus, span);
                 let b = tokenstream::TokenTree::token_alone(float, span);
-                return [a, b].into_iter().collect();
+                [a, b].into_iter().collect()
             }
             TokenTree::Literal(self::Literal { kind, symbol, suffix, span }) => {
-                return tokenstream::TokenStream::token_alone(
+                tokenstream::TokenStream::token_alone(
                     TokenKind::lit(kind.to_internal(), symbol, suffix),
                     span,
-                );
+                )
             }
-        };
-
-        let kind = match ch {
-            b'=' => Eq,
-            b'<' => Lt,
-            b'>' => Gt,
-            b'!' => Not,
-            b'~' => Tilde,
-            b'+' => BinOp(Plus),
-            b'-' => BinOp(Minus),
-            b'*' => BinOp(Star),
-            b'/' => BinOp(Slash),
-            b'%' => BinOp(Percent),
-            b'^' => BinOp(Caret),
-            b'&' => BinOp(And),
-            b'|' => BinOp(Or),
-            b'@' => At,
-            b'.' => Dot,
-            b',' => Comma,
-            b';' => Semi,
-            b':' => Colon,
-            b'#' => Pound,
-            b'$' => Dollar,
-            b'?' => Question,
-            b'\'' => SingleQuote,
-            _ => unreachable!(),
-        };
-
-        if joint {
-            tokenstream::TokenStream::token_joint(kind, span)
-        } else {
-            tokenstream::TokenStream::token_alone(kind, span)
         }
     }
 }
