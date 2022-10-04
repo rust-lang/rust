@@ -654,10 +654,6 @@ pre.example-line-numbers {
 	font-weight: normal;
 }
 
-.method > .code-header, .trait-impl > .code-header {
-	display: block;
-}
-
 .in-band {
 	flex-grow: 1;
 	margin: 0px;
