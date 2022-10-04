@@ -32,6 +32,7 @@
 	--link-color: #3873ad;
 	--sidebar-link-color: #356da4;
 	--sidebar-current-link-background-color: #fff;
+	--search-result-link-focus-background-color: #ccc;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 }
@@ -56,36 +57,6 @@ input:focus + .slider {
 .src-line-numbers .line-highlighted {
 	background-color: #FDFFD3 !important;
 }
-
-.search-results a:hover {
-	background-color: #ddd;
-}
-
-.search-results a:focus {
-	color: #000 !important;
-	background-color: #ccc;
-}
-.search-results a:focus span { color: #000 !important; }
-a.result-trait:focus { background-color: #c7b6ff; }
-a.result-traitalias:focus { background-color: #c7b6ff; }
-a.result-mod:focus,
-a.result-externcrate:focus { background-color: #afc6e4; }
-a.result-enum:focus { background-color: #e7b1a0; }
-a.result-struct:focus { background-color: #e7b1a0; }
-a.result-union:focus { background-color: #e7b1a0; }
-a.result-fn:focus,
-a.result-method:focus,
-a.result-tymethod:focus { background-color: #c6afb3; }
-a.result-type:focus { background-color: #e7b1a0; }
-a.result-associatedtype:focus { background-color: #afc6e4; }
-a.result-foreigntype:focus { background-color: #e7b1a0; }
-a.result-attr:focus,
-a.result-derive:focus,
-a.result-macro:focus { background-color: #8ce488; }
-a.result-constant:focus,
-a.result-static:focus { background-color: #afc6e4; }
-a.result-primitive:focus { background-color: #e7b1a0; }
-a.result-keyword:focus { background-color: #afc6e4; }
 
 .content .item-info::before { color: #ccc; }
 
