@@ -171,9 +171,13 @@ fn resolve_associated_item<'tcx>(
                 return Ok(None);
             }
 
-            // If the item does not have a value, then we cannot return an instance.
+            // Any final impl is required to define all associated items.
             if !leaf_def.item.defaultness(tcx).has_value() {
-                return Ok(None);
+                let guard = tcx.sess.delay_span_bug(
+                    tcx.def_span(leaf_def.item.def_id),
+                    "missing value for assoc item in impl",
+                );
+                return Err(guard);
             }
 
             let substs = tcx.erase_regions(substs);
