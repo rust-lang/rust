@@ -1,4 +1,4 @@
-use rustc_errors::{fluent, AddToDiagnostic, Applicability, DecorateLint, EmissionGuarantee};
+use rustc_errors::{fluent, AddToDiagnostic, Applicability, DecorateLint};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{Predicate, Ty, TyCtxt};
@@ -88,9 +88,11 @@ pub struct NonFmtPanicUnused {
     pub suggestion: Option<Span>,
 }
 
-impl<G: EmissionGuarantee> DecorateLint<'_, G> for NonFmtPanicUnused {
-    fn decorate_lint(self, diag: rustc_errors::LintDiagnosticBuilder<'_, G>) {
-        let mut diag = diag.build(fluent::lint_non_fmt_panic_unused);
+impl<'a> DecorateLint<'a, ()> for NonFmtPanicUnused {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
         diag.set_arg("count", self.count);
         diag.note(fluent::note);
         if let Some(span) = self.suggestion {
@@ -107,7 +109,11 @@ impl<G: EmissionGuarantee> DecorateLint<'_, G> for NonFmtPanicUnused {
                 Applicability::MachineApplicable,
             );
         }
-        diag.emit();
+        diag
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        fluent::lint_non_fmt_panic_unused
     }
 }
 
@@ -202,7 +208,7 @@ impl AddToDiagnostic for NonSnakeCaseDiagSub {
                     Applicability::MaybeIncorrect,
                 );
             }
-        };
+        }
     }
 }
 
@@ -262,12 +268,17 @@ pub struct DropTraitConstraintsDiag<'a> {
     pub def_id: DefId,
 }
 
-impl<'a, G: EmissionGuarantee> DecorateLint<'_, G> for DropTraitConstraintsDiag<'a> {
-    fn decorate_lint(self, diag: rustc_errors::LintDiagnosticBuilder<'_, G>) {
-        let mut diag = diag.build(fluent::lint_drop_trait_constraints);
+impl<'a> DecorateLint<'a, ()> for DropTraitConstraintsDiag<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
         diag.set_arg("predicate", self.predicate);
-        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id));
-        diag.emit();
+        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id))
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        fluent::lint_drop_trait_constraints
     }
 }
 
@@ -276,11 +287,16 @@ pub struct DropGlue<'a> {
     pub def_id: DefId,
 }
 
-impl<'a, G: EmissionGuarantee> DecorateLint<'_, G> for DropGlue<'a> {
-    fn decorate_lint(self, diag: rustc_errors::LintDiagnosticBuilder<'_, G>) {
-        let mut diag = diag.build(fluent::lint_drop_glue);
-        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id));
-        diag.emit();
+impl<'a> DecorateLint<'a, ()> for DropGlue<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id))
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        fluent::lint_drop_glue
     }
 }
 
@@ -359,9 +375,11 @@ pub struct OverflowingInt<'a> {
 }
 
 // FIXME: refactor with `Option<&'a str>` in macro
-impl<'a, G: EmissionGuarantee> DecorateLint<'_, G> for OverflowingInt<'a> {
-    fn decorate_lint(self, diag: rustc_errors::LintDiagnosticBuilder<'_, G>) {
-        let mut diag = diag.build(fluent::lint_overflowing_int);
+impl<'a> DecorateLint<'a, ()> for OverflowingInt<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
         diag.set_arg("ty", self.ty);
         diag.set_arg("lit", self.lit);
         diag.set_arg("min", self.min);
@@ -371,7 +389,11 @@ impl<'a, G: EmissionGuarantee> DecorateLint<'_, G> for OverflowingInt<'a> {
             diag.set_arg("suggestion_ty", suggestion_ty);
             diag.help(fluent::help);
         }
-        diag.emit();
+        diag
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        fluent::lint_overflowing_int
     }
 }
 
@@ -484,9 +506,11 @@ pub struct UnusedDef<'a, 'b> {
 }
 
 // FIXME: refactor with `Option<String>` in macro
-impl<'a, 'b, G: EmissionGuarantee> DecorateLint<'_, G> for UnusedDef<'a, 'b> {
-    fn decorate_lint(self, diag: rustc_errors::LintDiagnosticBuilder<'_, G>) {
-        let mut diag = diag.build(fluent::lint_unused_def);
+impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
         diag.set_arg("pre", self.pre);
         diag.set_arg("post", self.post);
         diag.set_arg("def", self.cx.tcx.def_path_str(self.def_id));
@@ -494,7 +518,11 @@ impl<'a, 'b, G: EmissionGuarantee> DecorateLint<'_, G> for UnusedDef<'a, 'b> {
         if let Some(note) = self.note {
             diag.note(note.as_str());
         }
-        diag.emit();
+        diag
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        fluent::lint_unused_def
     }
 }
 

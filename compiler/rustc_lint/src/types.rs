@@ -1138,10 +1138,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 CItemKind::Definition => "fn",
             };
             #[allow(rustc::diagnostic_outside_of_impl)]
-            let mut diag = lint.build(fluent::lint_improper_ctypes);
-            diag.set_arg("ty", ty);
-            diag.set_arg("desc", item_description);
-            diag.span_label(sp, fluent::label);
+            lint.set_arg("ty", ty);
+            lint.set_arg("desc", item_description);
+            lint.span_label(sp, fluent::label);
             if let Some(help) = help {
                 lint.help(help);
             }

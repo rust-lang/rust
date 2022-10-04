@@ -2,7 +2,6 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 use crate::context::LintContext;
 use crate::lints::NoopMethodCallDiag;
-use crate::rustc_middle::ty::TypeVisitable;
 use crate::LateContext;
 use crate::LateLintPass;
 use rustc_hir::def::DefKind;
