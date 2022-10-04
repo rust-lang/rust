@@ -18,12 +18,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: $DIR/dollar-crate.rs:20:32: 20:34 (#4),
+                span: $DIR/dollar-crate.rs:20:32: 20:33 (#4),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/dollar-crate.rs:20:32: 20:34 (#4),
+                span: $DIR/dollar-crate.rs:20:33: 20:34 (#4),
             },
             Ident {
                 ident: "S",
@@ -58,12 +58,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: $DIR/dollar-crate.rs:24:28: 24:30 (#4),
+                span: $DIR/dollar-crate.rs:24:28: 24:29 (#4),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/dollar-crate.rs:24:28: 24:30 (#4),
+                span: $DIR/dollar-crate.rs:24:29: 24:30 (#4),
             },
             Ident {
                 ident: "S",
@@ -98,12 +98,12 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: $DIR/dollar-crate.rs:27:28: 27:30 (#4),
+                span: $DIR/dollar-crate.rs:27:28: 27:29 (#4),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/dollar-crate.rs:27:28: 27:30 (#4),
+                span: $DIR/dollar-crate.rs:27:29: 27:30 (#4),
             },
             Ident {
                 ident: "S",
@@ -138,12 +138,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: $DIR/auxiliary/dollar-crate-external.rs:7:28: 7:30 (#15),
+                span: $DIR/auxiliary/dollar-crate-external.rs:7:28: 7:29 (#15),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/auxiliary/dollar-crate-external.rs:7:28: 7:30 (#15),
+                span: $DIR/auxiliary/dollar-crate-external.rs:7:29: 7:30 (#15),
             },
             Ident {
                 ident: "S",
@@ -178,12 +178,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: $DIR/auxiliary/dollar-crate-external.rs:11:24: 11:26 (#15),
+                span: $DIR/auxiliary/dollar-crate-external.rs:11:24: 11:25 (#15),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/auxiliary/dollar-crate-external.rs:11:24: 11:26 (#15),
+                span: $DIR/auxiliary/dollar-crate-external.rs:11:25: 11:26 (#15),
             },
             Ident {
                 ident: "S",
@@ -218,12 +218,12 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: $DIR/auxiliary/dollar-crate-external.rs:14:24: 14:26 (#15),
+                span: $DIR/auxiliary/dollar-crate-external.rs:14:24: 14:25 (#15),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/auxiliary/dollar-crate-external.rs:14:24: 14:26 (#15),
+                span: $DIR/auxiliary/dollar-crate-external.rs:14:25: 14:26 (#15),
             },
             Ident {
                 ident: "S",
