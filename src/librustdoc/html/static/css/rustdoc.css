@@ -1102,8 +1102,49 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--right-side-color);
 }
 
+pre.rust {
+	tab-size: 4;
+	-moz-tab-size: 4;
+}
+
+/* Code highlighting */
+pre.rust .kw {
+	color: var(--code-highlight-kw-color);
+}
+pre.rust .kw-2,
+pre.rust .lifetime {
+	color: var(--code-highlight-kw-2-color);
+}
+pre.rust .prelude-ty,
+pre.rust .prelude-val {
+	color: var(--code-highlight-prelude-color);
+}
+pre.rust .string {
+	color: var(--code-highlight-string-color);
+}
+pre.rust .number,
+pre.rust .bool-val {
+	color: var(--code-highlight-literal-color);
+}
+pre.rust .self {
+	color: var(--code-highlight-self-color);
+}
+pre.rust .attribute {
+	color: var(--code-highlight-attribute-color);
+}
+pre.rust .macro,
+pre.rust .macro-nonterminal {
+	color: var(--code-highlight-macro-color);
+}
 pre.rust .question-mark {
 	font-weight: bold;
+	color: var(--code-highlight-question-mark-color);
+}
+pre.rust .comment {
+	color: var(--code-highlight-comment-color);
+}
+pre.rust .doccomment {
+	color: var(--code-highlight-doc-comment-color);
 }
 
 .example-wrap.compile_fail,
@@ -1307,11 +1348,6 @@ h3.variant {
 	margin: 0;
 	padding: 0;
 	font-size: 1.25rem;
-}
-
-pre.rust {
-	tab-size: 4;
-	-moz-tab-size: 4;
 }
 
 .search-failed {
