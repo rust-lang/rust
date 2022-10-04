@@ -72,7 +72,7 @@ entry:
 ; CHECK-NEXT:   %"r'ai" = alloca double, i64 1, align 8
 ; CHECK-NEXT:   %0 = bitcast double* %"r'ai" to {}*
 ; CHECK-NEXT:   %1 = bitcast {}* %0 to i8*
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* %1, i8 0, i64 8, i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %1, i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   %2 = load double, double* %"r'ai", align 8
 ; CHECK-NEXT:   %3 = fadd fast double %2, %differeturn
 ; CHECK-NEXT:   store double %3, double* %"r'ai", align 8

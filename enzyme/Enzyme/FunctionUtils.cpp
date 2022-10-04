@@ -350,8 +350,33 @@ void RecursivelyReplaceAddressSpace(Value *AI, Value *rep, bool legal) {
           Intrinsic::getDeclaration(MS->getParent()->getParent()->getParent(),
                                     Intrinsic::memset, tys),
           nargs));
-      nMS->copyIRFlags(MS);
+      nMS->copyMetadata(*MS);
+      nMS->setAttributes(MS->getAttributes());
       toErase.push_back(MS);
+      continue;
+    }
+    if (auto MTI = dyn_cast<MemTransferInst>(inst)) {
+      IRBuilder<> B(MTI);
+
+      Value *nargs[4] = {MTI->getArgOperand(0), MTI->getArgOperand(1),
+                         MTI->getArgOperand(2), MTI->getArgOperand(3)};
+
+      if (nargs[0] == prev)
+        nargs[0] = rep;
+
+      if (nargs[1] == prev)
+        nargs[1] = rep;
+
+      Type *tys[] = {nargs[0]->getType(), nargs[1]->getType(),
+                     nargs[2]->getType()};
+
+      auto nMTI = cast<CallInst>(B.CreateCall(
+          Intrinsic::getDeclaration(MTI->getParent()->getParent()->getParent(),
+                                    MTI->getIntrinsicID(), tys),
+          nargs));
+      nMTI->copyMetadata(*MTI);
+      nMTI->setAttributes(MTI->getAttributes());
+      toErase.push_back(MTI);
       continue;
     }
     if (auto CI = dyn_cast<CallInst>(inst)) {

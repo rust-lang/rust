@@ -63,7 +63,6 @@ llvm::SmallVector<llvm::Instruction *, 2> PostCacheStore(llvm::StoreInst *SI,
   SmallVector<llvm::Instruction *, 2> res;
   if (EnzymePostCacheStore) {
     uint64_t size = 0;
-    LLVMValueRef V2 = nullptr;
     auto ptr = EnzymePostCacheStore(wrap(SI), wrap(&B), &size);
     for (size_t i = 0; i < size; i++) {
       res.push_back(cast<Instruction>(unwrap(ptr[i])));

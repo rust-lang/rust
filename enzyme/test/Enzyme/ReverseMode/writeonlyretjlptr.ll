@@ -64,7 +64,7 @@ define double @dsquare({} addrspace(10)* %x, {} addrspace(10)* %dx) {
 ; CHECK-NEXT:   %"r'ai" = alloca {} addrspace(10)*, i64 1, align 8
 ; CHECK-NEXT:   %1 = bitcast {} addrspace(10)** %"r'ai" to {}*
 ; CHECK-NEXT:   %2 = bitcast {}* %1 to i8*
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* %2, i8 0, i64 8, i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %2, i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   call void @augmented_subsq({} addrspace(10)** %r, {} addrspace(10)** %"r'ai", {} addrspace(10)* %x, {} addrspace(10)* %"x'")
 ; CHECK-NEXT:   %l = load {} addrspace(10)*, {} addrspace(10)** %r, align 8
 ; CHECK-NEXT:   %bc = bitcast {} addrspace(10)* %l to double addrspace(10)*
@@ -78,7 +78,7 @@ define double @dsquare({} addrspace(10)* %x, {} addrspace(10)* %dx) {
 ; CHECK-NEXT:   %"r'ai" = alloca {} addrspace(10)*, i64 1, align 8
 ; CHECK-NEXT:   %0 = bitcast {} addrspace(10)** %"r'ai" to {}*
 ; CHECK-NEXT:   %1 = bitcast {}* %0 to i8*
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* %1, i8 0, i64 8, i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %1, i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   %"l'ipl" = load {} addrspace(10)*, {} addrspace(10)** %"r'ai", align 8
 ; CHECK-NEXT:   %"bc'ipc" = bitcast {} addrspace(10)* %"l'ipl" to double addrspace(10)*
 ; CHECK-NEXT:   %2 = load double, double addrspace(10)* %"bc'ipc"
