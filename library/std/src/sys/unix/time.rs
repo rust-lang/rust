@@ -102,11 +102,7 @@ impl Timespec {
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
-        let mut secs = other
-            .as_secs()
-            .try_into() // <- target type would be `i64`
-            .ok()
-            .and_then(|secs| self.tv_sec.checked_add(secs))?;
+        let mut secs = self.tv_sec.checked_add_unsigned(other.as_secs())?;
 
         // Nano calculations can't overflow because nanos are <1B which fit
         // in a u32.
@@ -115,15 +111,11 @@ impl Timespec {
             nsec -= NSEC_PER_SEC as u32;
             secs = secs.checked_add(1)?;
         }
-        Some(Timespec::new(secs, nsec as i64))
+        Some(Timespec::new(secs, nsec.into()))
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
-        let mut secs = other
-            .as_secs()
-            .try_into() // <- target type would be `i64`
-            .ok()
-            .and_then(|secs| self.tv_sec.checked_sub(secs))?;
+        let mut secs = self.tv_sec.checked_sub_unsigned(other.as_secs())?;
 
         // Similar to above, nanos can't overflow.
         let mut nsec = self.tv_nsec.0 as i32 - other.subsec_nanos() as i32;
@@ -131,7 +123,7 @@ impl Timespec {
             nsec += NSEC_PER_SEC as i32;
             secs = secs.checked_sub(1)?;
         }
-        Some(Timespec::new(secs, nsec as i64))
+        Some(Timespec::new(secs, nsec.into()))
     }
 
     #[allow(dead_code)]

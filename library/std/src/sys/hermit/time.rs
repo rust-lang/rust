@@ -39,11 +39,7 @@ impl Timespec {
     }
 
     fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
-        let mut secs = other
-            .as_secs()
-            .try_into() // <- target type would be `libc::time_t`
-            .ok()
-            .and_then(|secs| self.t.tv_sec.checked_add(secs))?;
+        let mut secs = self.tv_sec.checked_add_unsigned(other.as_secs())?;
 
         // Nano calculations can't overflow because nanos are <1B which fit
         // in a u32.
@@ -56,11 +52,7 @@ impl Timespec {
     }
 
     fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
-        let mut secs = other
-            .as_secs()
-            .try_into() // <- target type would be `libc::time_t`
-            .ok()
-            .and_then(|secs| self.t.tv_sec.checked_sub(secs))?;
+        let mut secs = self.tv_sec.checked_sub_unsigned(other.as_secs())?;
 
         // Similar to above, nanos can't overflow.
         let mut nsec = self.t.tv_nsec as i32 - other.subsec_nanos() as i32;
