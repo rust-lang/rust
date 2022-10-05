@@ -136,6 +136,16 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
     ///
+    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashSet`], for example with
+    /// [`with_hasher`](HashSet::with_hasher) method.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -153,6 +163,16 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     ///
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
+    ///
+    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashSet`], for example with
+    /// [`with_capacity_and_hasher`](HashSet::with_capacity_and_hasher) method.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
     ///
     /// # Examples
     ///
@@ -176,6 +196,16 @@ impl<T: Hash + Eq, A: Allocator + Clone> HashSet<T, DefaultHashBuilder, A> {
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
     ///
+    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashSet`], for example with
+    /// [`with_hasher_in`](HashSet::with_hasher_in) method.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -193,6 +223,16 @@ impl<T: Hash + Eq, A: Allocator + Clone> HashSet<T, DefaultHashBuilder, A> {
     ///
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
+    ///
+    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashSet`], for example with
+    /// [`with_capacity_and_hasher_in`](HashSet::with_capacity_and_hasher_in) method.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
     ///
     /// # Examples
     ///
@@ -387,16 +427,21 @@ impl<T, S> HashSet<T, S, Global> {
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
-    /// The hash set is also created with the default initial capacity.
+    /// The hash set is initially created with a capacity of 0, so it will not
+    /// allocate until it is first inserted into.
     ///
-    /// Warning: `hasher` is normally randomly generated, and
-    /// is designed to allow `HashSet`s to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
+    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashSet`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
+    /// the HashSet to be useful, see its documentation for details.
     ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     ///
     /// # Examples
     ///
@@ -408,8 +453,6 @@ impl<T, S> HashSet<T, S, Global> {
     /// let mut set = HashSet::with_hasher(s);
     /// set.insert(2);
     /// ```
-    ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub const fn with_hasher(hasher: S) -> Self {
         Self {
@@ -423,13 +466,18 @@ impl<T, S> HashSet<T, S, Global> {
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
-    /// Warning: `hasher` is normally randomly generated, and
-    /// is designed to allow `HashSet`s to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
+    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashSet`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
+    /// the HashSet to be useful, see its documentation for details.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     ///
     /// # Examples
     ///
@@ -441,8 +489,6 @@ impl<T, S> HashSet<T, S, Global> {
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
     /// set.insert(1);
     /// ```
-    ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         Self {
@@ -464,12 +510,21 @@ where
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
-    /// The hash set is also created with the default initial capacity.
+    /// The hash set is initially created with a capacity of 0, so it will not
+    /// allocate until it is first inserted into.
     ///
-    /// Warning: `hasher` is normally randomly generated, and
-    /// is designed to allow `HashSet`s to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
+    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashSet`].
+    ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashSet to be useful, see its documentation for details.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     ///
     /// # Examples
     ///
@@ -494,10 +549,18 @@ where
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
-    /// Warning: `hasher` is normally randomly generated, and
-    /// is designed to allow `HashSet`s to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
+    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashSet`].
+    ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashSet to be useful, see its documentation for details.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     ///
     /// # Examples
     ///
@@ -548,7 +611,12 @@ where
     ///
     /// # Panics
     ///
-    /// Panics if the new allocation size overflows `usize`.
+    /// Panics if the new capacity exceeds [`isize::MAX`] bytes and [`abort`] the program
+    /// in case of allocation error. Use [`try_reserve`](HashSet::try_reserve) instead
+    /// if you want to handle memory allocation failure.
+    ///
+    /// [`isize::MAX`]: https://doc.rust-lang.org/std/primitive.isize.html
+    /// [`abort`]: https://doc.rust-lang.org/alloc/alloc/fn.handle_alloc_error.html
     ///
     /// # Examples
     ///
@@ -1150,7 +1218,7 @@ where
     /// for extending the HashSet's API, but may lead to *[undefined behavior]*.
     ///
     /// [`HashSet`]: struct.HashSet.html
-    /// [`RawTable`]: raw/struct.RawTable.html
+    /// [`RawTable`]: crate::raw::RawTable
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[cfg(feature = "raw")]
     #[cfg_attr(feature = "inline-more", inline)]
