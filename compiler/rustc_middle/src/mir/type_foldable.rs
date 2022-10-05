@@ -26,6 +26,12 @@ TrivialTypeTraversalAndLiftImpls! {
     GeneratorSavedLocal,
 }
 
+TrivialTypeTraversalImpls! {
+    for <'tcx> {
+        ConstValue<'tcx>,
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for &'tcx [InlineAsmTemplatePiece] {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _folder: &mut F) -> Result<Self, F::Error> {
         Ok(self)
@@ -45,12 +51,6 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
 }
 
 impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
         Ok(self)
     }
