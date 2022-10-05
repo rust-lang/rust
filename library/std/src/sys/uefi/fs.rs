@@ -256,16 +256,12 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
+        if opts.create_new && uefi_fs::FileProtocol::file_exists(path)? {
+            return Err(io::const_io_error!(io::ErrorKind::AlreadyExists, "File already exists"));
+        }
         let file_opened = uefi_fs::FileProtocol::from_path(path, opts.open_mode, opts.attr)?;
         let file = File { ptr: file_opened };
-        if opts.create_new {
-            if file.file_attr()?.size != 0 {
-                return Err(io::const_io_error!(
-                    io::ErrorKind::AlreadyExists,
-                    "File already exists"
-                ));
-            }
-        } else if opts.truncate {
+        if opts.truncate {
             file.truncate(0)?;
         } else if opts.append {
             // If you truncate a file, no need to seek to end
@@ -843,8 +839,8 @@ mod uefi_fs {
 
             let file_name = common::to_ffi_string(file_name);
             let old_info = self.get_file_info()?;
-            let new_size =
-                crate::mem::size_of::<file::Info>() + crate::mem::size_of_val(&file_name);
+            let new_size = crate::mem::size_of::<file::Info>()
+                + file_name.len() * crate::mem::size_of::<u16>();
             let layout = unsafe {
                 crate::alloc::Layout::from_size_align_unchecked(new_size, POOL_ALIGNMENT)
             };
@@ -913,6 +909,19 @@ mod uefi_fs {
                     old_info.layout().size(),
                     old_info.as_mut_ptr().cast(),
                 )
+            }
+        }
+
+        pub(crate) fn file_exists(path: &Path) -> io::Result<bool> {
+            match FileProtocol::from_path(path, file::MODE_READ, 0) {
+                Ok(_) => Ok(true),
+                Err(e) => {
+                    if e.kind() == io::ErrorKind::NotFound {
+                        Ok(false)
+                    } else {
+                        Err(e)
+                    }
+                }
             }
         }
 

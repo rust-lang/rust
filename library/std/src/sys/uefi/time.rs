@@ -1,6 +1,7 @@
 use super::common;
 use crate::mem::MaybeUninit;
 use crate::ptr::NonNull;
+use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::sys_common::mul_div_u64;
 use crate::time::Duration;
 
@@ -22,26 +23,9 @@ const SEC_IN_YEAR: u64 = SEC_IN_DAY * 365;
 
 impl Instant {
     pub fn now() -> Instant {
-        if let Ok(handles) = common::locate_handles(timestamp::PROTOCOL_GUID) {
-            // First try using `EFI_TIMESTAMP_PROTOCOL` if present
-            for handle in handles {
-                let protocol: NonNull<timestamp::Protocol> =
-                    match common::open_protocol(handle, timestamp::PROTOCOL_GUID) {
-                        Ok(x) => x,
-                        Err(_) => continue,
-                    };
-                let mut properties: MaybeUninit<timestamp::Properties> = MaybeUninit::uninit();
-                let r = unsafe { ((*protocol.as_ptr()).get_properties)(properties.as_mut_ptr()) };
-                if r.is_error() {
-                    continue;
-                } else {
-                    let properties = unsafe { properties.assume_init() };
-                    let ts = unsafe { ((*protocol.as_ptr()).get_timestamp)() };
-                    let frequency = properties.frequency;
-                    let ns = mul_div_u64(ts, NS_PER_SEC, frequency);
-                    return Instant(Duration::from_nanos(ns));
-                }
-            }
+        // First try using `EFI_TIMESTAMP_PROTOCOL` if present
+        if let Some(x) = get_timestamp_protocol() {
+            return x;
         }
 
         // Try using raw CPU Registers
@@ -50,8 +34,8 @@ impl Instant {
         if let Some(ns) = get_timestamp() {
             return Instant(Duration::from_nanos(ns));
         }
-        let runtime_services = common::runtime_services();
 
+        let runtime_services = common::runtime_services();
         // Finally just use `EFI_RUNTIME_SERVICES.GetTime()`
         let mut t = r_efi::efi::Time::default();
         let r = unsafe { ((*runtime_services.as_ptr()).get_time)(&mut t, crate::ptr::null_mut()) };
@@ -219,4 +203,43 @@ fn get_timestamp() -> Option<u64> {
     let ts = unsafe { crate::arch::x86_64::_rdtsc() };
     let ns = mul_div_u64(ts, 1000, freq);
     Some(ns)
+}
+
+// This function is not tested since OVMF does not contain `EFI_TIMESTAMP_PROTOCOL`
+fn get_timestamp_protocol() -> Option<Instant> {
+    fn try_handle(handle: NonNull<crate::ffi::c_void>) -> Option<u64> {
+        let protocol: NonNull<timestamp::Protocol> =
+            common::open_protocol(handle, timestamp::PROTOCOL_GUID).ok()?;
+        let mut properties: MaybeUninit<timestamp::Properties> = MaybeUninit::uninit();
+        let r = unsafe { ((*protocol.as_ptr()).get_properties)(properties.as_mut_ptr()) };
+        if r.is_error() {
+            None
+        } else {
+            let properties = unsafe { properties.assume_init() };
+            let ts = unsafe { ((*protocol.as_ptr()).get_timestamp)() };
+            let frequency = properties.frequency;
+            let ns = mul_div_u64(ts, NS_PER_SEC, frequency);
+            Some(ns)
+        }
+    }
+
+    static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+        AtomicPtr::new(crate::ptr::null_mut());
+
+    if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
+        if let Some(ns) = try_handle(handle) {
+            return Some(Instant(Duration::from_nanos(ns)));
+        }
+    }
+
+    if let Ok(handles) = common::locate_handles(timestamp::PROTOCOL_GUID) {
+        for handle in handles {
+            if let Some(ns) = try_handle(handle) {
+                LAST_VALID_HANDLE.store(handle.as_ptr(), Ordering::Release);
+                return Some(Instant(Duration::from_nanos(ns)));
+            }
+        }
+    }
+
+    None
 }

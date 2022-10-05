@@ -17,20 +17,10 @@ pub(crate) fn get_current_handle_protocol<T>(protocol_guid: Guid) -> Option<NonN
 
 #[repr(transparent)]
 pub(crate) struct Event {
-    inner: NonNull<crate::ffi::c_void>,
+    inner: r_efi::efi::Event,
 }
 
 impl Event {
-    #[inline]
-    fn new(inner: NonNull<crate::ffi::c_void>) -> Self {
-        Self { inner }
-    }
-
-    #[inline]
-    fn from_raw_event(ptr: r_efi::efi::Event) -> Option<Self> {
-        Some(Self::new(NonNull::new(ptr)?))
-    }
-
     pub(crate) fn create(
         event_type: u32,
         event_tpl: Tpl,
@@ -55,12 +45,7 @@ impl Event {
             )
         };
 
-        if r.is_error() {
-            Err(status_to_io_error(r))
-        } else {
-            Self::from_raw_event(event)
-                .ok_or(const_io_error!(io::ErrorKind::Other, "event is null"))
-        }
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(Self { inner: event }) }
     }
 
     pub(crate) fn create_timer() -> io::Result<Event> {
@@ -117,17 +102,17 @@ impl Event {
 
     #[inline]
     pub(crate) fn as_raw_event(&self) -> r_efi::efi::Event {
-        self.inner.as_ptr()
+        self.inner
     }
 }
 
-extern "efiapi" fn empty_notify(_: r_efi::efi::Event, _: *mut crate::ffi::c_void) {}
+pub(crate) extern "efiapi" fn empty_notify(_: r_efi::efi::Event, _: *mut crate::ffi::c_void) {}
 
 impl Drop for Event {
     fn drop(&mut self) {
         let boot_services = boot_services();
         // Always returns EFI_SUCCESS
-        let _ = unsafe { ((*boot_services.as_ptr()).close_event)(self.inner.as_ptr()) };
+        let _ = unsafe { ((*boot_services.as_ptr()).close_event)(self.inner) };
     }
 }
 
@@ -296,109 +281,164 @@ pub(crate) fn status_to_io_error(s: r_efi::efi::Status) -> io::Error {
     use r_efi::efi::Status;
 
     // Keep the List in Alphabetical Order
+    // The Messages are taken from UEFI Specification Appendix D - Status Codes
     match s {
         Status::ABORTED => {
-            const_io_error!(ErrorKind::ConnectionAborted, "EFI_ABORTED")
+            const_io_error!(ErrorKind::ConnectionAborted, "The operation was aborted.")
         }
         Status::ACCESS_DENIED => {
-            const_io_error!(ErrorKind::PermissionDenied, "EFI_ACCESS_DENIED")
+            const_io_error!(ErrorKind::PermissionDenied, "Access was denied.")
         }
         Status::ALREADY_STARTED => {
-            const_io_error!(ErrorKind::Other, "EFI_ALREADY_STARTED")
+            const_io_error!(ErrorKind::Other, "The protocol has already been started.")
         }
         Status::BAD_BUFFER_SIZE => {
-            const_io_error!(ErrorKind::InvalidData, "EFI_BAD_BUFFER_SIZE")
+            const_io_error!(
+                ErrorKind::InvalidData,
+                "The buffer was not the proper size for the request."
+            )
         }
         Status::BUFFER_TOO_SMALL => {
-            const_io_error!(ErrorKind::FileTooLarge, "EFI_BUFFER_TOO_SMALL")
+            const_io_error!(
+                ErrorKind::FileTooLarge,
+                "The buffer is not large enough to hold the requested data. The required buffer size is returned in the appropriate parameter when this error occurs."
+            )
         }
         Status::COMPROMISED_DATA => {
-            const_io_error!(ErrorKind::Other, "EFI_COMPRIMISED_DATA")
+            const_io_error!(
+                ErrorKind::Other,
+                "The security status of the data is unknown or compromised and the data must be updated or replaced to restore a valid security status."
+            )
         }
         Status::CONNECTION_FIN => {
-            const_io_error!(ErrorKind::Other, "EFI_CONNECTION_FIN")
+            const_io_error!(
+                ErrorKind::Other,
+                "The receiving operation fails because the communication peer has closed the connection and there is no more data in the receive buffer of the instance."
+            )
         }
         Status::CONNECTION_REFUSED => {
-            const_io_error!(ErrorKind::ConnectionRefused, "EFI_CONNECTION_REFUSED")
+            const_io_error!(
+                ErrorKind::ConnectionRefused,
+                "The receiving or transmission operation fails because this connection is refused."
+            )
         }
         Status::CONNECTION_RESET => {
-            const_io_error!(ErrorKind::ConnectionReset, "EFI_CONNECTION_RESET")
+            const_io_error!(
+                ErrorKind::ConnectionReset,
+                "The connect fails because the connection is reset either by instance itself or the communication peer."
+            )
         }
-        Status::CRC_ERROR => const_io_error!(ErrorKind::InvalidData, "EFI_CRC_ERROR"),
-        Status::DEVICE_ERROR => const_io_error!(ErrorKind::Other, "EFI_DEVICE_ERROR"),
+        Status::CRC_ERROR => const_io_error!(ErrorKind::Other, "A CRC error was detected."),
+        Status::DEVICE_ERROR => const_io_error!(
+            ErrorKind::Other,
+            "The physical device reported an error while attempting the operation."
+        ),
         Status::END_OF_FILE => {
-            const_io_error!(ErrorKind::UnexpectedEof, "EFI_END_OF_FILE")
+            const_io_error!(ErrorKind::UnexpectedEof, "The end of the file was reached.")
         }
         Status::END_OF_MEDIA => {
-            const_io_error!(ErrorKind::UnexpectedEof, "EFI_END_OF_MEDIA")
+            const_io_error!(ErrorKind::Other, "Beginning or end of media was reached")
         }
         Status::HOST_UNREACHABLE => {
-            const_io_error!(ErrorKind::HostUnreachable, "EFI_HOST_UNREACHABLE")
+            const_io_error!(ErrorKind::HostUnreachable, "The remote host is not reachable.")
         }
         Status::HTTP_ERROR => {
-            const_io_error!(ErrorKind::NetworkUnreachable, "EFI_HTTP_ERROR")
+            const_io_error!(ErrorKind::Other, "A HTTP error occurred during the network operation.")
         }
         Status::ICMP_ERROR => {
-            const_io_error!(ErrorKind::Other, "EFI_ICMP_ERROR")
+            const_io_error!(
+                ErrorKind::Other,
+                "An ICMP error occurred during the network operation."
+            )
         }
         Status::INCOMPATIBLE_VERSION => {
-            const_io_error!(ErrorKind::Other, "EFI_INCOMPATIBLE_VERSION")
+            const_io_error!(
+                ErrorKind::Other,
+                "The function encountered an internal version that was incompatible with a version requested by the caller."
+            )
         }
         Status::INVALID_LANGUAGE => {
-            const_io_error!(ErrorKind::InvalidData, "EFI_INVALID_LANGUAGE")
+            const_io_error!(ErrorKind::InvalidData, "The language specified was invalid.")
         }
         Status::INVALID_PARAMETER => {
-            const_io_error!(ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER")
+            const_io_error!(ErrorKind::InvalidInput, "A parameter was incorrect.")
         }
         Status::IP_ADDRESS_CONFLICT => {
-            const_io_error!(ErrorKind::AddrInUse, "EFI_IP_ADDRESS_CONFLICT")
+            const_io_error!(ErrorKind::AddrInUse, "There is an address conflict address allocation")
         }
         Status::LOAD_ERROR => {
-            const_io_error!(ErrorKind::Other, "EFI_LOAD_ERROR")
+            const_io_error!(ErrorKind::Other, "The image failed to load.")
         }
         Status::MEDIA_CHANGED => {
-            const_io_error!(ErrorKind::StaleNetworkFileHandle, "EFI_MEDIA_CHANGED")
+            const_io_error!(
+                ErrorKind::Other,
+                "The medium in the device has changed since the last access."
+            )
         }
         Status::NETWORK_UNREACHABLE => {
-            const_io_error!(ErrorKind::NetworkUnreachable, "EFI_NETWORK_UNREACHABLE")
+            const_io_error!(
+                ErrorKind::NetworkUnreachable,
+                "The network containing the remote host is not reachable."
+            )
         }
         Status::NO_MAPPING => {
-            const_io_error!(ErrorKind::Other, "EFI_NO_MAPPING")
+            const_io_error!(ErrorKind::Other, "A mapping to a device does not exist.")
         }
         Status::NO_MEDIA => {
-            const_io_error!(ErrorKind::Other, "EFI_NO_MEDIA")
+            const_io_error!(
+                ErrorKind::Other,
+                "The device does not contain any medium to perform the operation."
+            )
         }
         Status::NO_RESPONSE => {
-            const_io_error!(ErrorKind::HostUnreachable, "EFI_NO_RESPONSE")
+            const_io_error!(
+                ErrorKind::HostUnreachable,
+                "The server was not found or did not respond to the request."
+            )
         }
-        Status::NOT_FOUND => const_io_error!(ErrorKind::NotFound, "EFI_NOT_FOUND"),
-        Status::NOT_READY => const_io_error!(ErrorKind::ResourceBusy, "EFI_NOT_READY"),
-        Status::NOT_STARTED => const_io_error!(ErrorKind::Other, "EFI_NOT_STARTED"),
+        Status::NOT_FOUND => const_io_error!(ErrorKind::NotFound, "The item was not found."),
+        Status::NOT_READY => {
+            const_io_error!(ErrorKind::ResourceBusy, "There is no data pending upon return.")
+        }
+        Status::NOT_STARTED => {
+            const_io_error!(ErrorKind::Other, "The protocol has not been started.")
+        }
         Status::OUT_OF_RESOURCES => {
-            const_io_error!(ErrorKind::OutOfMemory, "EFI_OUT_OF_RESOURCES")
+            const_io_error!(ErrorKind::OutOfMemory, "A resource has run out.")
         }
         Status::PROTOCOL_ERROR => {
-            const_io_error!(ErrorKind::Other, "EFI_PROTOCOL_ERROR")
+            const_io_error!(
+                ErrorKind::Other,
+                "A protocol error occurred during the network operation."
+            )
         }
         Status::PROTOCOL_UNREACHABLE => {
-            const_io_error!(ErrorKind::Other, "EFI_PROTOCOL_UNREACHABLE")
+            const_io_error!(ErrorKind::Other, "An ICMP protocol unreachable error is received.")
         }
         Status::SECURITY_VIOLATION => {
-            const_io_error!(ErrorKind::PermissionDenied, "EFI_SECURITY_VIOLATION")
+            const_io_error!(
+                ErrorKind::PermissionDenied,
+                "The function was not performed due to a security violation."
+            )
         }
-        Status::TFTP_ERROR => const_io_error!(ErrorKind::Other, "EFI_TFTP_ERROR"),
-        Status::TIMEOUT => const_io_error!(ErrorKind::TimedOut, "EFI_TIMEOUT"),
+        Status::TFTP_ERROR => {
+            const_io_error!(ErrorKind::Other, "A TFTP error occurred during the network operation.")
+        }
+        Status::TIMEOUT => const_io_error!(ErrorKind::TimedOut, "The timeout time expired."),
         Status::UNSUPPORTED => {
-            const_io_error!(ErrorKind::Unsupported, "EFI_UNSUPPORTED")
+            const_io_error!(ErrorKind::Unsupported, "The operation is not supported.")
         }
         Status::VOLUME_FULL => {
-            const_io_error!(ErrorKind::StorageFull, "EFI_VOLUME_FULL")
+            const_io_error!(ErrorKind::StorageFull, "There is no more space on the file system.")
         }
         Status::VOLUME_CORRUPTED => {
-            const_io_error!(ErrorKind::Other, "EFI_VOLUME_CORRUPTED")
+            const_io_error!(
+                ErrorKind::Other,
+                "An inconstancy was detected on the file system causing the operating to fail."
+            )
         }
         Status::WRITE_PROTECTED => {
-            const_io_error!(ErrorKind::ReadOnlyFilesystem, "EFI_WRITE_PROTECTED")
+            const_io_error!(ErrorKind::ReadOnlyFilesystem, "The device cannot be written to.")
         }
         _ => io::Error::new(ErrorKind::Uncategorized, format!("Status: {}", s.as_usize())),
     }

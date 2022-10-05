@@ -1,4 +1,4 @@
-FROM fedora:latest
+FROM fedora:36
 
 RUN dnf update -y && dnf install -y \
       bc \
@@ -8,6 +8,7 @@ RUN dnf update -y && dnf install -y \
       cpio \
       curl \
       file \
+      gcc \
       g++ \
       git \
       make \
@@ -17,7 +18,8 @@ RUN dnf update -y && dnf install -y \
       edk2-ovmf \
       mtools \
       xz \
-      libstdc++-static
+      libstdc++-static \
+      llvm-devel
 
 ENV ARCH=x86_64
 
@@ -39,8 +41,9 @@ RUN curl -O https://ci-mirrors.rust-lang.org/rustc/vexpress-v2p-ca15-tc1.dtb
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV RUST_CONFIGURE_ARGS="${RUST_CONFIGURE_ARGS} --qemu-x86_64-uefi-rootfs=/tmp/rootfs --enable-lld --enable-ninja --set target.x86_64-unknown-uefi.linker=rust-lld"
 ENV RUST_TEST_THREADS=1
+ENV DEPLOY=1
+ENV RUST_CONFIGURE_ARGS="${RUST_CONFIGURE_ARGS} --qemu-x86_64-uefi-rootfs=/tmp/rootfs --enable-lld --enable-ninja --set target.x86_64-unknown-uefi.linker=rust-lld --set llvm.download-ci-llvm=false"
 ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target x86_64-unknown-uefi --warnings warn -v
 
 ENV NO_CHANGE_USER=1

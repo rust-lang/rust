@@ -5,6 +5,7 @@ use crate::env::current_exe;
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::path::PathBuf;
+use crate::sync::OnceLock;
 use crate::sys_common::args::{parse_lp_cmd_line, WStrUnits};
 use crate::vec;
 use r_efi::efi::protocols::loaded_image;
@@ -16,19 +17,22 @@ pub struct Args {
 // Get the Supplied arguments for loaded image.
 // Uses EFI_LOADED_IMAGE_PROTOCOL
 pub fn args() -> Args {
-    match common::get_current_handle_protocol::<loaded_image::Protocol>(loaded_image::PROTOCOL_GUID)
-    {
-        Some(x) => {
-            let lp_cmd_line = unsafe { (*x.as_ptr()).load_options as *const u16 };
-            let parsed_args_list =
+    static ARGUMENTS: OnceLock<Vec<OsString>> = OnceLock::new();
+    // Caching the arguments the first time they are parsed.
+    let vec_args = ARGUMENTS.get_or_init(|| {
+        match common::get_current_handle_protocol::<loaded_image::Protocol>(
+            loaded_image::PROTOCOL_GUID,
+        ) {
+            Some(x) => {
+                let lp_cmd_line = unsafe { (*x.as_ptr()).load_options as *const u16 };
                 parse_lp_cmd_line(unsafe { WStrUnits::new(lp_cmd_line) }, || {
                     current_exe().map(PathBuf::into_os_string).unwrap_or_else(|_| OsString::new())
-                });
-
-            Args { parsed_args_list: parsed_args_list.into_iter() }
+                })
+            }
+            None => Vec::new(),
         }
-        None => Args { parsed_args_list: Vec::new().into_iter() },
-    }
+    });
+    Args { parsed_args_list: vec_args.clone().into_iter() }
 }
 
 impl fmt::Debug for Args {

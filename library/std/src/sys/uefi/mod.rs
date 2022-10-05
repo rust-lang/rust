@@ -134,22 +134,23 @@ unsafe fn get_random() -> Option<u64> {
     None
 }
 
-extern "C" {
-    fn main(argc: isize, argv: *const *const u8) -> isize;
-}
-
 // FIXME: Do not generate this in case of `no_main`
 #[no_mangle]
 pub unsafe extern "efiapi" fn efi_main(
     handle: r_efi::efi::Handle,
     st: *mut r_efi::efi::SystemTable,
 ) -> r_efi::efi::Status {
-    let system_table = NonNull::new(st).unwrap();
-    let image_handle = NonNull::new(handle).unwrap();
+    extern "C" {
+        fn main(argc: isize, argv: *const *const u8) -> isize;
+    }
+
+    let (system_table, image_handle) = match (NonNull::new(st), NonNull::new(handle)) {
+        (Some(x), Some(y)) => (x, y),
+        _ => return r_efi::efi::Status::ABORTED,
+    };
     unsafe { uefi::env::init_globals(image_handle, system_table.cast()) };
 
     let res = unsafe { main(0, crate::ptr::null()) };
-
     match usize::try_from(res) {
         Ok(x) => r_efi::efi::Status::from_usize(x),
         Err(_) => r_efi::efi::Status::ABORTED,
