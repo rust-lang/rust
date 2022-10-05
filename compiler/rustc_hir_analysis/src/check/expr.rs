@@ -1066,9 +1066,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             if eq {
                 err.span_suggestion_verbose(
-                    span,
+                    span.shrink_to_hi(),
                     "you might have meant to compare for equality",
-                    "==",
+                    '=',
                     applicability,
                 );
             }
