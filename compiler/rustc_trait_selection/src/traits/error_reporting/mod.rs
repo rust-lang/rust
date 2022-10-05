@@ -2265,7 +2265,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                             };
                             let mut suggestions = vec![(
                                 trait_path_segment.ident.span.shrink_to_lo(),
-                                format!("<{} as ", self.tcx.def_path(impl_def_id).to_string_no_crate_verbose())
+                                format!("<{} as ", self.tcx.type_of(impl_def_id))
                             )];
                             if let Some(generic_arg) = trait_path_segment.args {
                                 let between_span = trait_path_segment.ident.span.between(generic_arg.span_ext);
