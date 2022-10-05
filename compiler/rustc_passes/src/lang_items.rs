@@ -24,6 +24,12 @@ use rustc_span::{symbol::kw::Empty, Span};
 
 use rustc_middle::ty::query::Providers;
 
+pub(crate) enum Duplicate {
+    Plain,
+    Crate,
+    CrateDepends,
+}
+
 struct LanguageItemCollector<'tcx> {
     items: LanguageItems,
     tcx: TyCtxt<'tcx>,
@@ -103,15 +109,15 @@ impl<'tcx> LanguageItemCollector<'tcx> {
                     }
                 }
 
-                let message = if local_span.is_some() {
-                    "duplicate"
+                let duplicate = if local_span.is_some() {
+                    Duplicate::Plain
                 } else {
                     match self.tcx.extern_crate(item_def_id) {
                         Some(ExternCrate { dependency_of: inner_dependency_of, .. }) => {
                             dependency_of = self.tcx.crate_name(*inner_dependency_of);
-                            "duplicate_in_crate_depends"
+                            Duplicate::CrateDepends
                         }
-                        _ => "duplicate_in_crate",
+                        _ => Duplicate::Crate,
                     }
                 };
 
@@ -127,7 +133,7 @@ impl<'tcx> LanguageItemCollector<'tcx> {
                     orig_dependency_of,
                     orig_is_local,
                     orig_path,
-                    message,
+                    duplicate,
                 });
             }
         }

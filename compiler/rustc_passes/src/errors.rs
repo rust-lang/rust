@@ -10,6 +10,8 @@ use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
+use crate::lang_items::Duplicate;
+
 #[derive(LintDiagnostic)]
 #[diag(passes::outer_crate_level_attr)]
 pub struct OuterCrateLevelAttr;
@@ -1175,7 +1177,7 @@ impl<'a> IntoDiagnostic<'a> for NoMainErr {
     }
 }
 
-pub struct DuplicateLangItem<'a> {
+pub struct DuplicateLangItem {
     pub local_span: Option<Span>,
     pub lang_item_name: Symbol,
     pub crate_name: Symbol,
@@ -1187,16 +1189,23 @@ pub struct DuplicateLangItem<'a> {
     pub orig_dependency_of: Symbol,
     pub orig_is_local: bool,
     pub orig_path: String,
-    pub message: &'a str,
+    pub(crate) duplicate: Duplicate,
 }
 
-impl<'a, 'b> IntoDiagnostic<'a> for DuplicateLangItem<'b> {
+impl IntoDiagnostic<'_> for DuplicateLangItem {
     fn into_diagnostic(
         self,
-        handler: &'a rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
+        handler: &rustc_errors::Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = handler.struct_err_with_code(
-            rustc_errors::fluent::passes::duplicate_lang_item,
+            match self.duplicate {
+                Duplicate::Plain => rustc_errors::fluent::passes::duplicate_lang_item,
+
+                Duplicate::Crate => rustc_errors::fluent::passes::duplicate_lang_item_crate,
+                Duplicate::CrateDepends => {
+                    rustc_errors::fluent::passes::duplicate_lang_item_crate_depends
+                }
+            },
             error_code!(E0152),
         );
         diag.set_arg("lang_item_name", self.lang_item_name);
@@ -1206,7 +1215,6 @@ impl<'a, 'b> IntoDiagnostic<'a> for DuplicateLangItem<'b> {
         diag.set_arg("orig_crate_name", self.orig_crate_name);
         diag.set_arg("orig_dependency_of", self.orig_dependency_of);
         diag.set_arg("orig_path", self.orig_path);
-        diag.set_arg("message", self.message);
         if let Some(span) = self.local_span {
             diag.set_span(span);
         }

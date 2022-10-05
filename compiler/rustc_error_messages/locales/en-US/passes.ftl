@@ -533,11 +533,27 @@ passes_no_main_function =
     .non_function_main = non-function item at `crate::main` is found
 
 passes_duplicate_lang_item =
-    {$message ->
-        *[duplicate] found duplicate lang item `{$lang_item_name}`
-        [duplicate_in_crate] duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`.
-        [duplicate_in_crate_depends] duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`.
-    }
+    found duplicate lang item `{$lang_item_name}`
+    .first_defined_span = the lang item is first defined here
+    .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
+    .second_definition_local = second definition in the local crate (`{$crate_name}`)
+    .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
+    .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
+
+passes_duplicate_lang_item_crate =
+    duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`.
+    .first_defined_span = the lang item is first defined here
+    .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
+    .second_definition_local = second definition in the local crate (`{$crate_name}`)
+    .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
+    .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
+
+passes_duplicate_lang_item_crate_depends =
+    duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`.
     .first_defined_span = the lang item is first defined here
     .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
     .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
