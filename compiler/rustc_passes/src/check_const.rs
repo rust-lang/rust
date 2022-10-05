@@ -17,7 +17,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, Span, Symbol};
 
-use crate::errors::{ConstImplConstTrait, ExprNotAllowedInContext};
+use crate::errors::ExprNotAllowedInContext;
 
 /// An expression that is not *always* legal in a const context.
 #[derive(Clone, Copy)]
@@ -194,26 +194,6 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.tcx.hir()
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let tcx = self.tcx;
-        if let hir::ItemKind::Impl(hir::Impl {
-            constness: hir::Constness::Const,
-            of_trait: Some(trait_ref),
-            ..
-        }) = item.kind
-            && let Some(def_id) = trait_ref.trait_def_id()
-        {
-            let source_map = tcx.sess.source_map();
-            if !tcx.has_attr(def_id, sym::const_trait) {
-                tcx.sess.emit_err(ConstImplConstTrait {
-                    span: source_map.guess_head_span(item.span),
-                    def_span: source_map.guess_head_span(tcx.def_span(def_id)),
-                });
-            }
-        }
-        intravisit::walk_item(self, item);
     }
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {

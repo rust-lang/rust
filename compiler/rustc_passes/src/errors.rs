@@ -859,15 +859,6 @@ pub struct ExprNotAllowedInContext<'a> {
     pub context: &'a str,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes::const_impl_const_trait)]
-pub struct ConstImplConstTrait {
-    #[primary_span]
-    pub span: Span,
-    #[note]
-    pub def_span: Span,
-}
-
 pub struct BreakNonLoop<'a> {
     pub span: Span,
     pub head: Option<Span>,
