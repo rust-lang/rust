@@ -1160,6 +1160,7 @@ impl<'tcx> ProjectionTy<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
+        assert_eq!(tcx.def_kind(def_id), DefKind::Trait);
         let def_id = tcx.parent(self.item_def_id);
         let trait_generics = tcx.generics_of(def_id);
         (
