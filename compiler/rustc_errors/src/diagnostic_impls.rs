@@ -189,6 +189,14 @@ impl IntoDiagnosticArg for rustc_data_structures::small_c_str::SmallCStr {
     }
 }
 
+impl IntoDiagnosticArg for ast::Visibility {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        let s = pprust::vis_to_string(&self);
+        let s = s.trim_end().to_string();
+        DiagnosticArgValue::Str(Cow::Owned(s))
+    }
+}
+
 impl IntoDiagnosticArg for Level {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Borrowed(self.to_cmd_flag()))
