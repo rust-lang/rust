@@ -7,9 +7,3 @@ impl<'tcx, R: Idx, C: Idx> TypeVisitable<'tcx> for BitMatrix<R, C> {
         ControlFlow::CONTINUE
     }
 }
-
-impl<'tcx> TypeVisitable<'tcx> for ConstValue<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
-    }
-}
