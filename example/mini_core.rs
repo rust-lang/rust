@@ -559,16 +559,22 @@ pub union MaybeUninit<T> {
 
 pub mod intrinsics {
     extern "rust-intrinsic" {
+        #[rustc_safe_intrinsic]
         pub fn abort() -> !;
+        #[rustc_safe_intrinsic]
         pub fn size_of<T>() -> usize;
         pub fn size_of_val<T: ?::Sized>(val: *const T) -> usize;
+        #[rustc_safe_intrinsic]
         pub fn min_align_of<T>() -> usize;
         pub fn min_align_of_val<T: ?::Sized>(val: *const T) -> usize;
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
         pub fn transmute<T, U>(e: T) -> U;
         pub fn ctlz_nonzero<T>(x: T) -> T;
+        #[rustc_safe_intrinsic]
         pub fn needs_drop<T: ?::Sized>() -> bool;
+        #[rustc_safe_intrinsic]
         pub fn bitreverse<T>(x: T) -> T;
+        #[rustc_safe_intrinsic]
         pub fn bswap<T>(x: T) -> T;
         pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
