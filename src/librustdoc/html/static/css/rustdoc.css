@@ -1826,6 +1826,7 @@ in storage.js plus the media query with (min-width: 701px)
 		   as an icon, it's okay to specify its sizes in pixels. */
 		font-size: 32px;
 		border: none;
+		color: var(--main-color);
 	}
 
 	.sidebar-elems {
