@@ -47,7 +47,12 @@ static EXCEPTION_TYPE_INFO: TypeInfo = TypeInfo {
     name: b"rust_panic\0".as_ptr(),
 };
 
+// NOTE(nbdd0121): The `canary` field will be part of stable ABI after `c_unwind` stabilization.
+#[repr(C)]
 struct Exception {
+    // See `gcc.rs` on why this is present. We already have a static here so just use it.
+    canary: *const TypeInfo,
+
     // This is necessary because C++ code can capture our exception with
     // std::exception_ptr and rethrow it multiple times, possibly even in
     // another thread.
@@ -70,16 +75,21 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let catch_data = &*(ptr as *mut CatchData);
 
     let adjusted_ptr = __cxa_begin_catch(catch_data.ptr as *mut libc::c_void) as *mut Exception;
-    let out = if catch_data.is_rust_panic {
-        let was_caught = (*adjusted_ptr).caught.swap(true, Ordering::SeqCst);
-        if was_caught {
-            // Since cleanup() isn't allowed to panic, we just abort instead.
-            intrinsics::abort();
-        }
-        (*adjusted_ptr).data.take().unwrap()
-    } else {
+    if !catch_data.is_rust_panic {
         super::__rust_foreign_exception();
-    };
+    }
+
+    let canary = ptr::addr_of!((*adjusted_ptr).canary).read();
+    if !ptr::eq(canary, &EXCEPTION_TYPE_INFO) {
+        super::__rust_foreign_exception();
+    }
+
+    let was_caught = (*adjusted_ptr).caught.swap(true, Ordering::SeqCst);
+    if was_caught {
+        // Since cleanup() isn't allowed to panic, we just abort instead.
+        intrinsics::abort();
+    }
+    let out = (*adjusted_ptr).data.take().unwrap();
     __cxa_end_catch();
     out
 }
@@ -90,7 +100,14 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     if exception.is_null() {
         return uw::_URC_FATAL_PHASE1_ERROR as u32;
     }
-    ptr::write(exception, Exception { caught: AtomicBool::new(false), data: Some(data) });
+    ptr::write(
+        exception,
+        Exception {
+            canary: &EXCEPTION_TYPE_INFO,
+            caught: AtomicBool::new(false),
+            data: Some(data),
+        },
+    );
     __cxa_throw(exception as *mut _, &EXCEPTION_TYPE_INFO, exception_cleanup);
 }
 
