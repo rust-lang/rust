@@ -1044,6 +1044,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let rhs_ty = self.check_expr(&rhs);
             let (applicability, eq) = if self.can_coerce(rhs_ty, lhs_ty) {
                 (Applicability::MachineApplicable, true)
+            } else if let ExprKind::Binary(
+                Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+                _,
+                rhs_expr,
+            ) = lhs.kind
+            {
+                let actual_lhs_ty = self.check_expr(&rhs_expr);
+                (Applicability::MaybeIncorrect, self.can_coerce(rhs_ty, actual_lhs_ty))
             } else {
                 (Applicability::MaybeIncorrect, false)
             };
