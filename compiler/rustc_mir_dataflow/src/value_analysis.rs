@@ -50,6 +50,20 @@
 //! Borrows.
 //!
 //! To be continued...
+//!
+//! The bottom state denotes uninitalized memory.
+//!
+//!
+//! # Assumptions
+//!
+//! - (A1) Assignment to any tracked place invalidates all pointers that could be used to change
+//!     the underlying value.
+//! - (A2) `StorageLive`, `StorageDead` and `Deinit` make the underlying memory at least
+//!     uninitialized (at least in the sense that declaring access UB is also fine).
+//! - (A3) An assignment with `State::assign_place_idx` either involves non-overlapping places, or
+//!     the places are the same.
+//! - (A4) If the value behind a reference to a `Freeze` place is changed, dereferencing the
+//!     reference is UB.
 
 use std::fmt::{Debug, Formatter};
 
@@ -91,12 +105,11 @@ pub trait ValueAnalysis<'tcx> {
                 self.handle_intrinsic(intrinsic, state);
             }
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                // We can flood with bottom here, because `StorageLive` makes the local
-                // uninitialized, and `StorageDead` makes it UB to access.
+                // (A2)
                 state.flood_with(Place::from(*local).as_ref(), self.map(), Self::Value::bottom());
             }
             StatementKind::Deinit(box place) => {
-                // The bottom states denotes uninitialized values.
+                // (A2)
                 state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
             }
             StatementKind::Nop
@@ -200,7 +213,8 @@ pub trait ValueAnalysis<'tcx> {
                 ValueOrPlace::Value(self.handle_constant(constant, state))
             }
             Operand::Copy(place) | Operand::Move(place) => {
-                // Do we want to handle moves differently? Could flood place with bottom.
+                // On move, we would ideally flood the place with bottom. But with the current
+                // framework this is not possible (similar to `InterpCx::eval_operand`).
                 self.map()
                     .find(place.as_ref())
                     .map(ValueOrPlace::Place)
@@ -306,7 +320,6 @@ impl<'tcx, T: ValueAnalysis<'tcx>> AnalysisDomain<'tcx> for ValueAnalysisWrapper
 
     fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
         // The initial state maps all tracked places of argument projections to ⊤ and the rest to ⊥.
-        // This utilizes that reading from an uninitialized place is UB.
         assert!(matches!(state.0, StateData::Unreachable));
         let values = IndexVec::from_elem_n(T::Value::bottom(), self.0.map().value_count);
         *state = State(StateData::Reachable(values));
@@ -440,10 +453,10 @@ impl<V: Clone + HasTop> State<V> {
         self.flood_idx_with(place, map, V::top())
     }
 
-    /// This method assumes that the given places are not overlapping, and that we can therefore
-    /// copy all entries one after another.
     pub fn assign_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
+        // We use (A3) and copy all entries one after another.
         let StateData::Reachable(values) = &mut self.0 else { return };
+
         // If both places are tracked, we copy the value to the target. If the target is tracked,
         // but the source is not, we have to invalidate the value in target. If the target is not
         // tracked, then we don't have to do anything.
@@ -490,6 +503,10 @@ impl<V: Clone + HasTop> State<V> {
                 if let Some(value_index) = map.places[target].value_index {
                     values[value_index] = V::top();
                 }
+                // Instead of tracking of *where* a reference points to (as in, which place), we
+                // track *what* it points to (as in, what do we know about the target). For an
+                // assignment `x = &y`, we thus copy the info we have for `y` to `*x`. This is
+                // sound because we only track places that are `Freeze`, and (A4).
                 if let Some(target_deref) = map.apply_elem(target, ProjElem::Deref) {
                     self.assign_place_idx(target_deref, source, map);
                 }
@@ -656,6 +673,8 @@ impl Map {
             // and therefore do not require invalidation of parent places.
             return Err(());
         }
+
+        // FIXME: Check that the place is `Freeze`.
 
         let place = self.make_place(local, projection)?;
 
