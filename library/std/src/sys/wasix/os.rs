@@ -252,7 +252,7 @@ pub fn exit(code: i32) -> ! {
 
 pub fn getpid() -> u32 {
     unsafe {
-        wasi::getpid()
+        wasi::proc_id()
             .map(|a| a as u32)
             .map_err(err2io)
             .unwrap_or_else(|_| 0u32)

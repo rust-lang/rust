@@ -34,18 +34,10 @@ pub extern "C" fn _start_thread(entry_low: i32, entry_high: i32) {
 
     // Set the thread to a new stack
     unsafe {
-        libc::__wasilibc_set_stack_pointer(cb.stack.stack_pointer as *mut libc::c_void);
+        libc::__wasilibc_set_stack_pointer(cb.stack.stack_base as *mut libc::c_void);
     }
     
-    // Now we can use stack_pointer safely
-    _start_thread_internal(cb);
-}
-
-// Callback when a new thread is spawned
-#[inline(never)]
-fn _start_thread_internal(cb: Box<ThreadCallback>) {
-    // Set the thread to a new stack
-    let stack_pointer = cb.stack.stack_ptr + cb.stack.stack_size;
+    // Init the TLS area
     unsafe {
         let mut tls_ptr = cb.stack.tls_ptr;
         if tls_ptr % cb.stack.tls_align != 0 {
@@ -54,6 +46,7 @@ fn _start_thread_internal(cb: Box<ThreadCallback>) {
         libc::__wasilibc_init_tls(tls_ptr as *mut libc::c_void);
     }
 
+    // Run the thread
     (cb.callback)();
 
     // Push the stack back onto the pool
@@ -81,15 +74,10 @@ pub extern "C" fn _react(entry_low: i32, entry_high: i32) {
 
     // Set the thread to a new stack
     unsafe {
-        libc::__wasilibc_set_stack_pointer(cb.stack.stack_pointer as *mut libc::c_void);
+        libc::__wasilibc_set_stack_pointer(cb.stack.stack_base as *mut libc::c_void);
     }
 
-    // Now we can use stack_pointer safely
-    _react_internal(cb);
-}
-
-#[inline(never)]
-fn _react_internal(cb: mem::ManuallyDrop<Box<ReactorCallback>>) {
+    // Init the TLS area
     unsafe {
         let mut tls_ptr = cb.stack.tls_ptr;
         if tls_ptr % cb.stack.tls_align != 0 {
@@ -123,9 +111,9 @@ pub struct Thread
 
 struct ThreadStack
 {
-    stack_ptr: u64,
+    stack_start: u64,
+    stack_base: u64,
     stack_size: u64,
-    stack_pointer: u64,
     tls_ptr: u64,
     tls_size: u64,
     tls_align: u64,
@@ -135,7 +123,7 @@ impl Drop
 for ThreadStack
 {
     fn drop(&mut self) {
-        _free(self.stack_ptr, self.stack_size);
+        _free(self.stack_start, self.stack_size);
         _free(self.tls_ptr, self.tls_size);
     }
 }
@@ -172,10 +160,10 @@ fn stack_pool_pop(stack_size: usize) -> ThreadStack {
         None => {
             // Create a new empty stack for the the thread
             // (leave some space for the start function, as it may have some variables)
-            let stack_ptr = unsafe {
+            let stack_start = unsafe {
                 libc::malloc(stack_size) as u64
             };
-            let stack_pointer =  stack_ptr + ((stack_size as u64) - 256);
+            let stack_base =  stack_start + ((stack_size as u64) - 256);
 
             let tls_size = unsafe { libc::__wasilibc_tls_size() as usize };
             let tls_align = unsafe { libc::__wasilibc_tls_align() as usize };
@@ -184,9 +172,9 @@ fn stack_pool_pop(stack_size: usize) -> ThreadStack {
                 libc::malloc(tls_size + tls_align + pthread_self_size) as u64
             };
             ThreadStack {
-                stack_ptr,
+                stack_start,
+                stack_base,
                 stack_size: stack_size as u64,
-                stack_pointer,
                 tls_ptr,
                 tls_size: tls_size as u64,
                 tls_align: tls_align as u64,
@@ -208,12 +196,14 @@ impl Thread {
             callback: p,
             stack: stack_pool_pop(stack_size),
         });
+        let stack_base = cb.stack.stack_base;
+        let stack_start = cb.stack.stack_start;
 
         // Invoke the thread_spawn callback (if it fails we need to clean up the
         // allocated memory ourselves)
         let handle = unsafe {
             let raw = Box::into_raw(cb) as *mut ThreadCallback;
-            wasi::thread_spawn(raw as u64, wasi::BOOL_FALSE)
+            wasi::thread_spawn(raw as u64, stack_base as u64, stack_start as u64, wasi::BOOL_FALSE)
                 .map_err(err2io)?
         };
 
@@ -231,9 +221,11 @@ impl Thread {
             callback: Box::new(p),
             stack: stack_pool_pop(DEFAULT_MIN_STACK_SIZE),
         });
+        let stack_base = cb.stack.stack_base;
+        let stack_start = cb.stack.stack_start;
         let handle = unsafe {
             let raw = Box::into_raw(cb) as *mut ReactorCallback;
-            wasi::thread_spawn(raw as u64, wasi::BOOL_TRUE)
+            wasi::thread_spawn(raw as u64, stack_base as u64, stack_start as u64, wasi::BOOL_TRUE)
                 .map_err(err2io)?
         };
 

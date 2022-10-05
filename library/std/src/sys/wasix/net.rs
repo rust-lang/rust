@@ -80,7 +80,7 @@ impl Socket
             _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid address family")); }
         };
         let (fd1, fd2) = unsafe {
-            wasi::pipe().map_err(err2io)?
+            wasi::fd_pipe().map_err(err2io)?
         };
         let socket1 = Socket {
             fd: Some(unsafe { WasiFd::from_raw_fd(fd1 as RawFd) }),
