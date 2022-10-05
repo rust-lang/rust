@@ -46,6 +46,7 @@ fluent_messages! {
     compiletest => "../locales/en-US/compiletest.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
     driver => "../locales/en-US/driver.ftl",
+    errors => "../locales/en-US/errors.ftl",
     expand => "../locales/en-US/expand.ftl",
     hir_analysis => "../locales/en-US/hir_analysis.ftl",
     infer => "../locales/en-US/infer.ftl",

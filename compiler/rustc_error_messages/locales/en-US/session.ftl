@@ -39,20 +39,6 @@ session_unstable_virtual_function_elimination = `-Zvirtual-function-elimination`
 
 session_unsupported_dwarf_version = requested DWARF version {$dwarf_version} is greater than 5
 
-session_target_invalid_address_space = invalid address space `{$addr_space}` for `{$cause}` in "data-layout": {$err}
-
-session_target_invalid_bits = invalid {$kind} `{$bit}` for `{$cause}` in "data-layout": {$err}
-
-session_target_missing_alignment = missing alignment for `{$cause}` in "data-layout"
-
-session_target_invalid_alignment = invalid alignment for `{$cause}` in "data-layout": {$err}
-
-session_target_inconsistent_architecture = inconsistent target specification: "data-layout" claims architecture is {$dl}-endian, while "target-endian" is `{$target}`
-
-session_target_inconsistent_pointer_width = inconsistent target specification: "data-layout" claims pointers are {$pointer_size}-bit, while "target-pointer-width" is `{$target}`
-
-session_target_invalid_bits_size = {$err}
-
 session_target_stack_protector_not_supported = `-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored
 
 session_split_debuginfo_unstable_platform = `-Csplit-debuginfo={$debuginfo}` is unstable on this platform
