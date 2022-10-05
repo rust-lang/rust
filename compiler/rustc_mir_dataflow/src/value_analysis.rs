@@ -767,7 +767,7 @@ impl<V: HasTop> ValueOrPlace<V> {
 pub enum ValueOrPlaceOrRef<V> {
     Value(V),
     Place(PlaceIndex),
-    Ref(PlaceIndex)
+    Ref(PlaceIndex),
 }
 
 impl<V: HasTop> ValueOrPlaceOrRef<V> {
@@ -775,7 +775,6 @@ impl<V: HasTop> ValueOrPlaceOrRef<V> {
         ValueOrPlaceOrRef::Value(V::top())
     }
 }
-
 
 impl<V> From<ValueOrPlace<V>> for ValueOrPlaceOrRef<V> {
     fn from(x: ValueOrPlace<V>) -> Self {
