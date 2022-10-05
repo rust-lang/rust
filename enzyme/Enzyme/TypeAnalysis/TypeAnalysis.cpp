@@ -53,6 +53,8 @@
 #include "RustDebugInfo.h"
 #include "TBAA.h"
 
+#include <math.h>
+
 extern "C" {
 /// Maximum offset for type trees to keep
 llvm::cl::opt<int> MaxIntOffset("enzyme-max-int-offset", cl::init(100),
@@ -3424,9 +3426,14 @@ struct FunctionArgumentIterator<Arg0, Args...> {
 };
 
 template <typename RT, typename... Args>
-void analyzeFuncTypes(RT (*fn)(Args...), CallInst &call, TypeAnalyzer &TA) {
+void analyzeFuncTypesNoFn(CallInst &call, TypeAnalyzer &TA) {
   TypeHandler<RT>::analyzeType(&call, call, TA);
   FunctionArgumentIterator<Args...>::analyzeFuncTypesHelper(0, call, TA);
+}
+
+template <typename RT, typename... Args>
+void analyzeFuncTypes(RT (*fn)(Args...), CallInst &call, TypeAnalyzer &TA) {
+  analyzeFuncTypesNoFn<RT, Args...>(call, TA);
 }
 
 void TypeAnalyzer::visitInvokeInst(InvokeInst &call) {
@@ -3498,7 +3505,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 
 #define CONSIDER2(fn, ...)                                                     \
   if (funcName == #fn) {                                                       \
-    analyzeFuncTypes<__VA_ARGS__>(::fn, call, *this);                          \
+    analyzeFuncTypesNoFn<__VA_ARGS__>(call, *this);                            \
     return;                                                                    \
   }
 

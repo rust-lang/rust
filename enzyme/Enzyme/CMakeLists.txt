@@ -297,3 +297,7 @@ install(TARGETS LLDEnzyme-${LLVM_VERSION_MAJOR}
     LIBRARY DESTINATION lib COMPONENT shlib
     PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}/Enzyme"
     COMPONENT dev)
+
+if (ENZYME_MLIR)
+    add_subdirectory(MLIR)
+endif()

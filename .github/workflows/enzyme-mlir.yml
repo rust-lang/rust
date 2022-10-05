@@ -1,0 +1,76 @@
+name: MLIR
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+jobs:
+  build-linux:
+    name: MLIR ${{ matrix.build }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        build: ["Release", "Debug"] # "RelWithDebInfo"
+        llbuild: ["Release"]
+        os: [openstack22]
+  
+    timeout-minutes: 500 
+    steps:
+    - name: add llvm 
+      run: |
+          sudo rm -f /etc/apt/sources.list.d/*llvm*.list
+          sudo apt-get update
+          sudo apt-get install -y ninja-build git autoconf cmake gcc g++ libtool gfortran python3 python3-dev 
+    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        repository: 'llvm/Polygeist'
+        path: 'Polygeist'
+        submodules: true
+
+    - name: Cache MLIR
+      id: cache-mlir
+      uses: actions/cache@v2
+      with:
+        path: mlir-build
+        key: ${{ matrix.llbuild }}-${{ matrix.os }}-mlir-${{ hashFiles('Polygeist/.git/modules/llvm-project/HEAD') }}
+    
+    - name: MLIR build
+      if: steps.cache-mlir.outputs.cache-hit != 'true'
+      run: |
+        mkdir mlir-build
+        cd mlir-build
+        cmake ../Polygeist/llvm-project/llvm -GNinja -DLLVM_ENABLE_PROJECTS="llvm;clang;mlir;openmp" -DCMAKE_BUILD_TYPE=${{ matrix.llbuild }} -DLLVM_ENABLE_ASSERTIONS=ON -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_PARALLEL_LINK_JOBS=2
+        ninja -j2
+    
+    - name: Cache Polygeist
+      id: cache-polygeist
+      uses: actions/cache@v2
+      with:
+        path: polygeist-build
+        key: ${{ matrix.llbuild }}-${{ matrix.os }}-polygeist-${{ hashFiles('Polygeist/.git/modules/llvm-project/HEAD') }}-${{ hashFiles('Polygeist/.git/refs/heads/main') }}
+
+    - name: Polygeist build
+      if: steps.cache-polygeist.outputs.cache-hit != 'true'
+      run: |
+        mkdir polygeist-build
+        cd polygeist-build
+        cmake ../Polygeist/ -GNinja -DMLIR_DIR=`pwd`/../mlir-build/lib/cmake/mlir -DLLVM_EXTERNAL_LIT=`pwd`/../mlir-build/bin/llvm-lit -DClang_DIR=`pwd`/../mlir-build/lib/cmake/clang -DCMAKE_BUILD_TYPE=${{ matrix.llbuild }}
+        ninja
+
+    - name: cmake
+      run: |
+          cd enzyme && mkdir build
+          cd build 
+          cmake .. -GNinja -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=`pwd`/../../mlir-build -DENZYME_MLIR=ON
+    - name: make
+      run: cd enzyme/build && ninja
+    - name: make check-enzymemlir
+      run: cd enzyme/build && ninja check-enzymemlir
+  

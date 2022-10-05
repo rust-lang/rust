@@ -1157,12 +1157,14 @@ static inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
     return os << "mod";
   else if (mri == ModRefInfo::Ref)
     return os << "ref";
+#if LLVM_VERSION_MAJOR <= 14
   else if (mri == ModRefInfo::MustModRef)
     return os << "mustmodref";
   else if (mri == ModRefInfo::MustMod)
     return os << "mustmod";
   else if (mri == ModRefInfo::MustRef)
     return os << "mustref";
+#endif
   else
     llvm_unreachable("unknown modref");
   return os;

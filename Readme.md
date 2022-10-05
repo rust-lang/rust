@@ -1,7 +1,7 @@
-# <img src="https://enzyme.mit.edu/logo.svg" width="75" align=left> The Enzyme High-Performance Automatic Differentiator of LLVM
+# <img src="https://enzyme.mit.edu/logo.svg" width="75" align=left> The Enzyme High-Performance Automatic Differentiator of LLVM and MLIR
 
 
-Enzyme is a plugin that performs automatic differentiation (AD) of statically analyzable LLVM.
+Enzyme is a plugin that performs automatic differentiation (AD) of statically analyzable LLVM and MLIR.
 
 Enzyme can be used by calling `__enzyme_autodiff` on a function to be differentiated as shown below. 
 Running the Enzyme transformation pass then replaces the call to `__enzyme_autodiff` with the gradient of its first argument.
