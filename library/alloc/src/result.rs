@@ -516,7 +516,7 @@ impl<T: ?Sized, E> Result<&T, E> {
     /// assert_eq!(owned, Ok(String::from("string")));
     /// ```
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "result_owned", issue = "none")]
+    #[unstable(feature = "result_owned", issue = "102696")]
     pub fn owned(self) -> Result<T::Owned, E>
     where
         T: ToOwned,
@@ -550,7 +550,7 @@ impl<T: ?Sized, E> Result<&mut T, E> {
     /// assert_eq!(owned, Ok(String::from("string")));
     /// ```
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "result_owned", issue = "none")]
+    #[unstable(feature = "result_owned", issue = "102696")]
     pub fn owned(self) -> Result<T::Owned, E>
     where
         T: ToOwned,

@@ -532,7 +532,7 @@ impl<T: ?Sized> Option<&T> {
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[unstable(feature = "option_owned", issue = "none")]
+    #[unstable(feature = "option_owned", issue = "102696")]
     pub fn owned(self) -> Option<T::Owned>
     where
         T: ToOwned,
@@ -567,7 +567,7 @@ impl<T: ?Sized> Option<&mut T> {
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[unstable(feature = "option_owned", issue = "none")]
+    #[unstable(feature = "option_owned", issue = "102696")]
     pub fn owned(self) -> Option<T::Owned>
     where
         T: ToOwned,
