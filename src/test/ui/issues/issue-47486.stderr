@@ -9,11 +9,6 @@ error[E0282]: type annotations needed
    |
 LL |     [0u8; std::mem::size_of::<_>()];
    |           ^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `size_of`
-   |
-help: consider specifying the generic argument
-   |
-LL |     [0u8; std::mem::size_of::<_>()];
-   |                            ~~~~~
 
 error: aborting due to 2 previous errors
 
