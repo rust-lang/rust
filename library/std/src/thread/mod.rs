@@ -880,7 +880,7 @@ pub fn sleep(dur: Duration) {
 /// * It can be implemented very efficiently on many platforms.
 ///
 /// # Memory Orderings
-/// 
+///
 /// Calls to `park` _synchronize-with_ calls to `unpark`, meaning that memory
 /// operations performed before a call to `unpark` are made visible to the thread that
 /// consumes the token and returns from `park`. Note that all `park` and `unpark`
@@ -890,7 +890,7 @@ pub fn sleep(dur: Duration) {
 /// In atomic ordering terms, `unpark` performs a `Release` operation and `park`
 /// performs the corresponding `Acquire` operation. Calls to `unpark` for the same
 /// thread form a [release sequence].
-/// 
+///
 /// Notice that being unblocked does not imply any synchronization with someone that
 /// unparked this thread, it could also be spurious. For example, it would be a valid,
 /// but inefficient, implementation to make both park and unpark return immediately
