@@ -51,6 +51,7 @@ use termcolor::{Color, ColorSpec};
 pub mod annotate_snippet_emitter_writer;
 mod diagnostic;
 mod diagnostic_builder;
+mod diagnostic_impls;
 pub mod emitter;
 pub mod json;
 mod lock;
