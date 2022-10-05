@@ -1123,7 +1123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 err.span_suggestion_short(
                     span_semi,
-                    "remove this semicolon",
+                    "remove this semicolon to return this value",
                     "",
                     Applicability::MachineApplicable,
                 );

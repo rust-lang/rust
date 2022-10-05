@@ -1,4 +1,3 @@
-//
 // regression test for #8005
 
 macro_rules! test { () => { fn foo() -> i32 { 1; } } }
