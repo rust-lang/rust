@@ -3,26 +3,26 @@ error: any use of this value will cause an error
    |
 LL |     const _BAD1: () = unsafe {
    |     ---------------
-LL |         MaybeUninit::<!>::uninit().assume_init();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to instantiate uninhabited type `!`
+LL |         intrinsics::assert_inhabited::<!>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to instantiate uninhabited type `!`
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
-  --> $DIR/assert-type-intrinsics.rs:17:9
+  --> $DIR/assert-type-intrinsics.rs:18:9
    |
 LL |     const _BAD2: () = {
    |     ---------------
-LL |         intrinsics::assert_uninit_valid::<bool>();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to leave type `bool` uninitialized, which is invalid
+LL |         intrinsics::assert_uninit_valid::<!>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to instantiate uninhabited type `!`
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/assert-type-intrinsics.rs:20:9
+  --> $DIR/assert-type-intrinsics.rs:22:9
    |
 LL |     const _BAD3: () = {
    |     ---------------
@@ -40,8 +40,8 @@ error: any use of this value will cause an error
    |
 LL |     const _BAD1: () = unsafe {
    |     ---------------
-LL |         MaybeUninit::<!>::uninit().assume_init();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to instantiate uninhabited type `!`
+LL |         intrinsics::assert_inhabited::<!>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to instantiate uninhabited type `!`
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
@@ -49,12 +49,12 @@ LL |         MaybeUninit::<!>::uninit().assume_init();
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/assert-type-intrinsics.rs:17:9
+  --> $DIR/assert-type-intrinsics.rs:18:9
    |
 LL |     const _BAD2: () = {
    |     ---------------
-LL |         intrinsics::assert_uninit_valid::<bool>();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to leave type `bool` uninitialized, which is invalid
+LL |         intrinsics::assert_uninit_valid::<!>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to instantiate uninhabited type `!`
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
@@ -62,7 +62,7 @@ LL |         intrinsics::assert_uninit_valid::<bool>();
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/assert-type-intrinsics.rs:20:9
+  --> $DIR/assert-type-intrinsics.rs:22:9
    |
 LL |     const _BAD3: () = {
    |     ---------------

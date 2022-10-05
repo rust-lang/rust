@@ -11,12 +11,15 @@ fn main() {
     use std::mem::MaybeUninit;
 
     const _BAD1: () = unsafe {
-        MaybeUninit::<!>::uninit().assume_init();
+        intrinsics::assert_inhabited::<!>(); //~ERROR: any use of this value will cause an error
+        //~^WARN: previously accepted
     };
     const _BAD2: () = {
-        intrinsics::assert_uninit_valid::<bool>();
+        intrinsics::assert_uninit_valid::<!>(); //~ERROR: any use of this value will cause an error
+        //~^WARN: previously accepted
     };
     const _BAD3: () = {
-        intrinsics::assert_zero_valid::<&'static i32>();
+        intrinsics::assert_zero_valid::<&'static i32>(); //~ERROR: any use of this value will cause an error
+        //~^WARN: previously accepted
     };
 }

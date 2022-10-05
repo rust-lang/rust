@@ -88,6 +88,9 @@ fn main() {
         let _val: NonNull<i32> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
         let _val: NonNull<i32> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
+        let _val: (NonZeroU32, i32) = mem::zeroed(); //~ ERROR: does not permit zero-initialization
+        let _val: (NonZeroU32, i32) = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
         let _val: *const dyn Send = mem::zeroed(); //~ ERROR: does not permit zero-initialization
         let _val: *const dyn Send = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
@@ -133,7 +136,7 @@ fn main() {
         let _val: Result<i32, i32> = mem::zeroed();
         let _val: Result<i32, i32> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
-        // Some things that happen to work due to rustc implementation details,
+        // Some things that happen to be UB-free due to rustc implementation details,
         // but are not guaranteed to keep working.
         let _val: OneFruit = mem::zeroed();
         let _val: OneFruit = mem::uninitialized();

@@ -2158,8 +2158,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
         diag: &mut Diagnostic,
     ) {
+        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+            && let Some(msg) = self.should_suggest_as_ref(exp_found.expected, exp_found.found)
+        {
+            diag.span_suggestion(
+                span,
+                msg,
+                // HACK: fix issue# 100605, suggesting convert from &Option<T> to Option<&T>, remove the extra `&`
+                format!("{}.as_ref()", snippet.trim_start_matches('&')),
+                Applicability::MachineApplicable,
+            );
+        }
+    }
+
+    pub fn should_suggest_as_ref(&self, expected: Ty<'tcx>, found: Ty<'tcx>) -> Option<&str> {
         if let (ty::Adt(exp_def, exp_substs), ty::Ref(_, found_ty, _)) =
-            (exp_found.expected.kind(), exp_found.found.kind())
+            (expected.kind(), found.kind())
         {
             if let ty::Adt(found_def, found_substs) = *found_ty.kind() {
                 if exp_def == &found_def {
@@ -2197,21 +2211,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 _ => show_suggestion = false,
                             }
                         }
-                        if let (Ok(snippet), true) =
-                            (self.tcx.sess.source_map().span_to_snippet(span), show_suggestion)
-                        {
-                            diag.span_suggestion(
-                                span,
-                                *msg,
-                                // HACK: fix issue# 100605, suggesting convert from &Option<T> to Option<&T>, remove the extra `&`
-                                format!("{}.as_ref()", snippet.trim_start_matches('&')),
-                                Applicability::MachineApplicable,
-                            );
+                        if show_suggestion {
+                            return Some(*msg);
                         }
                     }
                 }
             }
         }
+        None
     }
 
     pub fn report_and_explain_type_error(

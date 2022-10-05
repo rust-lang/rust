@@ -435,6 +435,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 generics_def_id,
                 def_id: _,
                 generic_args,
+                have_turbofish,
             } => {
                 let generics = self.tcx.generics_of(generics_def_id);
                 let is_type = matches!(arg.unpack(), GenericArgKind::Type(_));
@@ -482,11 +483,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     .unwrap()
                     .into_buffer();
 
-                infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
-                    span: insert_span,
-                    arg_count: generic_args.len(),
-                    args,
-                });
+                if !have_turbofish {
+                    infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
+                        span: insert_span,
+                        arg_count: generic_args.len(),
+                        args,
+                    });
+                }
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, substs, def_id } => {
                 let printer = fmt_printer(self, Namespace::ValueNS);
@@ -616,6 +619,7 @@ enum InferSourceKind<'tcx> {
         generics_def_id: DefId,
         def_id: DefId,
         generic_args: &'tcx [GenericArg<'tcx>],
+        have_turbofish: bool,
     },
     FullyQualifiedMethodCall {
         receiver: &'tcx Expr<'tcx>,
@@ -676,6 +680,7 @@ struct InsertableGenericArgs<'tcx> {
     substs: SubstsRef<'tcx>,
     generics_def_id: DefId,
     def_id: DefId,
+    have_turbofish: bool,
 }
 
 /// A visitor which searches for the "best" spot to use in the inference error.
@@ -916,6 +921,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                             substs,
                             generics_def_id: def_id,
                             def_id,
+                            have_turbofish: false,
                         }
                     };
                     return Box::new(insertable.into_iter());
@@ -933,6 +939,9 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'a {
         let tcx = self.infcx.tcx;
+        let have_turbofish = path.segments.iter().any(|segment| {
+            segment.args.map_or(false, |args| args.args.iter().any(|arg| arg.is_ty_or_const()))
+        });
         // The last segment of a path often has `Res::Err` and the
         // correct `Res` is the one of the whole path.
         //
@@ -942,7 +951,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             let generics_def_id = tcx.res_generics_def_id(path.res)?;
             let generics = tcx.generics_of(generics_def_id);
             if generics.has_impl_trait() {
-                None?
+                None?;
             }
             let insert_span =
                 path.segments.last().unwrap().ident.span.shrink_to_hi().with_hi(path.span.hi());
@@ -951,6 +960,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 substs,
                 generics_def_id,
                 def_id: path.res.def_id(),
+                have_turbofish,
             }
         };
 
@@ -970,6 +980,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     substs,
                     generics_def_id,
                     def_id: res.def_id(),
+                    have_turbofish,
                 })
             })
             .chain(last_segment_using_path_data)
@@ -998,7 +1009,13 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     }
                     let span = tcx.hir().span(segment.hir_id);
                     let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
-                    InsertableGenericArgs { insert_span, substs, generics_def_id: def_id, def_id }
+                    InsertableGenericArgs {
+                        insert_span,
+                        substs,
+                        generics_def_id: def_id,
+                        def_id,
+                        have_turbofish: false,
+                    }
                 };
 
                 let parent_def_id = generics.parent.unwrap();
@@ -1121,7 +1138,13 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
 
         for args in self.expr_inferred_subst_iter(expr) {
             debug!(?args);
-            let InsertableGenericArgs { insert_span, substs, generics_def_id, def_id } = args;
+            let InsertableGenericArgs {
+                insert_span,
+                substs,
+                generics_def_id,
+                def_id,
+                have_turbofish,
+            } = args;
             let generics = tcx.generics_of(generics_def_id);
             if let Some(argument_index) = generics
                 .own_substs(substs)
@@ -1144,6 +1167,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                         generics_def_id,
                         def_id,
                         generic_args,
+                        have_turbofish,
                     },
                 });
             }
