@@ -357,7 +357,8 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                                     "wildcard_imports"
                                                         | "enum_glob_use"
                                                         | "redundant_pub_crate"
-                                                        | "macro_use_imports",
+                                                        | "macro_use_imports"
+                                                        | "unsafe_removed_from_name",
                                                 )
                                             })
                                         {
