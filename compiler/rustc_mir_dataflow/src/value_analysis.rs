@@ -674,7 +674,11 @@ impl Map {
             return Err(());
         }
 
-        // FIXME: Check that the place is `Freeze`.
+        if !ty.is_trivially_freeze() {
+            // Due to the way we deal with shared references, only `Freeze` types may be tracked.
+            // We are a little bit to restrictive here by only allowing trivially `Freeze` types.
+            return Err(());
+        }
 
         let place = self.make_place(local, projection)?;
 
