@@ -106,6 +106,7 @@ docs! {
     "derive_hash_xor_eq",
     "derive_ord_xor_partial_ord",
     "derive_partial_eq_without_eq",
+    "disallowed_macros",
     "disallowed_methods",
     "disallowed_names",
     "disallowed_script_idents",

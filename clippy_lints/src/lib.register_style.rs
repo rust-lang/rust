@@ -15,6 +15,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(default::FIELD_REASSIGN_WITH_DEFAULT),
     LintId::of(default_instead_of_iter_empty::DEFAULT_INSTEAD_OF_ITER_EMPTY),
     LintId::of(dereference::NEEDLESS_BORROW),
+    LintId::of(disallowed_macros::DISALLOWED_MACROS),
     LintId::of(disallowed_methods::DISALLOWED_METHODS),
     LintId::of(disallowed_names::DISALLOWED_NAMES),
     LintId::of(disallowed_types::DISALLOWED_TYPES),

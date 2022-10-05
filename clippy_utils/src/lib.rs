@@ -78,7 +78,7 @@ use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
@@ -522,15 +522,49 @@ pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>
     path_res(cx, maybe_path).opt_def_id()
 }
 
-/// Resolves a def path like `std::vec::Vec`.
+fn find_primitive<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<Item = DefId> + 'tcx {
+    let single = |ty| tcx.incoherent_impls(ty).iter().copied();
+    let empty = || [].iter().copied();
+    match name {
+        "bool" => single(BoolSimplifiedType),
+        "char" => single(CharSimplifiedType),
+        "str" => single(StrSimplifiedType),
+        "array" => single(ArraySimplifiedType),
+        "slice" => single(SliceSimplifiedType),
+        // FIXME: rustdoc documents these two using just `pointer`.
+        //
+        // Maybe this is something we should do here too.
+        "const_ptr" => single(PtrSimplifiedType(Mutability::Not)),
+        "mut_ptr" => single(PtrSimplifiedType(Mutability::Mut)),
+        "isize" => single(IntSimplifiedType(IntTy::Isize)),
+        "i8" => single(IntSimplifiedType(IntTy::I8)),
+        "i16" => single(IntSimplifiedType(IntTy::I16)),
+        "i32" => single(IntSimplifiedType(IntTy::I32)),
+        "i64" => single(IntSimplifiedType(IntTy::I64)),
+        "i128" => single(IntSimplifiedType(IntTy::I128)),
+        "usize" => single(UintSimplifiedType(UintTy::Usize)),
+        "u8" => single(UintSimplifiedType(UintTy::U8)),
+        "u16" => single(UintSimplifiedType(UintTy::U16)),
+        "u32" => single(UintSimplifiedType(UintTy::U32)),
+        "u64" => single(UintSimplifiedType(UintTy::U64)),
+        "u128" => single(UintSimplifiedType(UintTy::U128)),
+        "f32" => single(FloatSimplifiedType(FloatTy::F32)),
+        "f64" => single(FloatSimplifiedType(FloatTy::F64)),
+        _ => empty(),
+    }
+}
+
+/// Resolves a def path like `std::vec::Vec`. `namespace_hint` can be supplied to disambiguate
+/// between `std::vec` the module and `std::vec` the macro
+///
 /// This function is expensive and should be used sparingly.
-pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
-    fn item_child_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Option<Res> {
+pub fn def_path_res(cx: &LateContext<'_>, path: &[&str], namespace_hint: Option<Namespace>) -> Res {
+    fn item_child_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str, matches_ns: impl Fn(Res) -> bool) -> Option<Res> {
         match tcx.def_kind(def_id) {
             DefKind::Mod | DefKind::Enum | DefKind::Trait => tcx
                 .module_children(def_id)
                 .iter()
-                .find(|item| item.ident.name.as_str() == name)
+                .find(|item| item.ident.name.as_str() == name && matches_ns(item.res.expect_non_local()))
                 .map(|child| child.res.expect_non_local()),
             DefKind::Impl => tcx
                 .associated_item_def_ids(def_id)
@@ -548,37 +582,7 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
             _ => None,
         }
     }
-    fn find_primitive<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<Item = DefId> + 'tcx {
-        let single = |ty| tcx.incoherent_impls(ty).iter().copied();
-        let empty = || [].iter().copied();
-        match name {
-            "bool" => single(BoolSimplifiedType),
-            "char" => single(CharSimplifiedType),
-            "str" => single(StrSimplifiedType),
-            "array" => single(ArraySimplifiedType),
-            "slice" => single(SliceSimplifiedType),
-            // FIXME: rustdoc documents these two using just `pointer`.
-            //
-            // Maybe this is something we should do here too.
-            "const_ptr" => single(PtrSimplifiedType(Mutability::Not)),
-            "mut_ptr" => single(PtrSimplifiedType(Mutability::Mut)),
-            "isize" => single(IntSimplifiedType(IntTy::Isize)),
-            "i8" => single(IntSimplifiedType(IntTy::I8)),
-            "i16" => single(IntSimplifiedType(IntTy::I16)),
-            "i32" => single(IntSimplifiedType(IntTy::I32)),
-            "i64" => single(IntSimplifiedType(IntTy::I64)),
-            "i128" => single(IntSimplifiedType(IntTy::I128)),
-            "usize" => single(UintSimplifiedType(UintTy::Usize)),
-            "u8" => single(UintSimplifiedType(UintTy::U8)),
-            "u16" => single(UintSimplifiedType(UintTy::U16)),
-            "u32" => single(UintSimplifiedType(UintTy::U32)),
-            "u64" => single(UintSimplifiedType(UintTy::U64)),
-            "u128" => single(UintSimplifiedType(UintTy::U128)),
-            "f32" => single(FloatSimplifiedType(FloatTy::F32)),
-            "f64" => single(FloatSimplifiedType(FloatTy::F64)),
-            _ => empty(),
-        }
-    }
+
     fn find_crate(tcx: TyCtxt<'_>, name: &str) -> Option<DefId> {
         tcx.crates(())
             .iter()
@@ -587,32 +591,45 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
             .map(CrateNum::as_def_id)
     }
 
-    let (base, first, path) = match *path {
-        [base, first, ref path @ ..] => (base, first, path),
+    let (base, path) = match *path {
         [primitive] => {
             return PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy);
         },
+        [base, ref path @ ..] => (base, path),
         _ => return Res::Err,
     };
     let tcx = cx.tcx;
     let starts = find_primitive(tcx, base)
         .chain(find_crate(tcx, base))
-        .filter_map(|id| item_child_by_name(tcx, id, first));
+        .map(|id| Res::Def(tcx.def_kind(id), id));
 
     for first in starts {
         let last = path
             .iter()
             .copied()
+            .enumerate()
             // for each segment, find the child item
-            .try_fold(first, |res, segment| {
+            .try_fold(first, |res, (idx, segment)| {
+                let matches_ns = |res: Res| {
+                    // If at the last segment in the path, respect the namespace hint
+                    if idx == path.len() - 1 {
+                        match namespace_hint {
+                            Some(ns) => res.matches_ns(ns),
+                            None => true,
+                        }
+                    } else {
+                        res.matches_ns(Namespace::TypeNS)
+                    }
+                };
+
                 let def_id = res.def_id();
-                if let Some(item) = item_child_by_name(tcx, def_id, segment) {
+                if let Some(item) = item_child_by_name(tcx, def_id, segment, matches_ns) {
                     Some(item)
                 } else if matches!(res, Res::Def(DefKind::Enum | DefKind::Struct, _)) {
                     // it is not a child item so check inherent impl items
                     tcx.inherent_impls(def_id)
                         .iter()
-                        .find_map(|&impl_def_id| item_child_by_name(tcx, impl_def_id, segment))
+                        .find_map(|&impl_def_id| item_child_by_name(tcx, impl_def_id, segment, matches_ns))
                 } else {
                     None
                 }
@@ -628,8 +645,10 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
 
 /// Convenience function to get the `DefId` of a trait by path.
 /// It could be a trait or trait alias.
+///
+/// This function is expensive and should be used sparingly.
 pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
-    match def_path_res(cx, path) {
+    match def_path_res(cx, path, Some(Namespace::TypeNS)) {
         Res::Def(DefKind::Trait | DefKind::TraitAlias, trait_id) => Some(trait_id),
         _ => None,
     }

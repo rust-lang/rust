@@ -39,28 +39,28 @@ pub struct Rename {
     pub rename: String,
 }
 
-/// A single disallowed method, used by the `DISALLOWED_METHODS` lint.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
-pub enum DisallowedMethod {
+pub enum DisallowedPath {
     Simple(String),
     WithReason { path: String, reason: Option<String> },
 }
 
-impl DisallowedMethod {
+impl DisallowedPath {
     pub fn path(&self) -> &str {
         let (Self::Simple(path) | Self::WithReason { path, .. }) = self;
 
         path
     }
-}
 
-/// A single disallowed type, used by the `DISALLOWED_TYPES` lint.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(untagged)]
-pub enum DisallowedType {
-    Simple(String),
-    WithReason { path: String, reason: Option<String> },
+    pub fn reason(&self) -> Option<&str> {
+        match self {
+            Self::WithReason {
+                reason: Some(reason), ..
+            } => Some(reason),
+            _ => None,
+        }
+    }
 }
 
 /// Conf with parse errors
@@ -315,14 +315,18 @@ define_Conf! {
     ///
     /// Whether to allow certain wildcard imports (prelude, super in tests).
     (warn_on_all_wildcard_imports: bool = false),
+    /// Lint: DISALLOWED_MACROS.
+    ///
+    /// The list of disallowed macros, written as fully qualified paths.
+    (disallowed_macros: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
     /// Lint: DISALLOWED_METHODS.
     ///
     /// The list of disallowed methods, written as fully qualified paths.
-    (disallowed_methods: Vec<crate::utils::conf::DisallowedMethod> = Vec::new()),
+    (disallowed_methods: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
     /// Lint: DISALLOWED_TYPES.
     ///
     /// The list of disallowed types, written as fully qualified paths.
-    (disallowed_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),
+    (disallowed_types: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
     /// Lint: UNREADABLE_LITERAL.
     ///
     /// Should the fraction of a decimal be linted to include separators.
@@ -362,7 +366,7 @@ define_Conf! {
     /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
     (max_suggested_slice_pattern_length: u64 = 3),
     /// Lint: AWAIT_HOLDING_INVALID_TYPE
-    (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),
+    (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
     /// Lint: LARGE_INCLUDE_FILE.
     ///
     /// The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes

@@ -15,7 +15,7 @@ use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::Visitor;
@@ -920,7 +920,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryDefPath {
             // Extract the path to the matched type
             if let Some(segments) = path_to_matched_type(cx, item_arg);
             let segments: Vec<&str> = segments.iter().map(|sym| &**sym).collect();
-            if let Some(def_id) = def_path_res(cx, &segments[..]).opt_def_id();
+            if let Some(def_id) = def_path_res(cx, &segments[..], None).opt_def_id();
             then {
                 // def_path_res will match field names before anything else, but for this we want to match
                 // inherent functions first.
@@ -952,7 +952,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryDefPath {
                         Item::DiagnosticItem(*item_name),
                     )
                 } else if let Some(lang_item) = cx.tcx.lang_items().items().iter().position(|id| *id == Some(def_id)) {
-                    let lang_items = def_path_res(cx, &["rustc_hir", "lang_items", "LangItem"]).def_id();
+                    let lang_items = def_path_res(cx, &["rustc_hir", "lang_items", "LangItem"], Some(Namespace::TypeNS)).def_id();
                     let item_name = cx.tcx.adt_def(lang_items).variants().iter().nth(lang_item).unwrap().name;
                     (
                         "use of a def path to a `LangItem`",
@@ -1115,7 +1115,7 @@ fn read_mir_alloc_def_path<'tcx>(cx: &LateContext<'tcx>, alloc: &'tcx Allocation
 // This is not a complete resolver for paths. It works on all the paths currently used in the paths
 // module.  That's all it does and all it needs to do.
 pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
-    if def_path_res(cx, path) != Res::Err {
+    if def_path_res(cx, path, None) != Res::Err {
         return true;
     }
 
@@ -1206,7 +1206,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
         }
 
         for &module in &[&paths::KW_MODULE, &paths::SYM_MODULE] {
-            if let Some(def_id) = def_path_res(cx, module).opt_def_id() {
+            if let Some(def_id) = def_path_res(cx, module, None).opt_def_id() {
                 for item in cx.tcx.module_children(def_id).iter() {
                     if_chain! {
                         if let Res::Def(DefKind::Const, item_def_id) = item.res;
