@@ -461,7 +461,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     if let PatKind::Range(Some(_), None, Spanned { .. }) = inner_pat.kind {
                         gate_feature_post!(
                             &self,
-                            half_open_range_patterns,
+                            half_open_range_patterns_in_slices,
                             pat.span,
                             "`X..` patterns in slices are experimental"
                         );
@@ -589,7 +589,10 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
-    gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
+    gate_all!(
+        half_open_range_patterns_in_slices,
+        "half-open range patterns in slices are unstable"
+    );
     gate_all!(inline_const, "inline-const is experimental");
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(associated_const_equality, "associated const equality is incomplete");

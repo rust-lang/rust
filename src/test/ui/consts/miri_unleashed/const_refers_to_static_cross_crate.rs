@@ -1,7 +1,7 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 // aux-build:static_cross_crate.rs
 // stderr-per-bitwidth
-#![feature(exclusive_range_pattern, half_open_range_patterns)]
+#![feature(exclusive_range_pattern, half_open_range_patterns_in_slices)]
 
 extern crate static_cross_crate;
 

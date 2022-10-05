@@ -785,6 +785,7 @@ symbols! {
         globs,
         gt,
         half_open_range_patterns,
+        half_open_range_patterns_in_slices,
         hash,
         hexagon_target_feature,
         hidden,
