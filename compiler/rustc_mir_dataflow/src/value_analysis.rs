@@ -91,12 +91,13 @@ pub trait ValueAnalysis<'tcx> {
                 self.handle_intrinsic(intrinsic, state);
             }
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                // It is UB to read from an unitialized or unallocated local.
-                state.flood(Place::from(*local).as_ref(), self.map());
+                // We can flood with bottom here, because `StorageLive` makes the local
+                // uninitialized, and `StorageDead` makes it UB to access.
+                state.flood_with(Place::from(*local).as_ref(), self.map(), Self::Value::bottom());
             }
             StatementKind::Deinit(box place) => {
-                // It is UB to read `uninit` bytes.
-                state.flood(place.as_ref(), self.map());
+                // The bottom states denotes uninitialized values.
+                state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
             }
             StatementKind::Nop
             | StatementKind::Retag(..)
