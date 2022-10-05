@@ -1325,10 +1325,11 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
 ) {
     let tcx = selcx.tcx();
     if tcx.def_kind(obligation.predicate.item_def_id) == DefKind::ImplTraitPlaceholder {
-        // If we are trying to project an RPITIT with the _identity_ substs,
+        // If we are trying to project an RPITIT with trait's default `Self` parameter,
         // then we must be within a default trait body.
-        if obligation.predicate.substs
+        if obligation.predicate.self_ty()
             == ty::InternalSubsts::identity_for_item(tcx, obligation.predicate.item_def_id)
+                .type_at(0)
         {
             candidate_set.push_candidate(ProjectionCandidate::ImplTraitInTrait(
                 ImplTraitInTraitCandidate::Trait,
