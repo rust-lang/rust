@@ -2205,7 +2205,10 @@ impl<'tcx> Ty<'tcx> {
             // These aren't even `Clone`
             ty::Str | ty::Slice(..) | ty::Foreign(..) | ty::Dynamic(..) => false,
 
-            ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
+            ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..) => true,
 
             // The voldemort ZSTs are fine.
             ty::FnDef(..) => true,
