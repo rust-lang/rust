@@ -999,31 +999,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns the [DropIdx] for the innermost drop if the function unwound at
     /// this point. The `DropIdx` will be created if it doesn't already exist.
     fn diverge_cleanup(&mut self) -> DropIdx {
-        let is_generator = self.generator_kind.is_some();
-        let (uncached_scope, mut cached_drop) = self
-            .scopes
-            .scopes
-            .iter()
-            .enumerate()
-            .rev()
-            .find_map(|(scope_idx, scope)| {
-                scope.cached_unwind_block.map(|cached_block| (scope_idx + 1, cached_block))
-            })
-            .unwrap_or((0, ROOT_NODE));
-
-        for scope in &mut self.scopes.scopes[uncached_scope..] {
-            for drop in &scope.drops {
-                if is_generator || drop.kind == DropKind::Value {
-                    cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
-                }
-            }
-            scope.cached_unwind_block = Some(cached_drop);
-        }
-
-        cached_drop
+        // It is okay to use dummy span because the getting scope index on the topmost scope
+        // must always succeed.
+        self.diverge_cleanup_target(self.scopes.topmost(), DUMMY_SP)
     }
 
-    /// This is similar to [diverge_cleanup] except its target is set to
+    /// This is similar to [diverge_cleanup](Self::diverge_cleanup) except its target is set to
     /// some ancestor scope instead of the current scope.
     /// It is possible to unwind to some ancestor scope if some drop panics as
     /// the program breaks out of a if-then scope.
