@@ -473,7 +473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_sig.output()
     }
 
-    /// Attempts to reinterpret `method(rcvr, args...)` as `method.rcvr(args...)`
+    /// Attempts to reinterpret `method(rcvr, args...)` as `rcvr.method(args...)`
     /// and suggesting the fix if the method probe is successful.
     fn suggest_call_as_method(
         &self,
