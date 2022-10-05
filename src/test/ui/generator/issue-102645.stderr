@@ -1,0 +1,19 @@
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/issue-102645.rs:16:22
+   |
+LL |     Pin::new(&mut b).resume();
+   |                      ^^^^^^-- an argument of type `()` is missing
+   |
+note: associated function defined here
+  --> $SRC_DIR/core/src/ops/generator.rs:LL:COL
+   |
+LL |     fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return>;
+   |        ^^^^^^
+help: provide the argument
+   |
+LL |     Pin::new(&mut b).resume(());
+   |                            ~~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0061`.
