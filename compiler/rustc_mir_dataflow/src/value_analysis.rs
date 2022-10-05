@@ -183,15 +183,15 @@ pub trait ValueAnalysis<'tcx> {
                 .map()
                 .find(place.as_ref())
                 .map(ValueOrPlaceOrRef::Ref)
-                .unwrap_or(ValueOrPlaceOrRef::Unknown),
+                .unwrap_or(ValueOrPlaceOrRef::top()),
             Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
                 state.flood(place.as_ref(), self.map());
-                ValueOrPlaceOrRef::Unknown
+                ValueOrPlaceOrRef::top()
             }
             Rvalue::CopyForDeref(place) => {
                 self.handle_operand(&Operand::Copy(*place), state).into()
             }
-            _ => ValueOrPlaceOrRef::Unknown,
+            _ => ValueOrPlaceOrRef::top(),
         }
     }
 
@@ -218,7 +218,7 @@ pub trait ValueAnalysis<'tcx> {
                 self.map()
                     .find(place.as_ref())
                     .map(ValueOrPlace::Place)
-                    .unwrap_or(ValueOrPlace::Unknown)
+                    .unwrap_or(ValueOrPlace::top())
             }
         }
     }
@@ -511,9 +511,6 @@ impl<V: Clone + HasTop> State<V> {
                     self.assign_place_idx(target_deref, source, map);
                 }
             }
-            ValueOrPlaceOrRef::Unknown => {
-                self.flood_idx(target, map);
-            }
         }
     }
 
@@ -756,27 +753,35 @@ impl<'a> Iterator for Children<'a> {
         }
     }
 }
-
-// FIXME: See if we can get rid of `Unknown`.
 pub enum ValueOrPlace<V> {
     Value(V),
     Place(PlaceIndex),
-    Unknown,
+}
+
+impl<V: HasTop> ValueOrPlace<V> {
+    pub fn top() -> Self {
+        ValueOrPlace::Value(V::top())
+    }
 }
 
 pub enum ValueOrPlaceOrRef<V> {
     Value(V),
     Place(PlaceIndex),
-    Ref(PlaceIndex),
-    Unknown,
+    Ref(PlaceIndex)
 }
+
+impl<V: HasTop> ValueOrPlaceOrRef<V> {
+    pub fn top() -> Self {
+        ValueOrPlaceOrRef::Value(V::top())
+    }
+}
+
 
 impl<V> From<ValueOrPlace<V>> for ValueOrPlaceOrRef<V> {
     fn from(x: ValueOrPlace<V>) -> Self {
         match x {
             ValueOrPlace::Value(value) => ValueOrPlaceOrRef::Value(value),
             ValueOrPlace::Place(place) => ValueOrPlaceOrRef::Place(place),
-            ValueOrPlace::Unknown => ValueOrPlaceOrRef::Unknown,
         }
     }
 }

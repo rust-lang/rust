@@ -105,8 +105,8 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                         .ecx
                         .misc_cast(&operand, *ty)
                         .map(|result| ValueOrPlaceOrRef::Value(self.wrap_immediate(result, *ty)))
-                        .unwrap_or(ValueOrPlaceOrRef::Unknown),
-                    _ => ValueOrPlaceOrRef::Unknown,
+                        .unwrap_or(ValueOrPlaceOrRef::top()),
+                    _ => ValueOrPlaceOrRef::top(),
                 }
             }
             Rvalue::BinaryOp(op, box (left, right)) => {
@@ -156,7 +156,6 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                     let value = match self.handle_operand(discr, state) {
                         ValueOrPlace::Value(value) => value,
                         ValueOrPlace::Place(place) => state.get_idx(place, self.map()),
-                        ValueOrPlace::Unknown => FlatSet::Top,
                     };
                     let result = match value {
                         FlatSet::Top => FlatSet::Top,
@@ -241,7 +240,6 @@ impl<'tcx> ConstAnalysis<'tcx> {
         let value = match self.handle_operand(op, state) {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, &self.map),
-            ValueOrPlace::Unknown => FlatSet::Top,
         };
         match value {
             FlatSet::Top => FlatSet::Top,
@@ -384,9 +382,7 @@ impl<'tcx, 'map, 'a> Visitor<'tcx> for OperandCollector<'tcx, 'map, 'a> {
                     FlatSet::Elem(value) => {
                         self.visitor.before_effect.insert((location, *place), value);
                     }
-                    FlatSet::Bottom => {
-                        // This only happens if this location is unreachable.
-                    }
+                    FlatSet::Bottom => (),
                 }
             }
             _ => (),
