@@ -100,4 +100,10 @@ fn main() {
         let opt_ref = &opt;
         opt_ref.expect(&format!("{:?}", opt_ref));
     }
+
+    let format_capture: Option<i32> = None;
+    format_capture.expect(&format!("{error_code}"));
+
+    let format_capture_and_value: Option<i32> = None;
+    format_capture_and_value.expect(&format!("{error_code}, {}", 1));
 }

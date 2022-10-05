@@ -1,18 +1,16 @@
+// aux-build:proc_macro_with_span.rs
 // run-rustfix
 #![feature(custom_inner_attributes)]
 #![warn(clippy::uninlined_format_args)]
 #![allow(named_arguments_used_positionally, unused_imports, unused_macros, unused_variables)]
 #![allow(clippy::eq_op, clippy::format_in_format_args, clippy::print_literal)]
 
+extern crate proc_macro_with_span;
+use proc_macro_with_span::with_span;
+
 macro_rules! no_param_str {
     () => {
         "{}"
-    };
-}
-
-macro_rules! pass_through {
-    ($expr:expr) => {
-        $expr
     };
 }
 
@@ -140,11 +138,13 @@ fn tester(fn_arg: i32) {
     );
     println!(no_param_str!(), local_i32);
 
-    // FIXME: bugs!
-    // println!(pass_through!("foo={local_i32}"), local_i32 = local_i32);
-    // println!(pass_through!("foo={}"), local_i32);
-    // println!(indoc!("foo={}"), local_i32);
-    // printdoc!("foo={}", local_i32);
+    println!(
+        "{val}",
+    );
+    println!("{val}");
+
+    println!(with_span!("{0} {1}" "{1} {0}"), local_i32, local_f64);
+    println!("{}", with_span!(span val));
 }
 
 fn main() {

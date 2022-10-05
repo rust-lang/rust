@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::FormatParamKind::{Implicit, Named, Numbered, Starred};
 use clippy_utils::macros::{is_format_macro, FormatArgsExpn, FormatParam, FormatParamUsage};
-use clippy_utils::source::{expand_past_previous_comma, snippet_opt};
+use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_diag_trait_item, meets_msrv, msrvs};
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, HirId, Path, QPath};
+use rustc_hir::{Expr, ExprKind, HirId, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::Ty;
@@ -169,7 +169,7 @@ fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_si
     // we cannot remove any other arguments in the format string,
     // because the index numbers might be wrong after inlining.
     // Example of an un-inlinable format:  print!("{}{1}", foo, 2)
-    if !args.params().all(|p| check_one_arg(cx, &p, &mut fixes)) || fixes.is_empty() {
+    if !args.params().all(|p| check_one_arg(args, &p, &mut fixes)) || fixes.is_empty() {
         return;
     }
 
@@ -196,11 +196,11 @@ fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_si
     );
 }
 
-fn check_one_arg(cx: &LateContext<'_>, param: &FormatParam<'_>, fixes: &mut Vec<(Span, String)>) -> bool {
+fn check_one_arg(args: &FormatArgsExpn<'_>, param: &FormatParam<'_>, fixes: &mut Vec<(Span, String)>) -> bool {
     if matches!(param.kind, Implicit | Starred | Named(_) | Numbered)
         && let ExprKind::Path(QPath::Resolved(None, path)) = param.value.kind
-        && let Path { span, segments, .. } = path
-        && let [segment] = segments
+        && let [segment] = path.segments
+        && let Some(arg_span) = args.value_with_prev_comma_span(param.value.hir_id)
     {
         let replacement = match param.usage {
             FormatParamUsage::Argument => segment.ident.name.to_string(),
@@ -208,7 +208,6 @@ fn check_one_arg(cx: &LateContext<'_>, param: &FormatParam<'_>, fixes: &mut Vec<
             FormatParamUsage::Precision => format!(".{}$", segment.ident.name),
         };
         fixes.push((param.span, replacement));
-        let arg_span = expand_past_previous_comma(cx, *span);
         fixes.push((arg_span, String::new()));
         true  // successful inlining, continue checking
     } else {
