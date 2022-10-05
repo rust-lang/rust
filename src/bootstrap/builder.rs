@@ -1,6 +1,6 @@
 use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Write};
@@ -197,28 +197,29 @@ impl PathSet {
         }
     }
 
-    /// Return all `TaskPath`s in `Self` that contain any of the `needles`, removing the
-    /// matched needles.
+    /// Return all `TaskPath`s in `Self` that contain any of the `needles`, as well as the matched
+    /// needles.
     ///
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(
+    fn intersection_with_matches<'p>(
         &self,
-        needles: &mut Vec<&Path>,
+        needles: &[&'p Path],
         module: Option<Kind>,
-    ) -> PathSet {
+    ) -> (PathSet, Vec<&'p Path>) {
+        let mut matched_paths = vec![];
         let mut check = |p| {
-            for (i, n) in needles.iter().enumerate() {
+            for n in needles {
                 let matched = Self::check(p, n, module);
                 if matched {
-                    needles.remove(i);
+                    matched_paths.push(*n);
                     return true;
                 }
             }
             false
         };
-        match self {
+        let pathset = match self {
             PathSet::Set(set) => PathSet::Set(set.iter().filter(|&p| check(p)).cloned().collect()),
             PathSet::Suite(suite) => {
                 if check(suite) {
@@ -227,7 +228,8 @@ impl PathSet {
                     PathSet::empty()
                 }
             }
-        }
+        };
+        (pathset, matched_paths)
     }
 
     /// A convenience wrapper for Steps which know they have no aliases and all their sets contain only a single path.
@@ -315,6 +317,7 @@ impl StepDescription {
 
         // Handle all test suite paths.
         // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
+        // Note that unlike below, we don't allow multiple suite paths to share the same path.
         paths.retain(|path| {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if let Some(suite) = should_run.is_suite_path(&path) {
@@ -330,15 +333,19 @@ impl StepDescription {
         }
 
         // Handle all PathSets.
+        let mut seen_paths = HashSet::new();
         for (desc, should_run) in v.iter().zip(&should_runs) {
-            let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+            let (pathsets, matched) = should_run.pathset_for_paths_with_matches(&paths, desc.kind);
             if !pathsets.is_empty() {
+                seen_paths.extend(matched);
                 desc.maybe_run(builder, pathsets);
             }
         }
 
-        if !paths.is_empty() {
-            eprintln!("error: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
+        let cli_paths: HashSet<_> = paths.into_iter().collect();
+        let missing_paths: Vec<_> = cli_paths.difference(&seen_paths).collect();
+        if !missing_paths.is_empty() {
+            eprintln!("error: no `{}` rules matched {:?}", builder.kind.as_str(), missing_paths);
             eprintln!(
                 "help: run `x.py {} --help --verbose` to show a list of available paths",
                 builder.kind.as_str()
@@ -500,19 +507,21 @@ impl<'a> ShouldRun<'a> {
     ///
     /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same thing
     /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
-    fn pathset_for_paths_removing_matches(
+    fn pathset_for_paths_with_matches<'p>(
         &self,
-        paths: &mut Vec<&Path>,
+        paths: &[&'p Path],
         kind: Kind,
-    ) -> Vec<PathSet> {
+    ) -> (Vec<PathSet>, HashSet<&'p Path>) {
+        let mut all_matched_paths = HashSet::new();
         let mut sets = vec![];
         for pathset in &self.paths {
-            let subset = pathset.intersection_removing_matches(paths, Some(kind));
+            let (subset, matched_paths) = pathset.intersection_with_matches(paths, Some(kind));
             if subset != PathSet::empty() {
                 sets.push(subset);
+                all_matched_paths.extend(matched_paths);
             }
         }
-        sets
+        (sets, all_matched_paths)
     }
 }
 
