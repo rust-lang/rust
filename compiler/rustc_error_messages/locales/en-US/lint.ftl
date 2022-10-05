@@ -16,6 +16,10 @@ lint_enum_intrinsics_mem_variant =
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
 
+lint_deprecated_lint_name =
+    lint name `{$name}` is deprecated and may not have an effect in the future.
+    .suggestion = change it to
+
 lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of text present in {$label}
     .label = this {$label} contains {$count ->
         [one] an invisible

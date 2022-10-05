@@ -49,6 +49,16 @@ pub struct EnumIntrinsicsMemVariant<'a> {
     pub ty_param: Ty<'a>,
 }
 
+// levels.rs
+#[derive(LintDiagnostic)]
+#[diag(lint::deprecated_lint_name)]
+pub struct DeprecatedLintName<'a> {
+    pub name: String,
+    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
+    pub suggestion: Span,
+    pub replace: &'a str,
+}
+
 // methods.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_cstring_ptr)]

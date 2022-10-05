@@ -1,9 +1,12 @@
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
+use crate::lints::DeprecatedLintName;
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
+use rustc_errors::{
+    Applicability, DecorateLint, Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
@@ -858,25 +861,13 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             }
                             Err((Some(ids), ref new_lint_name)) => {
                                 let lint = builtin::RENAMED_AND_REMOVED_LINTS;
-                                let (lvl, src) = self.provider.get_lint_level(lint, &sess);
-                                struct_lint_level(
-                                    self.sess,
+                                self.emit_spanned_lint(
                                     lint,
-                                    lvl,
-                                    src,
-                                    Some(sp.into()),
-                                    format!(
-                                        "lint name `{}` is deprecated \
-                                         and may not have an effect in the future.",
-                                        name
-                                    ),
-                                    |lint| {
-                                        lint.span_suggestion(
-                                            sp,
-                                            "change it to",
-                                            new_lint_name,
-                                            Applicability::MachineApplicable,
-                                        )
+                                    sp.into(),
+                                    DeprecatedLintName {
+                                        name,
+                                        suggestion: sp,
+                                        replace: &new_lint_name,
                                     },
                                 );
 
@@ -1085,6 +1076,25 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     ) {
         let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, span, msg, decorate)
+    }
+
+    pub fn emit_spanned_lint(
+        &self,
+        lint: &'static Lint,
+        span: MultiSpan,
+        decorate: impl for<'a> DecorateLint<'a, ()>,
+    ) {
+        let (level, src) = self.lint_level(lint);
+        struct_lint_level(self.sess, lint, level, src, Some(span), decorate.msg(), |lint| {
+            decorate.decorate_lint(lint)
+        });
+    }
+
+    pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> DecorateLint<'a, ()>) {
+        let (level, src) = self.lint_level(lint);
+        struct_lint_level(self.sess, lint, level, src, None, decorate.msg(), |lint| {
+            decorate.decorate_lint(lint)
+        });
     }
 }
 
