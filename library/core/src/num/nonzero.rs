@@ -39,6 +39,8 @@ macro_rules! nonzero_integers {
             ///
             #[doc = concat!("`", stringify!($Ty), "` is guaranteed to have the same layout and bit validity as `", stringify!($Int), "`")]
             /// with the exception that `0` is not a valid instance.
+            #[doc = concat!("`Option<", stringify!($Ty), "` is guaranteed to be compatible with `", stringify!($Int), "`,"
+            /// including in FFI.
             #[$stability]
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
             #[repr(transparent)]
