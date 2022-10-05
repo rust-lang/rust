@@ -227,7 +227,7 @@ impl Step for TheBook {
         }
 
         // build the version info page and CSS
-        builder.ensure(Standalone { compiler, target });
+        let shared_assets = builder.ensure(SharedAssets { target });
 
         // build the redirect pages
         builder.info(&format!("Documenting book redirect pages ({})", target));
@@ -236,7 +236,7 @@ impl Step for TheBook {
             let path = file.path();
             let path = path.to_str().unwrap();
 
-            invoke_rustdoc(builder, compiler, target, path);
+            invoke_rustdoc(builder, compiler, &shared_assets, target, path);
         }
 
         if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
@@ -250,6 +250,7 @@ impl Step for TheBook {
 fn invoke_rustdoc(
     builder: &Builder<'_>,
     compiler: Compiler,
+    shared_assets: &SharedAssetsPaths,
     target: TargetSelection,
     markdown: &str,
 ) {
@@ -259,7 +260,6 @@ fn invoke_rustdoc(
 
     let header = builder.src.join("src/doc/redirect.inc");
     let footer = builder.src.join("src/doc/footer.inc");
-    let version_info = out.join("version_info.html");
 
     let mut cmd = builder.rustdoc_cmd(compiler);
 
@@ -268,7 +268,7 @@ fn invoke_rustdoc(
     cmd.arg("--html-after-content")
         .arg(&footer)
         .arg("--html-before-content")
-        .arg(&version_info)
+        .arg(&shared_assets.version_info)
         .arg("--html-in-header")
         .arg(&header)
         .arg("--markdown-no-toc")
@@ -324,21 +324,11 @@ impl Step for Standalone {
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
+        let version_info = builder.ensure(SharedAssets { target: self.target }).version_info;
+
         let favicon = builder.src.join("src/doc/favicon.inc");
         let footer = builder.src.join("src/doc/footer.inc");
         let full_toc = builder.src.join("src/doc/full-toc.inc");
-        t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
-
-        let version_input = builder.src.join("src/doc/version_info.html.template");
-        let version_info = out.join("version_info.html");
-
-        if !builder.config.dry_run && !up_to_date(&version_input, &version_info) {
-            let info = t!(fs::read_to_string(&version_input))
-                .replace("VERSION", &builder.rust_release())
-                .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
-                .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
-            t!(fs::write(&version_info, &info));
-        }
 
         for file in t!(fs::read_dir(builder.src.join("src/doc"))) {
             let file = t!(file);
@@ -397,6 +387,45 @@ impl Step for Standalone {
             let index = out.join("index.html");
             open(builder, &index);
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SharedAssetsPaths {
+    pub version_info: PathBuf,
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct SharedAssets {
+    target: TargetSelection,
+}
+
+impl Step for SharedAssets {
+    type Output = SharedAssetsPaths;
+    const DEFAULT: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        // Other tasks depend on this, no need to execute it on its own
+        run.never()
+    }
+
+    // Generate shared resources used by other pieces of documentation.
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let out = builder.doc_out(self.target);
+
+        let version_input = builder.src.join("src").join("doc").join("version_info.html.template");
+        let version_info = out.join("version_info.html");
+        if !builder.config.dry_run && !up_to_date(&version_input, &version_info) {
+            let info = t!(fs::read_to_string(&version_input))
+                .replace("VERSION", &builder.rust_release())
+                .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
+                .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
+            t!(fs::write(&version_info, &info));
+        }
+
+        builder.copy(&builder.src.join("src").join("doc").join("rust.css"), &out.join("rust.css"));
+
+        SharedAssetsPaths { version_info }
     }
 }
 
