@@ -16,7 +16,10 @@ use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, Vari
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast::{MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, IntoDiagnostic, PResult, StashKey};
+use rustc_errors::{
+    struct_span_err, AddToDiagnostic, Applicability, HelpUseLatestEdition, IntoDiagnostic, PResult,
+    StashKey,
+};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
@@ -2436,10 +2439,12 @@ impl<'a> Parser<'a> {
     fn ban_async_in_2015(&self, span: Span) {
         if span.rust_2015() {
             let diag = self.diagnostic();
-            struct_span_err!(diag, span, E0670, "`async fn` is not permitted in Rust 2015")
-                .span_label(span, "to use `async fn`, switch to Rust 2018 or later")
-                .help_use_latest_edition()
-                .emit();
+
+            let mut e =
+                struct_span_err!(diag, span, E0670, "`async fn` is not permitted in Rust 2015");
+            e.span_label(span, "to use `async fn`, switch to Rust 2018 or later");
+            HelpUseLatestEdition::new().add_to_diagnostic(&mut e);
+            e.emit();
         }
     }
 

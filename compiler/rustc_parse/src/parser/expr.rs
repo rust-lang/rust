@@ -39,8 +39,8 @@ use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, R
 use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{
-    Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
-    StashKey,
+    AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    HelpUseLatestEdition, IntoDiagnostic, PResult, StashKey,
 };
 use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
@@ -2874,7 +2874,7 @@ impl<'a> Parser<'a> {
         let mut async_block_err = |e: &mut Diagnostic, span: Span| {
             recover_async = true;
             e.span_label(span, "`async` blocks are only allowed in Rust 2018 or later");
-            e.help_use_latest_edition();
+            HelpUseLatestEdition::new().add_to_diagnostic(e);
         };
 
         while self.token != token::CloseDelim(close_delim) {

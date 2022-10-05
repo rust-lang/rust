@@ -555,18 +555,6 @@ impl Diagnostic {
         self
     }
 
-    /// Help the user upgrade to the latest edition.
-    /// This is factored out to make sure it does the right thing with `Cargo.toml`.
-    pub fn help_use_latest_edition(&mut self) -> &mut Self {
-        if std::env::var_os("CARGO").is_some() {
-            self.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
-        } else {
-            self.help(&format!("pass `--edition {}` to `rustc`", LATEST_STABLE_EDITION));
-        }
-        self.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
-        self
-    }
-
     /// Disallow attaching suggestions this diagnostic.
     /// Any suggestions attached e.g. with the `span_suggestion_*` methods
     /// (before and after the call to `disable_suggestions`) will be ignored.
@@ -1062,5 +1050,41 @@ impl Hash for Diagnostic {
 impl PartialEq for Diagnostic {
     fn eq(&self, other: &Self) -> bool {
         self.keys() == other.keys()
+    }
+}
+
+pub enum HelpUseLatestEdition {
+    Cargo,
+    Standalone,
+}
+
+impl HelpUseLatestEdition {
+    pub fn new() -> Self {
+        if std::env::var_os("CARGO").is_some() { Self::Cargo } else { Self::Standalone }
+    }
+}
+
+impl AddToDiagnostic for HelpUseLatestEdition {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, f: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        let msg = f(
+            diag,
+            match self {
+                Self::Cargo => {
+                    format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION)
+                }
+                Self::Standalone => {
+                    format!("pass `--edition {}` to `rustc`", LATEST_STABLE_EDITION)
+                }
+            }
+            .into(),
+        );
+        diag.help(msg);
+
+        let msg =
+            f(diag, "for more on editions, read https://doc.rust-lang.org/edition-guide".into());
+        diag.note(msg);
     }
 }
