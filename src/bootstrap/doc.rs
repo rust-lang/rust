@@ -299,7 +299,7 @@ impl Step for Standalone {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/doc").default_condition(builder.config.docs)
+        run.path("src/doc").path("standalone").default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
