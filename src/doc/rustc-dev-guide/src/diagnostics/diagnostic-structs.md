@@ -145,7 +145,7 @@ tcx.sess.emit_err(FieldAlreadyDeclared {
 following attributes:
 
 - `#[diag(slug, code = "...")]`
-  - _Applied to struct._
+  - _Applied to struct or enum variant._
   - _Mandatory_
   - Defines the text and error code to be associated with the diagnostic.
   - Slug (_Mandatory_)
