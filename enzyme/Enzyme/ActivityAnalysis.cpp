@@ -2961,7 +2961,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
         }
         continue;
       }
-      if (!I->mayWriteToMemory()) {
+      if (!I->mayWriteToMemory() || isa<LoadInst>(I)) {
         if (TR.query(I)[{-1}].isIntegral()) {
           continue;
         }

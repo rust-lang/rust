@@ -4854,9 +4854,9 @@ llvm::Function *EnzymeLogic::CreateNoFree(Function *F) {
     llvm_unreachable("unhandled, create no free");
   }
 
-  Function *NewF = Function::Create(F->getFunctionType(), F->getLinkage(),
+  Function *NewF = Function::Create(F->getFunctionType(),
+                                    Function::LinkageTypes::InternalLinkage,
                                     "nofree_" + F->getName(), F->getParent());
-  NewF->setLinkage(Function::LinkageTypes::InternalLinkage);
   NewF->setAttributes(F->getAttributes());
 #if LLVM_VERSION_MAJOR >= 9
   NewF->addAttribute(AttributeList::FunctionIndex,
@@ -4942,6 +4942,7 @@ llvm::Function *EnzymeLogic::CreateNoFree(Function *F) {
       }
     }
   }
+  NewF->setLinkage(Function::LinkageTypes::InternalLinkage);
 
   if (llvm::verifyFunction(*NewF, &llvm::errs())) {
     llvm::errs() << *F << "\n";
