@@ -20,26 +20,27 @@ impl TcpStream {
         Ok(Self { inner })
     }
 
-    pub fn connect_timeout(_: &SocketAddr, _: Duration) -> io::Result<TcpStream> {
-        todo!()
+    pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
+        let timeout = u64::try_from(timeout.as_nanos() / 100)
+            .map_err(|_| io::const_io_error!(io::ErrorKind::InvalidInput, "timeout is too long"))?;
+        let inner = uefi_tcp::TcpProtocol::connect_timeout(addr, timeout)?;
+        Ok(Self { inner })
     }
 
-    pub fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        unimplemented!()
+    pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
+        self.inner.set_read_timeout(timeout)
     }
 
-    pub fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        unimplemented!()
+    pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
+        self.inner.set_write_timeout(timeout)
     }
 
-    // Possible to implement while waiting for event
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        Ok(None)
+        self.inner.read_timeout()
     }
 
-    // Possible to implement while waiting for event
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        Ok(None)
+        self.inner.write_timeout()
     }
 
     pub fn peek(&self, _: &mut [u8]) -> io::Result<usize> {
@@ -88,16 +89,15 @@ impl TcpStream {
         unsupported()
     }
 
-    // Seems to be similar to abort_on_close option in `EFI_TCP6_PROTOCOL->Close()`
     pub fn set_linger(&self, _: Option<Duration>) -> io::Result<()> {
-        todo!()
+        unsupported()
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
-        todo!()
+        unsupported()
     }
 
-    // Seems to be similar to `EFI_TCP6_OPTION->EnableNagle`
+    // UEFI doesn't seem to allow configure for active connections
     pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
         unsupported()
     }
@@ -106,8 +106,9 @@ impl TcpStream {
         self.inner.nodelay()
     }
 
-    pub fn set_ttl(&self, x: u32) -> io::Result<()> {
-        self.inner.set_ttl(x)
+    // UEFI doesn't seem to allow configure for active connections
+    pub fn set_ttl(&self, _: u32) -> io::Result<()> {
+        unsupported()
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
@@ -115,17 +116,24 @@ impl TcpStream {
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
-        todo!()
+        unsupported()
     }
 }
 
 impl fmt::Debug for TcpStream {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut res = f.debug_struct("TcpStream");
+        if let Ok(addr) = self.socket_addr() {
+            res.field("addr", &addr);
+        }
+        if let Ok(peer) = self.peer_addr() {
+            res.field("peer", &peer);
+        }
+        res.finish()
     }
 }
 
@@ -165,7 +173,7 @@ impl TcpListener {
     }
 
     pub fn set_only_v6(&self, _: bool) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn only_v6(&self) -> io::Result<bool> {
@@ -173,18 +181,22 @@ impl TcpListener {
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        unimplemented!()
+        unsupported()
     }
 
     // Internally TCP Protocol is nonblocking
     pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
-        todo!()
+        unsupported()
     }
 }
 
 impl fmt::Debug for TcpListener {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut res = f.debug_struct("TcpListener");
+        if let Ok(addr) = self.socket_addr() {
+            res.field("addr", &addr);
+        }
+        res.finish()
     }
 }
 
@@ -192,127 +204,127 @@ pub struct UdpSocket {}
 
 impl UdpSocket {
     pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn recv_from(&self, _: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn peek_from(&self, _: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn send_to(&self, _: &[u8], _: &SocketAddr) -> io::Result<usize> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn duplicate(&self) -> io::Result<UdpSocket> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn set_broadcast(&self, _: bool) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn broadcast(&self) -> io::Result<bool> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn set_multicast_loop_v4(&self, _: bool) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn multicast_loop_v4(&self) -> io::Result<bool> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn set_multicast_ttl_v4(&self, _: u32) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn set_multicast_loop_v6(&self, _: bool) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn multicast_loop_v6(&self) -> io::Result<bool> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn join_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn leave_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn set_ttl(&self, _: u32) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn recv(&self, _: &mut [u8]) -> io::Result<usize> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn peek(&self, _: &mut [u8]) -> io::Result<usize> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn send(&self, _: &[u8]) -> io::Result<usize> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn connect(&self, _: io::Result<&SocketAddr>) -> io::Result<()> {
-        unimplemented!()
+        unsupported()
     }
 }
 

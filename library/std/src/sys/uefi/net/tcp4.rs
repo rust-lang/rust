@@ -1,5 +1,6 @@
 use super::uefi_service_binding::ServiceBinding;
 use super::{ipv4_from_r_efi, ipv4_to_r_efi};
+use crate::cell::OnceCell;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::MaybeUninit;
 use crate::net::SocketAddrV4;
@@ -19,6 +20,12 @@ pub(crate) struct Tcp4Protocol {
     protocol: NonNull<tcp4::Protocol>,
     service_binding: ServiceBinding,
     child_handle: NonNull<crate::ffi::c_void>,
+    accept_event: OnceCell<common::Event>,
+    receive_event: OnceCell<common::Event>,
+    connect_event: OnceCell<common::Event>,
+    transmit_event: OnceCell<common::Event>,
+    close_event: OnceCell<common::Event>,
+    timer_event: OnceCell<common::Event>,
 }
 
 impl Tcp4Protocol {
@@ -65,12 +72,7 @@ impl Tcp4Protocol {
     }
 
     pub(crate) fn accept(&self) -> io::Result<Tcp4Protocol> {
-        let accept_event = common::Event::create(
-            r_efi::efi::EVT_NOTIFY_WAIT,
-            r_efi::efi::TPL_CALLBACK,
-            Some(nop_notify4),
-            None,
-        )?;
+        let accept_event = self.accept_event()?;
         let completion_token =
             tcp4::CompletionToken { event: accept_event.as_raw_event(), status: Status::ABORTED };
 
@@ -91,30 +93,28 @@ impl Tcp4Protocol {
         }
     }
 
-    pub(crate) fn connect(&self) -> io::Result<()> {
-        let connect_event = common::Event::create(
-            r_efi::efi::EVT_NOTIFY_WAIT,
-            r_efi::efi::TPL_CALLBACK,
-            Some(nop_notify4),
-            None,
-        )?;
+    pub(crate) fn connect(&self, timeout: Option<u64>) -> io::Result<()> {
+        let connect_event = self.connect_event()?;
         let completion_token =
             tcp4::CompletionToken { event: connect_event.as_raw_event(), status: Status::ABORTED };
         let mut connection_token = tcp4::ConnectionToken { completion_token };
         unsafe { Self::connect_raw(self.protocol.as_ptr(), &mut connection_token) }?;
-        connect_event.wait()?;
+
+        match timeout {
+            None => connect_event.wait(),
+            Some(x) => {
+                let timer_event = self.timer_event()?;
+                connect_event.wait_with_timer(timer_event, x)
+            }
+        }?;
+
         let r = connection_token.completion_token.status;
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
-    pub(crate) fn transmit(&self, buf: &[u8]) -> io::Result<usize> {
-        let buf_size = buf.len() as u32;
-        let transmit_event = common::Event::create(
-            r_efi::efi::EVT_NOTIFY_WAIT,
-            r_efi::efi::TPL_CALLBACK,
-            Some(nop_notify4),
-            None,
-        )?;
+    pub(crate) fn transmit(&self, buf: &[u8], timeout: Option<u64>) -> io::Result<usize> {
+        let buf_size = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
+        let transmit_event = self.transmit_event()?;
         let completion_token =
             tcp4::CompletionToken { event: transmit_event.as_raw_event(), status: Status::ABORTED };
         let fragment_table = tcp4::FragmentData {
@@ -137,7 +137,10 @@ impl Tcp4Protocol {
         let mut transmit_token = tcp4::IoToken { completion_token, packet };
         unsafe { Self::transmit_raw(self.protocol.as_ptr(), &mut transmit_token) }?;
 
-        transmit_event.wait()?;
+        match timeout {
+            None => transmit_event.wait(),
+            Some(x) => transmit_event.wait_with_timer(self.timer_event()?, x),
+        }?;
 
         let r = transmit_token.completion_token.status;
         if r.is_error() {
@@ -147,23 +150,33 @@ impl Tcp4Protocol {
         }
     }
 
-    pub(crate) fn transmit_vectored(&self, buf: &[IoSlice<'_>]) -> io::Result<usize> {
-        let buf_size = crate::mem::size_of_val(buf);
-        let transmit_event = common::Event::create(
-            r_efi::efi::EVT_NOTIFY_WAIT,
-            r_efi::efi::TPL_CALLBACK,
-            Some(nop_notify4),
-            None,
-        )?;
+    pub(crate) fn transmit_vectored(
+        &self,
+        buf: &[IoSlice<'_>],
+        timeout: Option<u64>,
+    ) -> io::Result<usize> {
+        let (buf_size, fragment_tables) = {
+            let mut fragment_tables = Vec::<tcp4::FragmentData>::with_capacity(buf.len());
+            let mut current_size = 0;
+            for b in buf {
+                if b.len() + current_size > u32::MAX as usize {
+                    break;
+                }
+
+                fragment_tables.push(tcp4::FragmentData {
+                    // This is safe since UEFI IoSlice can only be created if buf.len() can be
+                    // converted to u32
+                    fragment_length: b.len() as u32,
+                    fragment_buffer: b.as_ptr() as *mut crate::ffi::c_void,
+                });
+                current_size += b.len();
+            }
+            (current_size, fragment_tables)
+        };
+
+        let transmit_event = self.transmit_event()?;
         let completion_token =
             tcp4::CompletionToken { event: transmit_event.as_raw_event(), status: Status::ABORTED };
-        let fragment_tables: Vec<tcp4::FragmentData> = buf
-            .iter()
-            .map(|b| tcp4::FragmentData {
-                fragment_length: b.len() as u32,
-                fragment_buffer: (*b).as_ptr() as *mut crate::ffi::c_void,
-            })
-            .collect();
 
         let layout = unsafe {
             crate::alloc::Layout::from_size_align_unchecked(
@@ -173,6 +186,7 @@ impl Tcp4Protocol {
             )
         };
         let mut transmit_data = VariableBox::<TransmitData<0>>::new_uninit(layout);
+        // At max, this will be equal to buf_size (each fragment length = 1) which is <= u32::MAX
         let fragment_tables_len = fragment_tables.len();
 
         // Initialize TransmitData
@@ -181,6 +195,7 @@ impl Tcp4Protocol {
                 .write(r_efi::efi::Boolean::TRUE);
             addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).urgent)
                 .write(r_efi::efi::Boolean::FALSE);
+            // SAFETY: buf_size is always <= u32::MAX
             addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).data_length).write(buf_size as u32);
             addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).fragment_count)
                 .write(fragment_tables_len as u32);
@@ -194,7 +209,10 @@ impl Tcp4Protocol {
         let mut transmit_token = tcp4::IoToken { completion_token, packet };
         unsafe { Self::transmit_raw(self.protocol.as_ptr(), &mut transmit_token) }?;
 
-        transmit_event.wait()?;
+        match timeout {
+            None => transmit_event.wait(),
+            Some(x) => transmit_event.wait_with_timer(self.timer_event()?, x),
+        }?;
 
         let r = transmit_token.completion_token.status;
         if r.is_error() {
@@ -204,14 +222,9 @@ impl Tcp4Protocol {
         }
     }
 
-    pub(crate) fn receive(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let buf_size = buf.len() as u32;
-        let receive_event = common::Event::create(
-            r_efi::efi::EVT_NOTIFY_WAIT,
-            r_efi::efi::TPL_CALLBACK,
-            Some(nop_notify4),
-            None,
-        )?;
+    pub(crate) fn receive(&self, buf: &mut [u8], timeout: Option<u64>) -> io::Result<usize> {
+        let buf_size = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
+        let receive_event = self.receive_event()?;
         let fragment_table = tcp4::FragmentData {
             fragment_length: buf_size,
             fragment_buffer: buf.as_mut_ptr().cast(),
@@ -230,34 +243,55 @@ impl Tcp4Protocol {
         let completion_token =
             tcp4::CompletionToken { event: receive_event.as_raw_event(), status: Status::ABORTED };
         let mut receive_token = tcp4::IoToken { completion_token, packet };
-        unsafe { Self::receive_raw(self.protocol.as_ptr(), &mut receive_token) }?;
 
-        receive_event.wait()?;
+        if unsafe { Self::receive_raw(self.protocol.as_ptr(), &mut receive_token) }?
+            == r_efi::efi::Status::CONNECTION_FIN
+        {
+            return Ok(0);
+        }
+
+        match timeout {
+            None => receive_event.wait(),
+            Some(x) => receive_event.wait_with_timer(self.timer_event()?, x),
+        }?;
 
         let r = receive_token.completion_token.status;
         if r.is_error() {
-            Err(status_to_io_error(r))
+            match r {
+                r_efi::efi::Status::CONNECTION_FIN => Ok(0),
+                _ => Err(status_to_io_error(r)),
+            }
         } else {
             Ok(unsafe { (*receive_token.packet.rx_data).data_length } as usize)
         }
     }
 
-    pub(crate) fn receive_vectored(&self, buf: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        let receive_event = common::Event::create(
-            r_efi::efi::EVT_NOTIFY_WAIT,
-            r_efi::efi::TPL_CALLBACK,
-            Some(nop_notify4),
-            None,
-        )?;
+    pub(crate) fn receive_vectored(
+        &self,
+        buf: &mut [IoSliceMut<'_>],
+        timeout: Option<u64>,
+    ) -> io::Result<usize> {
+        let (buf_size, fragment_tables) = {
+            let mut fragment_tables = Vec::<tcp4::FragmentData>::with_capacity(buf.len());
+            let mut current_size = 0;
+            for b in buf {
+                if b.len() + current_size > u32::MAX as usize {
+                    break;
+                }
 
-        let buf_size = crate::mem::size_of_val(&buf) as u32;
-        let fragment_tables: Vec<tcp4::FragmentData> = buf
-            .iter_mut()
-            .map(|b| tcp4::FragmentData {
-                fragment_length: b.len() as u32,
-                fragment_buffer: b.as_mut_ptr().cast(),
-            })
-            .collect();
+                fragment_tables.push(tcp4::FragmentData {
+                    // This is safe since UEFI IoSlice can only be created if buf.len() can be
+                    // converted to u32
+                    fragment_length: b.len() as u32,
+                    fragment_buffer: b.as_ptr() as *mut crate::ffi::c_void,
+                });
+                current_size += b.len();
+            }
+            (current_size, fragment_tables)
+        };
+
+        let receive_event = self.receive_event()?;
+        // At max, this will be equal to buf_size (each fragment length = 1) which is <= u32::MAX
         let fragment_tables_len = fragment_tables.len();
 
         let layout = unsafe {
@@ -271,7 +305,8 @@ impl Tcp4Protocol {
         unsafe {
             addr_of_mut!((*receive_data.as_uninit_mut_ptr()).urgent_flag)
                 .write(r_efi::efi::Boolean::FALSE);
-            addr_of_mut!((*receive_data.as_uninit_mut_ptr()).data_length).write(buf_size);
+            // SAFETY: buf_size is always <= u32::MAX
+            addr_of_mut!((*receive_data.as_uninit_mut_ptr()).data_length).write(buf_size as u32);
             addr_of_mut!((*receive_data.as_uninit_mut_ptr()).fragment_count)
                 .write(fragment_tables_len as u32);
             addr_of_mut!((*receive_data.as_uninit_mut_ptr()).fragment_table)
@@ -284,13 +319,24 @@ impl Tcp4Protocol {
         let completion_token =
             tcp4::CompletionToken { event: receive_event.as_raw_event(), status: Status::ABORTED };
         let mut receive_token = tcp4::IoToken { completion_token, packet };
-        unsafe { Self::receive_raw(self.protocol.as_ptr(), &mut receive_token) }?;
 
-        receive_event.wait()?;
+        if unsafe { Self::receive_raw(self.protocol.as_ptr(), &mut receive_token) }?
+            == r_efi::efi::Status::CONNECTION_FIN
+        {
+            return Ok(0);
+        }
+
+        match timeout {
+            None => receive_event.wait(),
+            Some(x) => receive_event.wait_with_timer(self.timer_event()?, x),
+        }?;
 
         let r = receive_token.completion_token.status;
         if r.is_error() {
-            Err(status_to_io_error(r))
+            match r {
+                r_efi::efi::Status::CONNECTION_FIN => Ok(0),
+                _ => Err(status_to_io_error(r)),
+            }
         } else {
             Ok(unsafe { (*receive_token.packet.rx_data).data_length } as usize)
         }
@@ -298,13 +344,7 @@ impl Tcp4Protocol {
 
     pub(crate) fn close(&self, abort_on_close: bool) -> io::Result<()> {
         let protocol = self.protocol.as_ptr();
-
-        let close_event = common::Event::create(
-            r_efi::efi::EVT_NOTIFY_WAIT,
-            r_efi::efi::TPL_CALLBACK,
-            Some(nop_notify4),
-            None,
-        )?;
+        let close_event = self.close_event()?;
         let completion_token =
             tcp4::CompletionToken { event: close_event.as_raw_event(), status: Status::ABORTED };
         let mut close_token = tcp4::CloseToken {
@@ -339,13 +379,22 @@ impl Tcp4Protocol {
         ))
     }
 
-    #[inline]
     fn new(
         protocol: NonNull<tcp4::Protocol>,
         service_binding: ServiceBinding,
         child_handle: NonNull<crate::ffi::c_void>,
     ) -> Self {
-        Self { protocol, service_binding, child_handle }
+        Self {
+            protocol,
+            service_binding,
+            child_handle,
+            accept_event: OnceCell::new(),
+            receive_event: OnceCell::new(),
+            connect_event: OnceCell::new(),
+            transmit_event: OnceCell::new(),
+            close_event: OnceCell::new(),
+            timer_event: OnceCell::new(),
+        }
     }
 
     fn with_child_handle(
@@ -375,9 +424,16 @@ impl Tcp4Protocol {
     unsafe fn receive_raw(
         protocol: *mut tcp4::Protocol,
         token: *mut tcp4::IoToken,
-    ) -> io::Result<()> {
+    ) -> io::Result<r_efi::efi::Status> {
         let r = unsafe { ((*protocol).receive)(protocol, token) };
-        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+        if r.is_error() {
+            match r {
+                r_efi::efi::Status::CONNECTION_FIN => Ok(r_efi::efi::Status::CONNECTION_FIN),
+                _ => Err(status_to_io_error(r)),
+            }
+        } else {
+            Ok(r)
+        }
     }
 
     unsafe fn transmit_raw(
@@ -431,6 +487,65 @@ impl Tcp4Protocol {
     ) -> io::Result<()> {
         let r = unsafe { ((*protocol).connect)(protocol, token) };
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+    }
+
+    fn receive_event(&self) -> io::Result<&common::Event> {
+        self.receive_event.get_or_try_init(|| {
+            common::Event::create(
+                r_efi::efi::EVT_NOTIFY_WAIT,
+                r_efi::efi::TPL_CALLBACK,
+                Some(nop_notify4),
+                None,
+            )
+        })
+    }
+
+    fn accept_event(&self) -> io::Result<&common::Event> {
+        self.accept_event.get_or_try_init(|| {
+            common::Event::create(
+                r_efi::efi::EVT_NOTIFY_WAIT,
+                r_efi::efi::TPL_CALLBACK,
+                Some(nop_notify4),
+                None,
+            )
+        })
+    }
+
+    fn connect_event(&self) -> io::Result<&common::Event> {
+        self.connect_event.get_or_try_init(|| {
+            common::Event::create(
+                r_efi::efi::EVT_NOTIFY_WAIT,
+                r_efi::efi::TPL_CALLBACK,
+                Some(nop_notify4),
+                None,
+            )
+        })
+    }
+
+    fn transmit_event(&self) -> io::Result<&common::Event> {
+        self.transmit_event.get_or_try_init(|| {
+            common::Event::create(
+                r_efi::efi::EVT_NOTIFY_WAIT,
+                r_efi::efi::TPL_CALLBACK,
+                Some(nop_notify4),
+                None,
+            )
+        })
+    }
+
+    fn close_event(&self) -> io::Result<&common::Event> {
+        self.close_event.get_or_try_init(|| {
+            common::Event::create(
+                r_efi::efi::EVT_NOTIFY_WAIT,
+                r_efi::efi::TPL_CALLBACK,
+                Some(nop_notify4),
+                None,
+            )
+        })
+    }
+
+    fn timer_event(&self) -> io::Result<&common::Event> {
+        self.timer_event.get_or_try_init(|| common::Event::create_timer())
     }
 }
 

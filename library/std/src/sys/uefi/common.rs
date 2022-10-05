@@ -63,19 +63,56 @@ impl Event {
         }
     }
 
+    pub(crate) fn create_timer() -> io::Result<Event> {
+        Self::create(
+            r_efi::efi::EVT_TIMER | r_efi::efi::EVT_NOTIFY_WAIT,
+            r_efi::efi::TPL_CALLBACK,
+            Some(empty_notify),
+            None,
+        )
+    }
+
+    fn set_timer(&self, timeout: u64) -> io::Result<()> {
+        let boot_services = boot_services();
+        let r = unsafe {
+            ((*boot_services.as_ptr()).set_timer)(
+                self.as_raw_event(),
+                r_efi::efi::TIMER_RELATIVE,
+                timeout,
+            )
+        };
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+    }
+
+    // timeout is the number of 100ns
+    pub(crate) fn wait_with_timer(&self, timer_event: &Event, timeout: u64) -> io::Result<()> {
+        timer_event.set_timer(timeout)?;
+        let index = Self::wait_raw(&mut [self.as_raw_event(), timer_event.as_raw_event()])?;
+        match index {
+            0 => Ok(()),
+            1 => Err(io::const_io_error!(io::ErrorKind::TimedOut, "Event Timout")),
+            _ => unreachable!(),
+        }
+    }
+
     pub(crate) fn wait(&self) -> io::Result<()> {
+        Self::wait_raw(&mut [self.as_raw_event()])?;
+        Ok(())
+    }
+
+    fn wait_raw(events: &mut [*mut crate::ffi::c_void]) -> io::Result<usize> {
         let boot_services = boot_services();
 
         let mut index = 0usize;
         let r = unsafe {
             ((*boot_services.as_ptr()).wait_for_event)(
-                1,
-                [self.as_raw_event()].as_mut_ptr(),
+                events.len(),
+                events.as_mut_ptr(),
                 &mut index,
             )
         };
 
-        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(index) }
     }
 
     #[inline]
@@ -83,6 +120,8 @@ impl Event {
         self.inner.as_ptr()
     }
 }
+
+extern "efiapi" fn empty_notify(_: r_efi::efi::Event, _: *mut crate::ffi::c_void) {}
 
 impl Drop for Event {
     fn drop(&mut self) {
@@ -277,7 +316,7 @@ pub(crate) fn status_to_io_error(s: r_efi::efi::Status) -> io::Error {
             const_io_error!(ErrorKind::Other, "EFI_COMPRIMISED_DATA")
         }
         Status::CONNECTION_FIN => {
-            const_io_error!(ErrorKind::ConnectionAborted, "EFI_CONNECTION_FIN")
+            const_io_error!(ErrorKind::Other, "EFI_CONNECTION_FIN")
         }
         Status::CONNECTION_REFUSED => {
             const_io_error!(ErrorKind::ConnectionRefused, "EFI_CONNECTION_REFUSED")
