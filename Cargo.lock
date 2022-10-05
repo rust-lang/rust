@@ -297,7 +297,7 @@ dependencies = [
  "cargo-test-macro",
  "cargo-test-support",
  "cargo-util",
- "clap",
+ "clap 4.0.9",
  "crates-io",
  "curl",
  "curl-sys",
@@ -591,7 +591,7 @@ dependencies = [
  "atty",
  "bitflags",
  "clap_derive",
- "clap_lex",
+ "clap_lex 0.2.2",
  "indexmap",
  "once_cell",
  "strsim",
@@ -600,12 +600,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap"
+version = "4.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30607dd93c420c6f1f80b544be522a0238a7db35e6a12968d28910983fee0df0"
+dependencies = [
+ "atty",
+ "bitflags",
+ "clap_lex 0.3.0",
+ "strsim",
+ "termcolor",
+]
+
+[[package]]
 name = "clap_complete"
 version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df6f3613c0a3cddfd78b41b10203eb322cb29b600cbdf808a7d3db95691b8e25"
 dependencies = [
- "clap",
+ "clap 3.2.20",
 ]
 
 [[package]]
@@ -626,6 +639,15 @@ name = "clap_lex"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5538cd660450ebeb4234cfecf8f2284b844ffc4c50531e66d584ad5b91293613"
+dependencies = [
+ "os_str_bytes",
+]
+
+[[package]]
+name = "clap_lex"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d4198f73e42b4936b35b5bb248d81d2b595ecb170da0bac7655c54eedfa8da8"
 dependencies = [
  "os_str_bytes",
 ]
@@ -664,7 +686,7 @@ name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
  "aho-corasick",
- "clap",
+ "clap 3.2.20",
  "indoc",
  "itertools",
  "opener",
@@ -1809,7 +1831,7 @@ name = "installer"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap",
+ "clap 3.2.20",
  "flate2",
  "lazy_static",
  "num_cpus",
@@ -2152,7 +2174,7 @@ dependencies = [
  "ammonia",
  "anyhow",
  "chrono",
- "clap",
+ "clap 3.2.20",
  "clap_complete",
  "elasticlunr-rs",
  "env_logger 0.9.0",
@@ -3024,7 +3046,7 @@ dependencies = [
 name = "rustbook"
 version = "0.1.0"
 dependencies = [
- "clap",
+ "clap 3.2.20",
  "env_logger 0.7.1",
  "mdbook",
 ]
@@ -3111,7 +3133,7 @@ name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
  "bstr",
- "clap",
+ "clap 3.2.20",
  "libz-sys",
  "regex",
  "serde_json",
@@ -4338,7 +4360,7 @@ dependencies = [
  "anyhow",
  "bytecount",
  "cargo_metadata 0.14.0",
- "clap",
+ "clap 3.2.20",
  "derive-new",
  "diff",
  "dirs",
