@@ -31,24 +31,6 @@ help: a local variable with a similar name exists
 LL |         println!("{cofig}");
    |                    ~~~~~
 
-error[E0425]: cannot find function `baz` in this scope
-  --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:31:9
-   |
-LL |         baz();
-   |         ^^^
-...
-LL | fn ba() {}
-   | ------- similarly named function `ba` defined here
-   |
-help: you might have meant to call the method
-   |
-LL |         self.baz();
-   |         ~~~~~~~~
-help: a function with a similar name exists
-   |
-LL |         ba();
-   |         ~~
-
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:33:9
    |
@@ -102,6 +84,24 @@ help: a type alias with a similar name exists
    |
 LL |         let foo: Bar = "".to_string();
    |                  ~~~
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:31:9
+   |
+LL |         baz();
+   |         ^^^
+...
+LL | fn ba() {}
+   | ------- similarly named function `ba` defined here
+   |
+help: you might have meant to call the method
+   |
+LL |         self.baz();
+   |         ~~~~~~~~
+help: a function with a similar name exists
+   |
+LL |         ba();
+   |         ~~
 
 error: aborting due to 7 previous errors
 

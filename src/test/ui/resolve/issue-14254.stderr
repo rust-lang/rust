@@ -1,20 +1,8 @@
-error[E0425]: cannot find function `baz` in this scope
-  --> $DIR/issue-14254.rs:19:9
-   |
-LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
-
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/issue-14254.rs:21:9
    |
 LL |         a;
    |         ^ not found in this scope
-
-error[E0425]: cannot find function `baz` in this scope
-  --> $DIR/issue-14254.rs:28:9
-   |
-LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
 
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-14254.rs:30:9
@@ -46,12 +34,6 @@ error[E0425]: cannot find value `b` in this scope
 LL |         b;
    |         ^ not found in this scope
 
-error[E0425]: cannot find function `baz` in this scope
-  --> $DIR/issue-14254.rs:45:9
-   |
-LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
-
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-14254.rs:47:9
    |
@@ -82,23 +64,11 @@ error[E0425]: cannot find value `b` in this scope
 LL |         b;
    |         ^ not found in this scope
 
-error[E0425]: cannot find function `baz` in this scope
-  --> $DIR/issue-14254.rs:62:9
-   |
-LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
-
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:64:9
    |
 LL |         bah;
    |         ^^^ help: you might have meant to call the associated function: `Self::bah`
-
-error[E0425]: cannot find function `baz` in this scope
-  --> $DIR/issue-14254.rs:71:9
-   |
-LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:73:9
@@ -106,23 +76,11 @@ error[E0425]: cannot find value `bah` in this scope
 LL |         bah;
    |         ^^^ help: you might have meant to call the associated function: `Self::bah`
 
-error[E0425]: cannot find function `baz` in this scope
-  --> $DIR/issue-14254.rs:80:9
-   |
-LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
-
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:82:9
    |
 LL |         bah;
    |         ^^^ help: you might have meant to call the associated function: `Self::bah`
-
-error[E0425]: cannot find function `baz` in this scope
-  --> $DIR/issue-14254.rs:89:9
-   |
-LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:91:9
@@ -130,17 +88,59 @@ error[E0425]: cannot find value `bah` in this scope
 LL |         bah;
    |         ^^^ help: you might have meant to call the associated function: `Self::bah`
 
-error[E0425]: cannot find function `baz` in this scope
-  --> $DIR/issue-14254.rs:98:9
-   |
-LL |         baz();
-   |         ^^^ help: you might have meant to call the method: `self.baz`
-
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:100:9
    |
 LL |         bah;
    |         ^^^ help: you might have meant to call the associated function: `Self::bah`
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/issue-14254.rs:19:9
+   |
+LL |         baz();
+   |         ^^^ help: you might have meant to call the method: `self.baz`
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/issue-14254.rs:28:9
+   |
+LL |         baz();
+   |         ^^^ help: you might have meant to call the method: `self.baz`
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/issue-14254.rs:45:9
+   |
+LL |         baz();
+   |         ^^^ help: you might have meant to call the method: `self.baz`
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/issue-14254.rs:62:9
+   |
+LL |         baz();
+   |         ^^^ help: you might have meant to call the method: `self.baz`
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/issue-14254.rs:71:9
+   |
+LL |         baz();
+   |         ^^^ help: you might have meant to call the method: `self.baz`
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/issue-14254.rs:80:9
+   |
+LL |         baz();
+   |         ^^^ help: you might have meant to call the method: `self.baz`
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/issue-14254.rs:89:9
+   |
+LL |         baz();
+   |         ^^^ help: you might have meant to call the method: `self.baz`
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/issue-14254.rs:98:9
+   |
+LL |         baz();
+   |         ^^^ help: you might have meant to call the method: `self.baz`
 
 error: aborting due to 24 previous errors
 

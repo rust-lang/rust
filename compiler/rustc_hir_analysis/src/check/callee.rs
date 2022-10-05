@@ -2,7 +2,7 @@ use super::method::MethodCallee;
 use super::{DefIdOrName, Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::type_error_struct;
 
-use rustc_errors::{struct_span_err, Applicability, Diagnostic};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{self, Namespace, Res};
 use rustc_hir::def_id::DefId;
@@ -60,6 +60,7 @@ pub fn check_legal_trait_for_method_call(
     }
 }
 
+#[derive(Debug)]
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
     DeferredClosure(LocalDefId, ty::FnSig<'tcx>),
@@ -185,6 +186,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // this case and deref again, so we wind up with
             // `FnMut::call_mut(&mut *x, ())`.
             ty::Ref(..) if autoderef.step_count() == 0 => {
+                return None;
+            }
+
+            ty::Error(_) => {
                 return None;
             }
 
@@ -394,6 +399,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::FnPtr(sig) => (sig, None),
             _ => {
+                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
+                    && let [segment] = path.segments
+                    && let Some(mut diag) = self
+                        .tcx
+                        .sess
+                        .diagnostic()
+                        .steal_diagnostic(segment.ident.span, StashKey::CallIntoMethod)
+                {
+                    diag.emit();
+                }
+
                 self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
 
                 // This is the "default" function signature, used in case of error.

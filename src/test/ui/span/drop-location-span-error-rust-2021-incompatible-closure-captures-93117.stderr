@@ -25,12 +25,6 @@ LL | trait C{async fn new(val: T) {}
    = help: pass `--edition 2021` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0423]: expected function, found module `crate`
-  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:9:5
-   |
-LL |     crate(move || {} ).await
-   |     ^^^^^ not a function
-
 error[E0412]: cannot find type `T` in this scope
   --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:13:27
    |
@@ -52,6 +46,12 @@ LL | trait C{async fn new(val: T) {}
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
    = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
    = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error[E0423]: expected function, found module `crate`
+  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:9:5
+   |
+LL |     crate(move || {} ).await
+   |     ^^^^^ not a function
 
 warning: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:6:57

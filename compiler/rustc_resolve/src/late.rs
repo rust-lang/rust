@@ -3263,6 +3263,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     instead,
                     suggestion,
                     path: path.into(),
+                    is_call: source.is_call(),
                 });
             }
 
@@ -3327,6 +3328,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     instead: false,
                     suggestion: None,
                     path: path.into(),
+                    is_call: source.is_call(),
                 });
             } else {
                 err.cancel();
