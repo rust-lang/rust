@@ -245,11 +245,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                                 OutsideGuard,
                                                 true,
                                             );
-                                            this.schedule_drop_for_binding(
-                                                node,
-                                                span,
-                                                OutsideGuard,
-                                            );
                                         },
                                     );
                                     this.ast_let_else(
