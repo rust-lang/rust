@@ -1,4 +1,3 @@
-use rustc_errors::DecorateLint;
 use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -120,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     )) {
                         // If it's a trait bound and an opaque that doesn't satisfy it,
                         // then we can emit a suggestion to add the bound.
-                        let sugg =
+                        let add_bound =
                             match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
                                 (ty::Opaque(def_id, _), ty::PredicateKind::Trait(trait_pred)) => Some(AddBound {
                                     suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
@@ -128,21 +127,14 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                                 }),
                                 _ => None,
                             };
-                        let lint = OpaqueHiddenInferredBoundLint {
-                            ty: cx.tcx.mk_opaque(def_id, ty::InternalSubsts::identity_for_item(cx.tcx, def_id)),
-                            proj_ty: proj_term,
-                            assoc_pred_span,
-                        };
-                        cx.struct_span_lint(
+                        cx.emit_spanned_lint(
                             OPAQUE_HIDDEN_INFERRED_BOUND,
                             pred_span,
-                            lint.msg(),
-                            |diag| {
-                                lint.decorate_lint(diag);
-                                if let Some(sugg) = sugg {
-                                    diag.subdiagnostic(sugg);
-                                }
-                                diag
+                            OpaqueHiddenInferredBoundLint {
+                                ty: cx.tcx.mk_opaque(def_id, ty::InternalSubsts::identity_for_item(cx.tcx, def_id)),
+                                proj_ty: proj_term,
+                                assoc_pred_span,
+                                add_bound,
                             },
                         );
                     }
@@ -159,6 +151,8 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
     proj_ty: Ty<'tcx>,
     #[label(lint::specifically)]
     assoc_pred_span: Span,
+    #[subdiagnostic]
+    add_bound: Option<AddBound<'tcx>>,
 }
 
 #[derive(Subdiagnostic)]
