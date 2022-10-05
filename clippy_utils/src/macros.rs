@@ -16,6 +16,7 @@ use rustc_parse_format::{self as rpf, Alignment};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Pos, Span, SpanData, Symbol};
+use std::iter::{once, zip};
 use std::ops::ControlFlow;
 
 const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
@@ -412,7 +413,8 @@ impl FormatString {
 }
 
 struct FormatArgsValues<'tcx> {
-    /// See `FormatArgsExpn::value_args`
+    /// Values passed after the format string and implicit captures. `[1, z + 2, x]` for
+    /// `format!("{x} {} {y}", 1, z + 2)`.
     value_args: Vec<&'tcx Expr<'tcx>>,
     /// Maps an `rt::v1::Argument::position` or an `rt::v1::Count::Param` to its index in
     /// `value_args`
@@ -765,12 +767,82 @@ pub struct FormatArgsExpn<'tcx> {
     /// Has an added newline due to `println!()`/`writeln!()`/etc. The last format string part will
     /// include this added newline.
     pub newline: bool,
-    /// Values passed after the format string and implicit captures. `[1, z + 2, x]` for
+    /// Spans of the commas between the format string and explicit values, excluding any trailing
+    /// comma
+    ///
+    /// ```ignore
+    /// format!("..", 1, 2, 3,)
+    /// //          ^  ^  ^
+    /// ```
+    comma_spans: Vec<Span>,
+    /// Explicit values passed after the format string, ignoring implicit captures. `[1, z + 2]` for
     /// `format!("{x} {} {y}", 1, z + 2)`.
-    value_args: Vec<&'tcx Expr<'tcx>>,
+    explicit_values: Vec<&'tcx Expr<'tcx>>,
 }
 
 impl<'tcx> FormatArgsExpn<'tcx> {
+    /// Gets the spans of the commas inbetween the format string and explicit args, not including
+    /// any trailing comma
+    ///
+    /// ```ignore
+    /// format!("{} {}", a, b)
+    /// //             ^  ^
+    /// ```
+    ///
+    /// Ensures that the format string and values aren't coming from a proc macro that sets the
+    /// output span to that of its input
+    fn comma_spans(cx: &LateContext<'_>, explicit_values: &[&Expr<'_>], fmt_span: Span) -> Option<Vec<Span>> {
+        // `format!("{} {} {c}", "one", "two", c = "three")`
+        //                       ^^^^^  ^^^^^      ^^^^^^^
+        let value_spans = explicit_values
+            .iter()
+            .map(|val| hygiene::walk_chain(val.span, fmt_span.ctxt()));
+
+        // `format!("{} {} {c}", "one", "two", c = "three")`
+        //                     ^^     ^^     ^^^^^^
+        let between_spans = once(fmt_span)
+            .chain(value_spans)
+            .tuple_windows()
+            .map(|(start, end)| start.between(end));
+
+        let mut comma_spans = Vec::new();
+        for between_span in between_spans {
+            let mut offset = 0;
+            let mut seen_comma = false;
+
+            for token in tokenize(&snippet_opt(cx, between_span)?) {
+                match token.kind {
+                    TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace => {},
+                    TokenKind::Comma if !seen_comma => {
+                        seen_comma = true;
+
+                        let base = between_span.data();
+                        comma_spans.push(Span::new(
+                            base.lo + BytePos(offset),
+                            base.lo + BytePos(offset + 1),
+                            base.ctxt,
+                            base.parent,
+                        ));
+                    },
+                    // named arguments, `start_val, name = end_val`
+                    //                            ^^^^^^^^^ between_span
+                    TokenKind::Ident | TokenKind::Eq if seen_comma => {},
+                    // An unexpected token usually indicates the format string or a value came from a proc macro output
+                    // that sets the span of its output to an input, e.g. `println!(some_proc_macro!("input"), ..)` that
+                    // emits a string literal with the span set to that of `"input"`
+                    _ => return None,
+                }
+                offset += token.len;
+            }
+
+            if !seen_comma {
+                return None;
+            }
+        }
+
+        Some(comma_spans)
+    }
+
     pub fn parse(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<Self> {
         let macro_name = macro_backtrace(expr.span)
             .map(|macro_call| cx.tcx.item_name(macro_call.def_id))
@@ -845,11 +917,22 @@ impl<'tcx> FormatArgsExpn<'tcx> {
                 })
                 .collect::<Option<Vec<_>>>()?;
 
+            let mut explicit_values = values.value_args;
+            // remove values generated for implicitly captured vars
+            let len = explicit_values
+                .iter()
+                .take_while(|val| !format_string.span.contains(val.span))
+                .count();
+            explicit_values.truncate(len);
+
+            let comma_spans = Self::comma_spans(cx, &explicit_values, format_string.span)?;
+
             Some(Self {
                 format_string,
                 args,
-                value_args: values.value_args,
                 newline,
+                comma_spans,
+                explicit_values,
             })
         } else {
             None
@@ -875,13 +958,29 @@ impl<'tcx> FormatArgsExpn<'tcx> {
 
     /// Source callsite span of all inputs
     pub fn inputs_span(&self) -> Span {
-        match *self.value_args {
+        match *self.explicit_values {
             [] => self.format_string.span,
             [.., last] => self
                 .format_string
                 .span
                 .to(hygiene::walk_chain(last.span, self.format_string.span.ctxt())),
         }
+    }
+
+    /// Get the span of a value expanded to the previous comma, e.g. for the value `10`
+    ///
+    /// ```ignore
+    /// format("{}.{}", 10, 11)
+    /// //            ^^^^
+    /// ```
+    pub fn value_with_prev_comma_span(&self, value_id: HirId) -> Option<Span> {
+        for (comma_span, value) in zip(&self.comma_spans, &self.explicit_values) {
+            if value.hir_id == value_id {
+                return Some(comma_span.to(hygiene::walk_chain(value.span, comma_span.ctxt())));
+            }
+        }
+
+        None
     }
 
     /// Iterator of all format params, both values and those referenced by `width`/`precision`s.

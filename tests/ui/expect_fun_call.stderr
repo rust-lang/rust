@@ -78,5 +78,17 @@ error: use of `expect` followed by a function call
 LL |         opt_ref.expect(&format!("{:?}", opt_ref));
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("{:?}", opt_ref))`
 
-error: aborting due to 13 previous errors
+error: use of `expect` followed by a function call
+  --> $DIR/expect_fun_call.rs:105:20
+   |
+LL |     format_capture.expect(&format!("{error_code}"));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("{error_code}"))`
+
+error: use of `expect` followed by a function call
+  --> $DIR/expect_fun_call.rs:108:30
+   |
+LL |     format_capture_and_value.expect(&format!("{error_code}, {}", 1));
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("{error_code}, {}", 1))`
+
+error: aborting due to 15 previous errors
 

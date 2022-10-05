@@ -475,11 +475,11 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgsExpn<'_>, name: &
                 value.span,
                 "literal with an empty format string",
                 |diag| {
-                    if let Some(replacement) = replacement {
+                    if let Some(replacement) = replacement
                         // `format!("{}", "a")`, `format!("{named}", named = "b")
                         //              ~~~~~                      ~~~~~~~~~~~~~
-                        let value_span = expand_past_previous_comma(cx, value.span);
-
+                        && let Some(value_span) = format_args.value_with_prev_comma_span(value.hir_id)
+                    {
                         let replacement = replacement.replace('{', "{{").replace('}', "}}");
                         diag.multipart_suggestion(
                             "try this",
