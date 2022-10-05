@@ -1,18 +1,14 @@
-error[E0275]: overflow evaluating the requirement `_: Sized`
+error[E0689]: can't call method `contains` on ambiguous numeric type `{integer}`
   --> $DIR/issue-18400.rs:24:7
    |
 LL |     0.contains(bits);
    |       ^^^^^^^^
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_18400`)
-note: required for `{integer}` to implement `Set<&[_]>`
-  --> $DIR/issue-18400.rs:6:16
+help: you must specify a concrete type for this numeric value, like `i32`
    |
-LL | impl<'a, T, S> Set<&'a [T]> for S where
-   |                ^^^^^^^^^^^^     ^
-   = note: 128 redundant requirements hidden
-   = note: required for `{integer}` to implement `Set<&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[&[_]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]>`
+LL |     0_i32.contains(bits);
+   |     ~~~~~
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0275`.
+For more information about this error, try `rustc --explain E0689`.

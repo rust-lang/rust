@@ -22,5 +22,5 @@ fn main() {
     let bits: &[_] = &[0, 1];
 
     0.contains(bits);
-    //~^ ERROR overflow
+    //~^ ERROR can't call method `contains` on ambiguous numeric type `{integer}
 }

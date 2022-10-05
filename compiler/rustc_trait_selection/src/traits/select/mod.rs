@@ -19,7 +19,7 @@ use super::{
     SelectionResult, TraitObligation, TraitQueryMode,
 };
 
-use crate::infer::{InferCtxt, InferOk, TypeFreshener};
+use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
@@ -94,13 +94,6 @@ impl IntercrateAmbiguityCause {
 
 pub struct SelectionContext<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'tcx>,
-
-    /// Freshener used specifically for entries on the obligation
-    /// stack. This ensures that all entries on the stack at one time
-    /// will have the same set of placeholder entries, which is
-    /// important for checking for trait bounds that recursively
-    /// require themselves.
-    freshener: TypeFreshener<'cx, 'tcx>,
 
     /// During coherence we have to assume that other crates may add
     /// additional impls which we currently don't know about.
@@ -217,7 +210,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
-            freshener: infcx.freshener_keep_static(),
             intercrate: false,
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
@@ -2251,7 +2243,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         obligation: &'o TraitObligation<'tcx>,
     ) -> TraitObligationStack<'o, 'tcx> {
-        let fresh_trait_pred = obligation.predicate.fold_with(&mut self.freshener);
+        let fresh_trait_pred =
+            obligation.predicate.fold_with(&mut self.infcx.freshener_keep_static());
 
         let dfn = previous_stack.cache.next_dfn();
         let depth = previous_stack.depth() + 1;
