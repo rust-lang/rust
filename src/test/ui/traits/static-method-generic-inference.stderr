@@ -9,8 +9,8 @@ LL |     let _f: base::Foo = base::HasNew::new();
    |
 help: use the fully-qualified path to the only available implementation
    |
-LL |     let _f: base::Foo = base::<::base::Foo as HasNew>::new();
-   |                               +++++++++++++++       +
+LL |     let _f: base::Foo = base::<Foo as HasNew>::new();
+   |                               +++++++       +
 
 error: aborting due to previous error
 
