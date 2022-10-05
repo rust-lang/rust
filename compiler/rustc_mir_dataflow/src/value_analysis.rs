@@ -116,10 +116,19 @@ pub trait ValueAnalysis<'tcx> {
 
     fn super_intrinsic(
         &self,
-        _intrinsic: &NonDivergingIntrinsic<'tcx>,
-        _state: &mut State<Self::Value>,
+        intrinsic: &NonDivergingIntrinsic<'tcx>,
+        state: &mut State<Self::Value>,
     ) {
-        todo!();
+        match intrinsic {
+            NonDivergingIntrinsic::Assume(..) => {
+                // Could use this, but ignoring it is sound.
+            }
+            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping { dst, .. }) => {
+                if let Some(place) = dst.place() {
+                    state.flood(place.as_ref(), self.map());
+                }
+            }
+        }
     }
 
     fn handle_assign(
