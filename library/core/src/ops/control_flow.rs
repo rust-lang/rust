@@ -265,7 +265,6 @@ impl<B> ControlFlow<B, ()> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(control_flow_enum)]
     /// use std::ops::ControlFlow;
     ///
     /// let mut partial_sum = 0;
@@ -274,9 +273,9 @@ impl<B> ControlFlow<B, ()> {
     ///     if partial_sum > 100 { ControlFlow::Break(x) }
     ///     else { ControlFlow::CONTINUE }
     /// });
-    /// assert_eq!(last_used.break_value(), Some(22));
+    /// assert_eq!(last_used, ControlFlow::Break(22));
     /// ```
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    #[stable(feature = "control_flow_unit_consts", since = "CURRENT_RUSTC_VERSION")]
     pub const CONTINUE: Self = ControlFlow::Continue(());
 }
 
@@ -287,7 +286,6 @@ impl<C> ControlFlow<(), C> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(control_flow_enum)]
     /// use std::ops::ControlFlow;
     ///
     /// let mut partial_sum = 0;
@@ -297,6 +295,6 @@ impl<C> ControlFlow<(), C> {
     /// });
     /// assert_eq!(partial_sum, 108);
     /// ```
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    #[stable(feature = "control_flow_unit_consts", since = "CURRENT_RUSTC_VERSION")]
     pub const BREAK: Self = ControlFlow::Break(());
 }
