@@ -61,21 +61,55 @@ fn is_env_macro(string: &ast::String) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
-    use crate::tests::{check_edit};
+    use crate::tests::{check_edit, completion_list};
+
+    fn check(macro_name: &str) {
+        check_edit("CARGO_BIN_NAME",&format!(r#"
+            fn main() {{
+                let foo = {}!("CAR$0");
+            }}
+        "#, macro_name), &format!(r#"
+            fn main() {{
+                let foo = {}!("CARGO_BIN_NAME");
+            }}
+        "#, macro_name));
+    }
+    #[test]
+    fn completes_env_variable_in_env() {
+        check("env")
+    }
 
     #[test]
-    fn completes_env_variables() {
-        check_edit("CARGO", 
-        r#"
+    fn completes_env_variable_in_option_env() {
+        check("option_env");
+    }
+
+    #[test]
+    fn doesnt_complete_in_random_strings() {
+        let fixture = r#"
             fn main() {
-                let foo = env!("CA$0);
+                let foo = "CA$0";
             }
-        "#
-        ,r#"
+        "#;
+
+        let completions = completion_list(fixture);
+        assert!(completions.is_empty(), "Completions weren't empty: {}", completions);
+    }
+
+    #[test]
+    fn doesnt_complete_in_random_macro() {
+        let fixture = r#"
+            macro_rules! bar {
+                ($($arg:tt)*) => { 0 }
+            }
+
             fn main() {
-                let foo = env!("CARGO);
+                let foo = bar!("CA$0");
+
             }
-        "#)
+        "#;
+
+        let completions = completion_list(fixture);
+        assert!(completions.is_empty(), "Completions weren't empty: {}", completions);
     }
 }
