@@ -173,18 +173,6 @@ fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_si
         return;
     }
 
-    // FIXME: Properly ignore a rare case where the format string is wrapped in a macro.
-    // Example:  `format!(indoc!("{}"), foo);`
-    // If inlined, they will cause a compilation error:
-    //     > to avoid ambiguity, `format_args!` cannot capture variables
-    //     > when the format string is expanded from a macro
-    // @Alexendoo explanation:
-    //     > indoc! is a proc macro that is producing a string literal with its span
-    //     > set to its input it's not marked as from expansion, and since it's compatible
-    //     > tokenization wise clippy_utils::is_from_proc_macro wouldn't catch it either
-    // This might be a relatively expensive test, so do it only we are ready to replace.
-    // See more examples in tests/ui/uninlined_format_args.rs
-
     span_lint_and_then(
         cx,
         UNINLINED_FORMAT_ARGS,
