@@ -733,27 +733,9 @@ impl Drop for VerboseTimingGuard<'_> {
         if let Some((start_time, start_rss, ref message)) = self.start_and_message {
             let end_rss = get_resident_set_size();
             let dur = start_time.elapsed();
-
-            if should_print_passes(dur, start_rss, end_rss) {
-                print_time_passes_entry(&message, dur, start_rss, end_rss);
-            }
+            print_time_passes_entry(&message, dur, start_rss, end_rss);
         }
     }
-}
-
-fn should_print_passes(dur: Duration, start_rss: Option<usize>, end_rss: Option<usize>) -> bool {
-    if dur.as_millis() > 5 {
-        return true;
-    }
-
-    if let (Some(start_rss), Some(end_rss)) = (start_rss, end_rss) {
-        let change_rss = end_rss.abs_diff(start_rss);
-        if change_rss > 0 {
-            return true;
-        }
-    }
-
-    false
 }
 
 pub fn print_time_passes_entry(
@@ -762,6 +744,26 @@ pub fn print_time_passes_entry(
     start_rss: Option<usize>,
     end_rss: Option<usize>,
 ) {
+    // Print the pass if its duration is greater than 5 ms, or it changed the
+    // measured RSS.
+    let is_notable = || {
+        if dur.as_millis() > 5 {
+            return true;
+        }
+
+        if let (Some(start_rss), Some(end_rss)) = (start_rss, end_rss) {
+            let change_rss = end_rss.abs_diff(start_rss);
+            if change_rss > 0 {
+                return true;
+            }
+        }
+
+        false
+    };
+    if !is_notable() {
+        return;
+    }
+
     let rss_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as usize;
     let rss_change_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as i128;
 
