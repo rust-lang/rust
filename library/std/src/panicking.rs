@@ -46,12 +46,10 @@ extern "C" {
     fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
 }
 
-#[allow(improper_ctypes)]
 extern "Rust" {
-    /// `payload` is passed through another layer of raw pointers as `&mut dyn Trait` is not
-    /// FFI-safe. `BoxMeUp` lazily performs allocation only when needed (this avoids allocations
-    /// when using the "abort" panic runtime).
-    fn __rust_start_panic(payload: *mut &mut dyn BoxMeUp) -> u32;
+    /// `BoxMeUp` lazily performs allocation only when needed (this avoids
+    /// allocations when using the "abort" panic runtime).
+    fn __rust_start_panic(payload: &mut dyn BoxMeUp) -> u32;
 }
 
 /// This function is called by the panic runtime if FFI code catches a Rust
@@ -738,10 +736,7 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
 /// yer breakpoints.
 #[inline(never)]
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
-fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
-    let code = unsafe {
-        let obj = &mut msg as *mut &mut dyn BoxMeUp;
-        __rust_start_panic(obj)
-    };
+fn rust_panic(msg: &mut dyn BoxMeUp) -> ! {
+    let code = unsafe { __rust_start_panic(msg) };
     rtabort!("failed to initiate panic, error {code}")
 }
