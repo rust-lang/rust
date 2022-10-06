@@ -28,6 +28,7 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
     TypeVisitable,
@@ -677,15 +678,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 None,
                                 obligation.cause.body_id,
                             );
-                        } else if !suggested {
+                        } else if !suggested  {
                             // Can't show anything else useful, try to find similar impls.
-                            let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
-                            if !self.report_similar_impl_candidates(
-                                impl_candidates,
-                                trait_ref,
-                                obligation.cause.body_id,
-                                &mut err,
-                            ) {
+                            // This is skipped for traits with type parameters
+                            // because those suggestions are  noisy and unhelpful
+
+                            let has_no_types = |t: ty::PolyTraitRef<'_>| {
+                                !t.skip_binder().substs.iter().skip(1).any(|sub| matches!(sub.unpack(), GenericArgKind::Type(_)))
+                            };
+
+                            let reported = has_no_types(trait_ref) && {
+                                let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
+                                self.report_similar_impl_candidates(
+                                    impl_candidates,
+                                    trait_ref,
+                                    obligation.cause.body_id,
+                                    &mut err,
+                                )
+                            };
+
+                            if !reported {
                                 // This is *almost* equivalent to
                                 // `obligation.cause.code().peel_derives()`, but it gives us the
                                 // trait predicate for that corresponding root obligation. This
@@ -713,14 +725,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     && !self.tcx.lang_items().items().contains(&Some(def_id))
                                 {
                                     let trait_ref = trait_pred.to_poly_trait_ref();
-                                    let impl_candidates =
-                                        self.find_similar_impl_candidates(trait_pred);
-                                    self.report_similar_impl_candidates(
-                                        impl_candidates,
-                                        trait_ref,
-                                        obligation.cause.body_id,
-                                        &mut err,
-                                    );
+                                    if has_no_types(trait_ref) {
+                                        let impl_candidates = self.find_similar_impl_candidates(trait_pred);
+                                        self.report_similar_impl_candidates(
+                                            impl_candidates,
+                                            trait_ref,
+                                            obligation.cause.body_id,
+                                            &mut err,
+                                        );
+                                    }
                                 }
                             }
                         }
