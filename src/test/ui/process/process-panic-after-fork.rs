@@ -87,21 +87,39 @@ fn expect_aborted(status: ExitStatus) {
         // Android signals an abort() call with SIGSEGV at address 0xdeadbaad
         // See e.g. https://groups.google.com/g/android-ndk/c/laW1CJc7Icc
         assert!(signal == libc::SIGSEGV);
-        // Check if the crash occured at addres deadbaad to ensure it is not some undefined
-        // behavior but actually an abort
-        let tombstone = (0..100)
+
+        // Additional checks performed:
+        // 1. Crash is from same executable (path) as we are (must be because of fork):
+        //    This ensures that we look into the correct tombstone.
+        // 2. Cause of crash is a SIGSEGV with address 0xdeadbaad.
+        // 3. libc::abort call is in one of top two functions on callstack.
+        // The last two steps distinguish between a normal SIGSEGV and one caused
+        // by libc::abort.
+
+        let tombstone_name = (0..100)
             .map(|n| format!("/data/tombstones/tombstone_{n:02}"))
             .filter(|f| std::path::Path::new(&f).exists())
             .last()
             .expect("no tombstone found");
+
         let tombstone =
-            std::fs::read_to_string(&tombstone).expect("Cannot read tombstone file");
+            std::fs::read_to_string(&tombstone_name).expect("Cannot read tombstone file");
+        println!("Content of {tombstone_name}:\n{tombstone}");
+
         // If the next assert fails sporadically we might have an issue with parallel crashing apps
         assert!(tombstone
             .contains(&std::env::current_exe().unwrap().into_os_string().into_string().unwrap()));
         assert!(tombstone.contains(
             "signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr deadbaad"
         ));
+        let abort_on_top = tombstone
+            .lines()
+            .skip_while(|l| !l.contains("backtrace:"))
+            .skip(1)
+            .take_while(|l| l.starts_with("    #"))
+            .take(2)
+            .any(|f| f.contains("/system/lib/libc.so (abort"));
+        assert!(abort_on_top);
     }
 }
 
