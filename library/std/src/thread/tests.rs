@@ -245,6 +245,28 @@ fn test_try_panic_any_message_unit_struct() {
 }
 
 #[test]
+fn test_park_unpark_before() {
+    for _ in 0..10 {
+        thread::current().unpark();
+        thread::park();
+    }
+}
+
+#[test]
+fn test_park_unpark_called_other_thread() {
+    for _ in 0..10 {
+        let th = thread::current();
+
+        let _guard = thread::spawn(move || {
+            super::sleep(Duration::from_millis(50));
+            th.unpark();
+        });
+
+        thread::park();
+    }
+}
+
+#[test]
 fn test_park_timeout_unpark_before() {
     for _ in 0..10 {
         thread::current().unpark();
