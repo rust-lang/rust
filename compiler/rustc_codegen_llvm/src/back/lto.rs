@@ -573,7 +573,7 @@ pub(crate) fn run_pass_manager(
     module: &mut ModuleCodegen<ModuleLlvm>,
     thin: bool,
 ) -> Result<(), FatalError> {
-    let _timer = cgcx.prof.extra_verbose_generic_activity("LLVM_lto_optimize", &*module.name);
+    let _timer = cgcx.prof.verbose_generic_activity_with_arg("LLVM_lto_optimize", &*module.name);
     let config = cgcx.config(module.kind);
 
     // Now we have one massive module inside of llmod. Time to run the

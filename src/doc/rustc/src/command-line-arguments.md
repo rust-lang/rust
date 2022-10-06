@@ -300,7 +300,7 @@ _Note:_ The order of these lint level arguments is taken into account, see [lint
 ## `-Z`: set unstable options
 
 This flag will allow you to set unstable options of rustc. In order to set multiple options,
-the -Z flag can be used multiple times. For example: `rustc -Z verbose -Z time`.
+the -Z flag can be used multiple times. For example: `rustc -Z verbose -Z time-passes`.
 Specifying options with -Z is only available on nightly. To view all available options
 run: `rustc -Z help`.
 

@@ -280,14 +280,6 @@ macro_rules! options {
 
 ) }
 
-impl Options {
-    // JUSTIFICATION: defn of the suggested wrapper fn
-    #[allow(rustc::bad_opt_access)]
-    pub fn time_passes(&self) -> bool {
-        self.unstable_opts.time_passes || self.unstable_opts.time
-    }
-}
-
 impl CodegenOptions {
     // JUSTIFICATION: defn of the suggested wrapper fn
     #[allow(rustc::bad_opt_access)]
@@ -1596,9 +1588,6 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
     threads: usize = (1, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
-    #[rustc_lint_opt_deny_field_access("use `Session::time_passes` instead of this field")]
-    time: bool = (false, parse_bool, [UNTRACKED],
-        "measure time of rustc processes (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::time_llvm_passes` instead of this field")]
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
