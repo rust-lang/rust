@@ -58,7 +58,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         &snippet_body,
                         &mut applicability,
                         Some(span),
-                        false,
+                        true,
                     );
 
                     span_lint_and_sugg(
@@ -91,7 +91,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         &snippet_body,
                         &mut applicability,
                         None,
-                        false,
+                        true,
                     );
                     (expr.span, sugg)
                 },
@@ -116,7 +116,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                     &snippet_body,
                     &mut applicability,
                     None,
-                    true,
+                    false,
                 );
 
                 span_lint_and_sugg(
@@ -208,13 +208,13 @@ fn sugg_with_curlies<'a>(
     });
 
     let scrutinee = if needs_var_binding {
-        snippet_with_applicability(cx, matched_vars, "..", applicability).to_string()
-    } else {
         format!(
             "let {} = {}",
             snippet_with_applicability(cx, bind_names, "..", applicability),
             snippet_with_applicability(cx, matched_vars, "..", applicability)
         )
+    } else {
+        snippet_with_applicability(cx, matched_vars, "..", applicability).to_string()
     };
 
     format!("{cbrace_start}{scrutinee};\n{indent}{assignment_str}{snippet_body}{cbrace_end}")
