@@ -35,7 +35,7 @@ pub(crate) fn complete_cargo_env_vars(
     let range = expanded.text_range_between_quotes()?;
 
     CARGO_DEFINED_VARS.iter().for_each(|(var, detail)| {
-        let mut item = CompletionItem::new(CompletionItemKind::Keyword, range, *var);
+        let mut item = CompletionItem::new(CompletionItemKind::Keyword, range, var);
         item.detail(*detail);
         item.add_to(acc);
     });
