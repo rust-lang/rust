@@ -124,6 +124,7 @@ fn generate_enum_projection_method(
         happy_case,
         sad_case,
     } = props;
+
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let variant_name = variant.name()?;
     let parent_enum = ast::Adt::Enum(variant.parent_enum());
@@ -144,7 +145,7 @@ fn generate_enum_projection_method(
         ast::StructKind::Unit => return None,
     };
 
-    let fn_name = format!("{}_{}", fn_name_prefix, &to_lower_snake_case(&variant_name.text()));
+    let fn_name = format!("{fn_name_prefix}_{}", &to_lower_snake_case(&variant_name.text()));
 
     // Return early if we've found an existing new fn
     let impl_def = find_struct_impl(ctx, &parent_enum, &[fn_name.clone()])?;
@@ -156,15 +157,31 @@ fn generate_enum_projection_method(
         assist_description,
         target,
         |builder| {
-            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{v} "));
-            let method = format!(
-                "    {vis}fn {fn_name}({self_param}) -> {return_prefix}{field_type}{return_suffix} {{
+            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
+
+            let field_type_syntax = field_type.syntax();
+
+            let method = if ctx.config.assist_emit_must_use
+            {
+                format!(
+                    "    #[must_use]
+    {vis}fn {fn_name}({self_param}) -> {return_prefix}{field_type_syntax}{return_suffix} {{
         if let Self::{variant_name}{pattern_suffix} = self {{
             {happy_case}({bound_name})
         }} else {{
             {sad_case}
         }}
-    }}");
+    }}")
+            } else {
+                format!(
+                    "    {vis}fn {fn_name}({self_param}) -> {return_prefix}{field_type_syntax}{return_suffix} {{
+        if let Self::{variant_name}{pattern_suffix} = self {{
+            {happy_case}({bound_name})
+        }} else {{
+            {sad_case}
+        }}
+    }}")
+            };
 
             add_method_to_adt(builder, &parent_enum, impl_def, &method);
         },
