@@ -8,7 +8,7 @@ use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::Ty;
 use rustc_semver::RustcVersion;
@@ -170,6 +170,11 @@ fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_si
     // because the index numbers might be wrong after inlining.
     // Example of an un-inlinable format:  print!("{}{1}", foo, 2)
     if !args.params().all(|p| check_one_arg(args, &p, &mut fixes)) || fixes.is_empty() {
+        return;
+    }
+
+    // Temporarily ignore multiline spans: https://github.com/rust-lang/rust/pull/102729#discussion_r988704308
+    if fixes.iter().any(|(span, _)| cx.sess().source_map().is_multiline(*span)) {
         return;
     }
 
