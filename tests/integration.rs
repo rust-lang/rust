@@ -6,10 +6,15 @@ use std::env;
 use std::ffi::OsStr;
 use std::process::Command;
 
+#[cfg(not(windows))]
+const CARGO_CLIPPY: &str = "cargo-clippy";
+#[cfg(windows)]
+const CARGO_CLIPPY: &str = "cargo-clippy.exe";
+
 #[cfg_attr(feature = "integration", test)]
 fn integration_test() {
     let repo_name = env::var("INTEGRATION").expect("`INTEGRATION` var not set");
-    let repo_url = format!("https://github.com/{}", repo_name);
+    let repo_url = format!("https://github.com/{repo_name}");
     let crate_name = repo_name
         .split('/')
         .nth(1)
@@ -31,7 +36,7 @@ fn integration_test() {
 
     let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let target_dir = std::path::Path::new(&root_dir).join("target");
-    let clippy_binary = target_dir.join(env!("PROFILE")).join("cargo-clippy");
+    let clippy_binary = target_dir.join(env!("PROFILE")).join(CARGO_CLIPPY);
 
     let output = Command::new(clippy_binary)
         .current_dir(repo_dir)
@@ -51,17 +56,15 @@ fn integration_test() {
         .expect("unable to run clippy");
 
     let stderr = String::from_utf8_lossy(&output.stderr);
-    if stderr.contains("internal compiler error") {
-        let backtrace_start = stderr
-            .find("thread 'rustc' panicked at")
-            .expect("start of backtrace not found");
-        let backtrace_end = stderr
-            .rfind("error: internal compiler error")
+    if let Some(backtrace_start) = stderr.find("error: internal compiler error") {
+        static BACKTRACE_END_MSG: &str = "end of query stack";
+        let backtrace_end = stderr[backtrace_start..]
+            .find(BACKTRACE_END_MSG)
             .expect("end of backtrace not found");
 
         panic!(
             "internal compiler error\nBacktrace:\n\n{}",
-            &stderr[backtrace_start..backtrace_end]
+            &stderr[backtrace_start..backtrace_start + backtrace_end + BACKTRACE_END_MSG.len()]
         );
     } else if stderr.contains("query stack during panic") {
         panic!("query stack during panic in the output");
@@ -83,7 +86,7 @@ fn integration_test() {
 
     match output.status.code() {
         Some(0) => println!("Compilation successful"),
-        Some(code) => eprintln!("Compilation failed. Exit code: {}", code),
+        Some(code) => eprintln!("Compilation failed. Exit code: {code}"),
         None => panic!("Process terminated by signal"),
     }
 }

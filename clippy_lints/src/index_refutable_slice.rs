@@ -139,14 +139,14 @@ fn lint_slice(cx: &LateContext<'_>, slice: &SliceLintInformation) {
         .map(|(index, _)| *index)
         .collect::<FxHashSet<_>>();
 
-    let value_name = |index| format!("{}_{}", slice.ident.name, index);
+    let value_name = |index| format!("{}_{index}", slice.ident.name);
 
     if let Some(max_index) = used_indices.iter().max() {
         let opt_ref = if slice.needs_ref { "ref " } else { "" };
         let pat_sugg_idents = (0..=*max_index)
             .map(|index| {
                 if used_indices.contains(&index) {
-                    format!("{}{}", opt_ref, value_name(index))
+                    format!("{opt_ref}{}", value_name(index))
                 } else {
                     "_".to_string()
                 }

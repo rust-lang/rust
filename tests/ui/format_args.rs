@@ -1,10 +1,12 @@
 // run-rustfix
-
-#![allow(unused)]
-#![allow(clippy::assertions_on_constants)]
-#![allow(clippy::eq_op)]
-#![allow(clippy::print_literal)]
 #![warn(clippy::to_string_in_format_args)]
+#![allow(unused)]
+#![allow(
+    clippy::assertions_on_constants,
+    clippy::eq_op,
+    clippy::print_literal,
+    clippy::uninlined_format_args
+)]
 
 use std::io::{stdout, Write};
 use std::ops::Deref;

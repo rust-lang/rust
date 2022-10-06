@@ -2,10 +2,11 @@ use clippy_utils::{
     diagnostics::span_lint_hir_and_then,
     get_async_fn_body, is_async_fn,
     source::{snippet_with_applicability, snippet_with_context, walk_span_to_context},
-    visitors::expr_visitor_no_bodies,
+    visitors::for_each_expr,
 };
+use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{FnKind, Visitor};
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -53,7 +54,7 @@ fn lint_return(cx: &LateContext<'_>, emission_place: HirId, span: Span) {
         span,
         "missing `return` statement",
         |diag| {
-            diag.span_suggestion(span, "add `return` as shown", format!("return {}", snip), app);
+            diag.span_suggestion(span, "add `return` as shown", format!("return {snip}"), app);
         },
     );
 }
@@ -71,7 +72,7 @@ fn lint_break(cx: &LateContext<'_>, emission_place: HirId, break_span: Span, exp
             diag.span_suggestion(
                 break_span,
                 "change `break` to `return` as shown",
-                format!("return {}", snip),
+                format!("return {snip}"),
                 app,
             );
         },
@@ -152,7 +153,7 @@ fn lint_implicit_returns(
 
         ExprKind::Loop(block, ..) => {
             let mut add_return = false;
-            expr_visitor_no_bodies(|e| {
+            let _: Option<!> = for_each_expr(block, |e| {
                 if let ExprKind::Break(dest, sub_expr) = e.kind {
                     if dest.target_id.ok() == Some(expr.hir_id) {
                         if call_site_span.is_none() && e.span.ctxt() == ctxt {
@@ -167,9 +168,8 @@ fn lint_implicit_returns(
                         }
                     }
                 }
-                true
-            })
-            .visit_block(block);
+                ControlFlow::Continue(())
+            });
             if add_return {
                 #[expect(clippy::option_if_let_else)]
                 if let Some(span) = call_site_span {

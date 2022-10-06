@@ -198,6 +198,29 @@ declare_clippy_lint! {
     "presence of `fn main() {` in code examples"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects the syntax `['foo']` in documentation comments (notice quotes instead of backticks)
+    /// outside of code blocks
+    /// ### Why is this bad?
+    /// It is likely a typo when defining an intra-doc link
+    ///
+    /// ### Example
+    /// ```rust
+    /// /// See also: ['foo']
+    /// fn bar() {}
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// /// See also: [`foo`]
+    /// fn bar() {}
+    /// ```
+    #[clippy::version = "1.63.0"]
+    pub DOC_LINK_WITH_QUOTES,
+    pedantic,
+    "possible typo for an intra-doc link"
+}
+
 #[expect(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct DocMarkdown {
@@ -214,9 +237,14 @@ impl DocMarkdown {
     }
 }
 
-impl_lint_pass!(DocMarkdown =>
-    [DOC_MARKDOWN, MISSING_SAFETY_DOC, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, NEEDLESS_DOCTEST_MAIN]
-);
+impl_lint_pass!(DocMarkdown => [
+    DOC_LINK_WITH_QUOTES,
+    DOC_MARKDOWN,
+    MISSING_SAFETY_DOC,
+    MISSING_ERRORS_DOC,
+    MISSING_PANICS_DOC,
+    NEEDLESS_DOCTEST_MAIN
+]);
 
 impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
@@ -237,7 +265,15 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                         panic_span: None,
                     };
                     fpu.visit_expr(body.value);
-                    lint_for_missing_headers(cx, item.def_id.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+                    lint_for_missing_headers(
+                        cx,
+                        item.def_id.def_id,
+                        item.span,
+                        sig,
+                        headers,
+                        Some(body_id),
+                        fpu.panic_span,
+                    );
                 }
             },
             hir::ItemKind::Impl(impl_) => {
@@ -287,7 +323,15 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                 panic_span: None,
             };
             fpu.visit_expr(body.value);
-            lint_for_missing_headers(cx, item.def_id.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+            lint_for_missing_headers(
+                cx,
+                item.def_id.def_id,
+                item.span,
+                sig,
+                headers,
+                Some(body_id),
+                fpu.panic_span,
+            );
         }
     }
 }
@@ -416,7 +460,7 @@ pub fn strip_doc_comment_decoration(doc: &str, comment_kind: CommentKind, span: 
     (no_stars, sizes)
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 struct DocHeaders {
     safety: bool,
     errors: bool,
@@ -460,11 +504,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
     }
 
     if doc.is_empty() {
-        return DocHeaders {
-            safety: false,
-            errors: false,
-            panics: false,
-        };
+        return DocHeaders::default();
     }
 
     let mut cb = fake_broken_link_callback;
@@ -505,11 +545,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     use pulldown_cmark::Tag::{CodeBlock, Heading, Item, Link, Paragraph};
     use pulldown_cmark::{CodeBlockKind, CowStr};
 
-    let mut headers = DocHeaders {
-        safety: false,
-        errors: false,
-        panics: false,
-    };
+    let mut headers = DocHeaders::default();
     let mut in_code = false;
     let mut in_link = None;
     let mut in_heading = false;
@@ -596,6 +632,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         check_code(cx, &text, edition, span);
                     }
                 } else {
+                    check_link_quotes(cx, in_link.is_some(), trimmed_text, span, &range, begin, text.len());
                     // Adjust for the beginning of the current `Event`
                     let span = span.with_lo(span.lo() + BytePos::from_usize(range.start - begin));
                     text_to_check.push((text, span));
@@ -604,6 +641,27 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
         }
     }
     headers
+}
+
+fn check_link_quotes(
+    cx: &LateContext<'_>,
+    in_link: bool,
+    trimmed_text: &str,
+    span: Span,
+    range: &Range<usize>,
+    begin: usize,
+    text_len: usize,
+) {
+    if in_link && trimmed_text.starts_with('\'') && trimmed_text.ends_with('\'') {
+        // fix the span to only point at the text within the link
+        let lo = span.lo() + BytePos::from_usize(range.start - begin);
+        span_lint(
+            cx,
+            DOC_LINK_WITH_QUOTES,
+            span.with_lo(lo).with_hi(lo + BytePos::from_usize(text_len)),
+            "possible intra-doc link using quotes instead of backticks",
+        );
+    }
 }
 
 fn get_current_span(spans: &[(usize, Span)], idx: usize) -> (usize, Span) {
@@ -790,7 +848,7 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
                 diag.span_suggestion_with_style(
                     span,
                     "try",
-                    format!("`{}`", snippet),
+                    format!("`{snippet}`"),
                     applicability,
                     // always show the suggestion in a separate line, since the
                     // inline presentation adds another pair of backticks

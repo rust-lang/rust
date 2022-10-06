@@ -1,5 +1,5 @@
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:104:14
+  --> $DIR/valid_if_blocks.rs:105:14
    |
 LL |       if false {
    |  ______________^
@@ -7,20 +7,20 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:105:12
+  --> $DIR/valid_if_blocks.rs:106:12
    |
 LL |       } else {
    |  ____________^
 LL | |     }
    | |_____^
 note: the lint level is defined here
-  --> $DIR/valid_if_blocks.rs:2:9
+  --> $DIR/valid_if_blocks.rs:1:40
    |
-LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:115:15
+  --> $DIR/valid_if_blocks.rs:116:15
    |
 LL |       if x == 0 {
    |  _______________^
@@ -31,7 +31,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:119:12
+  --> $DIR/valid_if_blocks.rs:120:12
    |
 LL |       } else {
    |  ____________^
@@ -42,19 +42,19 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:126:23
+  --> $DIR/valid_if_blocks.rs:127:23
    |
 LL |     let _ = if x == 6 { 7 } else { 7 };
    |                       ^^^^^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:126:34
+  --> $DIR/valid_if_blocks.rs:127:34
    |
 LL |     let _ = if x == 6 { 7 } else { 7 };
    |                                  ^^^^^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:132:23
+  --> $DIR/valid_if_blocks.rs:133:23
    |
 LL |       } else if x == 68 {
    |  _______________________^
@@ -66,7 +66,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:137:12
+  --> $DIR/valid_if_blocks.rs:138:12
    |
 LL |       } else {
    |  ____________^
@@ -78,7 +78,7 @@ LL | |     };
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:146:23
+  --> $DIR/valid_if_blocks.rs:147:23
    |
 LL |       } else if x == 68 {
    |  _______________________^
@@ -88,7 +88,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:149:12
+  --> $DIR/valid_if_blocks.rs:150:12
    |
 LL |       } else {
    |  ____________^

@@ -2,9 +2,10 @@ use clippy_utils::{
     diagnostics::{span_lint, span_lint_and_sugg},
     higher::{get_vec_init_kind, VecInitKind},
     source::snippet,
-    visitors::expr_visitor_no_bodies,
+    visitors::for_each_expr,
 };
-use hir::{intravisit::Visitor, ExprKind, Local, PatKind, PathSegment, QPath, StmtKind};
+use core::ops::ControlFlow;
+use hir::{Expr, ExprKind, Local, PatKind, PathSegment, QPath, StmtKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -58,10 +59,8 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                 && let PatKind::Binding(_, _, ident, _) = pat.kind
                 && let Some(vec_init_kind) = get_vec_init_kind(cx, init)
             {
-                // finds use of `_.read(&mut v)`
-                let mut read_found = false;
-                let mut visitor = expr_visitor_no_bodies(|expr| {
-                    if let ExprKind::MethodCall(path, _self, [arg], _) = expr.kind
+                let visitor = |expr: &Expr<'_>| {
+                    if let ExprKind::MethodCall(path, _, [arg], _) = expr.kind
                         && let PathSegment { ident: read_or_read_exact, .. } = *path
                         && matches!(read_or_read_exact.as_str(), "read" | "read_exact")
                         && let ExprKind::AddrOf(_, hir::Mutability::Mut, inner) = arg.kind
@@ -69,27 +68,22 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                         && let [inner_seg] = inner_path.segments
                         && ident.name == inner_seg.ident.name
                     {
-                        read_found = true;
-                    }
-                    !read_found
-                });
-
-                let next_stmt_span;
-                if idx == block.stmts.len() - 1 {
-                    // case { .. stmt; expr }
-                    if let Some(e) = block.expr {
-                        visitor.visit_expr(e);
-                        next_stmt_span = e.span;
+                        ControlFlow::Break(())
                     } else {
-                        return;
+                        ControlFlow::Continue(())
                     }
-                } else {
+                };
+
+                let (read_found, next_stmt_span) =
+                if let Some(next_stmt) = block.stmts.get(idx + 1) {
                     // case { .. stmt; stmt; .. }
-                    let next_stmt = &block.stmts[idx + 1];
-                    visitor.visit_stmt(next_stmt);
-                    next_stmt_span = next_stmt.span;
-                }
-                drop(visitor);
+                    (for_each_expr(next_stmt, visitor).is_some(), next_stmt.span)
+                } else if let Some(e) = block.expr {
+                    // case { .. stmt; expr }
+                    (for_each_expr(e, visitor).is_some(), e.span)
+                } else {
+                    return
+                };
 
                 if read_found && !next_stmt_span.from_expansion() {
                     let applicability = Applicability::MaybeIncorrect;
@@ -101,9 +95,8 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                                 next_stmt_span,
                                 "reading zero byte data to `Vec`",
                                 "try",
-                                format!("{}.resize({}, 0); {}",
+                                format!("{}.resize({len}, 0); {}",
                                     ident.as_str(),
-                                    len,
                                     snippet(cx, next_stmt_span, "..")
                                 ),
                                 applicability,

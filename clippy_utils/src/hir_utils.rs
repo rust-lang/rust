@@ -962,7 +962,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 mut_ty.mutbl.hash(&mut self.s);
             },
             TyKind::Rptr(lifetime, ref mut_ty) => {
-                self.hash_lifetime(*lifetime);
+                self.hash_lifetime(lifetime);
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
@@ -992,7 +992,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 in_trait.hash(&mut self.s);
             },
             TyKind::TraitObject(_, lifetime, _) => {
-                self.hash_lifetime(*lifetime);
+                self.hash_lifetime(lifetime);
             },
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);

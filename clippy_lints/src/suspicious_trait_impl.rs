@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binop_traits, trait_ref_of_method, BINOP_TRAITS, OP_ASSIGN_TRAITS};
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -92,25 +93,17 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
 }
 
 fn count_binops(expr: &hir::Expr<'_>) -> u32 {
-    let mut visitor = BinaryExprVisitor::default();
-    visitor.visit_expr(expr);
-    visitor.nb_binops
-}
-
-#[derive(Default)]
-struct BinaryExprVisitor {
-    nb_binops: u32,
-}
-
-impl<'tcx> Visitor<'tcx> for BinaryExprVisitor {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        match expr.kind {
+    let mut count = 0u32;
+    let _: Option<!> = for_each_expr(expr, |e| {
+        if matches!(
+            e.kind,
             hir::ExprKind::Binary(..)
-            | hir::ExprKind::Unary(hir::UnOp::Not | hir::UnOp::Neg, _)
-            | hir::ExprKind::AssignOp(..) => self.nb_binops += 1,
-            _ => {},
+                | hir::ExprKind::Unary(hir::UnOp::Not | hir::UnOp::Neg, _)
+                | hir::ExprKind::AssignOp(..)
+        ) {
+            count += 1;
         }
-
-        walk_expr(self, expr);
-    }
+        ControlFlow::Continue(())
+    });
+    count
 }

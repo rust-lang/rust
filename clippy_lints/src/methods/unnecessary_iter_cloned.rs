@@ -68,7 +68,7 @@ pub fn check_for_loop_iter(
                 cx,
                 UNNECESSARY_TO_OWNED,
                 expr.span,
-                &format!("unnecessary use of `{}`", method_name),
+                &format!("unnecessary use of `{method_name}`"),
                 |diag| {
                     // If `check_into_iter_call_arg` called `check_for_loop_iter` because a call to
                     // a `to_owned`-like function was removed, then the next suggestion may be

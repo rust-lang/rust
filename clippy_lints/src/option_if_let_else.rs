@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    can_move_expr_to_closure, eager_or_lazy, higher, in_constant, is_else_clause, is_lang_ctor, peel_blocks,
+    can_move_expr_to_closure, eager_or_lazy, higher, in_constant, is_else_clause, is_res_lang_ctor, peel_blocks,
     peel_hir_expr_while, CaptureKind,
 };
 use if_chain::if_chain;
@@ -88,7 +88,7 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 ///     None/_ => {..}
 /// }
 /// ```
-struct OptionOccurence {
+struct OptionOccurrence {
     option: String,
     method_sugg: String,
     some_expr: String,
@@ -109,13 +109,13 @@ fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: boo
     )
 }
 
-fn try_get_option_occurence<'tcx>(
+fn try_get_option_occurrence<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &Pat<'tcx>,
     expr: &Expr<'_>,
     if_then: &'tcx Expr<'_>,
     if_else: &'tcx Expr<'_>,
-) -> Option<OptionOccurence> {
+) -> Option<OptionOccurrence> {
     let cond_expr = match expr.kind {
         ExprKind::Unary(UnOp::Deref, inner_expr) | ExprKind::AddrOf(_, _, inner_expr) => inner_expr,
         _ => expr,
@@ -160,10 +160,10 @@ fn try_get_option_occurence<'tcx>(
                 }
             }
 
-            return Some(OptionOccurence {
+            return Some(OptionOccurrence {
                 option: format_option_in_sugg(cx, cond_expr, as_ref, as_mut),
                 method_sugg: method_sugg.to_string(),
-                some_expr: format!("|{}{}| {}", capture_mut, capture_name, Sugg::hir_with_macro_callsite(cx, some_body, "..")),
+                some_expr: format!("|{capture_mut}{capture_name}| {}", Sugg::hir_with_macro_callsite(cx, some_body, "..")),
                 none_expr: format!("{}{}", if method_sugg == "map_or" { "" } else { "|| " }, Sugg::hir_with_macro_callsite(cx, none_body, "..")),
             });
         }
@@ -174,7 +174,8 @@ fn try_get_option_occurence<'tcx>(
 
 fn try_get_inner_pat<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<&'tcx Pat<'tcx>> {
     if let PatKind::TupleStruct(ref qpath, [inner_pat], ..) = pat.kind {
-        if is_lang_ctor(cx, qpath, OptionSome) || is_lang_ctor(cx, qpath, ResultOk) {
+        let res = cx.qpath_res(qpath, pat.hir_id);
+        if is_res_lang_ctor(cx, res, OptionSome) || is_res_lang_ctor(cx, res, ResultOk) {
             return Some(inner_pat);
         }
     }
@@ -182,9 +183,9 @@ fn try_get_inner_pat<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<&'
 }
 
 /// If this expression is the option if let/else construct we're detecting, then
-/// this function returns an `OptionOccurence` struct with details if
+/// this function returns an `OptionOccurrence` struct with details if
 /// this construct is found, or None if this construct is not found.
-fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurence> {
+fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurrence> {
     if let Some(higher::IfLet {
         let_pat,
         let_expr,
@@ -193,16 +194,16 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
     }) = higher::IfLet::hir(cx, expr)
     {
         if !is_else_clause(cx.tcx, expr) {
-            return try_get_option_occurence(cx, let_pat, let_expr, if_then, if_else);
+            return try_get_option_occurrence(cx, let_pat, let_expr, if_then, if_else);
         }
     }
     None
 }
 
-fn detect_option_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurence> {
+fn detect_option_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurrence> {
     if let ExprKind::Match(ex, arms, MatchSource::Normal) = expr.kind {
         if let Some((let_pat, if_then, if_else)) = try_convert_match(cx, arms) {
-            return try_get_option_occurence(cx, let_pat, ex, if_then, if_else);
+            return try_get_option_occurrence(cx, let_pat, ex, if_then, if_else);
         }
     }
     None
@@ -226,9 +227,10 @@ fn try_convert_match<'tcx>(
 
 fn is_none_or_err_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     match arm.pat.kind {
-        PatKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
+        PatKind::Path(ref qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone),
         PatKind::TupleStruct(ref qpath, [first_pat], _) => {
-            is_lang_ctor(cx, qpath, ResultErr) && matches!(first_pat.kind, PatKind::Wild)
+            is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), ResultErr)
+                && matches!(first_pat.kind, PatKind::Wild)
         },
         PatKind::Wild => true,
         _ => false,

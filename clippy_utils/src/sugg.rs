@@ -10,13 +10,13 @@ use rustc_ast_pretty::pprust::token_kind_to_string;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
+use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::{FakeReadCause, Mutability};
 use rustc_middle::ty;
 use rustc_span::source_map::{BytePos, CharPos, Pos, Span, SyntaxContext};
-use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::borrow::Cow;
 use std::fmt::{Display, Write as _};
 use std::ops::{Add, Neg, Not, Sub};
@@ -310,19 +310,19 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to transform suggestion into a return call
     pub fn make_return(self) -> Sugg<'static> {
-        Sugg::NonParen(Cow::Owned(format!("return {}", self)))
+        Sugg::NonParen(Cow::Owned(format!("return {self}")))
     }
 
     /// Convenience method to transform suggestion into a block
     /// where the suggestion is a trailing expression
     pub fn blockify(self) -> Sugg<'static> {
-        Sugg::NonParen(Cow::Owned(format!("{{ {} }}", self)))
+        Sugg::NonParen(Cow::Owned(format!("{{ {self} }}")))
     }
 
     /// Convenience method to prefix the expression with the `async` keyword.
     /// Can be used after `blockify` to create an async block.
     pub fn asyncify(self) -> Sugg<'static> {
-        Sugg::NonParen(Cow::Owned(format!("async {}", self)))
+        Sugg::NonParen(Cow::Owned(format!("async {self}")))
     }
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
@@ -346,12 +346,12 @@ impl<'a> Sugg<'a> {
                 if has_enclosing_paren(&sugg) {
                     Sugg::MaybeParen(sugg)
                 } else {
-                    Sugg::NonParen(format!("({})", sugg).into())
+                    Sugg::NonParen(format!("({sugg})").into())
                 }
             },
             Sugg::BinOp(op, lhs, rhs) => {
                 let sugg = binop_to_string(op, &lhs, &rhs);
-                Sugg::NonParen(format!("({})", sugg).into())
+                Sugg::NonParen(format!("({sugg})").into())
             },
         }
     }
@@ -379,20 +379,18 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
         | AssocOp::Greater
         | AssocOp::GreaterEqual => {
             format!(
-                "{} {} {}",
-                lhs,
-                op.to_ast_binop().expect("Those are AST ops").to_string(),
-                rhs
+                "{lhs} {} {rhs}",
+                op.to_ast_binop().expect("Those are AST ops").to_string()
             )
         },
-        AssocOp::Assign => format!("{} = {}", lhs, rhs),
+        AssocOp::Assign => format!("{lhs} = {rhs}"),
         AssocOp::AssignOp(op) => {
-            format!("{} {}= {}", lhs, token_kind_to_string(&token::BinOp(op)), rhs)
+            format!("{lhs} {}= {rhs}", token_kind_to_string(&token::BinOp(op)))
         },
-        AssocOp::As => format!("{} as {}", lhs, rhs),
-        AssocOp::DotDot => format!("{}..{}", lhs, rhs),
-        AssocOp::DotDotEq => format!("{}..={}", lhs, rhs),
-        AssocOp::Colon => format!("{}: {}", lhs, rhs),
+        AssocOp::As => format!("{lhs} as {rhs}"),
+        AssocOp::DotDot => format!("{lhs}..{rhs}"),
+        AssocOp::DotDotEq => format!("{lhs}..={rhs}"),
+        AssocOp::Colon => format!("{lhs}: {rhs}"),
     }
 }
 
@@ -523,7 +521,7 @@ impl<T: Display> Display for ParenHelper<T> {
 /// operators have the same
 /// precedence.
 pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
-    Sugg::MaybeParen(format!("{}{}", op, expr.maybe_par()).into())
+    Sugg::MaybeParen(format!("{op}{}", expr.maybe_par()).into())
 }
 
 /// Builds the string for `<lhs> <op> <rhs>` adding parenthesis when necessary.
@@ -744,7 +742,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
         if let Some(indent) = indentation(cx, item) {
             let span = item.with_hi(item.lo());
 
-            self.span_suggestion(span, msg, format!("{}\n{}", attr, indent), applicability);
+            self.span_suggestion(span, msg, format!("{attr}\n{indent}"), applicability);
         }
     }
 
@@ -758,14 +756,14 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
                 .map(|l| {
                     if first {
                         first = false;
-                        format!("{}\n", l)
+                        format!("{l}\n")
                     } else {
-                        format!("{}{}\n", indent, l)
+                        format!("{indent}{l}\n")
                     }
                 })
                 .collect::<String>();
 
-            self.span_suggestion(span, msg, format!("{}\n{}", new_item, indent), applicability);
+            self.span_suggestion(span, msg, format!("{new_item}\n{indent}"), applicability);
         }
     }
 
@@ -863,7 +861,7 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
     pub fn finish(&mut self) -> String {
         let end_span = Span::new(self.next_pos, self.closure_span.hi(), self.closure_span.ctxt(), None);
         let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
-        let sugg = format!("{}{}", self.suggestion_start, end_snip);
+        let sugg = format!("{}{end_snip}", self.suggestion_start);
         if self.closure_arg_is_type_annotated_double_ref {
             sugg.replacen('&', "", 1)
         } else {
@@ -925,7 +923,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
                 // i.e.: suggest `&x` instead of `x`
-                let _ = write!(self.suggestion_start, "{}&{}", start_snip, ident_str);
+                let _ = write!(self.suggestion_start, "{start_snip}&{ident_str}");
             } else {
                 // cases where a parent `Call` or `MethodCall` is using the item
                 // i.e.: suggest `.contains(&x)` for `.find(|x| [1, 2, 3].contains(x)).is_none()`
@@ -940,7 +938,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         // given expression is the self argument and will be handled completely by the compiler
                         // i.e.: `|x| x.is_something()`
                         ExprKind::MethodCall(_, self_expr, ..) if self_expr.hir_id == cmt.hir_id => {
-                            let _ = write!(self.suggestion_start, "{}{}", start_snip, ident_str_with_proj);
+                            let _ = write!(self.suggestion_start, "{start_snip}{ident_str_with_proj}");
                             self.next_pos = span.hi();
                             return;
                         },
@@ -973,9 +971,9 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                                     } else {
                                         ident_str
                                     };
-                                    format!("{}{}", start_snip, ident)
+                                    format!("{start_snip}{ident}")
                                 } else {
-                                    format!("{}&{}", start_snip, ident_str)
+                                    format!("{start_snip}&{ident_str}")
                                 };
                                 self.suggestion_start.push_str(&ident_sugg);
                                 self.next_pos = span.hi();
@@ -1042,13 +1040,13 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
                         for item in projections {
                             if item.kind == ProjectionKind::Deref {
-                                replacement_str = format!("*{}", replacement_str);
+                                replacement_str = format!("*{replacement_str}");
                             }
                         }
                     }
                 }
 
-                let _ = write!(self.suggestion_start, "{}{}", start_snip, replacement_str);
+                let _ = write!(self.suggestion_start, "{start_snip}{replacement_str}");
             }
             self.next_pos = span.hi();
         }
@@ -1056,7 +1054,13 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
     fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn fake_read(&mut self, _: &rustc_hir_analysis::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(
+        &mut self,
+        _: &rustc_hir_analysis::expr_use_visitor::PlaceWithHirId<'tcx>,
+        _: FakeReadCause,
+        _: HirId,
+    ) {
+    }
 }
 
 #[cfg(test)]

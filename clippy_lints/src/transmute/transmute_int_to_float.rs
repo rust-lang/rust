@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_INT_TO_FLOAT,
                 e.span,
-                &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
+                &format!("transmute from a `{from_ty}` to a `{to_ty}`"),
                 |diag| {
                     let arg = sugg::Sugg::hir(cx, arg, "..");
                     let arg = if let ty::Int(int_ty) = from_ty.kind() {
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
                     diag.span_suggestion(
                         e.span,
                         "consider using",
-                        format!("{}::from_bits({})", to_ty, arg),
+                        format!("{to_ty}::from_bits({arg})"),
                         Applicability::Unspecified,
                     );
                 },

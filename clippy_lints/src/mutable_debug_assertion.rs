@@ -56,10 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for DebugAssertWithMutCall {
                     cx,
                     DEBUG_ASSERT_WITH_MUT_CALL,
                     span,
-                    &format!(
-                        "do not call a function with mutable arguments inside of `{}!`",
-                        macro_name
-                    ),
+                    &format!("do not call a function with mutable arguments inside of `{macro_name}!`"),
                 );
             }
         }

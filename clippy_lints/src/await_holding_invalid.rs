@@ -1,14 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{match_def_path, paths};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{def::Res, AsyncGeneratorKind, Body, BodyId, GeneratorKind};
+use rustc_hir::{AsyncGeneratorKind, Body, BodyId, GeneratorKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::GeneratorInteriorTypeCause;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
-use crate::utils::conf::DisallowedType;
+use crate::utils::conf::DisallowedPath;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -171,12 +172,12 @@ impl_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF, 
 
 #[derive(Debug)]
 pub struct AwaitHolding {
-    conf_invalid_types: Vec<DisallowedType>,
-    def_ids: FxHashMap<DefId, DisallowedType>,
+    conf_invalid_types: Vec<DisallowedPath>,
+    def_ids: FxHashMap<DefId, DisallowedPath>,
 }
 
 impl AwaitHolding {
-    pub(crate) fn new(conf_invalid_types: Vec<DisallowedType>) -> Self {
+    pub(crate) fn new(conf_invalid_types: Vec<DisallowedPath>) -> Self {
         Self {
             conf_invalid_types,
             def_ids: FxHashMap::default(),
@@ -187,11 +188,8 @@ impl AwaitHolding {
 impl LateLintPass<'_> for AwaitHolding {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         for conf in &self.conf_invalid_types {
-            let path = match conf {
-                DisallowedType::Simple(path) | DisallowedType::WithReason { path, .. } => path,
-            };
-            let segs: Vec<_> = path.split("::").collect();
-            if let Res::Def(_, id) = clippy_utils::def_path_res(cx, &segs) {
+            let segs: Vec<_> = conf.path().split("::").collect();
+            if let Res::Def(_, id) = clippy_utils::def_path_res(cx, &segs, Some(Namespace::TypeNS)) {
                 self.def_ids.insert(id, conf.clone());
             }
         }
@@ -256,29 +254,27 @@ impl AwaitHolding {
     }
 }
 
-fn emit_invalid_type(cx: &LateContext<'_>, span: Span, disallowed: &DisallowedType) {
-    let (type_name, reason) = match disallowed {
-        DisallowedType::Simple(path) => (path, &None),
-        DisallowedType::WithReason { path, reason } => (path, reason),
-    };
-
+fn emit_invalid_type(cx: &LateContext<'_>, span: Span, disallowed: &DisallowedPath) {
     span_lint_and_then(
         cx,
         AWAIT_HOLDING_INVALID_TYPE,
         span,
-        &format!("`{type_name}` may not be held across an `await` point per `clippy.toml`",),
+        &format!(
+            "`{}` may not be held across an `await` point per `clippy.toml`",
+            disallowed.path()
+        ),
         |diag| {
-            if let Some(reason) = reason {
-                diag.note(reason.clone());
+            if let Some(reason) = disallowed.reason() {
+                diag.note(reason);
             }
         },
     );
 }
 
 fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {
-    match_def_path(cx, def_id, &paths::MUTEX_GUARD)
-        || match_def_path(cx, def_id, &paths::RWLOCK_READ_GUARD)
-        || match_def_path(cx, def_id, &paths::RWLOCK_WRITE_GUARD)
+    cx.tcx.is_diagnostic_item(sym::MutexGuard, def_id)
+        || cx.tcx.is_diagnostic_item(sym::RwLockReadGuard, def_id)
+        || cx.tcx.is_diagnostic_item(sym::RwLockWriteGuard, def_id)
         || match_def_path(cx, def_id, &paths::PARKING_LOT_MUTEX_GUARD)
         || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_READ_GUARD)
         || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_WRITE_GUARD)

@@ -30,10 +30,7 @@ pub fn install_hook(force_override: bool) {
             println!("info: the hook can be removed with `cargo dev remove git-hook`");
             println!("git hook successfully installed");
         },
-        Err(err) => eprintln!(
-            "error: unable to copy `{}` to `{}` ({})",
-            HOOK_SOURCE_FILE, HOOK_TARGET_FILE, err
-        ),
+        Err(err) => eprintln!("error: unable to copy `{HOOK_SOURCE_FILE}` to `{HOOK_TARGET_FILE}` ({err})"),
     }
 }
 
@@ -77,7 +74,7 @@ pub fn remove_hook() {
 
 fn delete_git_hook_file(path: &Path) -> bool {
     if let Err(err) = fs::remove_file(path) {
-        eprintln!("error: unable to delete existing pre-commit git hook ({})", err);
+        eprintln!("error: unable to delete existing pre-commit git hook ({err})");
         false
     } else {
         true

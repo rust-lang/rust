@@ -112,10 +112,7 @@ impl<'a, 'tcx> SimilarNamesLocalVisitor<'a, 'tcx> {
                 self.cx,
                 MANY_SINGLE_CHAR_NAMES,
                 span,
-                &format!(
-                    "{} bindings with single-character names in scope",
-                    num_single_char_names
-                ),
+                &format!("{num_single_char_names} bindings with single-character names in scope"),
             );
         }
     }

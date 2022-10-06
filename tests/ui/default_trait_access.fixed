@@ -1,8 +1,8 @@
 // run-rustfix
 // aux-build: proc_macro_with_span.rs
-
-#![allow(unused_imports, dead_code)]
 #![deny(clippy::default_trait_access)]
+#![allow(dead_code, unused_imports)]
+#![allow(clippy::uninlined_format_args)]
 
 extern crate proc_macro_with_span;
 

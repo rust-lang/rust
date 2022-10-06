@@ -103,7 +103,7 @@ impl MissingDoc {
                 cx,
                 MISSING_DOCS_IN_PRIVATE_ITEMS,
                 sp,
-                &format!("missing documentation for {} {}", article, desc),
+                &format!("missing documentation for {article} {desc}"),
             );
         }
     }

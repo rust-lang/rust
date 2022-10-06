@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{eager_or_lazy, usage};
+use clippy_utils::{eager_or_lazy, is_from_proc_macro, usage};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -18,6 +18,10 @@ pub(super) fn check<'tcx>(
     arg: &'tcx hir::Expr<'_>,
     simplify_using: &str,
 ) {
+    if is_from_proc_macro(cx, expr) {
+        return;
+    }
+
     let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
     let is_bool = cx.typeck_results().expr_ty(recv).is_bool();
@@ -58,8 +62,8 @@ pub(super) fn check<'tcx>(
                     span_lint_and_then(cx, UNNECESSARY_LAZY_EVALUATIONS, expr.span, msg, |diag| {
                         diag.span_suggestion(
                             span,
-                            &format!("use `{}(..)` instead", simplify_using),
-                            format!("{}({})", simplify_using, snippet(cx, body_expr.span, "..")),
+                            &format!("use `{simplify_using}(..)` instead"),
+                            format!("{simplify_using}({})", snippet(cx, body_expr.span, "..")),
                             applicability,
                         );
                     });

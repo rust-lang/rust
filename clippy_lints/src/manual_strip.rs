@@ -108,15 +108,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                     };
 
                     let test_span = expr.span.until(then.span);
-                    span_lint_and_then(cx, MANUAL_STRIP, strippings[0], &format!("stripping a {} manually", kind_word), |diag| {
-                        diag.span_note(test_span, &format!("the {} was tested here", kind_word));
+                    span_lint_and_then(cx, MANUAL_STRIP, strippings[0], &format!("stripping a {kind_word} manually"), |diag| {
+                        diag.span_note(test_span, &format!("the {kind_word} was tested here"));
                         multispan_sugg(
                             diag,
-                            &format!("try using the `strip_{}` method", kind_word),
+                            &format!("try using the `strip_{kind_word}` method"),
                             vec![(test_span,
-                                  format!("if let Some(<stripped>) = {}.strip_{}({}) ",
+                                  format!("if let Some(<stripped>) = {}.strip_{kind_word}({}) ",
                                           snippet(cx, target_arg.span, ".."),
-                                          kind_word,
                                           snippet(cx, pattern.span, "..")))]
                             .into_iter().chain(strippings.into_iter().map(|span| (span, "<stripped>".into()))),
                         );
