@@ -15,8 +15,7 @@ pub struct DataflowConstProp;
 
 impl<'tcx> MirPass<'tcx> for DataflowConstProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        // Choose different minimum level?
-        sess.mir_opt_level() >= 4
+        sess.mir_opt_level() >= 1
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
