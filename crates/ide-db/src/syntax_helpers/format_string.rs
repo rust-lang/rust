@@ -1,6 +1,7 @@
 //! Tools to work with format string literals for the `format_args!` family of macros.
 use syntax::{
-    ast::{self, IsString}, TextRange, TextSize,
+    ast::{self, IsString},
+    TextRange, TextSize,
 };
 
 use super::node_ext::get_outer_macro_name;
