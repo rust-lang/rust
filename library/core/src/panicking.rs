@@ -84,12 +84,27 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
     panic!("index out of bounds: the len is {len} but the index is {index}")
 }
 
-// This function is called directly by the codegen backend, and must not have
-// any extra arguments (including those synthesized by track_caller).
+/// Panic because we cannot unwind out of a function.
+///
+/// This function is called directly by the codegen backend, and must not have
+/// any extra arguments (including those synthesized by track_caller).
 #[cold]
 #[inline(never)]
 #[lang = "panic_no_unwind"] // needed by codegen for panic in nounwind function
+#[cfg_attr(not(bootstrap), rustc_nounwind)]
+#[cfg_attr(bootstrap, rustc_allocator_nounwind)]
 fn panic_no_unwind() -> ! {
+    panic_str_nounwind("panic in a function that cannot unwind")
+}
+
+/// Like panic_fmt, but without unwinding and track_caller to reduce the impact on codesize.
+/// Also just works on `str`, as a `fmt::Arguments` needs more space to be passed.
+#[cold]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(bootstrap), rustc_nounwind)]
+#[cfg_attr(bootstrap, rustc_allocator_nounwind)]
+pub fn panic_str_nounwind(msg: &'static str) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
@@ -102,7 +117,8 @@ fn panic_no_unwind() -> ! {
     }
 
     // PanicInfo with the `can_unwind` flag set to false forces an abort.
-    let fmt = format_args!("panic in a function that cannot unwind");
+    let pieces = [msg];
+    let fmt = fmt::Arguments::new_v1(&pieces, &[]);
     let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), false);
 
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
