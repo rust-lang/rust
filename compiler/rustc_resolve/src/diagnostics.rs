@@ -120,7 +120,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn report_with_use_injections(&mut self, krate: &Crate) {
-        for UseError { mut err, candidates, def_id, instead, suggestion, path } in
+        for UseError { mut err, candidates, def_id, instead, suggestion, path, is_call } in
             self.use_injections.drain(..)
         {
             let (span, found_use) = if let Some(def_id) = def_id.as_local() {
@@ -128,6 +128,7 @@ impl<'a> Resolver<'a> {
             } else {
                 (None, FoundUse::No)
             };
+
             if !candidates.is_empty() {
                 show_candidates(
                     &self.session,
@@ -140,10 +141,15 @@ impl<'a> Resolver<'a> {
                     IsPattern::No,
                     path,
                 );
+                err.emit();
             } else if let Some((span, msg, sugg, appl)) = suggestion {
                 err.span_suggestion(span, msg, sugg, appl);
+                err.emit();
+            } else if let [segment] = path.as_slice() && is_call {
+                err.stash(segment.ident.span, rustc_errors::StashKey::CallIntoMethod);
+            } else {
+                err.emit();
             }
-            err.emit();
         }
     }
 

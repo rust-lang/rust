@@ -674,6 +674,8 @@ struct UseError<'a> {
     /// Path `Segment`s at the place of use that failed. Used for accurate suggestion after telling
     /// the user to import the item directly.
     path: Vec<Segment>,
+    /// Whether the expected source is a call
+    is_call: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
