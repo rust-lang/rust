@@ -1,6 +1,4 @@
-use rustc_errors::{
-    Applicability, Diagnostic, DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed,
-};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
@@ -629,25 +627,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         self.buffer_error(err);
     }
 
-    fn suggest_map_index_mut_alternatives(
-        &self,
-        ty: Ty<'_>,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
-        span: Span,
-    ) {
+    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diagnostic, span: Span) {
         let Some(adt) = ty.ty_adt_def() else { return };
         let did = adt.did();
         if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
             || self.infcx.tcx.is_diagnostic_item(sym::BTreeMap, did)
         {
-            struct V<'a, 'b, 'tcx, G: EmissionGuarantee> {
+            struct V<'a, 'tcx> {
                 assign_span: Span,
-                err: &'a mut DiagnosticBuilder<'b, G>,
+                err: &'a mut Diagnostic,
                 ty: Ty<'tcx>,
                 suggested: bool,
             }
-            impl<'a, 'b: 'a, 'hir, 'tcx, G: EmissionGuarantee> Visitor<'hir> for V<'a, 'b, 'tcx, G> {
-                fn visit_stmt(&mut self, stmt: &'hir hir::Stmt<'hir>) {
+            impl<'a, 'tcx> Visitor<'tcx> for V<'a, 'tcx> {
+                fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
                     hir::intravisit::walk_stmt(self, stmt);
                     let expr = match stmt.kind {
                         hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr) => expr,
