@@ -4,7 +4,6 @@ error[E0277]: the trait bound `Struct: Trait<isize>` is not satisfied
 LL |     let s: Box<dyn Trait<isize>> = Box::new(Struct { person: "Fred" });
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<isize>` is not implemented for `Struct`
    |
-   = help: the trait `Trait<&'static str>` is implemented for `Struct`
    = note: required for the cast from `Struct` to the object type `dyn Trait<isize>`
 
 error: aborting due to previous error

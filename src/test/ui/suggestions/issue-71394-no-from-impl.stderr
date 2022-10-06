@@ -6,9 +6,6 @@ LL |     let _: &[i8] = data.into();
    |                    |
    |                    the trait `From<&[u8]>` is not implemented for `&[i8]`
    |
-   = help: the following other types implement trait `From<T>`:
-             <[T; LANES] as From<Simd<T, LANES>>>
-             <[bool; LANES] as From<Mask<T, LANES>>>
    = note: required for `&[u8]` to implement `Into<&[i8]>`
 
 error: aborting due to previous error

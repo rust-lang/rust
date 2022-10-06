@@ -7,16 +7,6 @@ LL |     42_i32
    |     ------ return type was inferred to be `i32` here
    |
    = help: the trait `PartialEq<Foo>` is not implemented for `i32`
-   = help: the following other types implement trait `PartialEq<Rhs>`:
-             f32
-             f64
-             i128
-             i16
-             i32
-             i64
-             i8
-             isize
-           and 6 others
 
 error: aborting due to previous error
 

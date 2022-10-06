@@ -6,10 +6,6 @@ LL | fn foo() -> impl Foo<FooX> {
 LL |
 LL |     ()
    |     -- return type was inferred to be `()` here
-   |
-   = help: the following other types implement trait `Foo<A>`:
-             <() as Foo<()>>
-             <() as Foo<u32>>
 
 error: aborting due to previous error
 

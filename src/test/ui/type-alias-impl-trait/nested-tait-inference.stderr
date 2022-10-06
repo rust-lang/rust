@@ -6,8 +6,6 @@ LL | fn foo() -> impl Foo<FooX> {
 ...
 LL |     ()
    |     -- return type was inferred to be `()` here
-   |
-   = help: the trait `Foo<()>` is implemented for `()`
 
 error: aborting due to previous error
 
