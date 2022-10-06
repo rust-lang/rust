@@ -23,7 +23,7 @@ use crate::toolstate::ToolState;
 use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
-const ADB_TEST_DIR: &str = "/data/tmp/work";
+const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
 /// The two modes of the test runner; tests or benchmarks.
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, PartialOrd, Ord)]

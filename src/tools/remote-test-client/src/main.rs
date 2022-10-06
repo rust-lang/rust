@@ -93,7 +93,7 @@ fn start_android_emulator(server: &Path) {
 
     println!("pushing server");
     let status =
-        Command::new("adb").arg("push").arg(server).arg("/data/tmp/testd").status().unwrap();
+        Command::new("adb").arg("push").arg(server).arg("/data/local/tmp/testd").status().unwrap();
     assert!(status.success());
 
     println!("forwarding tcp");
@@ -102,7 +102,7 @@ fn start_android_emulator(server: &Path) {
     assert!(status.success());
 
     println!("executing server");
-    Command::new("adb").arg("shell").arg("/data/tmp/testd").spawn().unwrap();
+    Command::new("adb").arg("shell").arg("/data/local/tmp/testd").spawn().unwrap();
 }
 
 fn prepare_rootfs(target: &str, rootfs: &Path, server: &Path, rootfs_img: &Path) {
