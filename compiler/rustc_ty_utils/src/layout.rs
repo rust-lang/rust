@@ -140,14 +140,10 @@ fn univariant_uninterned<'tcx>(
         let optimizing = &mut inverse_memory_index[..end];
         let effective_field_align = |f: &TyAndLayout<'_>| {
             if let Some(pack) = pack {
-                f.align.abi.min(pack)
-            } else if f.size.bytes().is_power_of_two() && f.size.bytes() >= f.align.abi.bytes() {
-                // Try to put fields which have a 2^n size and smaller alignment together with
-                // fields that have an alignment matching that size.
-                // E.g. group [u8; 4] with u32 fields
-                Align::from_bytes(f.align.abi.bytes()).unwrap_or(f.align.abi)
+                f.align.abi.min(pack).bytes()
             } else {
-                f.align.abi
+                // group [u8; 4] with align-4 or [u8; 6] with align-2 fields
+                f.align.abi.bytes().max(f.size.bytes()).trailing_zeros() as u64
             }
         };
 
