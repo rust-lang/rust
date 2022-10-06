@@ -914,6 +914,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	font-size: 1rem;
 	width: 100%;
 	background-color: var(--button-background-color);
+	color: var(--search-color);
 }
 .search-input:focus {
 	border-color: var(--search-input-focused-border-color);
