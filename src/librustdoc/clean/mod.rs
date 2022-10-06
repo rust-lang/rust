@@ -292,8 +292,9 @@ fn clean_where_predicate<'tcx>(
         },
 
         hir::WherePredicate::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
-            lhs: clean_ty(wrp.lhs_ty, cx),
-            rhs: clean_ty(wrp.rhs_ty, cx).into(),
+            lhs: Box::new(clean_ty(wrp.lhs_ty, cx)),
+            rhs: Box::new(clean_ty(wrp.rhs_ty, cx).into()),
+            bound_params: Vec::new(),
         },
     })
 }
@@ -309,7 +310,9 @@ pub(crate) fn clean_predicate<'tcx>(
         }
         ty::PredicateKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred),
         ty::PredicateKind::TypeOutlives(pred) => clean_type_outlives_predicate(pred, cx),
-        ty::PredicateKind::Projection(pred) => Some(clean_projection_predicate(pred, cx)),
+        ty::PredicateKind::Projection(pred) => {
+            Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
+        }
         ty::PredicateKind::ConstEvaluatable(..) => None,
         ty::PredicateKind::WellFormed(..) => None,
 
@@ -387,13 +390,25 @@ fn clean_hir_term<'tcx>(term: &hir::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Te
 }
 
 fn clean_projection_predicate<'tcx>(
-    pred: ty::ProjectionPredicate<'tcx>,
+    pred: ty::Binder<'tcx, ty::ProjectionPredicate<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> WherePredicate {
-    let ty::ProjectionPredicate { projection_ty, term } = pred;
+    let late_bound_regions = cx
+        .tcx
+        .collect_referenced_late_bound_regions(&pred)
+        .into_iter()
+        .filter_map(|br| match br {
+            ty::BrNamed(_, name) if name != kw::UnderscoreLifetime => Some(Lifetime(name)),
+            _ => None,
+        })
+        .collect();
+
+    let ty::ProjectionPredicate { projection_ty, term } = pred.skip_binder();
+
     WherePredicate::EqPredicate {
-        lhs: clean_projection(projection_ty, cx, None),
-        rhs: clean_middle_term(term, cx),
+        lhs: Box::new(clean_projection(projection_ty, cx, None)),
+        rhs: Box::new(clean_middle_term(term, cx)),
+        bound_params: late_bound_regions,
     }
 }
 
@@ -655,8 +670,9 @@ fn clean_ty_generics<'tcx>(
         })
         .collect::<Vec<GenericParamDef>>();
 
-    // param index -> [(DefId of trait, associated type name and generics, type)]
-    let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, PathSegment, Ty<'_>)>>::default();
+    // param index -> [(trait DefId, associated type name & generics, type, higher-ranked params)]
+    let mut impl_trait_proj =
+        FxHashMap::<u32, Vec<(DefId, PathSegment, Ty<'_>, Vec<GenericParamDef>)>>::default();
 
     let where_predicates = preds
         .predicates
@@ -715,6 +731,14 @@ fn clean_ty_generics<'tcx>(
                             trait_did,
                             name,
                             rhs.ty().unwrap(),
+                            p.get_bound_params()
+                                .into_iter()
+                                .flatten()
+                                .map(|param| GenericParamDef {
+                                    name: param.0,
+                                    kind: GenericParamDefKind::Lifetime { outlives: Vec::new() },
+                                })
+                                .collect(),
                         ));
                     }
 
@@ -730,15 +754,19 @@ fn clean_ty_generics<'tcx>(
         // Move trait bounds to the front.
         bounds.sort_by_key(|b| !matches!(b, GenericBound::TraitBound(..)));
 
-        if let crate::core::ImplTraitParam::ParamIndex(idx) = param {
-            if let Some(proj) = impl_trait_proj.remove(&idx) {
-                for (trait_did, name, rhs) in proj {
-                    let rhs = clean_middle_ty(rhs, cx, None);
-                    simplify::merge_bounds(cx, &mut bounds, trait_did, name, &Term::Type(rhs));
-                }
+        let crate::core::ImplTraitParam::ParamIndex(idx) = param else { unreachable!() };
+        if let Some(proj) = impl_trait_proj.remove(&idx) {
+            for (trait_did, name, rhs, bound_params) in proj {
+                let rhs = clean_middle_ty(rhs, cx, None);
+                simplify::merge_bounds(
+                    cx,
+                    &mut bounds,
+                    bound_params,
+                    trait_did,
+                    name,
+                    &Term::Type(rhs),
+                );
             }
-        } else {
-            unreachable!();
         }
 
         cx.impl_trait_bounds.insert(param, bounds);

@@ -8,8 +8,6 @@ extern crate assoc_item_trait_bounds_with_bindings as aux;
 
 // FIXME(fmease): Don't render an incorrect `T: ?Sized` where-clause for parameters
 //                of GATs like `Main::Out{2,4}`. Add a snapshot test once it's fixed.
-// FIXME(fmease): Print the `for<>` parameter list in the bounds of
-//                `Main::Out{6,11,12}`.
 
 // @has main/trait.Main.html
 // @has - '//*[@id="associatedtype.Out0"]' 'type Out0: Support<Item = ()>'
@@ -18,13 +16,14 @@ extern crate assoc_item_trait_bounds_with_bindings as aux;
 // @has - '//*[@id="associatedtype.Out3"]' 'type Out3: Support<Produce<()> = bool>'
 // @has - '//*[@id="associatedtype.Out4"]' 'type Out4<T>: Support<Produce<T> = T>'
 // @has - '//*[@id="associatedtype.Out5"]' "type Out5: Support<Output<'static> = &'static ()>"
-// @has - '//*[@id="associatedtype.Out6"]' "type Out6: Support<Output<'a> = &'a ()>"
+// @has - '//*[@id="associatedtype.Out6"]' "type Out6: for<'a> Support<Output<'a> = &'a ()>"
 // @has - '//*[@id="associatedtype.Out7"]' "type Out7: Support<Item = String, Produce<i32> = u32> + Unrelated"
 // @has - '//*[@id="associatedtype.Out8"]' "type Out8: Unrelated + Protocol<i16, Q1 = u128, Q0 = ()>"
 // @has - '//*[@id="associatedtype.Out9"]' "type Out9: FnMut(i32) -> bool + Clone"
 // @has - '//*[@id="associatedtype.Out10"]' "type Out10<'q>: Support<Output<'q> = ()>"
-// @has - '//*[@id="associatedtype.Out11"]' "type Out11: Helper<A<'s> = &'s (), B<'r> = ()>"
-// @has - '//*[@id="associatedtype.Out12"]' "type Out12: Helper<B<'w> = Cow<'w, str>, A<'w> = bool>"
+// @has - '//*[@id="associatedtype.Out11"]' "type Out11: for<'r, 's> Helper<A<'s> = &'s (), B<'r> = ()>"
+// @has - '//*[@id="associatedtype.Out12"]' "type Out12: for<'w> Helper<B<'w> = Cow<'w, str>, A<'w> = bool>"
+// @has - '//*[@id="associatedtype.Out13"]' "type Out13: for<'fst, 'snd> Aid<'snd, Result<'fst> = &'fst mut str>"
 //
 // Snapshots: Check that we do not render any where-clauses for those associated types since all of
 // the trait bounds contained within were moved to the bounds of the respective item.
