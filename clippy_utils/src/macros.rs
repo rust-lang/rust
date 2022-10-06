@@ -414,7 +414,7 @@ impl FormatString {
 
 struct FormatArgsValues<'tcx> {
     /// Values passed after the format string and implicit captures. `[1, z + 2, x]` for
-    /// `format!("{x} {} {y}", 1, z + 2)`.
+    /// `format!("{x} {} {}", 1, z + 2)`.
     value_args: Vec<&'tcx Expr<'tcx>>,
     /// Maps an `rt::v1::Argument::position` or an `rt::v1::Count::Param` to its index in
     /// `value_args`
