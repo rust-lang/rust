@@ -28,16 +28,20 @@ extern "Rust" {
     // The rustc fork of LLVM 14 and earlier also special-cases these function names to be able to optimize them
     // like `malloc`, `realloc`, and `free`, respectively.
     #[rustc_allocator]
-    #[rustc_allocator_nounwind]
+    #[cfg_attr(not(bootstrap), rustc_nounwind)]
+    #[cfg_attr(bootstrap, rustc_allocator_nounwind)]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
     #[rustc_deallocator]
-    #[rustc_allocator_nounwind]
+    #[cfg_attr(not(bootstrap), rustc_nounwind)]
+    #[cfg_attr(bootstrap, rustc_allocator_nounwind)]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
     #[rustc_reallocator]
-    #[rustc_allocator_nounwind]
+    #[cfg_attr(not(bootstrap), rustc_nounwind)]
+    #[cfg_attr(bootstrap, rustc_allocator_nounwind)]
     fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
     #[rustc_allocator_zeroed]
-    #[rustc_allocator_nounwind]
+    #[cfg_attr(not(bootstrap), rustc_nounwind)]
+    #[cfg_attr(bootstrap, rustc_allocator_nounwind)]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 }
 
