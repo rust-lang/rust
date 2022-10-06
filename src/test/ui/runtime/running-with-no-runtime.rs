@@ -1,6 +1,8 @@
 // run-pass
 // ignore-emscripten spawning processes is not supported
 // ignore-sgx no processes
+// ignore-uefi allocation and other std functionality is intialized in `sys::init`. This test
+// causes CPU Exception.
 // revisions: mir thir
 // [thir]compile-flags: -Zthir-unsafeck
 

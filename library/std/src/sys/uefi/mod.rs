@@ -48,7 +48,12 @@ pub mod memchr {
     pub use core::slice::memchr::{memchr, memrchr};
 }
 
-pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
+pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
+    assert_eq!(argc, 2);
+    let image_handle = unsafe { NonNull::new(*argv as *mut crate::ffi::c_void).unwrap() };
+    let system_table = unsafe { NonNull::new(*argv.add(1) as *mut crate::ffi::c_void).unwrap() };
+    unsafe { crate::os::uefi::env::init_globals(image_handle, system_table) };
+}
 
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
@@ -132,27 +137,4 @@ unsafe fn get_random() -> Option<u64> {
         }
     }
     None
-}
-
-// FIXME: Do not generate this in case of `no_main`
-#[no_mangle]
-pub unsafe extern "efiapi" fn efi_main(
-    handle: r_efi::efi::Handle,
-    st: *mut r_efi::efi::SystemTable,
-) -> r_efi::efi::Status {
-    extern "C" {
-        fn main(argc: isize, argv: *const *const u8) -> isize;
-    }
-
-    let (system_table, image_handle) = match (NonNull::new(st), NonNull::new(handle)) {
-        (Some(x), Some(y)) => (x, y),
-        _ => return r_efi::efi::Status::ABORTED,
-    };
-    unsafe { uefi::env::init_globals(image_handle, system_table.cast()) };
-
-    let res = unsafe { main(0, crate::ptr::null()) };
-    match usize::try_from(res) {
-        Ok(x) => r_efi::efi::Status::from_usize(x),
-        Err(_) => r_efi::efi::Status::ABORTED,
-    }
 }

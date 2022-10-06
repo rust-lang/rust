@@ -432,7 +432,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
         // depending on whether the target needs `argc` and `argv` to be passed in.
-        let llfty = if cx.sess().target.main_needs_argc_argv {
+
+        let llfty = if cx.sess().target.os.contains("uefi") {
+            cx.type_func(&[cx.type_i8p(), cx.type_i8p()], cx.type_isize())
+        } else if cx.sess().target.main_needs_argc_argv {
             cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int())
         } else {
             cx.type_func(&[], cx.type_int())
@@ -499,8 +502,12 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         };
 
         let result = bx.call(start_ty, None, start_fn, &args, None);
-        let cast = bx.intcast(result, cx.type_int(), true);
-        bx.ret(cast);
+        if cx.sess().target.os.contains("uefi") {
+            bx.ret(result);
+        } else {
+            let cast = bx.intcast(result, cx.type_int(), true);
+            bx.ret(cast);
+        }
 
         llfn
     }
@@ -511,7 +518,17 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     bx: &mut Bx,
 ) -> (Bx::Value, Bx::Value) {
-    if cx.sess().target.main_needs_argc_argv {
+    if cx.sess().target.os.contains("uefi") {
+        let param_handle = bx.get_param(0);
+        let param_system_table = bx.get_param(1);
+        let arg_argc = bx.const_int(cx.type_isize(), 2);
+        let arg_argv = bx.array_alloca(cx.type_i8p(), bx.const_int(cx.type_int(), 2), Align::ONE);
+        bx.store(param_handle, arg_argv, Align::ONE);
+        let arg_argv_el1 =
+            bx.gep(cx.type_ptr_to(cx.type_i8()), arg_argv, &[bx.const_int(cx.type_int(), 1)]);
+        bx.store(param_system_table, arg_argv_el1, Align::ONE);
+        (arg_argc, arg_argv)
+    } else if cx.sess().target.main_needs_argc_argv {
         // Params from native `main()` used as args for rust start function
         let param_argc = bx.get_param(0);
         let param_argv = bx.get_param(1);

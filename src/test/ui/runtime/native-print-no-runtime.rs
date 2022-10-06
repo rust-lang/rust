@@ -1,4 +1,6 @@
 // run-pass
+// ignore-uefi allocation and other std functionality is intialized in `sys::init`. This test
+// causes CPU Exception.
 
 #![feature(start)]
 

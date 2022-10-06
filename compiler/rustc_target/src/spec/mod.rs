@@ -1648,6 +1648,12 @@ pub struct TargetOptions {
     /// `argc` and `argv` values.
     pub main_needs_argc_argv: bool,
 
+    // The name of entry function.
+    pub entry_name: StaticCow<str>,
+
+    // The ABI of entry function.
+    pub entry_abi: Conv,
+
     /// Flag indicating whether #[thread_local] is available for this target.
     pub has_thread_local: bool,
     /// This is mainly for easy compatibility with emscripten.

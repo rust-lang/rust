@@ -1,5 +1,7 @@
 // run-pass
 // ignore-emscripten no no_std executables
+// ignore-uefi allocation and other std functionality is intialized in `sys::init`. This test
+// causes CPU Exception.
 
 #![feature(lang_items, start)]
 #![no_std]
