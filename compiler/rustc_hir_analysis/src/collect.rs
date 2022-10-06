@@ -1647,7 +1647,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 )
                 .emit();
             }
-        } else if attr.has_name(sym::rustc_allocator_nounwind) {
+        } else if attr.has_name(sym::rustc_nounwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
         } else if attr.has_name(sym::rustc_reallocator) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR;
