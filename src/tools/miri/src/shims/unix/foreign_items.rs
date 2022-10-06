@@ -225,13 +225,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "sysconf" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let name = this.read_scalar(name)?.to_i32()?;
-
                 // FIXME: Which of these are POSIX, and which are GNU/Linux?
                 // At least the names seem to all also exist on macOS.
                 let sysconfs: &[(&str, fn(&MiriInterpCx<'_, '_>) -> Scalar<Provenance>)] = &[
                     ("_SC_PAGESIZE", |this| Scalar::from_int(PAGE_SIZE, this.pointer_size())),
-                    ("_SC_NPROCESSORS_CONF", |this| Scalar::from_int(NUM_CPUS, this.pointer_size())),
-                    ("_SC_NPROCESSORS_ONLN", |this| Scalar::from_int(NUM_CPUS, this.pointer_size())),
+                    ("_SC_NPROCESSORS_CONF", |this| Scalar::from_int(this.machine.num_cpus, this.pointer_size())),
+                    ("_SC_NPROCESSORS_ONLN", |this| Scalar::from_int(this.machine.num_cpus, this.pointer_size())),
                     // 512 seems to be a reasonable default. The value is not critical, in
                     // the sense that getpwuid_r takes and checks the buffer length.
                     ("_SC_GETPW_R_SIZE_MAX", |this| Scalar::from_int(512, this.pointer_size()))

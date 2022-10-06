@@ -32,9 +32,11 @@ pub enum SchedulingAction {
 
 /// Timeout callbacks can be created by synchronization primitives to tell the
 /// scheduler that they should be called once some period of time passes.
-type TimeoutCallback<'mir, 'tcx> = Box<
-    dyn FnOnce(&mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx> + 'tcx,
->;
+pub trait MachineCallback<'mir, 'tcx>: VisitTags {
+    fn call(&self, ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx>;
+}
+
+type TimeoutCallback<'mir, 'tcx> = Box<dyn MachineCallback<'mir, 'tcx> + 'tcx>;
 
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -181,6 +183,46 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
     }
 }
 
+impl VisitTags for Thread<'_, '_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let Thread { panic_payload, last_error, stack, state: _, thread_name: _, join_status: _ } =
+            self;
+
+        panic_payload.visit_tags(visit);
+        last_error.visit_tags(visit);
+        for frame in stack {
+            frame.visit_tags(visit)
+        }
+    }
+}
+
+impl VisitTags for Frame<'_, '_, Provenance, FrameData<'_>> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let Frame {
+            return_place,
+            locals,
+            extra,
+            body: _,
+            instance: _,
+            return_to_block: _,
+            loc: _,
+            // There are some private fields we cannot access; they contain no tags.
+            ..
+        } = self;
+
+        // Return place.
+        return_place.visit_tags(visit);
+        // Locals.
+        for local in locals.iter() {
+            if let LocalValue::Live(value) = &local.value {
+                value.visit_tags(visit);
+            }
+        }
+
+        extra.visit_tags(visit);
+    }
+}
+
 /// A specific moment in time.
 #[derive(Debug)]
 pub enum Time {
@@ -253,6 +295,29 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
     }
 }
 
+impl VisitTags for ThreadManager<'_, '_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let ThreadManager {
+            threads,
+            thread_local_alloc_ids,
+            timeout_callbacks,
+            active_thread: _,
+            yield_active_thread: _,
+            sync: _,
+        } = self;
+
+        for thread in threads {
+            thread.visit_tags(visit);
+        }
+        for ptr in thread_local_alloc_ids.borrow().values() {
+            ptr.visit_tags(visit);
+        }
+        for callback in timeout_callbacks.values() {
+            callback.callback.visit_tags(visit);
+        }
+    }
+}
+
 impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     pub(crate) fn init(ecx: &mut MiriInterpCx<'mir, 'tcx>) {
         if ecx.tcx.sess.target.os.as_ref() != "windows" {
@@ -288,10 +353,6 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         &mut self,
     ) -> &mut Vec<Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>> {
         &mut self.threads[self.active_thread].stack
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &Thread<'mir, 'tcx>> {
-        self.threads.iter()
     }
 
     pub fn all_stacks(
@@ -390,6 +451,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         data_race: Option<&mut data_race::GlobalState>,
     ) -> InterpResult<'tcx> {
         if self.threads[joined_thread_id].join_status == ThreadJoinStatus::Detached {
+            // On Windows this corresponds to joining on a closed handle.
             throw_ub_format!("trying to join a detached thread");
         }
 
@@ -906,7 +968,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // 2. Make the scheduler the only place that can change the active
         //    thread.
         let old_thread = this.set_active_thread(thread);
-        callback(this)?;
+        callback.call(this)?;
         this.set_active_thread(old_thread);
         Ok(())
     }

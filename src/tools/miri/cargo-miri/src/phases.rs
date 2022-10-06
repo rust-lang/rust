@@ -1,11 +1,12 @@
 //! Implements the various phases of `cargo miri run/test`.
 
 use std::env;
-use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::process::Command;
+
+use rustc_version::VersionMeta;
 
 use crate::{setup::*, util::*};
 
@@ -37,17 +38,13 @@ fn show_help() {
 }
 
 fn show_version() {
-    let mut version = format!("miri {}", env!("CARGO_PKG_VERSION"));
-    // Only use `option_env` on vergen variables to ensure the build succeeds
-    // when vergen failed to find the git info.
-    if let Some(sha) = option_env!("VERGEN_GIT_SHA_SHORT") {
-        // This `unwrap` can never fail because if VERGEN_GIT_SHA_SHORT exists, then so does
-        // VERGEN_GIT_COMMIT_DATE.
-        #[allow(clippy::option_env_unwrap)]
-        write!(&mut version, " ({} {})", sha, option_env!("VERGEN_GIT_COMMIT_DATE").unwrap())
-            .unwrap();
+    print!("miri {}", env!("CARGO_PKG_VERSION"));
+    let version = format!("{} {}", env!("GIT_HASH"), env!("COMMIT_DATE"));
+    if version.len() > 1 {
+        // If there is actually something here, print it.
+        print!(" ({version})");
     }
-    println!("{}", version);
+    println!();
 }
 
 fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut Command) {
@@ -90,12 +87,14 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     let verbose = num_arg_flag("-v");
 
     // Determine the involved architectures.
-    let host = version_info().host;
+    let rustc_version = VersionMeta::for_command(miri_for_host())
+        .expect("failed to determine underlying rustc version of Miri");
+    let host = &rustc_version.host;
     let target = get_arg_flag_value("--target");
-    let target = target.as_ref().unwrap_or(&host);
+    let target = target.as_ref().unwrap_or(host);
 
     // We always setup.
-    setup(&subcommand, &host, target);
+    setup(&subcommand, target, &rustc_version);
 
     // Invoke actual cargo for the job, but with different flags.
     // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but
@@ -146,7 +145,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     if get_arg_flag_value("--target").is_none() {
         // No target given. Explicitly pick the host.
         cmd.arg("--target");
-        cmd.arg(&host);
+        cmd.arg(host);
     }
 
     // Set ourselves as runner for al binaries invoked by cargo.
@@ -204,7 +203,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum RustcPhase {
-    /// `rustc` called via `xargo` for sysroot build.
+    /// `rustc` called during sysroot build.
     Setup,
     /// `rustc` called by `cargo` for regular build.
     Build,
@@ -264,7 +263,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     let verbose = std::env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
     let target_crate = is_target_crate();
-    // Determine whether this is cargo/xargo invoking rustc to get some infos.
+    // Determine whether this is cargo invoking rustc to get some infos.
     let info_query = get_arg_flag_value("--print").is_some() || has_arg_flag("-vV");
 
     let store_json = |info: CrateRunInfo| {

@@ -1,5 +1,6 @@
 pub mod convert;
 
+use std::cmp;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::time::Duration;
@@ -908,24 +909,25 @@ impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
     /// This function is backed by a cache, and can be assumed to be very fast.
     pub fn get(&mut self) -> Span {
         let idx = self.current_frame_idx();
-        Self::frame_span(self.machine, idx)
+        self.stack().get(idx).map(Frame::current_span).unwrap_or(rustc_span::DUMMY_SP)
     }
 
-    /// Similar to `CurrentSpan::get`, but retrieves the parent frame of the first non-local frame.
+    /// Returns the span of the *caller* of the current operation, again
+    /// walking down the stack to find the closest frame in a local crate, if the caller of the
+    /// current operation is not in a local crate.
     /// This is useful when we are processing something which occurs on function-entry and we want
     /// to point at the call to the function, not the function definition generally.
-    pub fn get_parent(&mut self) -> Span {
-        let idx = self.current_frame_idx();
-        Self::frame_span(self.machine, idx.wrapping_sub(1))
+    pub fn get_caller(&mut self) -> Span {
+        // We need to go down at least to the caller (len - 2), or however
+        // far we have to go to find a frame in a local crate.
+        let local_frame_idx = self.current_frame_idx();
+        let stack = self.stack();
+        let idx = cmp::min(local_frame_idx, stack.len().saturating_sub(2));
+        stack.get(idx).map(Frame::current_span).unwrap_or(rustc_span::DUMMY_SP)
     }
 
-    fn frame_span(machine: &MiriMachine<'_, '_>, idx: usize) -> Span {
-        machine
-            .threads
-            .active_thread_stack()
-            .get(idx)
-            .map(Frame::current_span)
-            .unwrap_or(rustc_span::DUMMY_SP)
+    fn stack(&self) -> &[Frame<'mir, 'tcx, Provenance, machine::FrameData<'tcx>>] {
+        self.machine.threads.active_thread_stack()
     }
 
     fn current_frame_idx(&mut self) -> usize {

@@ -44,6 +44,12 @@ pub struct GlobalStateInner {
     provenance_mode: ProvenanceMode,
 }
 
+impl VisitTags for GlobalStateInner {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+        // Nothing to visit here.
+    }
+}
+
 impl GlobalStateInner {
     pub fn new(config: &MiriConfig) -> Self {
         GlobalStateInner {

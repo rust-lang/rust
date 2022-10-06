@@ -696,6 +696,12 @@ pub struct VClockAlloc {
     alloc_ranges: RefCell<RangeMap<MemoryCellClocks>>,
 }
 
+impl VisitTags for VClockAlloc {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+        // No tags here.
+    }
+}
+
 impl VClockAlloc {
     /// Create a new data-race detector for newly allocated memory.
     pub fn new_allocation(
@@ -1237,6 +1243,12 @@ pub struct GlobalState {
 
     /// Track when an outdated (weak memory) load happens.
     pub track_outdated_loads: bool,
+}
+
+impl VisitTags for GlobalState {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+        // We don't have any tags.
+    }
 }
 
 impl GlobalState {

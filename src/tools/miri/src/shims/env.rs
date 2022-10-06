@@ -36,6 +36,17 @@ pub struct EnvVars<'tcx> {
     pub(crate) environ: Option<MPlaceTy<'tcx, Provenance>>,
 }
 
+impl VisitTags for EnvVars<'_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let EnvVars { map, environ } = self;
+
+        environ.visit_tags(visit);
+        for ptr in map.values() {
+            ptr.visit_tags(visit);
+        }
+    }
+}
+
 impl<'tcx> EnvVars<'tcx> {
     pub(crate) fn init<'mir>(
         ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,

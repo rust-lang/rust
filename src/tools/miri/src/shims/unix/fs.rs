@@ -256,6 +256,12 @@ pub struct FileHandler {
     handles: BTreeMap<i32, Box<dyn FileDescriptor>>,
 }
 
+impl VisitTags for FileHandler {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+        // All our FileDescriptor do not have any tags.
+    }
+}
+
 impl FileHandler {
     pub(crate) fn new(mute_stdout_stderr: bool) -> FileHandler {
         let mut handles: BTreeMap<_, Box<dyn FileDescriptor>> = BTreeMap::new();
@@ -458,6 +464,16 @@ impl Default for DirHandler {
             streams: FxHashMap::default(),
             // Skip 0 as an ID, because it looks like a null pointer to libc
             next_id: 1,
+        }
+    }
+}
+
+impl VisitTags for DirHandler {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let DirHandler { streams, next_id: _ } = self;
+
+        for dir in streams.values() {
+            dir.entry.visit_tags(visit);
         }
     }
 }

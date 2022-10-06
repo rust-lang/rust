@@ -5,6 +5,7 @@ use log::trace;
 use std::cell::RefCell;
 use std::cmp;
 use std::fmt;
+use std::fmt::Write;
 use std::num::NonZeroU64;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -71,6 +72,12 @@ pub struct FrameExtra {
     protected_tags: SmallVec<[SbTag; 2]>,
 }
 
+impl VisitTags for FrameExtra {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+        // `protected_tags` are fine to GC.
+    }
+}
+
 /// Extra per-allocation state.
 #[derive(Clone, Debug)]
 pub struct Stacks {
@@ -107,6 +114,13 @@ pub struct GlobalStateInner {
     tracked_call_ids: FxHashSet<CallId>,
     /// Whether to recurse into datatypes when searching for pointers to retag.
     retag_fields: bool,
+}
+
+impl VisitTags for GlobalStateInner {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+        // The only candidate is base_ptr_tags, and that does not need visiting since we don't ever
+        // GC the bottommost tag.
+    }
 }
 
 /// We need interior mutable access to the global state.
@@ -203,7 +217,7 @@ impl GlobalStateInner {
         self.base_ptr_tags.get(&id).copied().unwrap_or_else(|| {
             let tag = self.new_ptr();
             if self.tracked_pointer_tags.contains(&tag) {
-                machine.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(tag.0, None));
+                machine.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(tag.0, None, None));
             }
             trace!("New allocation {:?} has base tag {:?}", id, tag);
             self.base_ptr_tags.try_insert(id, tag).unwrap();
@@ -513,6 +527,14 @@ impl Stacks {
     }
 }
 
+impl VisitTags for Stacks {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        for tag in self.exposed_tags.iter().copied() {
+            visit(tag);
+        }
+    }
+}
+
 /// Map per-stack operations to higher-level per-location-range operations.
 impl<'tcx> Stacks {
     /// Creates a new stack with an initial tag. For diagnostic purposes, we also need to know
@@ -674,10 +696,26 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                             loc: Option<(AllocId, Size, ProvenanceExtra)>| // alloc_id, base_offset, orig_tag
          -> InterpResult<'tcx> {
             let global = this.machine.stacked_borrows.as_ref().unwrap().borrow();
+            let ty = place.layout.ty;
             if global.tracked_pointer_tags.contains(&new_tag) {
+                let mut kind_str = format!("{kind}");
+                match kind {
+                    RefKind::Unique { two_phase: false }
+                        if !ty.is_unpin(this.tcx.at(DUMMY_SP), this.param_env()) =>
+                    {
+                        write!(kind_str, " (!Unpin pointee type {ty})").unwrap()
+                    },
+                    RefKind::Shared
+                        if !ty.is_freeze(this.tcx.at(DUMMY_SP), this.param_env()) =>
+                    {
+                        write!(kind_str, " (!Freeze pointee type {ty})").unwrap()
+                    },
+                    _ => write!(kind_str, " (pointee type {ty})").unwrap(),
+                };
                 this.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
                     new_tag.0,
-                    loc.map(|(alloc_id, base_offset, _)| (alloc_id, alloc_range(base_offset, size))),
+                    Some(kind_str),
+                    loc.map(|(alloc_id, base_offset, orig_tag)| (alloc_id, alloc_range(base_offset, size), orig_tag)),
                 ));
             }
             drop(global); // don't hold that reference any longer than we have to

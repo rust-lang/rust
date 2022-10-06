@@ -35,7 +35,6 @@ use crate::{
 pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture
 pub const STACK_ADDR: u64 = 32 * PAGE_SIZE; // not really about the "stack", but where we start assigning integer addresses to allocations
 pub const STACK_SIZE: u64 = 16 * PAGE_SIZE; // whatever
-pub const NUM_CPUS: u64 = 1;
 
 /// Extra data stored with each stack frame
 pub struct FrameData<'tcx> {
@@ -61,6 +60,15 @@ impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
             .field("stacked_borrows", stacked_borrows)
             .field("catch_unwind", catch_unwind)
             .finish()
+    }
+}
+
+impl VisitTags for FrameData<'_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let FrameData { catch_unwind, stacked_borrows, timing: _ } = self;
+
+        catch_unwind.visit_tags(visit);
+        stacked_borrows.visit_tags(visit);
     }
 }
 
@@ -252,6 +260,16 @@ pub struct AllocExtra {
     pub weak_memory: Option<weak_memory::AllocExtra>,
 }
 
+impl VisitTags for AllocExtra {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        let AllocExtra { stacked_borrows, data_race, weak_memory } = self;
+
+        stacked_borrows.visit_tags(visit);
+        data_race.visit_tags(visit);
+        weak_memory.visit_tags(visit);
+    }
+}
+
 /// Precomputed layouts of primitive types
 pub struct PrimitiveLayouts<'tcx> {
     pub unit: TyAndLayout<'tcx>,
@@ -291,6 +309,9 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
 }
 
 /// The machine itself.
+///
+/// If you add anything here that stores machine values, remember to update
+/// `visit_all_machine_values`!
 pub struct MiriMachine<'mir, 'tcx> {
     // We carry a copy of the global `TyCtxt` for convenience, so methods taking just `&Evaluator` have `tcx` access.
     pub tcx: TyCtxt<'tcx>,
@@ -407,6 +428,8 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) gc_interval: u32,
     /// The number of blocks that passed since the last SbTag GC pass.
     pub(crate) since_gc: u32,
+    /// The number of CPUs to be reported by miri.
+    pub(crate) num_cpus: u32,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -486,6 +509,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             }),
             gc_interval: config.gc_interval,
             since_gc: 0,
+            num_cpus: config.num_cpus,
         }
     }
 
@@ -583,6 +607,68 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub(crate) fn is_local(&self, frame: &FrameInfo<'_>) -> bool {
         let def_id = frame.instance.def_id();
         def_id.is_local() || self.local_crates.contains(&def_id.krate)
+    }
+}
+
+impl VisitTags for MiriMachine<'_, '_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+        #[rustfmt::skip]
+        let MiriMachine {
+            threads,
+            tls,
+            env_vars,
+            argc,
+            argv,
+            cmd_line,
+            extern_statics,
+            dir_handler,
+            stacked_borrows,
+            data_race,
+            intptrcast,
+            file_handler,
+            tcx: _,
+            isolated_op: _,
+            validate: _,
+            enforce_abi: _,
+            clock: _,
+            layouts: _,
+            static_roots: _,
+            profiler: _,
+            string_cache: _,
+            exported_symbols_cache: _,
+            panic_on_unsupported: _,
+            backtrace_style: _,
+            local_crates: _,
+            rng: _,
+            tracked_alloc_ids: _,
+            check_alignment: _,
+            cmpxchg_weak_failure_rate: _,
+            mute_stdout_stderr: _,
+            weak_memory: _,
+            preemption_rate: _,
+            report_progress: _,
+            basic_block_count: _,
+            #[cfg(unix)]
+            external_so_lib: _,
+            gc_interval: _,
+            since_gc: _,
+            num_cpus: _,
+        } = self;
+
+        threads.visit_tags(visit);
+        tls.visit_tags(visit);
+        env_vars.visit_tags(visit);
+        dir_handler.visit_tags(visit);
+        file_handler.visit_tags(visit);
+        data_race.visit_tags(visit);
+        stacked_borrows.visit_tags(visit);
+        intptrcast.visit_tags(visit);
+        argc.visit_tags(visit);
+        argv.visit_tags(visit);
+        cmd_line.visit_tags(visit);
+        for ptr in extern_statics.values() {
+            ptr.visit_tags(visit);
+        }
     }
 }
 
