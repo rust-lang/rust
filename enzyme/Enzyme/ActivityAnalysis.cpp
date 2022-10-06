@@ -578,6 +578,18 @@ static inline void propagateArgumentInformation(
       }
       return;
     }
+
+    if (Name == "julia.call" || Name == "julia.call2") {
+#if LLVM_VERSION_MAJOR >= 14
+      for (size_t i = 1; i < CI.arg_size(); i++)
+#else
+      for (size_t i = 1; i < CI.getNumArgOperands(); i++)
+#endif
+      {
+        propagateFromOperand(CI.getOperand(i));
+      }
+      return;
+    }
   }
 
   // For other calls, check all operands of the instruction
