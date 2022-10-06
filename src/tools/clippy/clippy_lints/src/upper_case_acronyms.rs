@@ -93,7 +93,7 @@ fn check_ident(cx: &LateContext<'_>, ident: &Ident, be_aggressive: bool) {
             cx,
             UPPER_CASE_ACRONYMS,
             span,
-            &format!("name `{}` contains a capitalized acronym", ident),
+            &format!("name `{ident}` contains a capitalized acronym"),
             "consider making the acronym lowercase, except the initial letter",
             corrected,
             Applicability::MaybeIncorrect,
@@ -114,6 +114,7 @@ impl LateLintPass<'_> for UpperCaseAcronyms {
                 check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
             },
             ItemKind::Enum(ref enumdef, _) => {
+                check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
                 // check enum variants separately because again we only want to lint on private enums and
                 // the fn check_variant does not know about the vis of the enum of its variants
                 enumdef

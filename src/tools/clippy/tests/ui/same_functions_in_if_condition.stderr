@@ -1,72 +1,72 @@
 error: this `if` has the same function call as a previous `if`
-  --> $DIR/same_functions_in_if_condition.rs:31:15
+  --> $DIR/same_functions_in_if_condition.rs:37:15
    |
 LL |     } else if function() {
    |               ^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/same_functions_in_if_condition.rs:30:8
+  --> $DIR/same_functions_in_if_condition.rs:36:8
    |
 LL |     if function() {
    |        ^^^^^^^^^^
    = note: `-D clippy::same-functions-in-if-condition` implied by `-D warnings`
 
 error: this `if` has the same function call as a previous `if`
-  --> $DIR/same_functions_in_if_condition.rs:36:15
+  --> $DIR/same_functions_in_if_condition.rs:42:15
    |
 LL |     } else if fn_arg(a) {
    |               ^^^^^^^^^
    |
 note: same as this
-  --> $DIR/same_functions_in_if_condition.rs:35:8
+  --> $DIR/same_functions_in_if_condition.rs:41:8
    |
 LL |     if fn_arg(a) {
    |        ^^^^^^^^^
 
 error: this `if` has the same function call as a previous `if`
-  --> $DIR/same_functions_in_if_condition.rs:41:15
+  --> $DIR/same_functions_in_if_condition.rs:47:15
    |
 LL |     } else if obj.method() {
    |               ^^^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/same_functions_in_if_condition.rs:40:8
+  --> $DIR/same_functions_in_if_condition.rs:46:8
    |
 LL |     if obj.method() {
    |        ^^^^^^^^^^^^
 
 error: this `if` has the same function call as a previous `if`
-  --> $DIR/same_functions_in_if_condition.rs:46:15
+  --> $DIR/same_functions_in_if_condition.rs:52:15
    |
 LL |     } else if obj.method_arg(a) {
    |               ^^^^^^^^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/same_functions_in_if_condition.rs:45:8
+  --> $DIR/same_functions_in_if_condition.rs:51:8
    |
 LL |     if obj.method_arg(a) {
    |        ^^^^^^^^^^^^^^^^^
 
 error: this `if` has the same function call as a previous `if`
-  --> $DIR/same_functions_in_if_condition.rs:53:15
+  --> $DIR/same_functions_in_if_condition.rs:59:15
    |
 LL |     } else if v.pop().is_none() {
    |               ^^^^^^^^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/same_functions_in_if_condition.rs:51:8
+  --> $DIR/same_functions_in_if_condition.rs:57:8
    |
 LL |     if v.pop().is_none() {
    |        ^^^^^^^^^^^^^^^^^
 
 error: this `if` has the same function call as a previous `if`
-  --> $DIR/same_functions_in_if_condition.rs:58:15
+  --> $DIR/same_functions_in_if_condition.rs:64:15
    |
 LL |     } else if v.len() == 42 {
    |               ^^^^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/same_functions_in_if_condition.rs:56:8
+  --> $DIR/same_functions_in_if_condition.rs:62:8
    |
 LL |     if v.len() == 42 {
    |        ^^^^^^^^^^^^^

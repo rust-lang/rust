@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
                 }
 
                 let sugg = sugg::Sugg::hir_with_macro_callsite(cx, expr, "..");
-                let suggestion = format!("{0};", sugg);
+                let suggestion = format!("{sugg};");
                 span_lint_and_sugg(
                     cx,
                     SEMICOLON_IF_NOTHING_RETURNED,

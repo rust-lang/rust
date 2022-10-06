@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::get_parent_expr;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
@@ -30,8 +31,10 @@ pub(super) fn check<'tcx>(
         }
     }
 
+    let cast_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
+
     if let Some(lit) = get_numeric_literal(cast_expr) {
-        let literal_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
+        let literal_str = &cast_str;
 
         if_chain! {
             if let LitKind::Int(n, _) = lit.node;
@@ -49,12 +52,16 @@ pub(super) fn check<'tcx>(
 
         match lit.node {
             LitKind::Int(_, LitIntType::Unsuffixed) if cast_to.is_integral() => {
-                lint_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
+                lint_unnecessary_cast(cx, expr, literal_str, cast_from, cast_to);
+                return false;
             },
             LitKind::Float(_, LitFloatType::Unsuffixed) if cast_to.is_floating_point() => {
-                lint_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
+                lint_unnecessary_cast(cx, expr, literal_str, cast_from, cast_to);
+                return false;
             },
-            LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
+            LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {
+                return false;
+            },
             LitKind::Int(_, LitIntType::Signed(_) | LitIntType::Unsigned(_))
             | LitKind::Float(_, LitFloatType::Suffixed(_))
                 if cast_from.kind() == cast_to.kind() =>
@@ -62,48 +69,62 @@ pub(super) fn check<'tcx>(
                 if let Some(src) = snippet_opt(cx, cast_expr.span) {
                     if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node) {
                         lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
+                        return true;
                     }
                 }
             },
-            _ => {
-                if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
-                    span_lint_and_sugg(
-                        cx,
-                        UNNECESSARY_CAST,
-                        expr.span,
-                        &format!(
-                            "casting to the same type is unnecessary (`{}` -> `{}`)",
-                            cast_from, cast_to
-                        ),
-                        "try",
-                        literal_str,
-                        Applicability::MachineApplicable,
-                    );
-                    return true;
-                }
-            },
+            _ => {},
         }
+    }
+
+    if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
+        span_lint_and_sugg(
+            cx,
+            UNNECESSARY_CAST,
+            expr.span,
+            &format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
+            "try",
+            cast_str,
+            Applicability::MachineApplicable,
+        );
+        return true;
     }
 
     false
 }
 
-fn lint_unnecessary_cast(cx: &LateContext<'_>, expr: &Expr<'_>, literal_str: &str, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+fn lint_unnecessary_cast(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    raw_literal_str: &str,
+    cast_from: Ty<'_>,
+    cast_to: Ty<'_>,
+) {
     let literal_kind_name = if cast_from.is_integral() { "integer" } else { "float" };
-    let replaced_literal;
-    let matchless = if literal_str.contains(['(', ')']) {
-        replaced_literal = literal_str.replace(['(', ')'], "");
-        &replaced_literal
-    } else {
-        literal_str
+    // first we remove all matches so `-(1)` become `-1`, and remove trailing dots, so `1.` become `1`
+    let literal_str = raw_literal_str
+        .replace(['(', ')'], "")
+        .trim_end_matches('.')
+        .to_string();
+    // we know need to check if the parent is a method call, to add parenthesis accordingly (eg:
+    // (-1).foo() instead of -1.foo())
+    let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr)
+        && let ExprKind::MethodCall(..) = parent_expr.kind
+        && literal_str.starts_with('-')
+        {
+            format!("({literal_str}_{cast_to})")
+
+        } else {
+            format!("{literal_str}_{cast_to}")
     };
+
     span_lint_and_sugg(
         cx,
         UNNECESSARY_CAST,
         expr.span,
-        &format!("casting {} literal to `{}` is unnecessary", literal_kind_name, cast_to),
+        &format!("casting {literal_kind_name} literal to `{cast_to}` is unnecessary"),
         "try",
-        format!("{}_{}", matchless.trim_end_matches('.'), cast_to),
+        sugg,
         Applicability::MachineApplicable,
     );
 }

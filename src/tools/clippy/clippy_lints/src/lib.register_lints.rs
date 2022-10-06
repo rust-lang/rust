@@ -24,8 +24,6 @@ store.register_lints(&[
     #[cfg(feature = "internal")]
     utils::internal_lints::LINT_WITHOUT_LINT_PASS,
     #[cfg(feature = "internal")]
-    utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
-    #[cfg(feature = "internal")]
     utils::internal_lints::MISSING_CLIPPY_VERSION_ATTRIBUTE,
     #[cfg(feature = "internal")]
     utils::internal_lints::MISSING_MSRV_ATTR_IMPL,
@@ -33,6 +31,8 @@ store.register_lints(&[
     utils::internal_lints::OUTER_EXPN_EXPN_DATA,
     #[cfg(feature = "internal")]
     utils::internal_lints::PRODUCE_ICE,
+    #[cfg(feature = "internal")]
+    utils::internal_lints::UNNECESSARY_DEF_PATH,
     #[cfg(feature = "internal")]
     utils::internal_lints::UNNECESSARY_SYMBOL_STR,
     almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE,
@@ -60,6 +60,7 @@ store.register_lints(&[
     booleans::NONMINIMAL_BOOL,
     booleans::OVERLY_COMPLEX_BOOL_EXPR,
     borrow_deref_ref::BORROW_DEREF_REF,
+    box_default::BOX_DEFAULT,
     cargo::CARGO_COMMON_METADATA,
     cargo::MULTIPLE_CRATE_VERSIONS,
     cargo::NEGATIVE_FEATURE_NAMES,
@@ -113,16 +114,17 @@ store.register_lints(&[
     derive::DERIVE_PARTIAL_EQ_WITHOUT_EQ,
     derive::EXPL_IMPL_CLONE_ON_COPY,
     derive::UNSAFE_DERIVE_DESERIALIZE,
+    disallowed_macros::DISALLOWED_MACROS,
     disallowed_methods::DISALLOWED_METHODS,
     disallowed_names::DISALLOWED_NAMES,
     disallowed_script_idents::DISALLOWED_SCRIPT_IDENTS,
     disallowed_types::DISALLOWED_TYPES,
+    doc::DOC_LINK_WITH_QUOTES,
     doc::DOC_MARKDOWN,
     doc::MISSING_ERRORS_DOC,
     doc::MISSING_PANICS_DOC,
     doc::MISSING_SAFETY_DOC,
     doc::NEEDLESS_DOCTEST_MAIN,
-    doc_link_with_quotes::DOC_LINK_WITH_QUOTES,
     double_parens::DOUBLE_PARENS,
     drop_forget_ref::DROP_COPY,
     drop_forget_ref::DROP_NON_DROP,
@@ -159,6 +161,7 @@ store.register_lints(&[
     format::USELESS_FORMAT,
     format_args::FORMAT_IN_FORMAT_ARGS,
     format_args::TO_STRING_IN_FORMAT_ARGS,
+    format_args::UNINLINED_FORMAT_ARGS,
     format_impl::PRINT_IN_FORMAT_IMPL,
     format_impl::RECURSIVE_FORMAT_IMPL,
     format_push_string::FORMAT_PUSH_STRING,
@@ -182,6 +185,7 @@ store.register_lints(&[
     if_then_some_else_none::IF_THEN_SOME_ELSE_NONE,
     implicit_hasher::IMPLICIT_HASHER,
     implicit_return::IMPLICIT_RETURN,
+    implicit_saturating_add::IMPLICIT_SATURATING_ADD,
     implicit_saturating_sub::IMPLICIT_SATURATING_SUB,
     inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR,
     index_refutable_slice::INDEX_REFUTABLE_SLICE,
@@ -243,6 +247,7 @@ store.register_lints(&[
     manual_assert::MANUAL_ASSERT,
     manual_async_fn::MANUAL_ASYNC_FN,
     manual_bits::MANUAL_BITS,
+    manual_clamp::MANUAL_CLAMP,
     manual_instant_elapsed::MANUAL_INSTANT_ELAPSED,
     manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
     manual_rem_euclid::MANUAL_REM_EUCLID,

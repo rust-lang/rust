@@ -13,6 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
@@ -20,7 +21,6 @@ use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, InnerSpan, Span, DUMMY_SP};
-use rustc_hir_analysis::hir_ty_to_ty;
 
 // FIXME: this is a correctness problem but there's no suitable
 // warn-by-default category.
@@ -149,6 +149,9 @@ fn is_value_unfrozen_raw<'tcx>(
             // the fact that we have to dig into every structs to search enums
             // leads us to the point checking `UnsafeCell` directly is the only option.
             ty::Adt(ty_def, ..) if ty_def.is_unsafe_cell() => true,
+            // As of 2022-09-08 miri doesn't track which union field is active so there's no safe way to check the
+            // contained value.
+            ty::Adt(def, ..) if def.is_union() => false,
             ty::Array(..) | ty::Adt(..) | ty::Tuple(..) => {
                 let val = cx.tcx.destructure_mir_constant(cx.param_env, val);
                 val.fields.iter().any(|field| inner(cx, *field))

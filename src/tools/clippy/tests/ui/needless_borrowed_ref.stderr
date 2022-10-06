@@ -1,10 +1,123 @@
-error: this pattern takes a reference on something that is being de-referenced
-  --> $DIR/needless_borrowed_ref.rs:7:34
+error: this pattern takes a reference on something that is being dereferenced
+  --> $DIR/needless_borrowed_ref.rs:10:34
    |
 LL |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
-   |                                  ^^^^^^ help: try removing the `&ref` part and just keep: `a`
+   |                                  ^^^^^^
    |
    = note: `-D clippy::needless-borrowed-reference` implied by `-D warnings`
+help: try removing the `&ref` part
+   |
+LL -     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+LL +     let _ = v.iter_mut().filter(|a| a.is_empty());
+   |
 
-error: aborting due to previous error
+error: this pattern takes a reference on something that is being dereferenced
+  --> $DIR/needless_borrowed_ref.rs:14:17
+   |
+LL |     if let Some(&ref v) = thingy {}
+   |                 ^^^^^^
+   |
+help: try removing the `&ref` part
+   |
+LL -     if let Some(&ref v) = thingy {}
+LL +     if let Some(v) = thingy {}
+   |
+
+error: this pattern takes a reference on something that is being dereferenced
+  --> $DIR/needless_borrowed_ref.rs:16:14
+   |
+LL |     if let &[&ref a, ref b] = slice_of_refs {}
+   |              ^^^^^^
+   |
+help: try removing the `&ref` part
+   |
+LL -     if let &[&ref a, ref b] = slice_of_refs {}
+LL +     if let &[a, ref b] = slice_of_refs {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> $DIR/needless_borrowed_ref.rs:18:9
+   |
+LL |     let &[ref a, ..] = &array;
+   |         ^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     let &[ref a, ..] = &array;
+LL +     let [a, ..] = &array;
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> $DIR/needless_borrowed_ref.rs:19:9
+   |
+LL |     let &[ref a, ref b, ..] = &array;
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     let &[ref a, ref b, ..] = &array;
+LL +     let [a, b, ..] = &array;
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> $DIR/needless_borrowed_ref.rs:21:12
+   |
+LL |     if let &[ref a, ref b] = slice {}
+   |            ^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[ref a, ref b] = slice {}
+LL +     if let [a, b] = slice {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> $DIR/needless_borrowed_ref.rs:22:12
+   |
+LL |     if let &[ref a, ref b] = &vec[..] {}
+   |            ^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[ref a, ref b] = &vec[..] {}
+LL +     if let [a, b] = &vec[..] {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> $DIR/needless_borrowed_ref.rs:24:12
+   |
+LL |     if let &[ref a, ref b, ..] = slice {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[ref a, ref b, ..] = slice {}
+LL +     if let [a, b, ..] = slice {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> $DIR/needless_borrowed_ref.rs:25:12
+   |
+LL |     if let &[ref a, .., ref b] = slice {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[ref a, .., ref b] = slice {}
+LL +     if let [a, .., b] = slice {}
+   |
+
+error: dereferencing a slice pattern where every element takes a reference
+  --> $DIR/needless_borrowed_ref.rs:26:12
+   |
+LL |     if let &[.., ref a, ref b] = slice {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+help: try removing the `&` and `ref` parts
+   |
+LL -     if let &[.., ref a, ref b] = slice {}
+LL +     if let [.., a, b] = slice {}
+   |
+
+error: aborting due to 10 previous errors
 

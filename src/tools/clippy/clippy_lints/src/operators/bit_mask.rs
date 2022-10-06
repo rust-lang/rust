@@ -64,10 +64,7 @@ fn check_bit_mask(
                             cx,
                             BAD_BIT_MASK,
                             span,
-                            &format!(
-                                "incompatible bit mask: `_ & {}` can never be equal to `{}`",
-                                mask_value, cmp_value
-                            ),
+                            &format!("incompatible bit mask: `_ & {mask_value}` can never be equal to `{cmp_value}`"),
                         );
                     }
                 } else if mask_value == 0 {
@@ -80,10 +77,7 @@ fn check_bit_mask(
                         cx,
                         BAD_BIT_MASK,
                         span,
-                        &format!(
-                            "incompatible bit mask: `_ | {}` can never be equal to `{}`",
-                            mask_value, cmp_value
-                        ),
+                        &format!("incompatible bit mask: `_ | {mask_value}` can never be equal to `{cmp_value}`"),
                     );
                 }
             },
@@ -96,10 +90,7 @@ fn check_bit_mask(
                         cx,
                         BAD_BIT_MASK,
                         span,
-                        &format!(
-                            "incompatible bit mask: `_ & {}` will always be lower than `{}`",
-                            mask_value, cmp_value
-                        ),
+                        &format!("incompatible bit mask: `_ & {mask_value}` will always be lower than `{cmp_value}`"),
                     );
                 } else if mask_value == 0 {
                     span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
@@ -111,10 +102,7 @@ fn check_bit_mask(
                         cx,
                         BAD_BIT_MASK,
                         span,
-                        &format!(
-                            "incompatible bit mask: `_ | {}` will never be lower than `{}`",
-                            mask_value, cmp_value
-                        ),
+                        &format!("incompatible bit mask: `_ | {mask_value}` will never be lower than `{cmp_value}`"),
                     );
                 } else {
                     check_ineffective_lt(cx, span, mask_value, cmp_value, "|");
@@ -130,10 +118,7 @@ fn check_bit_mask(
                         cx,
                         BAD_BIT_MASK,
                         span,
-                        &format!(
-                            "incompatible bit mask: `_ & {}` will never be higher than `{}`",
-                            mask_value, cmp_value
-                        ),
+                        &format!("incompatible bit mask: `_ & {mask_value}` will never be higher than `{cmp_value}`"),
                     );
                 } else if mask_value == 0 {
                     span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
@@ -145,10 +130,7 @@ fn check_bit_mask(
                         cx,
                         BAD_BIT_MASK,
                         span,
-                        &format!(
-                            "incompatible bit mask: `_ | {}` will always be higher than `{}`",
-                            mask_value, cmp_value
-                        ),
+                        &format!("incompatible bit mask: `_ | {mask_value}` will always be higher than `{cmp_value}`"),
                     );
                 } else {
                     check_ineffective_gt(cx, span, mask_value, cmp_value, "|");
@@ -167,10 +149,7 @@ fn check_ineffective_lt(cx: &LateContext<'_>, span: Span, m: u128, c: u128, op: 
             cx,
             INEFFECTIVE_BIT_MASK,
             span,
-            &format!(
-                "ineffective bit mask: `x {} {}` compared to `{}`, is the same as x compared directly",
-                op, m, c
-            ),
+            &format!("ineffective bit mask: `x {op} {m}` compared to `{c}`, is the same as x compared directly"),
         );
     }
 }
@@ -181,10 +160,7 @@ fn check_ineffective_gt(cx: &LateContext<'_>, span: Span, m: u128, c: u128, op: 
             cx,
             INEFFECTIVE_BIT_MASK,
             span,
-            &format!(
-                "ineffective bit mask: `x {} {}` compared to `{}`, is the same as x compared directly",
-                op, m, c
-            ),
+            &format!("ineffective bit mask: `x {op} {m}` compared to `{c}`, is the same as x compared directly"),
         );
     }
 }

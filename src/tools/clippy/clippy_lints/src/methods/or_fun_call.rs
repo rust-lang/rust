@@ -62,9 +62,9 @@ pub(super) fn check<'tcx>(
                     cx,
                     OR_FUN_CALL,
                     method_span.with_hi(span.hi()),
-                    &format!("use of `{}` followed by a call to `{}`", name, path),
+                    &format!("use of `{name}` followed by a call to `{path}`"),
                     "try this",
-                    format!("{}()", sugg),
+                    format!("{sugg}()"),
                     Applicability::MachineApplicable,
                 );
 
@@ -131,7 +131,7 @@ pub(super) fn check<'tcx>(
 
                     if use_lambda {
                         let l_arg = if fn_has_arguments { "_" } else { "" };
-                        format!("|{}| {}", l_arg, snippet).into()
+                        format!("|{l_arg}| {snippet}").into()
                     } else {
                         snippet
                     }
@@ -141,9 +141,9 @@ pub(super) fn check<'tcx>(
                     cx,
                     OR_FUN_CALL,
                     span_replace_word,
-                    &format!("use of `{}` followed by a function call", name),
+                    &format!("use of `{name}` followed by a function call"),
                     "try this",
-                    format!("{}_{}({})", name, suffix, sugg),
+                    format!("{name}_{suffix}({sugg})"),
                     Applicability::HasPlaceholders,
                 );
             }

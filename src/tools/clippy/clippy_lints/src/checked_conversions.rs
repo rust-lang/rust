@@ -2,9 +2,8 @@
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{in_constant, meets_msrv, msrvs, SpanlessEq};
+use clippy_utils::{in_constant, is_integer_literal, meets_msrv, msrvs, SpanlessEq};
 use if_chain::if_chain;
-use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -82,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
                     item.span,
                     "checked cast can be simplified",
                     "try",
-                    format!("{}::try_from({}).is_ok()", to_type, snippet),
+                    format!("{to_type}::try_from({snippet}).is_ok()"),
                     applicability,
                 );
             }
@@ -223,16 +222,7 @@ fn check_lower_bound<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
 
 /// Check for `expr >= 0`
 fn check_lower_bound_zero<'a>(candidate: &'a Expr<'_>, check: &'a Expr<'_>) -> Option<Conversion<'a>> {
-    if_chain! {
-        if let ExprKind::Lit(ref lit) = &check.kind;
-        if let LitKind::Int(0, _) = &lit.node;
-
-        then {
-            Some(Conversion::new_any(candidate))
-        } else {
-            None
-        }
-    }
+    is_integer_literal(check, 0).then(|| Conversion::new_any(candidate))
 }
 
 /// Check for `expr >= (to_type::MIN as from_type)`

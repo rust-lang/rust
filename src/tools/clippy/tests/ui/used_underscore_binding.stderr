@@ -1,5 +1,5 @@
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:25:5
+  --> $DIR/used_underscore_binding.rs:24:5
    |
 LL |     _foo + 1
    |     ^^^^
@@ -7,31 +7,31 @@ LL |     _foo + 1
    = note: `-D clippy::used-underscore-binding` implied by `-D warnings`
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:30:20
+  --> $DIR/used_underscore_binding.rs:29:20
    |
 LL |     println!("{}", _foo);
    |                    ^^^^
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:31:16
+  --> $DIR/used_underscore_binding.rs:30:16
    |
 LL |     assert_eq!(_foo, _foo);
    |                ^^^^
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:31:22
+  --> $DIR/used_underscore_binding.rs:30:22
    |
 LL |     assert_eq!(_foo, _foo);
    |                      ^^^^
 
 error: used binding `_underscore_field` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:44:5
+  --> $DIR/used_underscore_binding.rs:43:5
    |
 LL |     s._underscore_field += 1;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: used binding `_i` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:105:16
+  --> $DIR/used_underscore_binding.rs:104:16
    |
 LL |         uses_i(_i);
    |                ^^

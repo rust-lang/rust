@@ -1,7 +1,5 @@
-#![allow(clippy::assertions_on_constants)]
-#![allow(clippy::eq_op)]
-#![warn(clippy::format_in_format_args)]
-#![warn(clippy::to_string_in_format_args)]
+#![warn(clippy::format_in_format_args, clippy::to_string_in_format_args)]
+#![allow(clippy::assertions_on_constants, clippy::eq_op, clippy::uninlined_format_args)]
 
 use std::io::{stdout, Error, ErrorKind, Write};
 use std::ops::Deref;

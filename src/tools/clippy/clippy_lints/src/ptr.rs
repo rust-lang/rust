@@ -463,7 +463,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                     diag.span_suggestion(
                                         hir_ty.span,
                                         "change this to",
-                                        format!("&{}{}", mutability.prefix_str(), ty_name),
+                                        format!("&{}{ty_name}", mutability.prefix_str()),
                                         Applicability::Unspecified,
                                     );
                                 }
@@ -669,7 +669,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
 }
 
 fn get_rptr_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {
-    if let TyKind::Rptr(ref lt, ref m) = ty.kind {
+    if let TyKind::Rptr(lt, ref m) = ty.kind {
         Some((lt, m.mutbl, ty.span))
     } else {
         None

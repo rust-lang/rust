@@ -5,7 +5,7 @@ LL |     let s1: String = Default::default();
    |                      ^^^^^^^^^^^^^^^^^^ help: try: `std::string::String::default()`
    |
 note: the lint level is defined here
-  --> $DIR/default_trait_access.rs:5:9
+  --> $DIR/default_trait_access.rs:3:9
    |
 LL | #![deny(clippy::default_trait_access)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

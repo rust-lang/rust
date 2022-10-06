@@ -1,11 +1,11 @@
 error: stripping a prefix manually
-  --> $DIR/min_rust_version_attr.rs:204:24
+  --> $DIR/min_rust_version_attr.rs:216:24
    |
 LL |             assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
    |                        ^^^^^^^^^^^^^^^^^^^^
    |
 note: the prefix was tested here
-  --> $DIR/min_rust_version_attr.rs:203:9
+  --> $DIR/min_rust_version_attr.rs:215:9
    |
 LL |         if s.starts_with("hello, ") {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,13 +17,13 @@ LL ~             assert_eq!(<stripped>.to_uppercase(), "WORLD!");
    |
 
 error: stripping a prefix manually
-  --> $DIR/min_rust_version_attr.rs:216:24
+  --> $DIR/min_rust_version_attr.rs:228:24
    |
 LL |             assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
    |                        ^^^^^^^^^^^^^^^^^^^^
    |
 note: the prefix was tested here
-  --> $DIR/min_rust_version_attr.rs:215:9
+  --> $DIR/min_rust_version_attr.rs:227:9
    |
 LL |         if s.starts_with("hello, ") {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

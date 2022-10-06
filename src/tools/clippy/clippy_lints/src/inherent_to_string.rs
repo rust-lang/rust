@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{get_trait_def_id, paths, return_ty, trait_ref_of_method};
+use clippy_utils::{return_ty, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -118,7 +118,10 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
 }
 
 fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
-    let display_trait_id = get_trait_def_id(cx, &paths::DISPLAY_TRAIT).expect("Failed to get trait ID of `Display`!");
+    let display_trait_id = cx
+        .tcx
+        .get_diagnostic_item(sym::Display)
+        .expect("Failed to get trait ID of `Display`!");
 
     // Get the real type of 'self'
     let self_type = cx.tcx.fn_sig(item.def_id).input(0);
@@ -131,23 +134,19 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
             INHERENT_TO_STRING_SHADOW_DISPLAY,
             item.span,
             &format!(
-                "type `{}` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`",
-                self_type
+                "type `{self_type}` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`"
             ),
             None,
-            &format!("remove the inherent method from type `{}`", self_type),
+            &format!("remove the inherent method from type `{self_type}`"),
         );
     } else {
         span_lint_and_help(
             cx,
             INHERENT_TO_STRING,
             item.span,
-            &format!(
-                "implementation of inherent method `to_string(&self) -> String` for type `{}`",
-                self_type
-            ),
+            &format!("implementation of inherent method `to_string(&self) -> String` for type `{self_type}`"),
             None,
-            &format!("implement trait `Display` for type `{}` instead", self_type),
+            &format!("implement trait `Display` for type `{self_type}` instead"),
         );
     }
 }

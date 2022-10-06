@@ -173,9 +173,9 @@ impl FloatFormat {
         T: fmt::UpperExp + fmt::LowerExp + fmt::Display,
     {
         match self {
-            Self::LowerExp => format!("{:e}", f),
-            Self::UpperExp => format!("{:E}", f),
-            Self::Normal => format!("{}", f),
+            Self::LowerExp => format!("{f:e}"),
+            Self::UpperExp => format!("{f:E}"),
+            Self::Normal => format!("{f}"),
         }
     }
 }

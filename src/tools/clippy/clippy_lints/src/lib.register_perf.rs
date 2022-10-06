@@ -3,6 +3,7 @@
 // Manual edits will be overwritten.
 
 store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
+    LintId::of(box_default::BOX_DEFAULT),
     LintId::of(entry::MAP_ENTRY),
     LintId::of(escape::BOXED_LOCAL),
     LintId::of(format_args::FORMAT_IN_FORMAT_ARGS),

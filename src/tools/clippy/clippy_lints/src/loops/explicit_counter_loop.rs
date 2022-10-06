@@ -44,11 +44,10 @@ pub(super) fn check<'tcx>(
                                 cx,
                                 EXPLICIT_COUNTER_LOOP,
                                 span,
-                                &format!("the variable `{}` is used as a loop counter", name),
+                                &format!("the variable `{name}` is used as a loop counter"),
                                 "consider using",
                                 format!(
-                                    "for ({}, {}) in {}.enumerate()",
-                                    name,
+                                    "for ({name}, {}) in {}.enumerate()",
                                     snippet_with_applicability(cx, pat.span, "item", &mut applicability),
                                     make_iterator_snippet(cx, arg, &mut applicability),
                                 ),
@@ -65,24 +64,21 @@ pub(super) fn check<'tcx>(
                         cx,
                         EXPLICIT_COUNTER_LOOP,
                         span,
-                        &format!("the variable `{}` is used as a loop counter", name),
+                        &format!("the variable `{name}` is used as a loop counter"),
                         |diag| {
                             diag.span_suggestion(
                                 span,
                                 "consider using",
                                 format!(
-                                    "for ({}, {}) in (0_{}..).zip({})",
-                                    name,
+                                    "for ({name}, {}) in (0_{int_name}..).zip({})",
                                     snippet_with_applicability(cx, pat.span, "item", &mut applicability),
-                                    int_name,
                                     make_iterator_snippet(cx, arg, &mut applicability),
                                 ),
                                 applicability,
                             );
 
                             diag.note(&format!(
-                                "`{}` is of type `{}`, making it ineligible for `Iterator::enumerate`",
-                                name, int_name
+                                "`{name}` is of type `{int_name}`, making it ineligible for `Iterator::enumerate`"
                             ));
                         },
                     );

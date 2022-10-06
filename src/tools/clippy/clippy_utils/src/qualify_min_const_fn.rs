@@ -33,10 +33,10 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
-                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {:#?}", predicate),
+                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {predicate:#?}"),
+                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {predicate:#?}"),
             }
         }
         match predicates.parent {
@@ -319,8 +319,7 @@ fn check_terminator<'a, 'tcx>(
                         span,
                         format!(
                             "can only call other `const fn` within a `const fn`, \
-                             but `{:?}` is not stable as `const fn`",
-                            func,
+                             but `{func:?}` is not stable as `const fn`",
                         )
                         .into(),
                     ));
@@ -368,8 +367,9 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<RustcVersion>) -> bo
                 // function could be removed if `rustc` provided a MSRV-aware version of `is_const_fn`.
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
 
-                // HACK(nilstrieb): CURRENT_RUSTC_VERSION can return versions like 1.66.0-dev. `rustc-semver` doesn't accept
-                //                  the `-dev` version number so we have to strip it off.
+                // HACK(nilstrieb): CURRENT_RUSTC_VERSION can return versions like 1.66.0-dev. `rustc-semver`
+                // doesn't accept                  the `-dev` version number so we have to strip it
+                // off.
                 let short_version = since
                     .as_str()
                     .split('-')
@@ -380,8 +380,9 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<RustcVersion>) -> bo
 
                 crate::meets_msrv(
                     msrv,
-                    RustcVersion::parse(since.as_str())
-                        .unwrap_or_else(|err| panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{since}`, {err:?}")),
+                    RustcVersion::parse(since.as_str()).unwrap_or_else(|err| {
+                        panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{since}`, {err:?}")
+                    }),
                 )
             } else {
                 // Unstable const fn with the feature enabled.

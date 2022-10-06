@@ -41,7 +41,7 @@ pub(super) fn check(
             expr.span,
             "using `.clone()` on a ref-counted pointer",
             "try this",
-            format!("{}::<{}>::clone(&{})", caller_type, subst.type_at(0), snippet),
+            format!("{caller_type}::<{}>::clone(&{snippet})", subst.type_at(0)),
             Applicability::Unspecified, // Sometimes unnecessary ::<_> after Rc/Arc/Weak
         );
     }
