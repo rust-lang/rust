@@ -2807,6 +2807,10 @@ impl Type {
                     let subst = TyBuilder::subst_for_def(db, id, None).fill_with_unknown().build();
                     Some(subst)
                 }
+                ItemContainerId::ImplId(id) => {
+                    let subst = TyBuilder::subst_for_def(db, id, None).fill_with_unknown().build();
+                    Some(subst)
+                }
                 _ => None,
             },
             _ => None,
