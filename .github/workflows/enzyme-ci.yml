@@ -78,7 +78,7 @@ jobs:
       run: |
           llvm_prefix=`brew --prefix llvm@${{ matrix.llvm }}`
           cd enzyme/build
-          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_EXTERNAL_LIT=`which lit` -DLLVM_DIR=${llvm_prefix}/lib/cmake/llvm -DCMAKE_EXE_LINKER_FLAGS=-Wl,-lto_library,${llvm_prefix}/lib/libLTO.dylib
+          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_EXTERNAL_LIT=`which lit` -DLLVM_DIR=${llvm_prefix}/lib/cmake/llvm
     - name: make
       run: cd enzyme/build && make -j 3
     - name: make check-typeanalysis
