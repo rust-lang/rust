@@ -678,7 +678,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 None,
                                 obligation.cause.body_id,
                             );
-                        } else if !suggested  {
+                        } else if !suggested {
                             // Can't show anything else useful, try to find similar impls.
                             // This is skipped for traits with type parameters
                             // because those suggestions are  noisy and unhelpful
