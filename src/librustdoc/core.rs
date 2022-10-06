@@ -14,7 +14,6 @@ use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::lint;
-use rustc_session::DiagnosticOutput;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span, Symbol};
@@ -285,8 +284,6 @@ pub(crate) fn create_config(
         input_path: cpath,
         output_file: None,
         output_dir: None,
-        file_loader: None,
-        diagnostic_output: DiagnosticOutput::Default,
         lint_caps,
         parse_sess_created: None,
         register_lints: Some(Box::new(crate::lint::register_lints)),
@@ -318,7 +315,6 @@ pub(crate) fn create_config(
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
-        make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
     }
 }

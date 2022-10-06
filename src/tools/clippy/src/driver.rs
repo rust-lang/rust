@@ -285,7 +285,7 @@ pub fn main() {
                 args.extend(vec!["--sysroot".into(), sys_root]);
             };
 
-            return rustc_driver::RunCompiler::new(&args, &mut DefaultCallbacks).run();
+            return rustc_driver::run_compiler(&args, &mut DefaultCallbacks);
         }
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
@@ -345,9 +345,9 @@ pub fn main() {
         let clippy_enabled = !cap_lints_allow && (!no_deps || in_primary_package);
         if clippy_enabled {
             args.extend(clippy_args);
-            rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var }).run()
+            rustc_driver::run_compiler(&args, &mut ClippyCallbacks { clippy_args_var })
         } else {
-            rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var }).run()
+            rustc_driver::run_compiler(&args, &mut RustcCallbacks { clippy_args_var })
         }
     }))
 }

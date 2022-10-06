@@ -94,28 +94,6 @@ pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
 // SourceFile, MultiByteChar, FileName, FileLines
 //
 
-/// An abstraction over the fs operations used by the Parser.
-pub trait FileLoader {
-    /// Query the existence of a file.
-    fn file_exists(&self, path: &Path) -> bool;
-
-    /// Read the contents of a UTF-8 file into memory.
-    fn read_file(&self, path: &Path) -> io::Result<String>;
-}
-
-/// A FileLoader that uses std::fs to load real files.
-pub struct RealFileLoader;
-
-impl FileLoader for RealFileLoader {
-    fn file_exists(&self, path: &Path) -> bool {
-        path.exists()
-    }
-
-    fn read_file(&self, path: &Path) -> io::Result<String> {
-        fs::read_to_string(path)
-    }
-}
-
 /// This is a [SourceFile] identifier that is used to correlate source files between
 /// subsequent compilation sessions (which is something we need to do during
 /// incremental compilation).
@@ -170,7 +148,6 @@ pub struct SourceMap {
     used_address_space: AtomicU32,
 
     files: RwLock<SourceMapFiles>,
-    file_loader: Box<dyn FileLoader + Sync + Send>,
     // This is used to apply the file path remapping as specified via
     // `--remap-path-prefix` to all `SourceFile`s allocated within this `SourceMap`.
     path_mapping: FilePathMapping,
@@ -181,22 +158,16 @@ pub struct SourceMap {
 
 impl SourceMap {
     pub fn new(path_mapping: FilePathMapping) -> SourceMap {
-        Self::with_file_loader_and_hash_kind(
-            Box::new(RealFileLoader),
-            path_mapping,
-            SourceFileHashAlgorithm::Md5,
-        )
+        Self::with_hash_kind(path_mapping, SourceFileHashAlgorithm::Md5)
     }
 
-    pub fn with_file_loader_and_hash_kind(
-        file_loader: Box<dyn FileLoader + Sync + Send>,
+    pub fn with_hash_kind(
         path_mapping: FilePathMapping,
         hash_kind: SourceFileHashAlgorithm,
     ) -> SourceMap {
         SourceMap {
             used_address_space: AtomicU32::new(0),
             files: Default::default(),
-            file_loader,
             path_mapping,
             hash_kind,
         }
@@ -206,12 +177,8 @@ impl SourceMap {
         &self.path_mapping
     }
 
-    pub fn file_exists(&self, path: &Path) -> bool {
-        self.file_loader.file_exists(path)
-    }
-
     pub fn load_file(&self, path: &Path) -> io::Result<Lrc<SourceFile>> {
-        let src = self.file_loader.read_file(path)?;
+        let src = fs::read_to_string(path)?;
         let filename = path.to_owned().into();
         Ok(self.new_source_file(filename, src))
     }
@@ -221,8 +188,6 @@ impl SourceMap {
     /// Unlike `load_file`, guarantees that no normalization like BOM-removal
     /// takes place.
     pub fn load_binary_file(&self, path: &Path) -> io::Result<Vec<u8>> {
-        // Ideally, this should use `self.file_loader`, but it can't
-        // deal with binary files yet.
         let bytes = fs::read(path)?;
 
         // We need to add file to the `SourceMap`, so that it is present
@@ -985,7 +950,7 @@ impl SourceMap {
         source_file.add_external_src(|| {
             match source_file.name {
                 FileName::Real(ref name) if let Some(local_path) = name.local_path() => {
-                    self.file_loader.read_file(local_path).ok()
+                    fs::read_to_string(local_path).ok()
                 }
                 _ => None,
             }

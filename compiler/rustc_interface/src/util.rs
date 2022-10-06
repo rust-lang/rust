@@ -18,10 +18,9 @@ use rustc_session::config::{self, CrateType};
 use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::CrateConfig;
-use rustc_session::{early_error, filesearch, output, DiagnosticOutput, Session};
+use rustc_session::{early_error, filesearch, output, Session};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
-use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::{sym, Symbol};
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
@@ -65,23 +64,14 @@ pub fn create_session(
     sopts: config::Options,
     cfg: FxHashSet<(String, Option<String>)>,
     check_cfg: CheckCfg,
-    diagnostic_output: DiagnosticOutput,
-    file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     input_path: Option<PathBuf>,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
-    make_codegen_backend: Option<
-        Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
-    >,
     descriptions: Registry,
 ) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>) {
-    let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
-        make_codegen_backend(&sopts)
-    } else {
-        get_codegen_backend(
-            &sopts.maybe_sysroot,
-            sopts.unstable_opts.codegen_backend.as_ref().map(|name| &name[..]),
-        )
-    };
+    let codegen_backend = get_codegen_backend(
+        &sopts.maybe_sysroot,
+        sopts.unstable_opts.codegen_backend.as_ref().map(|name| &name[..]),
+    );
 
     // target_override is documented to be called before init(), so this is okay
     let target_override = codegen_backend.target_override(&sopts);
@@ -99,16 +89,8 @@ pub fn create_session(
         }
     };
 
-    let mut sess = session::build_session(
-        sopts,
-        input_path,
-        bundle,
-        descriptions,
-        diagnostic_output,
-        lint_caps,
-        file_loader,
-        target_override,
-    );
+    let mut sess =
+        session::build_session(sopts, input_path, bundle, descriptions, lint_caps, target_override);
 
     codegen_backend.init(&sess);
 

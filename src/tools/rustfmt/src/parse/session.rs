@@ -181,25 +181,21 @@ impl ParseSess {
     ///   or {dir_path}/{symbol}/{id}/mod.rs. if None, resolve the module at {dir_path}/{id}.rs.
     /// *  `dir_path` - Module resolution will occur relative to this directory.
     pub(crate) fn default_submod_path(
-        &self,
         id: symbol::Ident,
         relative: Option<symbol::Ident>,
         dir_path: &Path,
     ) -> Result<ModulePathSuccess, ModError<'_>> {
-        rustc_expand::module::default_submod_path(&self.parse_sess, id, relative, dir_path).or_else(
-            |e| {
-                // If resloving a module relative to {dir_path}/{symbol} fails because a file
-                // could not be found, then try to resolve the module relative to {dir_path}.
-                // If we still can't find the module after searching for it in {dir_path},
-                // surface the original error.
-                if matches!(e, ModError::FileNotFound(..)) && relative.is_some() {
-                    rustc_expand::module::default_submod_path(&self.parse_sess, id, None, dir_path)
-                        .map_err(|_| e)
-                } else {
-                    Err(e)
-                }
-            },
-        )
+        rustc_expand::module::default_submod_path(id, relative, dir_path).or_else(|e| {
+            // If resolving a module relative to {dir_path}/{symbol} fails because a file
+            // could not be found, then try to resolve the module relative to {dir_path}.
+            // If we still can't find the module after searching for it in {dir_path},
+            // surface the original error.
+            if matches!(e, ModError::FileNotFound(..)) && relative.is_some() {
+                rustc_expand::module::default_submod_path(id, None, dir_path).map_err(|_| e)
+            } else {
+                Err(e)
+            }
+        })
     }
 
     pub(crate) fn is_file_parsed(&self, path: &Path) -> bool {

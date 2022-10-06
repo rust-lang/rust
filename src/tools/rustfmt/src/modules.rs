@@ -366,10 +366,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         // Look for nested path, like `#[cfg_attr(feature = "foo", path = "bar.rs")]`.
         let mut mods_outside_ast = self.find_mods_outside_of_ast(attrs, sub_mod);
 
-        match self
-            .parse_sess
-            .default_submod_path(mod_name, relative, &self.directory.path)
-        {
+        match ParseSess::default_submod_path(mod_name, relative, &self.directory.path) {
             Ok(ModulePathSuccess {
                 file_path,
                 dir_ownership,

@@ -4,7 +4,6 @@ use rustc_ast::{token, AttrVec, Attribute, Inline, Item, ModSpans};
 use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_parse::new_parser_from_file;
 use rustc_parse::validate_attr;
-use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -151,7 +150,7 @@ fn mod_file_path<'a>(
         DirOwnership::Owned { relative } => relative,
         DirOwnership::UnownedViaBlock => None,
     };
-    let result = default_submod_path(&sess.parse_sess, ident, relative, dir_path);
+    let result = default_submod_path(ident, relative, dir_path);
     match dir_ownership {
         DirOwnership::Owned { .. } => result,
         DirOwnership::UnownedViaBlock => Err(ModError::ModInBlock(match result {
@@ -201,7 +200,6 @@ fn mod_file_path_from_attr(
 /// Returns a path to a module.
 // Public for rustfmt usage.
 pub fn default_submod_path<'a>(
-    sess: &'a ParseSess,
     ident: Ident,
     relative: Option<Ident>,
     dir_path: &Path,
@@ -223,8 +221,8 @@ pub fn default_submod_path<'a>(
         format!("{}{}{}mod.rs", relative_prefix, ident.name, path::MAIN_SEPARATOR);
     let default_path = dir_path.join(&default_path_str);
     let secondary_path = dir_path.join(&secondary_path_str);
-    let default_exists = sess.source_map().file_exists(&default_path);
-    let secondary_exists = sess.source_map().file_exists(&secondary_path);
+    let default_exists = default_path.exists();
+    let secondary_exists = secondary_path.exists();
 
     match (default_exists, secondary_exists) {
         (true, false) => Ok(ModulePathSuccess {
