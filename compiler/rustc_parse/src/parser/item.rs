@@ -412,7 +412,7 @@ impl<'a> Parser<'a> {
             } else if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.bump(); // `{`
                 ("fn", kw_name, false)
-            } else if self.check(&token::Colon) {
+            } else if self.check(&token::Semi) {
                 let kw = "struct";
                 (kw, kw, false)
             } else {

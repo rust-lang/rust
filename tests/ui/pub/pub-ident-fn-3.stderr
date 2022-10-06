@@ -1,8 +1,13 @@
-error: missing `fn` or `struct` for function or struct definition
+error: missing `struct` for struct definition
   --> $DIR/pub-ident-fn-3.rs:4:8
    |
 LL |     pub bar();
-   |     ---^--- help: if you meant to call a macro, try: `bar!`
+   |        ^
+   |
+help: add `struct` here to parse `bar` as a public struct
+   |
+LL |     pub struct bar();
+   |         ++++++
 
 error: aborting due to previous error
 
