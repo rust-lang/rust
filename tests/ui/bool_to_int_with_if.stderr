@@ -8,8 +8,8 @@ LL | |         0
 LL | |     };
    | |_____^ help: replace with from: `i32::from(a)`
    |
-   = note: `-D clippy::bool-to-int-with-if` implied by `-D warnings`
    = note: `a as i32` or `a.into()` can also be valid options
+   = note: `-D clippy::bool-to-int-with-if` implied by `-D warnings`
 
 error: boolean to int conversion using if
   --> $DIR/bool_to_int_with_if.rs:20:5

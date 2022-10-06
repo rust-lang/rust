@@ -4,12 +4,12 @@ error: this `if` has the same condition as a previous `if`
 LL |     } else if b {
    |               ^
    |
-   = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
 note: same as this
   --> $DIR/ifs_same_cond.rs:8:8
    |
 LL |     if b {
    |        ^
+   = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
 
 error: this `if` has the same condition as a previous `if`
   --> $DIR/ifs_same_cond.rs:14:15

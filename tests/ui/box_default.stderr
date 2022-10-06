@@ -4,8 +4,8 @@ error: `Box::new(_)` of default value
 LL |     let _string: Box<String> = Box::new(Default::default());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::box-default` implied by `-D warnings`
    = help: use `Box::default()` instead
+   = note: `-D clippy::box-default` implied by `-D warnings`
 
 error: `Box::new(_)` of default value
   --> $DIR/box_default.rs:22:17

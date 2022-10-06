@@ -4,8 +4,8 @@ error: non-binding `let` on a type that implements `Drop`
 LL |     let _ = Box::new(());
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::let-underscore-drop` implied by `-D warnings`
    = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+   = note: `-D clippy::let-underscore-drop` implied by `-D warnings`
 
 error: non-binding `let` on a type that implements `Drop`
   --> $DIR/let_underscore_drop.rs:18:5

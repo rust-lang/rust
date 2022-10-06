@@ -4,8 +4,8 @@ error: case-sensitive file extension comparison
 LL |     filename.ends_with(".rs")
    |              ^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::case-sensitive-file-extension-comparisons` implied by `-D warnings`
    = help: consider using a case-insensitive comparison instead
+   = note: `-D clippy::case-sensitive-file-extension-comparisons` implied by `-D warnings`
 
 error: case-sensitive file extension comparison
   --> $DIR/case_sensitive_file_extension_comparisons.rs:17:27

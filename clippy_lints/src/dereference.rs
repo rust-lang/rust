@@ -1259,7 +1259,7 @@ fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedenc
             ty::Adt(..) if ty.has_placeholders() || ty.has_opaque_types() => {
                 Position::ReborrowStable(precedence).into()
             },
-            ty::Adt(_, substs) if substs.has_param_types_or_consts() => {
+            ty::Adt(_, substs) if substs.has_non_region_param() => {
                 TyPosition::new_deref_stable_for_result(precedence, ty)
             },
             ty::Bool

@@ -4,12 +4,12 @@ error: parameter is only used in recursion
 LL | fn _one_unused(flag: u32, a: usize) -> usize {
    |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
    |
-   = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
 note: parameter used here
   --> $DIR/only_used_in_recursion.rs:12:53
    |
 LL |     if flag == 0 { 0 } else { _one_unused(flag - 1, a) }
    |                                                     ^
+   = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
 
 error: parameter is only used in recursion
   --> $DIR/only_used_in_recursion.rs:15:27

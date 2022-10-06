@@ -7,8 +7,8 @@ LL | |         foo = 42;
 LL | |     }
    | |_____^ help: it is more idiomatic to write: `let <mut> foo = if f() { 42 } else { 0 };`
    |
-   = note: `-D clippy::useless-let-if-seq` implied by `-D warnings`
    = note: you might not need `mut` at all
+   = note: `-D clippy::useless-let-if-seq` implied by `-D warnings`
 
 error: `if _ { .. } else { .. }` is an expression
   --> $DIR/let_if_seq.rs:71:5

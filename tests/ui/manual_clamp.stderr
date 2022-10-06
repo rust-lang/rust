@@ -9,8 +9,8 @@ LL | |         x9 = max;
 LL | |     }
    | |_____^ help: replace with clamp: `x9 = x9.clamp(min, max);`
    |
-   = note: `-D clippy::manual-clamp` implied by `-D warnings`
    = note: clamp will panic if max < min
+   = note: `-D clippy::manual-clamp` implied by `-D warnings`
 
 error: clamp-like pattern without using clamp function
   --> $DIR/manual_clamp.rs:91:5

@@ -4,12 +4,12 @@ error: calling `to_string` on `&&str`
 LL |     let _: String = rrstr.to_string();
    |                     ^^^^^^^^^^^^^^^^^ help: try dereferencing the receiver: `(*rrstr).to_string()`
    |
+   = help: `&str` implements `ToString` through a slower blanket impl, but `str` has a fast specialization of `ToString`
 note: the lint level is defined here
   --> $DIR/inefficient_to_string.rs:2:9
    |
 LL | #![deny(clippy::inefficient_to_string)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: `&str` implements `ToString` through a slower blanket impl, but `str` has a fast specialization of `ToString`
 
 error: calling `to_string` on `&&&str`
   --> $DIR/inefficient_to_string.rs:12:21
