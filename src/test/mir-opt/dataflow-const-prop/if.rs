@@ -1,8 +1,8 @@
 // unit-test: DataflowConstProp
+// compile-flags: -Zunsound-mir-opts
 
 // EMIT_MIR if.main.DataflowConstProp.diff
 fn main() {
-    // This does not work (yet). Needs perhaps additional state to track unreachability.
     let a = 1;
     let b = if *&a == 1 { 2 } else { 3 };
     let c = b + 1;

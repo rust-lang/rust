@@ -37,7 +37,7 @@
           StorageLive(_6);                 // scope 2 at $DIR/ref.rs:+3:16: +3:34
           _6 = id() -> bb1;                // scope 2 at $DIR/ref.rs:+3:16: +3:34
                                            // mir::Constant
-                                           // + span: $DIR/ref.rs:7:16: 7:32
+                                           // + span: $DIR/ref.rs:8:16: 8:32
                                            // + literal: Const { ty: fn() -> u32 {id}, val: Value(<ZST>) }
       }
   

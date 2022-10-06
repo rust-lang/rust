@@ -70,6 +70,7 @@ use std::fmt::{Debug, Formatter};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::tcx::PlaceTy;
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
@@ -567,7 +568,17 @@ impl Map {
         filter: impl FnMut(Ty<'tcx>) -> bool,
     ) -> Self {
         let mut map = Self::new();
-        map.register_with_filter(tcx, body, 3, filter);
+
+        // If `-Zunsound-mir-opts` is given, tracking through references, and tracking of places
+        // that have their reference taken is allowed. This would be "unsound" in the sense that
+        // the correctness relies on an aliasing model similar to Stacked Borrows (which is
+        // not yet guaranteed).
+        if tcx.sess.opts.unstable_opts.unsound_mir_opts {
+            map.register_with_filter(tcx, body, 3, filter, &[]);
+        } else {
+            map.register_with_filter(tcx, body, 0, filter, &escaped_places(body));
+        }
+
         map
     }
 
@@ -577,6 +588,7 @@ impl Map {
         body: &Body<'tcx>,
         max_derefs: u32,
         mut filter: impl FnMut(Ty<'tcx>) -> bool,
+        exclude: &[Place<'tcx>],
     ) {
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         let mut projection = Vec::new();
@@ -589,6 +601,7 @@ impl Map {
                 decl.ty,
                 &mut filter,
                 param_env,
+                exclude,
             );
         }
     }
@@ -602,11 +615,18 @@ impl Map {
         ty: Ty<'tcx>,
         filter: &mut impl FnMut(Ty<'tcx>) -> bool,
         param_env: ty::ParamEnv<'tcx>,
+        exclude: &[Place<'tcx>],
     ) {
+        // This check could be improved.
+        if exclude.contains(&Place { local, projection: tcx.intern_place_elems(projection) }) {
+            return;
+        }
+
         if filter(ty) {
             // This might fail if `ty` is not scalar.
             let _ = self.register_with_ty(local, projection, ty);
         }
+
         if max_derefs > 0 {
             if let Some(ty::TypeAndMut { ty: deref_ty, .. }) = ty.builtin_deref(false) {
                 // References can only be tracked if the target is `!Freeze`.
@@ -620,6 +640,7 @@ impl Map {
                         deref_ty,
                         filter,
                         param_env,
+                        exclude,
                     );
                     projection.pop();
                 }
@@ -632,7 +653,7 @@ impl Map {
             }
             projection.push(PlaceElem::Field(field, ty));
             self.register_with_filter_rec(
-                tcx, max_derefs, local, projection, ty, filter, param_env,
+                tcx, max_derefs, local, projection, ty, filter, param_env, exclude,
             );
             projection.pop();
         });
@@ -749,6 +770,25 @@ impl PlaceInfo {
     fn new(proj_elem: Option<ProjElem>) -> Self {
         Self { next_sibling: None, first_child: None, proj_elem, value_index: None }
     }
+}
+
+/// Returns all places, that have their reference or address taken.
+fn escaped_places<'tcx>(body: &Body<'tcx>) -> Vec<Place<'tcx>> {
+    struct Collector<'tcx> {
+        result: Vec<Place<'tcx>>,
+    }
+
+    impl<'tcx> Visitor<'tcx> for Collector<'tcx> {
+        fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
+            if context.is_borrow() || context.is_address_of() {
+                self.result.push(*place);
+            }
+        }
+    }
+
+    let mut collector = Collector { result: Vec::new() };
+    collector.visit_body(body);
+    collector.result
 }
 
 struct Children<'a> {
