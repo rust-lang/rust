@@ -27,10 +27,7 @@ const CARGO_DEFINED_VARS: &[(&str, &str)] = &[
 ("CARGO_TARGET_TMPDIR","Only set when building integration test or benchmark code. This is a path to a directory inside the target directory where integration tests or benchmarks are free to put any data needed by the tests/benches. Cargo initially creates this directory but doesn't manage its content in any way, this is the responsibility of the test code")
 ];
 
-pub(crate) fn complete_cargo_env_vars(
-    acc: &mut Completions,
-    expanded: &ast::String,
-) -> Option<()> {
+pub(crate) fn complete_cargo_env_vars(acc: &mut Completions, expanded: &ast::String) -> Option<()> {
     guard_env_macro(expanded)?;
     let range = expanded.text_range_between_quotes()?;
 
@@ -57,15 +54,25 @@ mod tests {
     use crate::tests::{check_edit, completion_list};
 
     fn check(macro_name: &str) {
-        check_edit("CARGO_BIN_NAME",&format!(r#"
+        check_edit(
+            "CARGO_BIN_NAME",
+            &format!(
+                r#"
             fn main() {{
                 let foo = {}!("CAR$0");
             }}
-        "#, macro_name), &format!(r#"
+        "#,
+                macro_name
+            ),
+            &format!(
+                r#"
             fn main() {{
                 let foo = {}!("CARGO_BIN_NAME");
             }}
-        "#, macro_name));
+        "#,
+                macro_name
+            ),
+        );
     }
     #[test]
     fn completes_env_variable_in_env() {

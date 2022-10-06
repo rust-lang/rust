@@ -2,8 +2,8 @@
 use itertools::Itertools;
 use parser::T;
 use syntax::{
-    ast::{self, HasLoopBody, PathSegmentKind, VisibilityKind, NameRef},
-    AstNode, Preorder, RustLanguage, WalkEvent, AstToken,
+    ast::{self, HasLoopBody, NameRef, PathSegmentKind, VisibilityKind},
+    AstNode, AstToken, Preorder, RustLanguage, WalkEvent,
 };
 
 pub fn expr_as_name_ref(expr: &ast::Expr) -> Option<ast::NameRef> {
