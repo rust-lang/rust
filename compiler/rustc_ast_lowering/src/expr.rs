@@ -512,8 +512,31 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr_call(overall_span, constructor, std::slice::from_ref(expr))
     }
 
+    fn is_guard_if_let(&self, arm: &Arm) -> bool {
+        let mut if_let = false;
+        let _guard = arm.guard.as_ref().map(|cond| {
+            if let ExprKind::Let(..) = cond.kind {
+                if_let = true;
+            } else {
+                if_let = false;
+            }
+        });
+        if_let
+    }
+
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
-        let pat = self.lower_pat(&arm.pat);
+        let pat;
+
+        // If we are using 'IfLet' guard with 'PatKind::Or' each subpattern gets it's own local
+        // which in confuses borrow checker about which of those locals are initialzied are which are not.
+        // This makes it so we only use last 'pat' in 'Or' pattern.
+        // See issue #88015 for more info.
+        if let PatKind::Or(pats) = &arm.pat.kind && self.is_guard_if_let(arm){
+           pat = self.lower_pat(pats.last().unwrap());
+        }else{
+           pat = self.lower_pat(&arm.pat);
+        }
+
         let guard = arm.guard.as_ref().map(|cond| {
             if let ExprKind::Let(ref pat, ref scrutinee, span) = cond.kind {
                 hir::Guard::IfLet(self.arena.alloc(hir::Let {

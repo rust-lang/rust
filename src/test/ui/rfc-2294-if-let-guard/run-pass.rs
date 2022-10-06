@@ -30,4 +30,10 @@ fn main() {
         Some(x) if let Foo::Qux(y) = qux(x) => assert_eq!(y, 84),
         _ => panic!(),
     }
+    match () {
+        () | () if let x = 0 => {
+            x;
+        },
+        _ => {}
+    };
 }
