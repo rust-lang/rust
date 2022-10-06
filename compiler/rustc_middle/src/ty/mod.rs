@@ -1942,11 +1942,12 @@ bitflags! {
         const IS_C               = 1 << 0;
         const IS_SIMD            = 1 << 1;
         const IS_TRANSPARENT     = 1 << 2;
+        const USE_FLAG           = 1 << 3;
         // Internal only for now. If true, don't reorder fields.
-        const IS_LINEAR          = 1 << 3;
+        const IS_LINEAR          = 1 << 4;
         // If true, the type's layout can be randomized using
         // the seed stored in `ReprOptions.layout_seed`
-        const RANDOMIZE_LAYOUT   = 1 << 4;
+        const RANDOMIZE_LAYOUT   = 1 << 5;
         // Any of these flags being set prevent field reordering optimisation.
         const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits
                                  | ReprFlags::IS_SIMD.bits
@@ -2004,6 +2005,7 @@ impl ReprOptions {
                     }
                     attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
                     attr::ReprSimd => ReprFlags::IS_SIMD,
+                    attr::ReprFlag => ReprFlags::USE_FLAG,
                     attr::ReprInt(i) => {
                         size = Some(i);
                         ReprFlags::empty()
@@ -2048,6 +2050,11 @@ impl ReprOptions {
     #[inline]
     pub fn transparent(&self) -> bool {
         self.flags.contains(ReprFlags::IS_TRANSPARENT)
+    }
+
+    #[inline]
+    pub fn use_flag(&self) -> bool {
+        self.flags.contains(ReprFlags::USE_FLAG)
     }
 
     #[inline]

@@ -723,6 +723,7 @@ symbols! {
         file_macro,
         fill,
         finish,
+        flag,
         flags,
         float,
         float_to_int_unchecked,

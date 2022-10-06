@@ -823,15 +823,22 @@ where
             }
             abi::Variants::Multiple {
                 tag_encoding:
-                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
+                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start, ref flag, },
                 tag: tag_layout,
                 tag_field,
                 ..
             } => {
-                // No need to validate that the discriminant here because the
+                // No need to validate the discriminant here because the
                 // `TyAndLayout::for_variant()` call earlier already checks the variant is valid.
 
                 if variant_index != untagged_variant {
+                    if let Some(flag) = flag {
+                        let flag_layout = self.layout_of(flag.scalar.primitive().to_int_ty(*self.tcx))?;
+                        let val = ImmTy::from_uint(flag.magic_value, flag_layout);
+                        let flag_dest = self.place_field(dest, flag.field)?;
+                        self.write_immediate(*val, &flag_dest)?;
+                    }
+
                     let variants_start = niche_variants.start().as_u32();
                     let variant_index_relative = variant_index
                         .as_u32()

@@ -3520,8 +3520,10 @@ mod size_asserts {
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);
-    static_assert_size!(ForeignItem<'_>, 72);
-    static_assert_size!(ForeignItemKind<'_>, 40);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(ForeignItem<'_>, 64);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(ForeignItemKind<'_>, 32);
     static_assert_size!(GenericArg<'_>, 24);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
@@ -3540,8 +3542,10 @@ mod size_asserts {
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
-    static_assert_size!(TraitItem<'_>, 88);
-    static_assert_size!(TraitItemKind<'_>, 48);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(TraitItem<'_>, 80);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(TraitItemKind<'_>, 40);
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
 }

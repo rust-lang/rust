@@ -15,16 +15,19 @@ error: layout_of(std::result::Result<[u32; 0], bool>) = Layout {
                    0,
                ],
            },
-           largest_niche: Some(
+           niches: [
                Niche {
-                   offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
+                   data: NicheData {
+                       offset: Size(0 bytes),
+                       value: Int(
+                           I8,
+                           false,
+                       ),
+                       valid_range: 0..=1,
+                   },
+                   flag: None,
                },
-           ),
+           ],
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -53,7 +56,7 @@ error: layout_of(std::result::Result<[u32; 0], bool>) = Layout {
                                0,
                            ],
                        },
-                       largest_niche: None,
+                       niches: [],
                        variants: Single {
                            index: 0,
                        },
@@ -75,16 +78,19 @@ error: layout_of(std::result::Result<[u32; 0], bool>) = Layout {
                                0,
                            ],
                        },
-                       largest_niche: Some(
+                       niches: [
                            Niche {
-                               offset: Size(1 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
+                               data: NicheData {
+                                   offset: Size(1 bytes),
+                                   value: Int(
+                                       I8,
+                                       false,
+                                   ),
+                                   valid_range: 0..=1,
+                               },
+                               flag: None,
                            },
-                       ),
+                       ],
                        variants: Single {
                            index: 1,
                        },
@@ -114,16 +120,19 @@ error: layout_of(MultipleAlignments) = Layout {
                    0,
                ],
            },
-           largest_niche: Some(
+           niches: [
                Niche {
-                   offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=2,
+                   data: NicheData {
+                       offset: Size(0 bytes),
+                       value: Int(
+                           I8,
+                           false,
+                       ),
+                       valid_range: 0..=2,
+                   },
+                   flag: None,
                },
-           ),
+           ],
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -152,7 +161,7 @@ error: layout_of(MultipleAlignments) = Layout {
                                0,
                            ],
                        },
-                       largest_niche: None,
+                       niches: [],
                        variants: Single {
                            index: 0,
                        },
@@ -174,7 +183,7 @@ error: layout_of(MultipleAlignments) = Layout {
                                0,
                            ],
                        },
-                       largest_niche: None,
+                       niches: [],
                        variants: Single {
                            index: 1,
                        },
@@ -196,16 +205,19 @@ error: layout_of(MultipleAlignments) = Layout {
                                0,
                            ],
                        },
-                       largest_niche: Some(
+                       niches: [
                            Niche {
-                               offset: Size(1 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
+                               data: NicheData {
+                                   offset: Size(1 bytes),
+                                   value: Int(
+                                       I8,
+                                       false,
+                                   ),
+                                   valid_range: 0..=1,
+                               },
+                               flag: None,
                            },
-                       ),
+                       ],
                        variants: Single {
                            index: 2,
                        },
@@ -235,16 +247,19 @@ error: layout_of(std::result::Result<[u32; 0], Packed<std::num::NonZeroU16>>) = 
                    0,
                ],
            },
-           largest_niche: Some(
+           niches: [
                Niche {
-                   offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
+                   data: NicheData {
+                       offset: Size(0 bytes),
+                       value: Int(
+                           I8,
+                           false,
+                       ),
+                       valid_range: 0..=1,
+                   },
+                   flag: None,
                },
-           ),
+           ],
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -273,7 +288,7 @@ error: layout_of(std::result::Result<[u32; 0], Packed<std::num::NonZeroU16>>) = 
                                0,
                            ],
                        },
-                       largest_niche: None,
+                       niches: [],
                        variants: Single {
                            index: 0,
                        },
@@ -295,16 +310,19 @@ error: layout_of(std::result::Result<[u32; 0], Packed<std::num::NonZeroU16>>) = 
                                0,
                            ],
                        },
-                       largest_niche: Some(
+                       niches: [
                            Niche {
-                               offset: Size(1 bytes),
-                               value: Int(
-                                   I16,
-                                   false,
-                               ),
-                               valid_range: 1..=65535,
+                               data: NicheData {
+                                   offset: Size(1 bytes),
+                                   value: Int(
+                                       I16,
+                                       false,
+                                   ),
+                                   valid_range: 1..=65535,
+                               },
+                               flag: None,
                            },
-                       ),
+                       ],
                        variants: Single {
                            index: 1,
                        },
@@ -334,16 +352,19 @@ error: layout_of(std::result::Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                    0,
                ],
            },
-           largest_niche: Some(
+           niches: [
                Niche {
-                   offset: Size(0 bytes),
-                   value: Int(
-                       I16,
-                       false,
-                   ),
-                   valid_range: 0..=1,
+                   data: NicheData {
+                       offset: Size(0 bytes),
+                       value: Int(
+                           I16,
+                           false,
+                       ),
+                       valid_range: 0..=1,
+                   },
+                   flag: None,
                },
-           ),
+           ],
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -356,6 +377,7 @@ error: layout_of(std::result::Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                    untagged_variant: 1,
                    niche_variants: 0..=0,
                    niche_start: 1,
+                   flag: None,
                },
                tag_field: 0,
                variants: [
@@ -376,7 +398,7 @@ error: layout_of(std::result::Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                                0,
                            ],
                        },
-                       largest_niche: None,
+                       niches: [],
                        variants: Single {
                            index: 0,
                        },
@@ -398,16 +420,7 @@ error: layout_of(std::result::Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                                0,
                            ],
                        },
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I16,
-                                   false,
-                               ),
-                               valid_range: 0..=0,
-                           },
-                       ),
+                       niches: [],
                        variants: Single {
                            index: 1,
                        },

@@ -13,13 +13,15 @@ use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::*;
 
-use std::cmp::{self, Ordering};
+use std::cmp;
 use std::iter;
 use std::num::NonZeroUsize;
 use std::ops::Bound;
 
 use rand::{seq::SliceRandom, SeedableRng};
 use rand_xoshiro::Xoshiro128StarStar;
+
+use smallvec::SmallVec;
 
 use crate::layout_sanity_check::sanity_check_layout;
 
@@ -96,12 +98,10 @@ fn scalar_pair<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, a: Scalar, b: Scalar) ->
     let b_offset = a.size(dl).align_to(b_align.abi);
     let size = (b_offset + b.size(dl)).align_to(align.abi);
 
-    // HACK(nox): We iter on `b` and then `a` because `max_by_key`
-    // returns the last maximum.
-    let largest_niche = Niche::from_scalar(dl, b_offset, b)
+    let niches: Vec<Niche> = Niche::from_scalar(dl, Size::ZERO, a)
         .into_iter()
-        .chain(Niche::from_scalar(dl, Size::ZERO, a))
-        .max_by_key(|niche| niche.available(dl));
+        .chain(Niche::from_scalar(dl, b_offset, b).into_iter())
+        .collect();
 
     LayoutS {
         variants: Variants::Single { index: VariantIdx::new(0) },
@@ -110,7 +110,7 @@ fn scalar_pair<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, a: Scalar, b: Scalar) ->
             memory_index: vec![0, 1],
         },
         abi: Abi::ScalarPair(a, b),
-        largest_niche,
+        niches,
         align,
         size,
     }
@@ -187,8 +187,7 @@ fn univariant_uninterned<'tcx>(
     let mut sized = true;
     let mut offsets = vec![Size::ZERO; fields.len()];
     let mut offset = Size::ZERO;
-    let mut largest_niche = None;
-    let mut largest_niche_available = 0;
+    let mut niches = Vec::new();
 
     if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
         let prefix_align =
@@ -226,16 +225,25 @@ fn univariant_uninterned<'tcx>(
         debug!("univariant offset: {:?} field: {:#?}", offset, field);
         offsets[i as usize] = offset;
 
-        if let Some(mut niche) = field.largest_niche {
-            let available = niche.available(dl);
-            if available > largest_niche_available {
-                largest_niche_available = available;
-                niche.offset += offset;
-                largest_niche = Some(niche);
+        niches.extend(field.niches.iter().cloned().map(|mut niche| {
+            niche.data.offset += offset;
+            if let Some(ref mut data) = niche.flag.as_mut() {
+                data.offset += offset;
             }
-        }
+            niche
+        }));
 
         offset = offset.checked_add(field.size, dl).ok_or(LayoutError::SizeOverflow(ty))?;
+
+        // Niche with most available values first.
+        niches.sort_by_key(|niche| {
+            (niche.flag.is_some(), !niche.available(dl), niche.data.offset.bytes())
+        });
+
+        // We may accumulate many niches as types nest. For performance we don't
+        // keep all of them around. (I haven't done any real benchmarking of
+        // this yet, and 4 is arbitrary.)
+        niches.truncate(4);
     }
 
     if let Some(repr_align) = repr.align {
@@ -328,10 +336,322 @@ fn univariant_uninterned<'tcx>(
         variants: Variants::Single { index: VariantIdx::new(0) },
         fields: FieldsShape::Arbitrary { offsets, memory_index },
         abi,
-        largest_niche,
+        niches,
         align,
         size,
     })
+}
+
+#[derive(Clone, Copy)]
+struct UsedFlag {
+    magic_value: u128,
+    scalar: Scalar,
+    offset: Size,
+    untagged_in_niche: bool,
+}
+
+#[derive(Clone, Copy)]
+struct UsedNiche {
+    start: u128,
+    scalar: Scalar,
+    offset: Size,
+    flag: Option<UsedFlag>,
+}
+
+fn fit_layouts_around(
+    variant_layouts: &mut IndexVec<VariantIdx, LayoutS<'_>>,
+    variants: &IndexVec<VariantIdx, Vec<TyAndLayout<'_>>>,
+    largest_variant_index: VariantIdx,
+    niche1: (Size, Size), // (offset, size)
+    niche2: (Size, Size),
+    size: Size,
+) -> bool {
+    enum PastNicheStatus {
+        PastNone,
+        Past1,
+        PastBoth,
+    }
+    use PastNicheStatus::*;
+
+    variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
+        if i == largest_variant_index {
+            return true;
+        }
+
+        layout.niches = Vec::new();
+
+        if layout.size <= niche1.0 {
+            // This variant will fit before the niches.
+            return true;
+        }
+
+        // Put as many fields as possible before the niche,
+        // then try to fill in the rest after.
+        let fields = &variants[i];
+        let ordered_indices: SmallVec<[usize; 8]> =
+            layout.fields.index_by_increasing_offset().collect();
+        let FieldsShape::Arbitrary { ref mut offsets, .. } = layout.fields else { bug!() };
+        let mut next = Size::ZERO;
+        let mut past_niche = PastNone;
+        for j in ordered_indices.iter().cloned() {
+            let offset = &mut offsets[j];
+            let field_size = fields[j].layout.size();
+            let field_align = fields[j].layout.align().abi;
+
+            match past_niche {
+                PastBoth => *offset = next.align_to(field_align),
+                Past1 => {
+                    *offset = next.align_to(field_align);
+                    if *offset + field_size > niche2.0 {
+                        *offset = (niche2.0 + niche2.1).align_to(field_align);
+                        past_niche = PastBoth;
+                    }
+                }
+                PastNone => {
+                    if *offset + field_size > niche1.0 {
+                        *offset = (niche1.0 + niche1.1).align_to(field_align);
+                        past_niche = Past1;
+                        if *offset + field_size > niche2.0 {
+                            *offset = (niche2.0 + niche2.1).align_to(field_align);
+                            past_niche = PastBoth;
+                        }
+                    }
+                }
+            }
+            next = *offset + field_size;
+            if next > size {
+                return false;
+            }
+        }
+        layout.size = next.align_to(layout.align.abi);
+
+        // It can't be a Scalar or ScalarPair.
+        if !layout.abi.is_uninhabited() {
+            layout.abi = Abi::Aggregate { sized: true };
+        }
+
+        true
+    })
+}
+
+struct NicheFinder<'a, 'tcx> {
+    dl: &'a TargetDataLayout,
+    variant_layouts: &'a mut IndexVec<VariantIdx, LayoutS<'tcx>>,
+    variants: &'a IndexVec<VariantIdx, Vec<TyAndLayout<'tcx>>>,
+    largest_variant_index: VariantIdx,
+    size: Size,
+    align: Align,
+    count: u128,
+    backup_variant_layouts: &'a IndexVec<VariantIdx, LayoutS<'tcx>>,
+    niches: &'a [Niche],
+}
+
+impl<'a, 'tcx> NicheFinder<'a, 'tcx> {
+    fn find_niche_noflag(&mut self) -> Option<UsedNiche> {
+        for niche in self.niches.iter() {
+            let used_niche = match niche.reserve(self.dl, self.count) {
+                Some((start, scalar)) => UsedNiche {
+                    start,
+                    scalar,
+                    offset: niche.data.offset,
+                    flag: niche.flag.map(|f| UsedFlag {
+                        magic_value: f.valid_range.end,
+                        scalar: Scalar::Initialized { value: f.value, valid_range: f.valid_range },
+                        offset: f.offset,
+                        untagged_in_niche: true,
+                    }),
+                },
+                None => match niche.reserve_with_new_flag(self.dl, self.count) {
+                    Some((magic_value, flag_scalar, niche_scalar)) => UsedNiche {
+                        start: 0,
+                        scalar: niche_scalar,
+                        offset: niche.data.offset,
+                        flag: Some(UsedFlag {
+                            magic_value,
+                            scalar: flag_scalar,
+                            offset: niche.flag.unwrap().offset,
+                            untagged_in_niche: false,
+                        }),
+                    },
+                    None => continue,
+                },
+            };
+
+            let niche_size = used_niche.scalar.size(self.dl);
+            let (offset1, size1, offset2, size2) = match used_niche.flag {
+                None => (used_niche.offset, niche_size, used_niche.offset, niche_size),
+                Some(f) => {
+                    let flag_size = f.scalar.size(self.dl);
+                    if used_niche.offset < f.offset {
+                        (used_niche.offset, niche_size, f.offset, flag_size)
+                    } else {
+                        (f.offset, flag_size, used_niche.offset, niche_size)
+                    }
+                }
+            };
+
+            if fit_layouts_around(
+                self.variant_layouts,
+                self.variants,
+                self.largest_variant_index,
+                (offset1, size1),
+                (offset2, size2),
+                self.size,
+            ) {
+                return Some(used_niche);
+            }
+
+            self.variant_layouts.clone_from(self.backup_variant_layouts);
+        }
+        None
+    }
+
+    fn try_flag(
+        &mut self,
+        flag_data: &NicheData,
+        niche_primitive: Primitive,
+        niche_offset: Size,
+    ) -> Option<UsedNiche> {
+        if !niche_primitive.is_int() && !niche_primitive.is_ptr() {
+            return None;
+        }
+
+        let flag_primitive: Primitive = flag_data.value;
+        let flag_offset: Size = flag_data.offset;
+        let flag_valid_range: WrappingRange = flag_data.valid_range;
+        let niche_size = niche_primitive.size(self.dl);
+        let niche_max = niche_size.unsigned_int_max();
+
+        if niche_max < self.count - 1 {
+            return None;
+        }
+
+        let flag_size = flag_primitive.size(self.dl);
+        let flag_max = flag_size.unsigned_int_max();
+        let magic_value = flag_valid_range.end.wrapping_add(1) & flag_max;
+
+        let (offset1, size1, offset2, size2) = if flag_offset < niche_offset {
+            (flag_offset, flag_size, niche_offset, niche_size)
+        } else {
+            (niche_offset, niche_size, flag_offset, flag_size)
+        };
+
+        if fit_layouts_around(
+            self.variant_layouts,
+            self.variants,
+            self.largest_variant_index,
+            (offset1, size1),
+            (offset2, size2),
+            self.size,
+        ) {
+            Some(UsedNiche {
+                start: 0,
+                scalar: Scalar::Initialized {
+                    value: niche_primitive,
+                    valid_range: WrappingRange { start: 0, end: self.count - 1 },
+                },
+                offset: niche_offset,
+                flag: Some(UsedFlag {
+                    magic_value,
+                    scalar: Scalar::Initialized {
+                        value: flag_primitive,
+                        valid_range: flag_valid_range.with_end(magic_value),
+                    },
+                    offset: flag_offset,
+                    untagged_in_niche: false,
+                }),
+            })
+        } else {
+            self.variant_layouts.clone_from(self.backup_variant_layouts);
+            None
+        }
+    }
+
+    fn try_offset(&mut self, flag_data: &NicheData, offset: Size) -> Option<UsedNiche> {
+        let u16_prim = Primitive::Int(Integer::I16, false);
+        let u16_size = u16_prim.size(self.dl);
+        let u16_align = u16_prim.align(self.dl).abi;
+        let u8_prim = Primitive::Int(Integer::I8, false);
+        let u8_size = u8_prim.size(self.dl);
+
+        let flag_offset = flag_data.offset;
+        let flag_size = flag_data.value.size(self.dl);
+
+        // Try a u16.
+        if offset.is_aligned(u16_align)
+            && self.align >= u16_align
+            && offset + u16_size <= self.size
+            && (flag_offset + flag_size <= offset || offset + u16_size <= flag_offset)
+        {
+            let opt_niche = self.try_flag(&flag_data, u16_prim, offset);
+            if opt_niche.is_some() {
+                return opt_niche;
+            }
+        }
+
+        // Try a u8.
+        if offset + u8_size <= self.size
+            && (flag_offset + flag_size <= offset || offset + u8_size <= flag_offset)
+        {
+            self.try_flag(&flag_data, u8_prim, offset)
+        } else {
+            None
+        }
+    }
+
+    fn find_niche_flag(&mut self) -> Option<UsedNiche> {
+        for flag_niche in self.niches.iter() {
+            if flag_niche.flag.is_some() {
+                continue;
+            }
+
+            // If the untagged variant uses the ScalarPair ABI, try to preserve
+            // that.
+            if let Abi::ScalarPair(first, second) =
+                self.variant_layouts[self.largest_variant_index].abi
+            {
+                let (other_offset, other_scalar) = if flag_niche.data.offset == Size::ZERO {
+                    (first.size(self.dl).align_to(second.align(self.dl).abi), second)
+                } else {
+                    (Size::ZERO, first)
+                };
+
+                let opt_niche =
+                    self.try_flag(&flag_niche.data, other_scalar.primitive(), other_offset);
+                if opt_niche.is_some() {
+                    return opt_niche;
+                }
+            }
+
+            // Otherwise, we don't even need to pay attention to the fields of
+            // the variant; just avoid the flag. There seems to be little point
+            // in looking for anything larger than a u16 niche, since
+            // we will be able to use all its values.
+
+            let flag_size = flag_niche.data.value.size(self.dl);
+            let u16_prim = Primitive::Int(Integer::I16, false);
+            let u16_align = u16_prim.align(self.dl).abi;
+            let potential_niche_offsets = [
+                flag_niche.data.offset + flag_size,
+                (flag_niche.data.offset + flag_size).align_to(u16_align),
+                Size::from_bytes(self.size.bytes() - 1),
+                Size::from_bytes(self.size.bytes().max(2) - 2),
+                Size::ZERO,
+            ];
+
+            for (i, potential_niche_offset) in potential_niche_offsets.iter().cloned().enumerate() {
+                if potential_niche_offsets[..i].iter().any(|&off| off == potential_niche_offset) {
+                    continue;
+                }
+                let opt_niche = self.try_offset(&flag_niche.data, potential_niche_offset);
+                if opt_niche.is_some() {
+                    return opt_niche;
+                }
+            }
+        }
+
+        None
+    }
 }
 
 fn layout_of_uncached<'tcx>(
@@ -386,7 +706,7 @@ fn layout_of_uncached<'tcx>(
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Uninhabited,
-            largest_niche: None,
+            niches: Vec::new(),
             align: dl.i8_align,
             size: Size::ZERO,
         }),
@@ -449,13 +769,14 @@ fn layout_of_uncached<'tcx>(
                 Abi::Aggregate { sized: true }
             };
 
-            let largest_niche = if count != 0 { element.largest_niche } else { None };
+            // YYY - this is an arbitrary choice
+            let niches = if count != 0 { element.niches.clone() } else { Vec::new() };
 
             tcx.intern_layout(LayoutS {
                 variants: Variants::Single { index: VariantIdx::new(0) },
                 fields: FieldsShape::Array { stride: element.size, count },
                 abi,
-                largest_niche,
+                niches,
                 align: element.align,
                 size,
             })
@@ -466,7 +787,7 @@ fn layout_of_uncached<'tcx>(
                 variants: Variants::Single { index: VariantIdx::new(0) },
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
                 abi: Abi::Aggregate { sized: false },
-                largest_niche: None,
+                niches: Vec::new(),
                 align: element.align,
                 size: Size::ZERO,
             })
@@ -475,7 +796,7 @@ fn layout_of_uncached<'tcx>(
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
             abi: Abi::Aggregate { sized: false },
-            largest_niche: None,
+            niches: Vec::new(),
             align: dl.i8_align,
             size: Size::ZERO,
         }),
@@ -627,7 +948,7 @@ fn layout_of_uncached<'tcx>(
                 variants: Variants::Single { index: VariantIdx::new(0) },
                 fields,
                 abi: Abi::Vector { element: e_abi, count: e_len },
-                largest_niche: e_ly.largest_niche,
+                niches: e_ly.niches.clone(),
                 size,
                 align,
             })
@@ -707,7 +1028,7 @@ fn layout_of_uncached<'tcx>(
                         NonZeroUsize::new(variants[index].len()).ok_or(LayoutError::Unknown(ty))?,
                     ),
                     abi,
-                    largest_niche: None,
+                    niches: Vec::new(),
                     align,
                     size: size.align_to(align.abi),
                 }));
@@ -781,7 +1102,7 @@ fn layout_of_uncached<'tcx>(
                         Abi::Vector { element, count: _ } => hide_niches(element),
                         Abi::Aggregate { sized: _ } => {}
                     }
-                    st.largest_niche = None;
+                    st.niches = Vec::new();
                     return Ok(tcx.intern_layout(st));
                 }
 
@@ -812,19 +1133,9 @@ fn layout_of_uncached<'tcx>(
                             valid_range.end = end;
                         }
 
-                        // Update `largest_niche` if we have introduced a larger niche.
-                        let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
-                        if let Some(niche) = niche {
-                            match st.largest_niche {
-                                Some(largest_niche) => {
-                                    // Replace the existing niche even if they're equal,
-                                    // because this one is at a lower offset.
-                                    if largest_niche.available(dl) <= niche.available(dl) {
-                                        st.largest_niche = Some(niche);
-                                    }
-                                }
-                                None => st.largest_niche = Some(niche),
-                            }
+                        if st.niches.is_empty() {
+                            st.niches =
+                                Niche::from_scalar(dl, Size::ZERO, *scalar).into_iter().collect();
                         }
                     }
                     _ => assert!(
@@ -872,6 +1183,7 @@ fn layout_of_uncached<'tcx>(
                     }
 
                     let mut align = dl.aggregate_align;
+                    let mut size = Size::ZERO;
                     let mut variant_layouts = variants
                         .iter_enumerated()
                         .map(|(j, v)| {
@@ -885,96 +1197,101 @@ fn layout_of_uncached<'tcx>(
                             st.variants = Variants::Single { index: j };
 
                             align = align.max(st.align);
+                            size = size.max(st.size);
 
                             Ok(st)
                         })
                         .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
-                    let largest_variant_index = match variant_layouts
-                        .iter_enumerated()
-                        .max_by_key(|(_i, layout)| layout.size.bytes())
-                        .map(|(i, _layout)| i)
-                    {
-                        None => return Ok(None),
-                        Some(i) => i,
-                    };
-
-                    let all_indices = VariantIdx::new(0)..=VariantIdx::new(variants.len() - 1);
-                    let needs_disc = |index: VariantIdx| {
-                        index != largest_variant_index && !absent(&variants[index])
-                    };
-                    let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
-                        ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
-
-                    let count = niche_variants.size_hint().1.unwrap() as u128;
-
-                    // Find the field with the largest niche
-                    let (field_index, niche, (niche_start, niche_scalar)) = match variants
-                        [largest_variant_index]
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(j, field)| Some((j, field.largest_niche?)))
-                        .max_by_key(|(_, niche)| niche.available(dl))
-                        .and_then(|(j, niche)| Some((j, niche, niche.reserve(cx, count)?)))
-                    {
-                        None => return Ok(None),
-                        Some(x) => x,
-                    };
-
-                    let niche_offset = niche.offset
-                        + variant_layouts[largest_variant_index].fields.offset(field_index);
-                    let niche_size = niche.value.size(dl);
-                    let size = variant_layouts[largest_variant_index].size.align_to(align.abi);
-
-                    let all_variants_fit =
-                        variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
-                            if i == largest_variant_index {
-                                return true;
-                            }
-
-                            layout.largest_niche = None;
-
-                            if layout.size <= niche_offset {
-                                // This variant will fit before the niche.
-                                return true;
-                            }
-
-                            // Determine if it'll fit after the niche.
-                            let this_align = layout.align.abi;
-                            let this_offset = (niche_offset + niche_size).align_to(this_align);
-
-                            if this_offset + layout.size > size {
-                                return false;
-                            }
-
-                            // It'll fit, but we need to make some adjustments.
-                            match layout.fields {
-                                FieldsShape::Arbitrary { ref mut offsets, .. } => {
-                                    for (j, offset) in offsets.iter_mut().enumerate() {
-                                        if !variants[i][j].is_zst() {
-                                            *offset += this_offset;
-                                        }
-                                    }
-                                }
-                                _ => {
-                                    panic!("Layout of fields should be Arbitrary for variants")
-                                }
-                            }
-
-                            // It can't be a Scalar or ScalarPair because the offset isn't 0.
-                            if !layout.abi.is_uninhabited() {
-                                layout.abi = Abi::Aggregate { sized: true };
-                            }
-                            layout.size += this_offset;
-
-                            true
-                        });
-
-                    if !all_variants_fit {
+                    if size == Size::ZERO {
                         return Ok(None);
                     }
 
-                    let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
+                    // Find the indices of the variants of largest size. It
+                    // might seem at first glance that we only want to find a
+                    // unique largest variant, but actually niche optimization
+                    // can still happen if multiple variants are the largest
+                    // size, because some of that size may be padding and the
+                    // fields can move.
+                    let largest_variant_indices: SmallVec<[VariantIdx; 8]> = variant_layouts
+                        .iter_enumerated()
+                        .filter(|(_i, layout)| layout.size == size)
+                        .map(|(i, _layout)| i)
+                        .collect();
+
+                    size = size.align_to(align.abi);
+                    let mut largest_variant_index_found = None;
+                    let mut used_niche_opt_found = None;
+                    let mut niche_variants_found = None;
+
+                    for largest_variant_index in largest_variant_indices.iter().cloned() {
+                        let all_indices = VariantIdx::new(0)..=VariantIdx::new(variants.len() - 1);
+                        let needs_disc = |index: VariantIdx| {
+                            index != largest_variant_index && !absent(&variants[index])
+                        };
+                        let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
+                            ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
+
+                        let count = niche_variants.size_hint().1.unwrap() as u128;
+
+                        let niches =
+                            std::mem::take(&mut variant_layouts[largest_variant_index].niches);
+                        if niches.is_empty() {
+                            continue;
+                        }
+
+                        let backup_variant_layouts = variant_layouts.clone();
+                        let mut niche_finder = NicheFinder {
+                            dl,
+                            variant_layouts: &mut variant_layouts,
+                            variants: &variants,
+                            largest_variant_index,
+                            size,
+                            align: align.abi,
+                            count,
+                            backup_variant_layouts: &backup_variant_layouts,
+                            niches: &niches,
+                        };
+
+                        let used_niche_opt = if def.repr().use_flag() {
+                            niche_finder
+                                .find_niche_flag()
+                                .or_else(|| niche_finder.find_niche_noflag())
+                        } else {
+                            niche_finder
+                                .find_niche_noflag()
+                                .or_else(|| niche_finder.find_niche_flag())
+                        };
+
+                        if used_niche_opt.is_some() {
+                            used_niche_opt_found = used_niche_opt;
+                            largest_variant_index_found = Some(largest_variant_index);
+                            niche_variants_found = Some(niche_variants);
+                            break;
+                        }
+                    }
+
+                    let Some(used_niche) = used_niche_opt_found else { return Ok(None) };
+                    let Some(largest_variant_index) = largest_variant_index_found else { return Ok(None) };
+                    let Some(niche_variants) = niche_variants_found else { return Ok(None) };
+
+                    let niche_offset = used_niche.offset;
+                    let niche_scalar = used_niche.scalar;
+                    let niche_start = used_niche.start;
+
+                    let niches = if let Some(used_flag) = used_niche.flag {
+                        Niche::from_flag_and_scalar(
+                            dl,
+                            used_flag.offset,
+                            used_flag.scalar,
+                            niche_offset,
+                            niche_scalar,
+                        )
+                    } else {
+                        Niche::from_scalar(dl, niche_offset, niche_scalar)
+                    }
+                    .into_iter()
+                    .collect();
 
                     let others_zst = variant_layouts
                         .iter_enumerated()
@@ -982,20 +1299,48 @@ fn layout_of_uncached<'tcx>(
                     let same_size = size == variant_layouts[largest_variant_index].size;
                     let same_align = align == variant_layouts[largest_variant_index].align;
 
+                    // If we used a flag, the niche may not be a field of the
+                    // largest variant, which matters if we're going to use the
+                    // ScalarPair ABI.
+                    let niche_is_a_field = |first: Scalar, second: Scalar| -> bool {
+                        if used_niche.flag.is_none() {
+                            return true;
+                        }
+
+                        let other_primitive = if used_niche.offset == Size::ZERO {
+                            first.primitive()
+                        } else {
+                            let offset = first.size(dl).align_to(second.align(dl).abi);
+                            if offset != used_niche.offset {
+                                return false;
+                            }
+                            second.primitive()
+                        };
+
+                        other_primitive == used_niche.scalar.primitive()
+                    };
+
                     let abi = if variant_layouts.iter().all(|v| v.abi.is_uninhabited()) {
                         Abi::Uninhabited
                     } else if same_size && same_align && others_zst {
                         match variant_layouts[largest_variant_index].abi {
                             // When the total alignment and size match, we can use the
                             // same ABI as the scalar variant with the reserved niche.
-                            Abi::Scalar(_) => Abi::Scalar(niche_scalar),
-                            Abi::ScalarPair(first, second) => {
-                                // Only the niche is guaranteed to be initialised,
-                                // so use union layouts for the other primitive.
-                                if niche_offset == Size::ZERO {
-                                    Abi::ScalarPair(niche_scalar, second.to_union())
+                            Abi::Scalar(_) if used_niche.flag.is_none() => {
+                                Abi::Scalar(niche_scalar)
+                            }
+                            Abi::ScalarPair(first, second) if niche_is_a_field(first, second) => {
+                                let (offset, scalar) = match used_niche.flag {
+                                    None => (niche_offset, niche_scalar),
+                                    Some(data) => (data.offset, data.scalar),
+                                };
+                                // Only the niche (or the flag, if present)
+                                // is guaranteed to be initialized, so use
+                                // union layout for the other primitive.
+                                if offset == Size::ZERO {
+                                    Abi::ScalarPair(scalar, second.to_union())
                                 } else {
-                                    Abi::ScalarPair(first.to_union(), niche_scalar)
+                                    Abi::ScalarPair(first.to_union(), scalar)
                                 }
                             }
                             _ => Abi::Aggregate { sized: true },
@@ -1011,16 +1356,33 @@ fn layout_of_uncached<'tcx>(
                                 untagged_variant: largest_variant_index,
                                 niche_variants,
                                 niche_start,
+                                flag: used_niche.flag.map(|f| Flag {
+                                    magic_value: f.magic_value,
+                                    scalar: f.scalar,
+                                    field: 1,
+                                    untagged_in_niche: f.untagged_in_niche,
+                                }),
                             },
                             tag_field: 0,
                             variants: IndexVec::new(),
                         },
-                        fields: FieldsShape::Arbitrary {
-                            offsets: vec![niche_offset],
-                            memory_index: vec![0],
+                        fields: if let Some(f) = used_niche.flag {
+                            FieldsShape::Arbitrary {
+                                offsets: vec![niche_offset, f.offset],
+                                memory_index: if niche_offset < f.offset {
+                                    vec![0, 1]
+                                } else {
+                                    vec![1, 0]
+                                },
+                            }
+                        } else {
+                            FieldsShape::Arbitrary {
+                                offsets: vec![niche_offset],
+                                memory_index: vec![0],
+                            }
                         },
                         abi,
-                        largest_niche,
+                        niches,
                         size,
                         align,
                     };
@@ -1277,7 +1639,7 @@ fn layout_of_uncached<'tcx>(
                 }
             }
 
-            let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
+            let niches = Niche::from_scalar(dl, Size::ZERO, tag).into_iter().collect();
 
             let tagged_layout = LayoutS {
                 variants: Variants::Multiple {
@@ -1287,7 +1649,7 @@ fn layout_of_uncached<'tcx>(
                     variants: IndexVec::new(),
                 },
                 fields: FieldsShape::Arbitrary { offsets: vec![Size::ZERO], memory_index: vec![0] },
-                largest_niche,
+                niches,
                 abi,
                 align,
                 size,
@@ -1295,25 +1657,17 @@ fn layout_of_uncached<'tcx>(
 
             let tagged_layout = TmpLayout { layout: tagged_layout, variants: layout_variants };
 
-            let mut best_layout = match (tagged_layout, niche_filling_layout) {
-                (tl, Some(nl)) => {
-                    // Pick the smaller layout; otherwise,
-                    // pick the layout with the larger niche; otherwise,
-                    // pick tagged as it has simpler codegen.
-                    use Ordering::*;
-                    let niche_size = |tmp_l: &TmpLayout<'_>| {
-                        tmp_l.layout.largest_niche.map_or(0, |n| n.available(dl))
-                    };
-                    match (
-                        tl.layout.size.cmp(&nl.layout.size),
-                        niche_size(&tl).cmp(&niche_size(&nl)),
-                    ) {
-                        (Greater, _) => nl,
-                        (Equal, Less) => nl,
-                        _ => tl,
-                    }
-                }
-                (tl, None) => tl,
+            let mut best_layout = if let Some(nl) = niche_filling_layout {
+                // Pick the smaller layout; otherwise pick the layout with the
+                // largest niche; otherwise pick tagged as it has simpler
+                // codegen.
+                let key = |tmp_l: &TmpLayout<'_>| {
+                    let n_size = tmp_l.layout.niches.first().map_or(0, |niche| niche.available(dl));
+                    (tmp_l.layout.size, !n_size)
+                };
+                cmp::min_by_key(tagged_layout, nl, key)
+            } else {
+                tagged_layout
             };
 
             // Now we can intern the variant layouts and store them in the enum layout.
@@ -1662,7 +2016,7 @@ fn generator_layout<'tcx>(
         },
         fields: outer_fields,
         abi,
-        largest_niche: prefix.largest_niche,
+        niches: prefix.niches.clone(),
         size,
         align,
     });

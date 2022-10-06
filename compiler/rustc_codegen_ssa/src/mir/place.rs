@@ -1,7 +1,7 @@
 use super::operand::OperandValue;
 use super::{FunctionCx, LocalRef};
 
-use crate::common::IntPredicate;
+use crate::common::{IntPredicate, TypeKind};
 use crate::glue;
 use crate::traits::*;
 
@@ -227,13 +227,13 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             }
         };
 
-        // Read the tag/niche-encoded discriminant from memory.
-        let tag = self.project_field(bx, tag_field);
-        let tag = bx.load_operand(tag);
+        let tag_place = self.project_field(bx, tag_field);
 
         // Decode the discriminant (specifically if it's niche-encoded).
         match *tag_encoding {
             TagEncoding::Direct => {
+                // Read the tag from memory.
+                let tag = bx.load_operand(tag_place);
                 let signed = match tag_scalar.primitive() {
                     // We use `i1` for bytes that are always `0` or `1`,
                     // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
@@ -244,11 +244,30 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 };
                 bx.intcast(tag.immediate(), cast_to, signed)
             }
-            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
-                // Rebase from niche values to discriminants, and check
-                // whether the result is in range for the niche variants.
-                let niche_llty = bx.cx().immediate_backend_type(tag.layout);
-                let tag = tag.immediate();
+            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start, ref flag, } => {
+                let read = |bx: &mut Bx, place: Self| -> (V, <Bx as BackendTypes>::Type) {
+                    let ty = bx.cx().immediate_backend_type(place.layout);
+                    let op = bx.load_operand(place);
+                    let val = op.immediate();
+                    if bx.cx().type_kind(ty) == TypeKind::Pointer {
+                        let new_ty = bx.cx().type_isize();
+                        let new_val = bx.ptrtoint(val, new_ty);
+                        (new_val, new_ty)
+                    } else {
+                        (val, ty)
+                    }
+                };
+
+                let (tag, niche_llty) = read(bx, tag_place);
+
+                let (untagged_in_niche, flag_eq_magic_value_opt) = if let Some(flag) = flag {
+                    let flag_place = self.project_field(bx, flag.field);
+                    let (flag_imm, flag_llty) = read(bx, flag_place);
+                    let magic_value = bx.cx().const_uint_big(flag_llty, flag.magic_value);
+                    (flag.untagged_in_niche, Some(bx.icmp(IntPredicate::IntEQ, flag_imm, magic_value)))
+                } else {
+                    (true, None)
+                };
 
                 // We first compute the "relative discriminant" (wrt `niche_variants`),
                 // that is, if `n = niche_variants.end() - niche_variants.start()`,
@@ -259,23 +278,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 // and check that it is in the range `niche_variants`, because
                 // that might not fit in the same type, on top of needing an extra
                 // comparison (see also the comment on `let niche_discr`).
-                let relative_discr = if niche_start == 0 {
-                    // Avoid subtracting `0`, which wouldn't work for pointers.
-                    // FIXME(eddyb) check the actual primitive type here.
-                    tag
-                } else {
-                    bx.sub(tag, bx.cx().const_uint_big(niche_llty, niche_start))
-                };
+                let relative_discr = bx.sub(tag, bx.cx().const_uint_big(niche_llty, niche_start));
                 let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
-                let is_niche = if relative_max == 0 {
-                    // Avoid calling `const_uint`, which wouldn't work for pointers.
-                    // Also use canonical == 0 instead of non-canonical u<= 0.
-                    // FIXME(eddyb) check the actual primitive type here.
-                    bx.icmp(IntPredicate::IntEQ, relative_discr, bx.cx().const_null(niche_llty))
-                } else {
-                    let relative_max = bx.cx().const_uint(niche_llty, relative_max as u64);
-                    bx.icmp(IntPredicate::IntULE, relative_discr, relative_max)
-                };
 
                 // NOTE(eddyb) this addition needs to be performed on the final
                 // type, in case the niche itself can't represent all variant
@@ -285,7 +289,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 // In other words, `niche_variants.end - niche_variants.start`
                 // is representable in the niche, but `niche_variants.end`
                 // might not be, in extreme cases.
-                let niche_discr = {
+                let potential_niche_discr = {
                     let relative_discr = if relative_max == 0 {
                         // HACK(eddyb) since we have only one niche, we know which
                         // one it is, and we can avoid having a dynamic value here.
@@ -299,11 +303,29 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     )
                 };
 
-                bx.select(
-                    is_niche,
-                    niche_discr,
-                    bx.cx().const_uint(cast_to, untagged_variant.as_u32() as u64),
-                )
+                let untagged_discr = bx.cx().const_uint(cast_to, untagged_variant.as_u32() as u64);
+
+                let niche_discr = if untagged_in_niche {
+                    let relative_max_const = bx.cx().const_uint(niche_llty, relative_max as u64);
+                    let is_niche = bx.icmp(IntPredicate::IntULE, relative_discr, relative_max_const);
+                    bx.select(
+                        is_niche,
+                        potential_niche_discr,
+                        untagged_discr,
+                    )
+                } else {
+                    potential_niche_discr
+                };
+
+                if let Some(flag_eq_magic_value) = flag_eq_magic_value_opt {
+                    bx.select(
+                        flag_eq_magic_value,
+                        niche_discr,
+                        untagged_discr,
+                    )
+                } else {
+                    niche_discr
+                }
             }
         }
     }
@@ -337,23 +359,30 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             }
             Variants::Multiple {
                 tag_encoding:
-                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
+                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start, ref flag, },
                 tag_field,
                 ..
             } => {
+                let store = |bx: &mut Bx, value: u128, place: Self| {
+                    let ty = bx.cx().immediate_backend_type(place.layout);
+                    let val = if bx.cx().type_kind(ty) == TypeKind::Pointer {
+                        let ty_isize = bx.cx().type_isize();
+                        let llvalue = bx.cx().const_uint_big(ty_isize, value);
+                        bx.inttoptr(llvalue, ty)
+                    } else {
+                        bx.cx().const_uint_big(ty, value)
+                    };
+                    OperandValue::Immediate(val).store(bx, place);
+                };
                 if variant_index != untagged_variant {
+                    if let Some(flag) = flag {
+                        let place = self.project_field(bx, flag.field);
+                        store(bx, flag.magic_value, place);
+                    }
                     let niche = self.project_field(bx, tag_field);
-                    let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                     let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                     let niche_value = (niche_value as u128).wrapping_add(niche_start);
-                    // FIXME(eddyb): check the actual primitive type here.
-                    let niche_llval = if niche_value == 0 {
-                        // HACK(eddyb): using `c_null` as it works on all types.
-                        bx.cx().const_null(niche_llty)
-                    } else {
-                        bx.cx().const_uint_big(niche_llty, niche_value)
-                    };
-                    OperandValue::Immediate(niche_llval).store(bx, niche);
+                    store(bx, niche_value, niche);
                 }
             }
         }

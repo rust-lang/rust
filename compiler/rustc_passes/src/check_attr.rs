@@ -1651,6 +1651,12 @@ impl CheckAttrVisitor<'_> {
                         _ => ("a", "struct, enum, or union"),
                     }
                 }
+                sym::flag => {
+                    match target {
+                        Target::Enum => continue,
+                        _ => ("an", "enum"),
+                    }
+                }
                 sym::i8
                 | sym::u8
                 | sym::i16

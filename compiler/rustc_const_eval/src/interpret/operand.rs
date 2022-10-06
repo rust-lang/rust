@@ -722,27 +722,55 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Return the cast value, and the index.
                 (discr_val, index.0)
             }
-            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
+            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start, ref flag, } => {
+                let is_magic_val = if let Some(flag) = flag {
+                    let flag_val = self.read_immediate(&self.operand_field(op, flag.field)?)?;
+                    let flag_val = flag_val.to_scalar();
+                    match flag_val.try_to_int() {
+                        Err(dbg_val) => {
+                            // So this is a pointer then, and casting to an int
+                            // failed. Can only happen during CTFE. If the magic
+                            // value is 0 and the scalar is not null, we know
+                            // the pointer cannot be the magic value. Anything
+                            // else we conservatively reject.
+                            let ptr_definitely_not_magic_value =
+                                flag.magic_value == 0 && !self.scalar_may_be_null(flag_val)?;
+                            if !ptr_definitely_not_magic_value {
+                                throw_ub!(InvalidTag(dbg_val))
+                            }
+                            false
+                        }
+                        Ok(flag_bits) => {
+                            let flag_layout =
+                                self.layout_of(flag.scalar.primitive().to_int_ty(*self.tcx))?;
+                            let flag_bits = flag_bits.assert_bits(flag_layout.size);
+                            flag_bits == flag.magic_value
+                        }
+                    }
+                } else {
+                    true
+                };
                 let tag_val = tag_val.to_scalar();
                 // Compute the variant this niche value/"tag" corresponds to. With niche layout,
                 // discriminant (encoded in niche/tag) and variant index are the same.
                 let variants_start = niche_variants.start().as_u32();
                 let variants_end = niche_variants.end().as_u32();
-                let variant = match tag_val.try_to_int() {
-                    Err(dbg_val) => {
+                let variant = match (is_magic_val, tag_val.try_to_int()) {
+                    (false, _) => untagged_variant,
+                    (true, Err(dbg_val)) => {
                         // So this is a pointer then, and casting to an int failed.
                         // Can only happen during CTFE.
                         // The niche must be just 0, and the ptr not null, then we know this is
                         // okay. Everything else, we conservatively reject.
-                        let ptr_valid = niche_start == 0
+                        let ptr_definitely_not_in_niche_variants = niche_start == 0
                             && variants_start == variants_end
                             && !self.scalar_may_be_null(tag_val)?;
-                        if !ptr_valid {
+                        if !ptr_definitely_not_in_niche_variants {
                             throw_ub!(InvalidTag(dbg_val))
                         }
                         untagged_variant
                     }
-                    Ok(tag_bits) => {
+                    (true, Ok(tag_bits)) => {
                         let tag_bits = tag_bits.assert_bits(tag_layout.size);
                         // We need to use machine arithmetic to get the relative variant idx:
                         // variant_index_relative = tag_val - niche_start_val
@@ -791,6 +819,8 @@ mod size_asserts {
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(Immediate, 48);
     static_assert_size!(ImmTy<'_>, 64);
-    static_assert_size!(Operand, 56);
-    static_assert_size!(OpTy<'_>, 80);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(Operand, 48);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(OpTy<'_>, 72);
 }

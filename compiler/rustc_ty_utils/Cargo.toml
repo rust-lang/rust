@@ -19,3 +19,4 @@ rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 rustc_index = { path = "../rustc_index" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

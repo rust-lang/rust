@@ -430,32 +430,34 @@ fn compute_discriminant_value<'ll, 'tcx>(
             enum_type_and_layout.ty.discriminant_for_variant(cx.tcx, variant_index).unwrap().val,
         ),
         &Variants::Multiple {
-            tag_encoding: TagEncoding::Niche { ref niche_variants, niche_start, untagged_variant },
-            tag,
+            //tag_encoding: TagEncoding::Niche { ref niche_variants, niche_start, untagged_variant, .. },
+            //tag,
             ..
         } => {
-            if variant_index == untagged_variant {
-                let valid_range = enum_type_and_layout
-                    .for_variant(cx, variant_index)
-                    .largest_niche
-                    .as_ref()
-                    .unwrap()
-                    .valid_range;
+            // YYY
+            DiscrResult::Range(0, 1)
+            //if variant_index == untagged_variant {
+            //    let valid_range = enum_type_and_layout
+            //        .for_variant(cx, variant_index)
+            //        .largest_niche
+            //        .as_ref()
+            //        .unwrap()
+            //        .valid_range;
 
-                let min = valid_range.start.min(valid_range.end);
-                let min = tag.size(cx).truncate(min);
+            //    let min = valid_range.start.min(valid_range.end);
+            //    let min = tag.size(cx).truncate(min);
 
-                let max = valid_range.start.max(valid_range.end);
-                let max = tag.size(cx).truncate(max);
+            //    let max = valid_range.start.max(valid_range.end);
+            //    let max = tag.size(cx).truncate(max);
 
-                DiscrResult::Range(min, max)
-            } else {
-                let value = (variant_index.as_u32() as u128)
-                    .wrapping_sub(niche_variants.start().as_u32() as u128)
-                    .wrapping_add(niche_start);
-                let value = tag.size(cx).truncate(value);
-                DiscrResult::Value(value)
-            }
+            //    DiscrResult::Range(min, max)
+            //} else {
+            //    let value = (variant_index.as_u32() as u128)
+            //        .wrapping_sub(niche_variants.start().as_u32() as u128)
+            //        .wrapping_add(niche_start);
+            //    let value = tag.size(cx).truncate(value);
+            //    DiscrResult::Value(value)
+            //}
         }
     }
 }

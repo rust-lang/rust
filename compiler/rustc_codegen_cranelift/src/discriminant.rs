@@ -42,7 +42,8 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
         Variants::Multiple {
             tag: _,
             tag_field,
-            tag_encoding: TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
+            tag_encoding:
+                TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start, .. },
             variants: _,
         } => {
             if variant_index != untagged_variant {
@@ -113,7 +114,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             let res = CValue::by_val(val, dest_layout);
             dest.write_cvalue(fx, res);
         }
-        TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
+        TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start, .. } => {
             // Rebase from niche values to discriminants, and check
             // whether the result is in range for the niche variants.
 

@@ -924,7 +924,7 @@ impl Scalar {
 }
 
 /// Describes how the fields of a type are located in memory.
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum FieldsShape {
     /// Scalar primitives and `!`, which never have fields.
     Primitive,
@@ -1114,7 +1114,7 @@ rustc_index::newtype_index! {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Variants<'a> {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single { index: VariantIdx },
@@ -1133,7 +1133,15 @@ pub enum Variants<'a> {
     },
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+pub struct Flag {
+    pub magic_value: u128,
+    pub scalar: Scalar,
+    pub field: usize,
+    pub untagged_in_niche: bool,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum TagEncoding {
     /// The tag directly stores the discriminant, but possibly with a smaller layout
     /// (so converting the tag to the discriminant can require sign extension).
@@ -1153,25 +1161,63 @@ pub enum TagEncoding {
         untagged_variant: VariantIdx,
         niche_variants: RangeInclusive<VariantIdx>,
         niche_start: u128,
+        flag: Option<Flag>,
     },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub struct Niche {
+pub struct NicheData {
     pub offset: Size,
     pub value: Primitive,
     pub valid_range: WrappingRange,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+pub struct Niche {
+    pub data: NicheData,
+    pub flag: Option<NicheData>,
+}
+
 impl Niche {
     pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
         let Scalar::Initialized { value, valid_range } = scalar else { return None };
-        let niche = Niche { offset, value, valid_range };
+        let data = NicheData { offset, value, valid_range };
+        let niche = Niche { data, flag: None };
         if niche.available(cx) > 0 { Some(niche) } else { None }
     }
 
+    pub fn from_flag_and_scalar<C: HasDataLayout>(
+        cx: &C,
+        flag_offset: Size,
+        flag_scalar: Scalar,
+        niche_offset: Size,
+        niche_scalar: Scalar,
+    ) -> Option<Self> {
+        let niche_data = |offset, scalar| {
+            let Scalar::Initialized {value, valid_range } = scalar else { return None };
+            Some(NicheData {
+                offset,
+                value,
+                valid_range,
+            })
+        };
+
+        let niche = Niche {
+            data: niche_data(niche_offset, niche_scalar)?,
+            flag: Some(
+                niche_data(flag_offset, flag_scalar)?,
+            )
+        };
+
+        if niche.available(cx) > 0 || niche.available_with_new_flag(cx) > 0 {
+            Some(niche)
+        } else {
+            None
+        }
+    }
+
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
-        let Self { value, valid_range: v, .. } = *self;
+        let NicheData { value, valid_range: v, .. } = self.data;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
@@ -1181,10 +1227,65 @@ impl Niche {
         niche.end.wrapping_sub(niche.start) & max_value
     }
 
+    pub fn available_with_new_flag<C: HasDataLayout>(&self, cx: &C) -> u128 {
+        self.flag.map_or(0, |flag_data| {
+            let valid_range = flag_data.valid_range;
+            let size = flag_data.value.size(cx);
+            assert!(size.bits() <= 128);
+            let max_value = size.unsigned_int_max();
+            if valid_range.end.wrapping_sub(valid_range.start) < max_value {
+                let niche_size = self.data.value.size(cx);
+                assert!(niche_size.bits() <= 128);
+                let max = size.unsigned_int_max();
+                if max < u128::MAX {
+                    max + 1
+                } else {
+                    max
+                }
+            } else {
+                0
+            }
+        })
+    }
+
+    pub fn reserve_with_new_flag<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar, Scalar)> {
+        assert!(count > 0);
+
+        self.flag.map_or(None, |flag_data| {
+            let size = flag_data.value.size(cx);
+            assert!(size.bits() <= 128);
+            let max_value = size.unsigned_int_max();
+            let valid_range = flag_data.valid_range;
+            if valid_range.end.wrapping_sub(valid_range.start) >= max_value {
+                return None;
+            }
+
+            let new_magic_value = valid_range.end.wrapping_add(1) & max_value;
+            let niche_size = self.data.value.size(cx);
+            let niche_max_value = niche_size.unsigned_int_max();
+            if count - 1 > niche_max_value {
+                return None;
+            }
+
+            let flag_scalar = Scalar::Initialized {
+                value: flag_data.value,
+                valid_range: valid_range.with_end(new_magic_value),
+            };
+            let niche_scalar = Scalar::Initialized {
+                value: self.data.value,
+                // YYY
+                //valid_range: WrappingRange::full(self.data.value.size(cx)),
+                valid_range: WrappingRange { start: 0, end: count - 1 },
+            };
+
+            Some((new_magic_value, flag_scalar, niche_scalar))
+        })
+    }
+
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 
-        let Self { value, valid_range: v, .. } = *self;
+        let NicheData { value, valid_range: v, .. } = self.data;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
@@ -1239,7 +1340,7 @@ impl Niche {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct LayoutS<'a> {
     /// Says where the fields are located within the layout.
     pub fields: FieldsShape,
@@ -1262,9 +1363,8 @@ pub struct LayoutS<'a> {
     /// have to be taken into account to find all fields of this layout.
     pub abi: Abi,
 
-    /// The leaf scalar with the largest number of invalid values
-    /// (i.e. outside of its `valid_range`), if it exists.
-    pub largest_niche: Option<Niche>,
+    /// Leaf scalars with invalid values.
+    pub niches: Vec<Niche>,
 
     pub align: AbiAndPrefAlign,
     pub size: Size,
@@ -1272,14 +1372,14 @@ pub struct LayoutS<'a> {
 
 impl<'a> LayoutS<'a> {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
-        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
+        let niches = Niche::from_scalar(cx, Size::ZERO, scalar).into_iter().collect();
         let size = scalar.size(cx);
         let align = scalar.align(cx);
         LayoutS {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Scalar(scalar),
-            largest_niche,
+            niches,
             size,
             align,
         }
@@ -1291,13 +1391,13 @@ impl<'a> fmt::Debug for LayoutS<'a> {
         // This is how `Layout` used to print before it become
         // `Interned<LayoutS>`. We print it like this to avoid having to update
         // expected output in a lot of tests.
-        let LayoutS { size, align, abi, fields, largest_niche, variants } = self;
+        let LayoutS { size, align, abi, fields, niches, variants } = self;
         f.debug_struct("Layout")
             .field("size", size)
             .field("align", align)
             .field("abi", abi)
             .field("fields", fields)
-            .field("largest_niche", largest_niche)
+            .field("niches", niches)
             .field("variants", variants)
             .finish()
     }
@@ -1327,8 +1427,8 @@ impl<'a> Layout<'a> {
         self.0.0.abi
     }
 
-    pub fn largest_niche(self) -> Option<Niche> {
-        self.0.0.largest_niche
+    pub fn niches(self) -> impl Iterator<Item = &'a Niche> {
+        self.0.0.niches.iter()
     }
 
     pub fn align(self) -> AbiAndPrefAlign {

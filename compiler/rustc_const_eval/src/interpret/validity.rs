@@ -16,7 +16,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{Abi, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange};
+use rustc_target::abi::{Abi, Scalar as ScalarAbi, Size, TagEncoding, VariantIdx, Variants, WrappingRange};
 
 use std::hash::Hash;
 
@@ -220,8 +220,18 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn aggregate_field_path_elem(&mut self, layout: TyAndLayout<'tcx>, field: usize) -> PathElem {
         // First, check if we are projecting to a variant.
         match layout.variants {
-            Variants::Multiple { tag_field, .. } => {
-                if tag_field == field {
+            Variants::Multiple { tag_field, ref tag_encoding, .. } => {
+                let flag_field = if let TagEncoding::Niche {
+                    flag: Some(f),
+                    ..
+                } = tag_encoding {
+                    Some(f.field)
+                } else {
+                    None
+                };
+                // For now, let's just report both tag and flag fields as being
+                // part of the tag.
+                if tag_field == field || flag_field == Some(field) {
                     return match layout.ty.kind() {
                         ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
                         ty::Generator(..) => PathElem::GeneratorTag,

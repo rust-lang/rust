@@ -3065,6 +3065,8 @@ mod size_asserts {
     static_assert_size!(PathSegment, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(Ty, 96);
-    static_assert_size!(TyKind, 72);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(Ty, 88);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(TyKind, 64);
 }

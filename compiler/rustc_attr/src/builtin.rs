@@ -944,6 +944,7 @@ pub enum ReprAttr {
     ReprSimd,
     ReprTransparent,
     ReprAlign(u32),
+    ReprFlag,
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
@@ -998,6 +999,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         recognised = true;
                         None
                     }
+                    sym::flag => Some(ReprFlag),
                     name => int_type_of_word(name).map(ReprInt),
                 };
 

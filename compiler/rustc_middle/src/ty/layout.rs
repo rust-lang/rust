@@ -585,7 +585,7 @@ where
                         None => FieldsShape::Arbitrary { offsets: vec![], memory_index: vec![] },
                     },
                     abi: Abi::Uninhabited,
-                    largest_niche: None,
+                    niches: Vec::new(),
                     align: tcx.data_layout.i8_align,
                     size: Size::ZERO,
                 })
@@ -722,9 +722,25 @@ where
                         }
 
                         // Discriminant field for enums (where applicable).
-                        Variants::Multiple { tag, .. } => {
-                            assert_eq!(i, 0);
-                            return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                        Variants::Multiple { tag, ref tag_encoding, .. } => {
+                            if i == 0 {
+                                if let TagEncoding::Niche { flag: Some(_), .. } = tag_encoding {
+                                    // There's a flag, which means the niche may not correspond to
+                                    // any field of any variant.
+                                    let prim = tag.primitive();
+                                    let size = prim.size(cx);
+                                    let range = WrappingRange::full(size);
+                                    TyMaybeWithLayout::TyAndLayout(tag_layout(
+                                        Scalar::Initialized { value: prim, valid_range: range },
+                                    ))
+                                } else {
+                                    TyMaybeWithLayout::TyAndLayout(tag_layout(tag))
+                                }
+                            } else {
+                                assert_eq!(i, 1);
+                                let TagEncoding::Niche { flag: Some(Flag {scalar, .. }), .. } = tag_encoding else { bug!("request field 1 for an enum with no flag") };
+                                TyMaybeWithLayout::TyAndLayout(tag_layout(*scalar))
+                            }
                         }
                     }
                 }

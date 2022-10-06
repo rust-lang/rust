@@ -15,16 +15,19 @@ error: layout_of(Aligned1) = Layout {
                    0,
                ],
            },
-           largest_niche: Some(
+           niches: [
                Niche {
-                   offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
+                   data: NicheData {
+                       offset: Size(0 bytes),
+                       value: Int(
+                           I8,
+                           false,
+                       ),
+                       valid_range: 0..=1,
+                   },
+                   flag: None,
                },
-           ),
+           ],
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -49,7 +52,7 @@ error: layout_of(Aligned1) = Layout {
                            offsets: [],
                            memory_index: [],
                        },
-                       largest_niche: None,
+                       niches: [],
                        variants: Single {
                            index: 0,
                        },
@@ -67,7 +70,7 @@ error: layout_of(Aligned1) = Layout {
                            offsets: [],
                            memory_index: [],
                        },
-                       largest_niche: None,
+                       niches: [],
                        variants: Single {
                            index: 1,
                        },
@@ -103,16 +106,19 @@ error: layout_of(Aligned2) = Layout {
                    0,
                ],
            },
-           largest_niche: Some(
+           niches: [
                Niche {
-                   offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
+                   data: NicheData {
+                       offset: Size(0 bytes),
+                       value: Int(
+                           I8,
+                           false,
+                       ),
+                       valid_range: 0..=1,
+                   },
+                   flag: None,
                },
-           ),
+           ],
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -137,7 +143,7 @@ error: layout_of(Aligned2) = Layout {
                            offsets: [],
                            memory_index: [],
                        },
-                       largest_niche: None,
+                       niches: [],
                        variants: Single {
                            index: 0,
                        },
@@ -155,7 +161,7 @@ error: layout_of(Aligned2) = Layout {
                            offsets: [],
                            memory_index: [],
                        },
-                       largest_niche: None,
+                       niches: [],
                        variants: Single {
                            index: 1,
                        },
