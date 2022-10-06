@@ -196,5 +196,22 @@ LL +         suf
 LL ~     };
    |
 
-error: aborting due to 13 previous errors
+error: this match could be replaced by its scrutinee and body
+  --> $DIR/match_single_binding.rs:147:16
+   |
+LL |       let _ = || match side_effects() {
+   |  ________________^
+LL | |         _ => println!("Needs curlies"),
+LL | |     };
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~     let _ = || {
+LL +         side_effects();
+LL +         println!("Needs curlies");
+LL ~     };
+   |
+
+error: aborting due to 14 previous errors
 
