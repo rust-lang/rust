@@ -1,8 +1,9 @@
 //! Completes environment variables defined by Cargo (https://doc.rust-lang.org/cargo/reference/environment-variables.html)
-use ide_db::syntax_helpers::node_ext::get_outer_macro_name;
+use hir::Semantics;
+use ide_db::{syntax_helpers::node_ext::get_outer_macro, RootDatabase};
 use syntax::ast::{self, IsString};
 
-use crate::{CompletionItem, CompletionItemKind};
+use crate::{context::CompletionContext, CompletionItem, CompletionItemKind};
 
 use super::Completions;
 const CARGO_DEFINED_VARS: &[(&str, &str)] = &[
@@ -27,8 +28,12 @@ const CARGO_DEFINED_VARS: &[(&str, &str)] = &[
 ("CARGO_TARGET_TMPDIR","Only set when building integration test or benchmark code. This is a path to a directory inside the target directory where integration tests or benchmarks are free to put any data needed by the tests/benches. Cargo initially creates this directory but doesn't manage its content in any way, this is the responsibility of the test code")
 ];
 
-pub(crate) fn complete_cargo_env_vars(acc: &mut Completions, expanded: &ast::String) -> Option<()> {
-    guard_env_macro(expanded)?;
+pub(crate) fn complete_cargo_env_vars(
+    acc: &mut Completions,
+    ctx: &CompletionContext<'_>,
+    expanded: &ast::String,
+) -> Option<()> {
+    guard_env_macro(expanded, &ctx.sema, &ctx.db)?;
     let range = expanded.text_range_between_quotes()?;
 
     CARGO_DEFINED_VARS.iter().for_each(|(var, detail)| {
@@ -40,13 +45,19 @@ pub(crate) fn complete_cargo_env_vars(acc: &mut Completions, expanded: &ast::Str
     Some(())
 }
 
-fn guard_env_macro(string: &ast::String) -> Option<()> {
-    let name = get_outer_macro_name(string)?;
-    if !matches!(name.text().as_str(), "env" | "option_env") {
-        return None;
-    }
+fn guard_env_macro(
+    string: &ast::String,
+    semantics: &Semantics<'_, RootDatabase>,
+    db: &RootDatabase,
+) -> Option<()> {
+    let call = get_outer_macro(string)?;
+    let name = call.path()?.segment()?.name_ref()?;
+    let makro = semantics.resolve_macro_call(&call)?;
 
-    Some(())
+    match name.text().as_str() {
+        "env" | "option_env" if makro.kind(db) == hir::MacroKind::BuiltIn => Some(()),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -58,19 +69,29 @@ mod tests {
             "CARGO_BIN_NAME",
             &format!(
                 r#"
+            #[rustc_builtin_macro]
+            macro_rules! {} {{
+                ($var:literal) => {{ 0 }}
+            }}
+
             fn main() {{
                 let foo = {}!("CAR$0");
             }}
         "#,
-                macro_name
+                macro_name, macro_name
             ),
             &format!(
                 r#"
+            #[rustc_builtin_macro]
+            macro_rules! {} {{
+                ($var:literal) => {{ 0 }}
+            }}
+
             fn main() {{
                 let foo = {}!("CARGO_BIN_NAME");
             }}
         "#,
-                macro_name
+                macro_name, macro_name
             ),
         );
     }
@@ -111,5 +132,21 @@ mod tests {
 
         let completions = completion_list(fixture);
         assert!(completions.is_empty(), "Completions weren't empty: {}", completions);
+    }
+
+    #[test]
+    fn doesnt_complete_for_shadowed_macro() {
+        let fixture = r#"
+            macro_rules! env {
+                ($var:literal) => { 0 }
+            }
+
+            fn main() {
+                let foo = env!("CA$0");
+            }
+        "#;
+
+        let completions = completion_list(fixture);
+        assert!(completions.is_empty(), "Completions weren't empty: {}", completions)
     }
 }
