@@ -41,7 +41,7 @@ fn main() {
                 matches.contains_id("msrv"),
             ) {
                 Ok(_) => update_lints::update(update_lints::UpdateMode::Change),
-                Err(e) => eprintln!("Unable to create lint: {}", e),
+                Err(e) => eprintln!("Unable to create lint: {e}"),
             }
         },
         Some(("setup", sub_command)) => match sub_command.subcommand() {

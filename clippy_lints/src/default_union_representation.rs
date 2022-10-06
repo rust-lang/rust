@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{self as hir, HirId, Item, ItemKind};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
-use rustc_hir_analysis::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// ### What it does

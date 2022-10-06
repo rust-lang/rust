@@ -9,8 +9,8 @@ use rustc_hir::intravisit::{
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin,
-    TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
+    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin, TraitFn,
+    TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
@@ -276,7 +276,7 @@ fn could_use_elision<'tcx>(
         let mut checker = BodyLifetimeChecker {
             lifetimes_used_in_body: false,
         };
-        checker.visit_expr(&body.value);
+        checker.visit_expr(body.value);
         if checker.lifetimes_used_in_body {
             return false;
         }
@@ -461,7 +461,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 sub_visitor.visit_fn_decl(decl);
                 self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
             },
-            TyKind::TraitObject(bounds, ref lt, _) => {
+            TyKind::TraitObject(bounds, lt, _) => {
                 if !lt.is_elided() {
                     self.unelided_trait_object_lifetime = true;
                 }

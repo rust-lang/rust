@@ -51,7 +51,7 @@ fn check_attrs(cx: &LateContext<'_>, name: Symbol, attrs: &[Attribute]) {
             cx,
             INLINE_FN_WITHOUT_BODY,
             attr.span,
-            &format!("use of `#[inline]` on trait method `{}` which has no body", name),
+            &format!("use of `#[inline]` on trait method `{name}` which has no body"),
             |diag| {
                 diag.suggest_remove_item(cx, attr.span, "remove", Applicability::MachineApplicable);
             },

@@ -203,6 +203,32 @@ pub fn test17() {
     };
 }
 
+// Issue #9356: `continue` in else branch of let..else
+pub fn test18() {
+    let x = Some(0);
+    let y = 0;
+    // might loop
+    let _ = loop {
+        let Some(x) = x else {
+            if y > 0 {
+                continue;
+            } else {
+                return;
+            }
+        };
+
+        break x;
+    };
+    // never loops
+    let _ = loop {
+        let Some(x) = x else {
+            return;
+        };
+
+        break x;
+    };
+}
+
 fn main() {
     test1();
     test2();

@@ -30,8 +30,7 @@ pub(super) fn check(
                 INTO_ITER_ON_REF,
                 method_span,
                 &format!(
-                    "this `.into_iter()` call is equivalent to `.{}()` and will not consume the `{}`",
-                    method_name, kind,
+                    "this `.into_iter()` call is equivalent to `.{method_name}()` and will not consume the `{kind}`",
                 ),
                 "call directly",
                 method_name.to_string(),

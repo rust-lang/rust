@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_lang_ctor, path_def_id};
+use clippy_utils::{is_res_lang_ctor, path_def_id, path_res};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -51,22 +51,12 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    let default_arg_is_none = if let hir::ExprKind::Path(ref qpath) = def_arg.kind {
-        is_lang_ctor(cx, qpath, OptionNone)
-    } else {
-        return;
-    };
-
-    if !default_arg_is_none {
+    if !is_res_lang_ctor(cx, path_res(cx, def_arg), OptionNone) {
         // nothing to lint!
         return;
     }
 
-    let f_arg_is_some = if let hir::ExprKind::Path(ref qpath) = map_arg.kind {
-        is_lang_ctor(cx, qpath, OptionSome)
-    } else {
-        false
-    };
+    let f_arg_is_some = is_res_lang_ctor(cx, path_res(cx, map_arg), OptionSome);
 
     if is_option {
         let self_snippet = snippet(cx, recv.span, "..");
@@ -87,7 +77,7 @@ pub(super) fn check<'tcx>(
                     expr.span,
                     msg,
                     "try using `map` instead",
-                    format!("{0}.map({1} {2})", self_snippet, arg_snippet,func_snippet),
+                    format!("{self_snippet}.map({arg_snippet} {func_snippet})"),
                     Applicability::MachineApplicable,
                 );
             }
@@ -102,7 +92,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             msg,
             "try using `and_then` instead",
-            format!("{0}.and_then({1})", self_snippet, func_snippet),
+            format!("{self_snippet}.and_then({func_snippet})"),
             Applicability::MachineApplicable,
         );
     } else if f_arg_is_some {
@@ -115,7 +105,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             msg,
             "try using `ok` instead",
-            format!("{0}.ok()", self_snippet),
+            format!("{self_snippet}.ok()"),
             Applicability::MachineApplicable,
         );
     }

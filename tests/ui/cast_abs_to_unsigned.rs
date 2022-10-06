@@ -1,5 +1,6 @@
 // run-rustfix
 #![warn(clippy::cast_abs_to_unsigned)]
+#![allow(clippy::uninlined_format_args)]
 
 fn main() {
     let x: i32 = -42;

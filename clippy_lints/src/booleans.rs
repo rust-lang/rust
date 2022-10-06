@@ -263,9 +263,8 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
             }
             .and_then(|op| {
                 Some(format!(
-                    "{}{}{}",
+                    "{}{op}{}",
                     snippet_opt(cx, lhs.span)?,
-                    op,
                     snippet_opt(cx, rhs.span)?
                 ))
             })
@@ -285,7 +284,7 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
                     let path: &str = path.ident.name.as_str();
                     a == path
                 })
-                .and_then(|(_, neg_method)| Some(format!("{}.{}()", snippet_opt(cx, receiver.span)?, neg_method)))
+                .and_then(|(_, neg_method)| Some(format!("{}.{neg_method}()", snippet_opt(cx, receiver.span)?)))
         },
         _ => None,
     }

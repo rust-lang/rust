@@ -75,10 +75,10 @@ pub(super) fn check<'tcx>(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,
                     e.span,
-                    &format!("transmute from `{}` which has an undefined layout", from_ty_orig),
+                    &format!("transmute from `{from_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if from_ty_orig.peel_refs() != from_ty.peel_refs() {
-                            diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
+                            diag.note(&format!("the contained type `{from_ty}` has an undefined layout"));
                         }
                     },
                 );
@@ -89,10 +89,10 @@ pub(super) fn check<'tcx>(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,
                     e.span,
-                    &format!("transmute to `{}` which has an undefined layout", to_ty_orig),
+                    &format!("transmute to `{to_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if to_ty_orig.peel_refs() != to_ty.peel_refs() {
-                            diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
+                            diag.note(&format!("the contained type `{to_ty}` has an undefined layout"));
                         }
                     },
                 );
@@ -116,8 +116,7 @@ pub(super) fn check<'tcx>(
                     TRANSMUTE_UNDEFINED_REPR,
                     e.span,
                     &format!(
-                        "transmute from `{}` to `{}`, both of which have an undefined layout",
-                        from_ty_orig, to_ty_orig
+                        "transmute from `{from_ty_orig}` to `{to_ty_orig}`, both of which have an undefined layout"
                     ),
                     |diag| {
                         if let Some(same_adt_did) = same_adt_did {
@@ -127,10 +126,10 @@ pub(super) fn check<'tcx>(
                             ));
                         } else {
                             if from_ty_orig.peel_refs() != from_ty {
-                                diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
+                                diag.note(&format!("the contained type `{from_ty}` has an undefined layout"));
                             }
                             if to_ty_orig.peel_refs() != to_ty {
-                                diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
+                                diag.note(&format!("the contained type `{to_ty}` has an undefined layout"));
                             }
                         }
                     },
@@ -145,10 +144,10 @@ pub(super) fn check<'tcx>(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,
                     e.span,
-                    &format!("transmute from `{}` which has an undefined layout", from_ty_orig),
+                    &format!("transmute from `{from_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if from_ty_orig.peel_refs() != from_ty {
-                            diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
+                            diag.note(&format!("the contained type `{from_ty}` has an undefined layout"));
                         }
                     },
                 );
@@ -162,10 +161,10 @@ pub(super) fn check<'tcx>(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,
                     e.span,
-                    &format!("transmute into `{}` which has an undefined layout", to_ty_orig),
+                    &format!("transmute into `{to_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if to_ty_orig.peel_refs() != to_ty {
-                            diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
+                            diag.note(&format!("the contained type `{to_ty}` has an undefined layout"));
                         }
                     },
                 );

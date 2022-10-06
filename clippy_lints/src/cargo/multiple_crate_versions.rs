@@ -37,7 +37,7 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata) {
                         cx,
                         MULTIPLE_CRATE_VERSIONS,
                         DUMMY_SP,
-                        &format!("multiple versions for dependency `{}`: {}", name, versions),
+                        &format!("multiple versions for dependency `{name}`: {versions}"),
                     );
                 }
             }

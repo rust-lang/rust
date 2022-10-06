@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                 [_] => {
                     // Simulate macro expansion, converting {{ and }} to { and }.
                     let s_expand = format_args.format_string.snippet.replace("{{", "{").replace("}}", "}");
-                    let sugg = format!("{}.to_string()", s_expand);
+                    let sugg = format!("{s_expand}.to_string()");
                     span_useless_format(cx, call_site, sugg, applicability);
                 },
                 [..] => {},

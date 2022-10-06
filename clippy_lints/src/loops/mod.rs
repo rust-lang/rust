@@ -635,7 +635,7 @@ declare_clippy_lint! {
     ///     arr.into_iter().find(|&el| el == 1)
     /// }
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.64.0"]
     pub MANUAL_FIND,
     complexity,
     "manual implementation of `Iterator::find`"

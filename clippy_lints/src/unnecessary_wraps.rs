@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::{contains_return, is_lang_ctor, return_ty, visitors::find_all_ret_expressions};
+use clippy_utils::{contains_return, is_res_lang_ctor, path_res, return_ty, visitors::find_all_ret_expressions};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -120,9 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 if !ret_expr.span.from_expansion();
                 // Check if a function call.
                 if let ExprKind::Call(func, [arg]) = ret_expr.kind;
-                // Check if OPTION_SOME or RESULT_OK, depending on return type.
-                if let ExprKind::Path(qpath) = &func.kind;
-                if is_lang_ctor(cx, qpath, lang_item);
+                if is_res_lang_ctor(cx, path_res(cx, func), lang_item);
                 // Make sure the function argument does not contain a return expression.
                 if !contains_return(arg);
                 then {
@@ -153,11 +151,8 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 )
             } else {
                 (
-                    format!(
-                        "this function's return value is unnecessarily wrapped by `{}`",
-                        return_type_label
-                    ),
-                    format!("remove `{}` from the return type...", return_type_label),
+                    format!("this function's return value is unnecessarily wrapped by `{return_type_label}`"),
+                    format!("remove `{return_type_label}` from the return type..."),
                     inner_type.to_string(),
                     "...and then change returning expressions",
                 )

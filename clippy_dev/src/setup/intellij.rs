@@ -60,7 +60,7 @@ fn check_and_get_rustc_dir(rustc_path: &str) -> Result<PathBuf, ()> {
                 path = absolute_path;
             },
             Err(err) => {
-                eprintln!("error: unable to get the absolute path of rustc ({})", err);
+                eprintln!("error: unable to get the absolute path of rustc ({err})");
                 return Err(());
             },
         };
@@ -103,14 +103,14 @@ fn inject_deps_into_project(rustc_source_dir: &Path, project: &ClippyProjectInfo
 fn read_project_file(file_path: &str) -> Result<String, ()> {
     let path = Path::new(file_path);
     if !path.exists() {
-        eprintln!("error: unable to find the file `{}`", file_path);
+        eprintln!("error: unable to find the file `{file_path}`");
         return Err(());
     }
 
     match fs::read_to_string(path) {
         Ok(content) => Ok(content),
         Err(err) => {
-            eprintln!("error: the file `{}` could not be read ({})", file_path, err);
+            eprintln!("error: the file `{file_path}` could not be read ({err})");
             Err(())
         },
     }
@@ -124,10 +124,7 @@ fn inject_deps_into_manifest(
 ) -> std::io::Result<()> {
     // do not inject deps if we have already done so
     if cargo_toml.contains(RUSTC_PATH_SECTION) {
-        eprintln!(
-            "warn: dependencies are already setup inside {}, skipping file",
-            manifest_path
-        );
+        eprintln!("warn: dependencies are already setup inside {manifest_path}, skipping file");
         return Ok(());
     }
 
@@ -142,11 +139,7 @@ fn inject_deps_into_manifest(
 
     let new_deps = extern_crates.map(|dep| {
         // format the dependencies that are going to be put inside the Cargo.toml
-        format!(
-            "{dep} = {{ path = \"{source_path}/{dep}\" }}\n",
-            dep = dep,
-            source_path = rustc_source_dir.display()
-        )
+        format!("{dep} = {{ path = \"{}/{dep}\" }}\n", rustc_source_dir.display())
     });
 
     // format a new [dependencies]-block with the new deps we need to inject
@@ -163,11 +156,11 @@ fn inject_deps_into_manifest(
     // etc
     let new_manifest = cargo_toml.replacen("[dependencies]\n", &all_deps, 1);
 
-    // println!("{}", new_manifest);
+    // println!("{new_manifest}");
     let mut file = File::create(manifest_path)?;
     file.write_all(new_manifest.as_bytes())?;
 
-    println!("info: successfully setup dependencies inside {}", manifest_path);
+    println!("info: successfully setup dependencies inside {manifest_path}");
 
     Ok(())
 }
@@ -214,8 +207,8 @@ fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> bool {
         },
         Err(err) => {
             eprintln!(
-                "error: unable to open file `{}` to remove rustc dependencies for {} ({})",
-                project.cargo_file, project.name, err
+                "error: unable to open file `{}` to remove rustc dependencies for {} ({err})",
+                project.cargo_file, project.name
             );
             false
         },

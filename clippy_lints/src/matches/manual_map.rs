@@ -3,8 +3,8 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable, type_is_unsafe_function};
 use clippy_utils::{
-    can_move_expr_to_closure, is_else_clause, is_lang_ctor, is_lint_allowed, path_to_local_id, peel_blocks,
-    peel_hir_expr_refs, peel_hir_expr_while, CaptureKind,
+    can_move_expr_to_closure, is_else_clause, is_lint_allowed, is_res_lang_ctor, path_res, path_to_local_id,
+    peel_blocks, peel_hir_expr_refs, peel_hir_expr_while, CaptureKind,
 };
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
@@ -144,7 +144,7 @@ fn check<'tcx>(
     let scrutinee = peel_hir_expr_refs(scrutinee).0;
     let (scrutinee_str, _) = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
     let scrutinee_str = if scrutinee.span.ctxt() == expr.span.ctxt() && scrutinee.precedence().order() < PREC_POSTFIX {
-        format!("({})", scrutinee_str)
+        format!("({scrutinee_str})")
     } else {
         scrutinee_str.into()
     };
@@ -172,9 +172,9 @@ fn check<'tcx>(
                 };
                 let expr_snip = snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0;
                 if some_expr.needs_unsafe_block {
-                    format!("|{}{}| unsafe {{ {} }}", annotation, some_binding, expr_snip)
+                    format!("|{annotation}{some_binding}| unsafe {{ {expr_snip} }}")
                 } else {
-                    format!("|{}{}| {}", annotation, some_binding, expr_snip)
+                    format!("|{annotation}{some_binding}| {expr_snip}")
                 }
             }
         }
@@ -183,9 +183,9 @@ fn check<'tcx>(
         let pat_snip = snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0;
         let expr_snip = snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0;
         if some_expr.needs_unsafe_block {
-            format!("|{}| unsafe {{ {} }}", pat_snip, expr_snip)
+            format!("|{pat_snip}| unsafe {{ {expr_snip} }}")
         } else {
-            format!("|{}| {}", pat_snip, expr_snip)
+            format!("|{pat_snip}| {expr_snip}")
         }
     } else {
         // Refutable bindings and mixed reference annotations can't be handled by `map`.
@@ -199,9 +199,9 @@ fn check<'tcx>(
         "manual implementation of `Option::map`",
         "try this",
         if else_pat.is_none() && is_else_clause(cx.tcx, expr) {
-            format!("{{ {}{}.map({}) }}", scrutinee_str, as_ref_str, body_str)
+            format!("{{ {scrutinee_str}{as_ref_str}.map({body_str}) }}")
         } else {
-            format!("{}{}.map({})", scrutinee_str, as_ref_str, body_str)
+            format!("{scrutinee_str}{as_ref_str}.map({body_str})")
         },
         app,
     );
@@ -251,9 +251,11 @@ fn try_parse_pattern<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, ctxt: Syn
         match pat.kind {
             PatKind::Wild => Some(OptionPat::Wild),
             PatKind::Ref(pat, _) => f(cx, pat, ref_count + 1, ctxt),
-            PatKind::Path(ref qpath) if is_lang_ctor(cx, qpath, OptionNone) => Some(OptionPat::None),
+            PatKind::Path(ref qpath) if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionNone) => {
+                Some(OptionPat::None)
+            },
             PatKind::TupleStruct(ref qpath, [pattern], _)
-                if is_lang_ctor(cx, qpath, OptionSome) && pat.span.ctxt() == ctxt =>
+                if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionSome) && pat.span.ctxt() == ctxt =>
             {
                 Some(OptionPat::Some { pattern, ref_count })
             },
@@ -272,16 +274,14 @@ fn get_some_expr<'tcx>(
 ) -> Option<SomeExpr<'tcx>> {
     // TODO: Allow more complex expressions.
     match expr.kind {
-        ExprKind::Call(
-            Expr {
-                kind: ExprKind::Path(ref qpath),
-                ..
-            },
-            [arg],
-        ) if ctxt == expr.span.ctxt() && is_lang_ctor(cx, qpath, OptionSome) => Some(SomeExpr {
-            expr: arg,
-            needs_unsafe_block,
-        }),
+        ExprKind::Call(callee, [arg])
+            if ctxt == expr.span.ctxt() && is_res_lang_ctor(cx, path_res(cx, callee), OptionSome) =>
+        {
+            Some(SomeExpr {
+                expr: arg,
+                needs_unsafe_block,
+            })
+        },
         ExprKind::Block(
             Block {
                 stmts: [],
@@ -302,5 +302,5 @@ fn get_some_expr<'tcx>(
 
 // Checks for the `None` value.
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    matches!(peel_blocks(expr).kind, ExprKind::Path(ref qpath) if is_lang_ctor(cx, qpath, OptionNone))
+    is_res_lang_ctor(cx, path_res(cx, peel_blocks(expr)), OptionNone)
 }

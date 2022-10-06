@@ -42,6 +42,7 @@ pub(super) fn check(
     }
 }
 
+#[derive(Copy, Clone)]
 enum NeverLoopResult {
     // A break/return always get triggered but not necessarily for the main loop.
     AlwaysBreak,
@@ -51,8 +52,8 @@ enum NeverLoopResult {
 }
 
 #[must_use]
-fn absorb_break(arg: &NeverLoopResult) -> NeverLoopResult {
-    match *arg {
+fn absorb_break(arg: NeverLoopResult) -> NeverLoopResult {
+    match arg {
         NeverLoopResult::AlwaysBreak | NeverLoopResult::Otherwise => NeverLoopResult::Otherwise,
         NeverLoopResult::MayContinueMainLoop => NeverLoopResult::MayContinueMainLoop,
     }
@@ -92,19 +93,29 @@ fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult
 }
 
 fn never_loop_block(block: &Block<'_>, main_loop_id: HirId) -> NeverLoopResult {
-    let mut iter = block.stmts.iter().filter_map(stmt_to_expr).chain(block.expr);
+    let mut iter = block
+        .stmts
+        .iter()
+        .filter_map(stmt_to_expr)
+        .chain(block.expr.map(|expr| (expr, None)));
     never_loop_expr_seq(&mut iter, main_loop_id)
 }
 
-fn never_loop_expr_seq<'a, T: Iterator<Item = &'a Expr<'a>>>(es: &mut T, main_loop_id: HirId) -> NeverLoopResult {
-    es.map(|e| never_loop_expr(e, main_loop_id))
-        .fold(NeverLoopResult::Otherwise, combine_seq)
+fn never_loop_expr_seq<'a, T: Iterator<Item = (&'a Expr<'a>, Option<&'a Block<'a>>)>>(
+    es: &mut T,
+    main_loop_id: HirId,
+) -> NeverLoopResult {
+    es.map(|(e, els)| {
+        let e = never_loop_expr(e, main_loop_id);
+        els.map_or(e, |els| combine_branches(e, never_loop_block(els, main_loop_id)))
+    })
+    .fold(NeverLoopResult::Otherwise, combine_seq)
 }
 
-fn stmt_to_expr<'tcx>(stmt: &Stmt<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+fn stmt_to_expr<'tcx>(stmt: &Stmt<'tcx>) -> Option<(&'tcx Expr<'tcx>, Option<&'tcx Block<'tcx>>)> {
     match stmt.kind {
-        StmtKind::Semi(e, ..) | StmtKind::Expr(e, ..) => Some(e),
-        StmtKind::Local(local) => local.init,
+        StmtKind::Semi(e, ..) | StmtKind::Expr(e, ..) => Some((e, None)),
+        StmtKind::Local(local) => local.init.map(|init| (init, local.els)),
         StmtKind::Item(..) => None,
     }
 }
@@ -139,7 +150,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
         | ExprKind::Index(e1, e2) => never_loop_expr_all(&mut [e1, e2].iter().copied(), main_loop_id),
         ExprKind::Loop(b, _, _, _) => {
             // Break can come from the inner loop so remove them.
-            absorb_break(&never_loop_block(b, main_loop_id))
+            absorb_break(never_loop_block(b, main_loop_id))
         },
         ExprKind::If(e, e2, e3) => {
             let e1 = never_loop_expr(e, main_loop_id);
@@ -211,9 +222,5 @@ fn for_to_if_let_sugg(cx: &LateContext<'_>, iterator: &Expr<'_>, pat: &Pat<'_>) 
     let pat_snippet = snippet(cx, pat.span, "_");
     let iter_snippet = make_iterator_snippet(cx, iterator, &mut Applicability::Unspecified);
 
-    format!(
-        "if let Some({pat}) = {iter}.next()",
-        pat = pat_snippet,
-        iter = iter_snippet
-    )
+    format!("if let Some({pat_snippet}) = {iter_snippet}.next()")
 }

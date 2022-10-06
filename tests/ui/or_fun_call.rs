@@ -1,8 +1,7 @@
 // run-rustfix
-
 #![warn(clippy::or_fun_call)]
 #![allow(dead_code)]
-#![allow(clippy::unnecessary_wraps, clippy::borrow_as_ptr)]
+#![allow(clippy::borrow_as_ptr, clippy::uninlined_format_args, clippy::unnecessary_wraps)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;

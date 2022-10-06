@@ -135,7 +135,7 @@ declare_clippy_lint! {
     /// let x = String::new();
     /// let y: &str = &x;
     /// ```
-    #[clippy::version = "1.60.0"]
+    #[clippy::version = "1.64.0"]
     pub EXPLICIT_AUTO_DEREF,
     complexity,
     "dereferencing when the compiler would automatically dereference"
@@ -184,6 +184,7 @@ impl Dereferencing {
     }
 }
 
+#[derive(Debug)]
 struct StateData {
     /// Span of the top level expression
     span: Span,
@@ -191,12 +192,14 @@ struct StateData {
     position: Position,
 }
 
+#[derive(Debug)]
 struct DerefedBorrow {
     count: usize,
     msg: &'static str,
     snip_expr: Option<HirId>,
 }
 
+#[derive(Debug)]
 enum State {
     // Any number of deref method calls.
     DerefMethod {
@@ -276,10 +279,12 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
             (None, kind) => {
                 let expr_ty = typeck.expr_ty(expr);
                 let (position, adjustments) = walk_parents(cx, expr, self.msrv);
-
                 match kind {
                     RefOp::Deref => {
-                        if let Position::FieldAccess(name) = position
+                        if let Position::FieldAccess {
+                            name,
+                            of_union: false,
+                        } = position
                             && !ty_contains_field(typeck.expr_ty(sub_expr), name)
                         {
                             self.state = Some((
@@ -451,7 +456,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
             (Some((State::DerefedBorrow(state), data)), RefOp::Deref) => {
                 let position = data.position;
                 report(cx, expr, State::DerefedBorrow(state), data);
-                if let Position::FieldAccess(name) = position
+                if let Position::FieldAccess{name, ..} = position
                     && !ty_contains_field(typeck.expr_ty(sub_expr), name)
                 {
                     self.state = Some((
@@ -616,14 +621,17 @@ fn deref_method_same_type<'tcx>(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
 }
 
 /// The position of an expression relative to it's parent.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum Position {
     MethodReceiver,
     /// The method is defined on a reference type. e.g. `impl Foo for &T`
     MethodReceiverRefImpl,
     Callee,
     ImplArg(HirId),
-    FieldAccess(Symbol),
+    FieldAccess {
+        name: Symbol,
+        of_union: bool,
+    }, // union fields cannot be auto borrowed
     Postfix,
     Deref,
     /// Any other location which will trigger auto-deref to a specific time.
@@ -645,7 +653,10 @@ impl Position {
     }
 
     fn can_auto_borrow(self) -> bool {
-        matches!(self, Self::MethodReceiver | Self::FieldAccess(_) | Self::Callee)
+        matches!(
+            self,
+            Self::MethodReceiver | Self::FieldAccess { of_union: false, .. } | Self::Callee
+        )
     }
 
     fn lint_explicit_deref(self) -> bool {
@@ -657,7 +668,7 @@ impl Position {
             Self::MethodReceiver
             | Self::MethodReceiverRefImpl
             | Self::Callee
-            | Self::FieldAccess(_)
+            | Self::FieldAccess { .. }
             | Self::Postfix => PREC_POSTFIX,
             Self::ImplArg(_) | Self::Deref => PREC_PREFIX,
             Self::DerefStable(p, _) | Self::ReborrowStable(p) | Self::Other(p) => p,
@@ -844,7 +855,10 @@ fn walk_parents<'tcx>(
                         }
                     })
                 },
-                ExprKind::Field(child, name) if child.hir_id == e.hir_id => Some(Position::FieldAccess(name.name)),
+                ExprKind::Field(child, name) if child.hir_id == e.hir_id => Some(Position::FieldAccess {
+                    name: name.name,
+                    of_union: is_union(cx.typeck_results(), child),
+                }),
                 ExprKind::Unary(UnOp::Deref, child) if child.hir_id == e.hir_id => Some(Position::Deref),
                 ExprKind::Match(child, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
                 | ExprKind::Index(child, _)
@@ -863,6 +877,13 @@ fn walk_parents<'tcx>(
     })
     .unwrap_or(Position::Other(precedence));
     (position, adjustments)
+}
+
+fn is_union<'tcx>(typeck: &'tcx TypeckResults<'_>, path_expr: &'tcx Expr<'_>) -> bool {
+    typeck
+        .expr_ty_adjusted(path_expr)
+        .ty_adt_def()
+        .map_or(false, rustc_middle::ty::AdtDef::is_union)
 }
 
 fn closure_result_position<'tcx>(
@@ -1308,7 +1329,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
             };
 
             let expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence().order() < PREC_PREFIX {
-                format!("({})", expr_str)
+                format!("({expr_str})")
             } else {
                 expr_str.into_owned()
             };
@@ -1322,7 +1343,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                     Mutability::Mut => "explicit `deref_mut` method call",
                 },
                 "try this",
-                format!("{}{}{}", addr_of_str, deref_str, expr_str),
+                format!("{addr_of_str}{deref_str}{expr_str}"),
                 app,
             );
         },
@@ -1336,7 +1357,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                     && !has_enclosing_paren(&snip)
                     && (expr.precedence().order() < data.position.precedence() || calls_field)
                 {
-                    format!("({})", snip)
+                    format!("({snip})")
                 } else {
                     snip.into()
                 };
@@ -1379,9 +1400,9 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                     let (snip, snip_is_macro) = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app);
                     let sugg =
                         if !snip_is_macro && expr.precedence().order() < precedence && !has_enclosing_paren(&snip) {
-                            format!("{}({})", prefix, snip)
+                            format!("{prefix}({snip})")
                         } else {
-                            format!("{}{}", prefix, snip)
+                            format!("{prefix}{snip}")
                         };
                     diag.span_suggestion(data.span, "try this", sugg, app);
                 },
@@ -1460,14 +1481,14 @@ impl Dereferencing {
                             } else {
                                 pat.always_deref = false;
                                 let snip = snippet_with_context(cx, e.span, parent.span.ctxt(), "..", &mut pat.app).0;
-                                pat.replacements.push((e.span, format!("&{}", snip)));
+                                pat.replacements.push((e.span, format!("&{snip}")));
                             }
                         },
                         _ if !e.span.from_expansion() => {
                             // Double reference might be needed at this point.
                             pat.always_deref = false;
                             let snip = snippet_with_applicability(cx, e.span, "..", &mut pat.app);
-                            pat.replacements.push((e.span, format!("&{}", snip)));
+                            pat.replacements.push((e.span, format!("&{snip}")));
                         },
                         // Edge case for macros. The span of the identifier will usually match the context of the
                         // binding, but not if the identifier was created in a macro. e.g. `concat_idents` and proc

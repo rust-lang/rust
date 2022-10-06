@@ -30,10 +30,7 @@ pub(super) fn check<'tcx>(
     let option_check_method = if is_some { "is_some" } else { "is_none" };
     // lint if caller of search is an Iterator
     if is_trait_method(cx, is_some_recv, sym::Iterator) {
-        let msg = format!(
-            "called `{}()` after searching an `Iterator` with `{}`",
-            option_check_method, search_method
-        );
+        let msg = format!("called `{option_check_method}()` after searching an `Iterator` with `{search_method}`");
         let search_snippet = snippet(cx, search_arg.span, "..");
         if search_snippet.lines().count() <= 1 {
             // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
@@ -86,8 +83,7 @@ pub(super) fn check<'tcx>(
                     &msg,
                     "use `!_.any()` instead",
                     format!(
-                        "!{}.any({})",
-                        iter,
+                        "!{iter}.any({})",
                         any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
                     ),
                     applicability,
@@ -119,7 +115,7 @@ pub(super) fn check<'tcx>(
             if is_string_or_str_slice(search_recv);
             if is_string_or_str_slice(search_arg);
             then {
-                let msg = format!("called `{}()` after calling `find()` on a string", option_check_method);
+                let msg = format!("called `{option_check_method}()` after calling `find()` on a string");
                 match option_check_method {
                     "is_some" => {
                         let mut applicability = Applicability::MachineApplicable;
@@ -130,7 +126,7 @@ pub(super) fn check<'tcx>(
                             method_span.with_hi(expr.span.hi()),
                             &msg,
                             "use `contains()` instead",
-                            format!("contains({})", find_arg),
+                            format!("contains({find_arg})"),
                             applicability,
                         );
                     },
@@ -144,7 +140,7 @@ pub(super) fn check<'tcx>(
                             expr.span,
                             &msg,
                             "use `!_.contains()` instead",
-                            format!("!{}.contains({})", string, find_arg),
+                            format!("!{string}.contains({find_arg})"),
                             applicability,
                         );
                     },
