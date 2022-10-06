@@ -72,6 +72,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::VariantIdx;
 
 use crate::{
@@ -550,7 +551,7 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             locals: IndexVec::new(),
             projections: FxHashMap::default(),
@@ -559,16 +560,27 @@ impl Map {
         }
     }
 
-    /// Register all places with suitable types up to a certain derefence depth (to prevent cycles).
-    pub fn register_with_filter<'tcx>(
+    /// Register all suitable places with matching types (up to a certain depth).
+    pub fn from_filter<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
+        filter: impl FnMut(Ty<'tcx>) -> bool,
+    ) -> Self {
+        let mut map = Self::new();
+        map.register_with_filter(tcx, body, 3, filter);
+        map
+    }
+
+    fn register_with_filter<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        source: &impl HasLocalDecls<'tcx>,
+        body: &Body<'tcx>,
         max_derefs: u32,
         mut filter: impl FnMut(Ty<'tcx>) -> bool,
     ) {
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         let mut projection = Vec::new();
-        for (local, decl) in source.local_decls().iter_enumerated() {
+        for (local, decl) in body.local_decls.iter_enumerated() {
             self.register_with_filter_rec(
                 tcx,
                 max_derefs,
@@ -576,6 +588,7 @@ impl Map {
                 &mut projection,
                 decl.ty,
                 &mut filter,
+                param_env,
             );
         }
     }
@@ -588,16 +601,28 @@ impl Map {
         projection: &mut Vec<PlaceElem<'tcx>>,
         ty: Ty<'tcx>,
         filter: &mut impl FnMut(Ty<'tcx>) -> bool,
+        param_env: ty::ParamEnv<'tcx>,
     ) {
         if filter(ty) {
             // This might fail if `ty` is not scalar.
             let _ = self.register_with_ty(local, projection, ty);
         }
         if max_derefs > 0 {
-            if let Some(ty::TypeAndMut { ty, .. }) = ty.builtin_deref(false) {
-                projection.push(PlaceElem::Deref);
-                self.register_with_filter_rec(tcx, max_derefs - 1, local, projection, ty, filter);
-                projection.pop();
+            if let Some(ty::TypeAndMut { ty: deref_ty, .. }) = ty.builtin_deref(false) {
+                // References can only be tracked if the target is `!Freeze`.
+                if deref_ty.is_freeze(tcx.at(DUMMY_SP), param_env) {
+                    projection.push(PlaceElem::Deref);
+                    self.register_with_filter_rec(
+                        tcx,
+                        max_derefs - 1,
+                        local,
+                        projection,
+                        deref_ty,
+                        filter,
+                        param_env,
+                    );
+                    projection.pop();
+                }
             }
         }
         iter_fields(ty, tcx, |variant, field, ty| {
@@ -606,7 +631,9 @@ impl Map {
                 return;
             }
             projection.push(PlaceElem::Field(field, ty));
-            self.register_with_filter_rec(tcx, max_derefs, local, projection, ty, filter);
+            self.register_with_filter_rec(
+                tcx, max_derefs, local, projection, ty, filter, param_env,
+            );
             projection.pop();
         });
     }
@@ -639,7 +666,8 @@ impl Map {
         Ok(index)
     }
 
-    pub fn register<'tcx>(
+    #[allow(unused)]
+    fn register<'tcx>(
         &mut self,
         local: Local,
         projection: &[PlaceElem<'tcx>],
@@ -668,12 +696,6 @@ impl Map {
         if !ty.is_scalar() {
             // Currently, only scalar types are allowed, because they are atomic
             // and therefore do not require invalidation of parent places.
-            return Err(());
-        }
-
-        if !ty.is_trivially_freeze() {
-            // Due to the way we deal with shared references, only `Freeze` types may be tracked.
-            // We are a little bit to restrictive here by only allowing trivially `Freeze` types.
             return Err(());
         }
 

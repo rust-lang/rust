@@ -21,8 +21,7 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Decide which places to track during the analysis.
-        let mut map = Map::new();
-        map.register_with_filter(tcx, body, 3, |ty| ty.is_scalar() && !ty.is_unsafe_ptr());
+        let map = Map::from_filter(tcx, body, |ty| ty.is_scalar() && !ty.is_unsafe_ptr());
 
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);
