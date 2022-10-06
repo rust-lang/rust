@@ -606,10 +606,6 @@ impl Session {
         self.parse_sess.source_map()
     }
 
-    pub fn time_passes(&self) -> bool {
-        self.opts.time_passes()
-    }
-
     /// Returns `true` if internal lints should be added to the lint store - i.e. if
     /// `-Zunstable-options` is provided and this isn't rustdoc (internal lints can trigger errors
     /// to be emitted under rustdoc).
@@ -925,6 +921,10 @@ impl Session {
 
     pub fn instrument_mcount(&self) -> bool {
         self.opts.unstable_opts.instrument_mcount
+    }
+
+    pub fn time_passes(&self) -> bool {
+        self.opts.unstable_opts.time_passes
     }
 
     pub fn time_llvm_passes(&self) -> bool {
@@ -1403,8 +1403,7 @@ pub fn build_session(
         CguReuseTracker::new_disabled()
     };
 
-    let prof =
-        SelfProfilerRef::new(self_profiler, sopts.time_passes(), sopts.unstable_opts.time_passes);
+    let prof = SelfProfilerRef::new(self_profiler, sopts.unstable_opts.time_passes);
 
     let ctfe_backtrace = Lock::new(match env::var("RUSTC_CTFE_BACKTRACE") {
         Ok(ref val) if val == "immediate" => CtfeBacktrace::Immediate,

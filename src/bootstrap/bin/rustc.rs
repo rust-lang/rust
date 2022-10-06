@@ -67,7 +67,7 @@ fn main() {
             if target == "all"
                 || target.into_string().unwrap().split(',').any(|c| c.trim() == crate_name)
             {
-                cmd.arg("-Ztime");
+                cmd.arg("-Ztime-passes");
             }
         }
     }

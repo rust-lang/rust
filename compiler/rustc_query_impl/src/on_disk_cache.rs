@@ -1067,7 +1067,7 @@ pub fn encode_query_results<'a, 'tcx, CTX, Q>(
     let _timer = tcx
         .dep_context()
         .profiler()
-        .extra_verbose_generic_activity("encode_query_results_for", std::any::type_name::<Q>());
+        .verbose_generic_activity_with_arg("encode_query_results_for", std::any::type_name::<Q>());
 
     assert!(Q::query_state(tcx).all_inactive());
     let cache = Q::query_cache(tcx);

@@ -170,7 +170,6 @@
     -Z                                 thinlto=val -- enable ThinLTO when possible
     -Z                           thir-unsafeck=val -- use the THIR unsafety checker (default: no)
     -Z                                 threads=val -- use a thread pool with N threads
-    -Z                                    time=val -- measure time of rustc processes (default: no)
     -Z                        time-llvm-passes=val -- measure time of each LLVM pass (default: no)
     -Z                             time-passes=val -- measure time of each rustc pass (default: no)
     -Z                               tls-model=val -- choose the TLS model to use (`rustc --print tls-models` for details)
