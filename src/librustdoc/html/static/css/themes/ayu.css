@@ -40,6 +40,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--search-result-link-focus-background-color: #3c3c3c;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
+	--search-color: #fff;
 }
 
 .slider {
@@ -147,10 +148,6 @@ details.rustdoc-toggle > summary::before {
 }
 #crate-search-div:hover::after, #crate-search-div:focus-within::after {
 	filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg) brightness(113%) contrast(76%);
-}
-
-.search-input {
-	color: #fff;
 }
 
 .module-item .stab,
