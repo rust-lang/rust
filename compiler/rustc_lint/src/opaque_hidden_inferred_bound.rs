@@ -1,7 +1,9 @@
 use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_macros::LintDiagnostic;
-use rustc_middle::ty::{self, fold::BottomUpFolder, Ty, TypeFoldable};
+use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_middle::ty::{
+    self, fold::BottomUpFolder, print::TraitPredPrintModifiersAndPath, Ty, TypeFoldable,
+};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -117,13 +119,13 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     )) {
                         // If it's a trait bound and an opaque that doesn't satisfy it,
                         // then we can emit a suggestion to add the bound.
-                        let (suggestion, suggest_span) =
+                        let add_bound =
                             match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
-                                (ty::Opaque(def_id, _), ty::PredicateKind::Trait(trait_pred)) => (
-                                    format!(" + {}", trait_pred.print_modifiers_and_trait_path()),
-                                    Some(cx.tcx.def_span(def_id).shrink_to_hi()),
-                                ),
-                                _ => (String::new(), None),
+                                (ty::Opaque(def_id, _), ty::PredicateKind::Trait(trait_pred)) => Some(AddBound {
+                                    suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
+                                    trait_ref: trait_pred.print_modifiers_and_trait_path(),
+                                }),
+                                _ => None,
                             };
                         cx.emit_spanned_lint(
                             OPAQUE_HIDDEN_INFERRED_BOUND,
@@ -132,8 +134,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                                 ty: cx.tcx.mk_opaque(def_id, ty::InternalSubsts::identity_for_item(cx.tcx, def_id)),
                                 proj_ty: proj_term,
                                 assoc_pred_span,
-                                suggestion,
-                                suggest_span,
+                                add_bound,
                             },
                         );
                     }
@@ -150,7 +151,19 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
     proj_ty: Ty<'tcx>,
     #[label(lint::specifically)]
     assoc_pred_span: Span,
-    #[suggestion_verbose(applicability = "machine-applicable", code = "{suggestion}")]
-    suggest_span: Option<Span>,
-    suggestion: String,
+    #[subdiagnostic]
+    add_bound: Option<AddBound<'tcx>>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion_verbose(
+    lint::opaque_hidden_inferred_bound_sugg,
+    applicability = "machine-applicable",
+    code = " + {trait_ref}"
+)]
+struct AddBound<'tcx> {
+    #[primary_span]
+    suggest_span: Span,
+    #[skip_arg]
+    trait_ref: TraitPredPrintModifiersAndPath<'tcx>,
 }

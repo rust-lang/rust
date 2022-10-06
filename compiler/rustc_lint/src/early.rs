@@ -409,7 +409,7 @@ pub fn check_ast_node<'a>(
     if sess.opts.unstable_opts.no_interleave_lints {
         for (i, pass) in passes.iter_mut().enumerate() {
             buffered =
-                sess.prof.extra_verbose_generic_activity("run_lint", pass.name()).run(|| {
+                sess.prof.verbose_generic_activity_with_arg("run_lint", pass.name()).run(|| {
                     early_lint_node(
                         sess,
                         !pre_expansion && i == 0,

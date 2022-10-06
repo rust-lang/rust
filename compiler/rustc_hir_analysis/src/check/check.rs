@@ -2,7 +2,7 @@ use crate::check::intrinsicck::InlineAsmCtxt;
 
 use super::coercion::CoerceMany;
 use super::compare_method::check_type_bounds;
-use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
+use super::compare_method::{compare_impl_method, compare_ty_impl};
 use super::*;
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
@@ -1048,14 +1048,10 @@ fn check_impl_items_against_trait<'tcx>(
         let impl_item_full = tcx.hir().impl_item(impl_item.id);
         match impl_item_full.kind {
             hir::ImplItemKind::Const(..) => {
-                // Find associated const definition.
-                compare_const_impl(
-                    tcx,
-                    &ty_impl_item,
-                    impl_item.span,
-                    &ty_trait_item,
-                    impl_trait_ref,
-                );
+                let _ = tcx.compare_assoc_const_impl_item_with_trait_item((
+                    impl_item.id.def_id.def_id,
+                    ty_impl_item.trait_item_def_id.unwrap(),
+                ));
             }
             hir::ImplItemKind::Fn(..) => {
                 let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);

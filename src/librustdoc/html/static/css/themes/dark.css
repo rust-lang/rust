@@ -35,6 +35,7 @@
 	--search-result-link-focus-background-color: #616161;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
+	--search-color: #111;
 }
 
 .slider {
@@ -70,10 +71,6 @@ body.source .example-wrap pre.rust a {
 
 details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
-}
-
-.search-input {
-	color: #111;
 }
 
 #crate-search-div::after {

@@ -127,10 +127,13 @@ pub struct TimePassesCallbacks {
 }
 
 impl Callbacks for TimePassesCallbacks {
+    // JUSTIFICATION: the session doesn't exist at this point.
+    #[allow(rustc::bad_opt_access)]
     fn config(&mut self, config: &mut interface::Config) {
-        // If a --prints=... option has been given, we don't print the "total"
-        // time because it will mess up the --prints output. See #64339.
-        self.time_passes = config.opts.prints.is_empty() && config.opts.time_passes();
+        // If a --print=... option has been given, we don't print the "total"
+        // time because it will mess up the --print output. See #64339.
+        //
+        self.time_passes = config.opts.prints.is_empty() && config.opts.unstable_opts.time_passes;
         config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
     }
 }

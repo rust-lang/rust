@@ -436,4 +436,5 @@ lint_check_name_deprecated = lint name `{$lint_name}` is deprecated and does not
 
 lint_opaque_hidden_inferred_bound = opaque type `{$ty}` does not satisfy its associated type bounds
     .specifically = this associated type bound is unsatisfied for `{$proj_ty}`
-    .suggestion = add this bound
+
+lint_opaque_hidden_inferred_bound_sugg = add this bound
