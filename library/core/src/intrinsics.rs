@@ -2210,8 +2210,8 @@ macro_rules! assert_unsafe_precondition {
             #[inline(always)]
             fn runtime$(<$($tt)*>)?($($i:$ty),*) {
                 if !$e {
-                    // abort instead of panicking to reduce impact on code size
-                    ::core::intrinsics::abort();
+                    // don't unwind to reduce impact on code size
+                    ::core::panicking::panic_str_nounwind("unsafe precondition violated");
                 }
             }
             #[allow(non_snake_case)]
