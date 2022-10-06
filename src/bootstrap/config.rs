@@ -75,6 +75,8 @@ pub struct Config {
     pub stage0_metadata: Stage0Metadata,
     /// Whether to use the `c` feature of the `compiler_builtins` crate.
     pub optimized_compiler_builtins: bool,
+    pub android_ndk: Option<PathBuf>,
+    pub android_api_level: Option<u32>,
 
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -600,6 +602,8 @@ define_config! {
         patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
         metrics: Option<bool> = "metrics",
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
+        android_ndk: Option<PathBuf> = "android-ndk",
+        android_api_level: Option<u32> = "android-api-level",
     }
 }
 
@@ -951,6 +955,8 @@ impl Config {
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
         config.submodules = build.submodules;
+        config.android_ndk = build.android_ndk;
+        config.android_api_level = build.android_api_level;
         set(&mut config.low_priority, build.low_priority);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs_minification, build.docs_minification);

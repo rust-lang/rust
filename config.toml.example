@@ -334,6 +334,18 @@ changelog-seen = 2
 # this is not intended to be used during local development.
 #metrics = false
 
+# When targeting Android, specify the location of the Android NDK. This variable
+# needs to be set to the location of the LLVM toolchain subdirectory within
+# the NDK, found under "toolchains/llvm/prebuilt/<host os>-<host arch>".
+#
+# This option is only compatible with Android NDK r19 or newer. If you are using
+# an older NDK, you will need to create a standalone toolchain and specify the
+# path via the target-specific android-ndk option.
+#android-ndk = <none> (path)
+
+# When targeting Android, specify the minimum API level to target.
+#android-api-level = 21
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -700,6 +712,10 @@ changelog-seen = 2
 # the NDK for the target lives. This is used to find the C compiler to link and
 # build native code.
 # See `src/bootstrap/cc_detect.rs` for details.
+#
+# This option is deprecated as it requires building a standalone toolchain,
+# which is unnecessary with NDK r19 and newer. Instead, prefer to use the same
+# option under the [build] section.
 #android-ndk = <none> (path)
 
 # Build the sanitizer runtimes for this target.

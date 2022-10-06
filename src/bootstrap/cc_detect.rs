@@ -34,7 +34,7 @@ use crate::{Build, CLang, GitRepo};
 // so use some simplified logic here. First we respect the environment variable `AR`, then
 // try to infer the archiver path from the C compiler path.
 // In the future this logic should be replaced by calling into the `cc` crate.
-fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
+fn cc2ar(cc: &Path, target: TargetSelection, build: &Build) -> Option<PathBuf> {
     if let Some(ar) = env::var_os(format!("AR_{}", target.triple.replace("-", "_"))) {
         Some(PathBuf::from(ar))
     } else if let Some(ar) = env::var_os("AR") {
@@ -47,6 +47,8 @@ fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
         Some(PathBuf::from("ar"))
     } else if target.contains("vxworks") {
         Some(PathBuf::from("wr-ar"))
+    } else if target.contains("android") && build.config.android_ndk.is_some() {
+        Some(build.config.android_ndk.as_ref().unwrap().join("bin").join("llvm-ar"))
     } else {
         let parent = cc.parent().unwrap();
         let file = cc.file_name().unwrap().to_str().unwrap();
@@ -108,7 +110,7 @@ pub fn find(build: &mut Build) {
         let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
             ar
         } else {
-            cc2ar(compiler.path(), target)
+            cc2ar(compiler.path(), target, build)
         };
 
         build.cc.insert(target, compiler.clone());
@@ -173,6 +175,16 @@ fn set_compiler(
                     .replace("thumbv7neon", "arm")
                     .replace("thumbv7", "arm");
                 let compiler = format!("{}-{}", target, compiler.clang());
+                cfg.compiler(ndk.join("bin").join(compiler));
+            } else if let Some(ndk) = build.config.android_ndk.as_ref() {
+                let target = target
+                    .triple
+                    .replace("armv7neon", "armv7a")
+                    .replace("armv7", "armv7a")
+                    .replace("thumbv7neon", "armv7a")
+                    .replace("thumbv7", "armv7a");
+                let api_level = build.config.android_api_level.unwrap_or(21);
+                let compiler = format!("{}{}-{}", target, api_level, compiler.clang());
                 cfg.compiler(ndk.join("bin").join(compiler));
             }
         }
