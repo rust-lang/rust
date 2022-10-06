@@ -138,8 +138,17 @@ fn univariant_uninterned<'tcx>(
     if optimize {
         let end = if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
         let optimizing = &mut inverse_memory_index[..end];
-        let field_align = |f: &TyAndLayout<'_>| {
-            if let Some(pack) = pack { f.align.abi.min(pack) } else { f.align.abi }
+        let effective_field_align = |f: &TyAndLayout<'_>| {
+            if let Some(pack) = pack {
+                f.align.abi.min(pack)
+            } else if f.size.bytes().is_power_of_two() && f.size.bytes() >= f.align.abi.bytes() {
+                // Try to put fields which have a 2^n size and smaller alignment together with
+                // fields that have an alignment matching that size.
+                // E.g. group [u8; 4] with u32 fields
+                Align::from_bytes(f.align.abi.bytes()).unwrap_or(f.align.abi)
+            } else {
+                f.align.abi
+            }
         };
 
         // If `-Z randomize-layout` was enabled for the type definition we can shuffle
@@ -161,14 +170,14 @@ fn univariant_uninterned<'tcx>(
                         // Place ZSTs first to avoid "interesting offsets",
                         // especially with only one or two non-ZST fields.
                         let f = &fields[x as usize];
-                        (!f.is_zst(), cmp::Reverse(field_align(f)))
+                        (!f.is_zst(), cmp::Reverse(effective_field_align(f)))
                     });
                 }
 
                 StructKind::Prefixed(..) => {
                     // Sort in ascending alignment so that the layout stays optimal
                     // regardless of the prefix
-                    optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
+                    optimizing.sort_by_key(|&x| effective_field_align(&fields[x as usize]));
                 }
             }
 
