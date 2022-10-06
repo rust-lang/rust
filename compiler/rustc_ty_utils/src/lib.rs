@@ -5,6 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(let_chains)]
 #![feature(control_flow_enum)]
 #![feature(never_type)]
 #![feature(box_patterns)]

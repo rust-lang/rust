@@ -186,40 +186,14 @@ fn resolve_associated_item<'tcx>(
             // a `trait` to an associated `const` definition in an `impl`, where
             // the definition in the `impl` has the wrong type (for which an
             // error has already been/will be emitted elsewhere).
-            //
-            // NB: this may be expensive, we try to skip it in all the cases where
-            // we know the error would've been caught (e.g. in an upstream crate).
-            //
-            // A better approach might be to just introduce a query (returning
-            // `Result<(), ErrorGuaranteed>`) for the check that `rustc_hir_analysis`
-            // performs (i.e. that the definition's type in the `impl` matches
-            // the declaration in the `trait`), so that we can cheaply check
-            // here if it failed, instead of approximating it.
             if leaf_def.item.kind == ty::AssocKind::Const
                 && trait_item_id != leaf_def.item.def_id
-                && leaf_def.item.def_id.is_local()
+                && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {
-                let normalized_type_of = |def_id, substs| {
-                    tcx.subst_and_normalize_erasing_regions(substs, param_env, tcx.type_of(def_id))
-                };
-
-                let original_ty = normalized_type_of(trait_item_id, rcvr_substs);
-                let resolved_ty = normalized_type_of(leaf_def.item.def_id, substs);
-
-                if original_ty != resolved_ty {
-                    let msg = format!(
-                        "Instance::resolve: inconsistent associated `const` type: \
-                         was `{}: {}` but resolved to `{}: {}`",
-                        tcx.def_path_str_with_substs(trait_item_id, rcvr_substs),
-                        original_ty,
-                        tcx.def_path_str_with_substs(leaf_def.item.def_id, substs),
-                        resolved_ty,
-                    );
-                    let span = tcx.def_span(leaf_def.item.def_id);
-                    let reported = tcx.sess.delay_span_bug(span, &msg);
-
-                    return Err(reported);
-                }
+                tcx.compare_assoc_const_impl_item_with_trait_item((
+                    leaf_def_item,
+                    trait_item_id,
+                ))?;
             }
 
             Some(ty::Instance::new(leaf_def.item.def_id, substs))

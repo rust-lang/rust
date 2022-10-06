@@ -1,6 +1,6 @@
 use super::potentially_plural_count;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LocalDefId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -1300,17 +1300,20 @@ fn compare_generic_param_kinds<'tcx>(
     Ok(())
 }
 
-pub(crate) fn compare_const_impl<'tcx>(
+/// Use `tcx.compare_assoc_const_impl_item_with_trait_item` instead
+pub(crate) fn raw_compare_const_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
-    impl_c: &ty::AssocItem,
-    impl_c_span: Span,
-    trait_c: &ty::AssocItem,
-    impl_trait_ref: ty::TraitRef<'tcx>,
-) {
+    (impl_const_item_def, trait_const_item_def): (LocalDefId, DefId),
+) -> Result<(), ErrorGuaranteed> {
+    let impl_const_item = tcx.associated_item(impl_const_item_def);
+    let trait_const_item = tcx.associated_item(trait_const_item_def);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_const_item.container_id(tcx)).unwrap();
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
+    let impl_c_span = tcx.def_span(impl_const_item_def.to_def_id());
+
     tcx.infer_ctxt().enter(|infcx| {
-        let param_env = tcx.param_env(impl_c.def_id);
+        let param_env = tcx.param_env(impl_const_item_def.to_def_id());
         let ocx = ObligationCtxt::new(&infcx);
 
         // The below is for the most part highly similar to the procedure
@@ -1322,18 +1325,18 @@ pub(crate) fn compare_const_impl<'tcx>(
 
         // Create a parameter environment that represents the implementation's
         // method.
-        let impl_c_hir_id = tcx.hir().local_def_id_to_hir_id(impl_c.def_id.expect_local());
+        let impl_c_hir_id = tcx.hir().local_def_id_to_hir_id(impl_const_item_def);
 
         // Compute placeholder form of impl and trait const tys.
-        let impl_ty = tcx.type_of(impl_c.def_id);
-        let trait_ty = tcx.bound_type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
+        let impl_ty = tcx.type_of(impl_const_item_def.to_def_id());
+        let trait_ty = tcx.bound_type_of(trait_const_item_def).subst(tcx, trait_to_impl_substs);
         let mut cause = ObligationCause::new(
             impl_c_span,
             impl_c_hir_id,
             ObligationCauseCode::CompareImplItemObligation {
-                impl_item_def_id: impl_c.def_id.expect_local(),
-                trait_item_def_id: trait_c.def_id,
-                kind: impl_c.kind,
+                impl_item_def_id: impl_const_item_def,
+                trait_item_def_id: trait_const_item_def,
+                kind: impl_const_item.kind,
             },
         );
 
@@ -1358,9 +1361,9 @@ pub(crate) fn compare_const_impl<'tcx>(
             );
 
             // Locate the Span containing just the type of the offending impl
-            match tcx.hir().expect_impl_item(impl_c.def_id.expect_local()).kind {
+            match tcx.hir().expect_impl_item(impl_const_item_def).kind {
                 ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
-                _ => bug!("{:?} is not a impl const", impl_c),
+                _ => bug!("{:?} is not a impl const", impl_const_item),
             }
 
             let mut diag = struct_span_err!(
@@ -1368,14 +1371,14 @@ pub(crate) fn compare_const_impl<'tcx>(
                 cause.span,
                 E0326,
                 "implemented const `{}` has an incompatible type for trait",
-                trait_c.name
+                trait_const_item.name
             );
 
-            let trait_c_span = trait_c.def_id.as_local().map(|trait_c_def_id| {
+            let trait_c_span = trait_const_item_def.as_local().map(|trait_c_def_id| {
                 // Add a label to the Span containing just the type of the const
                 match tcx.hir().expect_trait_item(trait_c_def_id).kind {
                     TraitItemKind::Const(ref ty, _) => ty.span,
-                    _ => bug!("{:?} is not a trait const", trait_c),
+                    _ => bug!("{:?} is not a trait const", trait_const_item),
                 }
             });
 
@@ -1391,23 +1394,22 @@ pub(crate) fn compare_const_impl<'tcx>(
                 false,
                 false,
             );
-            diag.emit();
-        }
+            return Err(diag.emit());
+        };
 
         // Check that all obligations are satisfied by the implementation's
         // version.
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            infcx.report_fulfillment_errors(&errors, None, false);
-            return;
+            return Err(infcx.report_fulfillment_errors(&errors, None, false));
         }
 
+        // FIXME return `ErrorReported` if region obligations error?
         let outlives_environment = OutlivesEnvironment::new(param_env);
-        infcx.check_region_obligations_and_report_errors(
-            impl_c.def_id.expect_local(),
-            &outlives_environment,
-        );
-    });
+        infcx
+            .check_region_obligations_and_report_errors(impl_const_item_def, &outlives_environment);
+        Ok(())
+    })
 }
 
 pub(crate) fn compare_ty_impl<'tcx>(
