@@ -1349,52 +1349,53 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
 
         debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
-        let maybe_error_reported = infcx
+        let err = infcx
             .at(&cause, param_env)
             .sup(trait_ty, impl_ty)
-            .map(|ok| ocx.register_infer_ok_obligations(ok))
-            .map_err(|terr| {
-                debug!(
-                    "checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
-                    impl_ty, trait_ty
-                );
+            .map(|ok| ocx.register_infer_ok_obligations(ok));
 
-                // Locate the Span containing just the type of the offending impl
-                match tcx.hir().expect_impl_item(impl_const_item_def).kind {
-                    ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
-                    _ => bug!("{:?} is not a impl const", impl_const_item),
+        if let Err(terr) = err {
+            debug!(
+                "checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
+                impl_ty, trait_ty
+            );
+
+            // Locate the Span containing just the type of the offending impl
+            match tcx.hir().expect_impl_item(impl_const_item_def).kind {
+                ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
+                _ => bug!("{:?} is not a impl const", impl_const_item),
+            }
+
+            let mut diag = struct_span_err!(
+                tcx.sess,
+                cause.span,
+                E0326,
+                "implemented const `{}` has an incompatible type for trait",
+                trait_const_item.name
+            );
+
+            let trait_c_span = trait_const_item_def.as_local().map(|trait_c_def_id| {
+                // Add a label to the Span containing just the type of the const
+                match tcx.hir().expect_trait_item(trait_c_def_id).kind {
+                    TraitItemKind::Const(ref ty, _) => ty.span,
+                    _ => bug!("{:?} is not a trait const", trait_const_item),
                 }
-
-                let mut diag = struct_span_err!(
-                    tcx.sess,
-                    cause.span,
-                    E0326,
-                    "implemented const `{}` has an incompatible type for trait",
-                    trait_const_item.name
-                );
-
-                let trait_c_span = trait_const_item_def.as_local().map(|trait_c_def_id| {
-                    // Add a label to the Span containing just the type of the const
-                    match tcx.hir().expect_trait_item(trait_c_def_id).kind {
-                        TraitItemKind::Const(ref ty, _) => ty.span,
-                        _ => bug!("{:?} is not a trait const", trait_const_item),
-                    }
-                });
-
-                infcx.note_type_err(
-                    &mut diag,
-                    &cause,
-                    trait_c_span.map(|span| (span, "type in trait".to_owned())),
-                    Some(infer::ValuePairs::Terms(ExpectedFound {
-                        expected: trait_ty.into(),
-                        found: impl_ty.into(),
-                    })),
-                    terr,
-                    false,
-                    false,
-                );
-                diag.emit()
             });
+
+            infcx.note_type_err(
+                &mut diag,
+                &cause,
+                trait_c_span.map(|span| (span, "type in trait".to_owned())),
+                Some(infer::ValuePairs::Terms(ExpectedFound {
+                    expected: trait_ty.into(),
+                    found: impl_ty.into(),
+                })),
+                terr,
+                false,
+                false,
+            );
+            return Err(diag.emit());
+        };
 
         // Check that all obligations are satisfied by the implementation's
         // version.
@@ -1407,7 +1408,7 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
         let outlives_environment = OutlivesEnvironment::new(param_env);
         infcx
             .check_region_obligations_and_report_errors(impl_const_item_def, &outlives_environment);
-        maybe_error_reported
+        Ok(())
     })
 }
 
