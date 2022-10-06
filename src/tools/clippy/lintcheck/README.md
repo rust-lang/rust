@@ -69,9 +69,27 @@ is checked.
 is explicitly specified in the options.
 
 ### Fix mode
-You can run `./lintcheck/target/debug/lintcheck --fix` which will run Clippy with `--fix` and
+You can run `cargo lintcheck --fix` which will run Clippy with `--fix` and
 print a warning if Clippy's suggestions fail to apply (if the resulting code does not build).  
 This lets us spot bad suggestions or false positives automatically in some cases.  
 
 Please note that the target dir should be cleaned afterwards since clippy will modify
 the downloaded sources which can lead to unexpected results when running lintcheck again afterwards.
+
+### Recursive mode
+You can run `cargo lintcheck --recursive` to also run Clippy on the dependencies
+of the crates listed in the crates source `.toml`. e.g. adding `rand 0.8.5`
+would also lint `rand_core`, `rand_chacha`, etc.
+
+Particularly slow crates in the dependency graph can be ignored using
+`recursive.ignore`:
+
+```toml
+[crates]
+cargo = {name = "cargo", versions = ['0.64.0']}
+
+[recursive]
+ignore = [
+    "unicode-normalization",
+]
+```

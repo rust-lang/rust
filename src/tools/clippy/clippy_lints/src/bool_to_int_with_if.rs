@@ -3,7 +3,7 @@ use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use clippy_utils::{diagnostics::span_lint_and_then, is_else_clause, sugg::Sugg};
+use clippy_utils::{diagnostics::span_lint_and_then, is_else_clause, is_integer_literal, sugg::Sugg};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -56,13 +56,9 @@ fn check_if_else<'tcx>(ctx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx
         && let Some(then_lit) = int_literal(then)
         && let Some(else_lit) = int_literal(else_)
     {
-        let inverted = if
-            check_int_literal_equals_val(then_lit, 1)
-            && check_int_literal_equals_val(else_lit, 0) {
+        let inverted = if is_integer_literal(then_lit, 1) && is_integer_literal(else_lit, 0) {
             false
-        } else if
-            check_int_literal_equals_val(then_lit, 0)
-            && check_int_literal_equals_val(else_lit, 1) {
+        } else if is_integer_literal(then_lit, 0) && is_integer_literal(else_lit, 1) {
             true
         } else {
             // Expression isn't boolean, exit
@@ -121,16 +117,5 @@ fn int_literal<'tcx>(expr: &'tcx rustc_hir::Expr<'tcx>) -> Option<&'tcx rustc_hi
         Some(expr)
     } else {
         None
-    }
-}
-
-fn check_int_literal_equals_val<'tcx>(expr: &'tcx rustc_hir::Expr<'tcx>, expected_value: u128) -> bool {
-    if let ExprKind::Lit(lit) = &expr.kind
-        && let LitKind::Int(val, _) = lit.node
-        && val == expected_value
-    {
-        true
-    } else {
-        false
     }
 }

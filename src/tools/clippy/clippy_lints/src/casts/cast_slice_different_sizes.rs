@@ -35,8 +35,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Optio
                     CAST_SLICE_DIFFERENT_SIZES,
                     expr.span,
                     &format!(
-                        "casting between raw pointers to `[{}]` (element size {}) and `[{}]` (element size {}) does not adjust the count",
-                        start_ty.ty, from_size, end_ty.ty, to_size,
+                        "casting between raw pointers to `[{}]` (element size {from_size}) and `[{}]` (element size {to_size}) does not adjust the count",
+                        start_ty.ty, end_ty.ty,
                     ),
                     |diag| {
                         let ptr_snippet = source::snippet(cx, left_cast.span, "..");

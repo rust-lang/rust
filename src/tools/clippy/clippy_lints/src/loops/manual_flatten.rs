@@ -3,13 +3,13 @@ use super::MANUAL_FLATTEN;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{is_lang_ctor, path_to_local_id, peel_blocks_with_stmt};
+use clippy_utils::{path_to_local_id, peel_blocks_with_stmt};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionSome, ResultOk};
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, Pat, PatKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, DefIdTree};
 use rustc_span::source_map::Span;
 
 /// Check for unnecessary `if let` usage in a for loop where only the `Some` or `Ok` variant of the
@@ -30,15 +30,17 @@ pub(super) fn check<'tcx>(
         if path_to_local_id(let_expr, pat_hir_id);
         // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
         if let PatKind::TupleStruct(ref qpath, _, _) = let_pat.kind;
-        let some_ctor = is_lang_ctor(cx, qpath, OptionSome);
-        let ok_ctor = is_lang_ctor(cx, qpath, ResultOk);
+        if let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(qpath, let_pat.hir_id);
+        if let Some(variant_id) = cx.tcx.opt_parent(ctor_id);
+        let some_ctor = cx.tcx.lang_items().option_some_variant() == Some(variant_id);
+        let ok_ctor = cx.tcx.lang_items().result_ok_variant() == Some(variant_id);
         if some_ctor || ok_ctor;
         // Ensure expr in `if let` is not used afterwards
         if !is_local_used(cx, if_then, pat_hir_id);
         then {
             let if_let_type = if some_ctor { "Some" } else { "Ok" };
             // Prepare the error message
-            let msg = format!("unnecessary `if let` since only the `{}` variant of the iterator element is used", if_let_type);
+            let msg = format!("unnecessary `if let` since only the `{if_let_type}` variant of the iterator element is used");
 
             // Prepare the help message
             let mut applicability = Applicability::MaybeIncorrect;

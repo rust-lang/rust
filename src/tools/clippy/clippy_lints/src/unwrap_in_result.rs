@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{method_chain_args, return_ty};
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Expr, ImplItemKind};
+use rustc_hir::ImplItemKind;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
 
@@ -73,51 +73,37 @@ impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
     }
 }
 
-struct FindExpectUnwrap<'a, 'tcx> {
-    lcx: &'a LateContext<'tcx>,
-    typeck_results: &'tcx ty::TypeckResults<'tcx>,
-    result: Vec<Span>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        // check for `expect`
-        if let Some(arglists) = method_chain_args(expr, &["expect"]) {
-            let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
-            if is_type_diagnostic_item(self.lcx, receiver_ty, sym::Option)
-                || is_type_diagnostic_item(self.lcx, receiver_ty, sym::Result)
-            {
-                self.result.push(expr.span);
-            }
-        }
-
-        // check for `unwrap`
-        if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-            let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
-            if is_type_diagnostic_item(self.lcx, receiver_ty, sym::Option)
-                || is_type_diagnostic_item(self.lcx, receiver_ty, sym::Result)
-            {
-                self.result.push(expr.span);
-            }
-        }
-
-        // and check sub-expressions
-        intravisit::walk_expr(self, expr);
-    }
-}
-
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tcx hir::ImplItem<'_>) {
     if let ImplItemKind::Fn(_, body_id) = impl_item.kind {
         let body = cx.tcx.hir().body(body_id);
-        let mut fpu = FindExpectUnwrap {
-            lcx: cx,
-            typeck_results: cx.tcx.typeck(impl_item.def_id.def_id),
-            result: Vec::new(),
-        };
-        fpu.visit_expr(body.value);
+        let typeck = cx.tcx.typeck(impl_item.def_id.def_id);
+        let mut result = Vec::new();
+        let _: Option<!> = for_each_expr(body.value, |e| {
+            // check for `expect`
+            if let Some(arglists) = method_chain_args(e, &["expect"]) {
+                let receiver_ty = typeck.expr_ty(arglists[0].0).peel_refs();
+                if is_type_diagnostic_item(cx, receiver_ty, sym::Option)
+                    || is_type_diagnostic_item(cx, receiver_ty, sym::Result)
+                {
+                    result.push(e.span);
+                }
+            }
+
+            // check for `unwrap`
+            if let Some(arglists) = method_chain_args(e, &["unwrap"]) {
+                let receiver_ty = typeck.expr_ty(arglists[0].0).peel_refs();
+                if is_type_diagnostic_item(cx, receiver_ty, sym::Option)
+                    || is_type_diagnostic_item(cx, receiver_ty, sym::Result)
+                {
+                    result.push(e.span);
+                }
+            }
+
+            ControlFlow::Continue(())
+        });
 
         // if we've found one, lint
-        if !fpu.result.is_empty() {
+        if !result.is_empty() {
             span_lint_and_then(
                 cx,
                 UNWRAP_IN_RESULT,
@@ -125,7 +111,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tc
                 "used unwrap or expect in a function that returns result or option",
                 move |diag| {
                     diag.help("unwrap and expect should not be used in a function that returns result or option");
-                    diag.span_note(fpu.result, "potential non-recoverable error(s)");
+                    diag.span_note(result, "potential non-recoverable error(s)");
                 },
             );
         }

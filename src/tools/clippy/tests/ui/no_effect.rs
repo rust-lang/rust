@@ -1,9 +1,7 @@
 #![feature(box_syntax, fn_traits, unboxed_closures)]
 #![warn(clippy::no_effect_underscore_binding)]
-#![allow(dead_code)]
-#![allow(path_statements)]
-#![allow(clippy::deref_addrof)]
-#![allow(clippy::redundant_field_names)]
+#![allow(dead_code, path_statements)]
+#![allow(clippy::deref_addrof, clippy::redundant_field_names, clippy::uninlined_format_args)]
 
 struct Unit;
 struct Tuple(i32);

@@ -3,10 +3,11 @@ use clippy_utils::get_parent_expr;
 use clippy_utils::higher;
 use clippy_utils::source::snippet_block_with_applicability;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::visitors::{for_each_expr, Descend};
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{BlockCheckMode, Closure, Expr, ExprKind};
+use rustc_hir::{BlockCheckMode, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -43,39 +44,6 @@ declare_clippy_lint! {
 }
 
 declare_lint_pass!(BlocksInIfConditions => [BLOCKS_IN_IF_CONDITIONS]);
-
-struct ExVisitor<'a, 'tcx> {
-    found_block: Option<&'tcx Expr<'tcx>>,
-    cx: &'a LateContext<'tcx>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::Closure(&Closure { body, .. }) = expr.kind {
-            // do not lint if the closure is called using an iterator (see #1141)
-            if_chain! {
-                if let Some(parent) = get_parent_expr(self.cx, expr);
-                if let ExprKind::MethodCall(_, self_arg, ..) = &parent.kind;
-                let caller = self.cx.typeck_results().expr_ty(self_arg);
-                if let Some(iter_id) = self.cx.tcx.get_diagnostic_item(sym::Iterator);
-                if implements_trait(self.cx, caller, iter_id, &[]);
-                then {
-                    return;
-                }
-            }
-
-            let body = self.cx.tcx.hir().body(body);
-            let ex = &body.value;
-            if let ExprKind::Block(block, _) = ex.kind {
-                if !body.value.span.from_expansion() && !block.stmts.is_empty() {
-                    self.found_block = Some(ex);
-                    return;
-                }
-            }
-        }
-        walk_expr(self, expr);
-    }
-}
 
 const BRACED_EXPR_MESSAGE: &str = "omit braces around single expression condition";
 const COMPLEX_BLOCK_MESSAGE: &str = "in an `if` condition, avoid complex blocks or closures with blocks; \
@@ -145,11 +113,31 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                     }
                 }
             } else {
-                let mut visitor = ExVisitor { found_block: None, cx };
-                walk_expr(&mut visitor, cond);
-                if let Some(block) = visitor.found_block {
-                    span_lint(cx, BLOCKS_IN_IF_CONDITIONS, block.span, COMPLEX_BLOCK_MESSAGE);
-                }
+                let _: Option<!> = for_each_expr(cond, |e| {
+                    if let ExprKind::Closure(closure) = e.kind {
+                        // do not lint if the closure is called using an iterator (see #1141)
+                        if_chain! {
+                            if let Some(parent) = get_parent_expr(cx, e);
+                            if let ExprKind::MethodCall(_, self_arg, _, _) = &parent.kind;
+                            let caller = cx.typeck_results().expr_ty(self_arg);
+                            if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
+                            if implements_trait(cx, caller, iter_id, &[]);
+                            then {
+                                return ControlFlow::Continue(Descend::No);
+                            }
+                        }
+
+                        let body = cx.tcx.hir().body(closure.body);
+                        let ex = &body.value;
+                        if let ExprKind::Block(block, _) = ex.kind {
+                            if !body.value.span.from_expansion() && !block.stmts.is_empty() {
+                                span_lint(cx, BLOCKS_IN_IF_CONDITIONS, ex.span, COMPLEX_BLOCK_MESSAGE);
+                                return ControlFlow::Continue(Descend::No);
+                            }
+                        }
+                    }
+                    ControlFlow::Continue(Descend::Yes)
+                });
             }
         }
     }

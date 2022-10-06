@@ -1,5 +1,5 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
-#![allow(clippy::redundant_closure)]
+#![allow(clippy::redundant_closure, clippy::uninlined_format_args)]
 
 fn get_unit() {}
 

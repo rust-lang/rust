@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
                     cx,
                     FOR_KV_MAP,
                     arg_span,
-                    &format!("you seem to want to iterate on a map's {}s", kind),
+                    &format!("you seem to want to iterate on a map's {kind}s"),
                     |diag| {
                         let map = sugg::Sugg::hir(cx, arg, "map");
                         multispan_sugg(
@@ -46,7 +46,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
                             "use the corresponding method",
                             vec![
                                 (pat_span, snippet(cx, new_pat_span, kind).into_owned()),
-                                (arg_span, format!("{}.{}s{}()", map.maybe_par(), kind, mutbl)),
+                                (arg_span, format!("{}.{kind}s{mutbl}()", map.maybe_par())),
                             ],
                         );
                     },

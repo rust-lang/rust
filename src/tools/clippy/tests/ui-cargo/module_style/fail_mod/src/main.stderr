@@ -4,8 +4,8 @@ error: `mod.rs` files are required, found `bad/inner.rs`
 LL | pub mod stuff;
    | ^
    |
-   = note: `-D clippy::self-named-module-files` implied by `-D warnings`
    = help: move `bad/inner.rs` to `bad/inner/mod.rs`
+   = note: `-D clippy::self-named-module-files` implied by `-D warnings`
 
 error: `mod.rs` files are required, found `bad/inner/stuff.rs`
   --> $DIR/bad/inner/stuff.rs:1:1

@@ -3,9 +3,9 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, def_id::DefId, QPath, TyKind};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
-use rustc_hir_analysis::hir_ty_to_ty;
 
 use super::{utils, REDUNDANT_ALLOCATION};
 
@@ -27,13 +27,11 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             cx,
             REDUNDANT_ALLOCATION,
             hir_ty.span,
-            &format!("usage of `{}<{}>`", outer_sym, generic_snippet),
+            &format!("usage of `{outer_sym}<{generic_snippet}>`"),
             |diag| {
-                diag.span_suggestion(hir_ty.span, "try", format!("{}", generic_snippet), applicability);
+                diag.span_suggestion(hir_ty.span, "try", format!("{generic_snippet}"), applicability);
                 diag.note(&format!(
-                    "`{generic}` is already a pointer, `{outer}<{generic}>` allocates a pointer on the heap",
-                    outer = outer_sym,
-                    generic = generic_snippet
+                    "`{generic_snippet}` is already a pointer, `{outer_sym}<{generic_snippet}>` allocates a pointer on the heap"
                 ));
             },
         );
@@ -72,19 +70,16 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             cx,
             REDUNDANT_ALLOCATION,
             hir_ty.span,
-            &format!("usage of `{}<{}<{}>>`", outer_sym, inner_sym, generic_snippet),
+            &format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
             |diag| {
                 diag.span_suggestion(
                     hir_ty.span,
                     "try",
-                    format!("{}<{}>", outer_sym, generic_snippet),
+                    format!("{outer_sym}<{generic_snippet}>"),
                     applicability,
                 );
                 diag.note(&format!(
-                    "`{inner}<{generic}>` is already on the heap, `{outer}<{inner}<{generic}>>` makes an extra allocation",
-                    outer = outer_sym,
-                    inner = inner_sym,
-                    generic = generic_snippet
+                    "`{inner_sym}<{generic_snippet}>` is already on the heap, `{outer_sym}<{inner_sym}<{generic_snippet}>>` makes an extra allocation"
                 ));
             },
         );
@@ -94,19 +89,13 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             cx,
             REDUNDANT_ALLOCATION,
             hir_ty.span,
-            &format!("usage of `{}<{}<{}>>`", outer_sym, inner_sym, generic_snippet),
+            &format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
             |diag| {
                 diag.note(&format!(
-                    "`{inner}<{generic}>` is already on the heap, `{outer}<{inner}<{generic}>>` makes an extra allocation",
-                    outer = outer_sym,
-                    inner = inner_sym,
-                    generic = generic_snippet
+                    "`{inner_sym}<{generic_snippet}>` is already on the heap, `{outer_sym}<{inner_sym}<{generic_snippet}>>` makes an extra allocation"
                 ));
                 diag.help(&format!(
-                    "consider using just `{outer}<{generic}>` or `{inner}<{generic}>`",
-                    outer = outer_sym,
-                    inner = inner_sym,
-                    generic = generic_snippet
+                    "consider using just `{outer_sym}<{generic_snippet}>` or `{inner_sym}<{generic_snippet}>`"
                 ));
             },
         );

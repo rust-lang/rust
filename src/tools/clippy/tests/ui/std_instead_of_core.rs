@@ -24,6 +24,12 @@ fn std_instead_of_core() {
     let cell_absolute = ::std::cell::Cell::new(8u32);
 
     let _ = std::env!("PATH");
+
+    // do not lint until `error_in_core` is stable
+    use std::error::Error;
+
+    // lint items re-exported from private modules, `core::iter::traits::iterator::Iterator`
+    use std::iter::Iterator;
 }
 
 #[warn(clippy::std_instead_of_alloc)]

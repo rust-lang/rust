@@ -1,7 +1,7 @@
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::{DefIdSet, LocalDefId};
-use rustc_hir::{self as hir, def::Res, intravisit, QPath};
+use rustc_hir::{self as hir, def::Res, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::{
     lint::in_external_macro,
@@ -13,7 +13,10 @@ use clippy_utils::attrs::is_proc_macro;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_must_use_ty;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{match_def_path, return_ty, trait_ref_of_method};
+
+use core::ops::ControlFlow;
 
 use super::{DOUBLE_MUST_USE, MUST_USE_CANDIDATE, MUST_USE_UNIT};
 
@@ -47,7 +50,8 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let attr = cx.tcx.get_attr(item.def_id.to_def_id(), sym::must_use);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
-        } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.def_id.def_id).is_none() {
+        } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.def_id.def_id).is_none()
+        {
             check_must_use_candidate(
                 cx,
                 sig.decl,
@@ -143,7 +147,7 @@ fn check_must_use_candidate<'tcx>(
             diag.span_suggestion(
                 fn_span,
                 "add the attribute",
-                format!("#[must_use] {}", snippet),
+                format!("#[must_use] {snippet}"),
                 Applicability::MachineApplicable,
             );
         }
@@ -199,63 +203,6 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &m
     }
 }
 
-struct StaticMutVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    mutates_static: bool,
-}
-
-impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        use hir::ExprKind::{AddrOf, Assign, AssignOp, Call, MethodCall};
-
-        if self.mutates_static {
-            return;
-        }
-        match expr.kind {
-            Call(_, args) => {
-                let mut tys = DefIdSet::default();
-                for arg in args {
-                    if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
-                        && is_mutable_ty(
-                            self.cx,
-                            self.cx.tcx.typeck(arg.hir_id.owner.def_id).expr_ty(arg),
-                            arg.span,
-                            &mut tys,
-                        )
-                        && is_mutated_static(arg)
-                    {
-                        self.mutates_static = true;
-                        return;
-                    }
-                    tys.clear();
-                }
-            },
-            MethodCall(_, receiver, args, _) => {
-                let mut tys = DefIdSet::default();
-                for arg in std::iter::once(receiver).chain(args.iter()) {
-                    if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
-                        && is_mutable_ty(
-                            self.cx,
-                            self.cx.tcx.typeck(arg.hir_id.owner.def_id).expr_ty(arg),
-                            arg.span,
-                            &mut tys,
-                        )
-                        && is_mutated_static(arg)
-                    {
-                        self.mutates_static = true;
-                        return;
-                    }
-                    tys.clear();
-                }
-            },
-            Assign(target, ..) | AssignOp(_, target, _) | AddrOf(_, hir::Mutability::Mut, target) => {
-                self.mutates_static |= is_mutated_static(target);
-            },
-            _ => {},
-        }
-    }
-}
-
 fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
     use hir::ExprKind::{Field, Index, Path};
 
@@ -268,10 +215,53 @@ fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
 }
 
 fn mutates_static<'tcx>(cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) -> bool {
-    let mut v = StaticMutVisitor {
-        cx,
-        mutates_static: false,
-    };
-    intravisit::walk_expr(&mut v, body.value);
-    v.mutates_static
+    for_each_expr(body.value, |e| {
+        use hir::ExprKind::{AddrOf, Assign, AssignOp, Call, MethodCall};
+
+        match e.kind {
+            Call(_, args) => {
+                let mut tys = DefIdSet::default();
+                for arg in args {
+                    if cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
+                        && is_mutable_ty(
+                            cx,
+                            cx.tcx.typeck(arg.hir_id.owner.def_id).expr_ty(arg),
+                            arg.span,
+                            &mut tys,
+                        )
+                        && is_mutated_static(arg)
+                    {
+                        return ControlFlow::Break(());
+                    }
+                    tys.clear();
+                }
+                ControlFlow::Continue(())
+            },
+            MethodCall(_, receiver, args, _) => {
+                let mut tys = DefIdSet::default();
+                for arg in std::iter::once(receiver).chain(args.iter()) {
+                    if cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
+                        && is_mutable_ty(
+                            cx,
+                            cx.tcx.typeck(arg.hir_id.owner.def_id).expr_ty(arg),
+                            arg.span,
+                            &mut tys,
+                        )
+                        && is_mutated_static(arg)
+                    {
+                        return ControlFlow::Break(());
+                    }
+                    tys.clear();
+                }
+                ControlFlow::Continue(())
+            },
+            Assign(target, ..) | AssignOp(_, target, _) | AddrOf(_, hir::Mutability::Mut, target)
+                if is_mutated_static(target) =>
+            {
+                ControlFlow::Break(())
+            },
+            _ => ControlFlow::Continue(()),
+        }
+    })
+    .is_some()
 }

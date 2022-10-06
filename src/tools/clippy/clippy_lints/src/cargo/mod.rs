@@ -196,7 +196,7 @@ impl LateLintPass<'_> for Cargo {
                 },
                 Err(e) => {
                     for lint in NO_DEPS_LINTS {
-                        span_lint(cx, lint, DUMMY_SP, &format!("could not read cargo metadata: {}", e));
+                        span_lint(cx, lint, DUMMY_SP, &format!("could not read cargo metadata: {e}"));
                     }
                 },
             }
@@ -212,7 +212,7 @@ impl LateLintPass<'_> for Cargo {
                 },
                 Err(e) => {
                     for lint in WITH_DEPS_LINTS {
-                        span_lint(cx, lint, DUMMY_SP, &format!("could not read cargo metadata: {}", e));
+                        span_lint(cx, lint, DUMMY_SP, &format!("could not read cargo metadata: {e}"));
                     }
                 },
             }

@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
                     cx,
                     REDUNDANT_PUB_CRATE,
                     span,
-                    &format!("pub(crate) {} inside private module", descr),
+                    &format!("pub(crate) {descr} inside private module"),
                     |diag| {
                         diag.span_suggestion(
                             item.vis_span,

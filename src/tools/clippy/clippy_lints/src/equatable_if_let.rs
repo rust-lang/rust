@@ -51,9 +51,7 @@ fn unary_pattern(pat: &Pat<'_>) -> bool {
             false
         },
         PatKind::Struct(_, a, etc) => !etc && a.iter().all(|x| unary_pattern(x.pat)),
-        PatKind::Tuple(a, etc) | PatKind::TupleStruct(_, a, etc) => {
-            !etc.as_opt_usize().is_some() && array_rec(a)
-        }
+        PatKind::Tuple(a, etc) | PatKind::TupleStruct(_, a, etc) => etc.as_opt_usize().is_none() && array_rec(a),
         PatKind::Ref(x, _) | PatKind::Box(x) => unary_pattern(x),
         PatKind::Path(_) | PatKind::Lit(_) => true,
     }
@@ -93,9 +91,8 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
                     "this pattern matching can be expressed using equality",
                     "try",
                     format!(
-                        "{} == {}",
+                        "{} == {pat_str}",
                         snippet_with_context(cx, let_expr.init.span, expr.span.ctxt(), "..", &mut applicability).0,
-                        pat_str,
                     ),
                     applicability,
                 );

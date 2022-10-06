@@ -65,7 +65,7 @@ fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[ast::Attribute], sp
             cx,
             MISSING_INLINE_IN_PUBLIC_ITEMS,
             sp,
-            &format!("missing `#[inline]` for {}", desc),
+            &format!("missing `#[inline]` for {desc}"),
         );
     }
 }

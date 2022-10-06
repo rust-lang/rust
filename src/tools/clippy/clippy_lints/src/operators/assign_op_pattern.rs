@@ -2,16 +2,17 @@ use clippy_utils::binop_traits;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{eq_expr_value, trait_ref_of_method};
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::BorrowKind;
 use rustc_trait_selection::infer::TyCtxtInferExt;
-use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 use super::ASSIGN_OP_PATTERN;
 
@@ -55,7 +56,7 @@ pub(super) fn check<'tcx>(
                                 diag.span_suggestion(
                                     expr.span,
                                     "replace it with",
-                                    format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
+                                    format!("{snip_a} {}= {snip_r}", op.node.as_str()),
                                     Applicability::MachineApplicable,
                                 );
                             }
@@ -65,15 +66,19 @@ pub(super) fn check<'tcx>(
             }
         };
 
-        let mut visitor = ExprVisitor {
-            assignee,
-            counter: 0,
-            cx,
-        };
+        let mut found = false;
+        let found_multiple = for_each_expr(e, |e| {
+            if eq_expr_value(cx, assignee, e) {
+                if found {
+                    return ControlFlow::Break(());
+                }
+                found = true;
+            }
+            ControlFlow::Continue(())
+        })
+        .is_some();
 
-        walk_expr(&mut visitor, e);
-
-        if visitor.counter == 1 {
+        if found && !found_multiple {
             // a = a op b
             if eq_expr_value(cx, assignee, l) {
                 lint(assignee, r);
@@ -95,22 +100,6 @@ pub(super) fn check<'tcx>(
                 }
             }
         }
-    }
-}
-
-struct ExprVisitor<'a, 'tcx> {
-    assignee: &'a hir::Expr<'a>,
-    counter: u8,
-    cx: &'a LateContext<'tcx>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        if eq_expr_value(self.cx, self.assignee, expr) {
-            self.counter += 1;
-        }
-
-        walk_expr(self, expr);
     }
 }
 

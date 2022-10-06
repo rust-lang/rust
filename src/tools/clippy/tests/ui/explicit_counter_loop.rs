@@ -1,4 +1,5 @@
 #![warn(clippy::explicit_counter_loop)]
+#![allow(clippy::uninlined_format_args)]
 
 fn main() {
     let mut vec = vec![1, 2, 3, 4];

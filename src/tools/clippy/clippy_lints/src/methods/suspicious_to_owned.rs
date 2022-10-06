@@ -24,9 +24,9 @@ pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) -
                 cx,
                 SUSPICIOUS_TO_OWNED,
                 expr.span,
-                &format!("this `to_owned` call clones the {0} itself and does not cause the {0} contents to become owned", input_type),
+                &format!("this `to_owned` call clones the {input_type} itself and does not cause the {input_type} contents to become owned"),
                 "consider using, depending on intent",
-                format!("{0}.clone()` or `{0}.into_owned()", recv_snip),
+                format!("{recv_snip}.clone()` or `{recv_snip}.into_owned()"),
                 app,
             );
             return true;

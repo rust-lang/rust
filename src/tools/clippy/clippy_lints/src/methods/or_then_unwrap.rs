@@ -1,6 +1,6 @@
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{diagnostics::span_lint_and_sugg, is_lang_ctor};
+use clippy_utils::{diagnostics::span_lint_and_sugg, is_res_lang_ctor, path_res};
 use rustc_errors::Applicability;
 use rustc_hir::{lang_items::LangItem, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -58,8 +58,7 @@ pub(super) fn check<'tcx>(
 
 fn get_content_if_ctor_matches(cx: &LateContext<'_>, expr: &Expr<'_>, item: LangItem) -> Option<Span> {
     if let ExprKind::Call(some_expr, [arg]) = expr.kind
-        && let ExprKind::Path(qpath) = &some_expr.kind
-        && is_lang_ctor(cx, qpath, item)
+        && is_res_lang_ctor(cx, path_res(cx, some_expr), item)
     {
         Some(arg.span)
     } else {

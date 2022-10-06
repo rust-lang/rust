@@ -1,8 +1,12 @@
 // run-rustfix
+// aux-build: proc_macro_with_span.rs
 #![warn(clippy::unnecessary_lazy_evaluations)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::bind_instead_of_map)]
 #![allow(clippy::map_identity)]
+
+extern crate proc_macro_with_span;
+use proc_macro_with_span::with_span;
 
 struct Deep(Option<usize>);
 
@@ -19,6 +23,14 @@ impl SomeStruct {
 
 fn some_call<T: Default>() -> T {
     T::default()
+}
+
+struct Issue9427(i32);
+
+impl Drop for Issue9427 {
+    fn drop(&mut self) {
+        println!("{}", self.0);
+    }
 }
 
 fn main() {
@@ -72,6 +84,9 @@ fn main() {
     let _ = deep.0.or_else(some_call);
     let _ = deep.0.or_else(|| some_call());
     let _ = opt.ok_or_else(|| ext_arr[0]);
+
+    // Should not lint - bool
+    let _ = (0 == 1).then(|| Issue9427(0)); // Issue9427 has a significant drop
 
     // should not lint, bind_instead_of_map takes priority
     let _ = Some(10).and_then(|idx| Some(ext_arr[idx]));
@@ -129,4 +144,10 @@ fn main() {
     // neither bind_instead_of_map nor unnecessary_lazy_eval applies here
     let _: Result<usize, usize> = res.and_then(|x| Err(x));
     let _: Result<usize, usize> = res.or_else(|err| Ok(err));
+}
+
+#[allow(unused)]
+fn issue9485() {
+    // should not lint, is in proc macro
+    with_span!(span Some(42).unwrap_or_else(|| 2););
 }
