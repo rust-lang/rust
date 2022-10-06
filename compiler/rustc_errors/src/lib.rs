@@ -460,6 +460,7 @@ pub enum StashKey {
     ItemNoType,
     UnderscoreForArrayLengths,
     EarlySyntaxWarning,
+    CallIntoMethod,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}

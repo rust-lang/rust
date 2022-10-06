@@ -319,11 +319,11 @@ LL |     unknown_metavar!(a);
    |
    = note: this error originates in the macro `unknown_metavar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find function `count` in this scope
-  --> $DIR/syntax-errors.rs:29:30
+error[E0425]: cannot find value `i` in this scope
+  --> $DIR/syntax-errors.rs:29:36
    |
 LL |     ( $( $i:ident ),* ) => { count(i) };
-   |                              ^^^^^ not found in this scope
+   |                                    ^ not found in this scope
 ...
 LL |     no_curly__no_rhs_dollar__round!(a, b, c);
    |     ---------------------------------------- in this macro invocation
@@ -331,10 +331,27 @@ LL |     no_curly__no_rhs_dollar__round!(a, b, c);
    = note: this error originates in the macro `no_curly__no_rhs_dollar__round` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `i` in this scope
-  --> $DIR/syntax-errors.rs:29:36
+  --> $DIR/syntax-errors.rs:35:29
+   |
+LL |     ( $i:ident ) => { count(i) };
+   |                             ^ not found in this scope
+...
+LL |     no_curly__no_rhs_dollar__no_round!(a);
+   |     ------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `no_curly__no_rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/syntax-errors.rs:153:37
+   |
+LL |     no_curly__rhs_dollar__no_round!(a);
+   |                                     ^ not found in this scope
+
+error[E0425]: cannot find function `count` in this scope
+  --> $DIR/syntax-errors.rs:29:30
    |
 LL |     ( $( $i:ident ),* ) => { count(i) };
-   |                                    ^ not found in this scope
+   |                              ^^^^^ not found in this scope
 ...
 LL |     no_curly__no_rhs_dollar__round!(a, b, c);
    |     ---------------------------------------- in this macro invocation
@@ -352,17 +369,6 @@ LL |     no_curly__no_rhs_dollar__no_round!(a);
    |
    = note: this error originates in the macro `no_curly__no_rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find value `i` in this scope
-  --> $DIR/syntax-errors.rs:35:29
-   |
-LL |     ( $i:ident ) => { count(i) };
-   |                             ^ not found in this scope
-...
-LL |     no_curly__no_rhs_dollar__no_round!(a);
-   |     ------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `no_curly__no_rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error[E0425]: cannot find function `count` in this scope
   --> $DIR/syntax-errors.rs:46:23
    |
@@ -373,12 +379,6 @@ LL |     no_curly__rhs_dollar__no_round!(a);
    |     ---------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `no_curly__rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0425]: cannot find value `a` in this scope
-  --> $DIR/syntax-errors.rs:153:37
-   |
-LL |     no_curly__rhs_dollar__no_round!(a);
-   |                                     ^ not found in this scope
 
 error: aborting due to 40 previous errors
 

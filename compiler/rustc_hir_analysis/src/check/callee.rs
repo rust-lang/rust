@@ -1,8 +1,10 @@
+use super::method::probe::{IsSuggestion, Mode, ProbeScope};
 use super::method::MethodCallee;
 use super::{DefIdOrName, Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::type_error_struct;
 
-use rustc_errors::{struct_span_err, Applicability, Diagnostic};
+use rustc_ast::util::parser::PREC_POSTFIX;
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{self, Namespace, Res};
 use rustc_hir::def_id::DefId;
@@ -60,6 +62,7 @@ pub fn check_legal_trait_for_method_call(
     }
 }
 
+#[derive(Debug)]
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
     DeferredClosure(LocalDefId, ty::FnSig<'tcx>),
@@ -185,6 +188,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // this case and deref again, so we wind up with
             // `FnMut::call_mut(&mut *x, ())`.
             ty::Ref(..) if autoderef.step_count() == 0 => {
+                return None;
+            }
+
+            ty::Error(_) => {
                 return None;
             }
 
@@ -394,6 +401,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::FnPtr(sig) => (sig, None),
             _ => {
+                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
+                    && let [segment] = path.segments
+                    && let Some(mut diag) = self
+                        .tcx
+                        .sess
+                        .diagnostic()
+                        .steal_diagnostic(segment.ident.span, StashKey::CallIntoMethod)
+                {
+                    // Try suggesting `foo(a)` -> `a.foo()` if possible.
+                    if let Some(ty) =
+                        self.suggest_call_as_method(
+                            &mut diag,
+                            segment,
+                            arg_exprs,
+                            call_expr,
+                            expected
+                        )
+                    {
+                        diag.emit();
+                        return ty;
+                    } else {
+                        diag.emit();
+                    }
+                }
+
                 self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
 
                 // This is the "default" function signature, used in case of error.
@@ -441,6 +473,105 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_sig.output()
     }
 
+    /// Attempts to reinterpret `method(rcvr, args...)` as `rcvr.method(args...)`
+    /// and suggesting the fix if the method probe is successful.
+    fn suggest_call_as_method(
+        &self,
+        diag: &mut Diagnostic,
+        segment: &'tcx hir::PathSegment<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
+        call_expr: &'tcx hir::Expr<'tcx>,
+        expected: Expectation<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        if let [callee_expr, rest @ ..] = arg_exprs {
+            let callee_ty = self.check_expr(callee_expr);
+            // First, do a probe with `IsSuggestion(true)` to avoid emitting
+            // any strange errors. If it's successful, then we'll do a true
+            // method lookup.
+            let Ok(pick) = self
+            .probe_for_name(
+                call_expr.span,
+                Mode::MethodCall,
+                segment.ident,
+                IsSuggestion(true),
+                callee_ty,
+                call_expr.hir_id,
+                // We didn't record the in scope traits during late resolution
+                // so we need to probe AllTraits unfortunately
+                ProbeScope::AllTraits,
+            ) else {
+                return None;
+            };
+
+            let pick = self.confirm_method(
+                call_expr.span,
+                callee_expr,
+                call_expr,
+                callee_ty,
+                pick,
+                segment,
+            );
+            if pick.illegal_sized_bound.is_some() {
+                return None;
+            }
+
+            let up_to_rcvr_span = segment.ident.span.until(callee_expr.span);
+            let rest_span = callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
+            let rest_snippet = if let Some(first) = rest.first() {
+                self.tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(first.span.to(call_expr.span.shrink_to_hi()))
+            } else {
+                Ok(")".to_string())
+            };
+
+            if let Ok(rest_snippet) = rest_snippet {
+                let sugg = if callee_expr.precedence().order() >= PREC_POSTFIX {
+                    vec![
+                        (up_to_rcvr_span, "".to_string()),
+                        (rest_span, format!(".{}({rest_snippet}", segment.ident)),
+                    ]
+                } else {
+                    vec![
+                        (up_to_rcvr_span, "(".to_string()),
+                        (rest_span, format!(").{}({rest_snippet}", segment.ident)),
+                    ]
+                };
+                let self_ty = self.resolve_vars_if_possible(pick.callee.sig.inputs()[0]);
+                diag.multipart_suggestion(
+                    format!(
+                        "use the `.` operator to call the method `{}{}` on `{self_ty}`",
+                        self.tcx
+                            .associated_item(pick.callee.def_id)
+                            .trait_container(self.tcx)
+                            .map_or_else(
+                                || String::new(),
+                                |trait_def_id| self.tcx.def_path_str(trait_def_id) + "::"
+                            ),
+                        segment.ident
+                    ),
+                    sugg,
+                    Applicability::MaybeIncorrect,
+                );
+
+                // Let's check the method fully now
+                let return_ty = self.check_method_argument_types(
+                    segment.ident.span,
+                    call_expr,
+                    Ok(pick.callee),
+                    rest,
+                    TupleArgumentsFlag::DontTupleArguments,
+                    expected,
+                );
+
+                return Some(return_ty);
+            }
+        }
+
+        None
+    }
+
     fn report_invalid_callee(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
@@ -459,10 +590,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 def::CtorOf::Struct => "struct",
                 def::CtorOf::Variant => "enum variant",
             };
-            let removal_span =
-                callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
-            unit_variant =
-                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(qpath)));
+            let removal_span = callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
+            unit_variant = Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(qpath)));
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
@@ -525,7 +654,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if !self.maybe_suggest_bad_array_definition(&mut err, call_expr, callee_expr) {
-            if let Some((maybe_def, output_ty, _)) = self.extract_callable_info(callee_expr, callee_ty)
+            if let Some((maybe_def, output_ty, _)) =
+                self.extract_callable_info(callee_expr, callee_ty)
                 && !self.type_is_sized_modulo_regions(self.param_env, output_ty, callee_expr.span)
             {
                 let descr = match maybe_def {

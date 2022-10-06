@@ -1510,7 +1510,7 @@ LL |     if x = let 0 = 0 {}
 help: you might have meant to compare for equality
    |
 LL |     if x == let 0 = 0 {}
-   |          ~~
+   |           +
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:157:8
@@ -1704,7 +1704,7 @@ LL |     while x = let 0 = 0 {}
 help: you might have meant to compare for equality
    |
 LL |     while x == let 0 = 0 {}
-   |             ~~
+   |              +
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:249:11

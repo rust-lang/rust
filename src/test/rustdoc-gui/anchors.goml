@@ -10,8 +10,8 @@ local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
 reload:
 
 assert-css: ("#toggle-all-docs", {"color": "rgb(0, 0, 0)"})
-assert-css: (".fqn .in-band a:nth-of-type(1)", {"color": "rgb(0, 0, 0)"})
-assert-css: (".fqn .in-band a:nth-of-type(2)", {"color": "rgb(173, 55, 138)"})
+assert-css: (".fqn a:nth-of-type(1)", {"color": "rgb(0, 0, 0)"})
+assert-css: (".fqn a:nth-of-type(2)", {"color": "rgb(173, 55, 138)"})
 assert-css: (
     ".rightside .srclink",
     {"color": "rgb(56, 115, 173)", "text-decoration": "none solid rgb(56, 115, 173)"},
@@ -41,7 +41,7 @@ goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
 assert-css: ("#top-doc-prose-title", {"color": "rgb(0, 0, 0)"})
 
 assert-css: (".sidebar a", {"color": "rgb(53, 109, 164)"})
-assert-css: (".in-band a", {"color": "rgb(0, 0, 0)"})
+assert-css: ("h1.fqn a", {"color": "rgb(0, 0, 0)"})
 
 // We move the cursor over the "Implementations" title so the anchor is displayed.
 move-cursor-to: "h2#implementations"
@@ -60,8 +60,8 @@ local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
 goto: file://|DOC_PATH|/staged_api/struct.Foo.html
 
 assert-css: ("#toggle-all-docs", {"color": "rgb(221, 221, 221)"})
-assert-css: (".fqn .in-band a:nth-of-type(1)", {"color": "rgb(221, 221, 221)"})
-assert-css: (".fqn .in-band a:nth-of-type(2)", {"color": "rgb(45, 191, 184)"})
+assert-css: (".fqn a:nth-of-type(1)", {"color": "rgb(221, 221, 221)"})
+assert-css: (".fqn a:nth-of-type(2)", {"color": "rgb(45, 191, 184)"})
 assert-css: (
     ".rightside .srclink",
     {"color": "rgb(210, 153, 29)", "text-decoration": "none solid rgb(210, 153, 29)"},
@@ -91,7 +91,7 @@ goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
 assert-css: ("#top-doc-prose-title", {"color": "rgb(221, 221, 221)"})
 
 assert-css: (".sidebar a", {"color": "rgb(253, 191, 53)"})
-assert-css: (".in-band a", {"color": "rgb(221, 221, 221)"})
+assert-css: ("h1.fqn a", {"color": "rgb(221, 221, 221)"})
 
 // We move the cursor over the "Implementations" title so the anchor is displayed.
 move-cursor-to: "h2#implementations"
@@ -110,8 +110,8 @@ local-storage: {"rustdoc-theme": "ayu", "rustdoc-use-system-theme": "false"}
 goto: file://|DOC_PATH|/staged_api/struct.Foo.html
 
 assert-css: ("#toggle-all-docs", {"color": "rgb(197, 197, 197)"})
-assert-css: (".fqn .in-band a:nth-of-type(1)", {"color": "rgb(255, 255, 255)"})
-assert-css: (".fqn .in-band a:nth-of-type(2)", {"color": "rgb(255, 160, 165)"})
+assert-css: (".fqn a:nth-of-type(1)", {"color": "rgb(255, 255, 255)"})
+assert-css: (".fqn a:nth-of-type(2)", {"color": "rgb(255, 160, 165)"})
 assert-css: (
     ".rightside .srclink",
     {"color": "rgb(57, 175, 215)", "text-decoration": "none solid rgb(57, 175, 215)"},
@@ -141,7 +141,7 @@ goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
 assert-css: ("#top-doc-prose-title", {"color": "rgb(255, 255, 255)"})
 
 assert-css: (".sidebar a", {"color": "rgb(83, 177, 219)"})
-assert-css: (".in-band a", {"color": "rgb(255, 255, 255)"})
+assert-css: ("h1.fqn a", {"color": "rgb(255, 255, 255)"})
 
 // We move the cursor over the "Implementations" title so the anchor is displayed.
 move-cursor-to: "h2#implementations"
