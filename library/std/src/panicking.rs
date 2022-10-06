@@ -309,10 +309,10 @@ pub mod panic_count {
     // records whether panic::always_abort() has been called.  This can only be
     // set, never cleared.
     // panic::always_abort() is usually called to prevent memory allocations done by
-    // the panic handling in the child created by `libc::fork`. 
+    // the panic handling in the child created by `libc::fork`.
     // Memory allocations performed in  a child created with `libc::fork` are undefined
     // behavior in most operating systems.
-    // Accessing LOCAL_PANIC_COUNT in a child created by `libc::fork` would lead to a memory 
+    // Accessing LOCAL_PANIC_COUNT in a child created by `libc::fork` would lead to a memory
     // allocation. Only GLOBAL_PANIC_COUNT can be accessed in this situation. This is
     // sufficient because a child process will always have exactly one thread only.
     // See also #85261 for details.

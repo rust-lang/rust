@@ -99,7 +99,9 @@ fn expect_aborted(status: ExitStatus) {
         // If the next assert fails sporadically we might have an issue with parallel crashing apps
         assert!(tombstone
             .contains(&std::env::current_exe().unwrap().into_os_string().into_string().unwrap()));
-        assert!(tombstone.contains("signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr deadbaad"));
+        assert!(tombstone.contains(
+            "signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr deadbaad"
+        ));
     }
 }
 
