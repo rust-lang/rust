@@ -11,7 +11,6 @@ use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
-use rustc_span::Span;
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {
@@ -66,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
             if !in_external_macro(cx.sess(), stmt.span);
             if let StmtKind::Local(local) = stmt.kind;
             if let Some(init) = local.init;
-            if !from_different_macros(init.span, stmt.span);
+            if init.span.ctxt() == stmt.span.ctxt();
             if let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init);
             then {
                 if_let_or_match
@@ -177,23 +176,6 @@ fn expr_diverges(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
         }
     })
     .is_some()
-}
-
-/// Returns true if the two spans come from different macro sites,
-/// or one comes from an invocation and the other is not from a macro at all.
-fn from_different_macros(span_a: Span, span_b: Span) -> bool {
-    // This pre-check is a speed up so that we don't build outer_expn_data unless needed.
-    match (span_a.from_expansion(), span_b.from_expansion()) {
-        (false, false) => return false,
-        (true, false) | (false, true) => return true,
-        // We need to determine if both are from the same macro
-        (true, true) => (),
-    }
-    let data_for_comparison = |sp: Span| {
-        let expn_data = sp.ctxt().outer_expn_data();
-        (expn_data.kind, expn_data.call_site)
-    };
-    data_for_comparison(span_a) != data_for_comparison(span_b)
 }
 
 fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>) -> bool {
