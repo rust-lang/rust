@@ -4,7 +4,7 @@ use syntax::{
     TextRange, TextSize,
 };
 
-use super::node_ext::get_outer_macro_name;
+use super::node_ext::get_outer_macro;
 
 pub fn is_format_string(string: &ast::String) -> bool {
     // Check if `string` is a format string argument of a macro invocation.
@@ -16,7 +16,7 @@ pub fn is_format_string(string: &ast::String) -> bool {
     // This setup lets us correctly highlight the components of `concat!("{}", "bla")` format
     // strings. It still fails for `concat!("{", "}")`, but that is rare.
     (|| {
-        let name = get_outer_macro_name(string)?;
+        let name = get_outer_macro(string)?.path()?.segment()?.name_ref()?;
 
         if !matches!(
             name.text().as_str(),

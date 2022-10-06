@@ -2,7 +2,7 @@
 use itertools::Itertools;
 use parser::T;
 use syntax::{
-    ast::{self, HasLoopBody, NameRef, PathSegmentKind, VisibilityKind},
+    ast::{self, HasLoopBody, MacroCall, PathSegmentKind, VisibilityKind},
     AstNode, AstToken, Preorder, RustLanguage, WalkEvent,
 };
 
@@ -458,9 +458,7 @@ pub fn parse_tt_as_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Pat
     Some(paths)
 }
 
-pub fn get_outer_macro_name(string: &ast::String) -> Option<NameRef> {
+pub fn get_outer_macro(string: &ast::String) -> Option<MacroCall> {
     let macro_call = string.syntax().parent_ancestors().find_map(ast::MacroCall::cast)?;
-    let name = macro_call.path()?.segment()?.name_ref()?;
-
-    Some(name)
+    Some(macro_call)
 }
