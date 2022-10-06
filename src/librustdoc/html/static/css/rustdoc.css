@@ -773,8 +773,9 @@ h2.small-section-header > .anchor {
 }
 
 .all-items a:hover,
-.docblock a:not(.srclink):not(.test-arrow):not(.scrape-help):hover,
-.docblock-short a:not(.srclink):not(.test-arrow):not(.scrape-help):hover, .item-info a {
+.docblock a:not(.test-arrow):not(.scrape-help):hover,
+.docblock-short a:not(.test-arrow):not(.scrape-help):hover,
+.item-info a {
 	text-decoration: underline;
 }
 
