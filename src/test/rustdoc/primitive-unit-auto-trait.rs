@@ -4,7 +4,7 @@
 #![feature(rustdoc_internals)]
 
 // @has foo/primitive.unit.html '//a[@class="primitive"]' 'unit'
-// @has - '//span[@class="in-band"]' 'Primitive Type unit'
+// @has - '//h1[@class="fqn"]' 'Primitive Type unit'
 // @has - '//section[@id="main-content"]//div[@class="docblock"]//p' 'this is a test!'
 // @has - '//h2[@id="synthetic-implementations"]' 'Auto Trait Implementations'
 // @has - '//div[@id="synthetic-implementations-list"]//h3' 'impl Send for ()'
