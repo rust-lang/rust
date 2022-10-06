@@ -158,10 +158,10 @@ pub struct SelfProfilerRef {
     // actually enabled.
     event_filter_mask: EventFilter,
 
-    // Print verbose generic activities to stdout
+    // Print verbose generic activities to stderr.
     print_verbose_generic_activities: bool,
 
-    // Print extra verbose generic activities to stdout
+    // Print extra verbose generic activities to stderr.
     print_extra_verbose_generic_activities: bool,
 }
 
@@ -214,7 +214,7 @@ impl SelfProfilerRef {
     /// Start profiling a verbose generic activity. Profiling continues until the
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "verbose" generic activities also print a timing entry to
-    /// stdout if the compiler is invoked with -Ztime or -Ztime-passes.
+    /// stderr if the compiler is invoked with -Ztime or -Ztime-passes.
     pub fn verbose_generic_activity<'a>(
         &'a self,
         event_label: &'static str,
@@ -228,7 +228,7 @@ impl SelfProfilerRef {
     /// Start profiling an extra verbose generic activity. Profiling continues until the
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "extra verbose" generic activities also print a timing entry to
-    /// stdout if the compiler is invoked with -Ztime-passes.
+    /// stderr if the compiler is invoked with -Ztime-passes.
     pub fn extra_verbose_generic_activity<'a, A>(
         &'a self,
         event_label: &'static str,
