@@ -1,8 +1,9 @@
 //! Tools to work with format string literals for the `format_args!` family of macros.
 use syntax::{
-    ast::{self, IsString},
-    AstNode, AstToken, TextRange, TextSize,
+    ast::{self, IsString}, TextRange, TextSize,
 };
+
+use super::node_ext::get_outer_macro_name;
 
 pub fn is_format_string(string: &ast::String) -> bool {
     // Check if `string` is a format string argument of a macro invocation.
@@ -14,8 +15,7 @@ pub fn is_format_string(string: &ast::String) -> bool {
     // This setup lets us correctly highlight the components of `concat!("{}", "bla")` format
     // strings. It still fails for `concat!("{", "}")`, but that is rare.
     (|| {
-        let macro_call = string.syntax().parent_ancestors().find_map(ast::MacroCall::cast)?;
-        let name = macro_call.path()?.segment()?.name_ref()?;
+        let name = get_outer_macro_name(string)?;
 
         if !matches!(
             name.text().as_str(),
