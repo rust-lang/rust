@@ -5,7 +5,6 @@ build = false
 edition = "2021"
 
 [lib]
-doctest = false
 
 [dependencies]
 libloading = "0.7.1"

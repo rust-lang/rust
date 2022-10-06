@@ -56,7 +56,7 @@ macro_rules! throw_validation_failure {
 /// This lets you use the patterns as a kind of validation list, asserting which errors
 /// can possibly happen:
 ///
-/// ```
+/// ```ignore(illustrative)
 /// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "some failure" },
 /// });
@@ -65,7 +65,7 @@ macro_rules! throw_validation_failure {
 /// The patterns must be of type `UndefinedBehaviorInfo`.
 /// An additional expected parameter can also be added to the failure message:
 ///
-/// ```
+/// ```ignore(illustrative)
 /// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "some failure" } expected { "something that wasn't a failure" },
 /// });
@@ -74,7 +74,7 @@ macro_rules! throw_validation_failure {
 /// An additional nicety is that both parameters actually take format args, so you can just write
 /// the format string in directly:
 ///
-/// ```
+/// ```ignore(illustrative)
 /// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "{:?}", some_failure } expected { "{}", expected_value },
 /// });

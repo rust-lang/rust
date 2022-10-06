@@ -1114,6 +1114,11 @@ impl<'a> MethodDef<'a> {
     /// ```
     /// is equivalent to:
     /// ```
+    /// #![feature(core_intrinsics)]
+    /// enum A {
+    ///     A1,
+    ///     A2(i32)
+    /// }
     /// impl ::core::cmp::PartialEq for A {
     ///     #[inline]
     ///     fn eq(&self, other: &A) -> bool {
