@@ -290,13 +290,14 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                         bx.unchecked_uadd(tag, diff)
                     }
                 };
-
-                let niche_discr = bx.sub(tag, diff);
-                let discr = bx.select(
-                    is_untagged,
-                    bx.cx().const_uint(niche_llty, untagged_variant.as_u32() as u64),
-                    niche_discr,
-                );
+                let untagged_discr =
+                    bx.cx().const_uint(niche_llty, untagged_variant.as_u32() as u64);
+                if untagged_variant >= *niche_variants.start() {
+                    let tagged_never_untagged =
+                        bx.icmp(IntPredicate::IntNE, untagged_discr, niche_discr);
+                    bx.assume(tagged_never_untagged);
+                }
+                let discr = bx.select(is_untagged, untagged_discr, niche_discr);
 
                 bx.intcast(discr, cast_to, false)
             }
