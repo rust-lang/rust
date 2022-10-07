@@ -901,7 +901,7 @@ pub mod statik {
 }
 
 #[doc(hidden)]
-#[cfg(target_thread_local)]
+#[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics"))),))]
 pub mod fast {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
@@ -1037,7 +1037,10 @@ pub mod fast {
 }
 
 #[doc(hidden)]
-#[cfg(not(target_thread_local))]
+#[cfg(all(
+    not(target_thread_local),
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 pub mod os {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
