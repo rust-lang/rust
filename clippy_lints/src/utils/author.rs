@@ -12,6 +12,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::{Ident, Symbol};
+use std::cell::Cell;
 use std::fmt::{Display, Formatter, Write as _};
 
 declare_clippy_lint! {
@@ -37,15 +38,13 @@ declare_clippy_lint! {
     ///
     /// ```rust,ignore
     /// // ./tests/ui/new_lint.stdout
-    /// if_chain! {
-    ///     if let ExprKind::If(ref cond, ref then, None) = item.kind,
-    ///     if let ExprKind::Binary(BinOp::Eq, ref left, ref right) = cond.kind,
-    ///     if let ExprKind::Path(ref path) = left.kind,
-    ///     if let ExprKind::Lit(ref lit) = right.kind,
-    ///     if let LitKind::Int(42, _) = lit.node,
-    ///     then {
-    ///         // report your lint here
-    ///     }
+    /// if ExprKind::If(ref cond, ref then, None) = item.kind
+    ///     && let ExprKind::Binary(BinOp::Eq, ref left, ref right) = cond.kind
+    ///     && let ExprKind::Path(ref path) = left.kind
+    ///     && let ExprKind::Lit(ref lit) = right.kind
+    ///     && let LitKind::Int(42, _) = lit.node
+    /// {
+    ///     // report your lint here
     /// }
     /// ```
     pub LINT_AUTHOR,
@@ -91,15 +90,16 @@ macro_rules! field {
     };
 }
 
-fn prelude() {
-    println!("if_chain! {{");
-}
-
-fn done() {
-    println!("    then {{");
-    println!("        // report your lint here");
-    println!("    }}");
-    println!("}}");
+/// Print a condition of a let chain, `chain!(self, "let Some(x) = y")` will print
+/// `if let Some(x) = y` on the first call and `    && let Some(x) = y` thereafter
+macro_rules! chain {
+    ($self:ident, $($t:tt)*) => {
+        if $self.first.take() {
+            println!("if {}", format_args!($($t)*));
+        } else {
+            println!("    && {}", format_args!($($t)*));
+        }
+    }
 }
 
 impl<'tcx> LateLintPass<'tcx> for Author {
@@ -149,9 +149,10 @@ fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
 
 fn check_node(cx: &LateContext<'_>, hir_id: HirId, f: impl Fn(&PrintVisitor<'_, '_>)) {
     if has_attr(cx, hir_id) {
-        prelude();
         f(&PrintVisitor::new(cx));
-        done();
+        println!("{{");
+        println!("    // report your lint here");
+        println!("}}");
     }
 }
 
@@ -195,7 +196,9 @@ struct PrintVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     /// Fields are the current index that needs to be appended to pattern
     /// binding names
-    ids: std::cell::Cell<FxHashMap<&'static str, u32>>,
+    ids: Cell<FxHashMap<&'static str, u32>>,
+    /// Currently at the first condition in the if chain
+    first: Cell<bool>,
 }
 
 #[allow(clippy::unused_self)]
@@ -203,7 +206,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            ids: std::cell::Cell::default(),
+            ids: Cell::default(),
+            first: Cell::new(true),
         }
     }
 
@@ -226,10 +230,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
     fn option<T: Copy>(&self, option: &Binding<Option<T>>, name: &'static str, f: impl Fn(&Binding<T>)) {
         match option.value {
-            None => out!("if {option}.is_none();"),
+            None => chain!(self, "{option}.is_none()"),
             Some(value) => {
                 let value = &self.bind(name, value);
-                out!("if let Some({value}) = {option};");
+                chain!(self, "let Some({value}) = {option}");
                 f(value);
             },
         }
@@ -237,9 +241,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
     fn slice<T>(&self, slice: &Binding<&[T]>, f: impl Fn(&Binding<&T>)) {
         if slice.value.is_empty() {
-            out!("if {slice}.is_empty();");
+            chain!(self, "{slice}.is_empty()");
         } else {
-            out!("if {slice}.len() == {};", slice.value.len());
+            chain!(self, "{slice}.len() == {}", slice.value.len());
             for (i, value) in slice.value.iter().enumerate() {
                 let name = format!("{slice}[{i}]");
                 f(&Binding { name, value });
@@ -254,23 +258,23 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn ident(&self, ident: &Binding<Ident>) {
-        out!("if {ident}.as_str() == {:?};", ident.value.as_str());
+        chain!(self, "{ident}.as_str() == {:?}", ident.value.as_str());
     }
 
     fn symbol(&self, symbol: &Binding<Symbol>) {
-        out!("if {symbol}.as_str() == {:?};", symbol.value.as_str());
+        chain!(self, "{symbol}.as_str() == {:?}", symbol.value.as_str());
     }
 
     fn qpath(&self, qpath: &Binding<&QPath<'_>>) {
         if let QPath::LangItem(lang_item, ..) = *qpath.value {
-            out!("if matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _));");
+            chain!(self, "matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _))");
         } else {
-            out!("if match_qpath({qpath}, &[{}]);", path_to_string(qpath.value));
+            chain!(self, "match_qpath({qpath}, &[{}])", path_to_string(qpath.value));
         }
     }
 
     fn lit(&self, lit: &Binding<&Lit>) {
-        let kind = |kind| out!("if let LitKind::{kind} = {lit}.node;");
+        let kind = |kind| chain!(self, "let LitKind::{kind} = {lit}.node");
         macro_rules! kind {
             ($($t:tt)*) => (kind(format_args!($($t)*)));
         }
@@ -298,7 +302,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             LitKind::ByteStr(ref vec) => {
                 bind!(self, vec);
                 kind!("ByteStr(ref {vec})");
-                out!("if let [{:?}] = **{vec};", vec.value);
+                chain!(self, "let [{:?}] = **{vec}", vec.value);
             },
             LitKind::Str(s, _) => {
                 bind!(self, s);
@@ -311,15 +315,15 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     fn arm(&self, arm: &Binding<&hir::Arm<'_>>) {
         self.pat(field!(arm.pat));
         match arm.value.guard {
-            None => out!("if {arm}.guard.is_none();"),
+            None => chain!(self, "{arm}.guard.is_none()"),
             Some(hir::Guard::If(expr)) => {
                 bind!(self, expr);
-                out!("if let Some(Guard::If({expr})) = {arm}.guard;");
+                chain!(self, "let Some(Guard::If({expr})) = {arm}.guard");
                 self.expr(expr);
             },
             Some(hir::Guard::IfLet(let_expr)) => {
                 bind!(self, let_expr);
-                out!("if let Some(Guard::IfLet({let_expr}) = {arm}.guard;");
+                chain!(self, "let Some(Guard::IfLet({let_expr}) = {arm}.guard");
                 self.pat(field!(let_expr.pat));
                 self.expr(field!(let_expr.init));
             },
@@ -331,9 +335,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     fn expr(&self, expr: &Binding<&hir::Expr<'_>>) {
         if let Some(higher::While { condition, body }) = higher::While::hir(expr.value) {
             bind!(self, condition, body);
-            out!(
-                "if let Some(higher::While {{ condition: {condition}, body: {body} }}) \
-                = higher::While::hir({expr});"
+            chain!(
+                self,
+                "let Some(higher::While {{ condition: {condition}, body: {body} }}) \
+                = higher::While::hir({expr})"
             );
             self.expr(condition);
             self.expr(body);
@@ -347,9 +352,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         }) = higher::WhileLet::hir(expr.value)
         {
             bind!(self, let_pat, let_expr, if_then);
-            out!(
-                "if let Some(higher::WhileLet {{ let_pat: {let_pat}, let_expr: {let_expr}, if_then: {if_then} }}) \
-                = higher::WhileLet::hir({expr});"
+            chain!(
+                self,
+                "let Some(higher::WhileLet {{ let_pat: {let_pat}, let_expr: {let_expr}, if_then: {if_then} }}) \
+                = higher::WhileLet::hir({expr})"
             );
             self.pat(let_pat);
             self.expr(let_expr);
@@ -359,9 +365,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
         if let Some(higher::ForLoop { pat, arg, body, .. }) = higher::ForLoop::hir(expr.value) {
             bind!(self, pat, arg, body);
-            out!(
-                "if let Some(higher::ForLoop {{ pat: {pat}, arg: {arg}, body: {body}, .. }}) \
-                = higher::ForLoop::hir({expr});"
+            chain!(
+                self,
+                "let Some(higher::ForLoop {{ pat: {pat}, arg: {arg}, body: {body}, .. }}) \
+                = higher::ForLoop::hir({expr})"
             );
             self.pat(pat);
             self.expr(arg);
@@ -369,7 +376,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             return;
         }
 
-        let kind = |kind| out!("if let ExprKind::{kind} = {expr}.kind;");
+        let kind = |kind| chain!(self, "let ExprKind::{kind} = {expr}.kind");
         macro_rules! kind {
             ($($t:tt)*) => (kind(format_args!($($t)*)));
         }
@@ -383,7 +390,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 // if it's a path
                 if let Some(TyKind::Path(ref qpath)) = let_expr.value.ty.as_ref().map(|ty| &ty.kind) {
                     bind!(self, qpath);
-                    out!("if let TyKind::Path(ref {qpath}) = {let_expr}.ty.kind;");
+                    chain!(self, "let TyKind::Path(ref {qpath}) = {let_expr}.ty.kind");
                     self.qpath(qpath);
                 }
                 self.expr(field!(let_expr.init));
@@ -419,7 +426,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ExprKind::Binary(op, left, right) => {
                 bind!(self, op, left, right);
                 kind!("Binary({op}, {left}, {right})");
-                out!("if BinOpKind::{:?} == {op}.node;", op.value.node);
+                chain!(self, "BinOpKind::{:?} == {op}.node", op.value.node);
                 self.expr(left);
                 self.expr(right);
             },
@@ -438,7 +445,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Cast({expr}, {cast_ty})");
                 if let TyKind::Path(ref qpath) = cast_ty.value.kind {
                     bind!(self, qpath);
-                    out!("if let TyKind::Path(ref {qpath}) = {cast_ty}.kind;");
+                    chain!(self, "let TyKind::Path(ref {qpath}) = {cast_ty}.kind");
                     self.qpath(qpath);
                 }
                 self.expr(expr);
@@ -485,7 +492,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
                 bind!(self, fn_decl, body_id);
                 kind!("Closure(CaptureBy::{capture_clause:?}, {fn_decl}, {body_id}, _, {movability})");
-                out!("if let {ret_ty} = {fn_decl}.output;");
+                chain!(self, "let {ret_ty} = {fn_decl}.output");
                 self.body(body_id);
             },
             ExprKind::Yield(sub, source) => {
@@ -509,7 +516,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ExprKind::AssignOp(op, target, value) => {
                 bind!(self, op, target, value);
                 kind!("AssignOp({op}, {target}, {value})");
-                out!("if BinOpKind::{:?} == {op}.node;", op.value.node);
+                chain!(self, "BinOpKind::{:?} == {op}.node", op.value.node);
                 self.expr(target);
                 self.expr(value);
             },
@@ -573,10 +580,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Repeat({value}, {length})");
                 self.expr(value);
                 match length.value {
-                    ArrayLen::Infer(..) => out!("if let ArrayLen::Infer(..) = length;"),
+                    ArrayLen::Infer(..) => chain!(self, "let ArrayLen::Infer(..) = length"),
                     ArrayLen::Body(anon_const) => {
                         bind!(self, anon_const);
-                        out!("if let ArrayLen::Body({anon_const}) = {length};");
+                        chain!(self, "let ArrayLen::Body({anon_const}) = {length}");
                         self.body(field!(anon_const.body));
                     },
                 }
@@ -600,12 +607,12 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     fn body(&self, body_id: &Binding<hir::BodyId>) {
         let expr = self.cx.tcx.hir().body(body_id.value).value;
         bind!(self, expr);
-        out!("let {expr} = &cx.tcx.hir().body({body_id}).value;");
+        chain!(self, "{expr} = &cx.tcx.hir().body({body_id}).value");
         self.expr(expr);
     }
 
     fn pat(&self, pat: &Binding<&hir::Pat<'_>>) {
-        let kind = |kind| out!("if let PatKind::{kind} = {pat}.kind;");
+        let kind = |kind| chain!(self, "let PatKind::{kind} = {pat}.kind");
         macro_rules! kind {
             ($($t:tt)*) => (kind(format_args!($($t)*)));
         }
@@ -688,7 +695,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn stmt(&self, stmt: &Binding<&hir::Stmt<'_>>) {
-        let kind = |kind| out!("if let StmtKind::{kind} = {stmt}.kind;");
+        let kind = |kind| chain!(self, "let StmtKind::{kind} = {stmt}.kind");
         macro_rules! kind {
             ($($t:tt)*) => (kind(format_args!($($t)*)));
         }
