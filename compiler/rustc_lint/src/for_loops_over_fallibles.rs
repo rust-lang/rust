@@ -159,28 +159,25 @@ fn suggest_question_mark<'tcx>(
     }
 
     let ty = substs.type_at(0);
-    let is_iterator = cx.tcx.infer_ctxt().enter(|infcx| {
-        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
+    let infcx = cx.tcx.infer_ctxt().build();
+    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
-        let cause = ObligationCause::new(
-            span,
-            body_id.hir_id,
-            rustc_infer::traits::ObligationCauseCode::MiscObligation,
-        );
-        fulfill_cx.register_bound(
-            &infcx,
-            ty::ParamEnv::empty(),
-            // Erase any region vids from the type, which may not be resolved
-            infcx.tcx.erase_regions(ty),
-            into_iterator_did,
-            cause,
-        );
+    let cause = ObligationCause::new(
+        span,
+        body_id.hir_id,
+        rustc_infer::traits::ObligationCauseCode::MiscObligation,
+    );
+    fulfill_cx.register_bound(
+        &infcx,
+        ty::ParamEnv::empty(),
+        // Erase any region vids from the type, which may not be resolved
+        infcx.tcx.erase_regions(ty),
+        into_iterator_did,
+        cause,
+    );
 
-        // Select all, including ambiguous predicates
-        let errors = fulfill_cx.select_all_or_error(&infcx);
+    // Select all, including ambiguous predicates
+    let errors = fulfill_cx.select_all_or_error(&infcx);
 
-        errors.is_empty()
-    });
-
-    is_iterator
+    errors.is_empty()
 }
