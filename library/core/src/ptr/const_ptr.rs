@@ -1322,6 +1322,21 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
+    #[cfg(not(bootstrap))]
+    pub const fn align_offset(self, align: usize) -> usize
+    where
+        T: Sized,
+    {
+        assert!(align.is_power_of_two(), "align_offset: align is not a power-of-two");
+
+        // SAFETY: `align` has been checked to be a power of 2 above
+        unsafe { align_offset(self, align) }
+    }
+
+    #[stable(feature = "align_offset", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
+    #[allow(missing_docs)]
+    #[cfg(bootstrap)]
     pub const fn align_offset(self, align: usize) -> usize
     where
         T: Sized,
