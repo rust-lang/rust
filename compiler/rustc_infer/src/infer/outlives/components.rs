@@ -121,15 +121,22 @@ fn compute_components<'tcx>(
                 //
                 // Note: The 'skip_binder()' call here matches the way we handle fn substs
                 // via `walk_shallow`, which also skips binders.
-                compute_components(tcx, closure_substs.sig().output().skip_binder(), out, visited);
+
+                // Hack - try to get a more accurate count on Crater by skipping this
+                // when checking dependencies.
+                if std::env::var("CARGO_PRIMARY_PACKAGE").is_ok() {
+                    compute_components(tcx, closure_substs.sig().output().skip_binder(), out, visited);
+                }
             }
 
             ty::Generator(_, ref substs, _) => {
                 // Same as the closure case
                 let generator_substs = substs.as_generator();
                 compute_components(tcx, generator_substs.tupled_upvars_ty(), out, visited);
-                compute_components(tcx, generator_substs.yield_ty(), out, visited);
-                compute_components(tcx, generator_substs.return_ty(), out, visited);
+                if std::env::var("CARGO_PKG_NAME").ok().as_deref() != Some("tokio-util") {
+                    compute_components(tcx, generator_substs.yield_ty(), out, visited);
+                    compute_components(tcx, generator_substs.return_ty(), out, visited);
+                }
 
                 // We ignore regions in the generator interior as we don't
                 // want these to affect region inference
