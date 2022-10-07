@@ -498,11 +498,16 @@ impl Step for Llvm {
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if target != builder.config.build {
             let llvm_config = builder.ensure(Llvm { target: builder.config.build });
-            let llvm_bindir = output(Command::new(&llvm_config).arg("--bindir"));
-            let host_bin = Path::new(llvm_bindir.trim());
-            cfg.define("LLVM_TABLEGEN", host_bin.join("llvm-tblgen").with_extension(EXE_EXTENSION));
-            // LLVM_NM is required for cross compiling using MSVC
-            cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
+            if !builder.config.dry_run {
+                let llvm_bindir = output(Command::new(&llvm_config).arg("--bindir"));
+                let host_bin = Path::new(llvm_bindir.trim());
+                cfg.define(
+                    "LLVM_TABLEGEN",
+                    host_bin.join("llvm-tblgen").with_extension(EXE_EXTENSION),
+                );
+                // LLVM_NM is required for cross compiling using MSVC
+                cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
+            }
             cfg.define("LLVM_CONFIG_PATH", llvm_config);
             if builder.config.llvm_clang {
                 let build_bin = builder.llvm_out(builder.config.build).join("build").join("bin");
