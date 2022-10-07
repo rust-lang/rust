@@ -1,5 +1,5 @@
 // The goal of this test is to ensure the color of the text is the one expected.
-goto: file://|DOC_PATH|/test_docs/index.html?search=coo
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html?search=coo"
 
 // This is needed so that the text color is computed.
 show-text: true
@@ -826,7 +826,7 @@ assert-css: (
 )
 
 // Check the alias more specifically in the dark theme.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // We set the theme so we're sure that the correct values will be used, whatever the computer
 // this test is running on.
 local-storage: {

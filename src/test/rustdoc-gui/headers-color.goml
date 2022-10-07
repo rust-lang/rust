@@ -1,5 +1,5 @@
 // This test check for headers text and background colors for the different themes.
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 
 // This is needed so that the text color is computed.
 show-text: true
@@ -23,23 +23,23 @@ assert-css: (
     ALL,
 )
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl-Foo
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#impl-Foo"
 assert-css: (
     "#impl-Foo",
     {"color": "rgb(197, 197, 197)", "background-color": "rgba(255, 236, 164, 0.06)"},
 )
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html#method.must_use
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.must_use"
 assert-css: (
     "#method\.must_use",
     {"color": "rgb(197, 197, 197)", "background-color": "rgba(255, 236, 164, 0.06)"},
     ALL,
 )
 
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-css: (".small-section-header a", {"color": "rgb(197, 197, 197)"}, ALL)
 
-goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
 // We select headings (h2, h3, h...).
 assert-css: (".docblock > :not(p) > a", {"color": "rgb(57, 175, 215)"}, ALL)
 
@@ -49,7 +49,7 @@ local-storage: {
     "rustdoc-preferred-dark-theme": "dark",
     "rustdoc-use-system-theme": "false",
 }
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 
 assert-css: (
     ".impl",
@@ -62,23 +62,23 @@ assert-css: (
     ALL,
 )
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl-Foo
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#impl-Foo"
 assert-css: (
     "#impl-Foo",
     {"color": "rgb(221, 221, 221)", "background-color": "rgb(73, 74, 61)"},
 )
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html#method.must_use
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.must_use"
 assert-css: (
     "#method\.must_use",
     {"color": "rgb(221, 221, 221)", "background-color": "rgb(73, 74, 61)"},
     ALL,
 )
 
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-css: (".small-section-header a", {"color": "rgb(221, 221, 221)"}, ALL)
 
-goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
 // We select headings (h2, h3, h...).
 assert-css: (".docblock > :not(p) > a", {"color": "rgb(210, 153, 29)"}, ALL)
 
@@ -86,7 +86,7 @@ assert-css: (".docblock > :not(p) > a", {"color": "rgb(210, 153, 29)"}, ALL)
 local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
 reload:
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 
 assert-css: (
     ".impl",
@@ -99,19 +99,19 @@ assert-css: (
     ALL,
 )
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl-Foo
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#impl-Foo"
 assert-css: ("#impl-Foo", {"color": "rgb(0, 0, 0)", "background-color": "rgb(253, 255, 211)"})
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html#method.must_use
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.must_use"
 assert-css: (
     "#method\.must_use",
     {"color": "rgb(0, 0, 0)", "background-color": "rgb(253, 255, 211)"},
     ALL,
 )
 
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-css: (".small-section-header a", {"color": "rgb(0, 0, 0)"}, ALL)
 
-goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
 // We select headings (h2, h3, h...).
 assert-css: (".docblock > :not(p) > a", {"color": "rgb(56, 115, 173)"}, ALL)

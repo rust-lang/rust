@@ -1,6 +1,6 @@
 // This test ensures that the elements in the sidebar are displayed correctly.
 javascript: false
-goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // Since the javascript is disabled, there shouldn't be a toggle.
 assert-false: "#sidebar-toggle"
 wait-for-css: (".sidebar > *", {"visibility": "hidden"})
@@ -22,7 +22,7 @@ wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
 wait-for-css: (".sidebar", {"width": "300px"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
 click: ".sidebar a.selected"
-goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 wait-for-css: (".sidebar", {"width": "300px"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
 
@@ -250,7 +250,7 @@ click: "#sidebar-toggle"
 wait-for-css: ("#source-sidebar", {"visibility": "visible"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
 click: ".sidebar a.selected"
-goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
 // Resize back to desktop size, to check that the sidebar doesn't spontaneously open.
