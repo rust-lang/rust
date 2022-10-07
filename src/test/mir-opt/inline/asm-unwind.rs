@@ -1,6 +1,7 @@
 // Tests inlining of `may_unwind` inline assembly.
 //
 // ignore-wasm32-bare compiled with panic=abort by default
+// needs-asm-support
 #![feature(asm_unwind)]
 
 struct D;
