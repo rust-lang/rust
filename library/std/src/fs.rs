@@ -14,7 +14,7 @@ mod tests;
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
-use crate::path::{Path, PathBuf};
+use crate::path::{Path, PathBuf, PathLike};
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
@@ -246,14 +246,14 @@ pub struct DirBuilder {
 /// }
 /// ```
 #[stable(feature = "fs_read_write_bytes", since = "1.26.0")]
-pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
+pub fn read<P: PathLike>(path: P) -> io::Result<Vec<u8>> {
     fn inner(path: &Path) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
         let mut bytes = Vec::new();
         file.read_to_end(&mut bytes)?;
         Ok(bytes)
     }
-    inner(path.as_ref())
+    path.with_path(inner)
 }
 
 /// Read the entire contents of a file into a string.
@@ -285,14 +285,14 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// }
 /// ```
 #[stable(feature = "fs_read_write", since = "1.26.0")]
-pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
+pub fn read_to_string<P: PathLike>(path: P) -> io::Result<String> {
     fn inner(path: &Path) -> io::Result<String> {
         let mut file = File::open(path)?;
         let mut string = String::new();
         file.read_to_string(&mut string)?;
         Ok(string)
     }
-    inner(path.as_ref())
+    path.with_path(inner)
 }
 
 /// Write a slice as the entire contents of a file.
@@ -320,11 +320,11 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// }
 /// ```
 #[stable(feature = "fs_read_write_bytes", since = "1.26.0")]
-pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
+pub fn write<P: PathLike, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
     fn inner(path: &Path, contents: &[u8]) -> io::Result<()> {
         File::create(path)?.write_all(contents)
     }
-    inner(path.as_ref(), contents.as_ref())
+    path.with_path(|path| inner(path.as_ref(), contents.as_ref()))
 }
 
 impl File {
@@ -348,8 +348,8 @@ impl File {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn open<P: AsRef<Path>>(path: P) -> io::Result<File> {
-        OpenOptions::new().read(true).open(path.as_ref())
+    pub fn open<P: PathLike>(path: P) -> io::Result<File> {
+        OpenOptions::new().read(true).open(path)
     }
 
     /// Opens a file in write-only mode.
@@ -373,8 +373,8 @@ impl File {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn create<P: AsRef<Path>>(path: P) -> io::Result<File> {
-        OpenOptions::new().write(true).create(true).truncate(true).open(path.as_ref())
+    pub fn create<P: PathLike>(path: P) -> io::Result<File> {
+        OpenOptions::new().write(true).create(true).truncate(true).open(path)
     }
 
     /// Creates a new file in read-write mode; error if the file exists.
@@ -402,8 +402,8 @@ impl File {
     /// }
     /// ```
     #[unstable(feature = "file_create_new", issue = "none")]
-    pub fn create_new<P: AsRef<Path>>(path: P) -> io::Result<File> {
-        OpenOptions::new().read(true).write(true).create_new(true).open(path.as_ref())
+    pub fn create_new<P: PathLike>(path: P) -> io::Result<File> {
+        OpenOptions::new().read(true).write(true).create_new(true).open(path)
     }
 
     /// Returns a new OpenOptions object.
@@ -1052,8 +1052,8 @@ impl OpenOptions {
     /// [`NotFound`]: io::ErrorKind::NotFound
     /// [`PermissionDenied`]: io::ErrorKind::PermissionDenied
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
-        self._open(path.as_ref())
+    pub fn open<P: PathLike>(&self, path: P) -> io::Result<File> {
+        path.with_path(|path| self._open(path))
     }
 
     fn _open(&self, path: &Path) -> io::Result<File> {
@@ -1723,8 +1723,8 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    fs_imp::unlink(path.as_ref())
+pub fn remove_file<P: PathLike>(path: P) -> io::Result<()> {
+    path.with_path(fs_imp::unlink)
 }
 
 /// Given a path, query the file system to get information about a file,
@@ -1761,8 +1761,8 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
-    fs_imp::stat(path.as_ref()).map(Metadata)
+pub fn metadata<P: PathLike>(path: P) -> io::Result<Metadata> {
+    path.with_path(fs_imp::stat).map(Metadata)
 }
 
 /// Query the metadata about a file without following symlinks.
@@ -1795,8 +1795,8 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// }
 /// ```
 #[stable(feature = "symlink_metadata", since = "1.1.0")]
-pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
-    fs_imp::lstat(path.as_ref()).map(Metadata)
+pub fn symlink_metadata<P: PathLike>(path: P) -> io::Result<Metadata> {
+    path.with_path(fs_imp::lstat).map(Metadata)
 }
 
 /// Rename a file or directory to a new name, replacing the original file if
@@ -1838,8 +1838,8 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
-    fs_imp::rename(from.as_ref(), to.as_ref())
+pub fn rename<P: PathLike, Q: PathLike>(from: P, to: Q) -> io::Result<()> {
+    from.with_path(|from| to.with_path(|to| fs_imp::rename(from, to)))
 }
 
 /// Copies the contents of one file to another. This function will also
@@ -1896,8 +1896,8 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
-    fs_imp::copy(from.as_ref(), to.as_ref())
+pub fn copy<P: PathLike, Q: PathLike>(from: P, to: Q) -> io::Result<u64> {
+    from.with_path(|from| to.with_path(|to| fs_imp::copy(from, to)))
 }
 
 /// Creates a new hard link on the filesystem.
@@ -1940,8 +1940,8 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    fs_imp::link(original.as_ref(), link.as_ref())
+pub fn hard_link<P: PathLike, Q: PathLike>(original: P, link: Q) -> io::Result<()> {
+    original.with_path(|original| link.with_path(|link| fs_imp::link(original, link)))
 }
 
 /// Creates a new symbolic link on the filesystem.
@@ -1972,8 +1972,8 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Re
     note = "replaced with std::os::unix::fs::symlink and \
             std::os::windows::fs::{symlink_file, symlink_dir}"
 )]
-pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    fs_imp::symlink(original.as_ref(), link.as_ref())
+pub fn soft_link<P: PathLike, Q: PathLike>(original: P, link: Q) -> io::Result<()> {
+    original.with_path(|original| link.with_path(|link| fs_imp::symlink(original, link)))
 }
 
 /// Reads a symbolic link, returning the file that the link points to.
@@ -2006,8 +2006,8 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Re
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
-    fs_imp::readlink(path.as_ref())
+pub fn read_link<P: PathLike>(path: P) -> io::Result<PathBuf> {
+    path.with_path(fs_imp::readlink)
 }
 
 /// Returns the canonical, absolute form of a path with all intermediate
@@ -2049,8 +2049,8 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 #[doc(alias = "realpath")]
 #[doc(alias = "GetFinalPathNameByHandle")]
 #[stable(feature = "fs_canonicalize", since = "1.5.0")]
-pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
-    fs_imp::canonicalize(path.as_ref())
+pub fn canonicalize<P: PathLike>(path: P) -> io::Result<PathBuf> {
+    path.with_path(fs_imp::canonicalize)
 }
 
 /// Creates a new, empty directory at the provided path
@@ -2090,8 +2090,8 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// ```
 #[doc(alias = "mkdir")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    DirBuilder::new().create(path.as_ref())
+pub fn create_dir<P: PathLike>(path: P) -> io::Result<()> {
+    DirBuilder::new().create(path)
 }
 
 /// Recursively create a directory and all of its parent components if they
@@ -2134,8 +2134,8 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    DirBuilder::new().recursive(true).create(path.as_ref())
+pub fn create_dir_all<P: PathLike>(path: P) -> io::Result<()> {
+    DirBuilder::new().recursive(true).create(path)
 }
 
 /// Removes an empty directory.
@@ -2170,8 +2170,8 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// ```
 #[doc(alias = "rmdir")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    fs_imp::rmdir(path.as_ref())
+pub fn remove_dir<P: PathLike>(path: P) -> io::Result<()> {
+    path.with_path(fs_imp::rmdir)
 }
 
 /// Removes a directory at this path, after removing all its contents. Use
@@ -2212,8 +2212,8 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    fs_imp::remove_dir_all(path.as_ref())
+pub fn remove_dir_all<P: PathLike>(path: P) -> io::Result<()> {
+    path.with_path(fs_imp::remove_dir_all)
 }
 
 /// Returns an iterator over the entries within a directory.
@@ -2287,8 +2287,8 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
-    fs_imp::readdir(path.as_ref()).map(ReadDir)
+pub fn read_dir<P: PathLike>(path: P) -> io::Result<ReadDir> {
+    path.with_path(fs_imp::readdir).map(ReadDir)
 }
 
 /// Changes the permissions found on a file or a directory.
@@ -2322,8 +2322,8 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// }
 /// ```
 #[stable(feature = "set_permissions", since = "1.1.0")]
-pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
-    fs_imp::set_perm(path.as_ref(), perm.0)
+pub fn set_permissions<P: PathLike>(path: P, perm: Permissions) -> io::Result<()> {
+    path.with_path(|path| fs_imp::set_perm(path, perm.0))
 }
 
 impl DirBuilder {
@@ -2382,8 +2382,8 @@ impl DirBuilder {
     /// assert!(fs::metadata(path).unwrap().is_dir());
     /// ```
     #[stable(feature = "dir_builder", since = "1.6.0")]
-    pub fn create<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        self._create(path.as_ref())
+    pub fn create<P: PathLike>(&self, path: P) -> io::Result<()> {
+        path.with_path(|path| self._create(path))
     }
 
     fn _create(&self, path: &Path) -> io::Result<()> {
@@ -2452,6 +2452,6 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 // instead.
 #[unstable(feature = "fs_try_exists", issue = "83186")]
 #[inline]
-pub fn try_exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
-    fs_imp::try_exists(path.as_ref())
+pub fn try_exists<P: PathLike>(path: P) -> io::Result<bool> {
+    path.with_path(fs_imp::try_exists)
 }

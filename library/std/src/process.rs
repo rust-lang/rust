@@ -112,7 +112,7 @@ use crate::fmt;
 use crate::fs;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::num::NonZeroI32;
-use crate::path::Path;
+use crate::path::{Path, PathLike};
 use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
 use crate::sys::process as imp;
@@ -769,8 +769,8 @@ impl Command {
     ///
     /// [`canonicalize`]: crate::fs::canonicalize
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Command {
-        self.inner.cwd(dir.as_ref().as_ref());
+    pub fn current_dir<P: PathLike>(&mut self, dir: P) -> &mut Command {
+        dir.with_path(|dir| self.inner.cwd(dir.as_ref()));
         self
     }
 

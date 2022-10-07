@@ -17,7 +17,9 @@ use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
-use crate::path::{Path, PathBuf};
+#[cfg(doc)]
+use crate::path::Path;
+use crate::path::{PathBuf, PathLike};
 use crate::sys;
 use crate::sys::os as os_imp;
 
@@ -80,8 +82,8 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// ```
 #[doc(alias = "chdir")]
 #[stable(feature = "env", since = "1.0.0")]
-pub fn set_current_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    os_imp::chdir(path.as_ref())
+pub fn set_current_dir<P: PathLike>(path: P) -> io::Result<()> {
+    path.with_path(os_imp::chdir)
 }
 
 /// An iterator over a snapshot of the environment variables of this process.

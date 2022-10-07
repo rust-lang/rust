@@ -1109,6 +1109,30 @@ impl FusedIterator for Ancestors<'_> {}
 // Basic types and traits
 ////////////////////////////////////////////////////////////////////////////////
 
+/// # Stable use
+///
+/// Any function that requires a path may take a `PathLike` type.
+///
+/// These types include [`OsStr`], [`Path`] and [`str`] as well as their owned
+/// counterparts [`OsString`], [`PathBuf`] and [`String`].
+///
+/// # Unstable use
+///
+/// The `PathLike` trait can be implemented for custom path types. This requires
+/// a nightly compiler with the `path_like` feature enabled. Note that this
+/// trait is unstable and highly likely to change between nightly versions.
+#[unstable(feature = "path_like", issue = "none")]
+pub trait PathLike {
+    /// Convert to a `Path` reference.
+    fn with_path<T, F: FnOnce(&Path) -> T>(&self, f: F) -> T;
+}
+#[unstable(feature = "path_like", issue = "none")]
+impl<P: AsRef<Path>> PathLike for P {
+    fn with_path<T, F: FnOnce(&Path) -> T>(&self, f: F) -> T {
+        f(self.as_ref())
+    }
+}
+
 /// An owned, mutable path (akin to [`String`]).
 ///
 /// This type provides methods like [`push`] and [`set_extension`] that mutate
