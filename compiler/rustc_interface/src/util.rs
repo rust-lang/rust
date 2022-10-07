@@ -131,7 +131,7 @@ fn get_stack_size() -> Option<usize> {
 }
 
 #[cfg(not(parallel_compiler))]
-pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
     f: F,
@@ -169,7 +169,7 @@ unsafe fn handle_deadlock() {
 }
 
 #[cfg(parallel_compiler)]
-pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
     f: F,
