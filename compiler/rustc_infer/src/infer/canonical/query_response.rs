@@ -16,8 +16,8 @@ use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelating
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
-use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
+use crate::traits::{PredicateObligations, TraitEngine};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
@@ -509,7 +509,7 @@ impl<'tcx> InferCtxt<'tcx> {
         for &(a, b) in &query_response.value.opaque_types {
             let a = substitute_value(self.tcx, &result_subst, a);
             let b = substitute_value(self.tcx, &result_subst, b);
-            obligations.extend(self.handle_opaque_type(a, b, true, cause, param_env)?.obligations);
+            obligations.extend(self.at(cause, param_env).eq(a, b)?.obligations);
         }
 
         Ok(InferOk { value: result_subst, obligations })
@@ -741,17 +741,11 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         true
     }
 
-    fn register_opaque_type(
+    fn register_opaque_type_obligations(
         &mut self,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        a_is_expected: bool,
+        obligations: PredicateObligations<'tcx>,
     ) -> Result<(), TypeError<'tcx>> {
-        self.obligations.extend(
-            self.infcx
-                .handle_opaque_type(a, b, a_is_expected, &self.cause, self.param_env)?
-                .obligations,
-        );
+        self.obligations.extend(obligations);
         Ok(())
     }
 }
