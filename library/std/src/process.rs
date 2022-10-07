@@ -2200,9 +2200,7 @@ impl<T: Termination, E: fmt::Debug> Termination for Result<T, E> {
         match self {
             Ok(val) => val.report(),
             Err(err) => {
-                // Ignore error if the write fails, for example because stderr is
-                // already closed. There is not much point panicking at this point.
-                let _ = writeln!(io::stderr(), "Error: {err:?}");
+                io::attempt_print_to_stderr(format_args_nl!("Error: {err:?}"));
                 ExitCode::FAILURE
             }
         }
