@@ -700,11 +700,7 @@ fn main_args(at_args: &[String]) -> MainResult {
             };
         }
     };
-    rustc_interface::util::run_in_thread_pool_with_globals(
-        options.edition,
-        1, // this runs single-threaded, even in a parallel compiler
-        move || main_options(options),
-    )
+    main_options(options)
 }
 
 fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
@@ -749,9 +745,12 @@ fn main_options(options: config::Options) -> MainResult {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
         (true, false) => return doctest::run(options),
         (false, true) => {
+            // Session globals are required for symbol interning.
             return wrap_return(
                 &diag,
-                markdown::render(&options.input, options.render_options, options.edition),
+                rustc_span::create_session_globals_then(options.edition, || {
+                    markdown::render(&options.input, options.render_options, options.edition)
+                }),
             );
         }
         (false, false) => {}
@@ -777,9 +776,10 @@ fn main_options(options: config::Options) -> MainResult {
     let render_options = options.render_options.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
     let document_private = options.render_options.document_private;
+
     let config = core::create_config(options);
 
-    interface::create_compiler_and_run(config, |compiler| {
+    interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
 
         if sess.opts.describe_lints {
