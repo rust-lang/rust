@@ -633,6 +633,54 @@ fn align_offset_issue_103361() {
 }
 
 #[test]
+fn is_aligned() {
+    let data = 42;
+    let ptr: *const i32 = &data;
+    assert!(ptr.is_aligned());
+    assert!(ptr.is_aligned_to(1));
+    assert!(ptr.is_aligned_to(2));
+    assert!(ptr.is_aligned_to(4));
+    assert!(ptr.wrapping_byte_add(2).is_aligned_to(1));
+    assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
+    assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
+
+    // At runtime either `ptr` or `ptr+1` is aligned to 8.
+    assert_ne!(ptr.is_aligned_to(8), ptr.wrapping_add(1).is_aligned_to(8));
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn is_aligned_const() {
+    const {
+        let data = 42;
+        let ptr: *const i32 = &data;
+        assert!(ptr.is_aligned());
+        assert!(ptr.is_aligned_to(1));
+        assert!(ptr.is_aligned_to(2));
+        assert!(ptr.is_aligned_to(4));
+        assert!(ptr.wrapping_byte_add(2).is_aligned_to(1));
+        assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
+        assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
+
+        // At comptime neither `ptr` nor `ptr+1` is aligned to 8.
+        assert!(!ptr.is_aligned_to(8));
+        assert!(!ptr.wrapping_add(1).is_aligned_to(8));
+    }
+}
+
+#[test]
+#[cfg(bootstrap)]
+fn is_aligned_const() {
+    const {
+        let data = 42;
+        let ptr: *const i32 = &data;
+        // The bootstrap compiler always returns false for is_aligned.
+        assert!(!ptr.is_aligned());
+        assert!(!ptr.is_aligned_to(1));
+    }
+}
+
+#[test]
 fn offset_from() {
     let mut a = [0; 5];
     let ptr1: *mut i32 = &mut a[1];
