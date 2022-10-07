@@ -132,33 +132,27 @@ fn get_stack_size() -> Option<usize> {
     env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
 }
 
-/// Like a `thread::Builder::spawn` followed by a `join()`, but avoids the need
-/// for `'static` bounds.
-#[cfg(not(parallel_compiler))]
-fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: F) -> R {
-    // SAFETY: join() is called immediately, so any closure captures are still
-    // alive.
-    match unsafe { cfg.spawn_unchecked(f) }.unwrap().join() {
-        Ok(v) => v,
-        Err(e) => panic::resume_unwind(e),
-    }
-}
-
 #[cfg(not(parallel_compiler))]
 pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
     f: F,
 ) -> R {
+    // The thread pool is a single thread in the non-parallel compiler.
     let mut cfg = thread::Builder::new().name("rustc".to_string());
-
     if let Some(size) = get_stack_size() {
         cfg = cfg.stack_size(size);
     }
 
-    let main_handler = move || rustc_span::create_session_globals_then(edition, f);
+    let f = move || rustc_span::create_session_globals_then(edition, f);
 
-    scoped_thread(cfg, main_handler)
+    // This avoids the need for `'static` bounds.
+    //
+    // SAFETY: join() is called immediately, so any closure captures are still alive.
+    match unsafe { cfg.spawn_unchecked(f) }.unwrap().join() {
+        Ok(v) => v,
+        Err(e) => panic::resume_unwind(e),
+    }
 }
 
 /// Creates a new thread and forwards information in thread locals to it.
