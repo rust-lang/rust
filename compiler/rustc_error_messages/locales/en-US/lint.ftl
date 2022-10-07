@@ -20,6 +20,18 @@ lint_deprecated_lint_name =
     lint name `{$name}` is deprecated and may not have an effect in the future.
     .suggestion = change it to
 
+lint_renamed_or_removed_lint_suggestion = use the new name
+
+lint_unknown_lint =
+    unknown lint: `{$name}`
+    .suggestion = did you mean
+
+lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
+
+lint_unknown_gated_lint =
+    unknown lint: `{$name}`
+    .note = the `{$name}` lint is unstable
+
 lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of text present in {$label}
     .label = this {$label} contains {$count ->
         [one] an invisible

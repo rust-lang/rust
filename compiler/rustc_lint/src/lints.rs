@@ -4,7 +4,7 @@ use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{Predicate, Ty, TyCtxt};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
-use crate::LateContext;
+use crate::{errors::OverruledAttributeSub, LateContext};
 
 // array_into_iter.rs
 #[derive(LintDiagnostic)]
@@ -51,12 +51,85 @@ pub struct EnumIntrinsicsMemVariant<'a> {
 
 // levels.rs
 #[derive(LintDiagnostic)]
-#[diag(lint::deprecated_lint_name)]
+#[diag(lint_overruled_attribute)]
+pub struct OverruledAtributeLint<'a> {
+    #[label]
+    pub overruled: Span,
+    pub lint_level: &'a str,
+    pub lint_source: Symbol,
+    #[subdiagnostic]
+    pub sub: OverruledAttributeSub,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_deprecated_lint_name)]
 pub struct DeprecatedLintName<'a> {
     pub name: String,
     #[suggestion(code = "{replace}", applicability = "machine-applicable")]
     pub suggestion: Span,
     pub replace: &'a str,
+}
+
+pub struct RenamedOrRemovedLint<'a> {
+    pub msg: &'a str,
+    pub suggestion: Span,
+    pub renamed: &'a Option<String>,
+}
+
+impl<'a> DecorateLint<'a, ()> for RenamedOrRemovedLint<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        if let Some(new_name) = self.renamed {
+            diag.span_suggestion(
+                self.suggestion,
+                fluent::lint_renamed_or_removed_lint_suggestion,
+                new_name,
+                Applicability::MachineApplicable,
+            );
+        };
+        diag
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        rustc_errors::DiagnosticMessage::Str(self.msg.to_string())
+    }
+}
+
+pub struct UnknownLint<'a> {
+    pub name: String,
+    pub suggestion: Span,
+    pub replace: &'a Option<Symbol>,
+}
+
+impl<'a> DecorateLint<'a, ()> for UnknownLint<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        diag.set_arg("name", self.name);
+        if let Some(replace) = self.replace {
+            diag.span_suggestion(
+                self.suggestion,
+                fluent::suggestion,
+                replace,
+                Applicability::MaybeIncorrect,
+            );
+        };
+        diag
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        fluent::lint_unknown_lint
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_ignored_unless_crate_specified)]
+pub struct IgnoredUnlessCrateSpecified<'a> {
+    pub level: &'a str,
+    pub name: Symbol,
 }
 
 // methods.rs
