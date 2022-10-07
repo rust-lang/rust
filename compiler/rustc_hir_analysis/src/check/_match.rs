@@ -259,7 +259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.help("consider adding an `else` block that evaluates to the expected type");
                 error = true;
             },
-            ret_reason.is_none(),
+            false,
         );
         error
     }

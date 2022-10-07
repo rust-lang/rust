@@ -977,9 +977,10 @@ fn link_natively<'a>(
                      but `link.exe` was not found",
                 );
                 sess.note_without_error(
-                    "please ensure that VS 2013, VS 2015, VS 2017, VS 2019 or VS 2022 \
-                     was installed with the Visual C++ option",
+                    "please ensure that Visual Studio 2017 or later, or Build Tools \
+                     for Visual Studio were installed with the Visual C++ option.",
                 );
+                sess.note_without_error("VS Code is a different product, and is not sufficient.");
             }
             sess.abort_if_errors();
         }

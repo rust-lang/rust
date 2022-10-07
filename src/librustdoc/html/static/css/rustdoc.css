@@ -690,11 +690,6 @@ pre, .rustdoc.source .example-wrap {
 	border: 1px solid var(--border-color);
 }
 
-.content .item-list {
-	list-style-type: none;
-	padding: 0;
-}
-
 /* Shift "where ..." part of method or fn definition down a line */
 .content .method .where,
 .content .fn .where,
@@ -773,8 +768,9 @@ h2.small-section-header > .anchor {
 }
 
 .all-items a:hover,
-.docblock a:not(.srclink):not(.test-arrow):not(.scrape-help):hover,
-.docblock-short a:not(.srclink):not(.test-arrow):not(.scrape-help):hover, .item-info a {
+.docblock a:not(.test-arrow):not(.scrape-help):hover,
+.docblock-short a:not(.test-arrow):not(.scrape-help):hover,
+.item-info a {
 	text-decoration: underline;
 }
 
