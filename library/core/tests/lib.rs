@@ -4,6 +4,7 @@
 #![feature(array_windows)]
 #![feature(bigint_helper_methods)]
 #![feature(cell_update)]
+#![feature(const_align_offset)]
 #![feature(const_assume)]
 #![feature(const_align_of_val_raw)]
 #![feature(const_black_box)]
