@@ -1,3 +1,5 @@
+// check-fail
+// known-bug: #102682
 // edition: 2021
 
 #![feature(async_fn_in_trait)]
@@ -18,7 +20,5 @@ impl<'a, 'b, T: Debug + Sized + 'b, U: 'a> MyTrait<'a, 'b, T> for U {
         (self, key)
     }
 }
-//~^^^^ ERROR cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-//~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
 
 fn main() {}
