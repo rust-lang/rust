@@ -276,7 +276,7 @@ pub struct Config {
     pub registry: Registry,
 }
 
-pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
+fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
     crate::callbacks::setup_callbacks();
 
     let registry = &config.registry;
