@@ -10,7 +10,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 /// inference variables, returning the number of variables created.
 #[instrument(skip(infcx, body, promoted), level = "debug")]
 pub fn renumber_mir<'tcx>(
-    infcx: &InferCtxt<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) {
@@ -28,7 +28,7 @@ pub fn renumber_mir<'tcx>(
 /// Replaces all regions appearing in `value` with fresh inference
 /// variables.
 #[instrument(skip(infcx), level = "debug")]
-pub fn renumber_regions<'tcx, T>(infcx: &InferCtxt<'_, 'tcx>, value: T) -> T
+pub fn renumber_regions<'tcx, T>(infcx: &InferCtxt<'tcx>, value: T) -> T
 where
     T: TypeFoldable<'tcx>,
 {
@@ -44,7 +44,7 @@ where
 // Once `visit_mir_constant` is removed we can also remove this function
 // and just use `renumber_regions`.
 fn renumber_regions_in_mir_constant<'tcx>(
-    infcx: &InferCtxt<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     value: ConstantKind<'tcx>,
 ) -> ConstantKind<'tcx> {
     infcx.tcx.super_fold_regions(value, |_region, _depth| {
@@ -54,7 +54,7 @@ fn renumber_regions_in_mir_constant<'tcx>(
 }
 
 struct NllVisitor<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> NllVisitor<'a, 'tcx> {

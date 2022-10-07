@@ -20,6 +20,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
+use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::hir::map;
 use rustc_middle::ty::{
@@ -28,8 +29,6 @@ use rustc_middle::ty::{
     ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
-use rustc_session::Limit;
-use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
@@ -62,7 +61,7 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
     // meet an obligation
     fn try_get_upvar_span<F>(
         &self,
-        infer_context: &InferCtxt<'a, 'tcx>,
+        infer_context: &InferCtxt<'tcx>,
         generator_did: DefId,
         ty_matches: F,
     ) -> Option<GeneratorInteriorOrUpvar>
@@ -168,7 +167,7 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
 }
 
 // This trait is public to expose the diagnostics methods to clippy.
-pub trait InferCtxtExt<'tcx> {
+pub trait TypeErrCtxtExt<'tcx> {
     fn suggest_restricting_param_bound(
         &self,
         err: &mut Diagnostic,
@@ -295,8 +294,6 @@ pub trait InferCtxtExt<'tcx> {
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
         T: fmt::Display;
-
-    fn suggest_new_overflow_limit(&self, err: &mut Diagnostic);
 
     /// Suggest to await before try: future? => future.await?
     fn suggest_await_before_try(
@@ -461,7 +458,7 @@ fn suggest_restriction<'tcx>(
     }
 }
 
-impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
+impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn suggest_restricting_param_bound(
         &self,
         mut err: &mut Diagnostic,
@@ -675,9 +672,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // It only make sense when suggesting dereferences for arguments
         let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code()
             else { return false; };
-        let Some(typeck_results) = self.in_progress_typeck_results
+        let Some(typeck_results) = &self.typeck_results
             else { return false; };
-        let typeck_results = typeck_results.borrow();
         let hir::Node::Expr(expr) = self.tcx.hir().get(*arg_hir_id)
             else { return false; };
         let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(expr)
@@ -1176,8 +1172,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 &format!("this call returns `{}`", pred.self_ty()),
                             );
                         }
-                        if let Some(typeck_results) =
-                            self.in_progress_typeck_results.map(|t| t.borrow())
+                        if let Some(typeck_results) = &self.typeck_results
                             && let ty = typeck_results.expr_ty_adjusted(base)
                             && let ty::FnDef(def_id, _substs) = ty.kind()
                             && let Some(hir::Node::Item(hir::Item { ident, span, vis_span, .. })) =
@@ -1300,8 +1295,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             && let Some(stmt) = blk.stmts.last()
             && let hir::StmtKind::Semi(expr) = stmt.kind
             // Only suggest this if the expression behind the semicolon implements the predicate
-            && let Some(typeck_results) = self.in_progress_typeck_results
-            && let Some(ty) = typeck_results.borrow().expr_ty_opt(expr)
+            && let Some(typeck_results) = &self.typeck_results
+            && let Some(ty) = typeck_results.expr_ty_opt(expr)
             && self.predicate_may_hold(&self.mk_trait_obligation_with_new_self_ty(
                 obligation.param_env, trait_pred.map_bound(|trait_pred| (trait_pred, ty))
             ))
@@ -1390,7 +1385,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(&body);
 
-        let typeck_results = self.in_progress_typeck_results.map(|t| t.borrow()).unwrap();
+        let typeck_results = self.typeck_results.as_ref().unwrap();
         let Some(liberated_sig) = typeck_results.liberated_fn_sigs().get(fn_hir_id).copied() else { return false; };
 
         let ret_types = visitor
@@ -1573,7 +1568,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // Point at all the `return`s in the function as they have failed trait bounds.
             let mut visitor = ReturnsVisitor::default();
             visitor.visit_body(&body);
-            let typeck_results = self.in_progress_typeck_results.map(|t| t.borrow()).unwrap();
+            let typeck_results = self.typeck_results.as_ref().unwrap();
             for expr in &visitor.returns {
                 if let Some(returned_ty) = typeck_results.node_type_opt(expr.hir_id) {
                     let ty = self.resolve_vars_if_possible(returned_ty);
@@ -1591,7 +1586,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         expected: ty::PolyTraitRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         pub(crate) fn build_fn_sig_ty<'tcx>(
-            infcx: &InferCtxt<'_, 'tcx>,
+            infcx: &InferCtxt<'tcx>,
             trait_ref: ty::PolyTraitRef<'tcx>,
         ) -> Ty<'tcx> {
             let inputs = trait_ref.skip_binder().substs.type_at(1);
@@ -1841,12 +1836,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let span = self.tcx.def_span(generator_did);
 
-        let in_progress_typeck_results = self.in_progress_typeck_results.map(|t| t.borrow());
         let generator_did_root = self.tcx.typeck_root_def_id(generator_did);
         debug!(
             ?generator_did,
             ?generator_did_root,
-            in_progress_typeck_results.hir_owner = ?in_progress_typeck_results.as_ref().map(|t| t.hir_owner),
+            typeck_results.hir_owner = ?self.typeck_results.as_ref().map(|t| t.hir_owner),
             ?span,
         );
 
@@ -1901,7 +1895,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // type-checking; otherwise, get them by performing a query.  This is needed to avoid
         // cycles. If we can't use resolved types because the generator comes from another crate,
         // we still provide a targeted error but without all the relevant spans.
-        let generator_data: Option<GeneratorData<'tcx, '_>> = match &in_progress_typeck_results {
+        let generator_data: Option<GeneratorData<'tcx, '_>> = match &self.typeck_results {
             Some(t) if t.hir_owner.to_def_id() == generator_did_root => {
                 Some(GeneratorData::Local(&t))
             }
@@ -2707,10 +2701,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(Node::Expr(expr @ hir::Expr { kind: hir::ExprKind::Block(..), .. })) =
                     hir.find(arg_hir_id)
                 {
-                    let in_progress_typeck_results =
-                        self.in_progress_typeck_results.map(|t| t.borrow());
                     let parent_id = hir.get_parent_item(arg_hir_id);
-                    let typeck_results: &TypeckResults<'tcx> = match &in_progress_typeck_results {
+                    let typeck_results: &TypeckResults<'tcx> = match &self.typeck_results {
                         Some(t) if t.hir_owner == parent_id => t,
                         _ => self.tcx.typeck(parent_id.def_id),
                     };
@@ -2795,19 +2787,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
         }
-    }
-
-    fn suggest_new_overflow_limit(&self, err: &mut Diagnostic) {
-        let suggested_limit = match self.tcx.recursion_limit() {
-            Limit(0) => Limit(2),
-            limit => limit * 2,
-        };
-        err.help(&format!(
-            "consider increasing the recursion limit by adding a \
-             `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
-            suggested_limit,
-            self.tcx.crate_name(LOCAL_CRATE),
-        ));
     }
 
     #[instrument(

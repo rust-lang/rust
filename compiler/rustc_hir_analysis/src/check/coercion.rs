@@ -61,7 +61,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use smallvec::{smallvec, SmallVec};
@@ -702,7 +702,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 // Object safety violations or miscellaneous.
                 Err(err) => {
-                    self.report_selection_error(obligation.clone(), &obligation, &err, false);
+                    self.err_ctxt().report_selection_error(
+                        obligation.clone(),
+                        &obligation,
+                        &err,
+                        false,
+                    );
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
@@ -1549,7 +1554,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         }
                     }
                     _ => {
-                        err = fcx.report_mismatched_types(
+                        err = fcx.err_ctxt().report_mismatched_types(
                             cause,
                             expected,
                             found,
@@ -1629,7 +1634,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         expression: Option<&'tcx hir::Expr<'tcx>>,
         blk_id: Option<hir::HirId>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut err = fcx.report_mismatched_types(cause, expected, found, ty_err);
+        let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
 
         let mut pointing_at_return_type = false;
         let mut fn_output = None;

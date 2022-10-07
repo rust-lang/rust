@@ -6,7 +6,7 @@ use crate::traits::{Obligation, PredicateObligation};
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::InferCtxt;
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Instead of normalizing an associated type projection,
     /// this function generates an inference variable and registers
     /// an obligation that this inference variable must be the result

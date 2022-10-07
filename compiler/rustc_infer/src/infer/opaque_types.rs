@@ -41,7 +41,7 @@ pub struct OpaqueTypeDecl<'tcx> {
     pub origin: hir::OpaqueTyOrigin,
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// This is a backwards compatibility hack to prevent breaking changes from
     /// lazy TAIT around RPIT handling.
     pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<'tcx>>(
@@ -511,7 +511,7 @@ impl UseKind {
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn register_hidden_type(
         &self,

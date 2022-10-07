@@ -137,7 +137,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     #[instrument(level = "debug", skip(self, infcx, param_env, cause))]
     fn normalize_projection_type(
         &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         projection_ty: ty::ProjectionTy<'tcx>,
         cause: ObligationCause<'tcx>,
@@ -165,7 +165,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
     fn register_predicate_obligation(
         &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         obligation: PredicateObligation<'tcx>,
     ) {
         // this helps to reduce duplicate errors, as well as making
@@ -182,7 +182,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
 
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'_, 'tcx>) -> Vec<FulfillmentError<'tcx>> {
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
         {
             let errors = self.select_where_possible(infcx);
             if !errors.is_empty() {
@@ -193,10 +193,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
     }
 
-    fn select_where_possible(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Vec<FulfillmentError<'tcx>> {
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
         let selcx = SelectionContext::new(infcx);
         self.select(selcx)
     }

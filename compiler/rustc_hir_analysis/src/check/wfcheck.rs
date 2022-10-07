@@ -22,7 +22,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::autoderef::Autoderef;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -91,29 +91,28 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
 {
     let param_env = tcx.param_env(body_def_id);
     let body_id = tcx.hir().local_def_id_to_hir_id(body_def_id);
-    tcx.infer_ctxt().enter(|ref infcx| {
-        let ocx = ObligationCtxt::new(infcx);
+    let infcx = &tcx.infer_ctxt().build();
+    let ocx = ObligationCtxt::new(infcx);
 
-        let assumed_wf_types = ocx.assumed_wf_types(param_env, span, body_def_id);
+    let assumed_wf_types = ocx.assumed_wf_types(param_env, span, body_def_id);
 
-        let mut wfcx = WfCheckingCtxt { ocx, span, body_id, param_env };
+    let mut wfcx = WfCheckingCtxt { ocx, span, body_id, param_env };
 
-        if !tcx.features().trivial_bounds {
-            wfcx.check_false_global_bounds()
-        }
-        f(&mut wfcx);
-        let errors = wfcx.select_all_or_error();
-        if !errors.is_empty() {
-            infcx.report_fulfillment_errors(&errors, None, false);
-            return;
-        }
+    if !tcx.features().trivial_bounds {
+        wfcx.check_false_global_bounds()
+    }
+    f(&mut wfcx);
+    let errors = wfcx.select_all_or_error();
+    if !errors.is_empty() {
+        infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        return;
+    }
 
-        let implied_bounds = infcx.implied_bounds_tys(param_env, body_id, assumed_wf_types);
-        let outlives_environment =
-            OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
+    let implied_bounds = infcx.implied_bounds_tys(param_env, body_id, assumed_wf_types);
+    let outlives_environment =
+        OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
 
-        infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
-    })
+    infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
@@ -699,29 +698,28 @@ fn resolve_regions_with_wf_tys<'tcx>(
     id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     wf_tys: &FxHashSet<Ty<'tcx>>,
-    add_constraints: impl for<'a> FnOnce(&'a InferCtxt<'a, 'tcx>, &'a RegionBoundPairs<'tcx>),
+    add_constraints: impl for<'a> FnOnce(&'a InferCtxt<'tcx>, &'a RegionBoundPairs<'tcx>),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
     // region constraints get added and solved there and we need to test each
     // call individually.
-    tcx.infer_ctxt().enter(|infcx| {
-        let outlives_environment = OutlivesEnvironment::with_bounds(
-            param_env,
-            Some(&infcx),
-            infcx.implied_bounds_tys(param_env, id, wf_tys.clone()),
-        );
-        let region_bound_pairs = outlives_environment.region_bound_pairs();
+    let infcx = tcx.infer_ctxt().build();
+    let outlives_environment = OutlivesEnvironment::with_bounds(
+        param_env,
+        Some(&infcx),
+        infcx.implied_bounds_tys(param_env, id, wf_tys.clone()),
+    );
+    let region_bound_pairs = outlives_environment.region_bound_pairs();
 
-        add_constraints(&infcx, region_bound_pairs);
+    add_constraints(&infcx, region_bound_pairs);
 
-        let errors = infcx.resolve_regions(&outlives_environment);
+    let errors = infcx.resolve_regions(&outlives_environment);
 
-        debug!(?errors, "errors");
+    debug!(?errors, "errors");
 
-        // If we were able to prove that the type outlives the region without
-        // an error, it must be because of the implied or explicit bounds...
-        errors.is_empty()
-    })
+    // If we were able to prove that the type outlives the region without
+    // an error, it must be because of the implied or explicit bounds...
+    errors.is_empty()
 }
 
 /// TypeVisitor that looks for uses of GATs like
@@ -1677,7 +1675,7 @@ fn receiver_is_valid<'tcx>(
     // `self: Self` is always valid.
     if can_eq_self(receiver_ty) {
         if let Err(err) = wfcx.equate_types(&cause, wfcx.param_env, self_ty, receiver_ty) {
-            infcx.report_mismatched_types(&cause, self_ty, receiver_ty, err).emit();
+            infcx.err_ctxt().report_mismatched_types(&cause, self_ty, receiver_ty, err).emit();
         }
         return true;
     }
@@ -1709,7 +1707,10 @@ fn receiver_is_valid<'tcx>(
                 if let Err(err) =
                     wfcx.equate_types(&cause, wfcx.param_env, self_ty, potential_self_ty)
                 {
-                    infcx.report_mismatched_types(&cause, self_ty, potential_self_ty, err).emit();
+                    infcx
+                        .err_ctxt()
+                        .report_mismatched_types(&cause, self_ty, potential_self_ty, err)
+                        .emit();
                 }
 
                 break;

@@ -43,7 +43,7 @@ use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'tcx> {
-    pub infcx: &'infcx InferCtxt<'infcx, 'tcx>,
+    pub infcx: &'infcx InferCtxt<'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -63,7 +63,7 @@ pub enum RelationDir {
     EqTo,
 }
 
-impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     pub fn super_combine_tys<R>(
         &self,
         relation: &mut R,
@@ -452,7 +452,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
 }
 
 struct Generalizer<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
 
     /// The span, used when creating new type variables and things.
     cause: &'cx ObligationCause<'tcx>,
@@ -775,7 +775,7 @@ fn float_unification_error<'tcx>(
 }
 
 struct ConstInferUnifier<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
 
     span: Span,
 

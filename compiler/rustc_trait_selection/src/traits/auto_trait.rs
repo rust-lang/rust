@@ -10,7 +10,7 @@ use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{Region, RegionVid};
+use rustc_middle::ty::{PolyTraitRef, Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
@@ -90,143 +90,105 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let trait_pred = ty::Binder::dummy(trait_ref);
 
-        let bail_out = tcx.infer_ctxt().enter(|infcx| {
-            let mut selcx = SelectionContext::new(&infcx);
-            let result = selcx.select(&Obligation::new(
-                ObligationCause::dummy(),
-                orig_env,
-                trait_pred.to_poly_trait_predicate(),
-            ));
-
-            match result {
-                Ok(Some(ImplSource::UserDefined(_))) => {
-                    debug!(
-                        "find_auto_trait_generics({:?}): \
-                         manual impl found, bailing out",
-                        trait_ref
-                    );
-                    return true;
-                }
-                _ => {}
+        let infcx = tcx.infer_ctxt().build();
+        let mut selcx = SelectionContext::new(&infcx);
+        for f in [
+            PolyTraitRef::to_poly_trait_predicate,
+            PolyTraitRef::to_poly_trait_predicate_negative_polarity,
+        ] {
+            let result =
+                selcx.select(&Obligation::new(ObligationCause::dummy(), orig_env, f(&trait_pred)));
+            if let Ok(Some(ImplSource::UserDefined(_))) = result {
+                debug!(
+                    "find_auto_trait_generics({:?}): \
+                 manual impl found, bailing out",
+                    trait_ref
+                );
+                // If an explicit impl exists, it always takes priority over an auto impl
+                return AutoTraitResult::ExplicitImpl;
             }
-
-            let result = selcx.select(&Obligation::new(
-                ObligationCause::dummy(),
-                orig_env,
-                trait_pred.to_poly_trait_predicate_negative_polarity(),
-            ));
-
-            match result {
-                Ok(Some(ImplSource::UserDefined(_))) => {
-                    debug!(
-                        "find_auto_trait_generics({:?}): \
-                         manual impl found, bailing out",
-                        trait_ref
-                    );
-                    true
-                }
-                _ => false,
-            }
-        });
-
-        // If an explicit impl exists, it always takes priority over an auto impl
-        if bail_out {
-            return AutoTraitResult::ExplicitImpl;
         }
 
-        tcx.infer_ctxt().enter(|infcx| {
-            let mut fresh_preds = FxHashSet::default();
+        let infcx = tcx.infer_ctxt().build();
+        let mut fresh_preds = FxHashSet::default();
 
-            // Due to the way projections are handled by SelectionContext, we need to run
-            // evaluate_predicates twice: once on the original param env, and once on the result of
-            // the first evaluate_predicates call.
-            //
-            // The problem is this: most of rustc, including SelectionContext and traits::project,
-            // are designed to work with a concrete usage of a type (e.g., Vec<u8>
-            // fn<T>() { Vec<T> }. This information will generally never change - given
-            // the 'T' in fn<T>() { ... }, we'll never know anything else about 'T'.
-            // If we're unable to prove that 'T' implements a particular trait, we're done -
-            // there's nothing left to do but error out.
-            //
-            // However, synthesizing an auto trait impl works differently. Here, we start out with
-            // a set of initial conditions - the ParamEnv of the struct/enum/union we're dealing
-            // with - and progressively discover the conditions we need to fulfill for it to
-            // implement a certain auto trait. This ends up breaking two assumptions made by trait
-            // selection and projection:
-            //
-            // * We can always cache the result of a particular trait selection for the lifetime of
-            // an InfCtxt
-            // * Given a projection bound such as '<T as SomeTrait>::SomeItem = K', if 'T:
-            // SomeTrait' doesn't hold, then we don't need to care about the 'SomeItem = K'
-            //
-            // We fix the first assumption by manually clearing out all of the InferCtxt's caches
-            // in between calls to SelectionContext.select. This allows us to keep all of the
-            // intermediate types we create bound to the 'tcx lifetime, rather than needing to lift
-            // them between calls.
-            //
-            // We fix the second assumption by reprocessing the result of our first call to
-            // evaluate_predicates. Using the example of '<T as SomeTrait>::SomeItem = K', our first
-            // pass will pick up 'T: SomeTrait', but not 'SomeItem = K'. On our second pass,
-            // traits::project will see that 'T: SomeTrait' is in our ParamEnv, allowing
-            // SelectionContext to return it back to us.
+        // Due to the way projections are handled by SelectionContext, we need to run
+        // evaluate_predicates twice: once on the original param env, and once on the result of
+        // the first evaluate_predicates call.
+        //
+        // The problem is this: most of rustc, including SelectionContext and traits::project,
+        // are designed to work with a concrete usage of a type (e.g., Vec<u8>
+        // fn<T>() { Vec<T> }. This information will generally never change - given
+        // the 'T' in fn<T>() { ... }, we'll never know anything else about 'T'.
+        // If we're unable to prove that 'T' implements a particular trait, we're done -
+        // there's nothing left to do but error out.
+        //
+        // However, synthesizing an auto trait impl works differently. Here, we start out with
+        // a set of initial conditions - the ParamEnv of the struct/enum/union we're dealing
+        // with - and progressively discover the conditions we need to fulfill for it to
+        // implement a certain auto trait. This ends up breaking two assumptions made by trait
+        // selection and projection:
+        //
+        // * We can always cache the result of a particular trait selection for the lifetime of
+        // an InfCtxt
+        // * Given a projection bound such as '<T as SomeTrait>::SomeItem = K', if 'T:
+        // SomeTrait' doesn't hold, then we don't need to care about the 'SomeItem = K'
+        //
+        // We fix the first assumption by manually clearing out all of the InferCtxt's caches
+        // in between calls to SelectionContext.select. This allows us to keep all of the
+        // intermediate types we create bound to the 'tcx lifetime, rather than needing to lift
+        // them between calls.
+        //
+        // We fix the second assumption by reprocessing the result of our first call to
+        // evaluate_predicates. Using the example of '<T as SomeTrait>::SomeItem = K', our first
+        // pass will pick up 'T: SomeTrait', but not 'SomeItem = K'. On our second pass,
+        // traits::project will see that 'T: SomeTrait' is in our ParamEnv, allowing
+        // SelectionContext to return it back to us.
 
-            let Some((new_env, user_env)) = self.evaluate_predicates(
-                &infcx,
-                trait_did,
-                ty,
-                orig_env,
-                orig_env,
-                &mut fresh_preds,
-                false,
-            ) else {
-                return AutoTraitResult::NegativeImpl;
-            };
+        let Some((new_env, user_env)) = self.evaluate_predicates(
+            &infcx,
+            trait_did,
+            ty,
+            orig_env,
+            orig_env,
+            &mut fresh_preds,
+            false,
+        ) else {
+            return AutoTraitResult::NegativeImpl;
+        };
 
-            let (full_env, full_user_env) = self
-                .evaluate_predicates(
-                    &infcx,
-                    trait_did,
-                    ty,
-                    new_env,
-                    user_env,
-                    &mut fresh_preds,
-                    true,
-                )
-                .unwrap_or_else(|| {
-                    panic!("Failed to fully process: {:?} {:?} {:?}", ty, trait_did, orig_env)
-                });
+        let (full_env, full_user_env) = self
+            .evaluate_predicates(&infcx, trait_did, ty, new_env, user_env, &mut fresh_preds, true)
+            .unwrap_or_else(|| {
+                panic!("Failed to fully process: {:?} {:?} {:?}", ty, trait_did, orig_env)
+            });
 
-            debug!(
-                "find_auto_trait_generics({:?}): fulfilling \
-                 with {:?}",
-                trait_ref, full_env
-            );
-            infcx.clear_caches();
+        debug!(
+            "find_auto_trait_generics({:?}): fulfilling \
+             with {:?}",
+            trait_ref, full_env
+        );
+        infcx.clear_caches();
 
-            // At this point, we already have all of the bounds we need. FulfillmentContext is used
-            // to store all of the necessary region/lifetime bounds in the InferContext, as well as
-            // an additional sanity check.
-            let errors =
-                super::fully_solve_bound(&infcx, ObligationCause::dummy(), full_env, ty, trait_did);
-            if !errors.is_empty() {
-                panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, errors);
-            }
+        // At this point, we already have all of the bounds we need. FulfillmentContext is used
+        // to store all of the necessary region/lifetime bounds in the InferContext, as well as
+        // an additional sanity check.
+        let errors =
+            super::fully_solve_bound(&infcx, ObligationCause::dummy(), full_env, ty, trait_did);
+        if !errors.is_empty() {
+            panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, errors);
+        }
 
-            infcx.process_registered_region_obligations(&Default::default(), full_env);
+        infcx.process_registered_region_obligations(&Default::default(), full_env);
 
-            let region_data = infcx
-                .inner
-                .borrow_mut()
-                .unwrap_region_constraints()
-                .region_constraint_data()
-                .clone();
+        let region_data =
+            infcx.inner.borrow_mut().unwrap_region_constraints().region_constraint_data().clone();
 
-            let vid_to_region = self.map_vid_to_region(&region_data);
+        let vid_to_region = self.map_vid_to_region(&region_data);
 
-            let info = AutoTraitInfo { full_user_env, region_data, vid_to_region };
+        let info = AutoTraitInfo { full_user_env, region_data, vid_to_region };
 
-            AutoTraitResult::PositiveImpl(auto_trait_callback(info))
-        })
+        AutoTraitResult::PositiveImpl(auto_trait_callback(info))
     }
 }
 
@@ -272,7 +234,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// user.
     fn evaluate_predicates(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         trait_did: DefId,
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -877,7 +839,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
     pub fn clean_pred(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         p: ty::Predicate<'tcx>,
     ) -> ty::Predicate<'tcx> {
         infcx.freshen(p)

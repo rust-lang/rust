@@ -156,10 +156,9 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         }),
                     );
 
-                    let implsrc = tcx.infer_ctxt().enter(|infcx| {
-                        let mut selcx = SelectionContext::new(&infcx);
-                        selcx.select(&obligation)
-                    });
+                    let infcx = tcx.infer_ctxt().build();
+                    let mut selcx = SelectionContext::new(&infcx);
+                    let implsrc = selcx.select(&obligation);
 
                     if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
                         let span = tcx.def_span(data.impl_def_id);

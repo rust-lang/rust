@@ -6,7 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
 use rustc_infer::infer;
-use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -29,10 +29,10 @@ use std::ops::Deref;
 /// Here, the function `foo()` and the closure passed to
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
-pub struct Inherited<'a, 'tcx> {
-    pub(super) infcx: InferCtxt<'a, 'tcx>,
+pub struct Inherited<'tcx> {
+    pub(super) infcx: InferCtxt<'tcx>,
 
-    pub(super) typeck_results: &'a RefCell<ty::TypeckResults<'tcx>>,
+    pub(super) typeck_results: RefCell<ty::TypeckResults<'tcx>>,
 
     pub(super) locals: RefCell<HirIdMap<super::LocalTy<'tcx>>>,
 
@@ -70,22 +70,23 @@ pub struct Inherited<'a, 'tcx> {
     pub(super) diverging_type_vars: RefCell<FxHashSet<Ty<'tcx>>>,
 }
 
-impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
-    type Target = InferCtxt<'a, 'tcx>;
+impl<'tcx> Deref for Inherited<'tcx> {
+    type Target = InferCtxt<'tcx>;
     fn deref(&self) -> &Self::Target {
         &self.infcx
     }
 }
 
 /// A temporary returned by `Inherited::build(...)`. This is necessary
-/// for multiple `InferCtxt` to share the same `in_progress_typeck_results`
+/// for multiple `InferCtxt` to share the same `typeck_results`
 /// without using `Rc` or something similar.
 pub struct InheritedBuilder<'tcx> {
     infcx: infer::InferCtxtBuilder<'tcx>,
     def_id: LocalDefId,
+    typeck_results: RefCell<ty::TypeckResults<'tcx>>,
 }
 
-impl<'tcx> Inherited<'_, 'tcx> {
+impl<'tcx> Inherited<'tcx> {
     pub fn build(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> InheritedBuilder<'tcx> {
         let hir_owner = tcx.hir().local_def_id_to_hir_id(def_id).owner;
 
@@ -93,7 +94,7 @@ impl<'tcx> Inherited<'_, 'tcx> {
             infcx: tcx
                 .infer_ctxt()
                 .ignoring_regions()
-                .with_fresh_in_progress_typeck_results(hir_owner)
+                .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id))
                 .with_normalize_fn_sig_for_diagnostic(Lrc::new(move |infcx, fn_sig| {
                     if fn_sig.has_escaping_bound_vars() {
                         return fn_sig;
@@ -117,26 +118,29 @@ impl<'tcx> Inherited<'_, 'tcx> {
                     })
                 })),
             def_id,
+            typeck_results: RefCell::new(ty::TypeckResults::new(hir_owner)),
         }
     }
 }
 
 impl<'tcx> InheritedBuilder<'tcx> {
-    pub fn enter<F, R>(&mut self, f: F) -> R
+    pub fn enter<F, R>(mut self, f: F) -> R
     where
-        F: for<'a> FnOnce(Inherited<'a, 'tcx>) -> R,
+        F: FnOnce(&Inherited<'tcx>) -> R,
     {
         let def_id = self.def_id;
-        self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id)))
+        f(&Inherited::new(self.infcx.build(), def_id, self.typeck_results))
     }
 }
 
-impl<'a, 'tcx> Inherited<'a, 'tcx> {
-    fn new(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId) -> Self {
+impl<'tcx> Inherited<'tcx> {
+    fn new(
+        infcx: InferCtxt<'tcx>,
+        def_id: LocalDefId,
+        typeck_results: RefCell<ty::TypeckResults<'tcx>>,
+    ) -> Self {
         let tcx = infcx.tcx;
         let body_id = tcx.hir().maybe_body_owned_by(def_id);
-        let typeck_results =
-            infcx.in_progress_typeck_results.expect("building `FnCtxt` without typeck results");
 
         Inherited {
             typeck_results,

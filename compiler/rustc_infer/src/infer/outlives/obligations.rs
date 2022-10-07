@@ -75,7 +75,7 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, SubstsRef, Ty, TyCtxt, TypeVisitable};
 use smallvec::smallvec;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Registers that the given region obligation must be resolved
     /// from within the scope of `body_id`. These regions are enqueued
     /// and later processed by regionck, when full type information is
@@ -183,7 +183,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             outlives_env.param_env,
         );
 
-        self.resolve_regions_and_report_errors(generic_param_scope, outlives_env)
+        self.err_ctxt().resolve_regions_and_report_errors(generic_param_scope, outlives_env)
     }
 }
 
@@ -523,7 +523,7 @@ where
     }
 }
 
-impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'cx, 'tcx> {
+impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         origin: SubregionOrigin<'tcx>,

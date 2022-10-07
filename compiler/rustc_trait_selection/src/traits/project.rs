@@ -18,7 +18,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
-use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
@@ -513,7 +513,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                                 self.param_env,
                                 ty,
                             );
-                            self.selcx.infcx().report_overflow_error(&obligation, true);
+                            self.selcx.infcx().err_ctxt().report_overflow_error(&obligation, true);
                         }
 
                         let substs = substs.fold_with(self);
@@ -569,7 +569,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                         self.param_env,
                         ty,
                     );
-                    self.selcx.infcx().report_overflow_error(&obligation, true);
+                    self.selcx.infcx().err_ctxt().report_overflow_error(&obligation, true);
                 }
                 debug!(
                     ?self.depth,
@@ -663,7 +663,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
 }
 
 pub struct BoundVarReplacer<'me, 'tcx> {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
     // These three maps track the bound variable that were replaced by placeholders. It might be
     // nice to remove these since we already have the `kind` in the placeholder; we really just need
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
@@ -691,7 +691,7 @@ pub struct BoundVarReplacer<'me, 'tcx> {
 /// FIXME(@lcnr): We may even consider experimenting with eagerly replacing bound vars during
 /// normalization as well, at which point this function will be unnecessary and can be removed.
 pub fn with_replaced_escaping_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>, R: TypeFoldable<'tcx>>(
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     universe_indices: &'a mut Vec<Option<ty::UniverseIndex>>,
     value: T,
     f: impl FnOnce(T) -> R,
@@ -717,7 +717,7 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
     /// Returns `Some` if we *were* able to replace bound vars. If there are any bound vars that
     /// use a binding level above `universe_indices.len()`, we fail.
     pub fn replace_bound_vars<T: TypeFoldable<'tcx>>(
-        infcx: &'me InferCtxt<'me, 'tcx>,
+        infcx: &'me InferCtxt<'tcx>,
         universe_indices: &'me mut Vec<Option<ty::UniverseIndex>>,
         value: T,
     ) -> (
@@ -837,7 +837,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
 
 // The inverse of `BoundVarReplacer`: replaces placeholders with the bound vars from which they came.
 pub struct PlaceholderReplacer<'me, 'tcx> {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
@@ -847,7 +847,7 @@ pub struct PlaceholderReplacer<'me, 'tcx> {
 
 impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
     pub fn replace_placeholders<T: TypeFoldable<'tcx>>(
-        infcx: &'me InferCtxt<'me, 'tcx>,
+        infcx: &'me InferCtxt<'tcx>,
         mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
         mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,

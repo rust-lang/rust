@@ -18,7 +18,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{FulfillmentError, TraitEngine, TraitEngineExt};
 use rustc_type_ir::sty::TyKind::*;
 
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         _ => None,
                                     };
 
-                                    self.suggest_restricting_param_bound(
+                                    self.err_ctxt().suggest_restricting_param_bound(
                                         &mut err,
                                         trait_pred,
                                         output_associated_item,
@@ -662,7 +662,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             error.obligation.predicate.to_opt_poly_trait_pred()
                         });
                         for pred in predicates {
-                            self.suggest_restricting_param_bound(
+                            self.err_ctxt().suggest_restricting_param_bound(
                                 &mut err,
                                 pred,
                                 None,

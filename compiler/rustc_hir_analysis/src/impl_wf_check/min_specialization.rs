@@ -77,7 +77,7 @@ use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::Span;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, translate_substs, wf, ObligationCtxt};
 
@@ -139,34 +139,33 @@ fn get_impl_substs<'tcx>(
     impl1_def_id: LocalDefId,
     impl2_node: Node,
 ) -> Option<(SubstsRef<'tcx>, SubstsRef<'tcx>)> {
-    tcx.infer_ctxt().enter(|ref infcx| {
-        let ocx = ObligationCtxt::new(infcx);
-        let param_env = tcx.param_env(impl1_def_id);
-        let impl1_hir_id = tcx.hir().local_def_id_to_hir_id(impl1_def_id);
+    let infcx = &tcx.infer_ctxt().build();
+    let ocx = ObligationCtxt::new(infcx);
+    let param_env = tcx.param_env(impl1_def_id);
+    let impl1_hir_id = tcx.hir().local_def_id_to_hir_id(impl1_def_id);
 
-        let assumed_wf_types =
-            ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
+    let assumed_wf_types =
+        ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
 
-        let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
-        let impl2_substs =
-            translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
+    let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
+    let impl2_substs =
+        translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
 
-        let errors = ocx.select_all_or_error();
-        if !errors.is_empty() {
-            ocx.infcx.report_fulfillment_errors(&errors, None, false);
-            return None;
-        }
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
+        ocx.infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        return None;
+    }
 
-        let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_hir_id, assumed_wf_types);
-        let outlives_env = OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
-        infcx.check_region_obligations_and_report_errors(impl1_def_id, &outlives_env);
-        let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
-            let span = tcx.def_span(impl1_def_id);
-            tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
-            return None;
-        };
-        Some((impl1_substs, impl2_substs))
-    })
+    let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_hir_id, assumed_wf_types);
+    let outlives_env = OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
+    infcx.check_region_obligations_and_report_errors(impl1_def_id, &outlives_env);
+    let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
+        let span = tcx.def_span(impl1_def_id);
+        tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
+        return None;
+    };
+    Some((impl1_substs, impl2_substs))
 }
 
 /// Returns a list of all of the unconstrained subst of the given impl.
@@ -344,23 +343,21 @@ fn check_predicates<'tcx>(
 
     // Include the well-formed predicates of the type parameters of the impl.
     for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().substs {
-        tcx.infer_ctxt().enter(|ref infcx| {
-            let obligations = wf::obligations(
-                infcx,
-                tcx.param_env(impl1_def_id),
-                tcx.hir().local_def_id_to_hir_id(impl1_def_id),
-                0,
-                arg,
-                span,
-            )
-            .unwrap();
+        let infcx = &tcx.infer_ctxt().build();
+        let obligations = wf::obligations(
+            infcx,
+            tcx.param_env(impl1_def_id),
+            tcx.hir().local_def_id_to_hir_id(impl1_def_id),
+            0,
+            arg,
+            span,
+        )
+        .unwrap();
 
-            assert!(!obligations.needs_infer());
-            impl2_predicates.extend(
-                traits::elaborate_obligations(tcx, obligations)
-                    .map(|obligation| obligation.predicate),
-            )
-        })
+        assert!(!obligations.needs_infer());
+        impl2_predicates.extend(
+            traits::elaborate_obligations(tcx, obligations).map(|obligation| obligation.predicate),
+        )
     }
     impl2_predicates.extend(
         traits::elaborate_predicates_with_span(tcx, always_applicable_traits)

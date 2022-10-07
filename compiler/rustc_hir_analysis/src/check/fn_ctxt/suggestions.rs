@@ -876,18 +876,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = self.normalize_associated_types_in(expr.span, ty);
             let ty = match self.tcx.asyncness(fn_id.owner) {
-                hir::IsAsync::Async => self
-                    .tcx
-                    .infer_ctxt()
-                    .enter(|infcx| {
-                        infcx.get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                hir::IsAsync::Async => {
+                    let infcx = self.tcx.infer_ctxt().build();
+                    infcx
+                        .get_impl_future_output_ty(ty)
+                        .unwrap_or_else(|| {
                             span_bug!(
                                 fn_decl.output.span(),
                                 "failed to get output type of async function"
                             )
                         })
-                    })
-                    .skip_binder(),
+                        .skip_binder()
+                }
                 hir::IsAsync::NotAsync => ty,
             };
             if self.can_coerce(found, ty) {
@@ -1037,7 +1037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We'll later suggest `.as_ref` when noting the type error,
         // so skip if we will suggest that instead.
-        if self.should_suggest_as_ref(expected_ty, expr_ty).is_some() {
+        if self.err_ctxt().should_suggest_as_ref(expected_ty, expr_ty).is_some() {
             return false;
         }
 
@@ -1187,7 +1187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         err: &mut Diagnostic,
     ) -> bool {
-        if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
+        if let Some((span_semi, boxed)) = self.err_ctxt().could_remove_semicolon(blk, expected_ty) {
             if let StatementAsExpression::NeedsBoxing = boxed {
                 err.span_suggestion_verbose(
                     span_semi,

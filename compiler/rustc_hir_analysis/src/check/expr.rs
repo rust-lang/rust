@@ -1649,13 +1649,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Err(_) => {
                                         // This should never happen, since we're just subtyping the
                                         // remaining_fields, but it's fine to emit this, I guess.
-                                        self.report_mismatched_types(
-                                            &cause,
-                                            target_ty,
-                                            fru_ty,
-                                            FieldMisMatch(variant.name, ident.name),
-                                        )
-                                        .emit();
+                                        self.err_ctxt()
+                                            .report_mismatched_types(
+                                                &cause,
+                                                target_ty,
+                                                fru_ty,
+                                                FieldMisMatch(variant.name, ident.name),
+                                            )
+                                            .emit();
                                     }
                                 }
                             }
@@ -1942,7 +1943,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.set_tainted_by_errors();
             return;
         }
-        let mut err = self.type_error_struct_with_diag(
+        let mut err = self.err_ctxt().type_error_struct_with_diag(
             field.ident.span,
             |actual| match ty.kind() {
                 ty::Adt(adt, ..) if adt.is_enum() => struct_span_err!(

@@ -75,7 +75,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
-use std::ops::ControlFlow;
+use std::ops::{ControlFlow, Deref};
 use std::{cmp, fmt, iter};
 
 mod note;
@@ -84,6 +84,31 @@ pub(crate) mod need_type_info;
 pub use need_type_info::TypeAnnotationNeeded;
 
 pub mod nice_region_error;
+
+/// A helper for building type related errors. The `typeck_results`
+/// field is only populated during an in-progress typeck.
+/// Get an instance by calling `InferCtxt::err` or `FnCtxt::infer_err`.
+pub struct TypeErrCtxt<'a, 'tcx> {
+    pub infcx: &'a InferCtxt<'tcx>,
+    pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
+}
+
+impl TypeErrCtxt<'_, '_> {
+    /// This is just to avoid a potential footgun of accidentally
+    /// dropping `typeck_results` by calling `InferCtxt::err_ctxt`
+    #[deprecated(note = "you already have a `TypeErrCtxt`")]
+    #[allow(unused)]
+    pub fn err_ctxt(&self) -> ! {
+        bug!("called `err_ctxt` on `TypeErrCtxt`. Try removing the call");
+    }
+}
+
+impl<'tcx> Deref for TypeErrCtxt<'_, 'tcx> {
+    type Target = InferCtxt<'tcx>;
+    fn deref(&self) -> &InferCtxt<'tcx> {
+        &self.infcx
+    }
+}
 
 pub(super) fn note_and_explain_region<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -304,7 +329,39 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     err
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
+    pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Binder<'tcx, Ty<'tcx>>> {
+        if let ty::Opaque(def_id, substs) = ty.kind() {
+            let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+            // Future::Output
+            let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
+
+            let bounds = self.tcx.bound_explicit_item_bounds(*def_id);
+
+            for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
+                let predicate = predicate.subst(self.tcx, substs);
+                let output = predicate
+                    .kind()
+                    .map_bound(|kind| match kind {
+                        ty::PredicateKind::Projection(projection_predicate)
+                            if projection_predicate.projection_ty.item_def_id == item_def_id =>
+                        {
+                            projection_predicate.term.ty()
+                        }
+                        _ => None,
+                    })
+                    .transpose();
+                if output.is_some() {
+                    // We don't account for multiple `Future::Output = Ty` constraints.
+                    return output;
+                }
+            }
+        }
+        None
+    }
+}
+
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     pub fn report_region_errors(
         &self,
         generic_param_scope: LocalDefId,
@@ -578,13 +635,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 {
                     // don't show type `_`
                     if span.desugaring_kind() == Some(DesugaringKind::ForLoop)
-                    && let ty::Adt(def, substs) = ty.kind()
-                    && Some(def.did()) == self.tcx.get_diagnostic_item(sym::Option)
+                        && let ty::Adt(def, substs) = ty.kind()
+                        && Some(def.did()) == self.tcx.get_diagnostic_item(sym::Option)
                     {
                         err.span_label(span, format!("this is an iterator with items of type `{}`", substs.type_at(0)));
                     } else {
-                        err.span_label(span, format!("this expression has type `{}`", ty));
-                    }
+                    err.span_label(span, format!("this expression has type `{}`", ty));
+                }
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
                     && ty.is_box() && ty.boxed_ty() == found
@@ -620,8 +677,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
                         let scrut_ty = if let hir::ExprKind::Call(_, args) = &scrut_expr.kind {
                             let arg_expr = args.first().expect("try desugaring call w/out arg");
-                            self.in_progress_typeck_results.and_then(|typeck_results| {
-                                typeck_results.borrow().expr_ty_opt(arg_expr)
+                            self.typeck_results.as_ref().and_then(|typeck_results| {
+                                typeck_results.expr_ty_opt(arg_expr)
                             })
                         } else {
                             bug!("try desugaring w/out call expr as scrutinee");
@@ -727,10 +784,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => {
                 if let ObligationCauseCode::BindingObligation(_, span)
                 | ObligationCauseCode::ExprBindingObligation(_, span, ..)
-                    = cause.code().peel_derives()
+                = cause.code().peel_derives()
                     && let TypeError::RegionsPlaceholderMismatch = terr
                 {
-                    err.span_note(*span, "the lifetime requirement is introduced here");
+                    err.span_note( * span,
+                    "the lifetime requirement is introduced here");
                 }
             }
         }
@@ -1954,36 +2012,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Binder<'tcx, Ty<'tcx>>> {
-        if let ty::Opaque(def_id, substs) = ty.kind() {
-            let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
-            // Future::Output
-            let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
-
-            let bounds = self.tcx.bound_explicit_item_bounds(*def_id);
-
-            for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
-                let predicate = predicate.subst(self.tcx, substs);
-                let output = predicate
-                    .kind()
-                    .map_bound(|kind| match kind {
-                        ty::PredicateKind::Projection(projection_predicate)
-                            if projection_predicate.projection_ty.item_def_id == item_def_id =>
-                        {
-                            projection_predicate.term.ty()
-                        }
-                        _ => None,
-                    })
-                    .transpose();
-                if output.is_some() {
-                    // We don't account for multiple `Future::Output = Ty` constraints.
-                    return output;
-                }
-            }
-        }
-        None
-    }
-
     /// A possible error is to forget to add `.await` when using futures:
     ///
     /// ```compile_fail,E0308
@@ -2431,7 +2459,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
         let generics = self.tcx.generics_of(generic_param_scope);
@@ -2809,7 +2837,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 }
 
-struct SameTypeModuloInfer<'a, 'tcx>(&'a InferCtxt<'a, 'tcx>);
+struct SameTypeModuloInfer<'a, 'tcx>(&'a InferCtxt<'tcx>);
 
 impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -2896,7 +2924,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     fn report_inference_failure(
         &self,
         var_origin: RegionVariableOrigin,
@@ -3084,7 +3112,7 @@ impl TyCategory {
     }
 }
 
-impl<'tcx> InferCtxt<'_, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Given a [`hir::Block`], get the span of its last expression or
     /// statement, peeling off any inner blocks.
     pub fn find_block_span(&self, block: &'tcx hir::Block<'tcx>) -> Span {
@@ -3111,7 +3139,9 @@ impl<'tcx> InferCtxt<'_, 'tcx> {
             _ => rustc_span::DUMMY_SP,
         }
     }
+}
 
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// Be helpful when the user wrote `{... expr; }` and taking the `;` off
     /// is enough to fix the error.
     pub fn could_remove_semicolon(
@@ -3128,7 +3158,7 @@ impl<'tcx> InferCtxt<'_, 'tcx> {
         let hir::StmtKind::Semi(ref last_expr) = last_stmt.kind else {
             return None;
         };
-        let last_expr_ty = self.in_progress_typeck_results?.borrow().expr_ty_opt(*last_expr)?;
+        let last_expr_ty = self.typeck_results.as_ref()?.expr_ty_opt(*last_expr)?;
         let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
             _ if last_expr_ty.references_error() => return None,
             _ if self.same_type_modulo_infer(last_expr_ty, expected_ty) => {
@@ -3211,8 +3241,9 @@ impl<'tcx> InferCtxt<'_, 'tcx> {
         let mut find_compatible_candidates = |pat: &hir::Pat<'_>| {
             if let hir::PatKind::Binding(_, hir_id, ident, _) = &pat.kind
                 && let Some(pat_ty) = self
-                    .in_progress_typeck_results
-                    .and_then(|typeck_results| typeck_results.borrow().node_type_opt(*hir_id))
+                    .typeck_results
+                    .as_ref()
+                    .and_then(|typeck_results| typeck_results.node_type_opt(*hir_id))
             {
                 let pat_ty = self.resolve_vars_if_possible(pat_ty);
                 if self.same_type_modulo_infer(pat_ty, expected_ty)

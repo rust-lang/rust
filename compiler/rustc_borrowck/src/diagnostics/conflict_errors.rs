@@ -492,11 +492,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
                 return false;
             };
-            tcx.infer_ctxt().enter(|infcx| {
-                infcx
-                    .type_implements_trait(default_trait, ty, ty::List::empty(), param_env)
-                    .may_apply()
-            })
+            tcx.infer_ctxt()
+                .build()
+                .type_implements_trait(default_trait, ty, ty::List::empty(), param_env)
+                .may_apply()
         };
 
         let assign_value = match ty.kind() {
@@ -606,41 +605,40 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .and_then(|def_id| tcx.hir().get_generics(def_id))
         else { return; };
         // Try to find predicates on *generic params* that would allow copying `ty`
-        let predicates: Result<Vec<_>, _> = tcx.infer_ctxt().enter(|infcx| {
-            let mut fulfill_cx = <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
+        let infcx = tcx.infer_ctxt().build();
+        let mut fulfill_cx = <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
 
-            let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
-            let cause = ObligationCause::new(
-                span,
-                self.mir_hir_id(),
-                rustc_infer::traits::ObligationCauseCode::MiscObligation,
-            );
-            fulfill_cx.register_bound(
-                &infcx,
-                self.param_env,
-                // Erase any region vids from the type, which may not be resolved
-                infcx.tcx.erase_regions(ty),
-                copy_did,
-                cause,
-            );
-            // Select all, including ambiguous predicates
-            let errors = fulfill_cx.select_all_or_error(&infcx);
+        let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
+        let cause = ObligationCause::new(
+            span,
+            self.mir_hir_id(),
+            rustc_infer::traits::ObligationCauseCode::MiscObligation,
+        );
+        fulfill_cx.register_bound(
+            &infcx,
+            self.param_env,
+            // Erase any region vids from the type, which may not be resolved
+            infcx.tcx.erase_regions(ty),
+            copy_did,
+            cause,
+        );
+        // Select all, including ambiguous predicates
+        let errors = fulfill_cx.select_all_or_error(&infcx);
 
-            // Only emit suggestion if all required predicates are on generic
-            errors
-                .into_iter()
-                .map(|err| match err.obligation.predicate.kind().skip_binder() {
-                    PredicateKind::Trait(predicate) => match predicate.self_ty().kind() {
-                        ty::Param(param_ty) => Ok((
-                            generics.type_param(param_ty, tcx),
-                            predicate.trait_ref.print_only_trait_path().to_string(),
-                        )),
-                        _ => Err(()),
-                    },
+        // Only emit suggestion if all required predicates are on generic
+        let predicates: Result<Vec<_>, _> = errors
+            .into_iter()
+            .map(|err| match err.obligation.predicate.kind().skip_binder() {
+                PredicateKind::Trait(predicate) => match predicate.self_ty().kind() {
+                    ty::Param(param_ty) => Ok((
+                        generics.type_param(param_ty, tcx),
+                        predicate.trait_ref.print_only_trait_path().to_string(),
+                    )),
                     _ => Err(()),
-                })
-                .collect()
-        });
+                },
+                _ => Err(()),
+            })
+            .collect();
 
         if let Ok(predicates) = predicates {
             suggest_constraining_type_params(

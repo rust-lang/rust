@@ -157,7 +157,7 @@ struct BlockContext(Vec<BlockFrame>);
 
 struct Builder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    infcx: InferCtxt<'a, 'tcx>,
+    infcx: InferCtxt<'tcx>,
     typeck_results: &'tcx TypeckResults<'tcx>,
     region_scope_tree: &'tcx region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
@@ -481,54 +481,49 @@ fn construct_fn<'tcx>(
         (None, fn_sig.output())
     };
 
-    let mut body = tcx.infer_ctxt().enter(|infcx| {
-        let mut builder = Builder::new(
-            thir,
-            infcx,
-            fn_def,
-            fn_id,
-            span_with_body,
-            arguments.len(),
-            safety,
-            return_ty,
-            return_ty_span,
-            generator_kind,
-        );
+    let infcx = tcx.infer_ctxt().build();
+    let mut builder = Builder::new(
+        thir,
+        infcx,
+        fn_def,
+        fn_id,
+        span_with_body,
+        arguments.len(),
+        safety,
+        return_ty,
+        return_ty_span,
+        generator_kind,
+    );
 
-        let call_site_scope =
-            region::Scope { id: body_id.hir_id.local_id, data: region::ScopeData::CallSite };
-        let arg_scope =
-            region::Scope { id: body_id.hir_id.local_id, data: region::ScopeData::Arguments };
-        let source_info = builder.source_info(span);
-        let call_site_s = (call_site_scope, source_info);
-        unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
-            let arg_scope_s = (arg_scope, source_info);
-            // Attribute epilogue to function's closing brace
-            let fn_end = span_with_body.shrink_to_hi();
-            let return_block = unpack!(builder.in_breakable_scope(
-                None,
-                Place::return_place(),
-                fn_end,
-                |builder| {
-                    Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
-                        builder.args_and_body(
-                            START_BLOCK,
-                            fn_def.did,
-                            arguments,
-                            arg_scope,
-                            &thir[expr],
-                        )
-                    }))
-                }
-            ));
-            let source_info = builder.source_info(fn_end);
-            builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
-            builder.build_drop_trees();
-            return_block.unit()
-        }));
+    let call_site_scope =
+        region::Scope { id: body_id.hir_id.local_id, data: region::ScopeData::CallSite };
+    let arg_scope =
+        region::Scope { id: body_id.hir_id.local_id, data: region::ScopeData::Arguments };
+    let source_info = builder.source_info(span);
+    let call_site_s = (call_site_scope, source_info);
+    unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
+        let arg_scope_s = (arg_scope, source_info);
+        // Attribute epilogue to function's closing brace
+        let fn_end = span_with_body.shrink_to_hi();
+        let return_block =
+            unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
+                Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
+                    builder.args_and_body(
+                        START_BLOCK,
+                        fn_def.did,
+                        arguments,
+                        arg_scope,
+                        &thir[expr],
+                    )
+                }))
+            }));
+        let source_info = builder.source_info(fn_end);
+        builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
+        builder.build_drop_trees();
+        return_block.unit()
+    }));
 
-        builder.finish()
-    });
+    let mut body = builder.finish();
 
     body.spread_arg = if abi == Abi::RustCall {
         // RustCall pseudo-ABI untuples the last argument.
@@ -584,30 +579,29 @@ fn construct_const<'a, 'tcx>(
     let typeck_results = tcx.typeck_opt_const_arg(def);
     let const_ty = typeck_results.node_type(hir_id);
 
-    tcx.infer_ctxt().enter(|infcx| {
-        let mut builder = Builder::new(
-            thir,
-            infcx,
-            def,
-            hir_id,
-            span,
-            0,
-            Safety::Safe,
-            const_ty,
-            const_ty_span,
-            None,
-        );
+    let infcx = tcx.infer_ctxt().build();
+    let mut builder = Builder::new(
+        thir,
+        infcx,
+        def,
+        hir_id,
+        span,
+        0,
+        Safety::Safe,
+        const_ty,
+        const_ty_span,
+        None,
+    );
 
-        let mut block = START_BLOCK;
-        unpack!(block = builder.expr_into_dest(Place::return_place(), block, &thir[expr]));
+    let mut block = START_BLOCK;
+    unpack!(block = builder.expr_into_dest(Place::return_place(), block, &thir[expr]));
 
-        let source_info = builder.source_info(span);
-        builder.cfg.terminate(block, source_info, TerminatorKind::Return);
+    let source_info = builder.source_info(span);
+    builder.cfg.terminate(block, source_info, TerminatorKind::Return);
 
-        builder.build_drop_trees();
+    builder.build_drop_trees();
 
-        builder.finish()
-    })
+    builder.finish()
 }
 
 /// Construct MIR for an item that has had errors in type checking.
@@ -683,7 +677,7 @@ fn construct_error<'tcx>(
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn new(
         thir: &'a Thir<'tcx>,
-        infcx: InferCtxt<'a, 'tcx>,
+        infcx: InferCtxt<'tcx>,
         def: ty::WithOptConstParam<LocalDefId>,
         hir_id: hir::HirId,
         span: Span,

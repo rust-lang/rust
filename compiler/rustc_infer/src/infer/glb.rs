@@ -113,7 +113,7 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
 }
 
 impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 'tcx> {
-    fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'tcx> {
+    fn infcx(&self) -> &'infcx InferCtxt<'tcx> {
         self.fields.infcx
     }
 

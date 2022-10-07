@@ -700,7 +700,7 @@ impl Locatable for hir::HirId {
 /// unresolved types and so forth.
 struct Resolver<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
     span: &'cx dyn Locatable,
     body: &'tcx hir::Body<'tcx>,
 
@@ -720,6 +720,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) {
         if !self.tcx.sess.has_errors().is_some() {
             self.infcx
+                .err_ctxt()
                 .emit_inference_failure_err(
                     Some(self.body.id()),
                     self.span.to_span(self.tcx),

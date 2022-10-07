@@ -134,7 +134,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// - `typeck_results` --- typeck results for the code being analyzed
     pub fn new(
         delegate: &'a mut (dyn Delegate<'tcx> + 'a),
-        infcx: &'a InferCtxt<'a, 'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         body_owner: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,

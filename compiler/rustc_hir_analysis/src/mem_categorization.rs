@@ -92,7 +92,7 @@ impl HirNode for hir::Pat<'_> {
 #[derive(Clone)]
 pub(crate) struct MemCategorizationContext<'a, 'tcx> {
     pub(crate) typeck_results: &'a ty::TypeckResults<'tcx>,
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_owner: LocalDefId,
     upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
@@ -103,7 +103,7 @@ pub(crate) type McResult<T> = Result<T, ()>;
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Creates a `MemCategorizationContext`.
     pub(crate) fn new(
-        infcx: &'a InferCtxt<'a, 'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_owner: LocalDefId,
         typeck_results: &'a ty::TypeckResults<'tcx>,

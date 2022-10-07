@@ -219,7 +219,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// signature. This will also compute the relationships that are
     /// known between those regions.
     pub fn new(
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         mir_def: ty::WithOptConstParam<LocalDefId>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
@@ -382,7 +382,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 }
 
 struct UniversalRegionsBuilder<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
     mir_def: ty::WithOptConstParam<LocalDefId>,
     mir_hir_id: HirId,
     param_env: ty::ParamEnv<'tcx>,
@@ -699,7 +699,7 @@ trait InferCtxtExt<'tcx> {
     );
 }
 
-impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
         origin: NllRegionVariableOrigin,

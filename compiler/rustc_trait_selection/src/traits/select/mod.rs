@@ -20,7 +20,7 @@ use super::{
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
-use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
@@ -93,7 +93,7 @@ impl IntercrateAmbiguityCause {
 }
 
 pub struct SelectionContext<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
 
     /// Freshener used specifically for entries on the obligation
     /// stack. This ensures that all entries on the stack at one time
@@ -214,7 +214,7 @@ enum BuiltinImplConditions<'tcx> {
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
+    pub fn new(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
             freshener: infcx.freshener_keep_static(),
@@ -224,12 +224,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
+    pub fn intercrate(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext { intercrate: true, ..SelectionContext::new(infcx) }
     }
 
     pub fn with_query_mode(
-        infcx: &'cx InferCtxt<'cx, 'tcx>,
+        infcx: &'cx InferCtxt<'tcx>,
         query_mode: TraitQueryMode,
     ) -> SelectionContext<'cx, 'tcx> {
         debug!(?query_mode, "with_query_mode");
@@ -253,7 +253,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
 
-    pub fn infcx(&self) -> &'cx InferCtxt<'cx, 'tcx> {
+    pub fn infcx(&self) -> &'cx InferCtxt<'tcx> {
         self.infcx
     }
 
@@ -1095,7 +1095,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             ErrorGuaranteed::unchecked_claim_error_was_emitted(),
                         ));
                     }
-                    self.infcx.report_overflow_error(error_obligation, true);
+                    self.infcx.err_ctxt().report_overflow_error(error_obligation, true);
                 }
                 TraitQueryMode::Canonical => {
                     return Err(OverflowError::Canonical);

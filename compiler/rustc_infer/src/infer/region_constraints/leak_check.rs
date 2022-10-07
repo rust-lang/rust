@@ -66,7 +66,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         tcx: TyCtxt<'tcx>,
         overly_polymorphic: bool,
         max_universe: ty::UniverseIndex,
-        snapshot: &CombinedSnapshot<'_, 'tcx>,
+        snapshot: &CombinedSnapshot<'tcx>,
     ) -> RelateResult<'tcx, ()> {
         debug!(
             "leak_check(max_universe={:?}, snapshot.universe={:?}, overly_polymorphic={:?})",

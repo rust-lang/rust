@@ -486,7 +486,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             tcx,
             ctxt.param_env,
             ctxt.assoc_item.def_id,
-            self.infcx.resolve_vars_if_possible(ctxt.substs),
+            self.cx.resolve_vars_if_possible(ctxt.substs),
         ) else {
             return false;
         };

@@ -105,7 +105,7 @@ pub fn equal_up_to_regions<'tcx>(
             },
         )
     };
-    tcx.infer_ctxt().enter(|infcx| infcx.can_eq(param_env, normalize(src), normalize(dest)).is_ok())
+    tcx.infer_ctxt().build().can_eq(param_env, normalize(src), normalize(dest)).is_ok()
 }
 
 struct TypeChecker<'a, 'tcx> {

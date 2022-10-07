@@ -159,8 +159,8 @@ pub fn try_unify_abstract_consts<'tcx>(
 
 /// Check if a given constant can be evaluated.
 #[instrument(skip(infcx), level = "debug")]
-pub fn is_const_evaluatable<'cx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'tcx>,
+pub fn is_const_evaluatable<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     uv: ty::UnevaluatedConst<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,

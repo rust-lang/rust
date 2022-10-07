@@ -32,7 +32,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt,
 };
@@ -615,7 +615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !errors.is_empty() {
             self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
-            self.report_fulfillment_errors(&errors, self.inh.body_id, false);
+            self.err_ctxt().report_fulfillment_errors(&errors, self.inh.body_id, false);
         }
     }
 
@@ -629,7 +629,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !result.is_empty() {
             mutate_fulfillment_errors(&mut result);
             self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
-            self.report_fulfillment_errors(&result, self.inh.body_id, fallback_has_occurred);
+            self.err_ctxt().report_fulfillment_errors(
+                &result,
+                self.inh.body_id,
+                fallback_has_occurred,
+            );
         }
     }
 
@@ -1466,7 +1470,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                self.emit_inference_failure_err((**self).body_id, sp, ty.into(), E0282, true)
+                self.err_ctxt()
+                    .emit_inference_failure_err((**self).body_id, sp, ty.into(), E0282, true)
                     .emit();
             }
             let err = self.tcx.ty_error();
