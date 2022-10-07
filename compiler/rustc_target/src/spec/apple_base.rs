@@ -1,7 +1,7 @@
 use std::{borrow::Cow, env};
 
-use crate::spec::{cvs, DebuginfoKind, FramePointer, SplitDebuginfo, StaticCow, TargetOptions};
-use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor};
+use crate::spec::{cvs, Cc, DebuginfoKind, FramePointer, LinkArgs};
+use crate::spec::{LinkerFlavor, Lld, SplitDebuginfo, StaticCow, TargetOptions};
 
 fn pre_link_args(os: &'static str, arch: &'static str, abi: &'static str) -> LinkArgs {
     let platform_name: StaticCow<str> = match abi {
@@ -20,17 +20,16 @@ fn pre_link_args(os: &'static str, arch: &'static str, abi: &'static str) -> Lin
     .into();
 
     let mut args = TargetOptions::link_args(
-        LinkerFlavor::Lld(LldFlavor::Ld64),
+        LinkerFlavor::Darwin(Cc::No, Lld::No),
         &["-arch", arch, "-platform_version"],
     );
-    // Manually add owned args unsupported by link arg building helpers.
-    args.entry(LinkerFlavor::Lld(LldFlavor::Ld64)).or_default().extend([
-        platform_name,
-        platform_version.clone(),
-        platform_version,
-    ]);
+    super::add_link_args_iter(
+        &mut args,
+        LinkerFlavor::Darwin(Cc::No, Lld::No),
+        [platform_name, platform_version.clone(), platform_version].into_iter(),
+    );
     if abi != "macabi" {
-        super::add_link_args(&mut args, LinkerFlavor::Gcc, &["-arch", arch]);
+        super::add_link_args(&mut args, LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-arch", arch]);
     }
 
     args
@@ -55,11 +54,11 @@ pub fn opts(os: &'static str, arch: &'static str, abi: &'static str) -> TargetOp
     TargetOptions {
         os: os.into(),
         vendor: "apple".into(),
+        linker_flavor: LinkerFlavor::Darwin(Cc::Yes, Lld::No),
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
         pre_link_args: pre_link_args(os, arch, abi),
-        linker_is_gnu: false,
         families: cvs!["unix"],
         is_like_osx: true,
         default_dwarf_version: 2,
@@ -71,7 +70,6 @@ pub fn opts(os: &'static str, arch: &'static str, abi: &'static str) -> TargetOp
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         eh_frame_header: false,
-        lld_flavor: LldFlavor::Ld64,
 
         debuginfo_kind: DebuginfoKind::DwarfDsym,
         // The historical default for macOS targets is to run `dsymutil` which

@@ -1,11 +1,11 @@
-use crate::spec::{LinkerFlavor, StackProbeType, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::linux_gnu_base::opts();
     base.cpu = "x86-64".into();
     base.abi = "x32".into();
     base.max_atomic_width = Some(64);
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-mx32"]);
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-mx32"]);
     base.stack_probes = StackProbeType::X86;
     base.has_thread_local = false;
     // BUG(GabrielMajeri): disabling the PLT on x86_64 Linux with x32 ABI

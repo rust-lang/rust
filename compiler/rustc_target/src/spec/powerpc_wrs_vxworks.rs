@@ -1,9 +1,9 @@
 use crate::abi::Endian;
-use crate::spec::{LinkerFlavor, StackProbeType, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::vxworks_base::opts();
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32", "--secure-plt"]);
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32", "--secure-plt"]);
     base.max_atomic_width = Some(32);
     base.stack_probes = StackProbeType::Inline;
 

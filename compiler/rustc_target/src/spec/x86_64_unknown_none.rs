@@ -4,7 +4,7 @@
 // `target-cpu` compiler flags to opt-in more hardware-specific
 // features.
 
-use super::{CodeModel, LinkerFlavor, LldFlavor, PanicStrategy};
+use super::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy};
 use super::{RelroLevel, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -15,7 +15,7 @@ pub fn target() -> Target {
         position_independent_executables: true,
         static_position_independent_executables: true,
         relro_level: RelroLevel::Full,
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+        linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         features:
             "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float"

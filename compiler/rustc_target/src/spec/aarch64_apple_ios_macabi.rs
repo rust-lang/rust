@@ -1,11 +1,11 @@
 use super::apple_sdk_base::{opts, Arch};
-use crate::spec::{FramePointer, LinkerFlavor, Target, TargetOptions};
+use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
     let llvm_target = "arm64-apple-ios14.0-macabi";
 
     let mut base = opts("ios", Arch::Arm64_macabi);
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-target", llvm_target]);
+    base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-target", llvm_target]);
 
     Target {
         llvm_target: llvm_target.into(),

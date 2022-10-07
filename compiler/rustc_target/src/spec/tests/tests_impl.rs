@@ -19,11 +19,13 @@ impl Target {
             assert!(self.is_like_windows);
         }
 
-        // Check that default linker flavor and lld flavor are compatible
-        // with some other key properties.
-        assert_eq!(self.is_like_osx, matches!(self.lld_flavor, LldFlavor::Ld64));
-        assert_eq!(self.is_like_msvc, matches!(self.lld_flavor, LldFlavor::Link));
-        assert_eq!(self.is_like_wasm, matches!(self.lld_flavor, LldFlavor::Wasm));
+        // Check that default linker flavor is compatible with some other key properties.
+        assert_eq!(self.is_like_osx, matches!(self.linker_flavor, LinkerFlavor::Darwin(..)));
+        assert_eq!(self.is_like_msvc, matches!(self.linker_flavor, LinkerFlavor::Msvc(..)));
+        assert_eq!(
+            self.is_like_wasm && self.os != "emscripten",
+            matches!(self.linker_flavor, LinkerFlavor::WasmLld(..))
+        );
         assert_eq!(self.os == "emscripten", matches!(self.linker_flavor, LinkerFlavor::EmCc));
         assert_eq!(self.arch == "bpf", matches!(self.linker_flavor, LinkerFlavor::Bpf));
         assert_eq!(self.arch == "nvptx64", matches!(self.linker_flavor, LinkerFlavor::Ptx));
@@ -38,44 +40,25 @@ impl Target {
             for (&flavor, flavor_args) in args {
                 assert!(!flavor_args.is_empty());
                 // Check that flavors mentioned in link args are compatible with the default flavor.
-                match (self.linker_flavor, self.lld_flavor) {
-                    (
-                        LinkerFlavor::Ld | LinkerFlavor::Lld(LldFlavor::Ld) | LinkerFlavor::Gcc,
-                        LldFlavor::Ld,
-                    ) => {
-                        assert_matches!(
-                            flavor,
-                            LinkerFlavor::Ld | LinkerFlavor::Lld(LldFlavor::Ld) | LinkerFlavor::Gcc
-                        )
+                match self.linker_flavor {
+                    LinkerFlavor::Gnu(..) => {
+                        assert_matches!(flavor, LinkerFlavor::Gnu(..));
                     }
-                    (LinkerFlavor::Gcc, LldFlavor::Ld64) => {
-                        assert_matches!(
-                            flavor,
-                            LinkerFlavor::Lld(LldFlavor::Ld64) | LinkerFlavor::Gcc
-                        )
+                    LinkerFlavor::Darwin(..) => {
+                        assert_matches!(flavor, LinkerFlavor::Darwin(..))
                     }
-                    (LinkerFlavor::Msvc | LinkerFlavor::Lld(LldFlavor::Link), LldFlavor::Link) => {
-                        assert_matches!(
-                            flavor,
-                            LinkerFlavor::Msvc | LinkerFlavor::Lld(LldFlavor::Link)
-                        )
+                    LinkerFlavor::WasmLld(..) => {
+                        assert_matches!(flavor, LinkerFlavor::WasmLld(..))
                     }
-                    (LinkerFlavor::Lld(LldFlavor::Wasm) | LinkerFlavor::Gcc, LldFlavor::Wasm) => {
-                        assert_matches!(
-                            flavor,
-                            LinkerFlavor::Lld(LldFlavor::Wasm) | LinkerFlavor::Gcc
-                        )
+                    LinkerFlavor::Unix(..) => {
+                        assert_matches!(flavor, LinkerFlavor::Unix(..));
                     }
-                    (LinkerFlavor::EmCc, LldFlavor::Wasm) => {
-                        assert_matches!(flavor, LinkerFlavor::EmCc)
+                    LinkerFlavor::Msvc(..) => {
+                        assert_matches!(flavor, LinkerFlavor::Msvc(..))
                     }
-                    (LinkerFlavor::Bpf, LldFlavor::Ld) => {
-                        assert_matches!(flavor, LinkerFlavor::Bpf)
+                    LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Ptx => {
+                        assert_eq!(flavor, self.linker_flavor)
                     }
-                    (LinkerFlavor::Ptx, LldFlavor::Ld) => {
-                        assert_matches!(flavor, LinkerFlavor::Ptx)
-                    }
-                    flavors => unreachable!("unexpected flavor combination: {:?}", flavors),
                 }
 
                 // Check that link args for cc and non-cc versions of flavors are consistent.
@@ -88,25 +71,29 @@ impl Target {
                         }
                     }
                 };
+
                 match self.linker_flavor {
-                    LinkerFlavor::Gcc => match self.lld_flavor {
-                        LldFlavor::Ld => {
-                            check_noncc(LinkerFlavor::Ld);
-                            check_noncc(LinkerFlavor::Lld(LldFlavor::Ld));
-                        }
-                        LldFlavor::Ld64 => check_noncc(LinkerFlavor::Lld(LldFlavor::Ld64)),
-                        LldFlavor::Wasm => check_noncc(LinkerFlavor::Lld(LldFlavor::Wasm)),
-                        LldFlavor::Link => {}
-                    },
+                    LinkerFlavor::Gnu(Cc::Yes, lld) => check_noncc(LinkerFlavor::Gnu(Cc::No, lld)),
+                    LinkerFlavor::WasmLld(Cc::Yes) => check_noncc(LinkerFlavor::WasmLld(Cc::No)),
+                    LinkerFlavor::Unix(Cc::Yes) => check_noncc(LinkerFlavor::Unix(Cc::No)),
                     _ => {}
                 }
             }
 
             // Check that link args for lld and non-lld versions of flavors are consistent.
-            assert_eq!(args.get(&LinkerFlavor::Ld), args.get(&LinkerFlavor::Lld(LldFlavor::Ld)));
+            for cc in [Cc::No, Cc::Yes] {
+                assert_eq!(
+                    args.get(&LinkerFlavor::Gnu(cc, Lld::No)),
+                    args.get(&LinkerFlavor::Gnu(cc, Lld::Yes)),
+                );
+                assert_eq!(
+                    args.get(&LinkerFlavor::Darwin(cc, Lld::No)),
+                    args.get(&LinkerFlavor::Darwin(cc, Lld::Yes)),
+                );
+            }
             assert_eq!(
-                args.get(&LinkerFlavor::Msvc),
-                args.get(&LinkerFlavor::Lld(LldFlavor::Link)),
+                args.get(&LinkerFlavor::Msvc(Lld::No)),
+                args.get(&LinkerFlavor::Msvc(Lld::Yes)),
             );
         }
 

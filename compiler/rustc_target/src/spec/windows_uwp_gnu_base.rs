@@ -1,4 +1,4 @@
-use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
+use crate::spec::{Cc, LinkArgs, LinkerFlavor, Lld, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let base = super::windows_gnu_base::opts();
@@ -15,8 +15,9 @@ pub fn opts() -> TargetOptions {
         "-lmingwex",
         "-lmingw32",
     ];
-    let mut late_link_args = TargetOptions::link_args(LinkerFlavor::Ld, mingw_libs);
-    super::add_link_args(&mut late_link_args, LinkerFlavor::Gcc, mingw_libs);
+    let mut late_link_args =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
+    super::add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
     // Reset the flags back to empty until the FIXME above is addressed.
     let late_link_args_dynamic = LinkArgs::new();
     let late_link_args_static = LinkArgs::new();
