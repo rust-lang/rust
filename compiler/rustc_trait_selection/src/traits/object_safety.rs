@@ -447,19 +447,6 @@ fn virtual_call_violation_for_method<'tcx>(
         return Some(MethodViolationCode::Generic);
     }
 
-    if tcx
-        .predicates_of(method.def_id)
-        .predicates
-        .iter()
-        // A trait object can't claim to live more than the concrete type,
-        // so outlives predicates will always hold.
-        .cloned()
-        .filter(|(p, _)| p.to_opt_type_outlives().is_none())
-        .any(|pred| contains_illegal_self_type_reference(tcx, trait_def_id, pred))
-    {
-        return Some(MethodViolationCode::WhereClauseReferencesSelf);
-    }
-
     let receiver_ty = tcx.liberate_late_bound_regions(method.def_id, sig.input(0));
 
     // Until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
@@ -536,6 +523,21 @@ fn virtual_call_violation_for_method<'tcx>(
                 }
             }
         }
+    }
+
+    // NOTE: This check happens last, because it results in a lint, and not a
+    // hard error.
+    if tcx
+        .predicates_of(method.def_id)
+        .predicates
+        .iter()
+        // A trait object can't claim to live more than the concrete type,
+        // so outlives predicates will always hold.
+        .cloned()
+        .filter(|(p, _)| p.to_opt_type_outlives().is_none())
+        .any(|pred| contains_illegal_self_type_reference(tcx, trait_def_id, pred))
+    {
+        return Some(MethodViolationCode::WhereClauseReferencesSelf);
     }
 
     None
