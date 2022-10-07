@@ -49,6 +49,52 @@ pub struct EnumIntrinsicsMemVariant<'a> {
     pub ty_param: Ty<'a>,
 }
 
+// let_underscore.rs
+#[derive(LintDiagnostic)]
+pub enum NonBindingLet {
+    #[diag(lint::non_binding_let_on_sync_lock)]
+    SyncLock {
+        #[subdiagnostic]
+        sub: NonBindingLetSub,
+    },
+    #[diag(lint::non_binding_let_on_drop_type)]
+    DropType {
+        #[subdiagnostic]
+        sub: NonBindingLetSub,
+    },
+}
+
+pub struct NonBindingLetSub {
+    pub suggestion: Span,
+    pub multi_suggestion_start: Span,
+    pub multi_suggestion_end: Span,
+}
+
+impl AddToDiagnostic for NonBindingLetSub {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        diag.span_suggestion_verbose(
+            self.suggestion,
+            fluent::lint::non_binding_let_suggestion,
+            "_unused",
+            Applicability::MachineApplicable,
+        );
+        diag.multipart_suggestion(
+            fluent::lint::non_binding_let_multi_suggestion,
+            vec![
+                (self.multi_suggestion_start, "drop(".to_string()),
+                (self.multi_suggestion_end, ")".to_string()),
+            ],
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
 // levels.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_overruled_attribute)]

@@ -16,6 +16,18 @@ lint_enum_intrinsics_mem_variant =
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
 
+lint_non_binding_let_on_sync_lock =
+    non-binding let on a synchronization lock
+
+lint_non_binding_let_on_drop_type =
+    non-binding let on a type that implements `Drop`
+
+lint_non_binding_let_suggestion =
+    consider binding to an unused variable to avoid immediately dropping the value
+
+lint_non_binding_let_multi_suggestion =
+    consider immediately dropping the value
+
 lint_deprecated_lint_name =
     lint name `{$name}` is deprecated and may not have an effect in the future.
     .suggestion = change it to
