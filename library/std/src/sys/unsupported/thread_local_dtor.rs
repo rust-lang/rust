@@ -1,5 +1,6 @@
 #![unstable(feature = "thread_local_internals", issue = "none")]
 
+#[cfg_attr(target_family = "wasm", allow(unused))] // unused on wasm32-unknown-unknown
 pub unsafe fn register_dtor(_t: *mut u8, _dtor: unsafe extern "C" fn(*mut u8)) {
     // FIXME: right now there is no concept of "thread exit", but this is likely
     // going to show up at some point in the form of an exported symbol that the
