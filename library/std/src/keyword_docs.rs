@@ -1992,6 +1992,7 @@ mod type_keyword {}
 /// ```rust
 /// # #![allow(dead_code)]
 /// #![deny(unsafe_op_in_unsafe_fn)]
+///
 /// /// Dereference the given pointer.
 /// ///
 /// /// # Safety
@@ -2020,22 +2021,22 @@ mod type_keyword {}
 /// ///
 /// /// `make_even` must return an even number.
 /// unsafe trait MakeEven {
-///   fn make_even(&self) -> i32;
+///     fn make_even(&self) -> i32;
 /// }
 ///
 /// // SAFETY: Our `make_even` always returns something even.
 /// unsafe impl MakeEven for i32 {
-///   fn make_even(&self) -> i32 {
-///     self << 1
-///   }
+///     fn make_even(&self) -> i32 {
+///         self << 1
+///     }
 /// }
 ///
 /// fn use_make_even(x: impl MakeEven) {
-///   if x.make_even() % 2 == 1 {
-///     // SAFETY: this can never happen, because all `MakeEven` implementations
-///     // ensure that `make_even` returns something even.
-///     unsafe { std::hint::unreachable_unchecked() };
-///   }
+///     if x.make_even() % 2 == 1 {
+///         // SAFETY: this can never happen, because all `MakeEven` implementations
+///         // ensure that `make_even` returns something even.
+///         unsafe { std::hint::unreachable_unchecked() };
+///     }
 /// }
 /// ```
 ///
@@ -2053,55 +2054,55 @@ mod type_keyword {}
 /// #![deny(unsafe_op_in_unsafe_fn)]
 ///
 /// trait Indexable {
-///   const LEN: usize;
+///     const LEN: usize;
 ///
-///   /// # Safety
-///   ///
-///   /// The caller must ensure that `idx < LEN`.
-///   unsafe fn idx_unchecked(&self, idx: usize) -> i32;
+///     /// # Safety
+///     ///
+///     /// The caller must ensure that `idx < LEN`.
+///     unsafe fn idx_unchecked(&self, idx: usize) -> i32;
 /// }
 ///
 /// // The implementation for `i32` doesn't need to do any contract reasoning.
 /// impl Indexable for i32 {
-///   const LEN: usize = 1;
+///     const LEN: usize = 1;
 ///
-///   unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
-///     debug_assert_eq!(idx, 0);
-///     *self
-///   }
+///     unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
+///         debug_assert_eq!(idx, 0);
+///         *self
+///     }
 /// }
 ///
 /// // The implementation for arrays exploits the function contract to
 /// // make use of `get_unchecked` on slices and avoid a run-time check.
 /// impl Indexable for [i32; 42] {
-///   const LEN: usize = 42;
+///     const LEN: usize = 42;
 ///
-///   unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
-///     // SAFETY: As per this trait's documentation, the caller ensures
-///     // that `idx < 42`.
-///     unsafe { *self.get_unchecked(idx) }
-///   }
+///     unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
+///         // SAFETY: As per this trait's documentation, the caller ensures
+///         // that `idx < 42`.
+///         unsafe { *self.get_unchecked(idx) }
+///     }
 /// }
 ///
 /// // The implementation for the never type declares a length of 0,
 /// // which means `idx_unchecked` can never be called.
 /// impl Indexable for ! {
-///   const LEN: usize = 0;
+///     const LEN: usize = 0;
 ///
-///   unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
-///     // SAFETY: As per this trait's documentation, the caller ensures
-///     // that `idx < 0`, which is impossible, so this is dead code.
-///     unsafe { std::hint::unreachable_unchecked() }
-///   }
+///     unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
+///         // SAFETY: As per this trait's documentation, the caller ensures
+///         // that `idx < 0`, which is impossible, so this is dead code.
+///         unsafe { std::hint::unreachable_unchecked() }
+///     }
 /// }
 ///
 /// fn use_indexable<I: Indexable>(x: I, idx: usize) -> i32 {
-///   if idx < I::LEN {
-///     // SAFETY: We have checked that `idx < I::LEN`.
-///     unsafe { x.idx_unchecked(idx) }
-///   } else {
-///     panic!("index out-of-bounds")
-///   }
+///     if idx < I::LEN {
+///         // SAFETY: We have checked that `idx < I::LEN`.
+///         unsafe { x.idx_unchecked(idx) }
+///     } else {
+///         panic!("index out-of-bounds")
+///     }
 /// }
 /// ```
 ///
@@ -2115,11 +2116,11 @@ mod type_keyword {}
 /// is not implicitly an unsafe block.) For that purpose it can make use of the contract that all
 /// its callers must uphold -- the fact that `idx < LEN`.
 ///
-/// Formally speaking, an `unsafe fn` in a trait is a function with extra
-/// *preconditions* (such as `idx < LEN`), whereas an `unsafe trait` can declare
-/// that some of its functions have extra *postconditions* (such as returning an
-/// even integer). If a trait needs a function with both extra precondition and
-/// extra postcondition, then it needs an `unsafe fn` in an `unsafe trait`.
+/// Formally speaking, an `unsafe fn` in a trait is a function with *preconditions* that go beyond
+/// those encoded by the argument types (such as `idx < LEN`), whereas an `unsafe trait` can declare
+/// that some of its functions have *postconditions* that go beyond those encoded in the return type
+/// (such as returning an even integer). If a trait needs a function with both extra precondition
+/// and extra postcondition, then it needs an `unsafe fn` in an `unsafe trait`.
 ///
 /// [`extern`]: keyword.extern.html
 /// [`trait`]: keyword.trait.html
