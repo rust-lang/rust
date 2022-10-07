@@ -286,6 +286,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bug!("Only valid to do a DynStar cast into a DynStar type")
                             };
                         let vtable = get_vtable(bx.cx(), source.ty(self.mir, bx.tcx()), trait_ref);
+                        let vtable = bx.pointercast(vtable, bx.cx().type_ptr_to(bx.cx().type_isize()));
                         let data = match operand.layout.pointee_info_at(bx.cx(), Size::ZERO) {
                             Some(_) => bx.ptrtoint(data, bx.cx().type_isize()),
                             None => data,
