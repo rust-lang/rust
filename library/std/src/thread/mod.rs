@@ -192,32 +192,49 @@ pub use scoped::{scope, Scope, ScopedJoinHandle};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
 
-// Select the type used by the thread_local! macro to access TLS keys. There
-// are three types: "static", "fast", "OS". The "OS" thread local key
+// Provide the type used by the thread_local! macro to access TLS keys. This
+// needs to be kept in sync with the macro itself (in `local.rs`).
+// There are three types: "static", "fast", "OS". The "OS" thread local key
 // type is accessed via platform-specific API calls and is slow, while the "fast"
 // key type is accessed via code generated via LLVM, where TLS keys are set up
 // by the elf linker. "static" is for single-threaded platforms where a global
 // static is sufficient.
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(target_thread_local)]
 #[cfg(not(test))]
+#[cfg(all(
+    target_thread_local,
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 #[doc(hidden)]
 pub use self::local::fast::Key as __FastLocalKeyInner;
+
+// when building for tests, use real std's type
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(target_thread_local)]
-#[cfg(test)] // when building for tests, use real std's key
+#[cfg(test)]
+#[cfg(all(
+    target_thread_local,
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 pub use realstd::thread::__FastLocalKeyInner;
 
+// but import the local one anyway to silence 'unused' warnings
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(target_thread_local)]
 #[cfg(test)]
-pub use self::local::fast::Key as __FastLocalKeyInnerUnused; // we import this anyway to silence 'unused' warnings
+#[cfg(all(
+    target_thread_local,
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
+pub use self::local::fast::Key as __FastLocalKeyInnerUnused;
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(all(
+    not(target_thread_local),
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 #[doc(hidden)]
-#[cfg(not(target_thread_local))]
 pub use self::local::os::Key as __OsLocalKeyInner;
+
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
 #[doc(hidden)]
