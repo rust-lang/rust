@@ -1368,6 +1368,24 @@ fn main() {
     }
 
     #[test]
+    fn goto_doc_include_str() {
+        check(
+            r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include_str {}
+
+#[doc = include_str!("docs.md$0")]
+struct Item;
+
+//- /docs.md
+// docs
+//^file
+"#,
+        );
+    }
+
+    #[test]
     fn goto_shadow_include() {
         check(
             r#"
