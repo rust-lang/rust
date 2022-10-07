@@ -89,29 +89,29 @@ fn expect_aborted(status: ExitStatus) {
         assert!(signal == libc::SIGSEGV);
 
         // Additional checks performed:
-        // 1. Crash is from same executable (path) as we are (must be because of fork):
+        // 1. Find last tombstone (similar to coredump but in text format) from the
+        //    same executable (path) as we are (must be because of usage of fork):
         //    This ensures that we look into the correct tombstone.
         // 2. Cause of crash is a SIGSEGV with address 0xdeadbaad.
         // 3. libc::abort call is in one of top two functions on callstack.
         // The last two steps distinguish between a normal SIGSEGV and one caused
         // by libc::abort.
 
-        let tombstone_name = (0..100)
+        let this_exe = std::env::current_exe().unwrap().into_os_string().into_string().unwrap();
+        let exe_string = format!(">>> {this_exe} <<<");
+        let tombstone = (0..100)
             .map(|n| format!("/data/tombstones/tombstone_{n:02}"))
             .filter(|f| std::path::Path::new(&f).exists())
+            .map(|f| std::fs::read_to_string(&f).expect("Cannot read tombstone file"))
+            .filter(|f| f.contains(&exe_string))
             .last()
             .expect("no tombstone found");
 
-        let tombstone =
-            std::fs::read_to_string(&tombstone_name).expect("Cannot read tombstone file");
-        println!("Content of {tombstone_name}:\n{tombstone}");
+        println!("Content of tombstone:\n{tombstone}");
 
-        // If the next assert fails sporadically we might have an issue with parallel crashing apps
-        assert!(tombstone
-            .contains(&std::env::current_exe().unwrap().into_os_string().into_string().unwrap()));
-        assert!(tombstone.contains(
-            "signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr deadbaad"
-        ));
+        assert!(
+            tombstone.contains("signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr deadbaad")
+        );
         let abort_on_top = tombstone
             .lines()
             .skip_while(|l| !l.contains("backtrace:"))
