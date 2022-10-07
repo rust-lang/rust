@@ -125,7 +125,7 @@ pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Opt
         return Some(version);
     } else if let Some(sess) = sess {
         if let Some(span) = span {
-            sess.span_err(span, &format!("`{msrv}` is not a valid Rust version"));
+            sess.span_err(span, format!("`{msrv}` is not a valid Rust version"));
         }
     }
     None

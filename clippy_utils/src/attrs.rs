@@ -136,7 +136,7 @@ pub fn get_unique_inner_attr(sess: &Session, attrs: &[ast::Attribute], name: &'s
                     .emit();
             },
             ast::AttrStyle::Outer => {
-                sess.span_err(attr.span, &format!("`{name}` cannot be an outer attribute"));
+                sess.span_err(attr.span, format!("`{name}` cannot be an outer attribute"));
             },
         }
     }

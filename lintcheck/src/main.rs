@@ -345,7 +345,7 @@ impl Crate {
                 clippy_args.push(opt);
             }
         } else {
-            clippy_args.extend(&["-Wclippy::pedantic", "-Wclippy::cargo"])
+            clippy_args.extend(["-Wclippy::pedantic", "-Wclippy::cargo"])
         }
 
         if lint_filter.is_empty() {
@@ -457,15 +457,11 @@ fn build_clippy() {
 /// Read a `lintcheck_crates.toml` file
 fn read_crates(toml_path: &Path) -> (Vec<CrateSource>, RecursiveOptions) {
     let toml_content: String =
-        std::fs::read_to_string(&toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
+        std::fs::read_to_string(toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: SourceList =
         toml::from_str(&toml_content).unwrap_or_else(|e| panic!("Failed to parse {}: \n{}", toml_path.display(), e));
     // parse the hashmap of the toml file into a list of crates
-    let tomlcrates: Vec<TomlCrate> = crate_list
-        .crates
-        .into_iter()
-        .map(|(_cratename, tomlcrate)| tomlcrate)
-        .collect();
+    let tomlcrates: Vec<TomlCrate> = crate_list.crates.into_values().collect();
 
     // flatten TomlCrates into CrateSources (one TomlCrates may represent several versions of a crate =>
     // multiple Cratesources)
@@ -602,10 +598,10 @@ fn main() {
     ) {
         let shared_target_dir = "target/lintcheck/shared_target_dir";
         // if we get an Err here, the shared target dir probably does simply not exist
-        if let Ok(metadata) = std::fs::metadata(&shared_target_dir) {
+        if let Ok(metadata) = std::fs::metadata(shared_target_dir) {
             if metadata.is_dir() {
                 println!("Clippy is newer than lint check logs, clearing lintcheck shared target dir...");
-                std::fs::remove_dir_all(&shared_target_dir)
+                std::fs::remove_dir_all(shared_target_dir)
                     .expect("failed to remove target/lintcheck/shared_target_dir");
             }
         }
@@ -779,7 +775,7 @@ fn read_stats_from_file(file_path: &Path) -> HashMap<String, usize> {
 fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, usize>, lint_filter: &Vec<String>) {
     let same_in_both_hashmaps = old_stats
         .iter()
-        .filter(|(old_key, old_val)| new_stats.get::<&String>(&old_key) == Some(old_val))
+        .filter(|(old_key, old_val)| new_stats.get::<&String>(old_key) == Some(old_val))
         .map(|(k, v)| (k.to_string(), *v))
         .collect::<Vec<(String, usize)>>();
 
@@ -797,7 +793,7 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
     // list all new counts  (key is in new stats but not in old stats)
     new_stats_deduped
         .iter()
-        .filter(|(new_key, _)| old_stats_deduped.get::<str>(&new_key).is_none())
+        .filter(|(new_key, _)| old_stats_deduped.get::<str>(new_key).is_none())
         .for_each(|(new_key, new_value)| {
             println!("{} 0 => {}", new_key, new_value);
         });
@@ -805,16 +801,16 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
     // list all changed counts (key is in both maps but value differs)
     new_stats_deduped
         .iter()
-        .filter(|(new_key, _new_val)| old_stats_deduped.get::<str>(&new_key).is_some())
+        .filter(|(new_key, _new_val)| old_stats_deduped.get::<str>(new_key).is_some())
         .for_each(|(new_key, new_val)| {
-            let old_val = old_stats_deduped.get::<str>(&new_key).unwrap();
+            let old_val = old_stats_deduped.get::<str>(new_key).unwrap();
             println!("{} {} => {}", new_key, old_val, new_val);
         });
 
     // list all gone counts (key is in old status but not in new stats)
     old_stats_deduped
         .iter()
-        .filter(|(old_key, _)| new_stats_deduped.get::<&String>(&old_key).is_none())
+        .filter(|(old_key, _)| new_stats_deduped.get::<&String>(old_key).is_none())
         .filter(|(old_key, _)| lint_filter.is_empty() || lint_filter.contains(old_key))
         .for_each(|(old_key, old_value)| {
             println!("{} {} => 0", old_key, old_value);
@@ -832,12 +828,12 @@ fn create_dirs(krate_download_dir: &Path, extract_dir: &Path) {
             panic!("cannot create lintcheck target dir");
         }
     });
-    std::fs::create_dir(&krate_download_dir).unwrap_or_else(|err| {
+    std::fs::create_dir(krate_download_dir).unwrap_or_else(|err| {
         if err.kind() != ErrorKind::AlreadyExists {
             panic!("cannot create crate download dir");
         }
     });
-    std::fs::create_dir(&extract_dir).unwrap_or_else(|err| {
+    std::fs::create_dir(extract_dir).unwrap_or_else(|err| {
         if err.kind() != ErrorKind::AlreadyExists {
             panic!("cannot create crate extraction dir");
         }
@@ -863,7 +859,7 @@ fn lintcheck_test() {
         "lintcheck/test_sources.toml",
     ];
     let status = std::process::Command::new("cargo")
-        .args(&args)
+        .args(args)
         .current_dir("..") // repo root
         .status();
     //.output();

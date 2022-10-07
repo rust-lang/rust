@@ -283,7 +283,7 @@ fn run_ui_cargo() {
                 env::set_current_dir(&src_path)?;
 
                 let cargo_toml_path = case.path().join("Cargo.toml");
-                let cargo_content = fs::read(&cargo_toml_path)?;
+                let cargo_content = fs::read(cargo_toml_path)?;
                 let cargo_parsed: toml::Value = toml::from_str(
                     std::str::from_utf8(&cargo_content).expect("`Cargo.toml` is not a valid utf-8 file!"),
                 )

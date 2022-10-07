@@ -128,7 +128,7 @@ fn generate_lint_files(
     for (lint_group, lints) in Lint::by_lint_group(usable_lints.into_iter().chain(internal_lints)) {
         let content = gen_lint_group_list(&lint_group, lints.iter());
         process_file(
-            &format!("clippy_lints/src/lib.register_{lint_group}.rs"),
+            format!("clippy_lints/src/lib.register_{lint_group}.rs"),
             update_mode,
             &content,
         );

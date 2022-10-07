@@ -417,7 +417,7 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, sess: &Se
 
     let msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
-            sess.err(&format!(
+            sess.err(format!(
                 "error reading Clippy's configuration file. `{s}` is not a valid Rust version"
             ));
             None
@@ -433,7 +433,7 @@ fn read_msrv(conf: &Conf, sess: &Session) -> Option<RustcVersion> {
         .and_then(|v| parse_msrv(&v, None, None));
     let clippy_msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
-            sess.err(&format!(
+            sess.err(format!(
                 "error reading Clippy's configuration file. `{s}` is not a valid Rust version"
             ));
             None
@@ -444,7 +444,7 @@ fn read_msrv(conf: &Conf, sess: &Session) -> Option<RustcVersion> {
         if let Some(clippy_msrv) = clippy_msrv {
             // if both files have an msrv, let's compare them and emit a warning if they differ
             if clippy_msrv != cargo_msrv {
-                sess.warn(&format!(
+                sess.warn(format!(
                     "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
                 ));
             }
@@ -473,7 +473,7 @@ pub fn read_conf(sess: &Session) -> Conf {
     let TryConf { conf, errors, warnings } = utils::conf::read(&file_name);
     // all conf errors are non-fatal, we just use the default conf in case of error
     for error in errors {
-        sess.err(&format!(
+        sess.err(format!(
             "error reading Clippy's configuration file `{}`: {}",
             file_name.display(),
             format_error(error)
