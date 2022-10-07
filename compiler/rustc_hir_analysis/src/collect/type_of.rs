@@ -493,8 +493,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         },
                         def_id.to_def_id(),
                     );
-                    if let Some(assoc_item) = assoc_item {
-                        tcx.type_of(tcx.generics_of(assoc_item.def_id).params[idx].def_id)
+                    if let Some(param)
+                        = assoc_item.map(|item| &tcx.generics_of(item.def_id).params[idx]).filter(|param| param.kind.is_ty_or_const())
+                    {
+                        tcx.type_of(param.def_id)
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
