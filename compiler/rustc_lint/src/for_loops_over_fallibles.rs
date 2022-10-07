@@ -10,7 +10,7 @@ use rustc_span::{sym, Span};
 use rustc_trait_selection::traits::TraitEngineExt;
 
 declare_lint! {
-    /// The `for_loop_over_fallibles` lint checks for `for` loops over `Option` or `Result` values.
+    /// The `for_loops_over_fallibles` lint checks for `for` loops over `Option` or `Result` values.
     ///
     /// ### Example
     ///
@@ -34,14 +34,14 @@ declare_lint! {
     /// The "intended" use of `IntoIterator` implementations for `Option` and `Result` is passing them to
     /// generic code that expects something implementing `IntoIterator`. For example using `.chain(option)`
     /// to optionally add a value to an iterator.
-    pub FOR_LOOP_OVER_FALLIBLES,
+    pub FOR_LOOPS_OVER_FALLIBLES,
     Warn,
     "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`"
 }
 
-declare_lint_pass!(ForLoopOverFallibles => [FOR_LOOP_OVER_FALLIBLES]);
+declare_lint_pass!(ForLoopsOverFallibles => [FOR_LOOPS_OVER_FALLIBLES]);
 
-impl<'tcx> LateLintPass<'tcx> for ForLoopOverFallibles {
+impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let Some((pat, arg)) = extract_for_loop(expr) else { return };
 
@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopOverFallibles {
             "for loop over {article} `{ty}`. This is more readably written as an `if let` statement",
         );
 
-        cx.struct_span_lint(FOR_LOOP_OVER_FALLIBLES, arg.span, |diag| {
+        cx.struct_span_lint(FOR_LOOPS_OVER_FALLIBLES, arg.span, |diag| {
             let mut warn = diag.build(msg);
 
             if let Some(recv) = extract_iterator_next_call(cx, arg)

@@ -246,7 +246,7 @@ pub trait Visitor<'ast>: Sized {
 macro_rules! walk_list {
     ($visitor: expr, $method: ident, $list: expr $(, $($extra_args: expr),* )?) => {
         {
-            #[cfg_attr(not(bootstrap), allow(for_loop_over_fallibles))]
+            #[cfg_attr(not(bootstrap), allow(for_loops_over_fallibles))]
             for elem in $list {
                 $visitor.$method(elem $(, $($extra_args,)* )?)
             }

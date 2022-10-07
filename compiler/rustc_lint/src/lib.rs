@@ -52,7 +52,7 @@ mod early;
 mod enum_intrinsics_non_enums;
 mod errors;
 mod expect;
-mod for_loop_over_fallibles;
+mod for_loops_over_fallibles;
 pub mod hidden_unicode_codepoints;
 mod internal;
 mod late;
@@ -87,7 +87,7 @@ use rustc_span::Span;
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
-use for_loop_over_fallibles::*;
+use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
 use internal::*;
 use let_underscore::*;
@@ -190,7 +190,7 @@ macro_rules! late_lint_mod_passes {
         $macro!(
             $args,
             [
-                ForLoopOverFallibles: ForLoopOverFallibles,
+                ForLoopsOverFallibles: ForLoopsOverFallibles,
                 HardwiredLints: HardwiredLints,
                 ImproperCTypesDeclarations: ImproperCTypesDeclarations,
                 ImproperCTypesDefinitions: ImproperCTypesDefinitions,

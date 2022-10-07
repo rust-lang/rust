@@ -4,7 +4,7 @@ warning: for loop over an `Option`. This is more readably written as an `if let`
 LL |     for _ in Some(1) {}
    |              ^^^^^^^
    |
-   = note: `#[warn(for_loop_over_fallibles)]` on by default
+   = note: `#[warn(for_loops_over_fallibles)]` on by default
 help: to check pattern in a loop use `while let`
    |
 LL |     while let Some(_) = Some(1) {}
