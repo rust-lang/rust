@@ -23,8 +23,6 @@ use rustc_target::{
 
 use super::backtrace::EvalContextExt as _;
 use crate::helpers::{convert::Truncate, target_os_is_unix};
-#[cfg(unix)]
-use crate::shims::ffi_support::EvalContextExt as _;
 use crate::*;
 
 /// Returned by `emulate_foreign_item_by_name`.
@@ -372,8 +370,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         // First deal with any external C functions in linked .so file.
-        #[cfg(unix)]
+        #[cfg(target_os = "linux")]
         if this.machine.external_so_lib.as_ref().is_some() {
+            use crate::shims::ffi_support::EvalContextExt as _;
             // An Ok(false) here means that the function being called was not exported
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.

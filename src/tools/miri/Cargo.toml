@@ -31,8 +31,10 @@ smallvec = "1.7"
 rustc-workspace-hack = "1.0.0"
 measureme = "10.0.0"
 
-[target."cfg(unix)".dependencies]
+[target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
 libffi = "3.0.0"
 libloading = "0.7"
 
