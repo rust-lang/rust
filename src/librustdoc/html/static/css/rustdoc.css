@@ -690,11 +690,6 @@ pre, .rustdoc.source .example-wrap {
 	border: 1px solid var(--border-color);
 }
 
-.content .item-list {
-	list-style-type: none;
-	padding: 0;
-}
-
 /* Shift "where ..." part of method or fn definition down a line */
 .content .method .where,
 .content .fn .where,

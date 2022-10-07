@@ -890,7 +890,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             w,
             "implementors",
             "Implementors",
-            "<div class=\"item-list\" id=\"implementors-list\">",
+            "<div id=\"implementors-list\">",
         );
         for implementor in concrete {
             render_implementor(cx, implementor, it, w, &implementor_dups, &[]);
@@ -902,7 +902,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                 w,
                 "synthetic-implementors",
                 "Auto implementors",
-                "<div class=\"item-list\" id=\"synthetic-implementors-list\">",
+                "<div id=\"synthetic-implementors-list\">",
             );
             for implementor in synthetic {
                 render_implementor(
@@ -923,7 +923,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             w,
             "implementors",
             "Implementors",
-            "<div class=\"item-list\" id=\"implementors-list\"></div>",
+            "<div id=\"implementors-list\"></div>",
         );
 
         if t.is_auto(cx.tcx()) {
@@ -931,7 +931,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                 w,
                 "synthetic-implementors",
                 "Auto implementors",
-                "<div class=\"item-list\" id=\"synthetic-implementors-list\"></div>",
+                "<div id=\"synthetic-implementors-list\"></div>",
             );
         }
     }
