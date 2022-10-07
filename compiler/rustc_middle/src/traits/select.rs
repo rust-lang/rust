@@ -161,9 +161,6 @@ pub enum SelectionCandidate<'tcx> {
 
     /// Implementation of `const Destruct`, optionally from a custom `impl const Drop`.
     ConstDestructCandidate(Option<DefId>),
-
-    /// Witnesses the fact that a type is a tuple.
-    TupleCandidate,
 }
 
 /// The result of trait evaluation. The order is important

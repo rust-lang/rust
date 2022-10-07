@@ -1562,7 +1562,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
-        // `DiscriminantKindCandidate`, `ConstDestructCandidate`, and `TupleCandidate`
+        // `DiscriminantKindCandidate`, `ConstDestructCandidate`
         // to anything else.
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
@@ -1583,8 +1583,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
                 | PointeeCandidate
-                | ConstDestructCandidate(_)
-                | TupleCandidate,
+                | ConstDestructCandidate(_),
                 _,
             ) => true,
             (
@@ -1592,8 +1591,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
                 | PointeeCandidate
-                | ConstDestructCandidate(_)
-                | TupleCandidate,
+                | ConstDestructCandidate(_),
             ) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {

@@ -126,8 +126,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let data = self.confirm_const_destruct_candidate(obligation, def_id)?;
                 ImplSource::ConstDestruct(data)
             }
-
-            TupleCandidate => ImplSource::Tuple,
         };
 
         if !obligation.predicate.is_const_if_const() {
