@@ -29,18 +29,29 @@ fn is_close_bracket(c: char) -> bool {
     matches!(c, ')' | ']' | '}')
 }
 
+const START_COMMENT: &str = "// tidy-alphabetical-start";
+const END_COMMENT: &str = "// tidy-alphabetical-end";
+
 fn check_section<'a>(
     file: impl Display,
     lines: impl Iterator<Item = (usize, &'a str)>,
     bad: &mut bool,
 ) {
-    let content_lines = lines.take_while(|(_, line)| !line.contains("// tidy-alphabetical-end"));
+    let content_lines = lines.take_while(|(_, line)| !line.contains(END_COMMENT));
 
     let mut prev_line = String::new();
     let mut first_indent = None;
     let mut in_split_line = None;
 
     for (line_idx, line) in content_lines {
+        if line.contains(START_COMMENT) {
+            tidy_error!(
+                bad,
+                "{file}:{} found `// tidy-alphabetical-start` expecting `// tidy-alphabetical-end`",
+                line_idx
+            )
+        }
+
         let indent = first_indent.unwrap_or_else(|| {
             let indent = indentation(line);
             first_indent = Some(indent);
@@ -82,16 +93,20 @@ fn check_section<'a>(
     }
 }
 
-const START_COMMENT: &str = "// tidy-alphabetical-start";
-
 pub fn check(path: &Path, bad: &mut bool) {
     walk(path, &mut filter_dirs, &mut |entry, contents| {
         let file = &entry.path().display();
 
-        let mut lines = contents.lines().enumerate();
+        let mut lines = contents.lines().enumerate().peekable();
         while let Some((_, line)) = lines.next() {
             if line.contains(START_COMMENT) {
                 check_section(file, &mut lines, bad);
+                if lines.peek().is_none() {
+                    tidy_error!(
+                        bad,
+                        "{file}: reached end of file expecting `// tidy-alphabetical-end`"
+                    )
+                }
             }
         }
     });
