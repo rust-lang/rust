@@ -1073,7 +1073,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 mask |= this.eval_libc("STATX_ATIME")?.to_u32()?;
                 InterpResult::Ok(tup)
             })
-            .unwrap_or(Ok((0, 0)))?;
+            .unwrap_or_else(|| Ok((0, 0)))?;
 
         let (created_sec, created_nsec) = metadata
             .created
@@ -1081,7 +1081,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 mask |= this.eval_libc("STATX_BTIME")?.to_u32()?;
                 InterpResult::Ok(tup)
             })
-            .unwrap_or(Ok((0, 0)))?;
+            .unwrap_or_else(|| Ok((0, 0)))?;
 
         let (modified_sec, modified_nsec) = metadata
             .modified
@@ -1089,7 +1089,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 mask |= this.eval_libc("STATX_MTIME")?.to_u32()?;
                 InterpResult::Ok(tup)
             })
-            .unwrap_or(Ok((0, 0)))?;
+            .unwrap_or_else(|| Ok((0, 0)))?;
 
         // Now we write everything to `statxbuf`. We write a zero for the unavailable fields.
         this.write_int_fields_named(

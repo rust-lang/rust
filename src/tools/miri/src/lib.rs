@@ -28,6 +28,7 @@
     clippy::type_complexity,
     clippy::single_element_loop,
     clippy::needless_return,
+    clippy::bool_to_int_with_if,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability
 )]
