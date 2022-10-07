@@ -3,7 +3,6 @@ mod explicit_counter_loop;
 mod explicit_into_iter_loop;
 mod explicit_iter_loop;
 mod for_kv_map;
-mod for_loops_over_fallibles;
 mod iter_next_loop;
 mod manual_find;
 mod manual_flatten;
@@ -171,49 +170,6 @@ declare_clippy_lint! {
     pub ITER_NEXT_LOOP,
     correctness,
     "for-looping over `_.next()` which is probably not intended"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `for` loops over `Option` or `Result` values.
-    ///
-    /// ### Why is this bad?
-    /// Readability. This is more clearly expressed as an `if
-    /// let`.
-    ///
-    /// ### Example
-    /// ```rust
-    /// # let opt = Some(1);
-    /// # let res: Result<i32, std::io::Error> = Ok(1);
-    /// for x in opt {
-    ///     // ..
-    /// }
-    ///
-    /// for x in &res {
-    ///     // ..
-    /// }
-    ///
-    /// for x in res.iter() {
-    ///     // ..
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust
-    /// # let opt = Some(1);
-    /// # let res: Result<i32, std::io::Error> = Ok(1);
-    /// if let Some(x) = opt {
-    ///     // ..
-    /// }
-    ///
-    /// if let Ok(x) = res {
-    ///     // ..
-    /// }
-    /// ```
-    #[clippy::version = "1.45.0"]
-    pub FOR_LOOPS_OVER_FALLIBLES,
-    suspicious,
-    "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`"
 }
 
 declare_clippy_lint! {
@@ -648,7 +604,6 @@ declare_lint_pass!(Loops => [
     EXPLICIT_ITER_LOOP,
     EXPLICIT_INTO_ITER_LOOP,
     ITER_NEXT_LOOP,
-    FOR_LOOPS_OVER_FALLIBLES,
     WHILE_LET_LOOP,
     NEEDLESS_COLLECT,
     EXPLICIT_COUNTER_LOOP,
@@ -739,30 +694,22 @@ fn check_for_loop<'tcx>(
     manual_find::check(cx, pat, arg, body, span, expr);
 }
 
-fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
-    let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
-
+fn check_for_loop_arg(cx: &LateContext<'_>, _: &Pat<'_>, arg: &Expr<'_>) {
     if let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind {
         let method_name = method.ident.as_str();
         // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
         match method_name {
             "iter" | "iter_mut" => {
                 explicit_iter_loop::check(cx, self_arg, arg, method_name);
-                for_loops_over_fallibles::check(cx, pat, self_arg, Some(method_name));
             },
             "into_iter" => {
                 explicit_iter_loop::check(cx, self_arg, arg, method_name);
                 explicit_into_iter_loop::check(cx, self_arg, arg);
-                for_loops_over_fallibles::check(cx, pat, self_arg, Some(method_name));
             },
             "next" => {
-                next_loop_linted = iter_next_loop::check(cx, arg);
+                iter_next_loop::check(cx, arg);
             },
             _ => {},
         }
-    }
-
-    if !next_loop_linted {
-        for_loops_over_fallibles::check(cx, pat, arg, None);
     }
 }

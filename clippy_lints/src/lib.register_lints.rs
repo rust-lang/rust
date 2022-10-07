@@ -227,7 +227,6 @@ store.register_lints(&[
     loops::EXPLICIT_INTO_ITER_LOOP,
     loops::EXPLICIT_ITER_LOOP,
     loops::FOR_KV_MAP,
-    loops::FOR_LOOPS_OVER_FALLIBLES,
     loops::ITER_NEXT_LOOP,
     loops::MANUAL_FIND,
     loops::MANUAL_FLATTEN,
