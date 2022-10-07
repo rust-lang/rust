@@ -1851,6 +1851,7 @@ extern "rust-intrinsic" {
     /// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_const_unstable(feature = "const_exact_div", issue = "none")]
     pub fn exact_div<T: Copy>(x: T, y: T) -> T;
 
     /// Performs an unchecked division, resulting in undefined behavior

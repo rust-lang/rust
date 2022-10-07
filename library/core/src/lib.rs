@@ -109,6 +109,7 @@
 #![feature(const_cmp)]
 #![feature(const_discriminant)]
 #![feature(const_eval_select)]
+#![feature(const_exact_div)]
 #![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
 #![feature(const_fmt_arguments_new)]
