@@ -198,7 +198,7 @@ fn get_adt_source(
     let file = ctx.sema.parse(range.file_id);
     let adt_source =
         ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
-    find_struct_impl(ctx, &adt_source, fn_name).map(|impl_| (impl_, range.file_id))
+    find_struct_impl(ctx, &adt_source, &[fn_name.to_string()]).map(|impl_| (impl_, range.file_id))
 }
 
 struct FunctionTemplate {
