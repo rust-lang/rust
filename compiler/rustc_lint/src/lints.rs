@@ -1,4 +1,4 @@
-use rustc_errors::{fluent, AddToDiagnostic, Applicability, DecorateLint};
+use rustc_errors::{fluent, AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{Predicate, Ty, TyCtxt};
@@ -52,12 +52,12 @@ pub struct EnumIntrinsicsMemVariant<'a> {
 // let_underscore.rs
 #[derive(LintDiagnostic)]
 pub enum NonBindingLet {
-    #[diag(lint::non_binding_let_on_sync_lock)]
+    #[diag(lint_non_binding_let_on_sync_lock)]
     SyncLock {
         #[subdiagnostic]
         sub: NonBindingLetSub,
     },
-    #[diag(lint::non_binding_let_on_drop_type)]
+    #[diag(lint_non_binding_let_on_drop_type)]
     DropType {
         #[subdiagnostic]
         sub: NonBindingLetSub,
@@ -80,12 +80,12 @@ impl AddToDiagnostic for NonBindingLetSub {
     {
         diag.span_suggestion_verbose(
             self.suggestion,
-            fluent::lint::non_binding_let_suggestion,
+            fluent::lint_non_binding_let_suggestion,
             "_unused",
             Applicability::MachineApplicable,
         );
         diag.multipart_suggestion(
-            fluent::lint::non_binding_let_multi_suggestion,
+            fluent::lint_non_binding_let_multi_suggestion,
             vec![
                 (self.multi_suggestion_start, "drop(".to_string()),
                 (self.multi_suggestion_end, ")".to_string()),
@@ -567,6 +567,38 @@ pub struct OverflowingLiteral<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_comparisons)]
 pub struct UnusedComparisons;
+
+pub struct ImproperCTypes<'a> {
+    pub ty: Ty<'a>,
+    pub desc: &'a str,
+    pub label: Span,
+    pub help: Option<DiagnosticMessage>,
+    pub note: DiagnosticMessage,
+    pub span_note: Option<Span>,
+}
+
+impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        diag.set_arg("ty", self.ty);
+        diag.set_arg("desc", self.desc);
+        diag.span_label(self.label, fluent::label);
+        if let Some(help) = self.help {
+            diag.help(help);
+        }
+        diag.note(self.note);
+        if let Some(note) = self.span_note {
+            diag.span_note(note, fluent::note);
+        }
+        diag
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        fluent::lint_improper_ctypes
+    }
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_variant_size_differences)]

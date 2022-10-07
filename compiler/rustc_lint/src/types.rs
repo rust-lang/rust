@@ -1,10 +1,10 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 use crate::lints::{
-    AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, InvalidAtomicOrderingDiag,
-    OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSub,
-    OverflowingInt, OverflowingLiteral, OverflowingUInt, RangeEndpointOutOfRange,
-    UnusedComparisons, VariantSizeDifferencesDiag,
+    AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
+    InvalidAtomicOrderingDiag, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
+    OverflowingBinHexSub, OverflowingInt, OverflowingLiteral, OverflowingUInt,
+    RangeEndpointOutOfRange, UnusedComparisons, VariantSizeDifferencesDiag,
 };
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
@@ -1131,27 +1131,21 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             CItemKind::Declaration => IMPROPER_CTYPES,
             CItemKind::Definition => IMPROPER_CTYPES_DEFINITIONS,
         };
-
-        self.cx.struct_span_lint(lint, sp, fluent::lint_improper_ctypes, |lint| {
-            let item_description = match self.mode {
-                CItemKind::Declaration => "block",
-                CItemKind::Definition => "fn",
+        let desc = match self.mode {
+            CItemKind::Declaration => "block",
+            CItemKind::Definition => "fn",
+        };
+        let span_note = if let ty::Adt(def, _) = ty.kind()
+            && let Some(sp) = self.cx.tcx.hir().span_if_local(def.did()) {
+                Some(sp)
+            } else {
+                None
             };
-            #[allow(rustc::diagnostic_outside_of_impl)]
-            lint.set_arg("ty", ty);
-            lint.set_arg("desc", item_description);
-            lint.span_label(sp, fluent::label);
-            if let Some(help) = help {
-                lint.help(help);
-            }
-            lint.note(note);
-            if let ty::Adt(def, _) = ty.kind() {
-                if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did()) {
-                    lint.span_note(sp, fluent::note);
-                }
-            }
-            lint
-        });
+        self.cx.emit_spanned_lint(
+            lint,
+            sp,
+            ImproperCTypes { ty, desc, label: sp, help, note, span_note },
+        );
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
