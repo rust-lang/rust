@@ -1,7 +1,7 @@
 use crate::{LateContext, LateLintPass, LintContext};
 
 use hir::{Expr, Pat};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DelayDm};
 use rustc_hir as hir;
 use rustc_infer::traits::TraitEngine;
 use rustc_infer::{infer::TyCtxtInferExt, traits::ObligationCause};
@@ -55,24 +55,24 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
             _ => return,
         };
 
-        let msg = format!(
-            "for loop over {article} `{ty}`. This is more readably written as an `if let` statement",
-        );
+        let msg = DelayDm(|| {
+            format!(
+                "for loop over {article} `{ty}`. This is more readably written as an `if let` statement",
+            )
+        });
 
-        cx.struct_span_lint(FOR_LOOPS_OVER_FALLIBLES, arg.span, |diag| {
-            let mut warn = diag.build(msg);
-
+        cx.struct_span_lint(FOR_LOOPS_OVER_FALLIBLES, arg.span, msg, |lint| {
             if let Some(recv) = extract_iterator_next_call(cx, arg)
             && let Ok(recv_snip) = cx.sess().source_map().span_to_snippet(recv.span)
             {
-                warn.span_suggestion(
+                lint.span_suggestion(
                     recv.span.between(arg.span.shrink_to_hi()),
                     format!("to iterate over `{recv_snip}` remove the call to `next`"),
                     ".by_ref()",
                     Applicability::MaybeIncorrect
                 );
             } else {
-                warn.multipart_suggestion_verbose(
+                lint.multipart_suggestion_verbose(
                     format!("to check pattern in a loop use `while let`"),
                     vec![
                         // NB can't use `until` here because `expr.span` and `pat.span` have different syntax contexts
@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
             }
 
             if suggest_question_mark(cx, adt, substs, expr.span) {
-                warn.span_suggestion(
+                lint.span_suggestion(
                     arg.span.shrink_to_hi(),
                     "consider unwrapping the `Result` with `?` to iterate over its contents",
                     "?",
@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
                 );
             }
 
-            warn.multipart_suggestion_verbose(
+            lint.multipart_suggestion_verbose(
                 "consider using `if let` to clear intent",
                 vec![
                     // NB can't use `until` here because `expr.span` and `pat.span` have different syntax contexts
@@ -100,9 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
                     (pat.span.between(arg.span), format!(") = ")),
                 ],
                 Applicability::MaybeIncorrect,
-            );
-
-            warn.emit()
+            )
         })
     }
 }
@@ -128,7 +126,7 @@ fn extract_iterator_next_call<'tcx>(
     expr: &Expr<'tcx>,
 ) -> Option<&'tcx Expr<'tcx>> {
     // This won't work for `Iterator::next(iter)`, is this an issue?
-    if let hir::ExprKind::MethodCall(_, [recv], _) = expr.kind
+    if let hir::ExprKind::MethodCall(_, recv, _, _) = expr.kind
     && cx.typeck_results().type_dependent_def_id(expr.hir_id) == cx.tcx.lang_items().next_fn()
     {
         Some(recv)
