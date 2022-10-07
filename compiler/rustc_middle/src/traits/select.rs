@@ -115,7 +115,7 @@ pub enum SelectionCandidate<'tcx> {
 
     ParamCandidate(ty::PolyTraitPredicate<'tcx>),
     ImplCandidate(DefId),
-    AutoImplCandidate(DefId),
+    AutoImplCandidate,
 
     /// This is a trait matching with a projected type as `Self`, and we found
     /// an applicable bound in the trait definition. The `usize` is an index

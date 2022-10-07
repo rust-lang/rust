@@ -64,8 +64,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::UserDefined(self.confirm_impl_candidate(obligation, impl_def_id))
             }
 
-            AutoImplCandidate(trait_def_id) => {
-                let data = self.confirm_auto_impl_candidate(obligation, trait_def_id);
+            AutoImplCandidate => {
+                let data = self.confirm_auto_impl_candidate(obligation);
                 ImplSource::AutoImpl(data)
             }
 
@@ -317,8 +317,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_auto_impl_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        trait_def_id: DefId,
     ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
+        let trait_def_id = obligation.predicate.def_id();
         debug!(?obligation, ?trait_def_id, "confirm_auto_impl_candidate");
 
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());

@@ -1150,7 +1150,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // const projection
                     ProjectionCandidate(_, ty::BoundConstness::ConstIfConst) => {}
                     // auto trait impl
-                    AutoImplCandidate(..) => {}
+                    AutoImplCandidate => {}
                     // generator, this will raise error in other places
                     // or ignore error with const_async_blocks feature
                     GeneratorCandidate => {}
@@ -1568,7 +1568,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
         match (&other.candidate, &victim.candidate) {
-            (_, AutoImplCandidate(..)) | (AutoImplCandidate(..), _) => {
+            (_, AutoImplCandidate) | (AutoImplCandidate, _) => {
                 bug!(
                     "default implementations shouldn't be recorded \
                     when there are other valid candidates"

@@ -625,7 +625,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                _ => candidates.vec.push(AutoImplCandidate(def_id)),
+                _ => candidates.vec.push(AutoImplCandidate),
             }
         }
     }
