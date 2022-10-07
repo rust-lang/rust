@@ -359,6 +359,23 @@ fn align_offset_zst() {
 }
 
 #[test]
+#[cfg(not(bootstrap))]
+fn align_offset_zst_const() {
+    const {
+        // For pointers of stride = 0, the pointer is already aligned or it cannot be aligned at
+        // all, because no amount of elements will align the pointer.
+        let mut p = 1;
+        while p < 1024 {
+            assert!(ptr::invalid::<()>(p).align_offset(p) == 0);
+            if p != 1 {
+                assert!(ptr::invalid::<()>(p + 1).align_offset(p) == !0);
+            }
+            p = (p + 1).next_power_of_two();
+        }
+    }
+}
+
+#[test]
 fn align_offset_stride_one() {
     // For pointers of stride = 1, the pointer can always be aligned. The offset is equal to
     // number of bytes.
@@ -376,6 +393,26 @@ fn align_offset_stride_one() {
             );
         }
         align = (align + 1).next_power_of_two();
+    }
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn align_offset_stride_one_const() {
+    const {
+        // For pointers of stride = 1, the pointer can always be aligned. The offset is equal to
+        // number of bytes.
+        let mut align = 1;
+        while align < 1024 {
+            let mut ptr = 1;
+            while ptr < 2 * align {
+                let expected = ptr % align;
+                let offset = if expected == 0 { 0 } else { align - expected };
+                assert!(ptr::invalid::<u8>(ptr).align_offset(align) == offset);
+                ptr += 1;
+            }
+            align = (align + 1).next_power_of_two();
+        }
     }
 }
 
@@ -453,6 +490,134 @@ fn align_offset_various_strides() {
         align = (align + 1).next_power_of_two();
     }
     assert!(!x);
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn align_offset_various_strides_const() {
+    const unsafe fn test_stride<T>(ptr: *const T, numptr: usize, align: usize) {
+        let mut expected = usize::MAX;
+        // Naive but definitely correct way to find the *first* aligned element of stride::<T>.
+        let mut el = 0;
+        while el < align {
+            if (numptr + el * ::std::mem::size_of::<T>()) % align == 0 {
+                expected = el;
+                break;
+            }
+            el += 1;
+        }
+        let got = ptr.align_offset(align);
+        assert!(got == expected);
+    }
+
+    // For pointers of stride != 1, we verify the algorithm against the naivest possible
+    // implementation
+    let mut align = 1;
+    let limit = 1024;
+    while align < limit {
+        for ptr in 1usize..4 * align {
+            unsafe {
+                #[repr(packed)]
+                struct A3(u16, u8);
+                test_stride::<A3>(ptr::invalid::<A3>(ptr), ptr, align);
+
+                struct A4(u32);
+                test_stride::<A4>(ptr::invalid::<A4>(ptr), ptr, align);
+
+                #[repr(packed)]
+                struct A5(u32, u8);
+                test_stride::<A5>(ptr::invalid::<A5>(ptr), ptr, align);
+
+                #[repr(packed)]
+                struct A6(u32, u16);
+                test_stride::<A6>(ptr::invalid::<A6>(ptr), ptr, align);
+
+                #[repr(packed)]
+                struct A7(u32, u16, u8);
+                test_stride::<A7>(ptr::invalid::<A7>(ptr), ptr, align);
+
+                #[repr(packed)]
+                struct A8(u32, u32);
+                test_stride::<A8>(ptr::invalid::<A8>(ptr), ptr, align);
+
+                #[repr(packed)]
+                struct A9(u32, u32, u8);
+                test_stride::<A9>(ptr::invalid::<A9>(ptr), ptr, align);
+
+                #[repr(packed)]
+                struct A10(u32, u32, u16);
+                test_stride::<A10>(ptr::invalid::<A10>(ptr), ptr, align);
+
+                test_stride::<u32>(ptr::invalid::<u32>(ptr), ptr, align);
+                test_stride::<u128>(ptr::invalid::<u128>(ptr), ptr, align);
+            }
+        }
+        align = (align + 1).next_power_of_two();
+    }
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn align_offset_with_provenance_const() {
+    const {
+        let data = 42;
+
+        let ptr: *const i32 = &data;
+        assert!(ptr.align_offset(1) == 0);
+        assert!(ptr.align_offset(2) == 0);
+        assert!(ptr.align_offset(4) == 0);
+        assert!(ptr.align_offset(8) == usize::MAX);
+        assert!(ptr.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr.wrapping_byte_add(1).align_offset(2) == usize::MAX);
+        assert!(ptr.wrapping_byte_add(2).align_offset(1) == 0);
+        assert!(ptr.wrapping_byte_add(2).align_offset(2) == 0);
+        assert!(ptr.wrapping_byte_add(2).align_offset(4) == usize::MAX);
+        assert!(ptr.wrapping_byte_add(3).align_offset(1) == 0);
+        assert!(ptr.wrapping_byte_add(3).align_offset(2) == usize::MAX);
+
+        assert!(ptr.wrapping_add(42).align_offset(4) == 0);
+        assert!(ptr.wrapping_add(42).align_offset(8) == usize::MAX);
+
+        let ptr1: *const i8 = ptr.cast();
+        assert!(ptr1.align_offset(1) == 0);
+        assert!(ptr1.align_offset(2) == 0);
+        assert!(ptr1.align_offset(4) == 0);
+        assert!(ptr1.align_offset(8) == usize::MAX);
+        assert!(ptr1.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr1.wrapping_byte_add(1).align_offset(2) == 1);
+        assert!(ptr1.wrapping_byte_add(1).align_offset(4) == 3);
+        assert!(ptr1.wrapping_byte_add(1).align_offset(8) == usize::MAX);
+        assert!(ptr1.wrapping_byte_add(2).align_offset(1) == 0);
+        assert!(ptr1.wrapping_byte_add(2).align_offset(2) == 0);
+        assert!(ptr1.wrapping_byte_add(2).align_offset(4) == 2);
+        assert!(ptr1.wrapping_byte_add(2).align_offset(8) == usize::MAX);
+        assert!(ptr1.wrapping_byte_add(3).align_offset(1) == 0);
+        assert!(ptr1.wrapping_byte_add(3).align_offset(2) == 1);
+        assert!(ptr1.wrapping_byte_add(3).align_offset(4) == 1);
+        assert!(ptr1.wrapping_byte_add(3).align_offset(8) == usize::MAX);
+
+        let ptr2: *const i16 = ptr.cast();
+        assert!(ptr2.align_offset(1) == 0);
+        assert!(ptr2.align_offset(2) == 0);
+        assert!(ptr2.align_offset(4) == 0);
+        assert!(ptr2.align_offset(8) == usize::MAX);
+        assert!(ptr2.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr2.wrapping_byte_add(1).align_offset(2) == usize::MAX);
+        assert!(ptr2.wrapping_byte_add(2).align_offset(1) == 0);
+        assert!(ptr2.wrapping_byte_add(2).align_offset(2) == 0);
+        assert!(ptr2.wrapping_byte_add(2).align_offset(4) == 1);
+        assert!(ptr2.wrapping_byte_add(2).align_offset(8) == usize::MAX);
+        assert!(ptr2.wrapping_byte_add(3).align_offset(1) == 0);
+        assert!(ptr2.wrapping_byte_add(3).align_offset(2) == usize::MAX);
+
+        let ptr3: *const i64 = ptr.cast();
+        assert!(ptr3.align_offset(1) == 0);
+        assert!(ptr3.align_offset(2) == 0);
+        assert!(ptr3.align_offset(4) == 0);
+        assert!(ptr3.align_offset(8) == usize::MAX);
+        assert!(ptr3.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr3.wrapping_byte_add(1).align_offset(2) == usize::MAX);
+    }
 }
 
 #[test]
