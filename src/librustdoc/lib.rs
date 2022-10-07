@@ -674,35 +674,6 @@ fn usage(argv0: &str) {
 /// A result type used by several functions under `main()`.
 type MainResult = Result<(), ErrorGuaranteed>;
 
-fn main_args(at_args: &[String]) -> MainResult {
-    let args = rustc_driver::args::arg_expand_all(at_args);
-
-    let mut options = getopts::Options::new();
-    for option in opts() {
-        (option.apply)(&mut options);
-    }
-    let matches = match options.parse(&args[1..]) {
-        Ok(m) => m,
-        Err(err) => {
-            early_error(ErrorOutputType::default(), &err.to_string());
-        }
-    };
-
-    // Note that we discard any distinction between different non-zero exit
-    // codes from `from_matches` here.
-    let options = match config::Options::from_matches(&matches, args) {
-        Ok(opts) => opts,
-        Err(code) => {
-            return if code == 0 {
-                Ok(())
-            } else {
-                Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-            };
-        }
-    };
-    main_options(options)
-}
-
 fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
     match res {
         Ok(()) => Ok(()),
@@ -733,7 +704,33 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     }
 }
 
-fn main_options(options: config::Options) -> MainResult {
+fn main_args(at_args: &[String]) -> MainResult {
+    let args = rustc_driver::args::arg_expand_all(at_args);
+
+    let mut options = getopts::Options::new();
+    for option in opts() {
+        (option.apply)(&mut options);
+    }
+    let matches = match options.parse(&args[1..]) {
+        Ok(m) => m,
+        Err(err) => {
+            early_error(ErrorOutputType::default(), &err.to_string());
+        }
+    };
+
+    // Note that we discard any distinction between different non-zero exit
+    // codes from `from_matches` here.
+    let options = match config::Options::from_matches(&matches, args) {
+        Ok(opts) => opts,
+        Err(code) => {
+            return if code == 0 {
+                Ok(())
+            } else {
+                Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+            };
+        }
+    };
+
     let diag = core::new_handler(
         options.error_format,
         None,
