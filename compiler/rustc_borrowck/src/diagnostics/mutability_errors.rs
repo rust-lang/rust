@@ -698,7 +698,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     ),
                                     (rv.span.shrink_to_hi(), ")".to_string()),
                                 ],
-                            ].into_iter(),
+                            ],
                             Applicability::MachineApplicable,
                         );
                         self.suggested = true;
