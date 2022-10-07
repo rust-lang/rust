@@ -21,7 +21,6 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(formatting::SUSPICIOUS_ELSE_FORMATTING),
     LintId::of(formatting::SUSPICIOUS_UNARY_OP_FORMATTING),
     LintId::of(loops::EMPTY_LOOP),
-    LintId::of(loops::FOR_LOOPS_OVER_FALLIBLES),
     LintId::of(loops::MUT_RANGE_BOUND),
     LintId::of(methods::NO_EFFECT_REPLACE),
     LintId::of(methods::SUSPICIOUS_MAP),
