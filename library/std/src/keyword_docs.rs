@@ -1867,11 +1867,15 @@ mod type_keyword {}
 /// Code or interfaces whose [memory safety] cannot be verified by the type
 /// system.
 ///
-/// The `unsafe` keyword has two uses: to declare the existence of contracts the
-/// compiler can't check (`unsafe fn` and `unsafe trait`), and to declare that a
-/// programmer has checked that these contracts have been upheld (`unsafe {}`
-/// and `unsafe impl`, but also `unsafe fn` -- see below). They are not mutually
-/// exclusive, as can be seen in `unsafe fn`.
+/// The `unsafe` keyword has two uses:
+/// - to declare the existence of contracts the compiler can't check (`unsafe fn` and `unsafe
+/// trait`),
+/// - and to declare that a programmer has checked that these contracts have been upheld (`unsafe
+/// {}` and `unsafe impl`, but also `unsafe fn` -- see below).
+///
+/// They are not mutually exclusive, as can be seen in `unsafe fn`: the body of an `unsafe fn` is,
+/// by default, treated like an unsafe block. The `unsafe_op_in_unsafe_fn` lint can be enabled to
+/// change that.
 ///
 /// # Unsafe abilities
 ///
@@ -1914,12 +1918,12 @@ mod type_keyword {}
 /// - `unsafe impl`: the contract necessary to implement the trait has been
 /// checked by the programmer and is guaranteed to be respected.
 ///
-/// `unsafe fn` also acts like an `unsafe {}` block
+/// By default, `unsafe fn` also acts like an `unsafe {}` block
 /// around the code inside the function. This means it is not just a signal to
 /// the caller, but also promises that the preconditions for the operations
-/// inside the function are upheld. Mixing these two meanings can be confusing
-/// and [proposal]s exist to use `unsafe {}` blocks inside such functions when
-/// making `unsafe` operations.
+/// inside the function are upheld. Mixing these two meanings can be confusing, so the
+/// `unsafe_op_in_unsafe_fn` lint can be enabled to warn against that and require explicit unsafe
+/// blocks even inside `unsafe fn`.
 ///
 /// See the [Rustnomicon] and the [Reference] for more information.
 ///
@@ -1987,13 +1991,16 @@ mod type_keyword {}
 ///
 /// ```rust
 /// # #![allow(dead_code)]
+/// #![deny(unsafe_op_in_unsafe_fn)]
+///
 /// /// Dereference the given pointer.
 /// ///
 /// /// # Safety
 /// ///
 /// /// `ptr` must be aligned and must not be dangling.
 /// unsafe fn deref_unchecked(ptr: *const i32) -> i32 {
-///     *ptr
+///     // SAFETY: the caller is required to ensure that `ptr` is aligned and dereferenceable.
+///     unsafe { *ptr }
 /// }
 ///
 /// let a = 3;
@@ -2003,34 +2010,117 @@ mod type_keyword {}
 /// unsafe { assert_eq!(*b, deref_unchecked(b)); };
 /// ```
 ///
-/// Traits marked as `unsafe` must be [`impl`]emented using `unsafe impl`. This
-/// makes a guarantee to other `unsafe` code that the implementation satisfies
-/// the trait's safety contract. The [Send] and [Sync] traits are examples of
-/// this behaviour in the standard library.
+/// ## `unsafe` and traits
+///
+/// The interactions of `unsafe` and traits can be surprising, so let us contrast the
+/// two combinations of safe `fn` in `unsafe trait` and `unsafe fn` in safe trait using two
+/// examples:
 ///
 /// ```rust
-/// /// Implementors of this trait must guarantee an element is always
-/// /// accessible with index 3.
-/// unsafe trait ThreeIndexable<T> {
-///     /// Returns a reference to the element with index 3 in `&self`.
-///     fn three(&self) -> &T;
+/// /// # Safety
+/// ///
+/// /// `make_even` must return an even number.
+/// unsafe trait MakeEven {
+///     fn make_even(&self) -> i32;
 /// }
 ///
-/// // The implementation of `ThreeIndexable` for `[T; 4]` is `unsafe`
-/// // because the implementor must abide by a contract the compiler cannot
-/// // check but as a programmer we know there will always be a valid element
-/// // at index 3 to access.
-/// unsafe impl<T> ThreeIndexable<T> for [T; 4] {
-///     fn three(&self) -> &T {
-///         // SAFETY: implementing the trait means there always is an element
-///         // with index 3 accessible.
-///         unsafe { self.get_unchecked(3) }
+/// // SAFETY: Our `make_even` always returns something even.
+/// unsafe impl MakeEven for i32 {
+///     fn make_even(&self) -> i32 {
+///         self << 1
 ///     }
 /// }
 ///
-/// let a = [1, 2, 4, 8];
-/// assert_eq!(a.three(), &8);
+/// fn use_make_even(x: impl MakeEven) {
+///     if x.make_even() % 2 == 1 {
+///         // SAFETY: this can never happen, because all `MakeEven` implementations
+///         // ensure that `make_even` returns something even.
+///         unsafe { std::hint::unreachable_unchecked() };
+///     }
+/// }
 /// ```
+///
+/// Note how the safety contract of the trait is upheld by the implementation, and is itself used to
+/// uphold the safety contract of the unsafe function `unreachable_unchecked` called by
+/// `use_make_even`. `make_even` itself is a safe function because its *callers* do not have to
+/// worry about any contract, only the *implementation* of `MakeEven` is required to uphold a
+/// certain contract. `use_make_even` is safe because it can use the promise made by `MakeEven`
+/// implementations to uphold the safety contract of the `unsafe fn unreachable_unchecked` it calls.
+///
+/// It is also possible to have `unsafe fn` in a regular safe `trait`:
+///
+/// ```rust
+/// # #![feature(never_type)]
+/// #![deny(unsafe_op_in_unsafe_fn)]
+///
+/// trait Indexable {
+///     const LEN: usize;
+///
+///     /// # Safety
+///     ///
+///     /// The caller must ensure that `idx < LEN`.
+///     unsafe fn idx_unchecked(&self, idx: usize) -> i32;
+/// }
+///
+/// // The implementation for `i32` doesn't need to do any contract reasoning.
+/// impl Indexable for i32 {
+///     const LEN: usize = 1;
+///
+///     unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
+///         debug_assert_eq!(idx, 0);
+///         *self
+///     }
+/// }
+///
+/// // The implementation for arrays exploits the function contract to
+/// // make use of `get_unchecked` on slices and avoid a run-time check.
+/// impl Indexable for [i32; 42] {
+///     const LEN: usize = 42;
+///
+///     unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
+///         // SAFETY: As per this trait's documentation, the caller ensures
+///         // that `idx < 42`.
+///         unsafe { *self.get_unchecked(idx) }
+///     }
+/// }
+///
+/// // The implementation for the never type declares a length of 0,
+/// // which means `idx_unchecked` can never be called.
+/// impl Indexable for ! {
+///     const LEN: usize = 0;
+///
+///     unsafe fn idx_unchecked(&self, idx: usize) -> i32 {
+///         // SAFETY: As per this trait's documentation, the caller ensures
+///         // that `idx < 0`, which is impossible, so this is dead code.
+///         unsafe { std::hint::unreachable_unchecked() }
+///     }
+/// }
+///
+/// fn use_indexable<I: Indexable>(x: I, idx: usize) -> i32 {
+///     if idx < I::LEN {
+///         // SAFETY: We have checked that `idx < I::LEN`.
+///         unsafe { x.idx_unchecked(idx) }
+///     } else {
+///         panic!("index out-of-bounds")
+///     }
+/// }
+/// ```
+///
+/// This time, `use_indexable` is safe because it uses a run-time check to discharge the safety
+/// contract of `idx_unchecked`. Implementing `Indexable` is safe because when writing
+/// `idx_unchecked`, we don't have to worry: our *callers* need to discharge a proof obligation
+/// (like `use_indexable` does), but the *implementation* of `get_unchecked` has no proof obligation
+/// to contend with. Of course, the implementation of `Indexable` may choose to call other unsafe
+/// operations, and then it needs an `unsafe` *block* to indicate it discharged the proof
+/// obligations of its callees. (We enabled `unsafe_op_in_unsafe_fn`, so the body of `idx_unchecked`
+/// is not implicitly an unsafe block.) For that purpose it can make use of the contract that all
+/// its callers must uphold -- the fact that `idx < LEN`.
+///
+/// Formally speaking, an `unsafe fn` in a trait is a function with *preconditions* that go beyond
+/// those encoded by the argument types (such as `idx < LEN`), whereas an `unsafe trait` can declare
+/// that some of its functions have *postconditions* that go beyond those encoded in the return type
+/// (such as returning an even integer). If a trait needs a function with both extra precondition
+/// and extra postcondition, then it needs an `unsafe fn` in an `unsafe trait`.
 ///
 /// [`extern`]: keyword.extern.html
 /// [`trait`]: keyword.trait.html
@@ -2043,7 +2133,6 @@ mod type_keyword {}
 /// [nomicon-soundness]: ../nomicon/safe-unsafe-meaning.html
 /// [soundness]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#soundness-of-code--of-a-library
 /// [Reference]: ../reference/unsafety.html
-/// [proposal]: https://github.com/rust-lang/rfcs/pull/2585
 /// [discussion on Rust Internals]: https://internals.rust-lang.org/t/what-does-unsafe-mean/6696
 mod unsafe_keyword {}
 

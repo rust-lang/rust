@@ -19,9 +19,12 @@ if [[ -n "${CI_ONLY_WHEN_SUBMODULES_CHANGED-}" ]]; then
         # those files are present in the diff a submodule was updated.
         echo "Submodules were updated"
     elif ! (git diff --quiet "$BASE_COMMIT" -- \
-             src/tools/clippy src/tools/rustfmt src/tools/miri); then
+             src/tools/clippy src/tools/rustfmt src/tools/miri
+             library/std/src/sys); then
         # There is not an easy blanket search for subtrees. For now, manually list
         # the subtrees.
+        # Also run this when the platform-specific parts of std change, in case
+        # that breaks Miri.
         echo "Tool subtrees were updated"
     elif ! (git diff --quiet "$BASE_COMMIT" -- \
              src/test/rustdoc-gui \
