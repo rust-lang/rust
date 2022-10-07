@@ -1288,13 +1288,42 @@ pub struct UnrecognizedReprHint {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes::attribute_should_be_applied_to, code = "E0517")]
-pub struct AttributeShouldBeAppliedTo<'a> {
-    #[primary_span]
-    pub hint_span: Span,
-    #[label]
-    pub span: Span,
-    pub what: &'a str,
+pub enum AttrApplication {
+    #[diag(passes::attr_application_enum, code = "E0517")]
+    Enum {
+        #[primary_span]
+        hint_span: Span,
+        #[label]
+        span: Span,
+    },
+    #[diag(passes::attr_application_struct, code = "E0517")]
+    Struct {
+        #[primary_span]
+        hint_span: Span,
+        #[label]
+        span: Span,
+    },
+    #[diag(passes::attr_application_struct_union, code = "E0517")]
+    StructUnion {
+        #[primary_span]
+        hint_span: Span,
+        #[label]
+        span: Span,
+    },
+    #[diag(passes::attr_application_struct_enum_union, code = "E0517")]
+    StructEnumUnion {
+        #[primary_span]
+        hint_span: Span,
+        #[label]
+        span: Span,
+    },
+    #[diag(passes::attr_application_struct_enum_function_union, code = "E0517")]
+    StructEnumFunctionUnion {
+        #[primary_span]
+        hint_span: Span,
+        #[label]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]

@@ -596,23 +596,25 @@ passes_unrecognized_repr_hint =
     unrecognized representation hint
     .help = valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
 
-passes_attribute_should_be_applied_to =
-    attribute should be applied to {$what ->
-        [enum] an enum
-        [struct] a struct
-        [struct-union] a struct or union
-        [struct-enum-union] a struct, enum, or union
-        [struct-enum-function-union] a struct, enum, function, or union
-        *[unspecified] (unspecified--this is a compiler bug)
-    }
-    .label = not {$what ->
-        [enum] an enum
-        [struct] a struct
-        [struct-union] a struct or union
-        [struct-enum-union] a struct, enum, or union
-        [struct-enum-function-union] a struct, enum, function, or union
-        *[unspecified] (unspecified--this is a compiler bug)
-    }
+passes_attr_application_enum =
+    attribute should be applied to an enum
+    .label = not an enum
+
+passes_attr_application_struct =
+    attribute should be applied to a struct
+    .label = not a struct
+
+passes_attr_application_struct_union =
+    attribute should be applied to a struct or union
+    .label = not a struct or union
+
+passes_attr_application_struct_enum_union =
+    attribute should be applied to a struct, enum, or union
+    .label = not a struct, enum, or union
+
+passes_attr_application_struct_enum_function_union =
+    attribute should be applied to a struct, enum, function, or union
+    .label = not a struct, enum, function, or union
 
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints

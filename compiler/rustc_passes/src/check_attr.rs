@@ -5,8 +5,8 @@
 //! item.
 
 use crate::errors::{
-    self, AttributeShouldBeAppliedTo, DebugVisualizerUnreadable, InvalidAttrAtCrateLevel,
-    ObjectLifetimeErr, OnlyHasEffectOn, TransparentIncompatible, UnrecognizedReprHint,
+    self, AttrApplication, DebugVisualizerUnreadable, InvalidAttrAtCrateLevel, ObjectLifetimeErr,
+    OnlyHasEffectOn, TransparentIncompatible, UnrecognizedReprHint,
 };
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
@@ -1594,12 +1594,17 @@ impl CheckAttrVisitor<'_> {
                 continue;
             }
 
-            let what = match hint.name_or_empty() {
+            match hint.name_or_empty() {
                 sym::C => {
                     is_c = true;
                     match target {
                         Target::Struct | Target::Union | Target::Enum => continue,
-                        _ => "struct-enum-union",
+                        _ => {
+                            self.tcx.sess.emit_err(AttrApplication::StructEnumUnion {
+                                hint_span: hint.span(),
+                                span,
+                            });
+                        }
                     }
                 }
                 sym::align => {
@@ -1615,12 +1620,20 @@ impl CheckAttrVisitor<'_> {
 
                     match target {
                         Target::Struct | Target::Union | Target::Enum | Target::Fn => continue,
-                        _ => "struct-enum-function-union",
+                        _ => {
+                            self.tcx.sess.emit_err(AttrApplication::StructEnumFunctionUnion {
+                                hint_span: hint.span(),
+                                span,
+                            });
+                        }
                     }
                 }
                 sym::packed => {
                     if target != Target::Struct && target != Target::Union {
-                        "struct-union"
+                        self.tcx.sess.emit_err(AttrApplication::StructUnion {
+                            hint_span: hint.span(),
+                            span,
+                        });
                     } else {
                         continue;
                     }
@@ -1628,7 +1641,9 @@ impl CheckAttrVisitor<'_> {
                 sym::simd => {
                     is_simd = true;
                     if target != Target::Struct {
-                        "struct"
+                        self.tcx
+                            .sess
+                            .emit_err(AttrApplication::Struct { hint_span: hint.span(), span });
                     } else {
                         continue;
                     }
@@ -1637,7 +1652,12 @@ impl CheckAttrVisitor<'_> {
                     is_transparent = true;
                     match target {
                         Target::Struct | Target::Union | Target::Enum => continue,
-                        _ => "struct-enum-union",
+                        _ => {
+                            self.tcx.sess.emit_err(AttrApplication::StructEnumUnion {
+                                hint_span: hint.span(),
+                                span,
+                            });
+                        }
                     }
                 }
                 sym::i8
@@ -1654,7 +1674,9 @@ impl CheckAttrVisitor<'_> {
                 | sym::usize => {
                     int_reprs += 1;
                     if target != Target::Enum {
-                        "enum"
+                        self.tcx
+                            .sess
+                            .emit_err(AttrApplication::Enum { hint_span: hint.span(), span });
                     } else {
                         continue;
                     }
@@ -1664,12 +1686,6 @@ impl CheckAttrVisitor<'_> {
                     continue;
                 }
             };
-
-            self.tcx.sess.emit_err(AttributeShouldBeAppliedTo {
-                hint_span: hint.span(),
-                span,
-                what,
-            });
         }
 
         // Just point at all repr hints if there are any incompatibilities.
