@@ -401,7 +401,7 @@ impl<'a> Parser<'a> {
                 .span_suggestions(
                     span.shrink_to_hi(),
                     "add `mut` or `const` here",
-                    ["mut ".to_string(), "const ".to_string()].into_iter(),
+                    ["mut ".to_string(), "const ".to_string()],
                     Applicability::HasPlaceholders,
                 )
                 .emit();

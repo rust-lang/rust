@@ -544,13 +544,13 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         &mut self,
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = String>,
+        suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn multipart_suggestions(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = Vec<(Span, String)>>,
+        suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion_short(

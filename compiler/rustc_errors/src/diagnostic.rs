@@ -811,10 +811,10 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = String>,
+        suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self {
-        let mut suggestions: Vec<_> = suggestions.collect();
+        let mut suggestions: Vec<_> = suggestions.into_iter().collect();
         suggestions.sort();
         let substitutions = suggestions
             .into_iter()
@@ -834,11 +834,12 @@ impl Diagnostic {
     pub fn multipart_suggestions(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = Vec<(Span, String)>>,
+        suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self {
         self.push_suggestion(CodeSuggestion {
             substitutions: suggestions
+                .into_iter()
                 .map(|sugg| Substitution {
                     parts: sugg
                         .into_iter()

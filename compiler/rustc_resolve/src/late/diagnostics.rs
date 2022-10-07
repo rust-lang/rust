@@ -1877,7 +1877,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     &msg,
-                    suggestable_variants.into_iter(),
+                    suggestable_variants,
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1931,7 +1931,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants.into_iter(),
+                    suggestable_variants,
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1961,7 +1961,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants_with_placeholders.into_iter(),
+                    suggestable_variants_with_placeholders,
                     Applicability::HasPlaceholders,
                 );
             }
