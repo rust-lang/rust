@@ -300,18 +300,14 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             );
 
             if let Some(parse_sess_created) = config.parse_sess_created {
-                parse_sess_created(
-                    &mut Lrc::get_mut(&mut sess)
-                        .expect("create_session() should never share the returned session")
-                        .parse_sess,
-                );
+                parse_sess_created(&mut sess.parse_sess);
             }
 
             let temps_dir = sess.opts.unstable_opts.temps_dir.as_ref().map(|o| PathBuf::from(&o));
 
             let compiler = Compiler {
-                sess,
-                codegen_backend,
+                sess: Lrc::new(sess),
+                codegen_backend: Lrc::new(codegen_backend),
                 input: config.input,
                 input_path: config.input_path,
                 output_dir: config.output_dir,

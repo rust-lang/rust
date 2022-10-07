@@ -5,7 +5,6 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::jobserver;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 #[cfg(parallel_compiler)]
 use rustc_middle::ty::tls;
@@ -73,7 +72,7 @@ pub fn create_session(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
     descriptions: Registry,
-) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>) {
+) -> (Session, Box<dyn CodegenBackend>) {
     let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
         make_codegen_backend(&sopts)
     } else {
@@ -121,7 +120,7 @@ pub fn create_session(
     sess.parse_sess.config = cfg;
     sess.parse_sess.check_config = check_cfg;
 
-    (Lrc::new(sess), Lrc::new(codegen_backend))
+    (sess, codegen_backend)
 }
 
 const STACK_SIZE: usize = 8 * 1024 * 1024;
