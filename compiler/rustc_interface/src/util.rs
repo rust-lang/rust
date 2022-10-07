@@ -138,20 +138,24 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     f: F,
 ) -> R {
     // The thread pool is a single thread in the non-parallel compiler.
-    let mut cfg = thread::Builder::new().name("rustc".to_string());
-    if let Some(size) = get_stack_size() {
-        cfg = cfg.stack_size(size);
-    }
+    thread::scope(|s| {
+        let mut builder = thread::Builder::new().name("rustc".to_string());
+        if let Some(size) = get_stack_size() {
+            builder = builder.stack_size(size);
+        }
 
-    let f = move || rustc_span::create_session_globals_then(edition, f);
+        // `unwrap` is ok here because `spawn_scoped` only panics if the thread
+        // name contains null bytes.
+        let r = builder
+            .spawn_scoped(s, move || rustc_span::create_session_globals_then(edition, f))
+            .unwrap()
+            .join();
 
-    // This avoids the need for `'static` bounds.
-    //
-    // SAFETY: join() is called immediately, so any closure captures are still alive.
-    match unsafe { cfg.spawn_unchecked(f) }.unwrap().join() {
-        Ok(v) => v,
-        Err(e) => panic::resume_unwind(e),
-    }
+        match r {
+            Ok(v) => v,
+            Err(e) => panic::resume_unwind(e),
+        }
+    })
 }
 
 /// Creates a new thread and forwards information in thread locals to it.
