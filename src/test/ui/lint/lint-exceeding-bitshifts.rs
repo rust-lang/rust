@@ -7,7 +7,7 @@
 // normalize-stderr-test "shift left by `(64|32)_usize`, which" -> "shift left by `%BITS%`, which"
 
 #![crate_type="lib"]
-#![warn(arithmetic_overflow, const_err)]
+#![warn(arithmetic_overflow)]
 
 
 pub trait Foo {

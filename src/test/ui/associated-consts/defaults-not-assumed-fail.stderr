@@ -1,52 +1,23 @@
-error: any use of this value will cause an error
+error[E0080]: evaluation of `<() as Tr>::B` failed
   --> $DIR/defaults-not-assumed-fail.rs:8:19
    |
 LL |     const B: u8 = Self::A + 1;
-   |     -----------   ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
+   |                   ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/defaults-not-assumed-fail.rs:34:16
+  --> $DIR/defaults-not-assumed-fail.rs:33:16
    |
 LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
    |                ^^^^^^^^^^^^^ referenced constant has errors
 
-error: erroneous constant used
-  --> $DIR/defaults-not-assumed-fail.rs:34:5
+error[E0080]: erroneous constant used
+  --> $DIR/defaults-not-assumed-fail.rs:33:5
    |
 LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
-Future incompatibility report: Future breakage diagnostic:
-error: any use of this value will cause an error
-  --> $DIR/defaults-not-assumed-fail.rs:8:19
-   |
-LL |     const B: u8 = Self::A + 1;
-   |     -----------   ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-
-Future breakage diagnostic:
-error: erroneous constant used
-  --> $DIR/defaults-not-assumed-fail.rs:34:5
-   |
-LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
-

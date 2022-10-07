@@ -1,6 +1,5 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 #![feature(core_intrinsics)]
-#![allow(const_err)]
 
 // During CTFE, we prevent pointer-to-int casts.
 // Pointer comparisons are prevented in the trait system.

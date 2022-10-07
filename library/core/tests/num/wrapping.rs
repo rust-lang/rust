@@ -75,8 +75,6 @@ wrapping_test!(test_wrapping_u64, u64, u64::MIN, u64::MAX);
 wrapping_test!(test_wrapping_u128, u128, u128::MIN, u128::MAX);
 wrapping_test!(test_wrapping_usize, usize, usize::MIN, usize::MAX);
 
-// Don't warn about overflowing ops on 32-bit platforms
-#[cfg_attr(target_pointer_width = "32", allow(const_err))]
 #[test]
 fn wrapping_int_api() {
     assert_eq!(i8::MAX.wrapping_add(1), i8::MIN);

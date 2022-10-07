@@ -1,5 +1,3 @@
-#![allow(const_err)]
-
 #[repr(C)]
 union Foo {
     a: &'static u32,

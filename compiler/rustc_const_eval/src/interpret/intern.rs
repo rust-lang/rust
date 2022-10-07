@@ -332,8 +332,6 @@ pub enum InternKind {
 ///
 /// This *cannot raise an interpreter error*.  Doing so is left to validation, which
 /// tracks where in the value we are and thus can show much better error messages.
-/// Any errors here would anyway be turned into `const_err` lints, whereas validation failures
-/// are hard errors.
 #[instrument(level = "debug", skip(ecx))]
 pub fn intern_const_alloc_recursive<
     'mir,

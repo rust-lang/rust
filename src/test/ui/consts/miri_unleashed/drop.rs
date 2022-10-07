@@ -1,6 +1,5 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 // error-pattern: calling non-const function `<Vec<i32> as Drop>::drop`
-#![allow(const_err)]
 
 use std::mem::ManuallyDrop;
 

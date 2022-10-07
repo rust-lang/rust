@@ -1,5 +1,3 @@
-// error-pattern: any use of this value will cause an error
-
 #![feature(never_type)]
 #![feature(const_assert_type2)]
 #![feature(core_intrinsics)]
@@ -11,15 +9,15 @@ fn main() {
     use std::mem::MaybeUninit;
 
     const _BAD1: () = unsafe {
-        intrinsics::assert_inhabited::<!>(); //~ERROR: any use of this value will cause an error
-        //~^WARN: previously accepted
+        MaybeUninit::<!>::uninit().assume_init();
+        //~^ERROR: evaluation of constant value failed
     };
     const _BAD2: () = {
-        intrinsics::assert_uninit_valid::<!>(); //~ERROR: any use of this value will cause an error
-        //~^WARN: previously accepted
+        intrinsics::assert_uninit_valid::<&'static i32>();
+        //~^ERROR: evaluation of constant value failed
     };
     const _BAD3: () = {
-        intrinsics::assert_zero_valid::<&'static i32>(); //~ERROR: any use of this value will cause an error
-        //~^WARN: previously accepted
+        intrinsics::assert_zero_valid::<&'static i32>();
+        //~^ERROR: evaluation of constant value failed
     };
 }

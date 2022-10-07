@@ -1,8 +1,6 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 // aux-build:static_cross_crate.rs
 // stderr-per-bitwidth
-#![allow(const_err)]
-
 #![feature(exclusive_range_pattern, half_open_range_patterns)]
 
 extern crate static_cross_crate;
@@ -19,20 +17,16 @@ const U8_MUT: &u8 = { //~ ERROR undefined behavior to use this value
     unsafe { &static_cross_crate::ZERO[0] }
 };
 
-// Also test indirection that reads from other static. This causes a const_err.
-#[warn(const_err)]
+// Also test indirection that reads from other static.
 const U8_MUT2: &u8 = {
     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
-    //~^ WARN [const_err]
+    //~^ ERROR evaluation of constant value failed
     //~| constant accesses static
-    //~| WARN this was previously accepted by the compiler but is being phased out
 };
-#[warn(const_err)]
 const U8_MUT3: &u8 = {
     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
-    //~^ WARN [const_err]
+    //~^ ERROR evaluation of constant value failed
     //~| constant accesses static
-    //~| WARN this was previously accepted by the compiler but is being phased out
 };
 
 pub fn test(x: &[u8; 1]) -> bool {

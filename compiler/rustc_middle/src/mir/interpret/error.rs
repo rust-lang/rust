@@ -479,12 +479,7 @@ impl<T: Any> AsAny for T {
 }
 
 /// A trait for machine-specific errors (or other "machine stop" conditions).
-pub trait MachineStopType: AsAny + fmt::Display + Send {
-    /// If `true`, emit a hard error instead of going through the `CONST_ERR` lint
-    fn is_hard_err(&self) -> bool {
-        false
-    }
-}
+pub trait MachineStopType: AsAny + fmt::Display + Send {}
 
 impl dyn MachineStopType {
     #[inline(always)]
@@ -542,17 +537,5 @@ impl InterpError<'_> {
                 | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure { .. })
                 | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
         )
-    }
-
-    /// Should this error be reported as a hard error, preventing compilation, or a soft error,
-    /// causing a deny-by-default lint?
-    pub fn is_hard_err(&self) -> bool {
-        use InterpError::*;
-        match *self {
-            MachineStop(ref err) => err.is_hard_err(),
-            UndefinedBehavior(_) => true,
-            ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted) => true,
-            _ => false,
-        }
     }
 }

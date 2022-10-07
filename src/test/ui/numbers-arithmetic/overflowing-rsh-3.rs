@@ -1,7 +1,7 @@
 // build-fail
 // compile-flags: -C debug-assertions
 
-#![deny(arithmetic_overflow, const_err)]
+#![deny(arithmetic_overflow)]
 
 fn main() {
     let _x = -1_i64 >> 64;

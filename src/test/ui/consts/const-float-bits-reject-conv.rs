@@ -28,22 +28,18 @@ fn f32() {
     const MASKED_NAN2: u32 = f32::NAN.to_bits() ^ 0x0055_5555;
 
     const_assert!(f32::from_bits(MASKED_NAN1).is_nan());
-    //~^ ERROR any use of this value will cause an error
-    //~| WARNING this was previously accepted
+    //~^ ERROR evaluation of constant value failed
     const_assert!(f32::from_bits(MASKED_NAN1).is_nan());
-    //~^ ERROR any use of this value will cause an error
-    //~| WARNING this was previously accepted
+    //~^ ERROR evaluation of constant value failed
 
     // LLVM does not guarantee that loads and stores of NaNs preserve their exact bit pattern.
     // In practice, this seems to only cause a problem on x86, since the most widely used calling
     // convention mandates that floating point values are returned on the x87 FPU stack. See #73328.
     if !cfg!(target_arch = "x86") {
         const_assert!(f32::from_bits(MASKED_NAN1).to_bits(), MASKED_NAN1);
-        //~^ ERROR any use of this value will cause an error
-        //~| WARNING this was previously accepted
+        //~^ ERROR evaluation of constant value failed
         const_assert!(f32::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
-        //~^ ERROR any use of this value will cause an error
-        //~| WARNING this was previously accepted
+        //~^ ERROR evaluation of constant value failed
     }
 }
 
@@ -55,20 +51,16 @@ fn f64() {
     const MASKED_NAN2: u64 = f64::NAN.to_bits() ^ 0x0005_5555_5555_5555;
 
     const_assert!(f64::from_bits(MASKED_NAN1).is_nan());
-    //~^ ERROR any use of this value will cause an error
-    //~| WARNING this was previously accepted
+    //~^ ERROR evaluation of constant value failed
     const_assert!(f64::from_bits(MASKED_NAN1).is_nan());
-    //~^ ERROR any use of this value will cause an error
-    //~| WARNING this was previously accepted
+    //~^ ERROR evaluation of constant value failed
 
     // See comment above.
     if !cfg!(target_arch = "x86") {
         const_assert!(f64::from_bits(MASKED_NAN1).to_bits(), MASKED_NAN1);
-        //~^ ERROR any use of this value will cause an error
-        //~| WARNING this was previously accepted
+        //~^ ERROR evaluation of constant value failed
         const_assert!(f64::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
-        //~^ ERROR any use of this value will cause an error
-        //~| WARNING this was previously accepted
+        //~^ ERROR evaluation of constant value failed
     }
 }
 

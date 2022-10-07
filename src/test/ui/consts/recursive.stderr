@@ -9,7 +9,7 @@ LL |     f(x);
    = help: a `loop` may express intention better if this is on purpose
    = note: `#[warn(unconditional_recursion)]` on by default
 
-error: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/recursive.rs:4:5
    |
 LL |     f(x);
@@ -18,33 +18,10 @@ LL |     f(x);
    |     reached the configured maximum number of stack frames
    |     inside `f::<i32>` at $DIR/recursive.rs:4:5
    |     [... 126 additional calls inside `f::<i32>` at $DIR/recursive.rs:4:5 ...]
-   |     inside `X` at $DIR/recursive.rs:9:15
 ...
 LL | const X: () = f(1);
-   | -----------
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
+   |               ---- inside `X` at $DIR/recursive.rs:8:15
 
 error: aborting due to previous error; 1 warning emitted
 
-Future incompatibility report: Future breakage diagnostic:
-error: any use of this value will cause an error
-  --> $DIR/recursive.rs:4:5
-   |
-LL |     f(x);
-   |     ^^^^
-   |     |
-   |     reached the configured maximum number of stack frames
-   |     inside `f::<i32>` at $DIR/recursive.rs:4:5
-   |     [... 126 additional calls inside `f::<i32>` at $DIR/recursive.rs:4:5 ...]
-   |     inside `X` at $DIR/recursive.rs:9:15
-...
-LL | const X: () = f(1);
-   | -----------
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-
+For more information about this error, try `rustc --explain E0080`.

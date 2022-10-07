@@ -1,21 +1,17 @@
-error: any use of this value will cause an error
+error[E0080]: evaluation of `<Sum<U8, U8> as Unsigned>::MAX` failed
   --> $DIR/issue-50814.rs:15:21
    |
 LL |     const MAX: u8 = A::MAX + B::MAX;
-   |     -------------   ^^^^^^^^^^^^^^^ attempt to compute `u8::MAX + u8::MAX`, which would overflow
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
+   |                     ^^^^^^^^^^^^^^^ attempt to compute `u8::MAX + u8::MAX`, which would overflow
 
 error[E0080]: evaluation of `foo::<i32>` failed
-  --> $DIR/issue-50814.rs:21:6
+  --> $DIR/issue-50814.rs:20:6
    |
 LL |     &Sum::<U8,U8>::MAX
    |      ^^^^^^^^^^^^^^^^^ referenced constant has errors
 
 note: the above error was encountered while instantiating `fn foo::<i32>`
-  --> $DIR/issue-50814.rs:26:5
+  --> $DIR/issue-50814.rs:25:5
    |
 LL |     foo(0);
    |     ^^^^^^
@@ -23,14 +19,3 @@ LL |     foo(0);
 error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
-Future incompatibility report: Future breakage diagnostic:
-error: any use of this value will cause an error
-  --> $DIR/issue-50814.rs:15:21
-   |
-LL |     const MAX: u8 = A::MAX + B::MAX;
-   |     -------------   ^^^^^^^^^^^^^^^ attempt to compute `u8::MAX + u8::MAX`, which would overflow
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-

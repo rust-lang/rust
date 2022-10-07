@@ -22,26 +22,12 @@ LL |     panic!(&1);
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: erroneous constant used
+error[E0080]: erroneous constant used
   --> $DIR/issue-66693.rs:11:12
    |
 LL |     panic!(&1);
    |            ^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
 
 error: aborting due to 4 previous errors
 
-Future incompatibility report: Future breakage diagnostic:
-error: erroneous constant used
-  --> $DIR/issue-66693.rs:11:12
-   |
-LL |     panic!(&1);
-   |            ^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-
+For more information about this error, try `rustc --explain E0080`.

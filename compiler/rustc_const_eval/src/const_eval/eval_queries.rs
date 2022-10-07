@@ -317,45 +317,23 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
         Err(error) => {
             let err = ConstEvalErr::new(&ecx, error, None);
-            // Some CTFE errors raise just a lint, not a hard error; see
-            // <https://github.com/rust-lang/rust/issues/71800>.
-            let is_hard_err = if let Some(def) = def.as_local() {
-                // (Associated) consts only emit a lint, since they might be unused.
-                !matches!(tcx.def_kind(def.did.to_def_id()), DefKind::Const | DefKind::AssocConst)
-                    // check if the inner InterpError is hard
-                    || err.error.is_hard_err()
+            let msg = if is_static {
+                Cow::from("could not evaluate static initializer")
             } else {
-                // use of broken constant from other crate: always an error
-                true
+                // If the current item has generics, we'd like to enrich the message with the
+                // instance and its substs: to show the actual compile-time values, in addition to
+                // the expression, leading to the const eval error.
+                let instance = &key.value.instance;
+                if !instance.substs.is_empty() {
+                    let instance = with_no_trimmed_paths!(instance.to_string());
+                    let msg = format!("evaluation of `{}` failed", instance);
+                    Cow::from(msg)
+                } else {
+                    Cow::from("evaluation of constant value failed")
+                }
             };
 
-            if is_hard_err {
-                let msg = if is_static {
-                    Cow::from("could not evaluate static initializer")
-                } else {
-                    // If the current item has generics, we'd like to enrich the message with the
-                    // instance and its substs: to show the actual compile-time values, in addition to
-                    // the expression, leading to the const eval error.
-                    let instance = &key.value.instance;
-                    if !instance.substs.is_empty() {
-                        let instance = with_no_trimmed_paths!(instance.to_string());
-                        let msg = format!("evaluation of `{}` failed", instance);
-                        Cow::from(msg)
-                    } else {
-                        Cow::from("evaluation of constant value failed")
-                    }
-                };
-
-                Err(err.report_as_error(ecx.tcx.at(err.span), &msg))
-            } else {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def.as_local().unwrap().did);
-                Err(err.report_as_lint(
-                    tcx.at(tcx.def_span(def.did)),
-                    "any use of this value will cause an error",
-                    hir_id,
-                    Some(err.span),
-                ))
-            }
+            Err(err.report_as_error(ecx.tcx.at(err.span), &msg))
         }
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.

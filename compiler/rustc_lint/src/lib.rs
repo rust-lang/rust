@@ -522,6 +522,11 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         "now allowed, see issue #59159 \
          <https://github.com/rust-lang/rust/issues/59159> for more information",
     );
+    store.register_removed(
+        "const_err",
+        "converted into hard error, see issue #71800 \
+         <https://github.com/rust-lang/rust/issues/71800> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

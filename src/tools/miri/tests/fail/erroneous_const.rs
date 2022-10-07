@@ -3,7 +3,6 @@
 // Inlining changes the error location
 //@compile-flags: -Zmir-opt-level=0
 #![feature(never_type)]
-#![warn(warnings, const_err)]
 
 struct PrintName<T>(T);
 impl<T> PrintName<T> {

@@ -5,111 +5,40 @@ LL |     0 - 1
    |     ^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
    |
 note: the lint level is defined here
-  --> $DIR/promoted_errors.rs:11:20
+  --> $DIR/promoted_errors.rs:11:9
    |
-LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
-   |                    ^^^^^^^^^^^^^^^^^^^
+LL | #![warn(arithmetic_overflow, unconditional_panic)]
+   |         ^^^^^^^^^^^^^^^^^^^
 
 warning: this operation will panic at runtime
-  --> $DIR/promoted_errors.rs:21:5
+  --> $DIR/promoted_errors.rs:19:5
    |
 LL |     1 / 0
    |     ^^^^^ attempt to divide `1_i32` by zero
    |
 note: the lint level is defined here
-  --> $DIR/promoted_errors.rs:11:41
+  --> $DIR/promoted_errors.rs:11:30
    |
-LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
-   |                                         ^^^^^^^^^^^^^^^^^^^
+LL | #![warn(arithmetic_overflow, unconditional_panic)]
+   |                              ^^^^^^^^^^^^^^^^^^^
 
 warning: this operation will panic at runtime
-  --> $DIR/promoted_errors.rs:27:5
+  --> $DIR/promoted_errors.rs:23:5
    |
 LL |     1 / (1 - 1)
    |     ^^^^^^^^^^^ attempt to divide `1_i32` by zero
 
 warning: this operation will panic at runtime
-  --> $DIR/promoted_errors.rs:31:5
+  --> $DIR/promoted_errors.rs:27:5
    |
 LL |     1 / (false as i32)
    |     ^^^^^^^^^^^^^^^^^^ attempt to divide `1_i32` by zero
 
 warning: this operation will panic at runtime
-  --> $DIR/promoted_errors.rs:35:5
+  --> $DIR/promoted_errors.rs:31:5
    |
 LL |     [1, 2, 3][4]
    |     ^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 4
 
-warning: any use of this value will cause an error
-  --> $DIR/promoted_errors.rs:15:5
-   |
-LL |     0 - 1
-   |     ^^^^^
-   |     |
-   |     attempt to compute `0_u32 - 1_u32`, which would overflow
-   |     inside `overflow` at $DIR/promoted_errors.rs:15:5
-   |     inside `X` at $DIR/promoted_errors.rs:43:29
-...
-LL | const X: () = {
-   | -----------
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-note: the lint level is defined here
-  --> $DIR/promoted_errors.rs:11:9
-   |
-LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
-   |         ^^^^^^^^^
-
-warning: any use of this value will cause an error
-  --> $DIR/promoted_errors.rs:43:28
-   |
-LL | const X: () = {
-   | -----------
-LL |     let _x: &'static u32 = &overflow();
-   |                            ^^^^^^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-
-warning: 7 warnings emitted
-
-Future incompatibility report: Future breakage diagnostic:
-warning: any use of this value will cause an error
-  --> $DIR/promoted_errors.rs:15:5
-   |
-LL |     0 - 1
-   |     ^^^^^
-   |     |
-   |     attempt to compute `0_u32 - 1_u32`, which would overflow
-   |     inside `overflow` at $DIR/promoted_errors.rs:15:5
-   |     inside `X` at $DIR/promoted_errors.rs:43:29
-...
-LL | const X: () = {
-   | -----------
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-note: the lint level is defined here
-  --> $DIR/promoted_errors.rs:11:9
-   |
-LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
-   |         ^^^^^^^^^
-
-Future breakage diagnostic:
-warning: any use of this value will cause an error
-  --> $DIR/promoted_errors.rs:43:28
-   |
-LL | const X: () = {
-   | -----------
-LL |     let _x: &'static u32 = &overflow();
-   |                            ^^^^^^^^^^^ referenced constant has errors
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-note: the lint level is defined here
-  --> $DIR/promoted_errors.rs:11:9
-   |
-LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
-   |         ^^^^^^^^^
+warning: 5 warnings emitted
 
