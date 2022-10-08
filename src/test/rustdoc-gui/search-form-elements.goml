@@ -1,5 +1,5 @@
 // This test ensures that the elements in ".search-form" have the expected display.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
 
 // Ayu theme

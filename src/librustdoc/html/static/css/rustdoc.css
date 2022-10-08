@@ -163,9 +163,6 @@ h1.fqn {
 	padding-bottom: 6px;
 	margin-bottom: 15px;
 }
-.main-heading a:hover {
-	text-decoration: underline;
-}
 #toggle-all-docs {
 	text-decoration: none;
 }
@@ -584,10 +581,6 @@ pre.example-line-numbers {
 	border-bottom-left-radius: 5px;
 }
 
-.example-wrap > pre.rust a:hover {
-	text-decoration: underline;
-}
-
 .src-line-numbers {
 	text-align: right;
 }
@@ -767,6 +760,8 @@ h2.small-section-header > .anchor {
 	content: '§';
 }
 
+.main-heading a:hover,
+.example-wrap > pre.rust a:hover,
 .all-items a:hover,
 .docblock a:not(.test-arrow):not(.scrape-help):hover,
 .docblock-short a:not(.test-arrow):not(.scrape-help):hover,
@@ -1093,7 +1088,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 .rightside {
 	padding-left: 12px;
 	padding-right: 2px;
-	position: initial;
 	float: right;
 }
 

@@ -1,5 +1,5 @@
 // This test ensures that the type declaration content overflow is handled inside the <pre> directly.
-goto: file://|DOC_PATH|/lib2/long_table/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/lib2/long_table/struct.Foo.html"
 // We set a fixed size so there is no chance of "random" resize.
 size: (1100, 800)
 // Logically, the ".docblock" and the "<p>" should have the same scroll width.

@@ -115,7 +115,7 @@ pub enum SelectionCandidate<'tcx> {
 
     ParamCandidate(ty::PolyTraitPredicate<'tcx>),
     ImplCandidate(DefId),
-    AutoImplCandidate(DefId),
+    AutoImplCandidate,
 
     /// This is a trait matching with a projected type as `Self`, and we found
     /// an applicable bound in the trait definition. The `usize` is an index
@@ -143,7 +143,7 @@ pub enum SelectionCandidate<'tcx> {
     /// Builtin implementation of `Pointee`.
     PointeeCandidate,
 
-    TraitAliasCandidate(DefId),
+    TraitAliasCandidate,
 
     /// Matching `dyn Trait` with a supertrait of `Trait`. The index is the
     /// position in the iterator returned by

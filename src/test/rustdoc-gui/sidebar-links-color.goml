@@ -1,5 +1,5 @@
 // This test checks links colors in sidebar before and after hover.
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 
 // This is needed so that the text color is computed.
 show-text: true

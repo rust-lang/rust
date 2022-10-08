@@ -11,7 +11,7 @@
 // 18px  1.125em
 // 16px  1rem
 // 14px  0.875rem
-goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
 
 assert-css: ("h1.fqn", {"font-size": "24px"})
 
@@ -50,7 +50,7 @@ assert-css: ("h6#sub-heading-for-struct-impl-item-doc", {"font-size": "14px"})
 assert-css: ("h6#sub-heading-for-struct-impl-item-doc", {"border-bottom-width": "0px"})
 assert-css: ("h6#sub-sub-heading-for-struct-impl-item-doc", {"font-size": "14px"})
 
-goto: file://|DOC_PATH|/test_docs/enum.HeavilyDocumentedEnum.html
+goto: "file://" + |DOC_PATH| + "/test_docs/enum.HeavilyDocumentedEnum.html"
 
 assert-css: ("h1.fqn", {"font-size": "24px"})
 
@@ -109,7 +109,7 @@ assert-css: ("h6#sub-sub-heading-for-enum-impl-item-doc", {"border-bottom-width"
 assert-text: (".sidebar .mod h3", "Modules")
 assert-css: (".sidebar .mod h3", {"border-bottom-width": "0px"}, ALL)
 
-goto: file://|DOC_PATH|/test_docs/union.HeavilyDocumentedUnion.html
+goto: "file://" + |DOC_PATH| + "/test_docs/union.HeavilyDocumentedUnion.html"
 
 assert-css: ("h1.fqn", {"font-size": "24px"})
 
@@ -141,7 +141,7 @@ assert-css: ("h5#title-for-union-impl-item-doc", {"border-bottom-width": "0px"})
 assert-css: ("h6#sub-heading-for-union-impl-item-doc", {"font-size": "14px"})
 assert-css: ("h6#sub-heading-for-union-impl-item-doc", {"border-bottom-width": "0px"})
 
-goto: file://|DOC_PATH|/test_docs/macro.heavily_documented_macro.html
+goto: "file://" + |DOC_PATH| + "/test_docs/macro.heavily_documented_macro.html"
 
 assert-css: ("h1.fqn", {"font-size": "24px"})
 
@@ -153,7 +153,7 @@ assert-css: ("h3#top-doc-prose-sub-heading", {"border-bottom-width": "1px"})
 // Checking colors now.
 show-text: true
 local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
-goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
 assert-css: (
     ".top-doc .docblock h2",
     {"color": "rgb(0, 0, 0)", "border-bottom": "1px solid rgb(221, 221, 221)"},
@@ -246,7 +246,7 @@ assert-css: (
 )
 
 local-storage: {"rustdoc-theme": "light"}
-goto: file://|DOC_PATH|/staged_api/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
 assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)
 
 local-storage: {"rustdoc-theme": "dark"}
