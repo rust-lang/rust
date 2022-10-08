@@ -735,14 +735,15 @@ function loadCss(cssFileName) {
     let oldSidebarScrollPosition = null;
 
     function showSidebar() {
-        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+        const mobile_topbar = document.querySelector(".mobile-topbar");
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT && mobile_topbar) {
             // This is to keep the scroll position on mobile.
             oldSidebarScrollPosition = window.scrollY;
             document.body.style.width = `${document.body.offsetWidth}px`;
             document.body.style.position = "fixed";
             document.body.style.top = `-${oldSidebarScrollPosition}px`;
-            document.querySelector(".mobile-topbar").style.top = `${oldSidebarScrollPosition}px`;
-            document.querySelector(".mobile-topbar").style.position = "relative";
+            mobile_topbar.style.top = `${oldSidebarScrollPosition}px`;
+            mobile_topbar.style.position = "relative";
         } else {
             oldSidebarScrollPosition = null;
         }
@@ -751,13 +752,14 @@ function loadCss(cssFileName) {
     }
 
     function hideSidebar() {
-        if (oldSidebarScrollPosition !== null) {
+        const mobile_topbar = document.querySelector(".mobile-topbar");
+        if (oldSidebarScrollPosition !== null && mobile_topbar) {
             // This is to keep the scroll position on mobile.
             document.body.style.width = "";
             document.body.style.position = "";
             document.body.style.top = "";
-            document.querySelector(".mobile-topbar").style.top = "";
-            document.querySelector(".mobile-topbar").style.position = "";
+            mobile_topbar.style.top = "";
+            mobile_topbar.style.position = "";
             // The scroll position is lost when resetting the style, hence why we store it in
             // `oldSidebarScrollPosition`.
             window.scrollTo(0, oldSidebarScrollPosition);
