@@ -1,0 +1,37 @@
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
+compare-elements-property: (
+	"//a[@title='test_docs::safe_fn fn']/..",
+	"//a[@title='test_docs::unsafe_fn fn']/..",
+	["clientHeight"]
+)
+
+// If the text isn't displayed, the browser doesn't compute color style correctly...
+show-text: true
+
+// Set the theme to dark.
+local-storage: {"rustdoc-theme": "dark", "rustdoc-preferred-dark-theme": "dark", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+assert-css: (".item-left sup", {
+	"color": "rgb(221, 221, 221)"
+})
+
+// Set the theme to ayu.
+local-storage: {"rustdoc-theme": "ayu", "rustdoc-preferred-dark-theme": "ayu", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+assert-css: (".item-left sup", {
+	"color": "rgb(197, 197, 197)"
+})
+
+// Set the theme to light.
+local-storage: {"rustdoc-theme": "light", "rustdoc-preferred-dark-theme": "light", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+assert-css: (".item-left sup", {
+	"color": "rgb(0, 0, 0)"
+})
