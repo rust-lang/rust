@@ -4,6 +4,7 @@ mod borrow_as_ptr;
 mod cast_abs_to_unsigned;
 mod cast_enum_constructor;
 mod cast_lossless;
+mod cast_nan_to_int;
 mod cast_possible_truncation;
 mod cast_possible_wrap;
 mod cast_precision_loss;
@@ -570,6 +571,7 @@ declare_clippy_lint! {
     pedantic,
     "borrowing just to cast to a raw pointer"
 }
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for a raw slice being cast to a slice pointer
@@ -623,6 +625,28 @@ declare_clippy_lint! {
     "casting the result of the `&self`-taking `as_ptr` to a mutabe pointer"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for a known NaN float being cast to an integer
+    ///
+    /// ### Why is this bad?
+    /// NaNs are cast into zero, so one could simply use this and make the
+    /// code more readable. The lint could also hint at a programmer error.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// let _: (0.0_f32 / 0.0) as u64;
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// let _: = 0_u64;
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub CAST_NAN_TO_INT,
+    suspicious,
+    "casting a known floating-point NaN into an integer"
+}
+
 pub struct Casts {
     msrv: Option<RustcVersion>,
 }
@@ -656,6 +680,7 @@ impl_lint_pass!(Casts => [
     BORROW_AS_PTR,
     CAST_SLICE_FROM_RAW_PARTS,
     AS_PTR_CAST_MUT,
+    CAST_NAN_TO_INT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -693,6 +718,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     cast_precision_loss::check(cx, expr, cast_from, cast_to);
                     cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
                     cast_abs_to_unsigned::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
+                    cast_nan_to_int::check(cx, expr, cast_expr, cast_from, cast_to);
                 }
                 cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
                 cast_enum_constructor::check(cx, expr, cast_expr, cast_from);
