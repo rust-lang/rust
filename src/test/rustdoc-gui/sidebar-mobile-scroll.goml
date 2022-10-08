@@ -1,5 +1,5 @@
 // This test ensures that the mobile sidebar preserves scroll position.
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 // Switching to "mobile view" by reducing the width to 600px.
 size: (600, 600)
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})

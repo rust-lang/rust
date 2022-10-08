@@ -1,5 +1,5 @@
 // This ensures that the `<details>`/`<summary>` elements are displayed as expected.
-goto: file://|DOC_PATH|/test_docs/details/struct.Details.html
+goto: "file://" + |DOC_PATH| + "/test_docs/details/struct.Details.html"
 show-text: true
 local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
 reload:
