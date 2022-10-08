@@ -625,7 +625,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                _ => candidates.vec.push(AutoImplCandidate(def_id)),
+                _ => candidates.vec.push(AutoImplCandidate),
             }
         }
     }
@@ -914,7 +914,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let def_id = obligation.predicate.def_id();
 
         if self.tcx().is_trait_alias(def_id) {
-            candidates.vec.push(TraitAliasCandidate(def_id));
+            candidates.vec.push(TraitAliasCandidate);
         }
     }
 
