@@ -42,4 +42,4 @@ assert-false: ".source-sidebar-expanded"
 assert: "nav.sidebar"
 
 // Check that the topbar is not visible
-assert-property: (".mobile-topbar", {"offsetParent": "null"})
+assert-false: ".mobile-topbar"
