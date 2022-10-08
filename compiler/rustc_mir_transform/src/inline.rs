@@ -977,6 +977,21 @@ impl Integrator<'_, '_> {
         trace!("mapping block `{:?}` to `{:?}`", block, new);
         new
     }
+
+    fn map_unwind(&self, unwind: Option<BasicBlock>) -> Option<BasicBlock> {
+        if self.in_cleanup_block {
+            if unwind.is_some() {
+                bug!("cleanup on cleanup block");
+            }
+            return unwind;
+        }
+
+        match unwind {
+            Some(target) => Some(self.map_block(target)),
+            // Add an unwind edge to the original call's cleanup block
+            None => self.cleanup_block,
+        }
+    }
 }
 
 impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
@@ -1085,35 +1100,17 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             TerminatorKind::Drop { ref mut target, ref mut unwind, .. }
             | TerminatorKind::DropAndReplace { ref mut target, ref mut unwind, .. } => {
                 *target = self.map_block(*target);
-                if let Some(tgt) = *unwind {
-                    *unwind = Some(self.map_block(tgt));
-                } else if !self.in_cleanup_block {
-                    // Unless this drop is in a cleanup block, add an unwind edge to
-                    // the original call's cleanup block
-                    *unwind = self.cleanup_block;
-                }
+                *unwind = self.map_unwind(*unwind);
             }
             TerminatorKind::Call { ref mut target, ref mut cleanup, .. } => {
                 if let Some(ref mut tgt) = *target {
                     *tgt = self.map_block(*tgt);
                 }
-                if let Some(tgt) = *cleanup {
-                    *cleanup = Some(self.map_block(tgt));
-                } else if !self.in_cleanup_block {
-                    // Unless this call is in a cleanup block, add an unwind edge to
-                    // the original call's cleanup block
-                    *cleanup = self.cleanup_block;
-                }
+                *cleanup = self.map_unwind(*cleanup);
             }
             TerminatorKind::Assert { ref mut target, ref mut cleanup, .. } => {
                 *target = self.map_block(*target);
-                if let Some(tgt) = *cleanup {
-                    *cleanup = Some(self.map_block(tgt));
-                } else if !self.in_cleanup_block {
-                    // Unless this assert is in a cleanup block, add an unwind edge to
-                    // the original call's cleanup block
-                    *cleanup = self.cleanup_block;
-                }
+                *cleanup = self.map_unwind(*cleanup);
             }
             TerminatorKind::Return => {
                 terminator.kind = if let Some(tgt) = self.callsite.target {
@@ -1141,11 +1138,8 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             TerminatorKind::InlineAsm { ref mut destination, ref mut cleanup, .. } => {
                 if let Some(ref mut tgt) = *destination {
                     *tgt = self.map_block(*tgt);
-                } else if !self.in_cleanup_block {
-                    // Unless this inline asm is in a cleanup block, add an unwind edge to
-                    // the original call's cleanup block
-                    *cleanup = self.cleanup_block;
                 }
+                *cleanup = self.map_unwind(*cleanup);
             }
         }
     }
