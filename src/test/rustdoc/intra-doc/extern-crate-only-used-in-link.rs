@@ -16,4 +16,4 @@
 //! [`empty`]
 
 // @has - '//a[@href="../empty2/index.html"]' 'empty2'
-//! [empty2<x>]
+//! [`empty2<x>`]
