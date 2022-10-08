@@ -64,8 +64,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::UserDefined(self.confirm_impl_candidate(obligation, impl_def_id))
             }
 
-            AutoImplCandidate(trait_def_id) => {
-                let data = self.confirm_auto_impl_candidate(obligation, trait_def_id);
+            AutoImplCandidate => {
+                let data = self.confirm_auto_impl_candidate(obligation);
                 ImplSource::AutoImpl(data)
             }
 
@@ -100,8 +100,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             PointeeCandidate => ImplSource::Pointee(ImplSourcePointeeData),
 
-            TraitAliasCandidate(alias_def_id) => {
-                let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);
+            TraitAliasCandidate => {
+                let data = self.confirm_trait_alias_candidate(obligation);
                 ImplSource::TraitAlias(data)
             }
 
@@ -317,13 +317,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_auto_impl_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        trait_def_id: DefId,
     ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
-        debug!(?obligation, ?trait_def_id, "confirm_auto_impl_candidate");
+        debug!(?obligation, "confirm_auto_impl_candidate");
 
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
         let types = self.constituent_types_for_ty(self_ty);
-        self.vtable_auto_impl(obligation, trait_def_id, types)
+        self.vtable_auto_impl(obligation, obligation.predicate.def_id(), types)
     }
 
     /// See `confirm_auto_impl_candidate`.
@@ -658,10 +657,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_trait_alias_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        alias_def_id: DefId,
     ) -> ImplSourceTraitAliasData<'tcx, PredicateObligation<'tcx>> {
-        debug!(?obligation, ?alias_def_id, "confirm_trait_alias_candidate");
+        debug!(?obligation, "confirm_trait_alias_candidate");
 
+        let alias_def_id = obligation.predicate.def_id();
         let predicate = self.infcx().replace_bound_vars_with_placeholders(obligation.predicate);
         let trait_ref = predicate.trait_ref;
         let trait_def_id = trait_ref.def_id;
