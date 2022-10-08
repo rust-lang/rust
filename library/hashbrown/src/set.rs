@@ -136,7 +136,9 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -164,7 +166,9 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -196,7 +200,9 @@ impl<T: Hash + Eq, A: Allocator + Clone> HashSet<T, DefaultHashBuilder, A> {
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -224,7 +230,9 @@ impl<T: Hash + Eq, A: Allocator + Clone> HashSet<T, DefaultHashBuilder, A> {
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -430,7 +438,9 @@ impl<T, S> HashSet<T, S, Global> {
     /// The hash set is initially created with a capacity of 0, so it will not
     /// allocate until it is first inserted into.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -466,7 +476,9 @@ impl<T, S> HashSet<T, S, Global> {
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -513,7 +525,9 @@ where
     /// The hash set is initially created with a capacity of 0, so it will not
     /// allocate until it is first inserted into.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -549,7 +563,9 @@ where
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]

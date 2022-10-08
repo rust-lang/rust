@@ -290,7 +290,9 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -318,7 +320,9 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -349,7 +353,9 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -398,7 +404,9 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -455,7 +463,9 @@ impl<K, V, S> HashMap<K, V, S> {
     /// The hash map is initially created with a capacity of 0, so it will not
     /// allocate until it is first inserted into.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -495,7 +505,9 @@ impl<K, V, S> HashMap<K, V, S> {
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -543,7 +555,9 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -576,7 +590,9 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
-    /// Warning: `hash_builder` normally use a fixed key by default and that does
+    /// # HashDoS resistance
+    /// 
+    /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
     /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
@@ -6193,7 +6209,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     ///
     /// # Panics
     ///
-    /// Will panic if this OccupiedEntryRef was created through [`Entry::insert`].
+    /// Will panic if this OccupiedEntryRef was created through [`EntryRef::insert`].
     ///
     /// # Examples
     ///
