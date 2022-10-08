@@ -497,18 +497,18 @@ impl Step for Llvm {
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if target != builder.config.build {
-            builder.ensure(Llvm { target: builder.config.build });
-            // FIXME: if the llvm root for the build triple is overridden then we
-            //        should use llvm-tblgen from there, also should verify that it
-            //        actually exists most of the time in normal installs of LLVM.
-            let host_bin = builder.llvm_out(builder.config.build).join("bin");
-            cfg.define("LLVM_TABLEGEN", host_bin.join("llvm-tblgen").with_extension(EXE_EXTENSION));
-            // LLVM_NM is required for cross compiling using MSVC
-            cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
-            cfg.define(
-                "LLVM_CONFIG_PATH",
-                host_bin.join("llvm-config").with_extension(EXE_EXTENSION),
-            );
+            let llvm_config = builder.ensure(Llvm { target: builder.config.build });
+            if !builder.config.dry_run {
+                let llvm_bindir = output(Command::new(&llvm_config).arg("--bindir"));
+                let host_bin = Path::new(llvm_bindir.trim());
+                cfg.define(
+                    "LLVM_TABLEGEN",
+                    host_bin.join("llvm-tblgen").with_extension(EXE_EXTENSION),
+                );
+                // LLVM_NM is required for cross compiling using MSVC
+                cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
+            }
+            cfg.define("LLVM_CONFIG_PATH", llvm_config);
             if builder.config.llvm_clang {
                 let build_bin = builder.llvm_out(builder.config.build).join("build").join("bin");
                 let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
