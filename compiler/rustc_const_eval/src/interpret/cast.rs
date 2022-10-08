@@ -42,8 +42,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let res = self.pointer_from_exposed_address_cast(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
-
-            Misc => {
+            // FIXME: We shouldn't use `misc_cast` for these but handle them separately.
+            IntToInt | FloatToInt | FloatToFloat | IntToFloat | FnPtrToPtr | PtrToPtr => {
                 let src = self.read_immediate(src)?;
                 let res = self.misc_cast(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
