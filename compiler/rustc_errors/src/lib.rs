@@ -411,7 +411,7 @@ struct HandlerInner {
     /// would be unnecessary repetition.
     taught_diagnostics: FxHashSet<DiagnosticId>,
 
-    /// Used to suggest rustc --explain <error code>
+    /// Used to suggest rustc --explain `<error code>`
     emitted_diagnostic_codes: FxIndexSet<DiagnosticId>,
 
     /// This set contains a hash of every diagnostic that has been emitted by
