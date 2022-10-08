@@ -34,9 +34,16 @@ pub mod rwlock;
 pub mod thread;
 pub mod thread_info;
 pub mod thread_local_dtor;
-pub mod thread_local_key;
 pub mod thread_parker;
 pub mod wtf8;
+
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "windows")] {
+        pub use crate::sys::thread_local_key;
+    } else {
+        pub mod thread_local_key;
+    }
+}
 
 cfg_if::cfg_if! {
     if #[cfg(any(target_os = "l4re",
