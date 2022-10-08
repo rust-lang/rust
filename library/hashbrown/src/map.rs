@@ -291,7 +291,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// is first inserted into.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -321,7 +321,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -354,7 +354,7 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// is first inserted into.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -405,7 +405,7 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -464,7 +464,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// allocate until it is first inserted into.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -506,7 +506,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -556,7 +556,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// is first inserted into.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -591,7 +591,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use

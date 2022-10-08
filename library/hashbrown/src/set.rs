@@ -137,7 +137,7 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     /// is first inserted into.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -167,7 +167,7 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -201,7 +201,7 @@ impl<T: Hash + Eq, A: Allocator + Clone> HashSet<T, DefaultHashBuilder, A> {
     /// is first inserted into.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -231,7 +231,7 @@ impl<T: Hash + Eq, A: Allocator + Clone> HashSet<T, DefaultHashBuilder, A> {
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -439,7 +439,7 @@ impl<T, S> HashSet<T, S, Global> {
     /// allocate until it is first inserted into.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -477,7 +477,7 @@ impl<T, S> HashSet<T, S, Global> {
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -526,7 +526,7 @@ where
     /// allocate until it is first inserted into.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
@@ -564,7 +564,7 @@ where
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
     /// # HashDoS resistance
-    /// 
+    ///
     /// The `hash_builder` normally use a fixed key by default and that does
     /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
     /// Users who require HashDoS resistance should explicitly use
