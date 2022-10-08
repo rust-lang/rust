@@ -222,9 +222,9 @@ really helpful for this.
 
 1. Once you have some LLVM IR for the problematic code (see above), you can
 create a minimal working example with Godbolt. Go to
-[gcc.godbolt.org](https://gcc.godbolt.org).
+[llvm.godbolt.org](https://llvm.godbolt.org).
 
-2. Choose `LLVM-IR` as programming language.
+2. Choose `LLVM-IR` as programming language if not already selected.
 
 3. Use `llc` to compile the IR to a particular target as is:
     - There are some useful flags: `-mattr` enables target features, `-march=`
