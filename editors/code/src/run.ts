@@ -89,12 +89,14 @@ export async function selectRunnable(
 
 export class RunnableQuickPick implements vscode.QuickPickItem {
     public label: string;
+    public cargoWorkspaceRoot?: string;
     public description?: string | undefined;
     public detail?: string | undefined;
     public picked?: boolean | undefined;
 
     constructor(public runnable: ra.Runnable) {
         this.label = runnable.label;
+        this.cargoWorkspaceRoot = runnable.args.workspaceRoot;
     }
 }
 
