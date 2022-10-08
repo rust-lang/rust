@@ -7,20 +7,18 @@
 
 use crate::clean::PrimitiveType;
 use crate::html::escape::Escape;
-use crate::html::render::Context;
+use crate::html::render::{Context, LinkFromSrc};
 
 use std::collections::VecDeque;
 use std::fmt::{Display, Write};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_lexer::Cursor;
-use rustc_lexer::{LiteralKind, TokenKind};
+use rustc_lexer::{Cursor, LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use super::format::{self, Buffer};
-use super::render::LinkFromSrc;
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
 pub(crate) struct HrefContext<'a, 'b, 'c> {
