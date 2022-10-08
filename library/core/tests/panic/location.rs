@@ -13,7 +13,7 @@ fn location_const_caller() {
 fn location_const_file() {
     const CALLER: &Location<'static> = Location::caller();
     const FILE: &str = CALLER.file();
-    assert_eq!(FILE, "library/core/tests/panic/location.rs");
+    assert_eq!(FILE, file!());
 }
 
 #[test]
