@@ -1301,6 +1301,15 @@
                     "endsPattern": "^\\[Finished running\\b"
                 },
                 "pattern": "$rustc"
+            },
+            {
+                "name": "rustc-run",
+                "base": "$rustc",
+                "fileLocation": [
+                    "autoDetect",
+                    "${command:rust-analyzer.cargoWorkspaceRootForCurrentRun}"
+                ],
+                "pattern": "$rustc-run"
             }
         ],
         "colors": [
