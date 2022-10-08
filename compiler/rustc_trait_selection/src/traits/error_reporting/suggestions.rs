@@ -258,6 +258,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         found: ty::PolyTraitRef<'tcx>,
         expected: ty::PolyTraitRef<'tcx>,
         cause: &ObligationCauseCode<'tcx>,
+        found_node: Option<Node<'_>>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn note_conflicting_closure_bounds(
@@ -1695,6 +1696,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         found: ty::PolyTraitRef<'tcx>,
         expected: ty::PolyTraitRef<'tcx>,
         cause: &ObligationCauseCode<'tcx>,
+        found_node: Option<Node<'_>>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         pub(crate) fn build_fn_sig_ty<'tcx>(
             infcx: &InferCtxt<'tcx>,
@@ -1755,6 +1757,75 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err.note_expected_found(&signature_kind, expected_str, &signature_kind, found_str);
 
         self.note_conflicting_closure_bounds(cause, &mut err);
+
+        let found_args = match found.kind() {
+            ty::FnPtr(f) => f.inputs().skip_binder().iter(),
+            kind => {
+                span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
+            }
+        };
+        let expected_args = match expected.kind() {
+            ty::FnPtr(f) => f.inputs().skip_binder().iter(),
+            kind => {
+                span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
+            }
+        };
+
+        if let Some(found_node) = found_node {
+            let fn_decl = match found_node {
+                Node::Expr(expr) => match &expr.kind {
+                    hir::ExprKind::Closure(hir::Closure { fn_decl, .. }) => fn_decl,
+                    kind => {
+                        span_bug!(found_span, "expression must be a closure but is {:?}", kind)
+                    }
+                },
+                Node::Item(item) => match &item.kind {
+                    hir::ItemKind::Fn(signature, _generics, _body) => signature.decl,
+                    kind => {
+                        span_bug!(found_span, "item must be a function but is {:?}", kind)
+                    }
+                },
+                node => {
+                    span_bug!(found_span, "node must be a expr or item but is {:?}", node)
+                }
+            };
+
+            let arg_spans = fn_decl.inputs.iter().map(|ty| ty.span);
+
+            fn get_deref_type_and_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
+                let mut refs = 0;
+
+                while let ty::Ref(_, new_ty, _) = ty.kind() {
+                    ty = *new_ty;
+                    refs += 1;
+                }
+
+                (ty, refs)
+            }
+
+            for ((found_arg, expected_arg), arg_span) in
+                found_args.zip(expected_args).zip(arg_spans)
+            {
+                let (found_ty, found_refs) = get_deref_type_and_refs(*found_arg);
+                let (expected_ty, expected_refs) = get_deref_type_and_refs(*expected_arg);
+
+                if found_ty == expected_ty {
+                    let hint = if found_refs < expected_refs {
+                        "hint: consider borrowing here:"
+                    } else if found_refs == expected_refs {
+                        continue;
+                    } else {
+                        "hint: consider removing the borrow:"
+                    };
+                    err.span_suggestion_verbose(
+                        arg_span,
+                        hint,
+                        expected_arg.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
 
         err
     }
