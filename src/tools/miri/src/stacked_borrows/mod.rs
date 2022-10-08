@@ -45,6 +45,7 @@ impl SbTag {
     }
 
     // The default to be used when SB is disabled
+    #[allow(clippy::should_implement_trait)]
     pub fn default() -> Self {
         Self::new(1).unwrap()
     }

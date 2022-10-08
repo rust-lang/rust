@@ -7,9 +7,10 @@
 #![feature(int_log)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
-#![feature(is_some_with)]
+#![feature(is_some_and)]
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
+#![cfg_attr(bootstrap, feature(let_else))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -27,6 +28,7 @@
     clippy::type_complexity,
     clippy::single_element_loop,
     clippy::needless_return,
+    clippy::bool_to_int_with_if,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability
 )]
