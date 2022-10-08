@@ -44,13 +44,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_transmute(&self, from: Ty<'tcx>, to: Ty<'tcx>, hir_id: HirId) {
         let tcx = self.tcx;
         let span = tcx.hir().span(hir_id);
-        let convert = |ty: Ty<'tcx>| {
+        let normalize = |ty| {
             let ty = self.resolve_vars_if_possible(ty);
-            let ty = tcx.normalize_erasing_regions(self.param_env, ty);
-            (SizeSkeleton::compute(ty, tcx, self.param_env), ty)
+            self.tcx.normalize_erasing_regions(self.param_env, ty)
         };
-        let (sk_from, from) = convert(from);
-        let (sk_to, to) = convert(to);
+        let from = normalize(from);
+        let to = normalize(to);
+        trace!(?from, ?to);
+
+        // Transmutes that are only changing lifetimes are always ok.
+        if from == to {
+            return;
+        }
+
+        let skel = |ty| SizeSkeleton::compute(ty, tcx, self.param_env);
+        let sk_from = skel(from);
+        let sk_to = skel(to);
+        trace!(?sk_from, ?sk_to);
 
         // Check for same size using the skeletons.
         if let (Ok(sk_from), Ok(sk_to)) = (sk_from, sk_to) {
