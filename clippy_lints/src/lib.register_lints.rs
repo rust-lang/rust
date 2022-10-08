@@ -259,6 +259,7 @@ store.register_lints(&[
     match_result_ok::MATCH_RESULT_OK,
     matches::COLLAPSIBLE_MATCH,
     matches::INFALLIBLE_DESTRUCTURING_MATCH,
+    matches::MANUAL_FILTER,
     matches::MANUAL_MAP,
     matches::MANUAL_UNWRAP_OR,
     matches::MATCH_AS_REF,

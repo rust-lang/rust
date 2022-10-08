@@ -258,6 +258,7 @@ docs! {
     "manual_async_fn",
     "manual_bits",
     "manual_clamp",
+    "manual_filter",
     "manual_filter_map",
     "manual_find",
     "manual_find_map",

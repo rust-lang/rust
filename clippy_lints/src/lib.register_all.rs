@@ -137,6 +137,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(match_result_ok::MATCH_RESULT_OK),
     LintId::of(matches::COLLAPSIBLE_MATCH),
     LintId::of(matches::INFALLIBLE_DESTRUCTURING_MATCH),
+    LintId::of(matches::MANUAL_FILTER),
     LintId::of(matches::MANUAL_MAP),
     LintId::of(matches::MANUAL_UNWRAP_OR),
     LintId::of(matches::MATCH_AS_REF),
