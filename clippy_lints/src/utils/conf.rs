@@ -335,6 +335,12 @@ define_Conf! {
     ///
     /// Enables verbose mode. Triggers if there is more than one uppercase char next to each other
     (upper_case_acronyms_aggressive: bool = false),
+    /// Lint: MANUAL_LET_ELSE.
+    ///
+    /// Whether the matches should be considered by the lint, and whether there should
+    /// be filtering for common types.
+    (matches_for_let_else: crate::manual_let_else::MatchLintBehaviour =
+        crate::manual_let_else::MatchLintBehaviour::WellKnownTypes),
     /// Lint: _CARGO_COMMON_METADATA.
     ///
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.

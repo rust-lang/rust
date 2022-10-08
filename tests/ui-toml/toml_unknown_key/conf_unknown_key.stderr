@@ -22,6 +22,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            enum-variant-size-threshold
            large-error-threshold
            literal-representation-threshold
+           matches-for-let-else
            max-fn-params-bools
            max-include-file-size
            max-struct-bools

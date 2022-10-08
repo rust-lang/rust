@@ -11,6 +11,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
+use serde::Deserialize;
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {
@@ -47,12 +48,16 @@ declare_clippy_lint! {
 
 pub struct ManualLetElse {
     msrv: Option<RustcVersion>,
+    matches_behaviour: MatchLintBehaviour,
 }
 
 impl ManualLetElse {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
-        Self { msrv }
+    pub fn new(msrv: Option<RustcVersion>, matches_behaviour: MatchLintBehaviour) -> Self {
+        Self {
+            msrv,
+            matches_behaviour,
+        }
     }
 }
 
@@ -89,6 +94,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
                 }
             },
             IfLetOrMatch::Match(_match_expr, arms, source) => {
+                if self.matches_behaviour == MatchLintBehaviour::Never {
+                    return;
+                }
                 if source != MatchSource::Normal {
                     return;
                 }
@@ -97,6 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
                 if arms.len() != 2 {
                     return;
                 }
+                let check_types = self.matches_behaviour == MatchLintBehaviour::WellKnownTypes;
                 // We iterate over both arms, trying to find one that is an identity,
                 // one that diverges. Our check needs to work regardless of the order
                 // of both arms.
@@ -109,7 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
                     }
                     if expr_is_simple_identity(arm.pat, arm.body) {
                         found_identity_arm = true;
-                    } else if expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat) {
+                    } else if expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types) {
                         found_diverging_arm = true;
                     }
                 }
@@ -178,7 +187,7 @@ fn expr_diverges(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
     .is_some()
 }
 
-fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>) -> bool {
+fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>, check_types: bool) -> bool {
     // Check whether the pattern contains any bindings, as the
     // binding might potentially be used in the body.
     // TODO: only look for *used* bindings.
@@ -186,6 +195,11 @@ fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>) -> bool {
     pat.each_binding_or_first(&mut |_, _, _, _| has_bindings = true);
     if has_bindings {
         return false;
+    }
+
+    // If we shouldn't check the types, exit early.
+    if !check_types {
+        return true;
     }
 
     // Check whether any possibly "unknown" patterns are included,
@@ -244,4 +258,11 @@ fn expr_is_simple_identity(pat: &'_ Pat<'_>, expr: &'_ Expr<'_>) -> bool {
         }
     }
     true
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+pub enum MatchLintBehaviour {
+    AllTypes,
+    WellKnownTypes,
+    Never,
 }
