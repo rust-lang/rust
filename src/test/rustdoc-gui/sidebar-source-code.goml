@@ -1,6 +1,6 @@
 // The goal of this test is to ensure that the sidebar is working as expected in the source
 // code pages.
-goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // First: desktop mode.
 size: (1100, 800)
 // We check that the sidebar isn't expanded and has the expected width.
@@ -17,7 +17,7 @@ wait-for: "html:not(.expanded)"
 assert: "nav.sidebar"
 
 // Checking that only the path to the current file is "open".
-goto: file://|DOC_PATH|/src/lib2/another_folder/sub_mod/mod.rs.html
+goto: "file://" + |DOC_PATH| + "/src/lib2/another_folder/sub_mod/mod.rs.html"
 // First we expand the sidebar again.
 click: (10, 10)
 // We wait for the sidebar to be expanded.

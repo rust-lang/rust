@@ -1,5 +1,5 @@
 // This test ensures a few things for item info elements.
-goto: file://|DOC_PATH|/lib2/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
 // Ensuring that the item information don't take 100% of the width if unnecessary.
 // We set a fixed size so there is no chance of "random" resize.
 size: (1100, 800)
@@ -9,7 +9,7 @@ assert-css: (".item-info .stab", {"width": "289px"})
 assert-position: (".item-info .stab", {"x": 245})
 
 // Now we ensure that they're not rendered on the same line.
-goto: file://|DOC_PATH|/lib2/trait.Trait.html
+goto: "file://" + |DOC_PATH| + "/lib2/trait.Trait.html"
 // We first ensure that there are two item info on the trait.
 assert-count: ("#main-content > .item-info .stab", 2)
 // They should not have the same `y` position!
