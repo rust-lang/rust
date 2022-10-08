@@ -1,5 +1,5 @@
 // Checks that the setting "line numbers" is working as expected.
-goto: file://|DOC_PATH|/test_docs/fn.foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 
 // We check that without this setting, there is no line number displayed.
 assert-false: "pre.example-line-numbers"

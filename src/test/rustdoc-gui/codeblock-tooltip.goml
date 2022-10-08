@@ -1,5 +1,5 @@
 // Checking the colors of the codeblocks tooltips.
-goto: file://|DOC_PATH|/test_docs/fn.foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 show-text: true
 
 // Dark theme.

@@ -1,7 +1,7 @@
 // This test ensure that the sidebar isn't "hidden" on mobile but instead moved out of the viewport.
 // This is especially important for devices for "text-first" content (like for users with
 // sight issues).
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 // Switching to "mobile view" by reducing the width to 600px.
 size: (600, 600)
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})

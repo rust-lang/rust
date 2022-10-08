@@ -1,6 +1,6 @@
 // Checks that the reexports are present in the search index, can have
 // doc aliases and are highligted when their ID is the hash of the page.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
 reload:
 // First we check that the reexport has the correct ID and no background color.
