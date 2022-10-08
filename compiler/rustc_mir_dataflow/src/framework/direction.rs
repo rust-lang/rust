@@ -1,4 +1,4 @@
-use rustc_middle::mir::{self, BasicBlock, Location, SwitchTargets};
+use rustc_middle::mir::{self, BasicBlock, Location, SwitchTargets, UnwindAction};
 use rustc_middle::ty::TyCtxt;
 use std::ops::RangeInclusive;
 
@@ -478,10 +478,10 @@ impl Direction for Forward {
 
             Goto { target } => propagate(target, exit_state),
 
-            Assert { target, cleanup: unwind, expected: _, msg: _, cond: _ }
+            Assert { target, unwind, expected: _, msg: _, cond: _ }
             | Drop { target, unwind, place: _ }
             | FalseUnwind { real_target: target, unwind } => {
-                if let Some(unwind) = unwind {
+                if let UnwindAction::Cleanup(unwind) = unwind {
                     propagate(unwind, exit_state);
                 }
 
@@ -503,7 +503,7 @@ impl Direction for Forward {
             }
 
             Call {
-                cleanup,
+                unwind,
                 destination,
                 target,
                 func: _,
@@ -511,7 +511,7 @@ impl Direction for Forward {
                 from_hir_call: _,
                 fn_span: _,
             } => {
-                if let Some(unwind) = cleanup {
+                if let UnwindAction::Cleanup(unwind) = unwind {
                     propagate(unwind, exit_state);
                 }
 
@@ -533,9 +533,9 @@ impl Direction for Forward {
                 options: _,
                 line_spans: _,
                 destination,
-                cleanup,
+                unwind,
             } => {
-                if let Some(unwind) = cleanup {
+                if let UnwindAction::Cleanup(unwind) = unwind {
                     propagate(unwind, exit_state);
                 }
 

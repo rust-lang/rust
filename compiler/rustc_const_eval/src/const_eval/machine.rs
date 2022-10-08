@@ -526,7 +526,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     fn assert_panic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         msg: &AssertMessage<'tcx>,
-        _unwind: Option<mir::BasicBlock>,
+        _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::AssertKind::*;
         // Convert `AssertKind<Operand>` to `AssertKind<Scalar>`.

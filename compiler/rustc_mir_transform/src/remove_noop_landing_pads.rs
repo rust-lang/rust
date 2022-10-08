@@ -103,11 +103,11 @@ impl RemoveNoopLandingPads {
         for bb in postorder {
             debug!("  processing {:?}", bb);
             if let Some(unwind) = body[bb].terminator_mut().unwind_mut() {
-                if let Some(unwind_bb) = *unwind {
+                if let UnwindAction::Cleanup(unwind_bb) = *unwind {
                     if nop_landing_pads.contains(unwind_bb) {
                         debug!("    removing noop landing pad");
                         landing_pads_removed += 1;
-                        *unwind = None;
+                        *unwind = UnwindAction::Continue;
                     }
                 }
             }

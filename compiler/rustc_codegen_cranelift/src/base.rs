@@ -345,7 +345,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             TerminatorKind::Return => {
                 crate::abi::codegen_return(fx);
             }
-            TerminatorKind::Assert { cond, expected, msg, target, cleanup: _ } => {
+            TerminatorKind::Assert { cond, expected, msg, target, unwind: _ } => {
                 if !fx.tcx.sess.overflow_checks() && msg.is_optional_overflow_check() {
                     let target = fx.get_block(*target);
                     fx.bcx.ins().jump(target, &[]);
@@ -450,7 +450,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 destination,
                 target,
                 fn_span,
-                cleanup: _,
+                unwind: _,
                 from_hir_call: _,
             } => {
                 fx.tcx.prof.generic_activity("codegen call").run(|| {
@@ -470,7 +470,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 options,
                 destination,
                 line_spans: _,
-                cleanup: _,
+                unwind: _,
             } => {
                 if options.contains(InlineAsmOptions::MAY_UNWIND) {
                     fx.tcx.sess.span_fatal(

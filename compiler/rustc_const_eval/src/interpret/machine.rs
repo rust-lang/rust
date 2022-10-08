@@ -215,7 +215,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn assert_panic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         msg: &mir::AssertMessage<'tcx>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
 
     /// Called to evaluate `Abort` MIR terminator.

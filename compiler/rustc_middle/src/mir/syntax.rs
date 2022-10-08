@@ -515,14 +515,14 @@ pub struct CopyNonOverlapping<'tcx> {
 ///
 /// A note on unwinding: Panics may occur during the execution of some terminators. Depending on the
 /// `-C panic` flag, this may either cause the program to abort or the call stack to unwind. Such
-/// terminators have a `cleanup: Option<BasicBlock>` field on them. If stack unwinding occurs, then
-/// once the current function is reached, execution continues at the given basic block, if any. If
-/// `cleanup` is `None` then no cleanup is performed, and the stack continues unwinding. This is
-/// equivalent to the execution of a `Resume` terminator.
+/// terminators have a `unwind: UnwindAction` field on them. If stack unwinding occurs, then
+/// once the current function is reached, an action will be taken based on the `unwind` field.
+/// If the action is `Cleanup`, then the execution continues at the given basic block. If the
+/// action is `Continue` then no cleanup is performed, and the stack continues unwinding.
 ///
-/// The basic block pointed to by a `cleanup` field must have its `cleanup` flag set. `cleanup`
-/// basic blocks have a couple restrictions:
-///  1. All `cleanup` fields in them must be `None`.
+/// The basic block pointed to by a `Cleanup` unwind action must have its `cleanup` flag set.
+/// `cleanup` basic blocks have a couple restrictions:
+///  1. All `unwind` fields in them must be `UnwindAction::Continue`.
 ///  2. `Return` terminators are not allowed in them. `Abort` and `Unwind` terminators are.
 ///  3. All other basic blocks (in the current body) that are reachable from `cleanup` basic blocks
 ///     must also be `cleanup`. This is a part of the type system and checked statically, so it is
@@ -604,7 +604,7 @@ pub enum TerminatorKind<'tcx> {
     /// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
     /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
     /// > consider indirect assignments.
-    Drop { place: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
+    Drop { place: Place<'tcx>, target: BasicBlock, unwind: UnwindAction },
 
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
     /// the referred to function. The operand types must match the argument types of the function.
@@ -628,8 +628,8 @@ pub enum TerminatorKind<'tcx> {
         destination: Place<'tcx>,
         /// Where to go after this call returns. If none, the call necessarily diverges.
         target: Option<BasicBlock>,
-        /// Cleanups to be done if the call unwinds.
-        cleanup: Option<BasicBlock>,
+        /// Action to be taken if the call unwinds.
+        unwind: UnwindAction,
         /// `true` if this is from a call in HIR rather than from an overloaded
         /// operator. True for overloaded function call.
         from_hir_call: bool,
@@ -654,7 +654,7 @@ pub enum TerminatorKind<'tcx> {
         expected: bool,
         msg: AssertMessage<'tcx>,
         target: BasicBlock,
-        cleanup: Option<BasicBlock>,
+        unwind: UnwindAction,
     },
 
     /// Marks a suspend point.
@@ -720,9 +720,10 @@ pub enum TerminatorKind<'tcx> {
         /// in practice, but in order to avoid fragility we want to always
         /// consider it in borrowck. We don't want to accept programs which
         /// pass borrowck only when `panic=abort` or some assertions are disabled
-        /// due to release vs. debug mode builds. This needs to be an `Option` because
+        /// due to release vs. debug mode builds.
+        /// This field does not necessary have to be `UnwindAction::Cleanup` because
         /// of the `remove_noop_landing_pads` and `abort_unwinding_calls` passes.
-        unwind: Option<BasicBlock>,
+        unwind: UnwindAction,
     },
 
     /// Block ends with an inline assembly block. This is a terminator since
@@ -745,10 +746,20 @@ pub enum TerminatorKind<'tcx> {
         /// diverging (InlineAsmOptions::NORETURN).
         destination: Option<BasicBlock>,
 
-        /// Cleanup to be done if the inline assembly unwinds. This is present
+        /// Action to be taken if the inline assembly unwinds. This is present
         /// if and only if InlineAsmOptions::MAY_UNWIND is set.
-        cleanup: Option<BasicBlock>,
+        unwind: UnwindAction,
     },
+}
+
+/// Action to be taken when a stack unwind happens.
+#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub enum UnwindAction {
+    // No action is to be taken. Continue unwinding.
+    Continue,
+    // Cleanups to be done.
+    Cleanup(BasicBlock),
 }
 
 /// Information about an assertion failure.

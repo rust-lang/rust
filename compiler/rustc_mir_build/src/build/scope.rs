@@ -369,7 +369,7 @@ impl DropTree {
                     let terminator = TerminatorKind::Drop {
                         target: blocks[drop_data.1].unwrap(),
                         // The caller will handle this if needed.
-                        unwind: None,
+                        unwind: UnwindAction::Continue,
                         place: drop_data.0.local.into(),
                     };
                     cfg.terminate(block, drop_data.0.source_info, terminator);
@@ -1141,7 +1141,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::Drop { place, target: assign, unwind: Some(assign_unwind) },
+            TerminatorKind::Drop {
+                place,
+                target: assign,
+                unwind: UnwindAction::Cleanup(assign_unwind),
+            },
         );
         self.diverge_from(block);
 
@@ -1165,7 +1169,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::Assert { cond, expected, msg, target: success_block, cleanup: None },
+            TerminatorKind::Assert {
+                cond,
+                expected,
+                msg,
+                target: success_block,
+                unwind: UnwindAction::Continue,
+            },
         );
         self.diverge_from(block);
 
@@ -1244,7 +1254,11 @@ fn build_scope_drops<'tcx>(
                 cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Drop { place: local.into(), target: next, unwind: None },
+                    TerminatorKind::Drop {
+                        place: local.into(),
+                        target: next,
+                        unwind: UnwindAction::Continue,
+                    },
                 );
                 block = next;
             }
@@ -1432,10 +1446,10 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
                 }
             }
             TerminatorKind::FalseUnwind { unwind, .. }
-            | TerminatorKind::Call { cleanup: unwind, .. }
-            | TerminatorKind::Assert { cleanup: unwind, .. }
-            | TerminatorKind::InlineAsm { cleanup: unwind, .. } => {
-                *unwind = Some(to);
+            | TerminatorKind::Call { unwind, .. }
+            | TerminatorKind::Assert { unwind, .. }
+            | TerminatorKind::InlineAsm { unwind, .. } => {
+                *unwind = UnwindAction::Cleanup(to);
             }
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }

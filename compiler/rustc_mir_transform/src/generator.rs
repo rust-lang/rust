@@ -1060,7 +1060,10 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let unwind = if block_data.is_cleanup {
             Unwind::InCleanup
         } else {
-            Unwind::To(unwind.unwrap_or_else(|| elaborator.patch.resume_block()))
+            Unwind::To(match *unwind {
+                UnwindAction::Cleanup(tgt) => tgt,
+                UnwindAction::Continue => elaborator.patch.resume_block(),
+            })
         };
         elaborate_drop(
             &mut elaborator,
@@ -1147,7 +1150,7 @@ fn insert_panic_block<'tcx>(
         expected: true,
         msg: message,
         target: assert_block,
-        cleanup: None,
+        unwind: UnwindAction::Continue,
     };
 
     let source_info = SourceInfo::outermost(body.span);
@@ -1248,8 +1251,8 @@ fn create_generator_resume_function<'tcx>(
             } else if !block.is_cleanup {
                 // Any terminators that *can* unwind but don't have an unwind target set are also
                 // pointed at our poisoning block (unless they're part of the cleanup path).
-                if let Some(unwind @ None) = block.terminator_mut().unwind_mut() {
-                    *unwind = Some(poison_block);
+                if let Some(unwind @ UnwindAction::Continue) = block.terminator_mut().unwind_mut() {
+                    *unwind = UnwindAction::Cleanup(poison_block);
                 }
             }
         }
@@ -1294,8 +1297,11 @@ fn create_generator_resume_function<'tcx>(
 fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
-    let term =
-        TerminatorKind::Drop { place: Place::from(SELF_ARG), target: return_block, unwind: None };
+    let term = TerminatorKind::Drop {
+        place: Place::from(SELF_ARG),
+        target: return_block,
+        unwind: UnwindAction::Continue,
+    };
     let source_info = SourceInfo::outermost(body.span);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
@@ -1670,7 +1676,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
                 args,
                 destination,
                 target: Some(_),
-                cleanup: _,
+                unwind: _,
                 from_hir_call: _,
                 fn_span: _,
             } => {

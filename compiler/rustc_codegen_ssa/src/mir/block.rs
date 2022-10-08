@@ -156,7 +156,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         fn_ptr: Bx::Value,
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
-        cleanup: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
         copied_constant_arguments: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
         mergeable_succ: bool,
     ) -> MergingSucc {
@@ -164,6 +164,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         // do an invoke, otherwise do a call.
         let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
+        let cleanup = match unwind {
+            mir::UnwindAction::Cleanup(cleanup) => Some(cleanup),
+            mir::UnwindAction::Continue => None,
+        };
         let unwind_block = if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
             Some(self.llbb_with_cleanup(fx, cleanup))
         } else if fx.mir[self.bb].is_cleanup
@@ -244,11 +248,11 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         options: InlineAsmOptions,
         line_spans: &[Span],
         destination: Option<mir::BasicBlock>,
-        cleanup: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
         instance: Instance<'_>,
         mergeable_succ: bool,
     ) -> MergingSucc {
-        if let Some(cleanup) = cleanup {
+        if let mir::UnwindAction::Cleanup(cleanup) = unwind {
             let ret_llbb = if let Some(target) = destination {
                 fx.llbb(target)
             } else {
@@ -431,7 +435,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         location: mir::Place<'tcx>,
         target: mir::BasicBlock,
-        unwind: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
         mergeable_succ: bool,
     ) -> MergingSucc {
         let ty = location.ty(self.mir, bx.tcx()).ty;
@@ -552,7 +556,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         expected: bool,
         msg: &mir::AssertMessage<'tcx>,
         target: mir::BasicBlock,
-        cleanup: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
         mergeable_succ: bool,
     ) -> MergingSucc {
         let span = terminator.source_info.span;
@@ -618,7 +622,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, llfn) = common::build_langcall(bx, Some(span), lang_item);
 
         // Codegen the actual panic invoke/call.
-        let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &args, None, cleanup, &[], false);
+        let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &args, None, unwind, &[], false);
         assert_eq!(merging_succ, MergingSucc::False);
         MergingSucc::False
     }
@@ -636,7 +640,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, llfn) = common::build_langcall(bx, Some(span), LangItem::PanicCannotUnwind);
 
         // Codegen the actual panic invoke/call.
-        let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &[], None, None, &[], false);
+        let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &[], None, mir::UnwindAction::Continue, &[], false);
         assert_eq!(merging_succ, MergingSucc::False);
     }
 
@@ -649,7 +653,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         instance: Option<Instance<'tcx>>,
         source_info: mir::SourceInfo,
         target: Option<mir::BasicBlock>,
-        cleanup: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
         mergeable_succ: bool,
     ) -> Option<MergingSucc> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
@@ -696,7 +700,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     llfn,
                     &[msg.0, msg.1],
                     target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
-                    cleanup,
+                    unwind,
                     &[],
                     mergeable_succ,
                 )
@@ -719,7 +723,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         args: &[mir::Operand<'tcx>],
         destination: mir::Place<'tcx>,
         target: Option<mir::BasicBlock>,
-        cleanup: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
         fn_span: Span,
         mergeable_succ: bool,
     ) -> MergingSucc {
@@ -783,7 +787,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             instance,
             source_info,
             target,
-            cleanup,
+            unwind,
             mergeable_succ,
         ) {
             return merging_succ;
@@ -1064,7 +1068,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 fn_ptr,
                 &llargs,
                 target.as_ref().map(|&target| (ret_dest, target)),
-                cleanup,
+                unwind,
                 &copied_constant_arguments,
                 false,
             );
@@ -1084,7 +1088,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             fn_ptr,
             &llargs,
             target.as_ref().map(|&target| (ret_dest, target)),
-            cleanup,
+            unwind,
             &copied_constant_arguments,
             mergeable_succ,
         )
@@ -1100,7 +1104,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         options: ast::InlineAsmOptions,
         line_spans: &[Span],
         destination: Option<mir::BasicBlock>,
-        cleanup: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
         instance: Instance<'_>,
         mergeable_succ: bool,
     ) -> MergingSucc {
@@ -1164,7 +1168,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             options,
             line_spans,
             destination,
-            cleanup,
+            unwind,
             instance,
             mergeable_succ,
         )
@@ -1274,7 +1278,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_drop_terminator(helper, bx, place, target, unwind, mergeable_succ())
             }
 
-            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => self
+            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, unwind } => self
                 .codegen_assert_terminator(
                     helper,
                     bx,
@@ -1283,7 +1287,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     expected,
                     msg,
                     target,
-                    cleanup,
+                    unwind,
                     mergeable_succ(),
                 ),
 
@@ -1292,7 +1296,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ref args,
                 destination,
                 target,
-                cleanup,
+                unwind,
                 from_hir_call: _,
                 fn_span,
             } => self.codegen_call_terminator(
@@ -1303,7 +1307,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args,
                 destination,
                 target,
-                cleanup,
+                unwind,
                 fn_span,
                 mergeable_succ(),
             ),
@@ -1320,7 +1324,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 options,
                 line_spans,
                 destination,
-                cleanup,
+                unwind,
             } => self.codegen_asm_terminator(
                 helper,
                 bx,
@@ -1330,7 +1334,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 options,
                 line_spans,
                 destination,
-                cleanup,
+                unwind,
                 self.instance,
                 mergeable_succ(),
             ),

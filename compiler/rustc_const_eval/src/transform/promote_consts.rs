@@ -807,7 +807,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         kind: TerminatorKind::Call {
                             func,
                             args,
-                            cleanup: None,
+                            unwind: UnwindAction::Continue,
                             destination: Place::from(new_temp),
                             target: Some(new_target),
                             from_hir_call,

@@ -11,7 +11,7 @@ use crate::{
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::mir::visit::{MirVisitable, PlaceContext, Visitor};
-use rustc_middle::mir::{Body, Local, Location};
+use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 
 pub(crate) fn find<'tcx>(
@@ -70,7 +70,10 @@ impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
                             block_data
                                 .terminator()
                                 .successors()
-                                .filter(|&bb| Some(&Some(bb)) != block_data.terminator().unwind())
+                                .filter(|&bb| {
+                                    Some(&mir::UnwindAction::Cleanup(bb))
+                                        != block_data.terminator().unwind()
+                                })
                                 .map(|bb| Location { statement_index: 0, block: bb }),
                         );
                     }

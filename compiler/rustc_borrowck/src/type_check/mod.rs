@@ -1610,20 +1610,20 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. }
-            | TerminatorKind::Assert { target, cleanup: unwind, .. } => {
+            | TerminatorKind::Assert { target, unwind, .. } => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup);
-                if let Some(unwind) = unwind {
+                if let UnwindAction::Cleanup(unwind) = unwind {
                     if is_cleanup {
                         span_mirbug!(self, block_data, "unwind on cleanup block")
                     }
                     self.assert_iscleanup(body, block_data, unwind, true);
                 }
             }
-            TerminatorKind::Call { ref target, cleanup, .. } => {
+            TerminatorKind::Call { ref target, unwind, .. } => {
                 if let &Some(target) = target {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }
-                if let Some(cleanup) = cleanup {
+                if let UnwindAction::Cleanup(cleanup) = unwind {
                     if is_cleanup {
                         span_mirbug!(self, block_data, "cleanup on cleanup block")
                     }
@@ -1636,18 +1636,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::FalseUnwind { real_target, unwind } => {
                 self.assert_iscleanup(body, block_data, real_target, is_cleanup);
-                if let Some(unwind) = unwind {
+                if let UnwindAction::Cleanup(unwind) = unwind {
                     if is_cleanup {
                         span_mirbug!(self, block_data, "cleanup in cleanup block via false unwind");
                     }
                     self.assert_iscleanup(body, block_data, unwind, true);
                 }
             }
-            TerminatorKind::InlineAsm { destination, cleanup, .. } => {
+            TerminatorKind::InlineAsm { destination, unwind, .. } => {
                 if let Some(target) = destination {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }
-                if let Some(cleanup) = cleanup {
+                if let UnwindAction::Cleanup(cleanup) = unwind {
                     if is_cleanup {
                         span_mirbug!(self, block_data, "cleanup on cleanup block")
                     }

@@ -120,7 +120,7 @@ fn remove_dead_unwinds<'tcx>(
         .into_results_cursor(body);
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
         let place = match bb_data.terminator().kind {
-            TerminatorKind::Drop { ref place, unwind: Some(_), .. } => {
+            TerminatorKind::Drop { ref place, unwind: UnwindAction::Cleanup(_), .. } => {
                 und.derefer(place.as_ref(), body).unwrap_or(*place)
             }
             _ => continue,
@@ -417,7 +417,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             if data.is_cleanup {
                                 Unwind::InCleanup
                             } else {
-                                Unwind::To(Option::unwrap_or(unwind, resume_block))
+                                match unwind {
+                                    UnwindAction::Cleanup(cleanup) => Unwind::To(cleanup),
+                                    UnwindAction::Continue => Unwind::To(resume_block),
+                                }
                             },
                             bb,
                         ),
@@ -474,7 +477,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 continue;
             }
             if let TerminatorKind::Call {
-                destination, target: Some(tgt), cleanup: Some(_), ..
+                destination,
+                target: Some(tgt),
+                unwind: UnwindAction::Cleanup(_),
+                ..
             } = data.terminator().kind
             {
                 assert!(!self.patch.is_patched(bb));
@@ -543,8 +549,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             // There may be a critical edge after this call,
             // so mark the return as initialized *before* the
             // call.
-            if let TerminatorKind::Call { destination, target: Some(_), cleanup: None, .. } =
-                data.terminator().kind
+            if let TerminatorKind::Call {
+                destination,
+                target: Some(_),
+                unwind: UnwindAction::Continue,
+                ..
+            } = data.terminator().kind
             {
                 assert!(!self.patch.is_patched(bb));
 

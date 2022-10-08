@@ -125,13 +125,13 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
 
             for bb in calls_to_terminate {
                 let cleanup = body.basic_blocks_mut()[bb].terminator_mut().unwind_mut().unwrap();
-                *cleanup = Some(abort_bb);
+                *cleanup = UnwindAction::Cleanup(abort_bb);
             }
         }
 
         for id in cleanups_to_remove {
             let cleanup = body.basic_blocks_mut()[id].terminator_mut().unwind_mut().unwrap();
-            *cleanup = None;
+            *cleanup = UnwindAction::Continue;
         }
 
         // We may have invalidated some `cleanup` blocks so clean those up now.
