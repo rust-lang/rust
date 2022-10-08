@@ -595,6 +595,8 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.fshr.v32i16" => "__builtin_ia32_vpshrdv_v32hi",
         "llvm.fshr.v16i16" => "__builtin_ia32_vpshrdv_v16hi",
         "llvm.fshr.v8i16" => "__builtin_ia32_vpshrdv_v8hi",
+        "llvm.x86.fma.vfmadd.sd" => "__builtin_ia32_vfmaddsd3",
+        "llvm.x86.fma.vfmadd.ss" => "__builtin_ia32_vfmaddss3",
 
         // The above doc points to unknown builtins for the following, so override them:
         "llvm.x86.avx2.gather.d.d" => "__builtin_ia32_gathersiv4si",
