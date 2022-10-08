@@ -225,4 +225,15 @@ mod issue8239 {
     }
 }
 
+mod issue9608 {
+    fn sig_drop() {
+        enum X {
+            X(std::fs::File),
+            Y(u32),
+        }
+
+        let _ = None.unwrap_or(X::Y(0));
+    }
+}
+
 fn main() {}
