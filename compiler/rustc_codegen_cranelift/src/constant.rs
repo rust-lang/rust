@@ -490,7 +490,16 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     match &stmt.kind {
                         StatementKind::Assign(local_and_rvalue) if &local_and_rvalue.0 == place => {
                             match &local_and_rvalue.1 {
-                                Rvalue::Cast(CastKind::Misc, operand, ty) => {
+                                Rvalue::Cast(
+                                    CastKind::IntToInt
+                                    | CastKind::FloatToFloat
+                                    | CastKind::FloatToInt
+                                    | CastKind::IntToFloat
+                                    | CastKind::FnPtrToPtr
+                                    | CastKind::PtrToPtr,
+                                    operand,
+                                    ty,
+                                ) => {
                                     if computed_const_val.is_some() {
                                         return None; // local assigned twice
                                     }

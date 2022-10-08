@@ -1149,8 +1149,12 @@ pub enum CastKind {
     Pointer(PointerCast),
     /// Cast into a dyn* object.
     DynStar,
-    /// Remaining unclassified casts.
-    Misc,
+    IntToInt,
+    FloatToInt,
+    FloatToFloat,
+    IntToFloat,
+    PtrToPtr,
+    FnPtrToPtr,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
