@@ -224,7 +224,7 @@ really helpful for this.
 create a minimal working example with Godbolt. Go to
 [llvm.godbolt.org](https://llvm.godbolt.org).
 
-2. Choose `LLVM-IR` as programming language if not already selected.
+2. Choose `LLVM-IR` as programming language.
 
 3. Use `llc` to compile the IR to a particular target as is:
     - There are some useful flags: `-mattr` enables target features, `-march=`
