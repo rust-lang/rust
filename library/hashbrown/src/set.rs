@@ -2790,6 +2790,7 @@ mod test_set {
     }
 
     #[test]
+    #[allow(clippy::needless_borrow)]
     fn test_extend_ref() {
         let mut a = HashSet::new();
         a.insert(1);
