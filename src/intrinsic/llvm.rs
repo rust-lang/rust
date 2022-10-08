@@ -5,7 +5,7 @@ use rustc_codegen_ssa::traits::BuilderMethods;
 
 use crate::{context::CodegenCx, builder::Builder};
 
-pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc, 'tcx>, gcc_func: FunctionPtrType<'gcc>, mut args: Cow<'b, [RValue<'gcc>]>, func_name: &str) -> Cow<'b, [RValue<'gcc>]> {
+pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc, 'tcx>, gcc_func: FunctionPtrType<'gcc>, mut args: Cow<'b, [RValue<'gcc>]>, func_name: &str, original_function_name: Option<&String>) -> Cow<'b, [RValue<'gcc>]> {
     // Some LLVM intrinsics do not map 1-to-1 to GCC intrinsics, so we add the missing
     // arguments here.
     if gcc_func.get_param_count() != args.len() {
@@ -277,11 +277,23 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 let c = builder.context.new_rvalue_from_vector(None, arg3_type, &[new_args[2]; 2]);
                 args = vec![a, b, c, new_args[3]].into();
             },
-            "__builtin_ia32_vfmaddsubpd256" | "__builtin_ia32_vfmaddsubps" | "__builtin_ia32_vfmaddsubps256" => {
-                let mut new_args = args.to_vec();
-                let arg3 = &mut new_args[2];
-                *arg3 = builder.context.new_unary_op(None, UnaryOp::Minus, arg3.get_type(), *arg3);
-                args = new_args.into();
+            "__builtin_ia32_vfmaddsubpd256" | "__builtin_ia32_vfmaddsubps" | "__builtin_ia32_vfmaddsubps256"
+                | "__builtin_ia32_vfmaddsubpd" => {
+                if let Some(original_function_name) = original_function_name {
+                    match &**original_function_name {
+                        "llvm.x86.fma.vfmsubadd.pd.256" | "llvm.x86.fma.vfmsubadd.ps" | "llvm.x86.fma.vfmsubadd.ps.256"
+                            | "llvm.x86.fma.vfmsubadd.pd" => {
+                            // NOTE: since both llvm.x86.fma.vfmsubadd.ps and llvm.x86.fma.vfmaddsub.ps maps to
+                            // __builtin_ia32_vfmaddsubps, only add minus if this comes from a
+                            // subadd LLVM intrinsic, e.g. _mm256_fmsubadd_pd.
+                            let mut new_args = args.to_vec();
+                            let arg3 = &mut new_args[2];
+                            *arg3 = builder.context.new_unary_op(None, UnaryOp::Minus, arg3.get_type(), *arg3);
+                            args = new_args.into();
+                        },
+                        _ => (),
+                    }
+                }
             },
             "__builtin_ia32_ldmxcsr" => {
                 // The builtin __builtin_ia32_ldmxcsr takes an integer value while llvm.x86.sse.ldmxcsr takes a pointer,

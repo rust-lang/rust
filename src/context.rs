@@ -33,6 +33,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     // TODO(bjorn3): Can this field be removed?
     pub current_func: RefCell<Option<Function<'gcc>>>,
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
+    pub function_address_names: RefCell<FxHashMap<RValue<'gcc>, String>>,
 
     pub functions: RefCell<FxHashMap<String, Function<'gcc>>>,
     pub intrinsics: RefCell<FxHashMap<String, Function<'gcc>>>,
@@ -192,6 +193,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             context,
             current_func: RefCell::new(None),
             normal_function_addresses: Default::default(),
+            function_address_names: Default::default(),
             functions: RefCell::new(functions),
             intrinsics: RefCell::new(FxHashMap::default()),
 
@@ -345,6 +347,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // FIXME(antoyo): the rustc API seems to call get_fn_addr() when not needed (e.g. for FFI).
 
         self.normal_function_addresses.borrow_mut().insert(ptr);
+        self.function_address_names.borrow_mut().insert(ptr, func_name.to_string());
 
         ptr
     }
