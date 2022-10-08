@@ -123,7 +123,6 @@ use rustc_span::{self, BytePos, Span, Symbol};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
-use rustc_trait_selection::traits::error_reporting::recursive_type_with_infinite_size_error;
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
 use std::cell::RefCell;
 use std::num::NonZeroU32;

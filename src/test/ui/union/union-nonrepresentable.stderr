@@ -2,15 +2,15 @@ error[E0072]: recursive type `U` has infinite size
   --> $DIR/union-nonrepresentable.rs:1:1
    |
 LL | union U {
-   | ^^^^^^^ recursive type has infinite size
+   | ^^^^^^^
 LL |     a: u8,
 LL |     b: std::mem::ManuallyDrop<U>,
-   |        ------------------------- recursive without indirection
+   |                               - recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `U` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
-LL |     b: Box<std::mem::ManuallyDrop<U>>,
-   |        ++++                         +
+LL |     b: std::mem::ManuallyDrop<Box<U>>,
+   |                               ++++ +
 
 error: aborting due to previous error
 

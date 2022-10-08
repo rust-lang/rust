@@ -27,6 +27,10 @@ pub trait Key {
     fn key_as_def_id(&self) -> Option<DefId> {
         None
     }
+
+    fn ty_adt_id(&self) -> Option<DefId> {
+        None
+    }
 }
 
 impl Key for () {
@@ -406,6 +410,12 @@ impl<'tcx> Key for Ty<'tcx> {
     }
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
+    }
+    fn ty_adt_id(&self) -> Option<DefId> {
+        match self.kind() {
+            ty::Adt(adt, _) => Some(adt.did()),
+            _ => None,
+        }
     }
 }
 

@@ -3,10 +3,8 @@ error[E0072]: recursive type `E2` has infinite size
    |
 LL | enum E2<T> { V2(E2<E1>, marker::PhantomData<T>), }
    | ^^^^^^^^^^      ------ recursive without indirection
-   | |
-   | recursive type has infinite size
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `E2` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL | enum E2<T> { V2(Box<E2<E1>>, marker::PhantomData<T>), }
    |                 ++++      +

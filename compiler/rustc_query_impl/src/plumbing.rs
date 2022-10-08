@@ -318,13 +318,12 @@ pub(crate) fn create_query_frame<
     } else {
         Some(key.default_span(*tcx))
     };
+    let def_id = key.key_as_def_id();
     let def_kind = if kind == dep_graph::DepKind::opt_def_kind {
         // Try to avoid infinite recursion.
         None
     } else {
-        key.key_as_def_id()
-            .and_then(|def_id| def_id.as_local())
-            .and_then(|def_id| tcx.opt_def_kind(def_id))
+        def_id.and_then(|def_id| def_id.as_local()).and_then(|def_id| tcx.opt_def_kind(def_id))
     };
     let hash = || {
         tcx.with_stable_hashing_context(|mut hcx| {
@@ -334,8 +333,9 @@ pub(crate) fn create_query_frame<
             hasher.finish::<u64>()
         })
     };
+    let ty_adt_id = key.ty_adt_id();
 
-    QueryStackFrame::new(name, description, span, def_kind, hash)
+    QueryStackFrame::new(name, description, span, def_id, def_kind, ty_adt_id, hash)
 }
 
 fn try_load_from_on_disk_cache<'tcx, Q>(tcx: TyCtxt<'tcx>, dep_node: DepNode)

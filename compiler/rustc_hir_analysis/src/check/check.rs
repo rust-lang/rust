@@ -31,7 +31,6 @@ use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
-use rustc_ty_utils::representability::{self, Representability};
 
 use std::ops::ControlFlow;
 
@@ -381,7 +380,7 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
-    check_representable(tcx, span, def_id);
+    let _ = tcx.representability(def_id);
 
     if def.repr().simd() {
         check_simd(tcx, span, def_id);
@@ -395,7 +394,7 @@ fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
-    check_representable(tcx, span, def_id);
+    let _ = tcx.representability(def_id);
     check_transparent(tcx, span, def);
     check_union_fields(tcx, span, def_id);
     check_packed(tcx, span, def);
@@ -1151,27 +1150,6 @@ fn check_impl_items_against_trait<'tcx>(
     }
 }
 
-/// Checks whether a type can be represented in memory. In particular, it
-/// identifies types that contain themselves without indirection through a
-/// pointer, which would mean their size is unbounded.
-pub(super) fn check_representable(tcx: TyCtxt<'_>, sp: Span, item_def_id: LocalDefId) -> bool {
-    let rty = tcx.type_of(item_def_id);
-
-    // Check that it is possible to represent this type. This call identifies
-    // (1) types that contain themselves and (2) types that contain a different
-    // recursive type. It is only necessary to throw an error on those that
-    // contain themselves. For case 2, there must be an inner type that will be
-    // caught by case 1.
-    match representability::ty_is_representable(tcx, rty, sp, None) {
-        Representability::SelfRecursive(spans) => {
-            recursive_type_with_infinite_size_error(tcx, item_def_id.to_def_id(), spans);
-            return false;
-        }
-        Representability::Representable | Representability::ContainsRecursive => (),
-    }
-    true
-}
-
 pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
     let t = tcx.type_of(def_id);
     if let ty::Adt(def, substs) = t.kind()
@@ -1509,7 +1487,7 @@ fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: L
 
     detect_discriminant_duplicate(tcx, def.discriminants(tcx).collect(), vs, sp);
 
-    check_representable(tcx, sp, def_id);
+    let _ = tcx.representability(def_id);
     check_transparent(tcx, sp, def);
 }
 

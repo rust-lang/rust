@@ -39,6 +39,7 @@ pub fn provide(providers: &mut Providers) {
     implied_bounds::provide(providers);
     layout::provide(providers);
     needs_drop::provide(providers);
+    representability::provide(providers);
     ty::provide(providers);
     instance::provide(providers);
 }
