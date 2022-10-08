@@ -100,7 +100,10 @@ use crate::intrinsics;
 pub const unsafe fn unreachable_unchecked() -> ! {
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
-    unsafe { intrinsics::unreachable() }
+    unsafe {
+        intrinsics::assert_unsafe_precondition!(() => false);
+        intrinsics::unreachable()
+    }
 }
 
 /// Emits a machine instruction to signal the processor that it is running in
