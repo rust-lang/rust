@@ -1,5 +1,5 @@
 // This test ensures that the settings menu display is working as expected.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
 assert-false: "#settings"
@@ -138,7 +138,7 @@ wait-for-css: ("#help-button .popover", {"display": "block"})
 assert-css: ("#settings-menu .popover", {"display": "none"})
 
 // Now we go to the settings page to check that the CSS is loaded as expected.
-goto: file://|DOC_PATH|/settings.html
+goto: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
 assert-css: (".setting-line .toggle .slider", {"width": "45px", "margin-right": "20px"})
 

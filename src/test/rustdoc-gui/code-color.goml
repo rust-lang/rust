@@ -2,7 +2,7 @@
 // check that the rule isn't applied on other "<code>" elements.
 //
 // While we're at it, we also check it for the other themes.
-goto: file://|DOC_PATH|/test_docs/fn.foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 // If the text isn't displayed, the browser doesn't compute color style correctly...
 show-text: true
 // Set the theme to dark.

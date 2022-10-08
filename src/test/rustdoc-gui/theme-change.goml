@@ -1,5 +1,5 @@
 // Ensures that the theme change is working as expected.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
 reload:
 click: "#settings-menu"
@@ -17,7 +17,7 @@ click: "#theme-dark"
 wait-for-css: ("body", { "background-color": "rgb(53, 53, 53)" })
 assert-local-storage: { "rustdoc-theme": "dark" }
 
-goto: file://|DOC_PATH|/settings.html
+goto: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
 click: "#theme-light"
 wait-for-css: ("body", { "background-color": "rgb(255, 255, 255)" })

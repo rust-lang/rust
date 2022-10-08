@@ -1,6 +1,6 @@
 // This test ensures that the "Escape" shortcut is handled correctly based on the
 // current content displayed.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // First, we check that the search results are hidden when the Escape key is pressed.
 write: (".search-input", "test")
 // To be SURE that the search will be run.

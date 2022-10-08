@@ -1,6 +1,6 @@
 // This test checks that using `.stab` attributes in `.docblock` elements doesn't
 // create scrollable paragraphs.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // Needs the text to be display to check for scrollable content.
 show-text: true
 size: (786, 600)
