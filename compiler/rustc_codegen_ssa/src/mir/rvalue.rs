@@ -250,7 +250,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         OperandValue::Pair(lldata, llextra)
                     }
                     mir::CastKind::Pointer(PointerCast::MutToConstPointer)
-                    | mir::CastKind::Misc
+                    | mir::CastKind::PtrToPtr
                         if bx.cx().is_backend_scalar_pair(operand.layout) =>
                     {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
@@ -290,7 +290,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::CastKind::Pointer(
                         PointerCast::MutToConstPointer | PointerCast::ArrayToPointer,
                     )
-                    | mir::CastKind::Misc
+                    | mir::CastKind::IntToInt
+                    | mir::CastKind::FloatToInt
+                    | mir::CastKind::FloatToFloat
+                    | mir::CastKind::IntToFloat
+                    | mir::CastKind::PtrToPtr
+                    | mir::CastKind::FnPtrToPtr
+
                     // Since int2ptr can have arbitrary integer types as input (so we have to do
                     // sign extension and all that), it is currently best handled in the same code
                     // path as the other integer-to-X casts.

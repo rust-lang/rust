@@ -91,7 +91,7 @@
           StorageLive(_15);                // scope 3 at $DIR/funky_arms.rs:+15:59: +15:75
           StorageLive(_16);                // scope 3 at $DIR/funky_arms.rs:+15:59: +15:68
           _16 = _10;                       // scope 3 at $DIR/funky_arms.rs:+15:59: +15:68
-          _15 = move _16 as u32 (Misc);    // scope 3 at $DIR/funky_arms.rs:+15:59: +15:75
+          _15 = move _16 as u32 (IntToInt); // scope 3 at $DIR/funky_arms.rs:+15:59: +15:75
           StorageDead(_16);                // scope 3 at $DIR/funky_arms.rs:+15:74: +15:75
           _14 = Add(move _15, const 1_u32); // scope 3 at $DIR/funky_arms.rs:+15:59: +15:79
           StorageDead(_15);                // scope 3 at $DIR/funky_arms.rs:+15:78: +15:79
