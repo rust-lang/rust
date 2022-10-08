@@ -150,6 +150,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
+// Under `test`, `__FastLocalKeyInner` seems unused.
+#![cfg_attr(test, allow(dead_code))]
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
@@ -217,15 +219,6 @@ pub use self::local::fast::Key as __FastLocalKeyInner;
     not(all(target_family = "wasm", not(target_feature = "atomics"))),
 ))]
 pub use realstd::thread::__FastLocalKeyInner;
-
-// but import the local one anyway to silence 'unused' warnings
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(test)]
-#[cfg(all(
-    target_thread_local,
-    not(all(target_family = "wasm", not(target_feature = "atomics"))),
-))]
-pub use self::local::fast::Key as __FastLocalKeyInnerUnused;
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[cfg(all(
