@@ -577,7 +577,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// map.insert(1, 2);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
+    pub const fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
         Self {
             hash_builder,
             table: RawTable::new_in(alloc),
