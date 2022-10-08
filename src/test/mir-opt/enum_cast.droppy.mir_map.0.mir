@@ -26,7 +26,7 @@ fn droppy() -> () {
         FakeRead(ForLet(None), _2);      // scope 0 at $DIR/enum_cast.rs:+2:13: +2:14
         StorageLive(_3);                 // scope 3 at $DIR/enum_cast.rs:+5:13: +5:14
         _4 = discriminant(_2);           // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
-        _3 = move _4 as usize (Misc);    // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
+        _3 = move _4 as usize (IntToInt); // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
         FakeRead(ForLet(None), _3);      // scope 3 at $DIR/enum_cast.rs:+5:13: +5:14
         _1 = const ();                   // scope 0 at $DIR/enum_cast.rs:+1:5: +6:6
         StorageDead(_3);                 // scope 1 at $DIR/enum_cast.rs:+6:5: +6:6

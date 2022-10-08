@@ -36,7 +36,7 @@
           _7 = &_1;                        // scope 3 at $DIR/lower_intrinsics.rs:+4:29: +4:33
           _6 = &raw const (*_7);           // scope 3 at $DIR/lower_intrinsics.rs:+4:29: +4:33
           _5 = _6;                         // scope 3 at $DIR/lower_intrinsics.rs:+4:29: +4:45
-          _4 = move _5 as *const i32 (Misc); // scope 3 at $DIR/lower_intrinsics.rs:+4:29: +4:59
+          _4 = move _5 as *const i32 (PtrToPtr); // scope 3 at $DIR/lower_intrinsics.rs:+4:29: +4:59
           StorageDead(_5);                 // scope 3 at $DIR/lower_intrinsics.rs:+4:58: +4:59
           StorageLive(_8);                 // scope 3 at $DIR/lower_intrinsics.rs:+4:61: +4:91
           StorageLive(_9);                 // scope 3 at $DIR/lower_intrinsics.rs:+4:61: +4:79
@@ -45,7 +45,7 @@
           _11 = &mut _2;                   // scope 3 at $DIR/lower_intrinsics.rs:+4:61: +4:69
           _10 = &raw mut (*_11);           // scope 3 at $DIR/lower_intrinsics.rs:+4:61: +4:69
           _9 = _10;                        // scope 3 at $DIR/lower_intrinsics.rs:+4:61: +4:79
-          _8 = move _9 as *mut i32 (Misc); // scope 3 at $DIR/lower_intrinsics.rs:+4:61: +4:91
+          _8 = move _9 as *mut i32 (PtrToPtr); // scope 3 at $DIR/lower_intrinsics.rs:+4:61: +4:91
           StorageDead(_9);                 // scope 3 at $DIR/lower_intrinsics.rs:+4:90: +4:91
 -         _3 = copy_nonoverlapping::<i32>(move _4, move _8, const 0_usize) -> bb1; // scope 3 at $DIR/lower_intrinsics.rs:+4:9: +4:95
 -                                          // mir::Constant
