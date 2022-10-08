@@ -1515,6 +1515,11 @@ details[open].dir-entry > summary::after {
 	content: " ▼";
 }
 
+details.dir-entry > summary::-webkit-details-marker,
+details.dir-entry > summary::marker {
+	display: none;
+}
+
 details.dir-entry > summary {
 	margin: 0 0 0 13px;
 	list-style: none;
