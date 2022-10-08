@@ -22,7 +22,7 @@ pub enum Profile {
 
 impl Profile {
     fn include_path(&self, src_path: &Path) -> PathBuf {
-        PathBuf::from(format!("{}/src/bootstrap/defaults/config.{}.toml", src_path.display(), self))
+        PathBuf::from(format!("{}/src/bootstrap/defaults/config.{self}.toml", src_path.display()))
     }
 
     pub fn all() -> impl Iterator<Item = Self> {
@@ -46,7 +46,7 @@ impl Profile {
     pub fn all_for_help(indent: &str) -> String {
         let mut out = String::new();
         for choice in Profile::all() {
-            writeln!(&mut out, "{}{}: {}", indent, choice, choice.purpose()).unwrap();
+            writeln!(&mut out, "{indent}{choice}: {}", choice.purpose()).unwrap();
         }
         out
     }
@@ -64,7 +64,7 @@ impl FromStr for Profile {
             "tools" | "tool" | "rustdoc" | "clippy" | "miri" | "rustfmt" | "rls" => {
                 Ok(Profile::Tools)
             }
-            _ => Err(format!("unknown profile: '{}'", s)),
+            _ => Err(format!("unknown profile: '{s}'")),
         }
     }
 }
@@ -89,7 +89,7 @@ pub fn setup(config: &Config, profile: Profile) {
             "error: you asked `x.py` to setup a new config file, but one already exists at `{}`",
             path.display()
         );
-        eprintln!("help: try adding `profile = \"{}\"` at the top of {}", profile, path.display());
+        eprintln!("help: try adding `profile = \"{profile}\"` at the top of {}", path.display());
         eprintln!(
             "note: this will use the configuration in {}",
             profile.include_path(&config.src).display()
@@ -142,7 +142,7 @@ pub fn setup(config: &Config, profile: Profile) {
 
     println!("To get started, try one of the following commands:");
     for cmd in suggestions {
-        println!("- `x.py {}`", cmd);
+        println!("- `x.py {cmd}`");
     }
 
     if profile != Profile::User {
@@ -239,7 +239,7 @@ fn ensure_stage1_toolchain_placeholder_exists(stage_path: &str) -> bool {
         return false;
     };
 
-    let pathbuf = pathbuf.join(format!("rustc{}", EXE_SUFFIX));
+    let pathbuf = pathbuf.join(format!("rustc{EXE_SUFFIX}"));
 
     if pathbuf.exists() {
         return true;
@@ -275,7 +275,7 @@ pub fn interactive_path() -> io::Result<Profile> {
 
     println!("Welcome to the Rust project! What do you want to do with x.py?");
     for ((letter, _), profile) in abbrev_all() {
-        println!("{}) {}: {}", letter, profile, profile.purpose());
+        println!("{letter}) {profile}: {}", profile.purpose());
     }
     let template = loop {
         print!(
@@ -292,7 +292,7 @@ pub fn interactive_path() -> io::Result<Profile> {
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
             Err(err) => {
-                eprintln!("error: {}", err);
+                eprintln!("error: {err}");
                 eprintln!("note: press Ctrl+C to exit");
                 continue;
             }

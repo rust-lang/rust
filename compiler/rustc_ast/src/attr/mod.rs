@@ -316,7 +316,7 @@ impl Attribute {
             AttrKind::Normal(ref normal) => normal
                 .tokens
                 .as_ref()
-                .unwrap_or_else(|| panic!("attribute is missing tokens: {:?}", self))
+                .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
                 .to_attr_token_stream()
                 .to_tokenstream(),
             AttrKind::DocComment(comment_kind, data) => TokenStream::new(vec![TokenTree::Token(

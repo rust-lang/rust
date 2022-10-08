@@ -46,7 +46,7 @@ fn rm_rf(path: &Path) {
             if e.kind() == ErrorKind::NotFound {
                 return;
             }
-            panic!("failed to get metadata for file {}: {}", path.display(), e);
+            panic!("failed to get metadata for file {}: {e}", path.display());
         }
         Ok(metadata) => {
             if metadata.file_type().is_file() || metadata.file_type().is_symlink() {
@@ -108,11 +108,11 @@ where
                 if m.file_type().is_symlink() && path.is_dir() && fs::remove_dir(path).is_ok() {
                     return;
                 }
-                panic!("failed to {} {}: {}", desc, path.display(), e);
+                panic!("failed to {desc} {}: {e}", path.display());
             });
         }
         Err(e) => {
-            panic!("failed to {} {}: {}", desc, path.display(), e);
+            panic!("failed to {desc} {}: {e}", path.display());
         }
     }
 }

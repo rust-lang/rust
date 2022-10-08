@@ -72,6 +72,6 @@ pub fn check(path: &Path, bad: &mut bool) {
 
     if !*bad {
         println!("* {} error codes", map.len());
-        println!("* highest error code: E{:04}", max);
+        println!("* highest error code: E{max:04}");
     }
 }

@@ -150,11 +150,11 @@ fn filter_document(document: Yaml) -> Yaml {
 
 fn main() {
     if let Err(err) = App::from_args().and_then(|app| app.run()) {
-        eprintln!("error: {}", err);
+        eprintln!("error: {err}");
 
         let mut source = err.as_ref() as &dyn Error;
         while let Some(err) = source.source() {
-            eprintln!("caused by: {}", err);
+            eprintln!("caused by: {err}");
             source = err;
         }
 

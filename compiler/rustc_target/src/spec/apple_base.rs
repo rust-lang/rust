@@ -5,7 +5,7 @@ use crate::spec::{LinkerFlavor, Lld, SplitDebuginfo, StaticCow, TargetOptions};
 
 fn pre_link_args(os: &'static str, arch: &'static str, abi: &'static str) -> LinkArgs {
     let platform_name: StaticCow<str> = match abi {
-        "sim" => format!("{}-simulator", os).into(),
+        "sim" => format!("{os}-simulator").into(),
         "macabi" => "mac-catalyst".into(),
         _ => os.into(),
     };
@@ -114,12 +114,12 @@ fn macos_deployment_target(arch: &str) -> (u32, u32) {
 
 fn macos_lld_platform_version(arch: &str) -> String {
     let (major, minor) = macos_deployment_target(arch);
-    format!("{}.{}", major, minor)
+    format!("{major}.{minor}")
 }
 
 pub fn macos_llvm_target(arch: &str) -> String {
     let (major, minor) = macos_deployment_target(arch);
-    format!("{}-apple-macosx{}.{}.0", arch, major, minor)
+    format!("{arch}-apple-macosx{major}.{minor}.0")
 }
 
 pub fn macos_link_env_remove() -> Vec<StaticCow<str>> {
@@ -150,17 +150,17 @@ pub fn ios_llvm_target(arch: &str) -> String {
     // to pick it up (since std and core are still built with the fallback
     // of version 7.0 and hence emit the old LC_IPHONE_MIN_VERSION).
     let (major, minor) = ios_deployment_target();
-    format!("{}-apple-ios{}.{}.0", arch, major, minor)
+    format!("{arch}-apple-ios{major}.{minor}.0")
 }
 
 fn ios_lld_platform_version() -> String {
     let (major, minor) = ios_deployment_target();
-    format!("{}.{}", major, minor)
+    format!("{major}.{minor}")
 }
 
 pub fn ios_sim_llvm_target(arch: &str) -> String {
     let (major, minor) = ios_deployment_target();
-    format!("{}-apple-ios{}.{}.0-simulator", arch, major, minor)
+    format!("{arch}-apple-ios{major}.{minor}.0-simulator")
 }
 
 fn tvos_deployment_target() -> (u32, u32) {
@@ -169,7 +169,7 @@ fn tvos_deployment_target() -> (u32, u32) {
 
 fn tvos_lld_platform_version() -> String {
     let (major, minor) = tvos_deployment_target();
-    format!("{}.{}", major, minor)
+    format!("{major}.{minor}")
 }
 
 fn watchos_deployment_target() -> (u32, u32) {
@@ -178,10 +178,10 @@ fn watchos_deployment_target() -> (u32, u32) {
 
 fn watchos_lld_platform_version() -> String {
     let (major, minor) = watchos_deployment_target();
-    format!("{}.{}", major, minor)
+    format!("{major}.{minor}")
 }
 
 pub fn watchos_sim_llvm_target(arch: &str) -> String {
     let (major, minor) = watchos_deployment_target();
-    format!("{}-apple-watchos{}.{}.0-simulator", arch, major, minor)
+    format!("{arch}-apple-watchos{major}.{minor}.0-simulator")
 }

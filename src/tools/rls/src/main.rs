@@ -95,7 +95,7 @@ fn read_message<R: BufRead>(reader: &mut R) -> Result<Message, Box<dyn Error>> {
 }
 
 fn write_message_raw<W: Write>(mut writer: W, output: String) -> Result<(), Box<dyn Error>> {
-    write!(writer, "Content-Length: {}\r\n\r\n{}", output.len(), output)?;
+    write!(writer, "Content-Length: {}\r\n\r\n{output}", output.len())?;
     writer.flush()?;
     Ok(())
 }

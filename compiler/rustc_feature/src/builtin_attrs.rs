@@ -70,7 +70,7 @@ impl std::fmt::Debug for AttributeGate {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             Self::Gated(ref stab, name, expl, _) => {
-                write!(fmt, "Gated({:?}, {}, {})", stab, name, expl)
+                write!(fmt, "Gated({stab:?}, {name}, {expl})")
             }
             Self::Ungated => write!(fmt, "Ungated"),
         }

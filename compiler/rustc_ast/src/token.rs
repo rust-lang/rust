@@ -84,27 +84,27 @@ impl fmt::Display for Lit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Lit { kind, symbol, suffix } = *self;
         match kind {
-            Byte => write!(f, "b'{}'", symbol)?,
-            Char => write!(f, "'{}'", symbol)?,
-            Str => write!(f, "\"{}\"", symbol)?,
+            Byte => write!(f, "b'{symbol}'")?,
+            Char => write!(f, "'{symbol}'")?,
+            Str => write!(f, "\"{symbol}\"")?,
             StrRaw(n) => write!(
                 f,
                 "r{delim}\"{string}\"{delim}",
                 delim = "#".repeat(n as usize),
                 string = symbol
             )?,
-            ByteStr => write!(f, "b\"{}\"", symbol)?,
+            ByteStr => write!(f, "b\"{symbol}\"")?,
             ByteStrRaw(n) => write!(
                 f,
                 "br{delim}\"{string}\"{delim}",
                 delim = "#".repeat(n as usize),
                 string = symbol
             )?,
-            Integer | Float | Bool | Err => write!(f, "{}", symbol)?,
+            Integer | Float | Bool | Err => write!(f, "{symbol}")?,
         }
 
         if let Some(suffix) = suffix {
-            write!(f, "{}", suffix)?;
+            write!(f, "{suffix}")?;
         }
 
         Ok(())
@@ -706,7 +706,7 @@ impl Token {
                 _ => return None,
             },
             SingleQuote => match joint.kind {
-                Ident(name, false) => Lifetime(Symbol::intern(&format!("'{}", name))),
+                Ident(name, false) => Lifetime(Symbol::intern(&format!("'{name}"))),
                 _ => return None,
             },
 

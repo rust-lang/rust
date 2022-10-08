@@ -232,7 +232,7 @@ fn doc_comment_from_desc(list: &Punctuated<Expr, token::Comma>) -> Result<Attrib
             .unwrap();
         },
     );
-    let doc_string = format!("[query description - consider adding a doc-comment!] {}", doc_string);
+    let doc_string = format!("[query description - consider adding a doc-comment!] {doc_string}");
     Ok(parse_quote! { #[doc = #doc_string] })
 }
 

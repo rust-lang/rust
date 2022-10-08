@@ -142,7 +142,7 @@ impl CompareMode {
             "chalk" => CompareMode::Chalk,
             "split-dwarf" => CompareMode::SplitDwarf,
             "split-dwarf-single" => CompareMode::SplitDwarfSingle,
-            x => panic!("unknown --compare-mode option: {}", x),
+            x => panic!("unknown --compare-mode option: {x}"),
         }
     }
 }
@@ -466,7 +466,7 @@ impl TargetCfg {
             .output()
         {
             Ok(output) => output,
-            Err(e) => panic!("error: failed to get cfg info from {:?}: {e}", rustc_path),
+            Err(e) => panic!("error: failed to get cfg info from {rustc_path:?}: {e}"),
         };
         if !output.status.success() {
             panic!(

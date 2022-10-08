@@ -50,7 +50,7 @@ impl Lint {
                 continue;
             }
             if !self.doc_contains(expected) {
-                return Err(format!("lint docs should contain the line `{}`", expected).into());
+                return Err(format!("lint docs should contain the line `{expected}`").into());
             }
         }
         if let Some(first) = self.doc.first() {
@@ -122,7 +122,7 @@ impl<'a> LintExtractor<'a> {
     fn lints_from_file(&self, path: &Path) -> Result<Vec<Lint>, Box<dyn Error>> {
         let mut lints = Vec::new();
         let contents = fs::read_to_string(path)
-            .map_err(|e| format!("could not read {}: {}", path.display(), e))?;
+            .map_err(|e| format!("could not read {}: {e}", path.display()))?;
         let mut lines = contents.lines().enumerate();
         'outer: loop {
             // Find a lint declaration.
@@ -344,7 +344,7 @@ impl<'a> LintExtractor<'a> {
         options: &[&str],
     ) -> Result<String, Box<dyn Error>> {
         if self.verbose {
-            eprintln!("compiling lint {}", name);
+            eprintln!("compiling lint {name}");
         }
         let tempdir = tempfile::TempDir::new()?;
         let tempfile = tempdir.path().join("lint_example.rs");
@@ -373,7 +373,7 @@ impl<'a> LintExtractor<'a> {
             source.push_str("}\n");
         }
         fs::write(&tempfile, source)
-            .map_err(|e| format!("failed to write {}: {}", tempfile.display(), e))?;
+            .map_err(|e| format!("failed to write {}: {e}", tempfile.display()))?;
         let mut cmd = Command::new(self.rustc_path);
         if options.contains(&"edition2015") {
             cmd.arg("--edition=2015");
@@ -387,7 +387,7 @@ impl<'a> LintExtractor<'a> {
         }
         cmd.arg("lint_example.rs");
         cmd.current_dir(tempdir.path());
-        let output = cmd.output().map_err(|e| format!("failed to run command {:?}\n{}", cmd, e))?;
+        let output = cmd.output().map_err(|e| format!("failed to run command {cmd:?}\n{e}"))?;
         let stderr = std::str::from_utf8(&output.stderr).unwrap();
         let msgs = stderr
             .lines()
@@ -457,7 +457,7 @@ impl<'a> LintExtractor<'a> {
         // Delete the output because rustbuild uses hard links in its copies.
         let _ = fs::remove_file(&out_path);
         fs::write(&out_path, result)
-            .map_err(|e| format!("could not write to {}: {}", out_path.display(), e))?;
+            .map_err(|e| format!("could not write to {}: {e}", out_path.display()))?;
         Ok(())
     }
 }

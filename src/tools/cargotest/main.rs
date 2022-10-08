@@ -141,7 +141,7 @@ fn clone_repo(test: &Test, out_dir: &Path) -> PathBuf {
                 .arg("fetch")
                 .arg(test.repo)
                 .arg("master")
-                .arg(&format!("--depth={}", depth))
+                .arg(&format!("--depth={depth}"))
                 .current_dir(&out_dir)
                 .status()
                 .unwrap();
@@ -184,13 +184,13 @@ fn run_cargo_test(
     command.arg("test");
 
     if let Some(path) = manifest_path {
-        command.arg(format!("--manifest-path={}", path));
+        command.arg(format!("--manifest-path={path}"));
     }
 
     if let Some(features) = features {
         command.arg("--no-default-features");
         for feature in features {
-            command.arg(format!("--features={}", feature));
+            command.arg(format!("--features={feature}"));
         }
     }
 

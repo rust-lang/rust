@@ -31,7 +31,7 @@ fn main() -> Result<(), String> {
         Ok(())
     } else {
         for i in failed {
-            eprintln!("{}", i);
+            eprintln!("{i}");
         }
         Err(format!("Jsondocck failed for {}", &config.template))
     }
@@ -64,7 +64,7 @@ impl CommandKind {
         };
 
         if !count {
-            print_err(&format!("Incorrect number of arguments to `@{}`", self), lineno);
+            print_err(&format!("Incorrect number of arguments to `@{self}`"), lineno);
             return false;
         }
 
@@ -91,7 +91,7 @@ impl fmt::Display for CommandKind {
             CommandKind::Is => "is",
             CommandKind::Set => "set",
         };
-        write!(f, "{}", text)
+        write!(f, "{text}")
     }
 }
 
@@ -110,7 +110,7 @@ static LINE_PATTERN: Lazy<Regex> = Lazy::new(|| {
 });
 
 fn print_err(msg: &str, lineno: usize) {
-    eprintln!("Invalid command: {} on line {}", msg, lineno)
+    eprintln!("Invalid command: {msg} on line {lineno}")
 }
 
 /// Get a list of commands from a file. Does the work of ensuring the commands
@@ -138,7 +138,7 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
             "ismany" => CommandKind::IsMany,
             "set" => CommandKind::Set,
             _ => {
-                print_err(&format!("Unrecognized command name `@{}`", cmd), lineno);
+                print_err(&format!("Unrecognized command name `@{cmd}`"), lineno);
                 errors = true;
                 continue;
             }
@@ -255,7 +255,7 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
             for got_value in got_values {
                 if !expected_values.iter().any(|exp| &**exp == got_value) {
                     return Err(CkError::FailedCheck(
-                        format!("`{}` has match {:?}, which was not expected", query, got_value),
+                        format!("`{query}` has match {got_value:?}, which was not expected"),
                         command,
                     ));
                 }
@@ -327,8 +327,8 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                 }
                 _ => {
                     panic!(
-                        "Got multiple results in `@set` for `{}`: {:?}",
-                        &command.args[2], results,
+                        "Got multiple results in `@set` for `{}`: {results:?}",
+                        &command.args[2],
                     );
                 }
             }
@@ -368,6 +368,6 @@ fn string_to_value<'a>(s: &str, cache: &'a Cache) -> Cow<'a, Value> {
             panic!("No variable: `{}`. Current state: `{:?}`", &s[1..], cache.variables)
         }))
     } else {
-        Cow::Owned(serde_json::from_str(s).expect(&format!("Cannot convert `{}` to json", s)))
+        Cow::Owned(serde_json::from_str(s).expect(&format!("Cannot convert `{s}` to json")))
     }
 }

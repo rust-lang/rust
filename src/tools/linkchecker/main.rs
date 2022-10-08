@@ -196,7 +196,7 @@ impl Checker {
     fn check(&mut self, file: &Path, report: &mut Report) {
         let (pretty_path, entry) = self.load_file(file, report);
         let source = match entry {
-            FileEntry::Missing => panic!("missing file {:?} while walking", file),
+            FileEntry::Missing => panic!("missing file {file:?} while walking"),
             FileEntry::Dir => unreachable!("never with `check` path"),
             FileEntry::OtherFile => return,
             FileEntry::Redirect { .. } => return,
@@ -355,12 +355,12 @@ impl Checker {
                     return;
                 }
 
-                if is_exception(file, &format!("#{}", fragment)) {
+                if is_exception(file, &format!("#{fragment}")) {
                     report.links_ignored_exception += 1;
                 } else {
                     report.errors += 1;
-                    print!("{}:{}: broken link fragment ", pretty_path, i + 1);
-                    println!("`#{}` pointing to `{}`", fragment, target_pretty_path);
+                    print!("{pretty_path}:{}: broken link fragment ", i + 1);
+                    println!("`#{fragment}` pointing to `{target_pretty_path}`");
                 };
             }
         });
@@ -374,7 +374,7 @@ impl Checker {
                     report.intra_doc_exceptions += 1;
                 } else {
                     report.errors += 1;
-                    print!("{}:{}: broken intra-doc link - ", pretty_path, i + 1);
+                    print!("{pretty_path}:{}: broken intra-doc link - ", i + 1);
                     println!("{}", &broken_link[0]);
                 }
             }
@@ -417,7 +417,7 @@ impl Checker {
                     {
                         return FileEntry::Missing;
                     }
-                    panic!("unexpected read error for {}: {}", file.display(), e);
+                    panic!("unexpected read error for {}: {e}", file.display());
                 }
             });
         (pretty_path, entry)
@@ -443,7 +443,7 @@ fn load_html_file(file: &Path, report: &mut Report) -> FileEntry {
         Err(err) => {
             // This usually should not fail since `metadata` was already
             // called successfully on this file.
-            panic!("unexpected read error for {}: {}", file.display(), err);
+            panic!("unexpected read error for {}: {err}", file.display());
         }
     };
     match maybe_redirect(&source) {
@@ -552,7 +552,7 @@ fn parse_ids(ids: &mut HashSet<String>, file: &str, source: &str, report: &mut R
             let encoded = small_url_encode(&frag);
             if !ids.insert(frag) {
                 report.errors += 1;
-                println!("{}:{}: id is not unique: `{}`", file, i, fragment);
+                println!("{file}:{i}: id is not unique: `{fragment}`");
             }
             // Just in case, we also add the encoded id.
             ids.insert(encoded);

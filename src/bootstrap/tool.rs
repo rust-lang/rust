@@ -70,7 +70,7 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
-        builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
+        builder.info(&format!("Building stage{} tool {tool} ({target})", compiler.stage));
         let mut duplicates = Vec::new();
         let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
@@ -166,7 +166,7 @@ impl Step for ToolBuild {
                       have the same features enabled:"
                 );
                 for (id, cur, prev) in same {
-                    eprintln!("  {}", id);
+                    eprintln!("  {id}");
                     // same features
                     eprintln!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
                 }
@@ -174,7 +174,7 @@ impl Step for ToolBuild {
             if !different.is_empty() {
                 eprintln!("the following dependencies have different features:");
                 for (id, cur, prev) in different {
-                    eprintln!("  {}", id);
+                    eprintln!("  {id}");
                     let cur_features: HashSet<_> = cur.2.into_iter().collect();
                     let prev_features: HashSet<_> = prev.2.into_iter().collect();
                     eprintln!(

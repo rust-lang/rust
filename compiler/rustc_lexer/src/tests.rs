@@ -3,7 +3,7 @@ use super::*;
 use expect_test::{expect, Expect};
 
 fn check_raw_str(s: &str, expected: Result<u8, RawStrError>) {
-    let s = &format!("r{}", s);
+    let s = &format!("r{s}");
     let mut cursor = Cursor::new(s);
     cursor.bump();
     let res = cursor.raw_double_quoted_string(0);
@@ -135,7 +135,7 @@ fn test_shebang_followed_by_attrib() {
 }
 
 fn check_lexing(src: &str, expect: Expect) {
-    let actual: String = tokenize(src).map(|token| format!("{:?}\n", token)).collect();
+    let actual: String = tokenize(src).map(|token| format!("{token:?}\n")).collect();
     expect.assert_eq(&actual)
 }
 

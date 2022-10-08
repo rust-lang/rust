@@ -267,7 +267,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 // No or an invalid subcommand -- show the general usage and subcommand help
                 // An exit code will be 0 when no subcommand is given, and 1 in case of an invalid
                 // subcommand.
-                println!("{}\n", subcommand_help);
+                println!("{subcommand_help}\n");
                 let exit_code = if args.is_empty() { 0 } else { 1 };
                 crate::detail_exit(exit_code);
             }
@@ -350,7 +350,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             println!("{}", opts.usage(subcommand_help));
             if let Some(s) = paths {
                 if verbose {
-                    println!("{}", s);
+                    println!("{s}");
                 } else {
                     println!(
                         "Run `./x.py {} -h -v` to see a list of available paths.",
@@ -366,7 +366,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         // Done specifying what options are possible, so do the getopts parsing
         let matches = opts.parse(args).unwrap_or_else(|e| {
             // Invalid argument/option format
-            println!("\n{}\n", e);
+            println!("\n{e}\n");
             usage(1, &opts, false, &subcommand_help);
         });
 
@@ -387,7 +387,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             }
         }
         if !pass_sanity_check {
-            eprintln!("{}\n", subcommand_help);
+            eprintln!("{subcommand_help}\n");
             eprintln!(
                 "Sorry, I couldn't figure out which subcommand you were trying to specify.\n\
                  You may need to move some options to after the subcommand.\n"
@@ -621,7 +621,7 @@ Arguments:
                     ));
 
                     profile_string.parse().unwrap_or_else(|err| {
-                        eprintln!("error: {}", err);
+                        eprintln!("error: {err}");
                         eprintln!("help: the available profiles are:");
                         eprint!("{}", Profile::all_for_help("- "));
                         crate::detail_exit(1);
@@ -816,7 +816,7 @@ fn parse_deny_warnings(matches: &getopts::Matches) -> Option<bool> {
         Some("deny") => Some(true),
         Some("warn") => Some(false),
         Some(value) => {
-            eprintln!(r#"invalid value for --warnings: {:?}, expected "warn" or "deny""#, value,);
+            eprintln!(r#"invalid value for --warnings: {value:?}, expected "warn" or "deny""#,);
             crate::detail_exit(1);
         }
         None => None,

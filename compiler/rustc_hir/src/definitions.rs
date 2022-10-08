@@ -163,13 +163,13 @@ impl DisambiguatedDefPathData {
         match self.data.name() {
             DefPathDataName::Named(name) => {
                 if verbose && self.disambiguator != 0 {
-                    write!(writer, "{}#{}", name, self.disambiguator)
+                    write!(writer, "{name}#{}", self.disambiguator)
                 } else {
                     writer.write_str(name.as_str())
                 }
             }
             DefPathDataName::Anon { namespace } => {
-                write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
+                write!(writer, "{{{namespace}#{}}}", self.disambiguator)
             }
         }
     }
@@ -224,7 +224,7 @@ impl DefPath {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            write!(s, "::{}", component).unwrap();
+            write!(s, "::{component}").unwrap();
         }
 
         s
@@ -240,7 +240,7 @@ impl DefPath {
         for component in &self.data {
             s.extend(opt_delimiter);
             opt_delimiter = Some('-');
-            write!(s, "{}", component).unwrap();
+            write!(s, "{component}").unwrap();
         }
 
         s
@@ -433,7 +433,7 @@ impl fmt::Display for DefPathData {
         match self.name() {
             DefPathDataName::Named(name) => f.write_str(name.as_str()),
             // FIXME(#70334): this will generate legacy {{closure}}, {{impl}}, etc
-            DefPathDataName::Anon { namespace } => write!(f, "{{{{{}}}}}", namespace),
+            DefPathDataName::Anon { namespace } => write!(f, "{{{{{namespace}}}}}"),
         }
     }
 }

@@ -92,7 +92,7 @@ fn open(builder: &Builder<'_>, path: impl AsRef<Path>) {
     let path = path.as_ref();
     builder.info(&format!("Opening doc {}", path.display()));
     if let Err(err) = opener::open(path) {
-        builder.info(&format!("{}\n", err));
+        builder.info(&format!("{err}\n"));
     }
 }
 
@@ -165,7 +165,7 @@ impl Step for RustbookSrc {
         if builder.config.dry_run || up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
             return;
         }
-        builder.info(&format!("Rustbook ({}) - {}", target, name));
+        builder.info(&format!("Rustbook ({target}) - {name}"));
         let _ = fs::remove_dir_all(&out);
 
         builder.run(rustbook_cmd.arg("build").arg(&src).arg("-d").arg(out));
@@ -221,7 +221,7 @@ impl Step for TheBook {
         for edition in &["first-edition", "second-edition", "2018-edition"] {
             builder.ensure(RustbookSrc {
                 target,
-                name: INTERNER.intern_string(format!("book/{}", edition)),
+                name: INTERNER.intern_string(format!("book/{edition}")),
                 src: INTERNER.intern_path(builder.src.join(&relative_path).join(edition)),
             });
         }
@@ -230,7 +230,7 @@ impl Step for TheBook {
         builder.ensure(Standalone { compiler, target });
 
         // build the redirect pages
-        builder.info(&format!("Documenting book redirect pages ({})", target));
+        builder.info(&format!("Documenting book redirect pages ({target})"));
         for file in t!(fs::read_dir(builder.src.join(&relative_path).join("redirects"))) {
             let file = t!(file);
             let path = file.path();
@@ -320,7 +320,7 @@ impl Step for Standalone {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let compiler = self.compiler;
-        builder.info(&format!("Documenting standalone ({})", target));
+        builder.info(&format!("Documenting standalone ({target})"));
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -660,7 +660,7 @@ impl Step for Rustc {
         let compiler = builder.compiler(stage, builder.config.build);
         builder.ensure(compile::Std::new(compiler, builder.config.build));
 
-        builder.info(&format!("Documenting stage{} compiler ({})", stage, target));
+        builder.info(&format!("Documenting stage{stage} compiler ({target})"));
 
         // This uses a shared directory so that librustdoc documentation gets
         // correctly built and merged with the rustc documentation. This is
@@ -910,7 +910,7 @@ impl Step for UnstableBookGen {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
 
-        builder.info(&format!("Generating unstable book md files ({})", target));
+        builder.info(&format!("Generating unstable book md files ({target})"));
         let out = builder.md_doc_out(target).join("unstable-book");
         builder.create_dir(&out);
         builder.remove_dir(&out);

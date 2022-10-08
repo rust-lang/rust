@@ -8,7 +8,7 @@ use rustc_ast::ModKind;
 use rustc_span::symbol::Ident;
 
 fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
-    format!("{}{}", State::to_string(|s| s.print_visibility(vis)), s)
+    format!("{}{s}", State::to_string(|s| s.print_visibility(vis)))
 }
 
 impl<'a> State<'a> {
@@ -417,9 +417,9 @@ impl<'a> State<'a> {
             ast::VisibilityKind::Restricted { ref path, id: _, shorthand } => {
                 let path = Self::to_string(|s| s.print_path(path, false, 0));
                 if shorthand && (path == "crate" || path == "self" || path == "super") {
-                    self.word_nbsp(format!("pub({})", path))
+                    self.word_nbsp(format!("pub({path})"))
                 } else {
-                    self.word_nbsp(format!("pub(in {})", path))
+                    self.word_nbsp(format!("pub(in {path})"))
                 }
             }
             ast::VisibilityKind::Inherited => {}

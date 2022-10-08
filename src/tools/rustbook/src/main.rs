@@ -92,10 +92,10 @@ fn load_book(book_dir: &Path) -> Result3<MDBook> {
 }
 
 fn handle_error(error: mdbook::errors::Error) -> ! {
-    eprintln!("Error: {}", error);
+    eprintln!("Error: {error}");
 
     for cause in error.chain().skip(1) {
-        eprintln!("\tCaused By: {}", cause);
+        eprintln!("\tCaused By: {cause}");
     }
 
     ::std::process::exit(101);

@@ -74,7 +74,7 @@ mod os_impl {
                         return ReadOnlyFs;
                     }
 
-                    panic!("unable to create temporary file `{:?}`: {:?}", path, e);
+                    panic!("unable to create temporary file `{path:?}`: {e:?}");
                 }
             };
         }

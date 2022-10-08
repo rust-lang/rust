@@ -319,7 +319,7 @@ fn version() -> String {
 }
 
 fn fmt_list<V: std::fmt::Debug>(values: impl IntoIterator<Item = V>) -> String {
-    let pieces = values.into_iter().map(|b| format!("{:?}, ", b)).collect::<Vec<_>>();
+    let pieces = values.into_iter().map(|b| format!("{b:?}, ")).collect::<Vec<_>>();
     let mut out = String::new();
     let mut line = String::from("\n    ");
     for piece in pieces {
@@ -347,7 +347,7 @@ fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String
     s.push_str("\nfn main() {\n");
 
     for (property, ranges) in ranges {
-        s.push_str(&format!(r#"    println!("Testing {}");"#, property));
+        s.push_str(&format!(r#"    println!("Testing {property}");"#));
         s.push('\n');
         s.push_str(&format!("    {}_true();\n", property.to_lowercase()));
         s.push_str(&format!("    {}_false();\n", property.to_lowercase()));
@@ -387,7 +387,7 @@ fn generate_asserts(s: &mut String, property: &str, points: &[u32], truthy: bool
                 range.start,
             ));
         } else {
-            s.push_str(&format!("        for chn in {:?}u32 {{\n", range));
+            s.push_str(&format!("        for chn in {range:?}u32 {{\n"));
             s.push_str(&format!(
                 "            assert!({}unicode_data::{}::lookup(std::char::from_u32(chn).unwrap()), \"{{:?}}\", chn);\n",
                 if truthy { "" } else { "!" },
@@ -438,7 +438,7 @@ fn merge_ranges(ranges: &mut Vec<Range<u32>>) {
     let mut last_end = None;
     for range in ranges {
         if let Some(last) = last_end {
-            assert!(range.start > last, "{:?}", range);
+            assert!(range.start > last, "{range:?}");
         }
         last_end = Some(range.end);
     }

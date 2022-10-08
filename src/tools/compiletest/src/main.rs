@@ -153,7 +153,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
-        let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
+        let message = format!("Usage: {argv0} [OPTIONS] [TESTNAME...]");
         println!("{}", opts.usage(&message));
         println!();
         panic!()
@@ -161,11 +161,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let matches = &match opts.parse(args_) {
         Ok(m) => m,
-        Err(f) => panic!("{:?}", f),
+        Err(f) => panic!("{f:?}"),
     };
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
+        let message = format!("Usage: {argv0} [OPTIONS]  [TESTNAME...]");
         println!("{}", opts.usage(&message));
         println!();
         panic!()
@@ -174,7 +174,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     fn opt_path(m: &getopts::Matches, nm: &str) -> PathBuf {
         match m.opt_str(nm) {
             Some(s) => PathBuf::from(&s),
-            None => panic!("no option (=path) found for {}", nm),
+            None => panic!("no option (=path) found for {nm}"),
         }
     }
 
@@ -197,7 +197,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some("auto") | None => ColorConfig::AutoColor,
         Some("always") => ColorConfig::AlwaysColor,
         Some("never") => ColorConfig::NeverColor,
-        Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
+        Some(x) => panic!("argument for --color must be auto, always, or never, but found `{x}`"),
     };
     let llvm_version =
         matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
@@ -242,13 +242,13 @@ pub fn parse_config(args: Vec<String>) -> Config {
         filter_exact: matches.opt_present("exact"),
         force_pass_mode: matches.opt_str("pass").map(|mode| {
             mode.parse::<PassMode>()
-                .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
+                .unwrap_or_else(|_| panic!("unknown `--pass` option `{mode}` given"))
         }),
         run: matches.opt_str("run").and_then(|mode| match mode.as_str() {
             "auto" => None,
             "always" => Some(true),
             "never" => Some(false),
-            _ => panic!("unknown `--run` option `{}` given", mode),
+            _ => panic!("unknown `--run` option `{mode}` given"),
         }),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
@@ -317,7 +317,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("filter_exact: {}", config.filter_exact));
     logv(
         c,
-        format!("force_pass_mode: {}", opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),),
+        format!("force_pass_mode: {}", opt_str(&config.force_pass_mode.map(|m| format!("{m}"))),),
     );
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
     logv(c, format!("host-rustcflags: {}", opt_str(&config.host_rustcflags)));
@@ -358,7 +358,7 @@ pub fn run_tests(config: Config) {
         coverage_file_path.push("rustfix_missing_coverage.txt");
         if coverage_file_path.exists() {
             if let Err(e) = fs::remove_file(&coverage_file_path) {
-                panic!("Could not delete {} due to {}", coverage_file_path.display(), e)
+                panic!("Could not delete {} due to {e}", coverage_file_path.display())
             }
         }
     }
@@ -409,7 +409,7 @@ pub fn run_tests(config: Config) {
             eprintln!(
                 "Some tests failed in compiletest suite={}{} mode={} host={} target={}",
                 config.suite,
-                config.compare_mode.map(|c| format!(" compare_mode={:?}", c)).unwrap_or_default(),
+                config.compare_mode.map(|c| format!(" compare_mode={c:?}")).unwrap_or_default(),
                 config.mode,
                 config.host,
                 config.target
@@ -424,7 +424,7 @@ pub fn run_tests(config: Config) {
             //
             // This should realistically "never" happen, so don't try to make
             // this a pretty error message.
-            panic!("I/O failure during tests: {:?}", e);
+            panic!("I/O failure during tests: {e:?}");
         }
     }
 }
@@ -771,7 +771,7 @@ fn make_test_name(
     let root_directory = config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
     let path = testpaths.file.strip_prefix(root_directory).unwrap();
     let debugger = match config.debugger {
-        Some(d) => format!("-{}", d),
+        Some(d) => format!("-{d}"),
         None => String::new(),
     };
     let mode_suffix = match config.compare_mode {
@@ -785,7 +785,7 @@ fn make_test_name(
         debugger,
         mode_suffix,
         path.display(),
-        revision.map_or("".to_string(), |rev| format!("#{}", rev))
+        revision.map_or("".to_string(), |rev| format!("#{rev}"))
     ))
 }
 

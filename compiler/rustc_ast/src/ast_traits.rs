@@ -214,7 +214,7 @@ impl HasTokens for Attribute {
         match &self.kind {
             AttrKind::Normal(normal) => normal.tokens.as_ref(),
             kind @ AttrKind::DocComment(..) => {
-                panic!("Called tokens on doc comment attr {:?}", kind)
+                panic!("Called tokens on doc comment attr {kind:?}")
             }
         }
     }
@@ -222,7 +222,7 @@ impl HasTokens for Attribute {
         Some(match &mut self.kind {
             AttrKind::Normal(normal) => &mut normal.tokens,
             kind @ AttrKind::DocComment(..) => {
-                panic!("Called tokens_mut on doc comment attr {:?}", kind)
+                panic!("Called tokens_mut on doc comment attr {kind:?}")
             }
         })
     }

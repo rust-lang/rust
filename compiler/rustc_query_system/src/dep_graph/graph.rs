@@ -447,7 +447,7 @@ impl<K: DepKind> DepGraph<K> {
                     TaskDepsRef::Allow(deps) => deps.lock(),
                     TaskDepsRef::Ignore => return,
                     TaskDepsRef::Forbid => {
-                        panic!("Illegal read of: {:?}", dep_node_index)
+                        panic!("Illegal read of: {dep_node_index:?}")
                     }
                 };
                 let task_deps = &mut *task_deps;
@@ -477,7 +477,7 @@ impl<K: DepKind> DepGraph<K> {
                             if let Some(ref forbidden_edge) = data.current.forbidden_edge {
                                 let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
                                 if forbidden_edge.test(&src, &target) {
-                                    panic!("forbidden edge {:?} -> {:?} created", src, target)
+                                    panic!("forbidden edge {src:?} -> {target:?} created")
                                 }
                             }
                         }
@@ -991,7 +991,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         let forbidden_edge = match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
             Ok(s) => match EdgeFilter::new(&s) {
                 Ok(f) => Some(f),
-                Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
+                Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {err}"),
             },
             Err(_) => None,
         };
@@ -1079,7 +1079,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             if let Some(fingerprint) = fingerprint {
                 if fingerprint == prev_graph.fingerprint_by_index(prev_index) {
                     if print_status {
-                        eprintln!("[task::green] {:?}", key);
+                        eprintln!("[task::green] {key:?}");
                     }
 
                     // This is a green node: it existed in the previous compilation,
@@ -1101,7 +1101,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                     (dep_node_index, Some((prev_index, DepNodeColor::Green(dep_node_index))))
                 } else {
                     if print_status {
-                        eprintln!("[task::red] {:?}", key);
+                        eprintln!("[task::red] {key:?}");
                     }
 
                     // This is a red node: it existed in the previous compilation, its query
@@ -1124,7 +1124,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 }
             } else {
                 if print_status {
-                    eprintln!("[task::unknown] {:?}", key);
+                    eprintln!("[task::unknown] {key:?}");
                 }
 
                 // This is a red node, effectively: it existed in the previous compilation
@@ -1149,7 +1149,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             }
         } else {
             if print_status {
-                eprintln!("[task::new] {:?}", key);
+                eprintln!("[task::new] {key:?}");
             }
 
             let fingerprint = fingerprint.unwrap_or(Fingerprint::ZERO);

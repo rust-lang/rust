@@ -85,7 +85,7 @@ fn test_range() {
             let mut expected = vec![1, 3, 6, 9];
             expected.retain(|&x| x >= start && x < end);
 
-            assert_eq!(keys(map.range(start..end)), expected, "range = {}..{}", start, end);
+            assert_eq!(keys(map.range(start..end)), expected, "range = {start}..{end}");
         }
     }
 }
@@ -135,7 +135,7 @@ fn test_remove_range() {
             let mut map = map.clone();
             map.remove_range(start..end);
 
-            assert_eq!(keys(map), expected, "range = {}..{}", start, end);
+            assert_eq!(keys(map), expected, "range = {start}..{end}");
         }
     }
 }

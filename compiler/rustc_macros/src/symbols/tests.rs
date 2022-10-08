@@ -44,7 +44,7 @@ fn test_symbols_macro(input: TokenStream, expected_errors: &[&str]) {
     );
 
     for (found_error, &expected_error) in found_errors.iter().zip(expected_errors) {
-        let found_error_str = format!("{}", found_error);
+        let found_error_str = format!("{found_error}");
         assert_eq!(found_error_str, expected_error);
     }
 }

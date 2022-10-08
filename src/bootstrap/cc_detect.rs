@@ -136,14 +136,14 @@ pub fn find(build: &mut Build) {
         }
 
         build.verbose(&format!("CC_{} = {:?}", &target.triple, build.cc(target)));
-        build.verbose(&format!("CFLAGS_{} = {:?}", &target.triple, cflags));
+        build.verbose(&format!("CFLAGS_{} = {cflags:?}", &target.triple));
         if let Ok(cxx) = build.cxx(target) {
             let cxxflags = build.cflags(target, GitRepo::Rustc, CLang::Cxx);
-            build.verbose(&format!("CXX_{} = {:?}", &target.triple, cxx));
-            build.verbose(&format!("CXXFLAGS_{} = {:?}", &target.triple, cxxflags));
+            build.verbose(&format!("CXX_{} = {cxx:?}", &target.triple));
+            build.verbose(&format!("CXXFLAGS_{} = {cxxflags:?}", &target.triple));
         }
         if let Some(ar) = ar {
-            build.verbose(&format!("AR_{} = {:?}", &target.triple, ar));
+            build.verbose(&format!("AR_{} = {ar:?}", &target.triple));
             build.ar.insert(target, ar);
         }
 
@@ -172,7 +172,7 @@ fn set_compiler(
                     .replace("armv7", "arm")
                     .replace("thumbv7neon", "arm")
                     .replace("thumbv7", "arm");
-                let compiler = format!("{}-{}", target, compiler.clang());
+                let compiler = format!("{target}-{}", compiler.clang());
                 cfg.compiler(ndk.join("bin").join(compiler));
             }
         }
@@ -195,7 +195,7 @@ fn set_compiler(
                 '0'..='6' => {}
                 _ => return,
             }
-            let alternative = format!("e{}", gnu_compiler);
+            let alternative = format!("e{gnu_compiler}");
             if Command::new(&alternative).output().is_ok() {
                 cfg.compiler(alternative);
             }

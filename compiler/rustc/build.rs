@@ -18,7 +18,7 @@ fn set_windows_exe_options() {
     let mut manifest = env::current_dir().unwrap();
     manifest.push(WINDOWS_MANIFEST_FILE);
 
-    println!("cargo:rerun-if-changed={}", WINDOWS_MANIFEST_FILE);
+    println!("cargo:rerun-if-changed={WINDOWS_MANIFEST_FILE}");
     // Embed the Windows application manifest file.
     println!("cargo:rustc-link-arg-bin=rustc-main=/MANIFEST:EMBED");
     println!("cargo:rustc-link-arg-bin=rustc-main=/MANIFESTINPUT:{}", manifest.to_str().unwrap());

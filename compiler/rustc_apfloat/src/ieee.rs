@@ -571,9 +571,9 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
 
             // Exponent always at least two digits if we do not truncate zeros.
             if truncate_zero {
-                write!(f, "{:+}", exp)?;
+                write!(f, "{exp:+}")?;
             } else {
-                write!(f, "{:+03}", exp)?;
+                write!(f, "{exp:+03}")?;
             }
 
             return Ok(());

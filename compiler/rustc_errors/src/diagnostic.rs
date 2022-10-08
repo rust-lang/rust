@@ -112,7 +112,7 @@ impl IntoDiagnosticArg for bool {
 
 impl IntoDiagnosticArg for char {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(format!("{:?}", self)))
+        DiagnosticArgValue::Str(Cow::Owned(format!("{self:?}")))
     }
 }
 
@@ -494,13 +494,13 @@ impl Diagnostic {
         let expected_label = if expected_label.is_empty() {
             "expected".to_string()
         } else {
-            format!("expected {}", expected_label)
+            format!("expected {expected_label}")
         };
         let found_label = found_label.to_string();
         let found_label = if found_label.is_empty() {
             "found".to_string()
         } else {
-            format!("found {}", found_label)
+            format!("found {found_label}")
         };
         let (found_padding, expected_padding) = if expected_label.len() > found_label.len() {
             (expected_label.len() - found_label.len(), 0)
@@ -508,18 +508,18 @@ impl Diagnostic {
             (0, found_label.len() - expected_label.len())
         };
         let mut msg: Vec<_> =
-            vec![(format!("{}{} `", " ".repeat(expected_padding), expected_label), Style::NoStyle)];
+            vec![(format!("{}{expected_label} `", " ".repeat(expected_padding)), Style::NoStyle)];
         msg.extend(expected.0.iter().map(|x| match *x {
             StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
             StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
         }));
-        msg.push((format!("`{}\n", expected_extra), Style::NoStyle));
-        msg.push((format!("{}{} `", " ".repeat(found_padding), found_label), Style::NoStyle));
+        msg.push((format!("`{expected_extra}\n"), Style::NoStyle));
+        msg.push((format!("{}{found_label} `", " ".repeat(found_padding)), Style::NoStyle));
         msg.extend(found.0.iter().map(|x| match *x {
             StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
             StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
         }));
-        msg.push((format!("`{}", found_extra), Style::NoStyle));
+        msg.push((format!("`{found_extra}"), Style::NoStyle));
 
         // For now, just attach these as notes.
         self.highlighted_note(msg);
@@ -528,7 +528,7 @@ impl Diagnostic {
 
     pub fn note_trait_signature(&mut self, name: Symbol, signature: String) -> &mut Self {
         self.highlighted_note(vec![
-            (format!("`{}` from trait: `", name), Style::NoStyle),
+            (format!("`{name}` from trait: `"), Style::NoStyle),
             (signature, Style::Highlight),
             ("`".to_string(), Style::NoStyle),
         ]);
@@ -628,9 +628,9 @@ impl Diagnostic {
     /// This is factored out to make sure it does the right thing with `Cargo.toml`.
     pub fn help_use_latest_edition(&mut self) -> &mut Self {
         if std::env::var_os("CARGO").is_some() {
-            self.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
+            self.help(&format!("set `edition = \"{LATEST_STABLE_EDITION}\"` in `Cargo.toml`"));
         } else {
-            self.help(&format!("pass `--edition {}` to `rustc`", LATEST_STABLE_EDITION));
+            self.help(&format!("pass `--edition {LATEST_STABLE_EDITION}` to `rustc`"));
         }
         self.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
         self

@@ -222,8 +222,8 @@ pub fn check(path: &Path, bad: &mut bool) {
         filter_dirs(path) || skip_markdown_path(path)
     }
     let problematic_consts_strings: Vec<String> = (PROBLEMATIC_CONSTS.iter().map(u32::to_string))
-        .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:x}", v)))
-        .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:X}", v)))
+        .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{v:x}")))
+        .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{v:X}")))
         .collect();
     walk(path, &mut skip, &mut |entry, contents| {
         let file = entry.path();

@@ -74,7 +74,7 @@ impl Config {
                 "--bind" => next_is_bind = true,
                 "--sequential" => config.sequential = true,
                 "--verbose" | "-v" => config.verbose = true,
-                arg => panic!("unknown argument: {}", arg),
+                arg => panic!("unknown argument: {arg}"),
             }
         }
         if next_is_bind {
@@ -87,7 +87,7 @@ impl Config {
 
 fn print_verbose(s: &str, conf: Config) {
     if conf.verbose {
-        println!("{}", s);
+        println!("{s}");
     }
 }
 
@@ -135,7 +135,7 @@ fn main() {
                 thread::spawn(f);
             }
         } else {
-            panic!("unknown command {:?}", buf);
+            panic!("unknown command {buf:?}");
         }
     }
 }
@@ -143,7 +143,7 @@ fn main() {
 fn handle_push(socket: TcpStream, work: &Path, config: Config) {
     let mut reader = BufReader::new(socket);
     let dst = recv(&work, &mut reader);
-    print_verbose(&format!("push {:#?}", dst), config);
+    print_verbose(&format!("push {dst:#?}"), config);
 
     let mut socket = reader.into_inner();
     t!(socket.write_all(b"ack "));
@@ -166,7 +166,7 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     // Allocate ourselves a directory that we'll delete when we're done to save
     // space.
     let n = TEST.fetch_add(1, Ordering::SeqCst);
-    let path = work.join(format!("test{}", n));
+    let path = work.join(format!("test{n}"));
     t!(fs::create_dir(&path));
     let _a = RemoveOnDrop { inner: &path };
 
@@ -226,7 +226,7 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     // binary is and then we'll download it all to the exe path we calculated
     // earlier.
     let exe = recv(&path, &mut reader);
-    print_verbose(&format!("run {:#?}", exe), config);
+    print_verbose(&format!("run {exe:#?}"), config);
 
     let mut cmd = Command::new(&exe);
     cmd.args(args);

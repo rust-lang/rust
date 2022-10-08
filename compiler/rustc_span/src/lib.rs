@@ -320,7 +320,7 @@ impl fmt::Display for FileNameDisplay<'_> {
             ProcMacroSourceCode(_) => write!(fmt, "<proc-macro source code>"),
             CfgSpec(_) => write!(fmt, "<cfgspec>"),
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
-            Custom(ref s) => write!(fmt, "<{}>", s),
+            Custom(ref s) => write!(fmt, "<{s}>"),
             DocTest(ref path, _) => write!(fmt, "{}", path.display()),
             InlineAsm(_) => write!(fmt, "<inline asm>"),
         }
@@ -1047,7 +1047,7 @@ impl NonNarrowChar {
             0 => NonNarrowChar::ZeroWidth(pos),
             2 => NonNarrowChar::Wide(pos),
             4 => NonNarrowChar::Tab(pos),
-            _ => panic!("width {} given for non-narrow character", width),
+            _ => panic!("width {width} given for non-narrow character"),
         }
     }
 

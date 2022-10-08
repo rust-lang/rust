@@ -123,7 +123,7 @@ impl Connection {
                     let resp = Response::new_err(
                         req.id.clone(),
                         ErrorCode::ServerNotInitialized as i32,
-                        format!("expected initialize request, got {:?}", req),
+                        format!("expected initialize request, got {req:?}"),
                     );
                     self.sender.send(resp.into()).unwrap();
                 }
@@ -221,10 +221,10 @@ impl Connection {
         match &self.receiver.recv_timeout(std::time::Duration::from_secs(30)) {
             Ok(Message::Notification(n)) if n.is_exit() => (),
             Ok(msg) => {
-                return Err(ProtocolError(format!("unexpected message during shutdown: {:?}", msg)))
+                return Err(ProtocolError(format!("unexpected message during shutdown: {msg:?}")))
             }
             Err(e) => {
-                return Err(ProtocolError(format!("unexpected error during shutdown: {}", e)))
+                return Err(ProtocolError(format!("unexpected error during shutdown: {e}")))
             }
         }
         Ok(true)

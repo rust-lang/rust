@@ -401,7 +401,7 @@ impl<'a> Parser<'a> {
                 Some(pos)
             } else {
                 let pos = self.to_span_index(pos);
-                let description = format!("expected `'}}'`, found `{:?}`", maybe);
+                let description = format!("expected `'}}'`, found `{maybe:?}`");
                 let label = "expected `}`".to_owned();
                 let (note, secondary_label) = if c == '}' {
                     (
@@ -425,12 +425,12 @@ impl<'a> Parser<'a> {
                 None
             }
         } else {
-            let description = format!("expected `{:?}` but string was terminated", c);
+            let description = format!("expected `{c:?}` but string was terminated");
             // point at closing `"`
             let pos = self.input.len() - if self.append_newline { 1 } else { 0 };
             let pos = self.to_span_index(pos);
             if c == '}' {
-                let label = format!("expected `{:?}`", c);
+                let label = format!("expected `{c:?}`");
                 let (note, secondary_label) = if c == '}' {
                     (
                         Some(
@@ -451,7 +451,7 @@ impl<'a> Parser<'a> {
                     should_be_replaced_with_positional_argument: false,
                 });
             } else {
-                self.err(description, format!("expected `{:?}`", c), pos.to(pos));
+                self.err(description, format!("expected `{c:?}`"), pos.to(pos));
             }
             None
         }

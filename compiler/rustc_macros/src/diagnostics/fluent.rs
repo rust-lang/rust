@@ -177,7 +177,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                         opt: Default::default(),
                     };
                     let dl = DisplayList::from(snippet);
-                    eprintln!("{}\n", dl);
+                    eprintln!("{dl}\n");
                 }
                 continue;
             }
@@ -263,7 +263,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                         Diagnostic::spanned(
                             path_span,
                             Level::Error,
-                            format!("overrides existing {}: `{}`", kind, id),
+                            format!("overrides existing {kind}: `{id}`"),
                         )
                         .span_help(previous_defns[&id], "previously defined in this resource")
                         .emit();

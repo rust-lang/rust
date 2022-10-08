@@ -90,15 +90,15 @@ pub(crate) fn write_diff(expected: &str, actual: &str, context_size: usize) -> S
         for line in result.lines {
             match line {
                 DiffLine::Expected(e) => {
-                    writeln!(output, "-\t{}", e).unwrap();
+                    writeln!(output, "-\t{e}").unwrap();
                     line_number += 1;
                 }
                 DiffLine::Context(c) => {
-                    writeln!(output, "{}\t{}", line_number, c).unwrap();
+                    writeln!(output, "{line_number}\t{c}").unwrap();
                     line_number += 1;
                 }
                 DiffLine::Resulting(r) => {
-                    writeln!(output, "+\t{}", r).unwrap();
+                    writeln!(output, "+\t{r}").unwrap();
                 }
             }
         }

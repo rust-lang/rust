@@ -455,14 +455,14 @@ impl TestProps {
         }
 
         if let (Some(edition), false) = (&config.edition, has_edition) {
-            self.compile_flags.push(format!("--edition={}", edition));
+            self.compile_flags.push(format!("--edition={edition}"));
         }
     }
 
     fn update_fail_mode(&mut self, ln: &str, config: &Config) {
         let check_ui = |mode: &str| {
             if config.mode != Mode::Ui {
-                panic!("`{}-fail` header is only supported in UI tests", mode);
+                panic!("`{mode}-fail` header is only supported in UI tests");
             }
         };
         if config.mode == Mode::Ui && config.parse_name_directive(ln, "compile-fail") {
@@ -490,13 +490,13 @@ impl TestProps {
     fn update_pass_mode(&mut self, ln: &str, revision: Option<&str>, config: &Config) {
         let check_no_run = |s| {
             if config.mode != Mode::Ui && config.mode != Mode::Incremental {
-                panic!("`{}` header is only supported in UI and incremental tests", s);
+                panic!("`{s}` header is only supported in UI and incremental tests");
             }
             if config.mode == Mode::Incremental
                 && !revision.map_or(false, |r| r.starts_with("cfail"))
                 && !self.revisions.iter().all(|r| r.starts_with("cfail"))
             {
-                panic!("`{}` header is only supported in `cfail` incremental tests", s);
+                panic!("`{s}` header is only supported in `cfail` incremental tests");
             }
         };
         let pass_mode = if config.parse_name_directive(ln, "check-pass") {
@@ -548,7 +548,7 @@ pub fn line_directive<'line>(
 
                 Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
             } else {
-                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
+                panic!("malformed condition directive: expected `{comment}[foo]`, found `{ln}`")
             }
         } else {
             Some((None, ln))
@@ -600,7 +600,7 @@ impl Config {
             let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
             for revision in raw.split_whitespace().map(|r| r.to_string()) {
                 if !duplicates.insert(revision.clone()) {
-                    panic!("Duplicate revision: `{}` in line `{}`", revision, raw);
+                    panic!("Duplicate revision: `{revision}` in line `{raw}`");
                 }
                 existing.push(revision);
             }
@@ -617,7 +617,7 @@ impl Config {
                 let end = strs.pop().unwrap();
                 (strs.pop().unwrap(), end)
             }
-            n => panic!("Expected 1 or 2 strings, not {}", n),
+            n => panic!("Expected 1 or 2 strings, not {n}"),
         }
     }
 
@@ -983,7 +983,7 @@ fn ignore_cdb(config: &Config, line: &str) -> bool {
     if let Some(actual_version) = config.cdb_version {
         if let Some(min_version) = line.strip_prefix("min-cdb-version:").map(str::trim) {
             let min_version = extract_cdb_version(min_version).unwrap_or_else(|| {
-                panic!("couldn't parse version range: {:?}", min_version);
+                panic!("couldn't parse version range: {min_version:?}");
             });
 
             // Ignore if actual version is smaller than the minimum
@@ -999,7 +999,7 @@ fn ignore_gdb(config: &Config, line: &str) -> bool {
         if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
             let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
-                    panic!("couldn't parse version range: {:?}", rest);
+                    panic!("couldn't parse version range: {rest:?}");
                 });
 
             if start_ver != end_ver {
@@ -1011,7 +1011,7 @@ fn ignore_gdb(config: &Config, line: &str) -> bool {
         } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
             let (min_version, max_version) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
-                    panic!("couldn't parse version range: {:?}", rest);
+                    panic!("couldn't parse version range: {rest:?}");
                 });
 
             if max_version < min_version {
@@ -1028,7 +1028,7 @@ fn ignore_lldb(config: &Config, line: &str) -> bool {
     if let Some(actual_version) = config.lldb_version {
         if let Some(min_version) = line.strip_prefix("min-lldb-version:").map(str::trim) {
             let min_version = min_version.parse().unwrap_or_else(|e| {
-                panic!("Unexpected format of LLDB version string: {}\n{:?}", min_version, e);
+                panic!("Unexpected format of LLDB version string: {min_version}\n{e:?}");
             });
             // Ignore if actual version is smaller the minimum required
             // version
@@ -1054,7 +1054,7 @@ fn ignore_llvm(config: &Config, line: &str) -> bool {
             .find(|needed_component| !components.contains(needed_component))
         {
             if env::var_os("COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS").is_some() {
-                panic!("missing LLVM component: {}", missing_component);
+                panic!("missing LLVM component: {missing_component}");
             }
             return true;
         }
@@ -1074,7 +1074,7 @@ fn ignore_llvm(config: &Config, line: &str) -> bool {
             // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
             let (v_min, v_max) =
                 extract_version_range(rest, extract_llvm_version).unwrap_or_else(|| {
-                    panic!("couldn't parse version range: {:?}", rest);
+                    panic!("couldn't parse version range: {rest:?}");
                 });
             if v_max < v_min {
                 panic!("Malformed LLVM version range: max < min")

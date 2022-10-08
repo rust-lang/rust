@@ -272,7 +272,7 @@ impl FromStr for LlvmLibunwind {
             "no" => Ok(Self::No),
             "in-tree" => Ok(Self::InTree),
             "system" => Ok(Self::System),
-            invalid => Err(format!("Invalid value '{}' for rust.llvm-libunwind config.", invalid)),
+            invalid => Err(format!("Invalid value '{invalid}' for rust.llvm-libunwind config.")),
         }
     }
 }
@@ -366,7 +366,7 @@ impl fmt::Display for TargetSelection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.triple)?;
         if let Some(file) = self.file {
-            write!(f, "({})", file)?;
+            write!(f, "({file})")?;
         }
         Ok(())
     }
@@ -374,7 +374,7 @@ impl fmt::Display for TargetSelection {
 
 impl fmt::Debug for TargetSelection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -865,7 +865,7 @@ impl Config {
             {
                 Ok(table) => table,
                 Err(err) => {
-                    eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
+                    eprintln!("failed to parse TOML configuration '{}': {err}", file.display());
                     crate::detail_exit(2);
                 }
             }
@@ -895,7 +895,7 @@ impl Config {
             include_path.push("src");
             include_path.push("bootstrap");
             include_path.push("defaults");
-            include_path.push(format!("config.{}.toml", include));
+            include_path.push(format!("config.{include}.toml"));
             let included_toml = get_toml(&include_path);
             toml.merge(included_toml);
         }
@@ -1045,7 +1045,7 @@ impl Config {
             config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
-                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
+                    assert!(s == "if-available", "unknown option `{s}` for download-ci-llvm");
                     crate::native::is_ci_llvm_available(&config, llvm_assertions.unwrap_or(false))
                 }
                 Some(StringOrBool::Bool(b)) => b,
@@ -1337,7 +1337,7 @@ impl Config {
     pub(crate) fn artifact_channel(&self, builder: &Builder<'_>, commit: &str) -> String {
         if builder.rust_info.is_managed_git_subrepository() {
             let mut channel = self.git();
-            channel.arg("show").arg(format!("{}:src/ci/channel", commit));
+            channel.arg("show").arg(format!("{commit}:src/ci/channel"));
             let channel = output(&mut channel);
             channel.trim().to_owned()
         } else if let Ok(channel) = fs::read_to_string(builder.src.join("src/ci/channel")) {
@@ -1514,7 +1514,7 @@ fn download_ci_rustc_commit(
         Some(StringOrBool::Bool(true)) => false,
         Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
         Some(StringOrBool::String(other)) => {
-            panic!("unrecognized option for download-rustc: {}", other)
+            panic!("unrecognized option for download-rustc: {other}")
         }
     };
 

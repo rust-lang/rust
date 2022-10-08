@@ -224,7 +224,7 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
     let llvm_root = config.ci_llvm_root();
     let llvm_stamp = llvm_root.join(".llvm-stamp");
     let llvm_sha = detect_llvm_sha(&config, builder.rust_info.is_managed_git_subrepository());
-    let key = format!("{}{}", llvm_sha, config.llvm_assertions);
+    let key = format!("{llvm_sha}{}", config.llvm_assertions);
     if program_out_of_date(&llvm_stamp, &key) && !config.dry_run {
         download_ci_llvm(builder, &llvm_sha);
         for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
@@ -257,7 +257,7 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
 fn download_ci_llvm(builder: &Builder<'_>, llvm_sha: &str) {
     let llvm_assertions = builder.config.llvm_assertions;
 
-    let cache_prefix = format!("llvm-{}-{}", llvm_sha, llvm_assertions);
+    let cache_prefix = format!("llvm-{llvm_sha}-{llvm_assertions}");
     let cache_dst = builder.out.join("cache");
     let rustc_cache = cache_dst.join(cache_prefix);
     if !rustc_cache.exists() {
@@ -269,7 +269,7 @@ fn download_ci_llvm(builder: &Builder<'_>, llvm_sha: &str) {
         &builder.config.stage0_metadata.config.artifacts_server
     };
     let channel = builder.config.artifact_channel(builder, llvm_sha);
-    let filename = format!("rust-dev-{}-{}.tar.xz", channel, builder.build.build.triple);
+    let filename = format!("rust-dev-{channel}-{}.tar.xz", builder.build.build.triple);
     let tarball = rustc_cache.join(&filename);
     if !tarball.exists() {
         let help_on_error = "error: failed to download llvm from ci
@@ -336,7 +336,7 @@ impl Step for Llvm {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
-        builder.info(&format!("Building LLVM for {}", target));
+        builder.info(&format!("Building LLVM for {target}"));
         t!(stamp.remove());
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
@@ -561,8 +561,8 @@ impl Step for Llvm {
             let version = output(cmd.arg("--version"));
             let major = version.split('.').next().unwrap();
             let lib_name = match llvm_version_suffix {
-                Some(s) => format!("libLLVM-{}{}.dylib", major, s),
-                None => format!("libLLVM-{}.dylib", major),
+                Some(s) => format!("libLLVM-{major}{s}.dylib"),
+                None => format!("libLLVM-{major}.dylib"),
             };
 
             let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
@@ -594,7 +594,7 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=13.0\n\n", version)
+    panic!("\n\nbad LLVM version: {version}, need >=13.0\n\n")
 }
 
 fn configure_cmake(
@@ -738,7 +738,7 @@ fn configure_cmake(
         }
     }
     if builder.config.llvm_clang_cl.is_some() {
-        cflags.push(&format!(" --target={}", target));
+        cflags.push(&format!(" --target={target}"));
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
@@ -747,7 +747,7 @@ fn configure_cmake(
         cxxflags.push(s);
     }
     if builder.config.llvm_clang_cl.is_some() {
-        cxxflags.push(&format!(" --target={}", target));
+        cxxflags.push(&format!(" --target={target}"));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -818,9 +818,9 @@ fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmak
 fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
     let kind = if host == target { "HOST" } else { "TARGET" };
     let target_u = target.replace("-", "_");
-    env::var_os(&format!("{}_{}", var_base, target))
-        .or_else(|| env::var_os(&format!("{}_{}", var_base, target_u)))
-        .or_else(|| env::var_os(&format!("{}_{}", kind, var_base)))
+    env::var_os(&format!("{var_base}_{target}"))
+        .or_else(|| env::var_os(&format!("{var_base}_{target_u}")))
+        .or_else(|| env::var_os(&format!("{kind}_{var_base}")))
         .or_else(|| env::var_os(var_base))
 }
 
@@ -856,7 +856,7 @@ impl Step for Lld {
             return out_dir;
         }
 
-        builder.info(&format!("Building LLD for {}", target));
+        builder.info(&format!("Building LLD for {target}"));
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
@@ -1110,10 +1110,10 @@ fn supported_sanitizers(
         components
             .iter()
             .map(move |c| SanitizerRuntime {
-                cmake_target: format!("clang_rt.{}_{}_dynamic", c, os),
+                cmake_target: format!("clang_rt.{c}_{os}_dynamic"),
                 path: out_dir
-                    .join(&format!("build/lib/darwin/libclang_rt.{}_{}_dynamic.dylib", c, os)),
-                name: format!("librustc-{}_rt.{}.dylib", channel, c),
+                    .join(&format!("build/lib/darwin/libclang_rt.{c}_{os}_dynamic.dylib")),
+                name: format!("librustc-{channel}_rt.{c}.dylib"),
             })
             .collect()
     };
@@ -1122,9 +1122,9 @@ fn supported_sanitizers(
         components
             .iter()
             .map(move |c| SanitizerRuntime {
-                cmake_target: format!("clang_rt.{}-{}", c, arch),
-                path: out_dir.join(&format!("build/lib/{}/libclang_rt.{}-{}.a", os, c, arch)),
-                name: format!("librustc-{}_rt.{}.a", channel, c),
+                cmake_target: format!("clang_rt.{c}-{arch}"),
+                path: out_dir.join(&format!("build/lib/{os}/libclang_rt.{c}-{arch}.a")),
+                name: format!("librustc-{channel}_rt.{c}.a"),
             })
             .collect()
     };
@@ -1168,7 +1168,7 @@ impl HashStamp {
             Ok(h) => self.hash.as_deref().unwrap_or(b"") == h.as_slice(),
             Err(e) if e.kind() == io::ErrorKind::NotFound => false,
             Err(e) => {
-                panic!("failed to read stamp file `{}`: {}", self.path.display(), e);
+                panic!("failed to read stamp file `{}`: {e}", self.path.display());
             }
         }
     }

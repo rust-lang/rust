@@ -1346,7 +1346,7 @@ impl<'a> Parser<'a> {
             msg: format!("use `{}= 1` instead", kind.op.chr()),
             patches: vec![
                 (pre_span, "{ ".to_string()),
-                (post_span, format!(" {}= 1; {} }}", kind.op.chr(), base_src)),
+                (post_span, format!(" {}= 1; {base_src} }}", kind.op.chr())),
             ],
             applicability: Applicability::MachineApplicable,
         }
@@ -1363,7 +1363,7 @@ impl<'a> Parser<'a> {
             msg: format!("use `{}= 1` instead", kind.op.chr()),
             patches: vec![
                 (pre_span, format!("{{ let {tmp_var} = ")),
-                (post_span, format!("; {} {}= 1; {} }}", base_src, kind.op.chr(), tmp_var)),
+                (post_span, format!("; {base_src} {}= 1; {tmp_var} }}", kind.op.chr())),
             ],
             applicability: Applicability::HasPlaceholders,
         }
@@ -1413,7 +1413,7 @@ impl<'a> Parser<'a> {
         let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));
         self.sess.emit_err(BadQPathStage2 {
             span: path.span,
-            ty: format!("<{}>::{}", ty_str, pprust::path_to_string(&path)),
+            ty: format!("<{ty_str}>::{}", pprust::path_to_string(&path)),
         });
 
         let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.

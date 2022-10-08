@@ -370,7 +370,7 @@ where
                     previous_node = previous;
                 }
                 // Only InCycleWith nodes were added to the reverse linked list.
-                other => panic!("Invalid previous link while compressing cycle: {:?}", other),
+                other => panic!("Invalid previous link while compressing cycle: {other:?}"),
             }
 
             debug!("find_state: parent_state = {:?}", node_state);
@@ -395,7 +395,7 @@ where
                 // NotVisited can not be part of a cycle since it should
                 // have instead gotten explored.
                 NodeState::NotVisited | NodeState::InCycleWith { .. } => {
-                    panic!("invalid parent state: {:?}", node_state)
+                    panic!("invalid parent state: {node_state:?}")
                 }
             }
         }

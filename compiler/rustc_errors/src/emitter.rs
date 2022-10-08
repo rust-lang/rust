@@ -1958,7 +1958,7 @@ impl EmitterWriter {
         }
         if suggestions.len() > MAX_SUGGESTIONS {
             let others = suggestions.len() - MAX_SUGGESTIONS;
-            let msg = format!("and {} other candidate{}", others, pluralize!(others));
+            let msg = format!("and {others} other candidate{}", pluralize!(others));
             buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
         } else if notice_capitalization {
             let msg = "notice the capitalization difference";
@@ -2000,7 +2000,7 @@ impl EmitterWriter {
                         &mut self.dst,
                         self.short_message,
                     ) {
-                        panic!("failed to emit error: {}", e)
+                        panic!("failed to emit error: {e}")
                     }
                 }
                 if !self.short_message {
@@ -2015,7 +2015,7 @@ impl EmitterWriter {
                             max_line_num_len,
                             true,
                         ) {
-                            panic!("failed to emit error: {}", err);
+                            panic!("failed to emit error: {err}");
                         }
                     }
                     for sugg in suggestions {
@@ -2031,7 +2031,7 @@ impl EmitterWriter {
                                 max_line_num_len,
                                 true,
                             ) {
-                                panic!("failed to emit error: {}", e);
+                                panic!("failed to emit error: {e}");
                             }
                         } else if let Err(e) = self.emit_suggestion_default(
                             span,
@@ -2040,20 +2040,20 @@ impl EmitterWriter {
                             &Level::Help,
                             max_line_num_len,
                         ) {
-                            panic!("failed to emit error: {}", e);
+                            panic!("failed to emit error: {e}");
                         };
                     }
                 }
             }
-            Err(e) => panic!("failed to emit error: {}", e),
+            Err(e) => panic!("failed to emit error: {e}"),
         }
 
         let mut dst = self.dst.writable();
         match writeln!(dst) {
-            Err(e) => panic!("failed to emit error: {}", e),
+            Err(e) => panic!("failed to emit error: {e}"),
             _ => {
                 if let Err(e) = dst.flush() {
-                    panic!("failed to emit error: {}", e)
+                    panic!("failed to emit error: {e}")
                 }
             }
         }

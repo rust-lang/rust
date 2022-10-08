@@ -79,7 +79,7 @@ fn main() {
 
             match result {
                 Err(error) => {
-                    eprintln!("Failed to invoke `{}`: {}", candidate.display(), error);
+                    eprintln!("Failed to invoke `{}`: {error}", candidate.display());
                 }
                 Ok(status) => {
                     process::exit(status.code().unwrap_or(1));

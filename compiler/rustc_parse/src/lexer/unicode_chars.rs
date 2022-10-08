@@ -343,7 +343,7 @@ pub(super) fn check_for_substitution<'a>(
     let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8()));
 
     let Some((_ascii_char, ascii_name, token)) = ASCII_ARRAY.iter().find(|&&(c, _, _)| c == ascii_char) else {
-        let msg = format!("substitution character not found for '{}'", ch);
+        let msg = format!("substitution character not found for '{ch}'");
         reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
         return None;
     };
@@ -361,7 +361,7 @@ pub(super) fn check_for_substitution<'a>(
                 pos + Pos::from_usize('“'.len_utf8() + s.len() + '”'.len_utf8()),
             ),
             &msg,
-            format!("\"{}\"", s),
+            format!("\"{s}\""),
             Applicability::MaybeIncorrect,
         );
     } else {

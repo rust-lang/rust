@@ -548,7 +548,7 @@ fn matrix_iter() {
     assert_eq!(count, 100);
 
     if let Some(i) = matrix.iter(7).next() {
-        panic!("expected no elements in row, but contains element {:?}", i);
+        panic!("expected no elements in row, but contains element {i:?}");
     }
 }
 
@@ -673,7 +673,7 @@ fn dense_insert_range() {
             assert!(range.contains(&i));
         }
         for i in range.clone() {
-            assert!(set.contains(i), "{} in {:?}, inserted {:?}", i, set, range);
+            assert!(set.contains(i), "{i} in {set:?}, inserted {range:?}");
         }
     }
     check(300, 10..10);

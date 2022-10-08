@@ -70,14 +70,14 @@ fn ppc_double_double_add_special() {
             let a2 = DoubleDouble::from_bits(op2);
             a1 = a1.add_r(a2, round).value;
 
-            assert_eq!(expected, a1.category(), "{:#x} + {:#x}", op1, op2);
+            assert_eq!(expected, a1.category(), "{op1:#x} + {op2:#x}");
         }
         {
             let a1 = DoubleDouble::from_bits(op1);
             let mut a2 = DoubleDouble::from_bits(op2);
             a2 = a2.add_r(a1, round).value;
 
-            assert_eq!(expected, a2.category(), "{:#x} + {:#x}", op2, op1);
+            assert_eq!(expected, a2.category(), "{op2:#x} + {op1:#x}");
         }
     }
 }
@@ -141,14 +141,14 @@ fn ppc_double_double_add() {
             let a2 = DoubleDouble::from_bits(op2);
             a1 = a1.add_r(a2, round).value;
 
-            assert_eq!(expected, a1.to_bits(), "{:#x} + {:#x}", op1, op2);
+            assert_eq!(expected, a1.to_bits(), "{op1:#x} + {op2:#x}");
         }
         {
             let a1 = DoubleDouble::from_bits(op1);
             let mut a2 = DoubleDouble::from_bits(op2);
             a2 = a2.add_r(a1, round).value;
 
-            assert_eq!(expected, a2.to_bits(), "{:#x} + {:#x}", op2, op1);
+            assert_eq!(expected, a2.to_bits(), "{op2:#x} + {op1:#x}");
         }
     }
 }
@@ -177,7 +177,7 @@ fn ppc_double_double_subtract() {
         let a2 = DoubleDouble::from_bits(op2);
         a1 = a1.sub_r(a2, round).value;
 
-        assert_eq!(expected, a1.to_bits(), "{:#x} - {:#x}", op1, op2);
+        assert_eq!(expected, a1.to_bits(), "{op1:#x} - {op2:#x}");
     }
 }
 
@@ -210,14 +210,14 @@ fn ppc_double_double_multiply_special() {
             let a2 = DoubleDouble::from_bits(op2);
             a1 = a1.mul_r(a2, round).value;
 
-            assert_eq!(expected, a1.category(), "{:#x} * {:#x}", op1, op2);
+            assert_eq!(expected, a1.category(), "{op1:#x} * {op2:#x}");
         }
         {
             let a1 = DoubleDouble::from_bits(op1);
             let mut a2 = DoubleDouble::from_bits(op2);
             a2 = a2.mul_r(a1, round).value;
 
-            assert_eq!(expected, a2.category(), "{:#x} * {:#x}", op2, op1);
+            assert_eq!(expected, a2.category(), "{op2:#x} * {op1:#x}");
         }
     }
 }
@@ -296,14 +296,14 @@ fn ppc_double_double_multiply() {
             let a2 = DoubleDouble::from_bits(op2);
             a1 = a1.mul_r(a2, round).value;
 
-            assert_eq!(expected, a1.to_bits(), "{:#x} * {:#x}", op1, op2);
+            assert_eq!(expected, a1.to_bits(), "{op1:#x} * {op2:#x}");
         }
         {
             let a1 = DoubleDouble::from_bits(op1);
             let mut a2 = DoubleDouble::from_bits(op2);
             a2 = a2.mul_r(a1, round).value;
 
-            assert_eq!(expected, a2.to_bits(), "{:#x} * {:#x}", op2, op1);
+            assert_eq!(expected, a2.to_bits(), "{op2:#x} * {op1:#x}");
         }
     }
 }
@@ -327,7 +327,7 @@ fn ppc_double_double_divide() {
         let a2 = DoubleDouble::from_bits(op2);
         a1 = a1.div_r(a2, round).value;
 
-        assert_eq!(expected, a1.to_bits(), "{:#x} / {:#x}", op1, op2);
+        assert_eq!(expected, a1.to_bits(), "{op1:#x} / {op2:#x}");
     }
 }
 
@@ -353,7 +353,7 @@ fn ppc_double_double_remainder() {
         let a2 = DoubleDouble::from_bits(op2);
         let result = a1.ieee_rem(a2).value;
 
-        assert_eq!(expected, result.to_bits(), "ieee_rem({:#x}, {:#x})", op1, op2);
+        assert_eq!(expected, result.to_bits(), "ieee_rem({op1:#x}, {op2:#x})");
     }
 }
 
@@ -381,7 +381,7 @@ fn ppc_double_double_mod() {
         let a2 = DoubleDouble::from_bits(op2);
         let r = (a1 % a2).value;
 
-        assert_eq!(expected, r.to_bits(), "fmod({:#x}, {:#x})", op1, op2);
+        assert_eq!(expected, r.to_bits(), "fmod({op1:#x}, {op2:#x})");
     }
 }
 
@@ -429,7 +429,7 @@ fn ppc_double_double_compare() {
     for (op1, op2, expected) in data {
         let a1 = DoubleDouble::from_bits(op1);
         let a2 = DoubleDouble::from_bits(op2);
-        assert_eq!(expected, a1.partial_cmp(&a2), "compare({:#x}, {:#x})", op1, op2,);
+        assert_eq!(expected, a1.partial_cmp(&a2), "compare({op1:#x}, {op2:#x})",);
     }
 }
 
@@ -451,7 +451,7 @@ fn ppc_double_double_bitwise_eq() {
     for (op1, op2, expected) in data {
         let a1 = DoubleDouble::from_bits(op1);
         let a2 = DoubleDouble::from_bits(op2);
-        assert_eq!(expected, a1.bitwise_eq(a2), "{:#x} = {:#x}", op1, op2);
+        assert_eq!(expected, a1.bitwise_eq(a2), "{op1:#x} = {op2:#x}");
     }
 }
 

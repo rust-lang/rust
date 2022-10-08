@@ -30,7 +30,7 @@ impl SmallCStr {
             SmallVec::from_vec(data)
         };
         if let Err(e) = ffi::CStr::from_bytes_with_nul(&data) {
-            panic!("The string \"{}\" cannot be converted into a CStr: {}", s, e);
+            panic!("The string \"{s}\" cannot be converted into a CStr: {e}");
         }
         SmallCStr { data }
     }
@@ -39,7 +39,7 @@ impl SmallCStr {
     pub fn new_with_nul(s: &str) -> SmallCStr {
         let b = s.as_bytes();
         if let Err(e) = ffi::CStr::from_bytes_with_nul(b) {
-            panic!("The string \"{}\" cannot be converted into a CStr: {}", s, e);
+            panic!("The string \"{s}\" cannot be converted into a CStr: {e}");
         }
         SmallCStr { data: SmallVec::from_slice(s.as_bytes()) }
     }
@@ -74,7 +74,7 @@ impl<'a> FromIterator<&'a str> for SmallCStr {
             iter.into_iter().flat_map(|s| s.as_bytes()).copied().collect::<SmallVec<_>>();
         data.push(0);
         if let Err(e) = ffi::CStr::from_bytes_with_nul(&data) {
-            panic!("The iterator {:?} cannot be converted into a CStr: {}", data, e);
+            panic!("The iterator {data:?} cannot be converted into a CStr: {e}");
         }
         Self { data }
     }

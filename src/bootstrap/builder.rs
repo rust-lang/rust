@@ -273,7 +273,7 @@ impl StepDescription {
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
         if builder.config.exclude.iter().any(|e| pathset.has(&e.path, e.kind)) {
-            println!("Skipping {:?} because it is excluded", pathset);
+            println!("Skipping {pathset:?} because it is excluded");
             return true;
         }
 
@@ -338,7 +338,7 @@ impl StepDescription {
         }
 
         if !paths.is_empty() {
-            eprintln!("error: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
+            eprintln!("error: no `{}` rules matched {paths:?}", builder.kind.as_str(),);
             eprintln!(
                 "help: run `x.py {} --help --verbose` to show a list of available paths",
                 builder.kind.as_str()
@@ -883,7 +883,7 @@ impl<'a> Builder<'a> {
             const NIX_IDS: &[&str] = &["ID=nixos", "ID='nixos'", "ID=\"nixos\""];
             let os_release = match File::open("/etc/os-release") {
                 Err(e) if e.kind() == ErrorKind::NotFound => return,
-                Err(e) => panic!("failed to access /etc/os-release: {}", e),
+                Err(e) => panic!("failed to access /etc/os-release: {e}"),
                 Ok(f) => f,
             };
             if !BufReader::new(os_release).lines().any(|l| NIX_IDS.contains(&t!(l).trim())) {
@@ -976,7 +976,7 @@ impl<'a> Builder<'a> {
     }
 
     fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
-        println!("downloading {}", url);
+        println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = Command::new("curl");
         curl.args(&[
@@ -1013,7 +1013,7 @@ impl<'a> Builder<'a> {
                 }
             }
             if !help_on_error.is_empty() {
-                eprintln!("{}", help_on_error);
+                eprintln!("{help_on_error}");
             }
             crate::detail_exit(1);
         }
@@ -1342,7 +1342,7 @@ impl<'a> Builder<'a> {
                 // This is the intended out directory for compiler documentation.
                 Mode::Rustc | Mode::ToolRustc => self.compiler_doc_out(target),
                 Mode::Std => out_dir.join(target.triple).join("doc"),
-                _ => panic!("doc mode {:?} not expected", mode),
+                _ => panic!("doc mode {mode:?} not expected"),
             };
             let rustdoc = self.rustdoc(compiler);
             self.clear_if_dirty(&my_out, &rustdoc);
@@ -1352,7 +1352,7 @@ impl<'a> Builder<'a> {
 
         let profile_var = |name: &str| {
             let profile = if self.config.rust_optimize { "RELEASE" } else { "DEV" };
-            format!("CARGO_PROFILE_{}_{}", profile, name)
+            format!("CARGO_PROFILE_{profile}_{name}")
         };
 
         // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
@@ -1715,7 +1715,7 @@ impl<'a> Builder<'a> {
                 None
             };
             if let Some(rpath) = rpath {
-                rustflags.arg(&format!("-Clink-args={}", rpath));
+                rustflags.arg(&format!("-Clink-args={rpath}"));
             }
         }
 
@@ -1729,7 +1729,7 @@ impl<'a> Builder<'a> {
 
         if let Some(target_linker) = self.linker(target) {
             let target = crate::envify(&target.triple);
-            cargo.env(&format!("CARGO_TARGET_{}_LINKER", target), target_linker);
+            cargo.env(&format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
         if self.is_fuse_ld_lld(target) {
             rustflags.arg("-Clink-args=-fuse-ld=lld");
@@ -1805,7 +1805,7 @@ impl<'a> Builder<'a> {
         }
 
         if let Some(map_to) = self.build.debuginfo_map_to(GitRepo::Rustc) {
-            let map = format!("{}={}", self.build.src.display(), map_to);
+            let map = format!("{}={map_to}", self.build.src.display());
             cargo.env("RUSTC_DEBUGINFO_MAP", map);
 
             // `rustc` needs to know the virtual `/rustc/$hash` we're mapping to,
@@ -1940,30 +1940,30 @@ impl<'a> Builder<'a> {
                 // accept a new env var or otherwise work with custom ccache
                 // vars.
                 match &ccache[..] {
-                    "ccache" | "sccache" => format!("{} {}", ccache, s.display()),
+                    "ccache" | "sccache" => format!("{ccache} {}", s.display()),
                     _ => s.display().to_string(),
                 }
             };
             let triple_underscored = target.triple.replace("-", "_");
             let cc = ccacheify(&self.cc(target));
-            cargo.env(format!("CC_{}", triple_underscored), &cc);
+            cargo.env(format!("CC_{triple_underscored}"), &cc);
 
             let cflags = self.cflags(target, GitRepo::Rustc, CLang::C).join(" ");
-            cargo.env(format!("CFLAGS_{}", triple_underscored), &cflags);
+            cargo.env(format!("CFLAGS_{triple_underscored}"), &cflags);
 
             if let Some(ar) = self.ar(target) {
                 let ranlib = format!("{} s", ar.display());
                 cargo
-                    .env(format!("AR_{}", triple_underscored), ar)
-                    .env(format!("RANLIB_{}", triple_underscored), ranlib);
+                    .env(format!("AR_{triple_underscored}"), ar)
+                    .env(format!("RANLIB_{triple_underscored}"), ranlib);
             }
 
             if let Ok(cxx) = self.cxx(target) {
                 let cxx = ccacheify(&cxx);
                 let cxxflags = self.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
                 cargo
-                    .env(format!("CXX_{}", triple_underscored), &cxx)
-                    .env(format!("CXXFLAGS_{}", triple_underscored), cxxflags);
+                    .env(format!("CXX_{triple_underscored}"), &cxx)
+                    .env(format!("CXXFLAGS_{triple_underscored}"), cxxflags);
             }
         }
 
@@ -2091,7 +2091,7 @@ impl<'a> Builder<'a> {
             };
 
             if let Some(limit) = limit {
-                rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
+                rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={limit}"));
             }
         }
 
@@ -2110,18 +2110,18 @@ impl<'a> Builder<'a> {
                     continue;
                 }
                 let mut out = String::new();
-                out += &format!("\n\nCycle in build detected when adding {:?}\n", step);
+                out += &format!("\n\nCycle in build detected when adding {step:?}\n");
                 for el in stack.iter().rev() {
-                    out += &format!("\t{:?}\n", el);
+                    out += &format!("\t{el:?}\n");
                 }
                 panic!("{}", out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.verbose_than(1, &format!("{}c {:?}", "  ".repeat(stack.len()), step));
+                self.verbose_than(1, &format!("{}c {step:?}", "  ".repeat(stack.len())));
 
                 return out;
             }
-            self.verbose_than(1, &format!("{}> {:?}", "  ".repeat(stack.len()), step));
+            self.verbose_than(1, &format!("{}> {step:?}", "  ".repeat(stack.len())));
             stack.push(Box::new(step.clone()));
         }
 
@@ -2139,7 +2139,7 @@ impl<'a> Builder<'a> {
         };
 
         if self.config.print_step_timings && !self.config.dry_run {
-            let step_string = format!("{:?}", step);
+            let step_string = format!("{step:?}");
             let brace_index = step_string.find("{").unwrap_or(0);
             let type_string = type_name::<S>();
             println!(
@@ -2159,7 +2159,7 @@ impl<'a> Builder<'a> {
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.verbose_than(1, &format!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
+        self.verbose_than(1, &format!("{}< {step:?}", "  ".repeat(self.stack.borrow().len())));
         self.cache.put(step, out.clone());
         out
     }
@@ -2229,7 +2229,7 @@ impl Rustflags {
         self.env(prefix);
 
         // ... and also handle target-specific env RUSTFLAGS if they're configured.
-        let target_specific = format!("CARGO_TARGET_{}_{}", crate::envify(&self.1.triple), prefix);
+        let target_specific = format!("CARGO_TARGET_{}_{prefix}", crate::envify(&self.1.triple));
         self.env(&target_specific);
     }
 

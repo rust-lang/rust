@@ -27,7 +27,7 @@ impl SpannedEventArgRecorder for EventArgRecorder<'_> {
             if let Some(source_map) = &*session_globals.source_map.borrow() {
                 source_map.span_to_embeddable_string(span)
             } else {
-                format!("{:?}", span)
+                format!("{span:?}")
             }
         });
         self.record_arg(span_arg);

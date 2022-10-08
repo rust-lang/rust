@@ -23,7 +23,7 @@ trait UnwrapOrExitWith<T> {
 impl<T> UnwrapOrExitWith<T> for Option<T> {
     fn unwrap_or_exit_with(self, context: &str) -> T {
         self.unwrap_or_else(|| {
-            eprintln!("lld-wrapper: {}", context);
+            eprintln!("lld-wrapper: {context}");
             process::exit(1);
         })
     }
@@ -32,7 +32,7 @@ impl<T> UnwrapOrExitWith<T> for Option<T> {
 impl<T, E: Display> UnwrapOrExitWith<T> for Result<T, E> {
     fn unwrap_or_exit_with(self, context: &str) -> T {
         self.unwrap_or_else(|err| {
-            eprintln!("lld-wrapper: {}: {}", context, err);
+            eprintln!("lld-wrapper: {context}: {err}");
             process::exit(1);
         })
     }
@@ -63,7 +63,7 @@ fn get_lld_flavor(current_exe_path: &Path) -> Result<&'static str, String> {
         Some("ld64.lld") => "darwin",
         Some("lld-link") => "link",
         Some("wasm-ld") => "wasm",
-        _ => return Err(format!("{:?}", file)),
+        _ => return Err(format!("{file:?}")),
     })
 }
 

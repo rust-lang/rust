@@ -21,7 +21,7 @@ impl DebuggerCommands {
     ) -> Result<Self, String> {
         let directives = debugger_prefixes
             .iter()
-            .map(|prefix| (format!("{}-command", prefix), format!("{}-check", prefix)))
+            .map(|prefix| (format!("{prefix}-command"), format!("{prefix}-check")))
             .collect::<Vec<_>>();
 
         let mut breakpoint_lines = vec![];
@@ -55,7 +55,7 @@ impl DebuggerCommands {
                             .map(|cmd| check_lines.push(cmd));
                     }
                 }
-                Err(e) => return Err(format!("Error while parsing debugger commands: {}", e)),
+                Err(e) => return Err(format!("Error while parsing debugger commands: {e}")),
             }
         }
 

@@ -54,7 +54,7 @@ fn main() -> Result<()> {
                         ),
                     }
                 }
-                ErrorKind::Custom(msg) => eprintln!("{}: {}", err.id.0, msg),
+                ErrorKind::Custom(msg) => eprintln!("{}: {msg}", err.id.0),
             }
         }
         bail!("Errors validating json {path}");

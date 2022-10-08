@@ -133,7 +133,7 @@ pub fn extract_rendered(output: &str) -> String {
                 }
             } else {
                 // preserve non-JSON lines, such as ICEs
-                Some(format!("{}\n", line))
+                Some(format!("{line}\n"))
             }
         })
         .collect()
@@ -239,8 +239,8 @@ fn push_expected_errors(
             // FIXME(#33000) -- it'd be better to use a dedicated UI harness
             {
                 format!(
-                    "{}:{}: {}:{}: {}",
-                    span.line_start, span.column_start, span.line_end, span.column_end, text
+                    "{}:{}: {}:{}: {text}",
+                    span.line_start, span.column_start, span.line_end, span.column_end
                 )
             }
         }

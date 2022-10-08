@@ -180,9 +180,9 @@ impl Versions {
         };
 
         if package.target_independent() {
-            Ok(format!("{}-{}.{}", component_name, version, extension))
+            Ok(format!("{component_name}-{version}.{extension}"))
         } else {
-            Ok(format!("{}-{}-{}.{}", component_name, version, target, extension))
+            Ok(format!("{component_name}-{version}-{target}.{extension}"))
         }
     }
 

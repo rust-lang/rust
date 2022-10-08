@@ -47,7 +47,7 @@ impl<T: Write> PrettyFormatter<T> {
 
     pub fn write_ignored(&mut self, message: Option<&'static str>) -> io::Result<()> {
         if let Some(message) = message {
-            self.write_short_result(&format!("ignored, {}", message), term::color::YELLOW)
+            self.write_short_result(&format!("ignored, {message}"), term::color::YELLOW)
         } else {
             self.write_short_result("ignored", term::color::YELLOW)
         }

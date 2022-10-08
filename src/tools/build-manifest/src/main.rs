@@ -572,7 +572,7 @@ impl Builder {
 
     fn url(&self, path: &Path) -> String {
         let file_name = path.file_name().unwrap().to_str().unwrap();
-        format!("{}/{}/{}", self.s3_address, self.date, file_name)
+        format!("{}/{}/{file_name}", self.s3_address, self.date)
     }
 
     fn write_channel_files(&mut self, channel_name: &str, manifest: &Manifest) {
@@ -586,7 +586,7 @@ impl Builder {
     }
 
     fn write(&mut self, contents: &str, channel_name: &str, suffix: &str) {
-        let name = format!("channel-rust-{}{}", channel_name, suffix);
+        let name = format!("channel-rust-{channel_name}{suffix}");
         self.shipped_files.insert(name.clone());
 
         let dst = self.output.join(name);

@@ -46,7 +46,7 @@ fn check_html_file(file: &Path) -> usize {
                 file.display(),
                 status.code().unwrap_or(-1)
             );
-            eprintln!("{}", stderr);
+            eprintln!("{stderr}");
             stderr.lines().count()
         }
     }
@@ -115,9 +115,9 @@ fn main() -> Result<(), String> {
     println!("Running HTML checker...");
 
     let (files_read, errors) = find_all_html_files(&Path::new(&args[1]));
-    println!("Done! Read {} files...", files_read);
+    println!("Done! Read {files_read} files...");
     if errors > 0 {
-        Err(format!("HTML check failed: {} errors", errors))
+        Err(format!("HTML check failed: {errors} errors"))
     } else {
         println!("No error found!");
         Ok(())

@@ -226,7 +226,7 @@ impl SelfProfilerRef {
         A: Borrow<str> + Into<String>,
     {
         let message = if self.print_verbose_generic_activities {
-            Some(format!("{}({})", event_label, event_arg.borrow()))
+            Some(format!("{event_label}({})", event_arg.borrow()))
         } else {
             None
         };
@@ -549,7 +549,7 @@ impl SelfProfiler {
         // length can behave as a source of entropy for heap addresses, when
         // ASLR is disabled and the heap is otherwise determinic.
         let pid: u32 = process::id();
-        let filename = format!("{}-{:07}.rustc_profile", crate_name, pid);
+        let filename = format!("{crate_name}-{pid:07}.rustc_profile");
         let path = output_directory.join(&filename);
         let profiler =
             Profiler::with_counter(&path, measureme::counters::Counter::by_name(counter_name)?)?;
@@ -783,7 +783,7 @@ pub fn print_time_passes_entry(
         (None, None) => String::new(),
     };
 
-    eprintln!("time: {:>7}{}\t{}", duration_to_secs_str(dur), mem_string, what);
+    eprintln!("time: {:>7}{mem_string}\t{what}", duration_to_secs_str(dur));
 }
 
 // Hack up our own formatting for the duration to make it easier for scripts

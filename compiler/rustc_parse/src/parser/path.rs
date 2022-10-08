@@ -608,7 +608,7 @@ impl<'a> Parser<'a> {
                     );
                     err.span_suggestion(
                         eq.to(before_next),
-                        &format!("remove the `=` if `{}` is a type", ident),
+                        &format!("remove the `=` if `{ident}` is a type"),
                         "",
                         Applicability::MaybeIncorrect,
                     )

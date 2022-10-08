@@ -87,7 +87,7 @@ mod owning_ref {
     fn fmt_debug() {
         let or: BoxRef<String> = Box::new(example().1).into();
         let or = or.map(|x| &x[..5]);
-        let s = format!("{:?}", or);
+        let s = format!("{or:?}");
         assert_eq!(&s, "OwningRef { owner: \"hello world\", reference: \"hello\" }");
     }
 
@@ -507,7 +507,7 @@ mod owning_ref_mut {
     fn fmt_debug() {
         let or: BoxRefMut<String> = Box::new(example().1).into();
         let or = or.map_mut(|x| &mut x[..5]);
-        let s = format!("{:?}", or);
+        let s = format!("{or:?}");
         assert_eq!(&s, "OwningRefMut { owner: \"hello world\", reference: \"hello\" }");
     }
 

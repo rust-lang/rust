@@ -10,8 +10,8 @@ fn main() {
             if i % 10 == 0 {
                 continue;
             }
-            validate(&format!("{}e{}", i, e));
-            validate(&format!("{}e-{}", i, e));
+            validate(&format!("{i}e{e}"));
+            validate(&format!("{i}e-{e}"));
         }
     }
 }

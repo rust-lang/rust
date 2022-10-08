@@ -7,7 +7,7 @@ fn main() -> std::io::Result<()> {
 
     let mut output = String::new();
     for i in 0..2000 {
-        let line = format!("/// Some const A{0}\npub const A{0}: isize = 0;\n", i);
+        let line = format!("/// Some const A{i}\npub const A{i}: isize = 0;\n");
         output.push_str(&*line);
     };
 

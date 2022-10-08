@@ -23,7 +23,7 @@ fn generate_stub_no_issue(path: &Path, name: &str) {
 
 fn set_to_summary_str(set: &BTreeSet<String>, dir: &str) -> String {
     set.iter()
-        .map(|ref n| format!("    - [{}]({}/{}.md)", n.replace('-', "_"), dir, n))
+        .map(|ref n| format!("    - [{}]({dir}/{n}.md)", n.replace('-', "_")))
         .fold("".to_owned(), |s, a| s + &a + "\n")
 }
 

@@ -79,7 +79,7 @@ impl Parse for Newtype {
                     };
                     try_comma()?;
                     if let Some(old) = debug_format.replace(new_debug_format) {
-                        panic!("Specified multiple debug format options: {:?}", old);
+                        panic!("Specified multiple debug format options: {old:?}");
                     }
                     continue;
                 }
@@ -89,7 +89,7 @@ impl Parse for Newtype {
                     let val: Lit = body.parse()?;
                     try_comma()?;
                     if let Some(old) = max.replace(val) {
-                        panic!("Specified multiple MAX: {:?}", old);
+                        panic!("Specified multiple MAX: {old:?}");
                     }
                     continue;
                 }

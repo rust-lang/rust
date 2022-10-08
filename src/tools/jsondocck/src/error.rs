@@ -14,9 +14,9 @@ impl fmt::Display for CkError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CkError::FailedCheck(msg, cmd) => {
-                write!(f, "Failed check: {} on line {}", msg, cmd.lineno)
+                write!(f, "Failed check: {msg} on line {}", cmd.lineno)
             }
-            CkError::Induced(err) => write!(f, "Check failed: {}", err),
+            CkError::Induced(err) => write!(f, "Check failed: {err}"),
         }
     }
 }

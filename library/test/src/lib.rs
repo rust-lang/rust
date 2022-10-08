@@ -649,7 +649,7 @@ fn spawn_test_subprocess(
         let output = match command.output() {
             Ok(out) => out,
             Err(e) => {
-                let err = format!("Failed to spawn {} as child for test: {:?}", args[0], e);
+                let err = format!("Failed to spawn {} as child for test: {e:?}", args[0]);
                 return (TrFailed, err.into_bytes(), None);
             }
         };
@@ -669,7 +669,7 @@ fn spawn_test_subprocess(
         })() {
             Ok(r) => r,
             Err(e) => {
-                write!(&mut test_output, "Unexpected error: {}", e).unwrap();
+                write!(&mut test_output, "Unexpected error: {e}").unwrap();
                 TrFailed
             }
         };

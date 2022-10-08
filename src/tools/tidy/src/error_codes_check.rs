@@ -149,7 +149,7 @@ fn extract_error_codes(
                     }
                 }
                 Err(e) => {
-                    eprintln!("Couldn't read `{}`: {}", path.display(), e);
+                    eprintln!("Couldn't read `{}`: {e}", path.display());
                 }
             }
         } else if reached_no_explanation && s.starts_with('E') {

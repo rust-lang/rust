@@ -117,7 +117,7 @@ pub fn filename_for_metadata(
         return out_filename.clone();
     }
 
-    let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
+    let libname = format!("{crate_name}{}", sess.opts.cg.extra_filename);
 
     let out_filename = outputs
         .single_output_file
@@ -135,7 +135,7 @@ pub fn filename_for_input(
     crate_name: &str,
     outputs: &OutputFilenames,
 ) -> PathBuf {
-    let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
+    let libname = format!("{crate_name}{}", sess.opts.cg.extra_filename);
 
     match crate_type {
         CrateType::Rlib => outputs.out_directory.join(&format!("lib{libname}.rlib")),

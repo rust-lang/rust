@@ -120,7 +120,7 @@ fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
             .find(|t| t.name == feature);
         match found {
             Some(found) => found.issue,
-            None => panic!("feature `{}` is not declared anywhere", feature),
+            None => panic!("feature `{feature}` is not declared anywhere"),
         }
     }
 }

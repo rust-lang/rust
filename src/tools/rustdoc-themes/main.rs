@@ -35,7 +35,7 @@ fn main() {
     let themes_folder = &argv[2];
     let themes = get_folders(&themes_folder);
     if themes.is_empty() {
-        eprintln!("No theme found in \"{}\"...", themes_folder);
+        eprintln!("No theme found in \"{themes_folder}\"...");
         exit(1);
     }
     let arg_name = "--check-theme".to_owned();

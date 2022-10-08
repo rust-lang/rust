@@ -45,7 +45,7 @@ impl RawEmitter {
             let codepoints = codepoints_by_high_bytes.get_mut(&high_byte).unwrap();
             if codepoints.len() == 1 {
                 let ch = codepoints.pop().unwrap();
-                arms.push(format!("{} => c as u32 == {:#04x}", high_byte, ch));
+                arms.push(format!("{high_byte} => c as u32 == {ch:#04x}"));
                 continue;
             }
             // more than 1 codepoint in this arm
@@ -67,7 +67,7 @@ impl RawEmitter {
         writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
         writeln!(&mut self.file, "    match c as u32 >> 8 {{").unwrap();
         for arm in arms {
-            writeln!(&mut self.file, "        {},", arm).unwrap();
+            writeln!(&mut self.file, "        {arm},").unwrap();
         }
         writeln!(&mut self.file, "        _ => false,").unwrap();
         writeln!(&mut self.file, "    }}").unwrap();

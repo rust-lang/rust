@@ -66,7 +66,7 @@ fn main() -> io::Result<()> {
             strip_crate_disambiguators = None;
         } else {
             eprintln!();
-            eprintln!("Usage: {} [-d|--disambiguators]", progname);
+            eprintln!("Usage: {progname} [-d|--disambiguators]");
             eprintln!();
             eprintln!(
                 "This tool converts a list of Rust mangled symbols (one per line) into a\n\

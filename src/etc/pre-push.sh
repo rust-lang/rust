@@ -1,25 +1,23 @@
-#!/usr/bin/env bash
-#
-# Call `tidy --bless` before git push
-# Copy this script to .git/hooks to activate,
-# and remove it from .git/hooks to deactivate.
-#
+#!/bin/sh
+# rusty-hook
+# version 0.8.4
 
-set -Eeuo pipefail
+hookName=$(basename "$0")
+gitParams="$*"
 
-# https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570
-unset GIT_DIR
-ROOT_DIR="$(git rev-parse --show-toplevel)"
-COMMAND="$ROOT_DIR/x.py test tidy"
-
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-  COMMAND="python $COMMAND"
-elif ! command -v python &> /dev/null; then
-  COMMAND="python3 $COMMAND"
+if ! command -v rusty-hook >/dev/null 2>&1; then
+  if [ -z "${RUSTY_HOOK_SKIP_AUTO_INSTALL}" ]; then
+    echo "Finalizing rusty-hook configuration..."
+    echo "This may take a few seconds..."
+    cargo install rusty-hook >/dev/null 2>&1
+  else
+    echo "rusty-hook is not installed, and auto install is disabled"
+    echo "skipping $hookName hook"
+    echo "You can reinstall it using 'cargo install rusty-hook' or delete this hook"
+    exit 0
+  fi
 fi
 
-echo "Running pre-push script '$COMMAND'"
-
-cd "$ROOT_DIR"
-
-$COMMAND
+# echo "rusty-hook version: $(rusty-hook --version)"
+# echo "hook file version: 0.8.4"
+rusty-hook run --hook "$hookName" "$gitParams"

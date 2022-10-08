@@ -963,9 +963,9 @@ fn to_string() {
     let to_string = |d: f64, precision: usize, width: usize| {
         let x = Double::from_f64(d);
         if precision == 0 {
-            format!("{:1$}", x, width)
+            format!("{x:width$}")
         } else {
-            format!("{:2$.1$}", x, precision, width)
+            format!("{x:width$.precision$}")
         }
     };
     assert_eq!("10", to_string(10.0, 6, 3));
@@ -985,9 +985,9 @@ fn to_string() {
     let to_string = |d: f64, precision: usize, width: usize| {
         let x = Double::from_f64(d);
         if precision == 0 {
-            format!("{:#1$}", x, width)
+            format!("{x:#width$}")
         } else {
-            format!("{:#2$.1$}", x, precision, width)
+            format!("{x:#width$.precision$}")
         }
     };
     assert_eq!("10", to_string(10.0, 6, 3));

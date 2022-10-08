@@ -542,7 +542,7 @@ impl Build {
             .unwrap()
             .trim();
         if local_release.split('.').take(2).eq(version.split('.').take(2)) {
-            build.verbose(&format!("auto-detected local-rebuild {}", local_release));
+            build.verbose(&format!("auto-detected local-rebuild {local_release}"));
             build.local_rebuild = true;
         }
 
@@ -596,7 +596,7 @@ impl Build {
         let actual_hash = recorded
             .split_whitespace()
             .nth(2)
-            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
+            .unwrap_or_else(|| panic!("unexpected output `{recorded}`"));
 
         // update_submodule
         if actual_hash == checked_out_hash.trim_end() {
@@ -707,7 +707,7 @@ impl Build {
         if failures.len() > 0 {
             eprintln!("\n{} command(s) did not execute successfully:\n", failures.len());
             for failure in failures.iter() {
-                eprintln!("  - {}\n", failure);
+                eprintln!("  - {failure}\n");
             }
             detail_exit(1);
         }
@@ -806,7 +806,7 @@ impl Build {
             Mode::ToolBootstrap => "-bootstrap-tools",
             Mode::ToolStd | Mode::ToolRustc => "-tools",
         };
-        self.out.join(&*compiler.host.triple).join(format!("stage{}{}", compiler.stage, suffix))
+        self.out.join(&*compiler.host.triple).join(format!("stage{}{suffix}", compiler.stage))
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
@@ -949,7 +949,7 @@ impl Build {
         if self.config.dry_run {
             return;
         }
-        self.verbose(&format!("running: {:?}", cmd));
+        self.verbose(&format!("running: {cmd:?}"));
         run(cmd, self.is_verbose())
     }
 
@@ -958,7 +958,7 @@ impl Build {
         if self.config.dry_run {
             return;
         }
-        self.verbose(&format!("running: {:?}", cmd));
+        self.verbose(&format!("running: {cmd:?}"));
         run_suppressed(cmd)
     }
 
@@ -969,7 +969,7 @@ impl Build {
         if self.config.dry_run {
             return true;
         }
-        self.verbose(&format!("running: {:?}", cmd));
+        self.verbose(&format!("running: {cmd:?}"));
         try_run(cmd, self.is_verbose())
     }
 
@@ -980,7 +980,7 @@ impl Build {
         if self.config.dry_run {
             return true;
         }
-        self.verbose(&format!("running: {:?}", cmd));
+        self.verbose(&format!("running: {cmd:?}"));
         try_run_suppressed(cmd)
     }
 
@@ -991,7 +991,7 @@ impl Build {
         if self.config.dry_run {
             return true;
         }
-        self.verbose(&format!("running: {:?}", cmd));
+        self.verbose(&format!("running: {cmd:?}"));
         check_run(cmd, self.is_verbose())
     }
 
@@ -1002,7 +1002,7 @@ impl Build {
     /// Prints a message if this build is configured in verbose mode.
     fn verbose(&self, msg: &str) {
         if self.is_verbose() {
-            println!("{}", msg);
+            println!("{msg}");
         }
     }
 
@@ -1013,7 +1013,7 @@ impl Build {
     /// Prints a message if this build is configured in more verbose mode than `level`.
     fn verbose_than(&self, level: usize, msg: &str) {
         if self.is_verbose_than(level) {
-            println!("{}", msg);
+            println!("{msg}");
         }
     }
 
@@ -1021,7 +1021,7 @@ impl Build {
         if self.config.dry_run {
             return;
         }
-        println!("{}", msg);
+        println!("{msg}");
     }
 
     /// Returns the number of parallel jobs that have been configured for this
@@ -1040,7 +1040,7 @@ impl Build {
         match which {
             GitRepo::Rustc => {
                 let sha = self.rust_sha().unwrap_or(&self.version);
-                Some(format!("/rustc/{}", sha))
+                Some(format!("/rustc/{sha}"))
             }
             GitRepo::Llvm => Some(String::from("/rustc/llvm")),
         }
@@ -1084,13 +1084,13 @@ impl Build {
         }
 
         if let Some(map_to) = self.debuginfo_map_to(which) {
-            let map = format!("{}={}", self.src.display(), map_to);
+            let map = format!("{}={map_to}", self.src.display());
             let cc = self.cc(target);
             if cc.ends_with("clang") || cc.ends_with("gcc") {
-                base.push(format!("-fdebug-prefix-map={}", map));
+                base.push(format!("-fdebug-prefix-map={map}"));
             } else if cc.ends_with("clang-cl.exe") {
                 base.push("-Xclang".into());
-                base.push(format!("-fdebug-prefix-map={}", map));
+                base.push(format!("-fdebug-prefix-map={map}"));
             }
         }
         base
@@ -1111,7 +1111,7 @@ impl Build {
         match self.cxx.get(&target) {
             Some(p) => Ok(p.path()),
             None => {
-                Err(format!("target `{}` is not configured as a host, only as a target", target))
+                Err(format!("target `{target}` is not configured as a host, only as a target"))
             }
         }
     }
@@ -1152,7 +1152,7 @@ impl Build {
             }
 
             let threads = if target.contains("windows") { "/threads:1" } else { "--threads=1" };
-            options[1] = Some(format!("-Clink-arg=-Wl,{}", threads));
+            options[1] = Some(format!("-Clink-arg=-Wl,{threads}"));
         }
 
         IntoIterator::into_iter(options).flatten()
@@ -1267,13 +1267,13 @@ impl Build {
             "stable" => num.to_string(),
             "beta" => {
                 if self.rust_info.is_managed_git_subrepository() && !self.config.ignore_git {
-                    format!("{}-beta.{}", num, self.beta_prerelease_version())
+                    format!("{num}-beta.{}", self.beta_prerelease_version())
                 } else {
-                    format!("{}-beta", num)
+                    format!("{num}-beta")
                 }
             }
-            "nightly" => format!("{}-nightly", num),
-            _ => format!("{}-dev", num),
+            "nightly" => format!("{num}-nightly"),
+            _ => format!("{num}-dev"),
         }
     }
 
@@ -1311,7 +1311,7 @@ impl Build {
             "stable" => num.to_string(),
             "beta" => "beta".to_string(),
             "nightly" => "nightly".to_string(),
-            _ => format!("{}-dev", num),
+            _ => format!("{num}-dev"),
         }
     }
 
@@ -1342,7 +1342,7 @@ impl Build {
 
     /// Returns the `a.b.c` version that the given package is at.
     fn release_num(&self, package: &str) -> String {
-        let toml_file_name = self.src.join(&format!("src/tools/{}/Cargo.toml", package));
+        let toml_file_name = self.src.join(&format!("src/tools/{package}/Cargo.toml"));
         let toml = t!(fs::read_to_string(&toml_file_name));
         for line in toml.lines() {
             if let Some(stripped) =
@@ -1352,7 +1352,7 @@ impl Build {
             }
         }
 
-        panic!("failed to find version in {}'s Cargo.toml", package)
+        panic!("failed to find version in {package}'s Cargo.toml")
     }
 
     /// Returns `true` if unstable features should be enabled for the compiler
@@ -1442,7 +1442,7 @@ impl Build {
         if self.config.dry_run {
             return;
         }
-        self.verbose_than(1, &format!("Copy {:?} to {:?}", src, dst));
+        self.verbose_than(1, &format!("Copy {src:?} to {dst:?}"));
         if src == dst {
             return;
         }
@@ -1464,7 +1464,7 @@ impl Build {
             // just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(&src, dst) {
-                panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
+                panic!("failed to copy `{}` to `{}`: {e}", src.display(), dst.display())
             }
             t!(fs::set_permissions(dst, metadata.permissions()));
             let atime = FileTime::from_last_access_time(&metadata);
@@ -1533,7 +1533,7 @@ impl Build {
             return;
         }
         let dst = dstdir.join(src.file_name().unwrap());
-        self.verbose_than(1, &format!("Install {:?} to {:?}", src, dst));
+        self.verbose_than(1, &format!("Install {src:?} to {dst:?}"));
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
             panic!("Error: File \"{}\" not found!", src.display());
@@ -1574,7 +1574,7 @@ impl Build {
         let iter = match fs::read_dir(dir) {
             Ok(v) => v,
             Err(_) if self.config.dry_run => return vec![].into_iter(),
-            Err(err) => panic!("could not read dir {:?}: {:?}", dir, err),
+            Err(err) => panic!("could not read dir {dir:?}: {err:?}"),
         };
         iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
     }
@@ -1591,7 +1591,7 @@ impl Build {
         if self.config.dry_run {
             return;
         }
-        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
+        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {f:?}"));
     }
 
     /// Returns if config.ninja is enabled, and checks for ninja existence,
@@ -1650,7 +1650,7 @@ fn chmod(_path: &Path, _perms: u32) {}
 fn detail_exit(code: i32) -> ! {
     // if in test and code is an error code, panic with status code provided
     if cfg!(test) && code != 0 {
-        panic!("status code: {}", code);
+        panic!("status code: {code}");
     } else {
         //otherwise,exit with provided status code
         std::process::exit(code);

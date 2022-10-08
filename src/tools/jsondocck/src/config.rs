@@ -17,7 +17,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 {
-        let message = format!("Usage: {} <doc-dir> <template>", argv0);
+        let message = format!("Usage: {argv0} <doc-dir> <template>");
         println!("{}", opts.usage(&message));
         std::process::exit(1);
     }
@@ -25,7 +25,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let matches = opts.parse(args_).unwrap();
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        let message = format!("Usage: {} <doc-dir> <template>", argv0);
+        let message = format!("Usage: {argv0} <doc-dir> <template>");
         println!("{}", opts.usage(&message));
         std::process::exit(1);
     }

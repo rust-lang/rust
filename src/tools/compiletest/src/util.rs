@@ -73,7 +73,7 @@ pub fn make_new_path(path: &str) -> String {
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
     match env::var(lib_path_env_var()) {
-        Ok(curr) => format!("{}{}{}", path, path_div(), curr),
+        Ok(curr) => format!("{path}{}{curr}", path_div()),
         Err(..) => path.to_owned(),
     }
 }
@@ -88,7 +88,7 @@ fn path_div() -> &'static str {
 pub fn logv(config: &Config, s: String) {
     debug!("{}", s);
     if config.verbose {
-        println!("{}", s);
+        println!("{s}");
     }
 }
 

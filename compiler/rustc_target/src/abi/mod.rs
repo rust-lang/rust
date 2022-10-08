@@ -209,7 +209,7 @@ impl TargetDataLayout {
             16 => 1 << 15,
             32 => 1 << 31,
             64 => 1 << 47,
-            bits => panic!("obj_size_bound: unknown pointer bit size {}", bits),
+            bits => panic!("obj_size_bound: unknown pointer bit size {bits}"),
         }
     }
 
@@ -219,7 +219,7 @@ impl TargetDataLayout {
             16 => I16,
             32 => I32,
             64 => I64,
-            bits => panic!("ptr_sized_integer: unknown pointer bit size {}", bits),
+            bits => panic!("ptr_sized_integer: unknown pointer bit size {bits}"),
         }
     }
 
@@ -276,7 +276,7 @@ impl FromStr for Endian {
         match s {
             "little" => Ok(Self::Little),
             "big" => Ok(Self::Big),
-            _ => Err(format!(r#"unknown endian: "{}""#, s)),
+            _ => Err(format!(r#"unknown endian: "{s}""#)),
         }
     }
 }
@@ -332,7 +332,7 @@ impl Size {
     pub fn bits(self) -> u64 {
         #[cold]
         fn overflow(bytes: u64) -> ! {
-            panic!("Size::bits: {} bytes in bits doesn't fit in u64", bytes)
+            panic!("Size::bits: {bytes} bytes in bits doesn't fit in u64")
         }
 
         self.bytes().checked_mul(8).unwrap_or_else(|| overflow(self.bytes()))
@@ -454,7 +454,7 @@ impl Mul<u64> for Size {
     fn mul(self, count: u64) -> Size {
         match self.bytes().checked_mul(count) {
             Some(bytes) => Size::from_bytes(bytes),
-            None => panic!("Size::mul: {} * {} doesn't fit in u64", self.bytes(), count),
+            None => panic!("Size::mul: {} * {count} doesn't fit in u64", self.bytes()),
         }
     }
 }
@@ -535,12 +535,12 @@ impl Align {
 
         #[cold]
         fn not_power_of_2(align: u64) -> String {
-            format!("`{}` is not a power of 2", align)
+            format!("`{align}` is not a power of 2")
         }
 
         #[cold]
         fn too_large(align: u64) -> String {
-            format!("`{}` is too large", align)
+            format!("`{align}` is too large")
         }
 
         let mut bytes = align;
@@ -1091,7 +1091,7 @@ impl Abi {
                 Primitive::Int(_, signed) => signed,
                 _ => false,
             },
-            _ => panic!("`is_signed` on non-scalar ABI {:?}", self),
+            _ => panic!("`is_signed` on non-scalar ABI {self:?}"),
         }
     }
 

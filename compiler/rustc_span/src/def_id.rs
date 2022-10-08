@@ -303,7 +303,7 @@ impl DefId {
         // i.e. don't use closures.
         match self.as_local() {
             Some(local_def_id) => local_def_id,
-            None => panic!("DefId::expect_local: `{:?}` isn't local", self),
+            None => panic!("DefId::expect_local: `{self:?}` isn't local"),
         }
     }
 

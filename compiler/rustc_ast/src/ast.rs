@@ -69,7 +69,7 @@ pub struct Lifetime {
 
 impl fmt::Debug for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "lifetime({}: {})", self.id, self)
+        write!(f, "lifetime({}: {self})", self.id)
     }
 }
 
@@ -2120,10 +2120,10 @@ impl fmt::Display for InlineAsmTemplatePiece {
                 Ok(())
             }
             Self::Placeholder { operand_idx, modifier: Some(modifier), .. } => {
-                write!(f, "{{{}:{}}}", operand_idx, modifier)
+                write!(f, "{{{operand_idx}:{modifier}}}")
             }
             Self::Placeholder { operand_idx, modifier: None, .. } => {
-                write!(f, "{{{}}}", operand_idx)
+                write!(f, "{{{operand_idx}}}")
             }
         }
     }
@@ -2135,7 +2135,7 @@ impl InlineAsmTemplatePiece {
         use fmt::Write;
         let mut out = String::new();
         for p in s.iter() {
-            let _ = write!(out, "{}", p);
+            let _ = write!(out, "{p}");
         }
         out
     }

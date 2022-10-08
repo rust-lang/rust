@@ -140,7 +140,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
             // another replace range will capture the *replaced* tokens for the inner
             // range, not the original tokens.
             for (range, new_tokens) in replace_ranges.into_iter().rev() {
-                assert!(!range.is_empty(), "Cannot replace an empty range: {:?}", range);
+                assert!(!range.is_empty(), "Cannot replace an empty range: {range:?}");
                 // Replace ranges are only allowed to decrease the number of tokens.
                 assert!(
                     range.len() >= new_tokens.len(),
@@ -401,7 +401,7 @@ fn make_token_stream(
             FlatToken::Token(Token { kind: TokenKind::CloseDelim(delim), span }) => {
                 let frame_data = stack
                     .pop()
-                    .unwrap_or_else(|| panic!("Token stack was empty for token: {:?}", token));
+                    .unwrap_or_else(|| panic!("Token stack was empty for token: {token:?}"));
 
                 let (open_delim, open_sp) = frame_data.open_delim_sp.unwrap();
                 assert_eq!(
@@ -415,7 +415,7 @@ fn make_token_stream(
                 stack
                     .last_mut()
                     .unwrap_or_else(|| {
-                        panic!("Bottom token frame is missing for token: {:?}", token)
+                        panic!("Bottom token frame is missing for token: {token:?}")
                     })
                     .inner
                     .push(delimited);
@@ -448,7 +448,7 @@ fn make_token_stream(
                 .inner
                 .push(AttrTokenTree::Token(Token::new(unglued_first, first_span), spacing));
         } else {
-            panic!("Unexpected last token {:?}", last_token)
+            panic!("Unexpected last token {last_token:?}")
         }
     }
     AttrTokenStream::new(final_buf.inner)

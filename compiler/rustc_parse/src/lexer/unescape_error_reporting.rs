@@ -117,7 +117,7 @@ pub(crate) fn emit_unescape_error(
                 handler.span_suggestion(
                     span_with_quotes,
                     msg,
-                    format!("{}\"{}\"", prefix, lit),
+                    format!("{prefix}\"{lit}\""),
                     Applicability::MachineApplicable,
                 );
             }
@@ -133,7 +133,7 @@ pub(crate) fn emit_unescape_error(
                 "character constant must be escaped"
             };
             handler
-                .struct_span_err(span, &format!("{}: `{}`", msg, escaped_char(c)))
+                .struct_span_err(span, &format!("{msg}: `{}`", escaped_char(c)))
                 .span_suggestion(
                     char_span,
                     "escape the character",
@@ -169,7 +169,7 @@ pub(crate) fn emit_unescape_error(
             let label =
                 if mode.is_bytes() { "unknown byte escape" } else { "unknown character escape" };
             let ec = escaped_char(c);
-            let mut diag = handler.struct_span_err(span, &format!("{}: `{}`", label, ec));
+            let mut diag = handler.struct_span_err(span, &format!("{label}: `{ec}`"));
             diag.span_label(span, label);
             if c == '{' || c == '}' && !mode.is_bytes() {
                 diag.help(
@@ -185,7 +185,7 @@ pub(crate) fn emit_unescape_error(
                     diag.span_suggestion(
                         span_with_quotes,
                         "if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal",
-                        format!("r\"{}\"", lit),
+                        format!("r\"{lit}\""),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -211,7 +211,7 @@ pub(crate) fn emit_unescape_error(
             let c = escaped_char(c);
 
             handler
-                .struct_span_err(span, &format!("{}: `{}`", msg, c))
+                .struct_span_err(span, &format!("{msg}: `{c}`"))
                 .span_label(span, msg)
                 .emit();
         }
@@ -220,11 +220,11 @@ pub(crate) fn emit_unescape_error(
             let (c, span) = last_char();
             let mut err = handler.struct_span_err(span, "non-ASCII character in byte constant");
             let postfix = if unicode_width::UnicodeWidthChar::width(c).unwrap_or(1) == 0 {
-                format!(" but is {:?}", c)
+                format!(" but is {c:?}")
             } else {
                 String::new()
             };
-            err.span_label(span, &format!("byte constant must be ASCII{}", postfix));
+            err.span_label(span, &format!("byte constant must be ASCII{postfix}"));
             if (c as u32) <= 0xFF {
                 err.span_suggestion(
                     span,
@@ -259,13 +259,13 @@ pub(crate) fn emit_unescape_error(
             assert!(mode.is_bytes());
             let (c, span) = last_char();
             let postfix = if unicode_width::UnicodeWidthChar::width(c).unwrap_or(1) == 0 {
-                format!(" but is {:?}", c)
+                format!(" but is {c:?}")
             } else {
                 String::new()
             };
             handler
                 .struct_span_err(span, "raw byte string must be ASCII")
-                .span_label(span, &format!("must be ASCII{}", postfix))
+                .span_label(span, &format!("must be ASCII{postfix}"))
                 .emit();
         }
         EscapeError::OutOfRangeHexEscape => {
@@ -278,7 +278,7 @@ pub(crate) fn emit_unescape_error(
             let (c, span) = last_char();
             let msg = "invalid start of unicode escape";
             handler
-                .struct_span_err(span, &format!("{}: `{}`", msg, c))
+                .struct_span_err(span, &format!("{msg}: `{c}`"))
                 .span_label(span, msg)
                 .emit();
         }

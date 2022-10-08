@@ -188,25 +188,25 @@ fn doc_comment_to_string(
     data: Symbol,
 ) -> String {
     match (comment_kind, attr_style) {
-        (CommentKind::Line, ast::AttrStyle::Outer) => format!("///{}", data),
-        (CommentKind::Line, ast::AttrStyle::Inner) => format!("//!{}", data),
-        (CommentKind::Block, ast::AttrStyle::Outer) => format!("/**{}*/", data),
-        (CommentKind::Block, ast::AttrStyle::Inner) => format!("/*!{}*/", data),
+        (CommentKind::Line, ast::AttrStyle::Outer) => format!("///{data}"),
+        (CommentKind::Line, ast::AttrStyle::Inner) => format!("//!{data}"),
+        (CommentKind::Block, ast::AttrStyle::Outer) => format!("/**{data}*/"),
+        (CommentKind::Block, ast::AttrStyle::Inner) => format!("/*!{data}*/"),
     }
 }
 
 pub fn literal_to_string(lit: token::Lit) -> String {
     let token::Lit { kind, symbol, suffix } = lit;
     let mut out = match kind {
-        token::Byte => format!("b'{}'", symbol),
-        token::Char => format!("'{}'", symbol),
-        token::Str => format!("\"{}\"", symbol),
+        token::Byte => format!("b'{symbol}'"),
+        token::Char => format!("'{symbol}'"),
+        token::Str => format!("\"{symbol}\""),
         token::StrRaw(n) => {
-            format!("r{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = symbol)
+            format!("r{delim}\"{symbol}\"{delim}", delim = "#".repeat(n as usize))
         }
-        token::ByteStr => format!("b\"{}\"", symbol),
+        token::ByteStr => format!("b\"{symbol}\""),
         token::ByteStrRaw(n) => {
-            format!("br{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = symbol)
+            format!("br{delim}\"{symbol}\"{delim}", delim = "#".repeat(n as usize))
         }
         token::Integer | token::Float | token::Bool | token::Err => symbol.to_string(),
     };
@@ -381,7 +381,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         let st = match style {
             ast::StrStyle::Cooked => format!("\"{}\"", st.escape_debug()),
             ast::StrStyle::Raw(n) => {
-                format!("r{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = st)
+                format!("r{delim}\"{st}\"{delim}", delim = "#".repeat(n as usize))
             }
         };
         self.word(st)

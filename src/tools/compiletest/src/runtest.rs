@@ -92,15 +92,15 @@ pub fn get_lib_name(lib: &str, dylib: bool) -> String {
     // In this case, the only path we can pass
     // with '--extern-meta' is the '.lib' file
     if !dylib {
-        return format!("lib{}.rlib", lib);
+        return format!("lib{lib}.rlib");
     }
 
     if cfg!(windows) {
-        format!("{}.dll", lib)
+        format!("{lib}.dll")
     } else if cfg!(target_os = "macos") {
-        format!("lib{}.dylib", lib)
+        format!("lib{lib}.dylib")
     } else {
-        format!("lib{}.so", lib)
+        format!("lib{lib}.so")
     }
 }
 
@@ -260,7 +260,7 @@ impl<'test> TestCx<'test> {
             Ui if pm == Some(PassMode::Run) || self.props.fail_mode == Some(FailMode::Run) => true,
             MirOpt if pm == Some(PassMode::Run) => true,
             Ui | MirOpt => false,
-            mode => panic!("unimplemented for mode {:?}", mode),
+            mode => panic!("unimplemented for mode {mode:?}"),
         };
         if test_should_run { self.run_if_enabled() } else { WillExecute::No }
     }
@@ -272,7 +272,7 @@ impl<'test> TestCx<'test> {
     fn should_run_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
             Ui | MirOpt => pm == Some(PassMode::Run),
-            mode => panic!("unimplemented for mode {:?}", mode),
+            mode => panic!("unimplemented for mode {mode:?}"),
         }
     }
 
@@ -292,7 +292,7 @@ impl<'test> TestCx<'test> {
                     panic!("revision name must begin with rpass, rfail, or cfail");
                 }
             }
-            mode => panic!("unimplemented for mode {:?}", mode),
+            mode => panic!("unimplemented for mode {mode:?}"),
         }
     }
 
@@ -463,7 +463,7 @@ impl<'test> TestCx<'test> {
         while round < rounds {
             logv(
                 self.config,
-                format!("pretty-printing round {} revision {:?}", round, self.revision),
+                format!("pretty-printing round {round} revision {:?}", self.revision),
             );
             let read_from =
                 if round == 0 { ReadFrom::Path } else { ReadFrom::Stdin(srcs[round].to_owned()) };
@@ -552,7 +552,7 @@ impl<'test> TestCx<'test> {
         let mut rustc = Command::new(&self.config.rustc_path);
         rustc
             .arg(input)
-            .args(&["-Z", &format!("unpretty={}", pretty_type)])
+            .args(&["-Z", &format!("unpretty={pretty_type}")])
             .args(&["--target", &self.config.target])
             .arg("-L")
             .arg(&aux_dir)
@@ -623,7 +623,7 @@ impl<'test> TestCx<'test> {
             .arg("-Zno-codegen")
             .arg("--out-dir")
             .arg(&out_dir)
-            .arg(&format!("--target={}", target))
+            .arg(&format!("--target={target}"))
             .arg("-L")
             .arg(&self.config.build_base)
             .arg("-L")
@@ -718,7 +718,7 @@ impl<'test> TestCx<'test> {
         // Set breakpoints on every line that contains the string "#break"
         let source_file_name = self.testpaths.file.file_name().unwrap().to_string_lossy();
         for line in &breakpoint_lines {
-            script_str.push_str(&format!("bp `{}:{}`\n", source_file_name, line));
+            script_str.push_str(&format!("bp `{source_file_name}:{line}`\n"));
         }
 
         // Append the other `cdb-command:`s
@@ -818,7 +818,7 @@ impl<'test> TestCx<'test> {
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
-            script_str.push_str(&format!("set sysroot {}\n", tool_path));
+            script_str.push_str(&format!("set sysroot {tool_path}\n"));
             script_str.push_str(&format!("file {}\n", exe_file.to_str().unwrap()));
             script_str.push_str("target remote :5039\n");
             script_str.push_str(&format!(
@@ -848,12 +848,12 @@ impl<'test> TestCx<'test> {
                 .arg(&exe_file)
                 .arg(&self.config.adb_test_dir)
                 .status()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", adb_path));
+                .unwrap_or_else(|_| panic!("failed to exec `{adb_path:?}`"));
 
             Command::new(adb_path)
                 .args(&["forward", "tcp:5039", "tcp:5039"])
                 .status()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", adb_path));
+                .unwrap_or_else(|_| panic!("failed to exec `{adb_path:?}`"));
 
             let adb_arg = format!(
                 "export LD_LIBRARY_PATH={}; \
@@ -870,7 +870,7 @@ impl<'test> TestCx<'test> {
                 .stdout(Stdio::piped())
                 .stderr(Stdio::inherit())
                 .spawn()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", adb_path));
+                .unwrap_or_else(|_| panic!("failed to exec `{adb_path:?}`"));
 
             // Wait for the gdbserver to print out "Listening on port ..."
             // at which point we know that it's started and then we can
@@ -895,12 +895,12 @@ impl<'test> TestCx<'test> {
             let Output { status, stdout, stderr } = Command::new(&gdb_path)
                 .args(debugger_opts)
                 .output()
-                .unwrap_or_else(|_| panic!("failed to exec `{:?}`", gdb_path));
+                .unwrap_or_else(|_| panic!("failed to exec `{gdb_path:?}`"));
             let cmdline = {
                 let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
                 gdb.args(debugger_opts);
                 let cmdline = self.make_cmdline(&gdb, "");
-                logv(self.config, format!("executing {}", cmdline));
+                logv(self.config, format!("executing {cmdline}"));
                 cmdline
             };
 
@@ -926,7 +926,7 @@ impl<'test> TestCx<'test> {
 
             match self.config.gdb_version {
                 Some(version) => {
-                    println!("NOTE: compiletest thinks it is using GDB version {}", version);
+                    println!("NOTE: compiletest thinks it is using GDB version {version}");
 
                     if version > extract_gdb_version("7.4").unwrap() {
                         // Add the directory containing the pretty printers to
@@ -1040,7 +1040,7 @@ impl<'test> TestCx<'test> {
 
         match self.config.lldb_version {
             Some(ref version) => {
-                println!("NOTE: compiletest thinks it is using LLDB version {}", version);
+                println!("NOTE: compiletest thinks it is using LLDB version {version}");
             }
             _ => {
                 println!(
@@ -1112,7 +1112,7 @@ impl<'test> TestCx<'test> {
         script_str.push_str("--category Rust\n");
         for type_regex in rust_type_regexes {
             script_str.push_str("type summary add -F lldb_lookup.summary_lookup  -e -x -h ");
-            script_str.push_str(&format!("'{}' ", type_regex));
+            script_str.push_str(&format!("'{type_regex}' "));
             script_str.push_str("--category Rust\n");
         }
         script_str.push_str("type category enable Rust\n");
@@ -1183,7 +1183,7 @@ impl<'test> TestCx<'test> {
         };
 
         self.dump_output(&out, &err);
-        ProcRes { status, stdout: out, stderr: err, cmdline: format!("{:?}", cmd) }
+        ProcRes { status, stdout: out, stderr: err, cmdline: format!("{cmd:?}") }
     }
 
     fn cleanup_debug_info_options(&self, options: &Option<String>) -> Option<String> {
@@ -1266,7 +1266,7 @@ impl<'test> TestCx<'test> {
             );
         } else {
             for pattern in missing_patterns {
-                self.error(&format!("error pattern '{}' not found!", pattern));
+                self.error(&format!("error pattern '{pattern}' not found!"));
             }
             self.fatal_proc_rec("multiple error patterns not found", proc_res);
         }
@@ -1297,7 +1297,7 @@ impl<'test> TestCx<'test> {
                 Ok(re) => re,
                 Err(err) => {
                     self.fatal_proc_rec(
-                        &format!("invalid regex error pattern '{}': {:?}", pattern, err),
+                        &format!("invalid regex error pattern '{pattern}': {err:?}"),
                         proc_res,
                     );
                 }
@@ -1426,10 +1426,10 @@ impl<'test> TestCx<'test> {
             ));
             println!("status: {}\ncommand: {}", proc_res.status, proc_res.cmdline);
             if !unexpected.is_empty() {
-                println!("unexpected errors (from JSON output): {:#?}\n", unexpected);
+                println!("unexpected errors (from JSON output): {unexpected:#?}\n");
             }
             if !not_found.is_empty() {
-                println!("not found errors (from test file): {:#?}\n", not_found);
+                println!("not found errors (from test file): {not_found:#?}\n");
             }
             panic!();
         }
@@ -1550,7 +1550,7 @@ impl<'test> TestCx<'test> {
         }
 
         if let Some(ref linker) = self.config.linker {
-            rustdoc.arg(format!("-Clinker={}", linker));
+            rustdoc.arg(format!("-Clinker={linker}"));
         }
 
         self.compose_and_run_compiler(rustdoc, None)
@@ -1695,7 +1695,7 @@ impl<'test> TestCx<'test> {
             let is_dylib = self.build_auxiliary(&aux_path, &aux_dir);
             let lib_name =
                 get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), is_dylib);
-            rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
+            rustc.arg("--extern").arg(format!("{aux_name}={}/{lib_name}", aux_dir.display()));
         }
 
         aux_dir
@@ -1818,7 +1818,7 @@ impl<'test> TestCx<'test> {
     ) -> ProcRes {
         let cmdline = {
             let cmdline = self.make_cmdline(&command, lib_path);
-            logv(self.config, format!("executing {}", cmdline));
+            logv(self.config, format!("executing {cmdline}"));
             cmdline
         };
 
@@ -1889,7 +1889,7 @@ impl<'test> TestCx<'test> {
             let target =
                 if self.props.force_host { &*self.config.host } else { &*self.config.target };
 
-            rustc.arg(&format!("--target={}", target));
+            rustc.arg(&format!("--target={target}"));
         }
         self.set_revision_flags(&mut rustc);
 
@@ -1963,7 +1963,7 @@ impl<'test> TestCx<'test> {
                     "-Zmir-pretty-relative-line-numbers=yes",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {
-                    rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
+                    rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{pass}")]);
                 } else {
                     rustc.arg("-Zmir-opt-level=4");
                 }
@@ -2046,7 +2046,7 @@ impl<'test> TestCx<'test> {
             );
             if !is_rustdoc {
                 if let Some(ref linker) = self.config.linker {
-                    rustc.arg(format!("-Clinker={}", linker));
+                    rustc.arg(format!("-Clinker={linker}"));
                 }
             }
         }
@@ -2142,7 +2142,7 @@ impl<'test> TestCx<'test> {
 
         // Linux and mac don't require adjusting the library search path
         if cfg!(unix) {
-            format!("{:?}", command)
+            format!("{command:?}")
         } else {
             // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
             // for diagnostic purposes
@@ -2150,15 +2150,15 @@ impl<'test> TestCx<'test> {
                 format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
             }
 
-            format!("{} {:?}", lib_path_cmd_prefix(libpath), command)
+            format!("{} {command:?}", lib_path_cmd_prefix(libpath))
         }
     }
 
     fn dump_output(&self, out: &str, err: &str) {
-        let revision = if let Some(r) = self.revision { format!("{}.", r) } else { String::new() };
+        let revision = if let Some(r) = self.revision { format!("{r}.") } else { String::new() };
 
-        self.dump_output_file(out, &format!("{}out", revision));
-        self.dump_output_file(err, &format!("{}err", revision));
+        self.dump_output_file(out, &format!("{revision}out"));
+        self.dump_output_file(err, &format!("{revision}err"));
         self.maybe_dump_to_stdout(out, err);
     }
 
@@ -2209,17 +2209,17 @@ impl<'test> TestCx<'test> {
     fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
         if self.config.verbose {
             println!("------stdout------------------------------");
-            println!("{}", out);
+            println!("{out}");
             println!("------stderr------------------------------");
-            println!("{}", err);
+            println!("{err}");
             println!("------------------------------------------");
         }
     }
 
     fn error(&self, err: &str) {
         match self.revision {
-            Some(rev) => println!("\nerror in revision `{}`: {}", rev, err),
-            None => println!("\nerror: {}", err),
+            Some(rev) => println!("\nerror in revision `{rev}`: {err}"),
+            None => println!("\nerror: {err}"),
         }
     }
 
@@ -2297,9 +2297,9 @@ impl<'test> TestCx<'test> {
         let prefix_for_target =
             if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
         let prefixes = if let Some(rev) = self.revision {
-            format!("CHECK,{},{}", prefix_for_target, rev)
+            format!("CHECK,{prefix_for_target},{rev}")
         } else {
-            format!("CHECK,{}", prefix_for_target)
+            format!("CHECK,{prefix_for_target}")
         };
         if self.config.llvm_version.unwrap_or(0) >= 130000 {
             filecheck.args(&["--allow-unused-prefixes", "--check-prefixes", &prefixes]);
@@ -2480,7 +2480,7 @@ impl<'test> TestCx<'test> {
         if let Some(pager) = pager {
             let pager = pager.trim();
             if self.config.verbose {
-                eprintln!("using pager {}", pager);
+                eprintln!("using pager {pager}");
             }
             let output = Command::new(pager)
                 // disable paging; we want this to be non-interactive
@@ -2507,7 +2507,7 @@ impl<'test> TestCx<'test> {
                 match diff.read_until(b'\n', &mut line) {
                     Ok(0) => break,
                     Ok(_) => {}
-                    Err(e) => eprintln!("ERROR: {:?}", e),
+                    Err(e) => eprintln!("ERROR: {e:?}"),
                 }
                 match String::from_utf8(line.clone()) {
                     Ok(line) => {
@@ -2627,7 +2627,7 @@ impl<'test> TestCx<'test> {
         );
         for other_file in other_files {
             let mut path = self.testpaths.file.clone();
-            path.set_file_name(&format!("{}.rs", other_file));
+            path.set_file_name(&format!("{other_file}.rs"));
             files.insert(
                 path.strip_prefix(&cwd).unwrap_or(&path).to_str().unwrap().replace('\\', "/"),
                 self.get_lines(&path, None),
@@ -2654,7 +2654,7 @@ impl<'test> TestCx<'test> {
                         v.remove(pos);
                     } else {
                         self.fatal_proc_rec(
-                            &format!("Not found doc test: \"{}\" in \"{}\":{:?}", s, path, v),
+                            &format!("Not found doc test: \"{s}\" in \"{path}\":{v:?}"),
                             &res,
                         );
                     }
@@ -2662,7 +2662,7 @@ impl<'test> TestCx<'test> {
             }
         }) {}
         if tested == 0 {
-            self.fatal_proc_rec(&format!("No test has been found... {:?}", files), &res);
+            self.fatal_proc_rec(&format!("No test has been found... {files:?}"), &res);
         } else {
             for (entry, v) in &files {
                 if !v.is_empty() {
@@ -2736,7 +2736,7 @@ impl<'test> TestCx<'test> {
             println!("\nThese items should have been contained but were not:\n");
 
             for item in &missing {
-                println!("{}", item);
+                println!("{item}");
             }
 
             println!("\n");
@@ -2752,7 +2752,7 @@ impl<'test> TestCx<'test> {
             println!("\nThese items were contained but should not have been:\n");
 
             for item in sorted {
-                println!("{}", item);
+                println!("{item}");
             }
 
             println!("\n");
@@ -2785,7 +2785,7 @@ impl<'test> TestCx<'test> {
         fn str_to_mono_item(s: &str, cgu_has_crate_disambiguator: bool) -> MonoItem {
             let s = if s.starts_with(PREFIX) { (&s[PREFIX.len()..]).trim() } else { s.trim() };
 
-            let full_string = format!("{}{}", PREFIX, s);
+            let full_string = format!("{PREFIX}{s}");
 
             let parts: Vec<&str> =
                 s.split(CGU_MARKER).map(str::trim).filter(|s| !s.is_empty()).collect();
@@ -2838,7 +2838,7 @@ impl<'test> TestCx<'test> {
             }
 
             let captures =
-                RE.captures(cgu).unwrap_or_else(|| panic!("invalid cgu name encountered: {}", cgu));
+                RE.captures(cgu).unwrap_or_else(|| panic!("invalid cgu name encountered: {cgu}"));
 
             let mut new_name = cgu.to_owned();
 
@@ -2911,7 +2911,7 @@ impl<'test> TestCx<'test> {
         assert!(incremental_dir.exists(), "init_incremental_test failed to create incremental dir");
 
         if self.config.verbose {
-            print!("revision={:?} props={:#?}", revision, self.props);
+            print!("revision={revision:?} props={:#?}", self.props);
         }
 
         if revision.starts_with("rpass") {
@@ -3049,8 +3049,8 @@ impl<'test> TestCx<'test> {
             cmd.env("IS_MSVC", "1")
                 .env("IS_WINDOWS", "1")
                 .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
-                .env("CC", format!("'{}' {}", self.config.cc, cflags))
-                .env("CXX", format!("'{}' {}", &self.config.cxx, cxxflags));
+                .env("CC", format!("'{}' {cflags}", self.config.cc))
+                .env("CXX", format!("'{}' {cxxflags}", &self.config.cxx));
         } else {
             cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
                 .env("CXX", format!("{} {}", self.config.cxx, self.config.cxxflags))
@@ -3067,7 +3067,7 @@ impl<'test> TestCx<'test> {
                 status: output.status,
                 stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
                 stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-                cmdline: format!("{:?}", cmd),
+                cmdline: format!("{cmd:?}"),
             };
             self.fatal_proc_rec("make failed", &res);
         }
@@ -3265,8 +3265,8 @@ impl<'test> TestCx<'test> {
             .unwrap();
             let fixed_code = apply_suggestions(&unfixed_code, &suggestions).unwrap_or_else(|e| {
                 panic!(
-                    "failed to apply suggestions for {:?} with rustfix: {}",
-                    self.testpaths.file, e
+                    "failed to apply suggestions for {:?} with rustfix: {e}",
+                    self.testpaths.file
                 )
             });
 
@@ -3287,7 +3287,7 @@ impl<'test> TestCx<'test> {
                 relative_path_to_file.display(),
             );
             self.fatal_proc_rec(
-                &format!("{} errors occurred comparing output.", errors),
+                &format!("{errors} errors occurred comparing output."),
                 &proc_res,
             );
         }
@@ -3303,7 +3303,7 @@ impl<'test> TestCx<'test> {
             };
             if run_output_errors > 0 {
                 self.fatal_proc_rec(
-                    &format!("{} errors occurred comparing run output.", run_output_errors),
+                    &format!("{run_output_errors} errors occurred comparing run output."),
                     &proc_res,
                 );
             }
@@ -3409,12 +3409,12 @@ impl<'test> TestCx<'test> {
 
         if self.config.bless {
             for e in
-                glob(&format!("{}/{}.*{}.mir", test_dir.display(), test_crate, bit_width)).unwrap()
+                glob(&format!("{}/{test_crate}.*{bit_width}.mir", test_dir.display())).unwrap()
             {
                 std::fs::remove_file(e.unwrap()).unwrap();
             }
             for e in
-                glob(&format!("{}/{}.*{}.diff", test_dir.display(), test_crate, bit_width)).unwrap()
+                glob(&format!("{}/{test_crate}.*{bit_width}.diff", test_dir.display())).unwrap()
             {
                 std::fs::remove_file(e.unwrap()).unwrap();
             }
@@ -3432,9 +3432,9 @@ impl<'test> TestCx<'test> {
 
                 if test_name.ends_with(".diff") {
                     let trimmed = test_name.trim_end_matches(".diff");
-                    let test_against = format!("{}.after.mir", trimmed);
-                    from_file = format!("{}.before.mir", trimmed);
-                    expected_file = format!("{}{}.diff", trimmed, bit_width);
+                    let test_against = format!("{trimmed}.after.mir");
+                    from_file = format!("{trimmed}.before.mir");
+                    expected_file = format!("{trimmed}{bit_width}.diff");
                     assert!(
                         test_names.next().is_none(),
                         "two mir pass names specified for MIR diff"
@@ -3447,9 +3447,9 @@ impl<'test> TestCx<'test> {
                         "three mir pass names specified for MIR diff"
                     );
                     expected_file =
-                        format!("{}{}.{}-{}.diff", test_name, bit_width, first_pass, second_pass);
-                    let second_file = format!("{}.{}.mir", test_name, second_pass);
-                    from_file = format!("{}.{}.mir", test_name, first_pass);
+                        format!("{test_name}{bit_width}.{first_pass}-{second_pass}.diff");
+                    let second_file = format!("{test_name}.{second_pass}.mir");
+                    from_file = format!("{test_name}.{first_pass}.mir");
                     to_file = Some(second_file);
                 } else {
                     let ext_re = Regex::new(r#"(\.(mir|dot|html))$"#).unwrap();
@@ -3472,7 +3472,7 @@ impl<'test> TestCx<'test> {
                     to_file = None;
                 };
                 if !expected_file.starts_with(&test_crate) {
-                    expected_file = format!("{}.{}", test_crate, expected_file);
+                    expected_file = format!("{test_crate}.{expected_file}");
                 }
                 let expected_file = test_dir.join(expected_file);
 
@@ -3545,9 +3545,9 @@ impl<'test> TestCx<'test> {
         for result in diff::lines(&before, &after) {
             use std::fmt::Write;
             match result {
-                diff::Result::Left(s) => writeln!(dumped_string, "- {}", s).unwrap(),
-                diff::Result::Right(s) => writeln!(dumped_string, "+ {}", s).unwrap(),
-                diff::Result::Both(s, _) => writeln!(dumped_string, "  {}", s).unwrap(),
+                diff::Result::Left(s) => writeln!(dumped_string, "- {s}").unwrap(),
+                diff::Result::Right(s) => writeln!(dumped_string, "+ {s}").unwrap(),
+                diff::Result::Both(s, _) => writeln!(dumped_string, "  {s}").unwrap(),
             }
         }
         dumped_string
@@ -3758,7 +3758,7 @@ impl<'test> TestCx<'test> {
 
     fn load_expected_output_from_path(&self, path: &Path) -> Result<String, String> {
         fs::read_to_string(path).map_err(|err| {
-            format!("failed to load expected output from `{}`: {}", path.display(), err)
+            format!("failed to load expected output from `{}`: {err}", path.display())
         })
     }
 
@@ -3768,7 +3768,7 @@ impl<'test> TestCx<'test> {
             return;
         }
         if let Err(e) = fs::remove_file(file) {
-            self.fatal(&format!("failed to delete `{}`: {}", file.display(), e,));
+            self.fatal(&format!("failed to delete `{}`: {e}", file.display(),));
         }
     }
 
@@ -3779,9 +3779,9 @@ impl<'test> TestCx<'test> {
 
         if !self.config.bless {
             if expected.is_empty() {
-                println!("normalized {}:\n{}\n", kind, actual);
+                println!("normalized {kind}:\n{actual}\n");
             } else {
-                println!("diff of {}:\n", kind);
+                println!("diff of {kind}:\n");
                 print!("{}", write_diff(expected, actual, 3));
             }
         }
@@ -3823,9 +3823,9 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        println!("\nThe actual {0} differed from the expected {0}.", kind);
+        println!("\nThe actual {kind} differed from the expected {kind}.");
         for output_file in files {
-            println!("Actual {} saved to {}", kind, output_file.display());
+            println!("Actual {kind} saved to {}", output_file.display());
         }
         if self.config.bless { 0 } else { 1 }
     }
@@ -3866,7 +3866,7 @@ impl<'test> TestCx<'test> {
                     // We do this wether we bless or not
                     (_, true, false) => {
                         self.fatal_proc_rec(
-                            &format!("`{}` should not have different output from base test!", kind),
+                            &format!("`{kind}` should not have different output from base test!"),
                             proc_res,
                         );
                     }
@@ -3928,7 +3928,7 @@ impl ProcRes {
 
     pub fn fatal(&self, err: Option<&str>, on_failure: impl FnOnce()) -> ! {
         if let Some(e) = err {
-            println!("\nerror: {}", e);
+            println!("\nerror: {e}");
         }
         self.print_info();
         on_failure();

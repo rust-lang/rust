@@ -717,9 +717,9 @@ impl fmt::Debug for InferTy {
             TyVar(ref v) => v.fmt(f),
             IntVar(ref v) => v.fmt(f),
             FloatVar(ref v) => v.fmt(f),
-            FreshTy(v) => write!(f, "FreshTy({:?})", v),
-            FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
-            FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v),
+            FreshTy(v) => write!(f, "FreshTy({v:?})"),
+            FreshIntTy(v) => write!(f, "FreshIntTy({v:?})"),
+            FreshFloatTy(v) => write!(f, "FreshFloatTy({v:?})"),
         }
     }
 }
@@ -742,9 +742,9 @@ impl fmt::Display for InferTy {
             TyVar(_) => write!(f, "_"),
             IntVar(_) => write!(f, "{}", "{integer}"),
             FloatVar(_) => write!(f, "{}", "{float}"),
-            FreshTy(v) => write!(f, "FreshTy({})", v),
-            FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
-            FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v),
+            FreshTy(v) => write!(f, "FreshTy({v})"),
+            FreshIntTy(v) => write!(f, "FreshIntTy({v})"),
+            FreshFloatTy(v) => write!(f, "FreshFloatTy({v})"),
         }
     }
 }

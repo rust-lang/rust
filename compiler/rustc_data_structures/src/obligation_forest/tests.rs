@@ -160,7 +160,7 @@ fn push_pop() {
         |obligation| match *obligation {
             "D.1.i" => ProcessResult::Error("D is for dumb"),
             "D.2.i" => ProcessResult::Changed(vec![]),
-            _ => panic!("unexpected obligation {:?}", obligation),
+            _ => panic!("unexpected obligation {obligation:?}"),
         },
         |_| {},
     ));

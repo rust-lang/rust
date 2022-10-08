@@ -51,8 +51,8 @@ fn main() {
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let on_fail = env::var_os("RUSTC_ON_FAIL").map(Command::new);
 
-    let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
-    let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
+    let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{rustc:?} was not set"));
+    let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{libdir:?} was not set"));
     let mut dylib_path = dylib_path();
     dylib_path.insert(0, PathBuf::from(&libdir));
 
@@ -121,7 +121,7 @@ fn main() {
 
         // Override linker if necessary.
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
-            cmd.arg(format!("-Clinker={}", host_linker));
+            cmd.arg(format!("-Clinker={host_linker}"));
         }
         if env::var_os("RUSTC_HOST_FUSE_LD_LLD").is_some() {
             cmd.arg("-Clink-args=-fuse-ld=lld");
@@ -172,13 +172,13 @@ fn main() {
             env::vars().filter(|(k, _)| k.starts_with("RUST") || k.starts_with("CARGO"));
         let prefix = if is_test { "[RUSTC-SHIM] rustc --test" } else { "[RUSTC-SHIM] rustc" };
         let prefix = match crate_name {
-            Some(crate_name) => format!("{} {}", prefix, crate_name),
+            Some(crate_name) => format!("{prefix} {crate_name}"),
             None => prefix.to_string(),
         };
         for (i, (k, v)) in rust_env_vars.enumerate() {
-            eprintln!("{} env[{}]: {:?}={:?}", prefix, i, k, v);
+            eprintln!("{prefix} env[{i}]: {k:?}={v:?}");
         }
-        eprintln!("{} working directory: {}", prefix, env::current_dir().unwrap().display());
+        eprintln!("{prefix} working directory: {}", env::current_dir().unwrap().display());
         eprintln!(
             "{} command: {:?}={:?} {:?}",
             prefix,
@@ -186,13 +186,13 @@ fn main() {
             env::join_paths(&dylib_path).unwrap(),
             cmd,
         );
-        eprintln!("{} sysroot: {:?}", prefix, sysroot);
-        eprintln!("{} libdir: {:?}", prefix, libdir);
+        eprintln!("{prefix} sysroot: {sysroot:?}");
+        eprintln!("{prefix} libdir: {libdir:?}");
     }
 
     let start = Instant::now();
     let (child, status) = {
-        let errmsg = format!("\nFailed to run:\n{:?}\n-------------", cmd);
+        let errmsg = format!("\nFailed to run:\n{cmd:?}\n-------------");
         let mut child = cmd.spawn().expect(&errmsg);
         let status = child.wait().expect(&errmsg);
         (child, status)
@@ -225,7 +225,7 @@ fn main() {
         // should run on success, after this block.
     }
     if verbose > 0 {
-        println!("\nDid not run successfully: {}\n{:?}\n-------------", status, cmd);
+        println!("\nDid not run successfully: {status}\n{cmd:?}\n-------------");
     }
 
     if let Some(mut on_fail) = on_fail {
@@ -237,7 +237,7 @@ fn main() {
     match status.code() {
         Some(i) => std::process::exit(i),
         None => {
-            eprintln!("rustc exited with {}", status);
+            eprintln!("rustc exited with {status}");
             std::process::exit(0xfe);
         }
     }
@@ -354,13 +354,13 @@ fn format_rusage_data(_child: Child) -> Option<String> {
     let minflt = rusage.ru_minflt;
     let majflt = rusage.ru_majflt;
     if minflt != 0 || majflt != 0 {
-        init_str.push_str(&format!(" page reclaims: {} page faults: {}", minflt, majflt));
+        init_str.push_str(&format!(" page reclaims: {minflt} page faults: {majflt}"));
     }
 
     let inblock = rusage.ru_inblock;
     let oublock = rusage.ru_oublock;
     if inblock != 0 || oublock != 0 {
-        init_str.push_str(&format!(" fs block inputs: {} fs block outputs: {}", inblock, oublock));
+        init_str.push_str(&format!(" fs block inputs: {inblock} fs block outputs: {oublock}"));
     }
 
     let nvcsw = rusage.ru_nvcsw;

@@ -83,13 +83,13 @@ static NIGHTLY_TOOLS: &[(&str, &str)] = &[
 
 fn print_error(tool: &str, submodule: &str) {
     eprintln!();
-    eprintln!("We detected that this PR updated '{}', but its tests failed.", tool);
+    eprintln!("We detected that this PR updated '{tool}', but its tests failed.");
     eprintln!();
-    eprintln!("If you do intend to update '{}', please check the error messages above and", tool);
+    eprintln!("If you do intend to update '{tool}', please check the error messages above and");
     eprintln!("commit another update.");
     eprintln!();
-    eprintln!("If you do NOT intend to update '{}', please ensure you did not accidentally", tool);
-    eprintln!("change the submodule at '{}'. You may ask your reviewer for the", submodule);
+    eprintln!("If you do NOT intend to update '{tool}', please ensure you did not accidentally");
+    eprintln!("change the submodule at '{submodule}'. You may ask your reviewer for the");
     eprintln!("proper steps.");
     crate::detail_exit(3);
 }
@@ -105,7 +105,7 @@ fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>) {
     let output = match output {
         Ok(o) => o,
         Err(e) => {
-            eprintln!("Failed to get changed files: {:?}", e);
+            eprintln!("Failed to get changed files: {e:?}");
             crate::detail_exit(1);
         }
     };
@@ -114,12 +114,12 @@ fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>) {
 
     for (tool, submodule) in STABLE_TOOLS.iter().chain(NIGHTLY_TOOLS.iter()) {
         let changed = output.lines().any(|l| l.starts_with('M') && l.ends_with(submodule));
-        eprintln!("Verifying status of {}...", tool);
+        eprintln!("Verifying status of {tool}...");
         if !changed {
             continue;
         }
 
-        eprintln!("This PR updated '{}', verifying if status is 'test-pass'...", submodule);
+        eprintln!("This PR updated '{submodule}', verifying if status is 'test-pass'...");
         if toolstates[*tool] != ToolState::TestPass {
             print_error(tool, submodule);
         }
@@ -172,7 +172,7 @@ impl Step for ToolStateCheck {
         for (tool, _) in STABLE_TOOLS.iter().chain(NIGHTLY_TOOLS.iter()) {
             if !toolstates.contains_key(*tool) {
                 did_error = true;
-                eprintln!("error: Tool `{}` was not recorded in tool state.", tool);
+                eprintln!("error: Tool `{tool}` was not recorded in tool state.");
             }
         }
 
@@ -190,7 +190,7 @@ impl Step for ToolStateCheck {
             if state != ToolState::TestPass {
                 if !is_nightly {
                     did_error = true;
-                    eprintln!("error: Tool `{}` should be test-pass but is {}", tool, state);
+                    eprintln!("error: Tool `{tool}` should be test-pass but is {state}");
                 } else if in_beta_week {
                     let old_state = old_toolstate
                         .iter()
@@ -320,7 +320,7 @@ fn checkout_toolstate_repo() {
         Err(_) => false,
     };
     if !success {
-        panic!("git clone unsuccessful (status: {:?})", status);
+        panic!("git clone unsuccessful (status: {status:?})");
     }
 }
 
@@ -333,7 +333,7 @@ fn prepare_toolstate_config(token: &str) {
             Err(_) => false,
         };
         if !success {
-            panic!("git config key={} value={} failed (status: {:?})", key, value, status);
+            panic!("git config key={key} value={value} failed (status: {status:?})");
         }
     }
 
@@ -343,7 +343,7 @@ fn prepare_toolstate_config(token: &str) {
     git_config("user.name", "Rust Toolstate Update");
     git_config("credential.helper", "store");
 
-    let credential = format!("https://{}:x-oauth-basic@github.com\n", token,);
+    let credential = format!("https://{token}:x-oauth-basic@github.com\n",);
     let git_credential_path = PathBuf::from(t!(env::var("HOME"))).join(".git-credentials");
     t!(fs::write(&git_credential_path, credential));
 }
@@ -453,7 +453,7 @@ fn publish_test_results(current_toolstate: &ToolstateData) {
         .join(format!("{}.tsv", OS.expect("linux/windows only")));
     let mut file = t!(fs::read_to_string(&history_path));
     let end_of_first_line = file.find('\n').unwrap();
-    file.insert_str(end_of_first_line, &format!("\n{}\t{}", commit.trim(), toolstate_serialized));
+    file.insert_str(end_of_first_line, &format!("\n{}\t{toolstate_serialized}", commit.trim()));
     t!(fs::write(&history_path, file));
 }
 

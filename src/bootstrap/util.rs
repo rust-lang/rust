@@ -43,7 +43,7 @@ pub use t;
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    if target.contains("windows") { format!("{}.exe", name) } else { name.to_string() }
+    if target.contains("windows") { format!("{name}.exe") } else { name.to_string() }
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
@@ -350,7 +350,7 @@ pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
 pub fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
+        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nerror: {e}")),
     };
     if !status.success() && print_cmd_on_fail {
         println!(
@@ -366,7 +366,7 @@ pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
         Err(e) => {
-            println!("failed to execute command: {:?}\nerror: {}", cmd, e);
+            println!("failed to execute command: {cmd:?}\nerror: {e}");
             return false;
         }
     };
@@ -389,7 +389,7 @@ pub fn run_suppressed(cmd: &mut Command) {
 pub fn try_run_suppressed(cmd: &mut Command) -> bool {
     let output = match cmd.output() {
         Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
+        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nerror: {e}")),
     };
     if !output.status.success() {
         println!(
@@ -422,7 +422,7 @@ pub fn make(host: &str) -> PathBuf {
 pub fn output(cmd: &mut Command) -> String {
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
+        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nerror: {e}")),
     };
     if !output.status.success() {
         panic!(
@@ -450,7 +450,7 @@ pub fn up_to_date(src: &Path, dst: &Path) -> bool {
     let threshold = mtime(dst);
     let meta = match fs::metadata(src) {
         Ok(meta) => meta,
-        Err(e) => panic!("source {:?} failed to get metadata: {}", src, e),
+        Err(e) => panic!("source {src:?} failed to get metadata: {e}"),
     };
     if meta.is_dir() {
         dir_up_to_date(src, threshold)
@@ -471,7 +471,7 @@ fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
 }
 
 fn fail(s: &str) -> ! {
-    eprintln!("\n\n{}\n\n", s);
+    eprintln!("\n\n{s}\n\n");
     crate::detail_exit(1);
 }
 

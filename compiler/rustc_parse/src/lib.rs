@@ -151,7 +151,7 @@ fn try_file_to_source_file(
     spanopt: Option<Span>,
 ) -> Result<Lrc<SourceFile>, Diagnostic> {
     sess.source_map().load_file(path).map_err(|e| {
-        let msg = format!("couldn't read {}: {}", path.display(), e);
+        let msg = format!("couldn't read {}: {e}", path.display());
         let mut diag = Diagnostic::new(Level::Fatal, &msg);
         if let Some(sp) = spanopt {
             diag.set_span(sp);
@@ -261,7 +261,7 @@ pub fn parse_cfg_attr(
             match parse_in(parse_sess, tts.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                 Ok(r) => return Some(r),
                 Err(mut e) => {
-                    e.help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
+                    e.help(&format!("the valid syntax is `{CFG_ATTR_GRAMMAR_HELP}`"))
                         .note(CFG_ATTR_NOTE_REF)
                         .emit();
                 }

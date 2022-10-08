@@ -120,7 +120,7 @@ pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
     }
 
     fn to_debug_str(&self, _: Ctxt) -> String {
-        format!("{:?}", self)
+        format!("{self:?}")
     }
 
     /// This method tries to recover the query key from the given `DepNode`,

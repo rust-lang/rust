@@ -39,7 +39,7 @@ impl From<Kind> for TestKind {
         match kind {
             Kind::Test => TestKind::Test,
             Kind::Bench => TestKind::Bench,
-            _ => panic!("unexpected kind in crate: {:?}", kind),
+            _ => panic!("unexpected kind in crate: {kind:?}"),
         }
     }
 }
@@ -67,7 +67,7 @@ fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if !builder.fail_fast {
         if !builder.try_run(cmd) {
             let mut failures = builder.delayed_failures.borrow_mut();
-            failures.push(format!("{:?}", cmd));
+            failures.push(format!("{cmd:?}"));
             return false;
         }
     } else {
@@ -80,7 +80,7 @@ fn try_run_quiet(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if !builder.fail_fast {
         if !builder.try_run_quiet(cmd) {
             let mut failures = builder.delayed_failures.borrow_mut();
-            failures.push(format!("{:?}", cmd));
+            failures.push(format!("{cmd:?}"));
             return false;
         }
     } else {
@@ -119,7 +119,7 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
             );
         }
 
-        builder.info(&format!("Linkcheck ({})", host));
+        builder.info(&format!("Linkcheck ({host})"));
 
         // Test the linkchecker itself.
         let bootstrap_host = builder.config.build;
@@ -530,7 +530,7 @@ impl Step for Miri {
         let miri_sysroot = if builder.config.dry_run {
             String::new()
         } else {
-            builder.verbose(&format!("running: {:?}", cargo));
+            builder.verbose(&format!("running: {cargo:?}"));
             let out =
                 cargo.output().expect("We already ran `cargo miri setup` before and that worked");
             assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
@@ -538,7 +538,7 @@ impl Step for Miri {
             let stdout = String::from_utf8(out.stdout)
                 .expect("`cargo miri setup` stdout is not valid UTF-8");
             let sysroot = stdout.trim_end();
-            builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {:?}", sysroot));
+            builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
             sysroot.to_owned()
         };
 
@@ -858,7 +858,7 @@ fn compare_browser_ui_test_version(installed_version: &str, src: &Path) {
                 );
             }
         }
-        Err(e) => eprintln!("Couldn't find the CI browser-ui-test version: {:?}", e),
+        Err(e) => eprintln!("Couldn't find the CI browser-ui-test version: {e:?}"),
     }
 }
 
@@ -1333,7 +1333,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--src-base").arg(builder.src.join("src/test").join(suite));
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
-        cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
+        cmd.arg("--stage-id").arg(format!("stage{}-{target}", compiler.stage));
         cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode);
         cmd.arg("--target").arg(target.rustc_target_arg());
@@ -1401,7 +1401,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 String::from_utf8_lossy(&output.stdout)
                     .lines()
                     .next()
-                    .unwrap_or_else(|| panic!("{:?} failed {:?}", cmd, output))
+                    .unwrap_or_else(|| panic!("{cmd:?} failed {output:?}"))
                     .to_string()
             })
         };
@@ -2266,7 +2266,7 @@ impl Step for RemoteCopyLibs {
 
         builder.ensure(compile::Std::new(compiler, target));
 
-        builder.info(&format!("REMOTE copy libs to emulator ({})", target));
+        builder.info(&format!("REMOTE copy libs to emulator ({target})"));
 
         let server = builder.ensure(tool::RemoteTestServer { compiler, target });
 

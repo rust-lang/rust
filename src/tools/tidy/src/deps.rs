@@ -557,7 +557,7 @@ fn deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a Package
         .iter()
         .map(|dep| {
             metadata.packages.iter().find(|pkg| pkg.id == dep.pkg).unwrap_or_else(|| {
-                panic!("could not find dep `{}` for pkg `{}` in resolve", dep.pkg, pkg_id)
+                panic!("could not find dep `{}` for pkg `{pkg_id}` in resolve", dep.pkg)
             })
         })
         .collect()

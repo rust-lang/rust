@@ -407,7 +407,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion(
                     full_sp,
                     "if you meant to call a macro, try",
-                    format!("{}!", snippet),
+                    format!("{snippet}!"),
                     // this is the `ambiguous` conditional branch
                     Applicability::MaybeIncorrect,
                 );
@@ -435,7 +435,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_short(
                     sp,
                     &format!("add `{kw}` here to parse `{ident}` as a public {kw_name}"),
-                    format!(" {} ", kw),
+                    format!(" {kw} "),
                     Applicability::MachineApplicable,
                 );
             }

@@ -86,14 +86,14 @@ fn insert_range() {
             assert!(range.contains(&i));
         }
         for i in range.clone() {
-            assert!(set.contains(i), "A: {} in {:?}, inserted {:?}", i, set, range);
+            assert!(set.contains(i), "A: {i} in {set:?}, inserted {range:?}");
         }
         set.insert_range(range.clone());
         for i in set.iter() {
-            assert!(range.contains(&i), "{} in {:?}", i, set);
+            assert!(range.contains(&i), "{i} in {set:?}");
         }
         for i in range.clone() {
-            assert!(set.contains(i), "B: {} in {:?}, inserted {:?}", i, set, range);
+            assert!(set.contains(i), "B: {i} in {set:?}, inserted {range:?}");
         }
     }
     check(10..10);

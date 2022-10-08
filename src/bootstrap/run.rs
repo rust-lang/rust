@@ -35,7 +35,7 @@ fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if !builder.fail_fast {
         if !builder.try_run(cmd) {
             let mut failures = builder.delayed_failures.borrow_mut();
-            failures.push(format!("{:?}", cmd));
+            failures.push(format!("{cmd:?}"));
             return false;
         }
     } else {

@@ -152,9 +152,9 @@ impl fmt::Display for PanicInfo<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("panicked at ")?;
         if let Some(message) = self.message {
-            write!(formatter, "'{}', ", message)?
+            write!(formatter, "'{message}', ")?
         } else if let Some(payload) = self.payload.downcast_ref::<&'static str>() {
-            write!(formatter, "'{}', ", payload)?
+            write!(formatter, "'{payload}', ")?
         }
         // NOTE: we cannot use downcast_ref::<String>() here
         // since String is not available in libcore!

@@ -148,8 +148,8 @@ fn main() -> Result<(), Error> {
 
 fn fetch_manifest(config: &Config, channel: &str) -> Result<Manifest, Error> {
     Ok(toml::from_slice(&http_get(&format!(
-        "{}/dist/channel-rust-{}.toml",
-        config.dist_server, channel
+        "{}/dist/channel-rust-{channel}.toml",
+        config.dist_server
     ))?)?)
 }
 

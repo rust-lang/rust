@@ -16,7 +16,7 @@ pub fn to_jsonpath(sel: &Selector) -> String {
         match part {
             SelectorPart::Field(name) => {
                 if is_jsonpath_safe(name) {
-                    write!(&mut s, ".{}", name).unwrap();
+                    write!(&mut s, ".{name}").unwrap();
                 } else {
                     // This is probably wrong in edge cases, but all Id's are
                     // just ascii alphanumerics, `-` `_`, and `:`

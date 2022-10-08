@@ -51,7 +51,7 @@ fn main() {
         ),
         "help" | "-h" | "--help" => help(),
         cmd => {
-            println!("unknown command: {}", cmd);
+            println!("unknown command: {cmd}");
             help();
         }
     }
@@ -61,7 +61,7 @@ fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<Pat
     let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
 
     if env::var(REMOTE_ADDR_ENV).is_ok() {
-        println!("Connecting to remote device {} ...", device_address);
+        println!("Connecting to remote device {device_address} ...");
     } else if target.contains("android") {
         start_android_emulator(server);
     } else {
@@ -113,7 +113,7 @@ fn prepare_rootfs(target: &str, rootfs: &Path, server: &Path, rootfs_img: &Path)
             prepare_rootfs_cpio(rootfs, rootfs_img)
         }
         "riscv64gc-unknown-linux-gnu" => prepare_rootfs_ext4(rootfs, rootfs_img),
-        _ => panic!("{} is not supported", target),
+        _ => panic!("{target} is not supported"),
     }
 }
 
@@ -235,7 +235,7 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
                 .arg(&format!("file={},format=raw,id=hd0", &rootfs_img.to_string_lossy()));
             t!(cmd.spawn());
         }
-        _ => panic!("cannot start emulator for: {}", target),
+        _ => panic!("cannot start emulator for: {target}"),
     }
 }
 
@@ -253,7 +253,7 @@ fn push(path: &Path) {
     let mut buf = [0; 4];
     t!(client.read_exact(&mut buf));
     assert_eq!(&buf, b"ack ");
-    println!("done pushing {:?}", path);
+    println!("done pushing {path:?}");
 }
 
 fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
@@ -296,7 +296,7 @@ fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
     // Send over the client executable as the last piece
     send(exe.as_ref(), &mut client);
 
-    println!("uploaded {:?}, waiting for result", exe);
+    println!("uploaded {exe:?}, waiting for result");
 
     // Ok now it's time to read all the output. We're receiving "frames"
     // representing stdout/stderr, so we decode all that here.
@@ -339,7 +339,7 @@ fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
     if status[0] == 0 {
         std::process::exit(code);
     } else {
-        println!("died due to signal {}", code);
+        println!("died due to signal {code}");
         std::process::exit(3);
     }
 }

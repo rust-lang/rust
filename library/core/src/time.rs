@@ -1121,10 +1121,10 @@ impl fmt::Debug for Duration {
             // padding (padding is calculated below).
             let emit_without_padding = |f: &mut fmt::Formatter<'_>| {
                 if let Some(integer_part) = integer_part {
-                    write!(f, "{}{}", prefix, integer_part)?;
+                    write!(f, "{prefix}{integer_part}")?;
                 } else {
                     // u64::MAX + 1 == 18446744073709551616
-                    write!(f, "{}18446744073709551616", prefix)?;
+                    write!(f, "{prefix}18446744073709551616")?;
                 }
 
                 // Write the decimal point and the fractional part (if any).
@@ -1135,10 +1135,10 @@ impl fmt::Debug for Duration {
 
                     // If the user request a precision > 9, we pad '0's at the end.
                     let w = f.precision().unwrap_or(pos);
-                    write!(f, ".{:0<width$}", s, width = w)?;
+                    write!(f, ".{s:0<w$}")?;
                 }
 
-                write!(f, "{}", postfix)
+                write!(f, "{postfix}")
             };
 
             match f.width() {

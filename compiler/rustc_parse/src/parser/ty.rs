@@ -464,7 +464,7 @@ impl<'a> Parser<'a> {
                     err.span_suggestion(
                         span,
                         "place the lifetime before `mut`",
-                        format!("&{} mut", lifetime_src),
+                        format!("&{lifetime_src} mut"),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -546,11 +546,11 @@ impl<'a> Parser<'a> {
 
     /// Emit an error for the given bad function pointer qualifier.
     fn error_fn_ptr_bad_qualifier(&self, span: Span, qual_span: Span, qual: &str) {
-        self.struct_span_err(span, &format!("an `fn` pointer type cannot be `{}`", qual))
-            .span_label(qual_span, format!("`{}` because of this", qual))
+        self.struct_span_err(span, &format!("an `fn` pointer type cannot be `{qual}`"))
+            .span_label(qual_span, format!("`{qual}` because of this"))
             .span_suggestion_short(
                 qual_span,
-                &format!("remove the `{}` qualifier", qual),
+                &format!("remove the `{qual}` qualifier"),
                 "",
                 Applicability::MaybeIncorrect,
             )

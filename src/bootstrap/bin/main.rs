@@ -43,7 +43,7 @@ fn main() {
             `cp config.toml.example config.toml`"
         );
     } else if let Some(suggestion) = &changelog_suggestion {
-        println!("{}", suggestion);
+        println!("{suggestion}");
     }
 
     let pre_commit = config.src.join(".git").join("hooks").join("pre-commit");
@@ -56,7 +56,7 @@ fn main() {
             `cp config.toml.example config.toml`"
         );
     } else if let Some(suggestion) = &changelog_suggestion {
-        println!("{}", suggestion);
+        println!("{suggestion}");
     }
 
     // Give a warning if the pre-commit script is in pre-commit and not pre-push.
@@ -83,13 +83,13 @@ fn check_version(config: &Config) -> Option<String> {
     let suggestion = if let Some(seen) = config.changelog_seen {
         if seen != VERSION {
             msg.push_str("warning: there have been changes to x.py since you last updated.\n");
-            format!("update `config.toml` to use `changelog-seen = {}` instead", VERSION)
+            format!("update `config.toml` to use `changelog-seen = {VERSION}` instead")
         } else {
             return None;
         }
     } else {
         msg.push_str("warning: x.py has made several changes recently you may want to look at\n");
-        format!("add `changelog-seen = {}` at the top of `config.toml`", VERSION)
+        format!("add `changelog-seen = {VERSION}` at the top of `config.toml`")
     };
 
     msg.push_str("help: consider looking at the changes in `src/bootstrap/CHANGELOG.md`\n");

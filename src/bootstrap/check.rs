@@ -51,12 +51,12 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
             ]));
         }
         args.extend(strings(&["--", "--cap-lints", "warn"]));
-        args.extend(ignored_lints.iter().map(|lint| format!("-Aclippy::{}", lint)));
+        args.extend(ignored_lints.iter().map(|lint| format!("-Aclippy::{lint}")));
         let mut clippy_lint_levels: Vec<String> = Vec::new();
-        clippy_lint_allow.iter().for_each(|v| clippy_lint_levels.push(format!("-A{}", v)));
-        clippy_lint_deny.iter().for_each(|v| clippy_lint_levels.push(format!("-D{}", v)));
-        clippy_lint_warn.iter().for_each(|v| clippy_lint_levels.push(format!("-W{}", v)));
-        clippy_lint_forbid.iter().for_each(|v| clippy_lint_levels.push(format!("-F{}", v)));
+        clippy_lint_allow.iter().for_each(|v| clippy_lint_levels.push(format!("-A{v}")));
+        clippy_lint_deny.iter().for_each(|v| clippy_lint_levels.push(format!("-D{v}")));
+        clippy_lint_warn.iter().for_each(|v| clippy_lint_levels.push(format!("-W{v}")));
+        clippy_lint_forbid.iter().for_each(|v| clippy_lint_levels.push(format!("-F{v}")));
         args.extend(clippy_lint_levels);
         args
     } else {
@@ -101,8 +101,8 @@ impl Step for Std {
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!(
-            "Checking stage{} std artifacts ({} -> {})",
-            builder.top_stage, &compiler.host, target
+            "Checking stage{} std artifacts ({} -> {target})",
+            builder.top_stage, &compiler.host
         ));
         run_cargo(
             builder,
@@ -157,8 +157,8 @@ impl Step for Std {
         }
 
         builder.info(&format!(
-            "Checking stage{} std test/bench/example targets ({} -> {})",
-            builder.top_stage, &compiler.host, target
+            "Checking stage{} std test/bench/example targets ({} -> {target})",
+            builder.top_stage, &compiler.host
         ));
         run_cargo(
             builder,
@@ -233,8 +233,8 @@ impl Step for Rustc {
         }
 
         builder.info(&format!(
-            "Checking stage{} compiler artifacts ({} -> {})",
-            builder.top_stage, &compiler.host, target
+            "Checking stage{} compiler artifacts ({} -> {target})",
+            builder.top_stage, &compiler.host
         ));
         run_cargo(
             builder,
@@ -288,12 +288,12 @@ impl Step for CodegenBackend {
         );
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
+            .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target);
 
         builder.info(&format!(
-            "Checking stage{} {} artifacts ({} -> {})",
-            builder.top_stage, backend, &compiler.host.triple, target.triple
+            "Checking stage{} {backend} artifacts ({} -> {})",
+            builder.top_stage, &compiler.host.triple, target.triple
         ));
 
         run_cargo(
@@ -496,5 +496,5 @@ fn codegen_backend_stamp(
 ) -> PathBuf {
     builder
         .cargo_out(compiler, Mode::Codegen, target)
-        .join(format!(".librustc_codegen_{}-check.stamp", backend))
+        .join(format!(".librustc_codegen_{backend}-check.stamp"))
 }

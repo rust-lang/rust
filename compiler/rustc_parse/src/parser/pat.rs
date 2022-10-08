@@ -181,7 +181,7 @@ impl<'a> Parser<'a> {
         let colon = self.eat(&token::Colon);
 
         if let PatKind::Or(pats) = &pat.kind {
-            let msg = format!("top-level or-patterns are not allowed in {}", syntax_loc);
+            let msg = format!("top-level or-patterns are not allowed in {syntax_loc}");
             let (help, fix) = if pats.len() == 1 {
                 // If all we have is a leading vert, then print a special message. This is the case
                 // if `parse_pat_allow_top_alt` returns an or-pattern with one variant.
@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
     /// A `|` or possibly `||` token shouldn't be here. Ban it.
     fn ban_illegal_vert(&mut self, lo: Option<Span>, pos: &str, ctx: &str) {
         let span = self.token.span;
-        let mut err = self.struct_span_err(span, &format!("a {} `|` is {}", pos, ctx));
+        let mut err = self.struct_span_err(span, &format!("a {pos} `|` is {ctx}"));
         err.span_suggestion(
             span,
             &format!("remove the `{}`", pprust::token_to_string(&self.token)),
@@ -539,7 +539,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `'a`
 
             let span = self.prev_token.span;
-            self.struct_span_err(span, &format!("unexpected lifetime `{}` in pattern", name))
+            self.struct_span_err(span, &format!("unexpected lifetime `{name}` in pattern"))
                 .span_suggestion(span, "remove the lifetime", "", Applicability::MachineApplicable)
                 .emit();
         }
@@ -687,10 +687,10 @@ impl<'a> Parser<'a> {
         err.cancel();
 
         let expected = expected.unwrap_or("pattern");
-        let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
+        let msg = format!("expected {expected}, found {}", super::token_descr(&self.token));
 
         let mut err = self.struct_span_err(self.token.span, &msg);
-        err.span_label(self.token.span, format!("expected {}", expected));
+        err.span_label(self.token.span, format!("expected {expected}"));
 
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
@@ -996,7 +996,7 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 let token_str = super::token_descr(&self.token);
-                let msg = &format!("expected `}}`, found {}", token_str);
+                let msg = &format!("expected `}}`, found {token_str}");
                 let mut err = self.struct_span_err(self.token.span, msg);
 
                 err.span_label(self.token.span, "expected `}`");

@@ -34,7 +34,7 @@ Examples:
 "#;
 
 fn show_help() {
-    println!("{}", CARGO_MIRI_HELP);
+    println!("{CARGO_MIRI_HELP}");
 }
 
 fn show_version() {
@@ -52,7 +52,7 @@ fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut
     let path = args.next().expect("`--extern` should be followed by a filename");
     if let Some(lib) = path.strip_suffix(".rlib") {
         // If this is an rlib, make it an rmeta.
-        cmd.arg(format!("{}.rmeta", lib));
+        cmd.arg(format!("{lib}.rmeta"));
     } else {
         // Some other extern file (e.g. a `.so`). Forward unchanged.
         cmd.arg(path);
@@ -336,7 +336,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                     "[cargo-miri rustc inside rustdoc] captured input:\n{}",
                     std::str::from_utf8(&env.stdin).unwrap()
                 );
-                eprintln!("[cargo-miri rustc inside rustdoc] going to run:\n{:?}", cmd);
+                eprintln!("[cargo-miri rustc inside rustdoc] going to run:\n{cmd:?}");
             }
 
             exec_with_pipe(cmd, &env.stdin, format!("{}.stdin", out_filename("", "").display()));
@@ -374,7 +374,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                         val.push("metadata");
                     }
                 }
-                cmd.arg(format!("{}={}", emit_flag, val.join(",")));
+                cmd.arg(format!("{emit_flag}={}", val.join(",")));
             } else if arg == "--extern" {
                 // Patch `--extern` filenames, since Cargo sometimes passes stub `.rlib` files:
                 // https://github.com/rust-lang/miri/issues/1705
@@ -535,7 +535,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     // Run it.
     debug_cmd("[cargo-miri runner]", verbose, &cmd);
     match phase {
-        RunnerPhase::Rustdoc => exec_with_pipe(cmd, &info.stdin, format!("{}.stdin", binary)),
+        RunnerPhase::Rustdoc => exec_with_pipe(cmd, &info.stdin, format!("{binary}.stdin")),
         RunnerPhase::Cargo => exec(cmd),
     }
 }

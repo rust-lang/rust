@@ -1217,10 +1217,10 @@ impl<I: Interner> hash::Hash for RegionKind<I> {
 impl<I: Interner> fmt::Debug for RegionKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ReEarlyBound(ref data) => write!(f, "ReEarlyBound({:?})", data),
+            ReEarlyBound(ref data) => write!(f, "ReEarlyBound({data:?})"),
 
             ReLateBound(binder_id, ref bound_region) => {
-                write!(f, "ReLateBound({:?}, {:?})", binder_id, bound_region)
+                write!(f, "ReLateBound({binder_id:?}, {bound_region:?})")
             }
 
             ReFree(ref fr) => fr.fmt(f),
@@ -1229,7 +1229,7 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 
             ReVar(ref vid) => vid.fmt(f),
 
-            RePlaceholder(placeholder) => write!(f, "RePlaceholder({:?})", placeholder),
+            RePlaceholder(placeholder) => write!(f, "RePlaceholder({placeholder:?})"),
 
             ReErased => write!(f, "ReErased"),
         }

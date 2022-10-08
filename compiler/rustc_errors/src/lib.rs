@@ -1686,7 +1686,7 @@ pub fn add_elided_lifetime_in_path_suggestion(
     }
     let anon_lts = vec!["'_"; n].join(", ");
     let suggestion =
-        if incl_angl_brckt { format!("<{}>", anon_lts) } else { format!("{}, ", anon_lts) };
+        if incl_angl_brckt { format!("<{anon_lts}>") } else { format!("{anon_lts}, ") };
     diag.span_suggestion_verbose(
         insertion_span.shrink_to_hi(),
         &format!("indicate the anonymous lifetime{}", pluralize!(n)),

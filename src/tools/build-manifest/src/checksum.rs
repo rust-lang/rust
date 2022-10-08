@@ -82,7 +82,7 @@ impl Checksums {
             Ok(hash) => {
                 self.collected.lock().unwrap().insert(path.clone(), hash);
             }
-            Err(err) => eprintln!("error while fetching the hash for {}: {}", path.display(), err),
+            Err(err) => eprintln!("error while fetching the hash for {}: {err}", path.display()),
         });
 
         println!("collected {} hashes in {:.2?}", files.len(), collection_start.elapsed());

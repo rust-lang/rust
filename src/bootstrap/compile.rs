@@ -121,7 +121,7 @@ impl Step for Std {
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
             builder.ensure(Std::new(compiler_to_use, target));
-            builder.info(&format!("Uplifting stage1 std ({} -> {})", compiler_to_use.host, target));
+            builder.info(&format!("Uplifting stage1 std ({} -> {target})", compiler_to_use.host));
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
@@ -139,8 +139,8 @@ impl Step for Std {
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!(
-            "Building stage{} std artifacts ({} -> {})",
-            compiler.stage, &compiler.host, target
+            "Building stage{} std artifacts ({} -> {target})",
+            compiler.stage, &compiler.host
         ));
         run_cargo(
             builder,
@@ -435,8 +435,8 @@ impl Step for StdLink {
         let target_compiler = self.target_compiler;
         let target = self.target;
         builder.info(&format!(
-            "Copying stage{} std from stage{} ({} -> {} / {})",
-            target_compiler.stage, compiler.stage, &compiler.host, target_compiler.host, target
+            "Copying stage{} std from stage{} ({} -> {} / {target})",
+            target_compiler.stage, compiler.stage, &compiler.host, target_compiler.host
         ));
         let libdir = builder.sysroot_libdir(target_compiler, target);
         let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
@@ -641,7 +641,7 @@ impl Step for Rustc {
         if compiler_to_use != compiler {
             builder.ensure(Rustc::new(compiler_to_use, target));
             builder
-                .info(&format!("Uplifting stage1 rustc ({} -> {})", builder.config.build, target));
+                .info(&format!("Uplifting stage1 rustc ({} -> {target})", builder.config.build));
             builder.ensure(RustcLink::from_rustc(self, compiler_to_use));
             return;
         }
@@ -674,7 +674,7 @@ impl Step for Rustc {
 
         let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
             if compiler.stage == 1 {
-                cargo.rustflag(&format!("-Cprofile-generate={}", path));
+                cargo.rustflag(&format!("-Cprofile-generate={path}"));
                 // Apparently necessary to avoid overflowing the counters during
                 // a Cargo build profile
                 cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
@@ -684,7 +684,7 @@ impl Step for Rustc {
             }
         } else if let Some(path) = &builder.config.rust_profile_use {
             if compiler.stage == 1 {
-                cargo.rustflag(&format!("-Cprofile-use={}", path));
+                cargo.rustflag(&format!("-Cprofile-use={path}"));
                 cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
                 true
             } else {
@@ -702,8 +702,8 @@ impl Step for Rustc {
         }
 
         builder.info(&format!(
-            "Building stage{} compiler artifacts ({} -> {})",
-            compiler.stage, &compiler.host, target
+            "Building stage{} compiler artifacts ({} -> {target})",
+            compiler.stage, &compiler.host
         ));
         run_cargo(
             builder,
@@ -888,8 +888,8 @@ impl Step for RustcLink {
         let target_compiler = self.target_compiler;
         let target = self.target;
         builder.info(&format!(
-            "Copying stage{} rustc from stage{} ({} -> {} / {})",
-            target_compiler.stage, compiler.stage, &compiler.host, target_compiler.host, target
+            "Copying stage{} rustc from stage{} ({} -> {} / {target})",
+            target_compiler.stage, compiler.stage, &compiler.host, target_compiler.host
         ));
         add_to_sysroot(
             builder,
@@ -959,14 +959,14 @@ impl Step for CodegenBackend {
         let mut cargo = builder.cargo(compiler, Mode::Codegen, SourceType::InTree, target, "build");
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
+            .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target);
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
         builder.info(&format!(
-            "Building stage{} codegen backend {} ({} -> {})",
-            compiler.stage, backend, &compiler.host, target
+            "Building stage{} codegen backend {backend} ({} -> {target})",
+            compiler.stage, &compiler.host
         ));
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
         if builder.config.dry_run {
@@ -1067,7 +1067,7 @@ fn codegen_backend_stamp(
 ) -> PathBuf {
     builder
         .cargo_out(compiler, Mode::Codegen, target)
-        .join(format!(".librustc_codegen_{}.stamp", backend))
+        .join(format!(".librustc_codegen_{backend}.stamp"))
 }
 
 pub fn compiler_file(
@@ -1079,7 +1079,7 @@ pub fn compiler_file(
 ) -> PathBuf {
     let mut cmd = Command::new(compiler);
     cmd.args(builder.cflags(target, GitRepo::Rustc, c));
-    cmd.arg(format!("-print-file-name={}", file));
+    cmd.arg(format!("-print-file-name={file}"));
     let out = output(&mut cmd);
     PathBuf::from(out.trim())
 }
@@ -1248,7 +1248,7 @@ impl Step for Assemble {
 
         let stage = target_compiler.stage;
         let host = target_compiler.host;
-        builder.info(&format!("Assembling stage{} compiler ({})", stage, host));
+        builder.info(&format!("Assembling stage{stage} compiler ({host})"));
 
         // Link in all dylibs to the libdir
         let stamp = librustc_stamp(builder, build_compiler, target_compiler.host);
@@ -1476,10 +1476,10 @@ pub fn run_cargo(
         });
         let path_to_add = match max {
             Some(triple) => triple.0.to_str().unwrap(),
-            None => panic!("no output generated for {:?} {:?}", prefix, extension),
+            None => panic!("no output generated for {prefix:?} {extension:?}"),
         };
         if is_dylib(path_to_add) {
-            let candidate = format!("{}.lib", path_to_add);
+            let candidate = format!("{path_to_add}.lib");
             let candidate = PathBuf::from(candidate);
             if candidate.exists() {
                 deps.push((candidate, DependencyType::Target));
@@ -1531,10 +1531,10 @@ pub fn stream_cargo(
         cargo.arg(arg);
     }
 
-    builder.verbose(&format!("running: {:?}", cargo));
+    builder.verbose(&format!("running: {cargo:?}"));
     let mut child = match cargo.spawn() {
         Ok(child) => child,
-        Err(e) => panic!("failed to execute command: {:?}\nerror: {}", cargo, e),
+        Err(e) => panic!("failed to execute command: {cargo:?}\nerror: {e}"),
     };
 
     // Spawn Cargo slurping up its JSON output. We'll start building up the
@@ -1547,12 +1547,12 @@ pub fn stream_cargo(
             Ok(msg) => {
                 if builder.config.json_output {
                     // Forward JSON to stdout.
-                    println!("{}", line);
+                    println!("{line}");
                 }
                 cb(msg)
             }
             // If this was informational, just print it out and continue
-            Err(_) => println!("{}", line),
+            Err(_) => println!("{line}"),
         }
     }
 

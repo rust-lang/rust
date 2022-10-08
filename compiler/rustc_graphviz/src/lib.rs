@@ -512,7 +512,7 @@ impl<'a> LabelText<'a> {
         match *self {
             LabelStr(ref s) => format!("\"{}\"", s.escape_default()),
             EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(&s)),
-            HtmlStr(ref s) => format!("<{}>", s),
+            HtmlStr(ref s) => format!("<{s}>"),
         }
     }
 
@@ -618,7 +618,7 @@ where
     if let Some(fontname) = options.iter().find_map(|option| {
         if let RenderOption::Fontname(fontname) = option { Some(fontname) } else { None }
     }) {
-        font = format!(r#"fontname="{}""#, fontname);
+        font = format!(r#"fontname="{fontname}""#);
         graph_attrs.push(&font[..]);
         content_attrs.push(&font[..]);
     }
@@ -631,8 +631,8 @@ where
     if !(graph_attrs.is_empty() && content_attrs.is_empty()) {
         writeln!(w, r#"    graph[{}];"#, graph_attrs.join(" "))?;
         let content_attrs_str = content_attrs.join(" ");
-        writeln!(w, r#"    node[{}];"#, content_attrs_str)?;
-        writeln!(w, r#"    edge[{}];"#, content_attrs_str)?;
+        writeln!(w, r#"    node[{content_attrs_str}];"#)?;
+        writeln!(w, r#"    edge[{content_attrs_str}];"#)?;
     }
 
     let mut text = Vec::new();
@@ -645,7 +645,7 @@ where
         write!(text, "{}", id.as_slice()).unwrap();
 
         if !options.contains(&RenderOption::NoNodeLabels) {
-            write!(text, "[label={}]", escaped).unwrap();
+            write!(text, "[label={escaped}]").unwrap();
         }
 
         let style = g.node_style(n);
@@ -674,7 +674,7 @@ where
         write!(text, "{} -> {}", source_id.as_slice(), target_id.as_slice()).unwrap();
 
         if !options.contains(&RenderOption::NoEdgeLabels) {
-            write!(text, "[label={}]", escaped_label).unwrap();
+            write!(text, "[label={escaped_label}]").unwrap();
         }
 
         let style = g.edge_style(e);

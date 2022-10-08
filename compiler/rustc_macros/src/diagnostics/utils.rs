@@ -300,7 +300,7 @@ pub(crate) trait HasFieldMap {
                 None => {
                     span_err(
                         span.unwrap(),
-                        &format!("`{}` doesn't refer to a field on this type", field),
+                        &format!("`{field}` doesn't refer to a field on this type"),
                     )
                     .emit();
                     quote! {

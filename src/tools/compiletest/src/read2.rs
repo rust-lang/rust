@@ -111,7 +111,7 @@ impl ProcOutput {
         match self {
             ProcOutput::Full { bytes, .. } => bytes,
             ProcOutput::Abbreviated { mut head, skipped, tail } => {
-                write!(&mut head, "\n\n<<<<<< SKIPPED {} BYTES >>>>>>\n\n", skipped).unwrap();
+                write!(&mut head, "\n\n<<<<<< SKIPPED {skipped} BYTES >>>>>>\n\n").unwrap();
                 head.extend_from_slice(&tail);
                 head
             }

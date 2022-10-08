@@ -76,11 +76,11 @@ pub(crate) fn invalid_attr(attr: &Attribute, meta: &Meta) -> Diagnostic {
     let span = attr.span().unwrap();
     let path = path_to_string(&attr.path);
     match meta {
-        Meta::Path(_) => span_err(span, &format!("`#[{}]` is not a valid attribute", path)),
+        Meta::Path(_) => span_err(span, &format!("`#[{path}]` is not a valid attribute")),
         Meta::NameValue(_) => {
-            span_err(span, &format!("`#[{} = ...]` is not a valid attribute", path))
+            span_err(span, &format!("`#[{path} = ...]` is not a valid attribute"))
         }
-        Meta::List(_) => span_err(span, &format!("`#[{}(...)]` is not a valid attribute", path)),
+        Meta::List(_) => span_err(span, &format!("`#[{path}(...)]` is not a valid attribute")),
     }
 }
 
@@ -107,7 +107,7 @@ pub(crate) fn invalid_nested_attr(attr: &Attribute, nested: &NestedMeta) -> Diag
     let meta = match nested {
         syn::NestedMeta::Meta(meta) => meta,
         syn::NestedMeta::Lit(_) => {
-            return span_err(span, &format!("`#[{}(\"...\")]` is not a valid attribute", name));
+            return span_err(span, &format!("`#[{name}(\"...\")]` is not a valid attribute"));
         }
     };
 
@@ -115,13 +115,13 @@ pub(crate) fn invalid_nested_attr(attr: &Attribute, nested: &NestedMeta) -> Diag
     let path = path_to_string(meta.path());
     match meta {
         Meta::NameValue(..) => {
-            span_err(span, &format!("`#[{}({} = ...)]` is not a valid attribute", name, path))
+            span_err(span, &format!("`#[{name}({path} = ...)]` is not a valid attribute"))
         }
         Meta::Path(..) => {
-            span_err(span, &format!("`#[{}({})]` is not a valid attribute", name, path))
+            span_err(span, &format!("`#[{name}({path})]` is not a valid attribute"))
         }
         Meta::List(..) => {
-            span_err(span, &format!("`#[{}({}(...))]` is not a valid attribute", name, path))
+            span_err(span, &format!("`#[{name}({path}(...))]` is not a valid attribute"))
         }
     }
 }

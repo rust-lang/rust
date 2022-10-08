@@ -430,7 +430,7 @@ impl TokenStream {
 
     pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
         let Some(tokens) = node.tokens() else {
-            panic!("missing tokens for node at {:?}: {:?}", node.span(), node);
+            panic!("missing tokens for node at {:?}: {node:?}", node.span());
         };
         let attrs = node.attrs();
         let attr_stream = if attrs.is_empty() {

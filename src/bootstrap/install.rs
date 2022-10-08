@@ -41,7 +41,7 @@ fn sanitize_sh(path: &Path) -> String {
         if ch.next() != Some('/') {
             return None;
         }
-        Some(format!("/{}/{}", drive, &s[drive.len_utf8() + 2..]))
+        Some(format!("/{drive}/{}", &s[drive.len_utf8() + 2..]))
     }
 }
 
@@ -52,7 +52,7 @@ fn install_sh(
     host: Option<TargetSelection>,
     tarball: &GeneratedTarball,
 ) {
-    builder.info(&format!("Install {} stage{} ({:?})", package, stage, host));
+    builder.info(&format!("Install {package} stage{stage} ({host:?})"));
 
     let prefix = default_path(&builder.config.prefix, "/usr/local");
     let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));

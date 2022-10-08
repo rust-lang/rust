@@ -17,7 +17,7 @@ pub fn define_config_type_on_enum(em: &syn::ItemEnum) -> syn::Result<TokenStream
         ..
     } = em;
 
-    let mod_name_str = format!("__define_config_type_on_enum_{}", ident);
+    let mod_name_str = format!("__define_config_type_on_enum_{ident}");
     let mod_name = syn::Ident::new(&mod_name_str, ident.span());
     let variants = fold_quote(variants.iter().map(process_variant), |meta| quote!(#meta,));
 
@@ -59,7 +59,7 @@ fn impl_doc_hint(ident: &syn::Ident, variants: &Variants) -> TokenStream {
         .map(doc_hint_of_variant)
         .collect::<Vec<_>>()
         .join("|");
-    let doc_hint = format!("[{}]", doc_hint);
+    let doc_hint = format!("[{doc_hint}]");
     quote! {
         use crate::config::ConfigType;
         impl ConfigType for #ident {

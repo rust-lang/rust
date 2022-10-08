@@ -630,7 +630,7 @@ impl std::fmt::Debug for DebugArg<'_> {
 #[cold]
 fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: DebugArg<'_>) {
     let run_cmd = if let Some(crate_name) = &sess.opts.crate_name {
-        format!("`cargo clean -p {}` or `cargo clean`", crate_name)
+        format!("`cargo clean -p {crate_name}` or `cargo clean`")
     } else {
         "`cargo clean`".to_string()
     };
@@ -652,9 +652,9 @@ fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: D
     } else {
         sess.emit_err(crate::error::IncrementCompilation {
             run_cmd,
-            dep_node: format!("{:?}", dep_node),
+            dep_node: format!("{dep_node:?}"),
         });
-        panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
+        panic!("Found unstable fingerprints for {dep_node:?}: {result:?}");
     }
 
     INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));
