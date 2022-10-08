@@ -387,7 +387,8 @@ impl<T, S> HashSet<T, S, Global> {
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
-    /// The hash set is also created with the default initial capacity.
+    /// The hash set is initially created with a capacity of 0, so it will not
+    /// allocate until it is first inserted into.
     ///
     /// Warning: `hasher` is normally randomly generated, and
     /// is designed to allow `HashSet`s to be resistant to attacks that
@@ -464,7 +465,8 @@ where
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
-    /// The hash set is also created with the default initial capacity.
+    /// The hash set is initially created with a capacity of 0, so it will not
+    /// allocate until it is first inserted into.
     ///
     /// Warning: `hasher` is normally randomly generated, and
     /// is designed to allow `HashSet`s to be resistant to attacks that
@@ -482,7 +484,7 @@ where
     /// set.insert(2);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn with_hasher_in(hasher: S, alloc: A) -> Self {
+    pub const fn with_hasher_in(hasher: S, alloc: A) -> Self {
         Self {
             map: HashMap::with_hasher_in(hasher, alloc),
         }

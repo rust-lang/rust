@@ -426,7 +426,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// leave the data pointer dangling since that bucket is never written to
     /// due to our load factor forcing us to always have at least 1 free bucket.
     #[inline]
-    pub fn new_in(alloc: A) -> Self {
+    pub const fn new_in(alloc: A) -> Self {
         Self {
             table: RawTableInner::new_in(alloc),
             marker: PhantomData,
