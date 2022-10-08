@@ -367,3 +367,7 @@ impl TypeWithNoDocblocks {
     pub fn first_fn(&self) {}
     pub fn second_fn(&self) {}
 }
+
+pub unsafe fn unsafe_fn() {}
+
+pub fn safe_fn() {}
