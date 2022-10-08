@@ -2031,15 +2031,6 @@ fn linker_with_args<'a>(
         tmpdir,
     );
 
-    // Dynamic native libraries from upstream crates.
-    //
-    // FIXME: Merge this to `add_upstream_rust_crates` so that all native libraries are linked
-    // together with their respective upstream crates, and in their originally specified order.
-    // This may be slightly breaking due to our use of `--as-needed` and needs a crater run.
-    if sess.opts.unstable_opts.link_native_libraries {
-        add_upstream_native_libraries(cmd, sess, codegen_results);
-    }
-
     // Link with the import library generated for any raw-dylib functions.
     for (raw_dylib_name, raw_dylib_imports) in
         collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
@@ -2375,7 +2366,8 @@ fn add_upstream_rust_crates<'a>(
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
-        match data[cnum.as_usize() - 1] {
+        let linkage = data[cnum.as_usize() - 1];
+        match linkage {
             _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
                 add_static_crate(
                     cmd,
@@ -2412,89 +2404,96 @@ fn add_upstream_rust_crates<'a>(
                     cnum,
                     &bundled_libs,
                 );
-
-                // Link static native libs with "-bundle" modifier only if the crate they originate from
-                // is being linked statically to the current crate.  If it's linked dynamically
-                // or is an rlib already included via some other dylib crate, the symbols from
-                // native libs will have already been included in that dylib.
-                //
-                // If `-Zlink-native-libraries=false` is set, then the assumption is that an
-                // external build system already has the native dependencies defined, and it
-                // will provide them to the linker itself.
-                if sess.opts.unstable_opts.link_native_libraries {
-                    if sess.opts.unstable_opts.packed_bundled_libs {
-                        // If rlib contains native libs as archives, unpack them to tmpdir.
-                        let rlib = &src.rlib.as_ref().unwrap().0;
-                        archive_builder_builder
-                            .extract_bundled_libs(rlib, tmpdir, &bundled_libs)
-                            .unwrap_or_else(|e| sess.fatal(e));
-                    }
-
-                    let mut last = (None, NativeLibKind::Unspecified, None);
-                    for lib in &codegen_results.crate_info.native_libraries[&cnum] {
-                        let Some(name) = lib.name else {
-                            continue;
-                        };
-                        let name = name.as_str();
-                        if !relevant_lib(sess, lib) {
-                            continue;
-                        }
-
-                        // Skip if this library is the same as the last.
-                        last = if (lib.name, lib.kind, lib.verbatim) == last {
-                            continue;
-                        } else {
-                            (lib.name, lib.kind, lib.verbatim)
-                        };
-
-                        match lib.kind {
-                            NativeLibKind::Static {
-                                bundle: Some(false),
-                                whole_archive: Some(true),
-                            } => {
-                                cmd.link_whole_staticlib(
-                                    name,
-                                    lib.verbatim.unwrap_or(false),
-                                    search_path.get_or_init(|| archive_search_paths(sess)),
-                                );
-                            }
-                            NativeLibKind::Static {
-                                bundle: Some(false),
-                                whole_archive: Some(false) | None,
-                            } => {
-                                // HACK/FIXME: Fixup a circular dependency between libgcc and libc
-                                // with glibc. This logic should be moved to the libc crate.
-                                if sess.target.os == "linux"
-                                    && sess.target.env == "gnu"
-                                    && name == "c"
-                                {
-                                    cmd.link_staticlib("gcc", false);
-                                }
-                                cmd.link_staticlib(name, lib.verbatim.unwrap_or(false));
-                            }
-                            NativeLibKind::LinkArg => {
-                                cmd.arg(name);
-                            }
-                            NativeLibKind::Dylib { .. }
-                            | NativeLibKind::Framework { .. }
-                            | NativeLibKind::Unspecified
-                            | NativeLibKind::RawDylib => {}
-                            NativeLibKind::Static { bundle: Some(true) | None, whole_archive } => {
-                                if sess.opts.unstable_opts.packed_bundled_libs {
-                                    // If rlib contains native libs as archives, they are unpacked to tmpdir.
-                                    let path = tmpdir.join(lib.filename.unwrap().as_str());
-                                    if whole_archive == Some(true) {
-                                        cmd.link_whole_rlib(&path);
-                                    } else {
-                                        cmd.link_rlib(&path);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
             }
             Linkage::Dynamic => add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0),
+        }
+
+        if sess.opts.unstable_opts.link_native_libraries {
+            if linkage == Linkage::Static && sess.opts.unstable_opts.packed_bundled_libs {
+                let bundled_libs = if sess.opts.unstable_opts.packed_bundled_libs {
+                    codegen_results.crate_info.native_libraries[&cnum]
+                        .iter()
+                        .filter_map(|lib| lib.filename)
+                        .collect::<FxHashSet<_>>()
+                } else {
+                    Default::default()
+                };
+                // If rlib contains native libs as archives, unpack them to tmpdir.
+                let rlib = &src.rlib.as_ref().unwrap().0;
+                archive_builder_builder
+                    .extract_bundled_libs(rlib, tmpdir, &bundled_libs)
+                    .unwrap_or_else(|e| sess.fatal(e));
+            }
+
+            let mut last = (None, NativeLibKind::Unspecified, None);
+            for lib in &codegen_results.crate_info.native_libraries[&cnum] {
+                let Some(name) = lib.name else {
+                    continue;
+                };
+                let name = name.as_str();
+                if !relevant_lib(sess, lib) {
+                    continue;
+                }
+
+                // Skip if this library is the same as the last.
+                last = if (lib.name, lib.kind, lib.verbatim) == last {
+                    continue;
+                } else {
+                    (lib.name, lib.kind, lib.verbatim)
+                };
+
+                let verbatim = lib.verbatim.unwrap_or(false);
+                match lib.kind {
+                    NativeLibKind::Static { bundle: Some(false), whole_archive: Some(true) } => {
+                        if linkage == Linkage::Static {
+                            cmd.link_whole_staticlib(
+                                name,
+                                verbatim,
+                                search_path.get_or_init(|| archive_search_paths(sess)),
+                            );
+                        }
+                    }
+                    NativeLibKind::Static {
+                        bundle: Some(false),
+                        whole_archive: Some(false) | None,
+                    } => {
+                        if linkage == Linkage::Static {
+                            // HACK/FIXME: Fixup a circular dependency between libgcc and libc
+                            // with glibc. This logic should be moved to the libc crate.
+                            if sess.target.os == "linux" && sess.target.env == "gnu" && name == "c"
+                            {
+                                cmd.link_staticlib("gcc", false);
+                            }
+                            cmd.link_staticlib(name, verbatim);
+                        }
+                    }
+                    NativeLibKind::Static { bundle: Some(true) | None, whole_archive } => {
+                        if linkage == Linkage::Static && sess.opts.unstable_opts.packed_bundled_libs
+                        {
+                            // If rlib contains native libs as archives, they are unpacked to tmpdir.
+                            let path = tmpdir.join(lib.filename.unwrap().as_str());
+                            if whole_archive == Some(true) {
+                                cmd.link_whole_rlib(&path);
+                            } else {
+                                cmd.link_rlib(&path);
+                            }
+                        }
+                    }
+                    NativeLibKind::Dylib { as_needed } => {
+                        cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
+                    }
+                    NativeLibKind::RawDylib => {}
+                    NativeLibKind::Framework { as_needed } => {
+                        cmd.link_framework(name, as_needed.unwrap_or(true))
+                    }
+                    NativeLibKind::LinkArg => {
+                        if linkage == Linkage::Static {
+                            cmd.arg(name);
+                        }
+                    }
+                    NativeLibKind::Unspecified => cmd.link_dylib(name, verbatim, true),
+                }
+            }
         }
     }
 
@@ -2645,63 +2644,6 @@ fn add_upstream_rust_crates<'a>(
             &unlib(&sess.target, filestem),
             parent.unwrap_or_else(|| Path::new("")),
         );
-    }
-}
-
-/// Link in all of our upstream crates' native dependencies. Remember that all of these upstream
-/// native dependencies are all non-static dependencies. We've got two cases then:
-///
-/// 1. The upstream crate is an rlib. In this case we *must* link in the native dependency because
-/// the rlib is just an archive.
-///
-/// 2. The upstream crate is a dylib. In order to use the dylib, we have to have the dependency
-/// present on the system somewhere. Thus, we don't gain a whole lot from not linking in the
-/// dynamic dependency to this crate as well.
-///
-/// The use case for this is a little subtle. In theory the native dependencies of a crate are
-/// purely an implementation detail of the crate itself, but the problem arises with generic and
-/// inlined functions. If a generic function calls a native function, then the generic function
-/// must be instantiated in the target crate, meaning that the native symbol must also be resolved
-/// in the target crate.
-fn add_upstream_native_libraries(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    codegen_results: &CodegenResults,
-) {
-    let mut last = (None, NativeLibKind::Unspecified, None);
-    for &cnum in &codegen_results.crate_info.used_crates {
-        for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
-            let Some(name) = lib.name else {
-                continue;
-            };
-            let name = name.as_str();
-            if !relevant_lib(sess, &lib) {
-                continue;
-            }
-
-            // Skip if this library is the same as the last.
-            last = if (lib.name, lib.kind, lib.verbatim) == last {
-                continue;
-            } else {
-                (lib.name, lib.kind, lib.verbatim)
-            };
-
-            let verbatim = lib.verbatim.unwrap_or(false);
-            match lib.kind {
-                NativeLibKind::Dylib { as_needed } => {
-                    cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
-                }
-                NativeLibKind::Unspecified => cmd.link_dylib(name, verbatim, true),
-                NativeLibKind::Framework { as_needed } => {
-                    cmd.link_framework(name, as_needed.unwrap_or(true))
-                }
-                // ignore static native libraries here as we've
-                // already included them in add_local_native_libraries and
-                // add_upstream_rust_crates
-                NativeLibKind::Static { .. } => {}
-                NativeLibKind::RawDylib | NativeLibKind::LinkArg => {}
-            }
-        }
     }
 }
 

@@ -12,7 +12,7 @@ all: $(call NATIVE_STATICLIB,native-staticlib)
 	$(RUSTC) bundled.rs --crate-type=staticlib --crate-type=rlib
 	$(NM) $(TMPDIR)/libbundled.a | $(CGREP) -e "T _*native_func"
 	$(NM) $(TMPDIR)/libbundled.a | $(CGREP) -e "U _*native_func"
-	$(NM) $(TMPDIR)/libbundled.rlib | $(CGREP) -e "T _*native_func"
+	$(NM) $(TMPDIR)/libbundled.rlib | $(CGREP) -ve "T _*native_func"
 	$(NM) $(TMPDIR)/libbundled.rlib | $(CGREP) -e "U _*native_func"
 
 	# Build a staticlib and a rlib, the `native_func` symbol will not be bundled into it

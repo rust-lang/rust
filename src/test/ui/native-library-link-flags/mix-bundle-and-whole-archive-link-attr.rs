@@ -1,8 +1,10 @@
-// compile-flags: -Zunstable-options --crate-type rlib
-// build-fail
-// error-pattern: the linking modifiers `+bundle` and `+whole-archive` are not compatible with each other when generating rlibs
+// Mixing +bundle and +whole-archive is now allowed
+
+// build-pass
+// compile-flags: --crate-type rlib
+// aux-build:mylib.rs
 
 #[link(name = "mylib", kind = "static", modifiers = "+bundle,+whole-archive")]
-extern "C" { }
+extern "C" {}
 
-fn main() { }
+fn main() {}

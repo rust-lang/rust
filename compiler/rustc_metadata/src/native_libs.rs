@@ -471,6 +471,14 @@ impl<'tcx> Collector<'tcx> {
                                 lib.name = Some(Symbol::intern(new_name));
                             }
                             lib.verbatim = passed_lib.verbatim;
+                            if lib.filename.is_none() {
+                                lib.filename = find_bundled_library(
+                                    lib.name,
+                                    lib.verbatim,
+                                    lib.kind,
+                                    self.tcx.sess,
+                                );
+                            }
                             return true;
                         }
                     }
