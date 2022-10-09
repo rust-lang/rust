@@ -22,7 +22,7 @@ use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Lift, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Lift, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -983,6 +983,8 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
 ) -> FnDecl {
     let mut names = did.map_or(&[] as &[_], |did| cx.tcx.fn_arg_names(did)).iter();
 
+    let sig = normalize(cx, sig).unwrap_or(sig);
+
     // We assume all empty tuples are default return type. This theoretically can discard `-> ()`,
     // but shouldn't change any code meaning.
     let output = match clean_middle_ty(sig.skip_binder().output(), cx, None) {
@@ -1552,33 +1554,22 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
 }
 
 /// Returns `None` if the type could not be normalized
-fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
+fn normalize<'tcx, T: TypeFoldable<'tcx>>(cx: &mut DocContext<'tcx>, value: T) -> Option<T> {
     // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
     if !cx.tcx.sess.opts.unstable_opts.normalize_docs {
         return None;
     }
 
-    use crate::rustc_trait_selection::infer::TyCtxtInferExt;
-    use crate::rustc_trait_selection::traits::query::normalize::AtExt;
-    use rustc_middle::traits::ObligationCause;
+    if value.has_escaping_bound_vars() {
+        return None;
+    }
+
+    use rustc_trait_selection::infer::TyCtxtInferExt;
+    use rustc_trait_selection::traits;
 
     // Try to normalize `<X as Y>::T` to a type
-    let lifted = ty.lift_to_tcx(cx.tcx).unwrap();
     let infcx = cx.tcx.infer_ctxt().build();
-    let normalized = infcx
-        .at(&ObligationCause::dummy(), cx.param_env)
-        .normalize(lifted)
-        .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
-    match normalized {
-        Ok(normalized_value) => {
-            debug!("normalized {:?} to {:?}", ty, normalized_value);
-            Some(normalized_value)
-        }
-        Err(err) => {
-            debug!("failed to normalize {:?}: {:?}", ty, err);
-            None
-        }
-    }
+    traits::fully_normalize(&infcx, traits::ObligationCause::dummy(), cx.param_env, value).ok()
 }
 
 pub(crate) fn clean_middle_ty<'tcx>(
