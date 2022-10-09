@@ -148,7 +148,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
 
         let desc = match impl_item.kind {
             hir::ImplItemKind::Fn(..) => "a method",
-            hir::ImplItemKind::Const(..) | hir::ImplItemKind::TyAlias(_) => return,
+            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) => return,
         };
 
         let assoc_item = cx.tcx.associated_item(impl_item.def_id);
