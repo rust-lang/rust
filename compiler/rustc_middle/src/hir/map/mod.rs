@@ -241,7 +241,7 @@ impl<'hir> Map<'hir> {
             Node::ImplItem(item) => match item.kind {
                 ImplItemKind::Const(..) => DefKind::AssocConst,
                 ImplItemKind::Fn(..) => DefKind::AssocFn,
-                ImplItemKind::TyAlias(..) => DefKind::AssocTy,
+                ImplItemKind::Type(..) => DefKind::AssocTy,
             },
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
@@ -1244,7 +1244,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 format!("assoc const {} in {}{}", ii.ident, path_str(), id_str)
             }
             ImplItemKind::Fn(..) => format!("method {} in {}{}", ii.ident, path_str(), id_str),
-            ImplItemKind::TyAlias(_) => {
+            ImplItemKind::Type(_) => {
                 format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
             }
         },

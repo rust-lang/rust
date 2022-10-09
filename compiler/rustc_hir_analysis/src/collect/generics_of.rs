@@ -213,7 +213,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         Node::TraitItem(item) if matches!(item.kind, TraitItemKind::Type(..)) => {
             (None, Defaults::Deny)
         }
-        Node::ImplItem(item) if matches!(item.kind, ImplItemKind::TyAlias(..)) => {
+        Node::ImplItem(item) if matches!(item.kind, ImplItemKind::Type(..)) => {
             (None, Defaults::Deny)
         }
 

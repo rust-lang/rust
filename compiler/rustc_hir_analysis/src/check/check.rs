@@ -1062,7 +1062,7 @@ fn check_impl_items_against_trait<'tcx>(
                     opt_trait_span,
                 );
             }
-            hir::ImplItemKind::TyAlias(impl_ty) => {
+            hir::ImplItemKind::Type(impl_ty) => {
                 let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
                 compare_ty_impl(
                     tcx,

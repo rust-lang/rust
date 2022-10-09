@@ -155,7 +155,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     let impl_did = self.tcx.hir().get_parent_item(hir_id);
                     method_might_be_inlined(self.tcx, impl_item, impl_did.def_id)
                 }
-                hir::ImplItemKind::TyAlias(_) => false,
+                hir::ImplItemKind::Type(_) => false,
             },
             Some(_) => false,
             None => false, // This will happen for default methods.
@@ -271,7 +271,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         self.visit_nested_body(body)
                     }
                 }
-                hir::ImplItemKind::TyAlias(_) => {}
+                hir::ImplItemKind::Type(_) => {}
             },
             Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, .. }),

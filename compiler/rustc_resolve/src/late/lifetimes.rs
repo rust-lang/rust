@@ -898,7 +898,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             Fn(..) => self.visit_early_late(impl_item.hir_id(), &impl_item.generics, |this| {
                 intravisit::walk_impl_item(this, impl_item)
             }),
-            TyAlias(ref ty) => {
+            Type(ref ty) => {
                 let generics = &impl_item.generics;
                 let lifetimes: FxIndexMap<LocalDefId, Region> = generics
                     .params
