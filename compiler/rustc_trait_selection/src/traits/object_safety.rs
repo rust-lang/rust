@@ -8,7 +8,7 @@
 //!   - not reference the erased type `Self` except for in this receiver;
 //!   - not have generic type parameters.
 
-use super::elaborate_predicates;
+use super::{elaborate_predicates, elaborate_trait_ref};
 
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -567,51 +567,37 @@ fn receiver_for_self_ty<'tcx>(
 /// Creates the object type for the current trait. For example,
 /// if the current trait is `Deref`, then this will be
 /// `dyn Deref<Target = Self::Target> + 'static`.
+#[instrument(level = "trace", skip(tcx), ret)]
 fn object_ty_for_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     lifetime: ty::Region<'tcx>,
 ) -> Ty<'tcx> {
-    debug!("object_ty_for_trait: trait_def_id={:?}", trait_def_id);
-
     let trait_ref = ty::TraitRef::identity(tcx, trait_def_id);
+    debug!(?trait_ref);
 
     let trait_predicate = trait_ref.map_bound(|trait_ref| {
         ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
     });
+    debug!(?trait_predicate);
 
-    let mut associated_types = traits::supertraits(tcx, trait_ref)
-        .flat_map(|super_trait_ref| {
-            tcx.associated_items(super_trait_ref.def_id())
-                .in_definition_order()
-                .map(move |item| (super_trait_ref, item))
-        })
-        .filter(|(_, item)| item.kind == ty::AssocKind::Type)
-        .collect::<Vec<_>>();
-
-    // existential predicates need to be in a specific order
-    associated_types.sort_by_cached_key(|(_, item)| tcx.def_path_hash(item.def_id));
-
-    let projection_predicates = associated_types.into_iter().map(|(super_trait_ref, item)| {
-        // We *can* get bound lifetimes here in cases like
-        // `trait MyTrait: for<'s> OtherTrait<&'s T, Output=bool>`.
-        super_trait_ref.map_bound(|super_trait_ref| {
+    let elaborated_predicates = elaborate_trait_ref(tcx, trait_ref).filter_map(|obligation| {
+        debug!(?obligation);
+        let pred = obligation.predicate.to_opt_poly_projection_pred()?;
+        Some(pred.map_bound(|p| {
             ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
-                term: tcx.mk_projection(item.def_id, super_trait_ref.substs).into(),
-                item_def_id: item.def_id,
-                substs: super_trait_ref.substs,
+                item_def_id: p.projection_ty.item_def_id,
+                substs: p.projection_ty.substs,
+                term: p.term,
             })
-        })
+        }))
     });
 
     let existential_predicates = tcx
-        .mk_poly_existential_predicates(iter::once(trait_predicate).chain(projection_predicates));
+        .mk_poly_existential_predicates(iter::once(trait_predicate).chain(elaborated_predicates));
+    debug!(?existential_predicates);
 
-    let object_ty = tcx.mk_dynamic(existential_predicates, lifetime, ty::Dyn);
-
-    debug!("object_ty_for_trait: object_ty=`{}`", object_ty);
-
-    object_ty
+    tcx.mk_dynamic(existential_predicates, lifetime, ty::Dyn)
 }
 
 /// Checks the method's receiver (the `self` argument) can be dispatched on when `Self` is a
