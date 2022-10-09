@@ -64,6 +64,7 @@ impl Layout {
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
         if !align.is_power_of_two() {
             return Err(LayoutError);
@@ -113,6 +114,7 @@ impl Layout {
     #[rustc_const_stable(feature = "const_alloc_layout_unchecked", since = "1.36.0")]
     #[must_use]
     #[inline]
+    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         // SAFETY: the caller is required to uphold the preconditions.
         unsafe { Layout { size, align: ValidAlign::new_unchecked(align) } }
@@ -133,6 +135,7 @@ impl Layout {
     #[must_use = "this returns the minimum alignment, \
                   without modifying the layout"]
     #[inline]
+    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const fn align(&self) -> usize {
         self.align.as_usize()
     }

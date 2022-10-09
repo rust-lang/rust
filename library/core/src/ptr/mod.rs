@@ -377,6 +377,10 @@ use crate::intrinsics::{
 
 use crate::mem::{self, MaybeUninit};
 
+mod alignment;
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+pub use alignment::Alignment;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::copy_nonoverlapping;
