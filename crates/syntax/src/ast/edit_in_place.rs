@@ -235,6 +235,23 @@ impl ast::GenericParamList {
             }
         }
     }
+
+    /// Extracts the const, type, and lifetime names into a new [`ast::GenericParamList`]
+    pub fn to_generic_args(&self) -> ast::GenericParamList {
+        let params = self.generic_params().filter_map(|param| match param {
+            ast::GenericParam::ConstParam(it) => {
+                Some(ast::GenericParam::TypeParam(make::type_param(it.name()?, None)))
+            }
+            ast::GenericParam::LifetimeParam(it) => {
+                Some(ast::GenericParam::LifetimeParam(make::lifetime_param(it.lifetime()?)))
+            }
+            ast::GenericParam::TypeParam(it) => {
+                Some(ast::GenericParam::TypeParam(make::type_param(it.name()?, None)))
+            }
+        });
+
+        make::generic_param_list(params)
+    }
 }
 
 impl ast::WhereClause {
