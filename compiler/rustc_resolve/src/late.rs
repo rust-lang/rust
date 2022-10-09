@@ -1423,9 +1423,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     } else {
                                         LifetimeUseSet::Many
                                     }),
-                                    LifetimeRibKind::Generics { .. }
-                                    | LifetimeRibKind::ConstGeneric
-                                    | LifetimeRibKind::AnonConst => None,
+                                    LifetimeRibKind::Generics { .. } => None,
+                                    LifetimeRibKind::ConstGeneric | LifetimeRibKind::AnonConst => {
+                                        span_bug!(ident.span, "unexpected rib kind: {:?}", rib.kind)
+                                    }
                                 })
                                 .unwrap_or(LifetimeUseSet::Many);
                             debug!(?use_ctxt, ?use_set);
@@ -1460,7 +1461,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     );
                     return;
                 }
-                _ => {}
+                LifetimeRibKind::AnonymousCreateParameter { .. }
+                | LifetimeRibKind::Elided(_)
+                | LifetimeRibKind::Generics { .. }
+                | LifetimeRibKind::ElisionFailure
+                | LifetimeRibKind::AnonymousReportError => {}
             }
         }
 
@@ -1534,9 +1539,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     return;
                 }
                 LifetimeRibKind::Item => break,
-                LifetimeRibKind::Generics { .. }
-                | LifetimeRibKind::ConstGeneric
-                | LifetimeRibKind::AnonConst => {}
+                LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstGeneric => {}
+                LifetimeRibKind::AnonConst => {
+                    // There is always an `Elided(LifetimeRes::Static)` inside an `AnonConst`.
+                    span_bug!(lifetime.ident.span, "unexpected rib kind: {:?}", rib.kind)
+                }
             }
         }
         self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
@@ -1751,9 +1758,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
                         break;
                     }
-                    LifetimeRibKind::Generics { .. }
-                    | LifetimeRibKind::ConstGeneric
-                    | LifetimeRibKind::AnonConst => {}
+                    LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstGeneric => {}
+                    LifetimeRibKind::AnonConst => {
+                        // There is always an `Elided(LifetimeRes::Static)` inside an `AnonConst`.
+                        span_bug!(elided_lifetime_span, "unexpected rib kind: {:?}", rib.kind)
+                    }
                 }
             }
 
@@ -3938,7 +3947,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         fn_id: NodeId,
         async_node_id: Option<(NodeId, Span)>,
     ) {
-        if let Some((async_node_id, _)) = async_node_id {
+        if let Some((async_node_id, span)) = async_node_id {
             let mut extra_lifetime_params =
                 self.r.extra_lifetime_params_map.get(&fn_id).cloned().unwrap_or_default();
             for rib in self.lifetime_ribs.iter().rev() {
@@ -3952,7 +3961,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             extra_lifetime_params.extend(earlier_fresh);
                         }
                     }
-                    _ => {}
+                    LifetimeRibKind::Generics { .. } => {}
+                    _ => {
+                        // We are in a function definition. We should only find `Generics`
+                        // and `AnonymousCreateParameter` inside the innermost `Item`.
+                        span_bug!(span, "unexpected rib kind: {:?}", rib.kind)
+                    }
                 }
             }
             self.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
