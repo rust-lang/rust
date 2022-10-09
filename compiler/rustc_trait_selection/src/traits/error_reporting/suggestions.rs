@@ -1811,11 +1811,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                 if found_ty == expected_ty {
                     let hint = if found_refs < expected_refs {
-                        "hint: consider borrowing here:"
+                        "consider borrowing here:"
                     } else if found_refs == expected_refs {
                         continue;
                     } else {
-                        "hint: consider removing the borrow:"
+                        "consider removing the borrow:"
                     };
                     err.span_suggestion_verbose(
                         arg_span,
