@@ -48,7 +48,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq +
             debug_assert!(!erased.needs_infer(), "{:?}", erased);
             Ok(erased)
         }
-        Err(NoSolution) => Err(NoSolution),
+        Err(err) => Err(err.expect_unambiguous()),
     }
 }
 

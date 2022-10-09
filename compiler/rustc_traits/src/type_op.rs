@@ -218,8 +218,10 @@ where
     T: fmt::Debug + TypeFoldable<'tcx> + Lift<'tcx>,
 {
     let (param_env, Normalize { value }) = key.into_parts();
-    let Normalized { value, obligations } =
-        infcx.at(&ObligationCause::dummy(), param_env).normalize(value)?;
+    let Normalized { value, obligations } = infcx
+        .at(&ObligationCause::dummy(), param_env)
+        .normalize(value)
+        .map_err(|err| err.expect_unambiguous())?;
     fulfill_cx.register_predicate_obligations(infcx, obligations);
     Ok(value)
 }

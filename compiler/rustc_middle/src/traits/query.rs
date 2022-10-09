@@ -109,6 +109,33 @@ impl<'tcx> From<TypeError<'tcx>> for NoSolution {
     }
 }
 
+#[derive(Copy, Clone, Debug, HashStable)]
+pub enum NoSolutionOrAmbiguous {
+    NoSolution,
+    Ambiguous,
+}
+
+impl NoSolutionOrAmbiguous {
+    pub fn expect_unambiguous(self) -> NoSolution {
+        match self {
+            NoSolutionOrAmbiguous::NoSolution => NoSolution,
+            NoSolutionOrAmbiguous::Ambiguous => bug!("unexpected ambiguity"),
+        }
+    }
+}
+
+impl From<NoSolution> for NoSolutionOrAmbiguous {
+    fn from(_: NoSolution) -> NoSolutionOrAmbiguous {
+        NoSolutionOrAmbiguous::NoSolution
+    }
+}
+
+impl<'tcx> From<TypeError<'tcx>> for NoSolutionOrAmbiguous {
+    fn from(_: TypeError<'tcx>) -> NoSolutionOrAmbiguous {
+        NoSolutionOrAmbiguous::NoSolution
+    }
+}
+
 #[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<GenericArg<'tcx>>,

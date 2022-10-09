@@ -17,12 +17,12 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 
 use std::ops::ControlFlow;
 
-use super::NoSolution;
+use super::NoSolutionOrAmbiguous;
 
 pub use rustc_middle::traits::query::NormalizationResult;
 
 pub trait AtExt<'tcx> {
-    fn normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
+    fn normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolutionOrAmbiguous>
     where
         T: TypeFoldable<'tcx>;
 }
@@ -41,7 +41,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
     /// normalizing, but for now should be used only when we actually
     /// know that normalization will succeed, since error reporting
     /// and other details are still "under development".
-    fn normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
+    fn normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolutionOrAmbiguous>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -96,7 +96,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             std::any::type_name::<T>(),
             normalizer.obligations,
         );
-        result.map(|value| Normalized { value, obligations: normalizer.obligations })
+        Ok(Normalized { value: result?, obligations: normalizer.obligations })
     }
 }
 
@@ -163,7 +163,7 @@ struct QueryNormalizer<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
-    type Error = NoSolution;
+    type Error = NoSolutionOrAmbiguous;
 
     fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
         self.infcx.tcx
@@ -253,7 +253,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let result = tcx.normalize_projection_ty(c_data)?;
                 // We don't expect ambiguity.
                 if result.is_ambiguous() {
-                    bug!("unexpected ambiguity: {:?} {:?}", c_data, result);
+                    return Err(NoSolutionOrAmbiguous::Ambiguous);
                 }
                 let InferOk { value: result, obligations } =
                     self.infcx.instantiate_query_response_and_region_obligations(
@@ -296,7 +296,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let result = tcx.normalize_projection_ty(c_data)?;
                 // We don't expect ambiguity.
                 if result.is_ambiguous() {
-                    bug!("unexpected ambiguity: {:?} {:?}", c_data, result);
+                    return Err(NoSolutionOrAmbiguous::Ambiguous);
                 }
                 let InferOk { value: result, obligations } =
                     self.infcx.instantiate_query_response_and_region_obligations(

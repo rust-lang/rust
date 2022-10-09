@@ -131,8 +131,8 @@ fn dropck_outlives<'tcx>(
 
                 // We don't actually expect to fail to normalize.
                 // That implies a WF error somewhere else.
-                Err(NoSolution) => {
-                    return Err(NoSolution);
+                Err(err) => {
+                    return Err(err.expect_unambiguous());
                 }
             }
         }
