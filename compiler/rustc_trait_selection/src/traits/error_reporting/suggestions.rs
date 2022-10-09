@@ -1,6 +1,5 @@
 use super::{
-    EvaluationResult, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
-    SelectionContext,
+    Obligation, ObligationCause, ObligationCauseCode, PredicateObligation, SelectionContext,
 };
 
 use crate::autoderef::Autoderef;
@@ -839,15 +838,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let new_obligation =
             self.mk_trait_obligation_with_new_self_ty(obligation.param_env, trait_pred_and_self);
 
-        match self.evaluate_obligation(&new_obligation) {
-            Ok(
-                EvaluationResult::EvaluatedToOk
-                | EvaluationResult::EvaluatedToOkModuloRegions
-                | EvaluationResult::EvaluatedToOkModuloOpaqueTypes
-                | EvaluationResult::EvaluatedToAmbig,
-            ) => {}
-            _ => return false,
+        if !self.predicate_must_hold_modulo_regions(&new_obligation) {
+            return false;
         }
+
         let hir = self.tcx.hir();
         // Get the name of the callable and the arguments to be used in the suggestion.
         let (snippet, sugg) = match hir.get_if_local(def_id) {
