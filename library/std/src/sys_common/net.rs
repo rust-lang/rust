@@ -2,12 +2,13 @@
 mod tests;
 
 use crate::cmp;
-use crate::ffi::CString;
+use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::ptr;
+use crate::sys::common::small_c_string::run_with_cstr;
 use crate::sys::net::netc as c;
 use crate::sys::net::{cvt, cvt_gai, cvt_r, init, wrlen_t, Socket};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -197,14 +198,15 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
     fn try_from((host, port): (&'a str, u16)) -> io::Result<LookupHost> {
         init();
 
-        let c_host = CString::new(host)?;
-        let mut hints: c::addrinfo = unsafe { mem::zeroed() };
-        hints.ai_socktype = c::SOCK_STREAM;
-        let mut res = ptr::null_mut();
-        unsafe {
-            cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), &hints, &mut res))
-                .map(|_| LookupHost { original: res, cur: res, port })
-        }
+        run_with_cstr(host.as_bytes(), |c_host| {
+            let mut hints: c::addrinfo = unsafe { mem::zeroed() };
+            hints.ai_socktype = c::SOCK_STREAM;
+            let mut res = ptr::null_mut();
+            unsafe {
+                cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), &hints, &mut res))
+                    .map(|_| LookupHost { original: res, cur: res, port })
+            }
+        })
     }
 }
 

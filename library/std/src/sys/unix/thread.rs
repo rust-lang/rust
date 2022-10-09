@@ -154,9 +154,8 @@ impl Thread {
 
     #[cfg(target_os = "netbsd")]
     pub fn set_name(name: &CStr) {
-        use crate::ffi::CString;
-        let cname = CString::new(&b"%s"[..]).unwrap();
         unsafe {
+            let cname = CStr::from_bytes_with_nul_unchecked(b"%s\0".as_slice());
             libc::pthread_setname_np(
                 libc::pthread_self(),
                 cname.as_ptr(),
