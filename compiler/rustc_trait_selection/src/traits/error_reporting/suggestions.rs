@@ -817,7 +817,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let (def_id, output_ty, callable) = match *self_ty.kind() {
             ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig().output(), "closure"),
-            ty::FnDef(def_id, _) => (def_id, self_ty.fn_sig(self.tcx).output(), "function"),
+            ty::FnDef(def_id, _) => (
+                def_id,
+                self_ty.fn_sig(self.tcx).output(),
+                match self.tcx.def_kind(def_id) {
+                    DefKind::Ctor(..) => "constructor",
+                    _ => "function",
+                },
+            ),
             _ => return false,
         };
         let msg = format!("use parentheses to call the {}", callable);
@@ -877,6 +884,16 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     .join(", ");
                 let sugg = format!("({})", args);
                 (format!("{}{}", ident, sugg), sugg)
+            }
+            Some(hir::Node::Ctor(data)) => {
+                let name = self.tcx.def_path_str(def_id);
+                err.span_label(
+                    self.tcx.def_span(def_id),
+                    format!("consider calling the constructor for `{}`", name),
+                );
+                let args = data.fields().iter().map(|_| "_").collect::<Vec<_>>().join(", ");
+                let sugg = format!("({})", args);
+                (format!("{name}{sugg}"), sugg)
             }
             _ => return false,
         };
