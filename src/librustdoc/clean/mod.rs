@@ -1066,7 +1066,7 @@ pub(crate) fn clean_impl_item<'tcx>(
                 let defaultness = cx.tcx.impl_defaultness(impl_.def_id);
                 MethodItem(m, Some(defaultness))
             }
-            hir::ImplItemKind::TyAlias(hir_ty) => {
+            hir::ImplItemKind::Type(hir_ty) => {
                 let type_ = clean_ty(hir_ty, cx);
                 let generics = clean_generics(impl_.generics, cx);
                 let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, hir_ty), cx, None);

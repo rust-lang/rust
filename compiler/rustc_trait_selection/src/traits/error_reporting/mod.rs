@@ -1639,7 +1639,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                                 ..
                             })
                             | hir::Node::ImplItem(hir::ImplItem {
-                                kind: hir::ImplItemKind::TyAlias(ty),
+                                kind: hir::ImplItemKind::Type(ty),
                                 ..
                             }),
                         ) => Some((ty.span, format!("type mismatch resolving `{}`", predicate))),

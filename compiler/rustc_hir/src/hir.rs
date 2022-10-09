@@ -2315,7 +2315,7 @@ pub enum ImplItemKind<'hir> {
     /// An associated function implementation with the given signature and body.
     Fn(FnSig<'hir>, BodyId),
     /// An associated type.
-    TyAlias(&'hir Ty<'hir>),
+    Type(&'hir Ty<'hir>),
 }
 
 // The name of the associated type for `Fn` return types.

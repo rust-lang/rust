@@ -391,7 +391,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         record_variants!(
             (self, ii, ii.kind, Id::Node(ii.hir_id()), hir, ImplItem, ImplItemKind),
-            [Const, Fn, TyAlias]
+            [Const, Fn, Type]
         );
         hir_visit::walk_impl_item(self, ii)
     }
