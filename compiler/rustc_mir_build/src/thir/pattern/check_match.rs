@@ -491,7 +491,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                     ],
                     Applicability::HasPlaceholders,
                 );
-                if !bindings.is_empty() && cx.tcx.sess.is_nightly_build() {
+                if !bindings.is_empty() {
                     err.span_suggestion_verbose(
                         semi_span.shrink_to_lo(),
                         &format!(
