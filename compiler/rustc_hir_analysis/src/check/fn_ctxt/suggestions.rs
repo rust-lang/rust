@@ -2,7 +2,6 @@ use super::FnCtxt;
 use crate::astconv::AstConv;
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 
-use hir::def_id::DefId;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
@@ -19,6 +18,7 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -1208,9 +1208,4 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             false
         }
     }
-}
-
-pub enum DefIdOrName {
-    DefId(DefId),
-    Name(&'static str),
 }

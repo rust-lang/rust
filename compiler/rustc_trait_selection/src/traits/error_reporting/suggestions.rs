@@ -1,11 +1,13 @@
 use super::{
-    Obligation, ObligationCause, ObligationCauseCode, PredicateObligation, SelectionContext,
+    DefIdOrName, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
+    SelectionContext,
 };
 
 use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
 use crate::traits::normalize_to;
 
+use hir::def::CtorOf;
 use hir::HirId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -812,28 +814,87 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
-        // Skipping binder here, remapping below
-        let self_ty = trait_pred.self_ty().skip_binder();
+        if let ty::PredicateKind::Trait(trait_pred) = obligation.predicate.kind().skip_binder()
+            && Some(trait_pred.def_id()) == self.tcx.lang_items().sized_trait()
+        {
+            // Don't suggest calling to turn an unsized type into a sized type
+            return false;
+        }
 
-        let (def_id, inputs, output, kind) = match *self_ty.kind() {
-            ty::Closure(def_id, substs) => {
-                let sig = substs.as_closure().sig();
-                (def_id, sig.inputs().map_bound(|inputs| &inputs[1..]), sig.output(), "closure")
+        // This is duplicated from `extract_callable_info` in typeck, which
+        // relies on autoderef, so we can't use it here.
+        let found = trait_pred.self_ty().skip_binder().peel_refs();
+        let Some((def_id_or_name, output, inputs)) = (match *found.kind()
+        {
+            ty::FnPtr(fn_sig) => {
+                Some((DefIdOrName::Name("function pointer"), fn_sig.output(), fn_sig.inputs()))
             }
             ty::FnDef(def_id, _) => {
-                let sig = self_ty.fn_sig(self.tcx);
-                (
-                    def_id,
-                    sig.inputs(),
-                    sig.output(),
-                    match self.tcx.def_kind(def_id) {
-                        DefKind::Ctor(..) => "constructor",
-                        _ => "function",
-                    },
-                )
+                let fn_sig = found.fn_sig(self.tcx);
+                Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs()))
             }
-            _ => return false,
-        };
+            ty::Closure(def_id, substs) => {
+                let fn_sig = substs.as_closure().sig();
+                Some((
+                    DefIdOrName::DefId(def_id),
+                    fn_sig.output(),
+                    fn_sig.inputs().map_bound(|inputs| &inputs[1..]),
+                ))
+            }
+            ty::Opaque(def_id, substs) => {
+                self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
+                    if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                    && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                    // args tuple will always be substs[1]
+                    && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
+                    {
+                        Some((
+                            DefIdOrName::DefId(def_id),
+                            pred.kind().rebind(proj.term.ty().unwrap()),
+                            pred.kind().rebind(args.as_slice()),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+            }
+            ty::Dynamic(data, _, ty::Dyn) => {
+                data.iter().find_map(|pred| {
+                    if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
+                    && Some(proj.item_def_id) == self.tcx.lang_items().fn_once_output()
+                    // for existential projection, substs are shifted over by 1
+                    && let ty::Tuple(args) = proj.substs.type_at(0).kind()
+                    {
+                        Some((
+                            DefIdOrName::Name("trait object"),
+                            pred.rebind(proj.term.ty().unwrap()),
+                            pred.rebind(args.as_slice()),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+            }
+            ty::Param(_) => {
+                obligation.param_env.caller_bounds().iter().find_map(|pred| {
+                    if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                    && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                    && proj.projection_ty.self_ty() == found
+                    // args tuple will always be substs[1]
+                    && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
+                    {
+                        Some((
+                            DefIdOrName::Name("type parameter"),
+                            pred.kind().rebind(proj.term.ty().unwrap()),
+                            pred.kind().rebind(args.as_slice()),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+            }
+            _ => None,
+        }) else { return false; };
         let output = self.replace_bound_vars_with_fresh_vars(
             obligation.cause.span,
             LateBoundRegionConversionTime::FnCall,
@@ -859,7 +920,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // Get the name of the callable and the arguments to be used in the suggestion.
         let hir = self.tcx.hir();
 
-        let msg = format!("use parentheses to call the {}", kind);
+        let msg = match def_id_or_name {
+            DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
+                DefKind::Ctor(CtorOf::Struct, _) => {
+                    "use parentheses to instantiate this tuple struct".to_string()
+                }
+                DefKind::Ctor(CtorOf::Variant, _) => {
+                    "use parentheses to instantiate this tuple variant".to_string()
+                }
+                kind => format!("use parentheses to call this {}", kind.descr(def_id)),
+            },
+            DefIdOrName::Name(name) => format!("use parentheses to call this {name}"),
+        };
 
         let args = inputs
             .map(|ty| {
@@ -872,31 +944,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .collect::<Vec<_>>()
             .join(", ");
 
-        let name = match hir.get_if_local(def_id) {
-            Some(hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(hir::Closure { fn_decl_span, .. }),
-                ..
-            })) => {
-                err.span_label(*fn_decl_span, "consider calling this closure");
-                let Some(name) = self.get_closure_name(def_id, err, &msg) else {
-                    return false;
-                };
-                name.to_string()
-            }
-            Some(hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(..), .. })) => {
-                err.span_label(ident.span, "consider calling this function");
-                ident.to_string()
-            }
-            Some(hir::Node::Ctor(..)) => {
-                let name = self.tcx.def_path_str(def_id);
-                err.span_label(
-                    self.tcx.def_span(def_id),
-                    format!("consider calling the constructor for `{}`", name),
-                );
-                name
-            }
-            _ => return false,
-        };
         if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArgumentObligation { .. })
             && obligation.cause.span.can_be_used_for_suggestions()
         {
@@ -910,7 +957,32 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 format!("({args})"),
                 Applicability::HasPlaceholders,
             );
-        } else {
+        } else if let DefIdOrName::DefId(def_id) = def_id_or_name {
+            let name = match hir.get_if_local(def_id) {
+                Some(hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Closure(hir::Closure { fn_decl_span, .. }),
+                    ..
+                })) => {
+                    err.span_label(*fn_decl_span, "consider calling this closure");
+                    let Some(name) = self.get_closure_name(def_id, err, &msg) else {
+                        return false;
+                    };
+                    name.to_string()
+                }
+                Some(hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(..), .. })) => {
+                    err.span_label(ident.span, "consider calling this function");
+                    ident.to_string()
+                }
+                Some(hir::Node::Ctor(..)) => {
+                    let name = self.tcx.def_path_str(def_id);
+                    err.span_label(
+                        self.tcx.def_span(def_id),
+                        format!("consider calling the constructor for `{}`", name),
+                    );
+                    name
+                }
+                _ => return false,
+            };
             err.help(&format!("{msg}: `{name}({args})`"));
         }
         true
