@@ -2796,3 +2796,8 @@ impl<'tcx> ty::TypeVisitor<'tcx> for HasNumericInferVisitor {
         }
     }
 }
+
+pub enum DefIdOrName {
+    DefId(DefId),
+    Name(&'static str),
+}
