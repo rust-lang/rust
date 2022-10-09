@@ -3,14 +3,8 @@ use libloading::Library;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-#[cfg(parallel_compiler)]
-use rustc_data_structures::jobserver;
 use rustc_errors::registry::Registry;
-#[cfg(parallel_compiler)]
-use rustc_middle::ty::tls;
 use rustc_parse::validate_attr;
-#[cfg(parallel_compiler)]
-use rustc_query_impl::{QueryContext, QueryCtxt};
 use rustc_session as session;
 use rustc_session::config::CheckCfg;
 use rustc_session::config::{self, CrateType};
@@ -25,8 +19,6 @@ use rustc_span::symbol::{sym, Symbol};
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::mem;
-#[cfg(not(parallel_compiler))]
-use std::panic;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
@@ -135,13 +127,20 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     _threads: usize,
     f: F,
 ) -> R {
-    // The thread pool is a single thread in the non-parallel compiler.
-    thread::scope(|s| {
-        let mut builder = thread::Builder::new().name("rustc".to_string());
-        if let Some(size) = get_stack_size() {
-            builder = builder.stack_size(size);
-        }
+    // The "thread pool" is a single spawned thread in the non-parallel
+    // compiler. We run on a spawned thread instead of the main thread (a) to
+    // provide control over the stack size, and (b) to increase similarity with
+    // the parallel compiler, in particular to ensure there is no accidental
+    // sharing of data between the main thread and the compilation thread
+    // (which might cause problems for the parallel compiler).
+    let mut builder = thread::Builder::new().name("rustc".to_string());
+    if let Some(size) = get_stack_size() {
+        builder = builder.stack_size(size);
+    }
 
+    // We build the session globals and run `f` on the spawned thread, because
+    // `SessionGlobals` does not impl `Send` in the non-parallel compiler.
+    thread::scope(|s| {
         // `unwrap` is ok here because `spawn_scoped` only panics if the thread
         // name contains null bytes.
         let r = builder
@@ -151,24 +150,9 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 
         match r {
             Ok(v) => v,
-            Err(e) => panic::resume_unwind(e),
+            Err(e) => std::panic::resume_unwind(e),
         }
     })
-}
-
-/// Creates a new thread and forwards information in thread locals to it.
-/// The new thread runs the deadlock handler.
-/// Must only be called when a deadlock is about to happen.
-#[cfg(parallel_compiler)]
-unsafe fn handle_deadlock() {
-    let registry = rustc_rayon_core::Registry::current();
-
-    let query_map = tls::with(|tcx| {
-        QueryCtxt::from_tcx(tcx)
-            .try_collect_active_jobs()
-            .expect("active jobs shouldn't be locked in deadlock handler")
-    });
-    thread::spawn(move || rustc_query_impl::deadlock(query_map, &registry));
 }
 
 #[cfg(parallel_compiler)]
@@ -177,29 +161,46 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     threads: usize,
     f: F,
 ) -> R {
-    let mut config = rayon::ThreadPoolBuilder::new()
+    use rustc_data_structures::jobserver;
+    use rustc_middle::ty::tls;
+    use rustc_query_impl::{deadlock, QueryContext, QueryCtxt};
+
+    let mut builder = rayon::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
         .num_threads(threads)
-        .deadlock_handler(|| unsafe { handle_deadlock() });
-
+        .deadlock_handler(|| {
+            // On deadlock, creates a new thread and forwards information in thread
+            // locals to it. The new thread runs the deadlock handler.
+            let query_map = tls::with(|tcx| {
+                QueryCtxt::from_tcx(tcx)
+                    .try_collect_active_jobs()
+                    .expect("active jobs shouldn't be locked in deadlock handler")
+            });
+            let registry = rustc_rayon_core::Registry::current();
+            thread::spawn(move || deadlock(query_map, &registry));
+        });
     if let Some(size) = get_stack_size() {
-        config = config.stack_size(size);
+        builder = builder.stack_size(size);
     }
 
-    let with_pool = move |pool: &rayon::ThreadPool| pool.install(f);
-
+    // We create the session globals on the main thread, then create the thread
+    // pool. Upon creation, each worker thread created gets a copy of the
+    // session globals in TLS. This is possible because `SessionGlobals` impls
+    // `Send` in the parallel compiler.
     rustc_span::create_session_globals_then(edition, || {
         rustc_span::with_session_globals(|session_globals| {
-            // The main handler runs for each Rayon worker thread and sets up
-            // the thread local rustc uses. `session_globals` is captured and set
-            // on the new threads.
-            let main_handler = move |thread: rayon::ThreadBuilder| {
-                rustc_span::set_session_globals_then(session_globals, || thread.run())
-            };
-
-            config.build_scoped(main_handler, with_pool).unwrap()
+            builder
+                .build_scoped(
+                    // Initialize each new worker thread when created.
+                    move |thread: rayon::ThreadBuilder| {
+                        rustc_span::set_session_globals_then(session_globals, || thread.run())
+                    },
+                    // Run `f` on the first thread in the thread pool.
+                    move |pool: &rayon::ThreadPool| pool.install(f),
+                )
+                .unwrap()
         })
     })
 }
