@@ -1597,20 +1597,42 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-
     pub fn vector_select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, else_val: RValue<'gcc>) -> RValue<'gcc> {
         // cond is a vector of integers, not of bools.
-        let cond_type = cond.get_type();
-        let vector_type = cond_type.unqualified().dyncast_vector().expect("vector type");
+        let vector_type = cond.get_type().unqualified().dyncast_vector().expect("vector type");
         let num_units = vector_type.get_num_units();
         let element_type = vector_type.get_element_type();
+
+        #[cfg(feature="master")]
+        let (cond, element_type) = {
+            let then_val_vector_type = then_val.get_type().dyncast_vector().expect("vector type");
+            let then_val_element_type = then_val_vector_type.get_element_type();
+            let then_val_element_size = then_val_element_type.get_size();
+
+            // NOTE: the mask needs to be of the same size as the other arguments in order for the &
+            // operation to work.
+            if then_val_element_size != element_type.get_size() {
+                let new_element_type = self.type_ix(then_val_element_size as u64 * 8);
+                let new_vector_type = self.context.new_vector_type(new_element_type, num_units as u64);
+                let cond = self.context.convert_vector(None, cond, new_vector_type);
+                (cond, new_element_type)
+            }
+            else {
+                (cond, element_type)
+            }
+        };
+
+        let cond_type = cond.get_type();
+
         let zeros = vec![self.context.new_rvalue_zero(element_type); num_units];
         let zeros = self.context.new_rvalue_from_vector(None, cond_type, &zeros);
+
+        let result_type = then_val.get_type();
 
         let masks = self.context.new_comparison(None, ComparisonOp::NotEquals, cond, zeros);
         // NOTE: masks is a vector of integers, but the values can be vectors of floats, so use bitcast to make
         // the & operation work.
-        let masks = self.bitcast_if_needed(masks, then_val.get_type());
+        let then_val = self.bitcast_if_needed(then_val, masks.get_type());
         let then_vals = masks & then_val;
 
         let minus_ones = vec![self.context.new_rvalue_from_int(element_type, -1); num_units];
@@ -1623,7 +1645,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let else_val = self.context.new_bitcast(None, else_val, then_val.get_type());
         let else_vals = inverted_masks & else_val;
 
-        then_vals | else_vals
+        let res = then_vals | else_vals;
+        self.bitcast_if_needed(res, result_type)
     }
 }
 
