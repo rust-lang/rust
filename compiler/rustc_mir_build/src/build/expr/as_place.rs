@@ -17,6 +17,7 @@ use rustc_target::abi::VariantIdx;
 
 use rustc_index::vec::Idx;
 
+use std::assert_matches::assert_matches;
 use std::iter;
 
 /// The "outermost" place that holds this value.
@@ -232,22 +233,20 @@ fn strip_prefix<'tcx>(
     projections: Vec<PlaceElem<'tcx>>,
     prefix_projections: &[HirProjection<'tcx>],
 ) -> impl Iterator<Item = PlaceElem<'tcx>> {
-    let mut iter = projections.into_iter();
-    let mut next = || match iter.next()? {
+    let mut iter = projections
+        .into_iter()
         // Filter out opaque casts, they are unnecessary in the prefix.
-        ProjectionElem::OpaqueCast(..) => iter.next(),
-        other => Some(other),
-    };
+        .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(..)));
     for projection in prefix_projections {
         match projection.kind {
             HirProjectionKind::Deref => {
-                assert!(matches!(next(), Some(ProjectionElem::Deref)));
+                assert_matches!(iter.next(), Some(ProjectionElem::Deref));
             }
             HirProjectionKind::Field(..) => {
                 if base_ty.is_enum() {
-                    assert!(matches!(next(), Some(ProjectionElem::Downcast(..))));
+                    assert_matches!(iter.next(), Some(ProjectionElem::Downcast(..)));
                 }
-                assert!(matches!(next(), Some(ProjectionElem::Field(..))));
+                assert_matches!(iter.next(), Some(ProjectionElem::Field(..)));
             }
             HirProjectionKind::Index | HirProjectionKind::Subslice => {
                 bug!("unexpected projection kind: {:?}", projection);
