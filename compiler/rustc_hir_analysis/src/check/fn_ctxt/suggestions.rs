@@ -90,7 +90,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if ty.is_suggestable(self.tcx, false) {
                                 format!("/* {ty} */")
                             } else {
-                                "".to_string()
+                                "/* value */".to_string()
                             }
                         })
                         .collect::<Vec<_>>()

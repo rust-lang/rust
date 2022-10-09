@@ -16,8 +16,8 @@ LL | fn insert_resource<R: Resource>(resource: R) {}
    |                       ^^^^^^^^ required by this bound in `insert_resource`
 help: use parentheses to call the constructor
    |
-LL |     insert_resource(Time(_));
-   |                         +++
+LL |     insert_resource(Time(/* u32 */));
+   |                         +++++++++++
 
 error: aborting due to previous error
 
