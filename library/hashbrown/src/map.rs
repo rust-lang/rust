@@ -290,6 +290,18 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
     ///
+    /// # HashDoS resistance
+    ///
+    /// The `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashMap`], for example with
+    /// [`with_hasher`](HashMap::with_hasher) method.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -307,6 +319,18 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     ///
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
+    ///
+    /// # HashDoS resistance
+    ///
+    /// The `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashMap`], for example with
+    /// [`with_capacity_and_hasher`](HashMap::with_capacity_and_hasher) method.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
     ///
     /// # Examples
     ///
@@ -328,6 +352,48 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     ///
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
+    ///
+    /// # HashDoS resistance
+    ///
+    /// The `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashMap`], for example with
+    /// [`with_hasher_in`](HashMap::with_hasher_in) method.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "bumpalo")]
+    /// # fn test() {
+    /// use hashbrown::{HashMap, BumpWrapper};
+    /// use bumpalo::Bump;
+    ///
+    /// let bump = Bump::new();
+    /// let mut map = HashMap::new_in(BumpWrapper(&bump));
+    ///
+    /// // The created HashMap holds none elements
+    /// assert_eq!(map.len(), 0);
+    ///
+    /// // The created HashMap also doesn't allocate memory
+    /// assert_eq!(map.capacity(), 0);
+    ///
+    /// // Now we insert element inside created HashMap
+    /// map.insert("One", 1);
+    /// // We can see that the HashMap holds 1 element
+    /// assert_eq!(map.len(), 1);
+    /// // And it also allocates some capacity
+    /// assert!(map.capacity() > 1);
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "bumpalo")]
+    /// #     test()
+    /// # }
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn new_in(alloc: A) -> Self {
         Self::with_hasher_in(DefaultHashBuilder::default(), alloc)
@@ -337,6 +403,53 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     ///
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
+    ///
+    /// # HashDoS resistance
+    ///
+    /// The `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashMap`], for example with
+    /// [`with_capacity_and_hasher_in`](HashMap::with_capacity_and_hasher_in) method.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "bumpalo")]
+    /// # fn test() {
+    /// use hashbrown::{HashMap, BumpWrapper};
+    /// use bumpalo::Bump;
+    ///
+    /// let bump = Bump::new();
+    /// let mut map = HashMap::with_capacity_in(5, BumpWrapper(&bump));
+    ///
+    /// // The created HashMap holds none elements
+    /// assert_eq!(map.len(), 0);
+    /// // But it can hold at least 5 elements without reallocating
+    /// let empty_map_capacity = map.capacity();
+    /// assert!(empty_map_capacity >= 5);
+    ///
+    /// // Now we insert some 5 elements inside created HashMap
+    /// map.insert("One",   1);
+    /// map.insert("Two",   2);
+    /// map.insert("Three", 3);
+    /// map.insert("Four",  4);
+    /// map.insert("Five",  5);
+    ///
+    /// // We can see that the HashMap holds 5 elements
+    /// assert_eq!(map.len(), 5);
+    /// // But its capacity isn't changed
+    /// assert_eq!(map.capacity(), empty_map_capacity)
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "bumpalo")]
+    /// #     test()
+    /// # }
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Self::with_capacity_and_hasher_in(capacity, DefaultHashBuilder::default(), alloc)
@@ -350,13 +463,20 @@ impl<K, V, S> HashMap<K, V, S> {
     /// The hash map is initially created with a capacity of 0, so it will not
     /// allocate until it is first inserted into.
     ///
-    /// Warning: `hash_builder` is normally randomly generated, and
-    /// is designed to allow HashMaps to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
+    /// # HashDoS resistance
+    ///
+    /// The `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashMap`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
     /// the HashMap to be useful, see its documentation for details.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     ///
     /// # Examples
     ///
@@ -371,8 +491,6 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// map.insert(1, 2);
     /// ```
-    ///
-    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub const fn with_hasher(hash_builder: S) -> Self {
         Self {
@@ -387,13 +505,20 @@ impl<K, V, S> HashMap<K, V, S> {
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
-    /// Warning: `hash_builder` is normally randomly generated, and
-    /// is designed to allow HashMaps to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
+    /// # HashDoS resistance
+    ///
+    /// The `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashMap`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
     /// the HashMap to be useful, see its documentation for details.
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     ///
     /// # Examples
     ///
@@ -408,8 +533,6 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// map.insert(1, 2);
     /// ```
-    ///
-    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
         Self {
@@ -429,13 +552,19 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Creates an empty `HashMap` which will use the given hash builder to hash
     /// keys. It will be allocated with the given allocator.
     ///
-    /// The hash map is initially created with a capacity of 0, so it will not
-    /// allocate until it is first inserted into.
+    /// The hash map is initially created with a capacity of 0, so it will not allocate until it
+    /// is first inserted into.
     ///
-    /// Warning: `hash_builder` is normally randomly generated, and
-    /// is designed to allow HashMaps to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
+    /// # HashDoS resistance
+    ///
+    /// The `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashMap`].
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
     ///
     /// # Examples
     ///
@@ -461,10 +590,16 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
-    /// Warning: `hash_builder` is normally randomly generated, and
-    /// is designed to allow HashMaps to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
+    /// # HashDoS resistance
+    ///
+    /// The `hash_builder` normally use a fixed key by default and that does
+    /// not allow the `HashMap` to be protected against attacks such as [`HashDoS`].
+    /// Users who require HashDoS resistance should explicitly use
+    /// [`ahash::RandomState`] or [`std::collections::hash_map::RandomState`]
+    /// as the hasher when creating a [`HashMap`].
+    ///
+    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
     ///
     /// # Examples
     ///
@@ -806,14 +941,11 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///
     /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
     /// assert_eq!(map.len(), 8);
-    /// let capacity_before_retain = map.capacity();
     ///
     /// map.retain(|&k, _| k % 2 == 0);
     ///
     /// // We can see, that the number of elements inside map is changed.
     /// assert_eq!(map.len(), 4);
-    /// // But map capacity is equal to old one.
-    /// assert_eq!(map.capacity(), capacity_before_retain);
     ///
     /// let mut vec: Vec<(i32, i32)> = map.iter().map(|(&k, &v)| (k, v)).collect();
     /// vec.sort_unstable();
@@ -858,7 +990,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// use hashbrown::HashMap;
     ///
     /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
-    /// let capacity_before_drain_filter = map.capacity();
+    ///
     /// let drained: HashMap<i32, i32> = map.drain_filter(|k, _v| k % 2 == 0).collect();
     ///
     /// let mut evens = drained.keys().cloned().collect::<Vec<_>>();
@@ -868,8 +1000,6 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///
     /// assert_eq!(evens, vec![0, 2, 4, 6]);
     /// assert_eq!(odds, vec![1, 3, 5, 7]);
-    /// // Map capacity is equal to old one.
-    /// assert_eq!(map.capacity(), capacity_before_drain_filter);
     ///
     /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
     ///
@@ -988,9 +1118,12 @@ where
     ///
     /// # Panics
     ///
-    /// Panics if the new allocation size overflows [`usize`].
+    /// Panics if the new capacity exceeds [`isize::MAX`] bytes and [`abort`] the program
+    /// in case of allocation error. Use [`try_reserve`](HashMap::try_reserve) instead
+    /// if you want to handle memory allocation failure.
     ///
-    /// [`usize`]: https://doc.rust-lang.org/std/primitive.usize.html
+    /// [`isize::MAX`]: https://doc.rust-lang.org/std/primitive.isize.html
+    /// [`abort`]: https://doc.rust-lang.org/alloc/alloc/fn.handle_alloc_error.html
     ///
     /// # Examples
     ///
@@ -1782,13 +1915,12 @@ where
     /// assert!(map.is_empty() && map.capacity() == 0);
     ///
     /// map.insert(1, "a");
-    /// let capacity_before_remove = map.capacity();
     ///
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     ///
-    /// // Now map holds none elements but capacity is equal to the old one
-    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
+    /// // Now map holds none elements
+    /// assert!(map.is_empty());
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
@@ -1822,13 +1954,12 @@ where
     /// assert!(map.is_empty() && map.capacity() == 0);
     ///
     /// map.insert(1, "a");
-    /// let capacity_before_remove = map.capacity();
     ///
     /// assert_eq!(map.remove_entry(&1), Some((1, "a")));
     /// assert_eq!(map.remove(&1), None);
     ///
-    /// // Now map hold none elements but capacity is equal to the old one
-    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
+    /// // Now map hold none elements
+    /// assert!(map.is_empty());
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
@@ -2004,7 +2135,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// for extending the HashMap's API, but may lead to *[undefined behavior]*.
     ///
     /// [`HashMap`]: struct.HashMap.html
-    /// [`RawTable`]: raw/struct.RawTable.html
+    /// [`RawTable`]: crate::raw::RawTable
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
@@ -5158,7 +5289,6 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// assert!(map.is_empty() && map.capacity() == 0);
     ///
     /// map.entry("poneyland").or_insert(12);
-    /// let capacity_before_remove = map.capacity();
     ///
     /// if let Entry::Occupied(o) = map.entry("poneyland") {
     ///     // We delete the entry from the map.
@@ -5166,8 +5296,8 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// }
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
-    /// // Now map hold none elements but capacity is equal to the old one
-    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
+    /// // Now map hold none elements
+    /// assert!(map.is_empty());
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
@@ -5294,15 +5424,14 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// assert!(map.is_empty() && map.capacity() == 0);
     ///
     /// map.entry("poneyland").or_insert(12);
-    /// let capacity_before_remove = map.capacity();
     ///
     /// if let Entry::Occupied(o) = map.entry("poneyland") {
     ///     assert_eq!(o.remove(), 12);
     /// }
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
-    /// // Now map hold none elements but capacity is equal to the old one
-    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
+    /// // Now map hold none elements
+    /// assert!(map.is_empty());
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove(self) -> V {
@@ -5657,10 +5786,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> EntryRef<'a, 'b, K, Q, V,
 
     /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
     /// This method allows for generating key-derived values for insertion by providing the default
-    /// function a reference to the key that was moved during the `.entry_ref(key)` method call.
-    ///
-    /// The reference to the moved key is provided so that cloning or copying the key is
-    /// unnecessary, unlike with `.or_insert_with(|| ... )`.
+    /// function an access to the borrower form of the key.
     ///
     /// # Examples
     ///
@@ -5889,7 +6015,6 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// assert!(map.is_empty() && map.capacity() == 0);
     ///
     /// map.entry_ref("poneyland").or_insert(12);
-    /// let capacity_before_remove = map.capacity();
     ///
     /// if let EntryRef::Occupied(o) = map.entry_ref("poneyland") {
     ///     // We delete the entry from the map.
@@ -5898,7 +6023,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
     /// // Now map hold none elements but capacity is equal to the old one
-    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
+    /// assert!(map.is_empty());
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
@@ -6023,7 +6148,6 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// assert!(map.is_empty() && map.capacity() == 0);
     ///
     /// map.entry_ref("poneyland").or_insert(12);
-    /// let capacity_before_remove = map.capacity();
     ///
     /// if let EntryRef::Occupied(o) = map.entry_ref("poneyland") {
     ///     assert_eq!(o.remove(), 12);
@@ -6031,7 +6155,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
     /// // Now map hold none elements but capacity is equal to the old one
-    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
+    /// assert!(map.is_empty());
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove(self) -> V {
@@ -6043,7 +6167,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     ///
     /// # Panics
     ///
-    /// Will panic if this OccupiedEntry was created through [`EntryRef::insert`].
+    /// Will panic if this OccupiedEntryRef was created through [`EntryRef::insert`].
     ///
     /// # Examples
     ///
@@ -6085,7 +6209,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     ///
     /// # Panics
     ///
-    /// Will panic if this OccupiedEntry was created through [`Entry::insert`].
+    /// Will panic if this OccupiedEntryRef was created through [`EntryRef::insert`].
     ///
     /// # Examples
     ///
@@ -6113,7 +6237,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// fn reclaim_memory(map: &mut HashMap<Rc<str>, usize>, keys: &[Rc<str>]) {
     ///     for key in keys {
     ///         if let EntryRef::Occupied(entry) = map.entry_ref(key.as_ref()) {
-    ///         /// Replaces the entry's key with our version of it in `keys`.
+    ///             // Replaces the entry's key with our version of it in `keys`.
     ///             entry.replace_key();
     ///         }
     ///     }
@@ -6430,17 +6554,17 @@ where
     /// map.insert(1, 100);
     ///
     /// let arr = [(1, 1), (2, 2)];
-    /// let some_iter = arr.iter().map(|&(k, v)| (k, v));
+    /// let some_iter = arr.iter().map(|(k, v)| (k, v));
     /// map.extend(some_iter);
     /// // Replace values with existing keys with new values returned from the iterator.
     /// // So that the map.get(&1) doesn't return Some(&100).
     /// assert_eq!(map.get(&1), Some(&1));
     ///
     /// let some_vec: Vec<_> = vec![(3, 3), (4, 4)];
-    /// map.extend(some_vec.iter().map(|&(k, v)| (k, v)));
+    /// map.extend(some_vec.iter().map(|(k, v)| (k, v)));
     ///
     /// let some_arr = [(5, 5), (6, 6)];
-    /// map.extend(some_arr.iter().map(|&(k, v)| (k, v)));
+    /// map.extend(some_arr.iter().map(|(k, v)| (k, v)));
     ///
     /// // You can also extend from another HashMap
     /// let mut new_map = HashMap::new();
