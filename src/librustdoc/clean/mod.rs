@@ -1582,12 +1582,12 @@ fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
 }
 
 pub(crate) fn clean_middle_ty<'tcx>(
-    this: Ty<'tcx>,
+    ty: Ty<'tcx>,
     cx: &mut DocContext<'tcx>,
     def_id: Option<DefId>,
 ) -> Type {
-    trace!("cleaning type: {:?}", this);
-    let ty = normalize(cx, this).unwrap_or(this);
+    trace!("cleaning type: {:?}", ty);
+    let ty = normalize(cx, ty).unwrap_or(ty);
     match *ty.kind() {
         ty::Never => Primitive(PrimitiveType::Never),
         ty::Bool => Primitive(PrimitiveType::Bool),
@@ -1610,7 +1610,6 @@ pub(crate) fn clean_middle_ty<'tcx>(
             type_: Box::new(clean_middle_ty(ty, cx, None)),
         },
         ty::FnDef(..) | ty::FnPtr(_) => {
-            let ty = cx.tcx.lift(this).expect("FnPtr lift failed");
             let sig = ty.fn_sig(cx.tcx);
             let decl = clean_fn_decl_from_did_and_sig(cx, None, sig);
             BareFunction(Box::new(BareFunctionDecl {
@@ -1644,7 +1643,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let did = obj
                 .principal_def_id()
                 .or_else(|| dids.next())
-                .unwrap_or_else(|| panic!("found trait object `{:?}` with no traits?", this));
+                .unwrap_or_else(|| panic!("found trait object `{:?}` with no traits?", ty));
             let substs = match obj.principal() {
                 Some(principal) => principal.skip_binder().substs,
                 // marker traits have no substs.
