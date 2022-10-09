@@ -130,8 +130,10 @@ fn check_always_applicable(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node
 ///
 /// Example
 ///
+/// ```ignore (illustrative)
 /// impl<A, B> Foo<A> for B { /* impl2 */ }
 /// impl<C> Foo<Vec<C>> for C { /* impl1 */ }
+/// ```
 ///
 /// Would return `S1 = [C]` and `S2 = [Vec<C>, C]`.
 fn get_impl_substs<'tcx>(
@@ -225,13 +227,17 @@ fn unconstrained_parent_impl_substs<'tcx>(
 ///
 /// For example forbid the following:
 ///
+/// ```ignore (illustrative)
 /// impl<A> Tr for A { }
 /// impl<B> Tr for (B, B) { }
+/// ```
 ///
 /// Note that only consider the unconstrained parameters of the base impl:
 ///
+/// ```ignore (illustrative)
 /// impl<S, I: IntoIterator<Item = S>> Tr<S> for I { }
 /// impl<T> Tr<T> for Vec<T> { }
+/// ```
 ///
 /// The substs for the parent impl here are `[T, Vec<T>]`, which repeats `T`,
 /// but `S` is constrained in the parent impl, so `parent_substs` is only
@@ -256,8 +262,10 @@ fn check_duplicate_params<'tcx>(
 ///
 /// For example forbid the following:
 ///
+/// ```ignore (illustrative)
 /// impl<A> Tr for A { }
 /// impl Tr for &'static i32 { }
+/// ```
 fn check_static_lifetimes<'tcx>(
     tcx: TyCtxt<'tcx>,
     parent_substs: &Vec<GenericArg<'tcx>>,

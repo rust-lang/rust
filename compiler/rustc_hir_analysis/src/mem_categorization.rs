@@ -184,7 +184,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ///   modes #42640) may look like `Some(x)` but in fact have
     ///   implicit deref patterns attached (e.g., it is really
     ///   `&Some(x)`). In that case, we return the "outermost" type
-    ///   (e.g., `&Option<T>).
+    ///   (e.g., `&Option<T>`).
     pub(crate) fn pat_ty_adjusted(&self, pat: &hir::Pat<'_>) -> McResult<Ty<'tcx>> {
         // Check for implicit `&` types wrapping the pattern; note
         // that these are never attached to binding patterns, so

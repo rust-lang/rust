@@ -39,7 +39,8 @@ mod errors;
 // uses a HOF to parse anything, and <source> includes file and
 // `source_str`.
 
-/// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
+/// A variant of 'panictry!' that works on a `Vec<Diagnostic>` instead of a single
+/// `DiagnosticBuilder`.
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => {{
         use rustc_errors::FatalError;
