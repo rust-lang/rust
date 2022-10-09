@@ -13,11 +13,11 @@ note: required by a bound in `f1`
    |
 LL | fn f1<F>(_: F) where F: Fn(&(), &()) {}
    |                         ^^^^^^^^^^^^ required by this bound in `f1`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     f1(|_: &(), _: ()| {});
    |            ~~~
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     f1(|_: (), _: &()| {});
    |                   ~~~
@@ -37,11 +37,11 @@ note: required by a bound in `f2`
    |
 LL | fn f2<F>(_: F) where F: for<'a> Fn(&'a (), &()) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `f2`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     f2(|_: &'a (), _: ()| {});
    |            ~~~~~~
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     f2(|_: (), _: &()| {});
    |                   ~~~
@@ -61,11 +61,11 @@ note: required by a bound in `f3`
    |
 LL | fn f3<'a, F>(_: F) where F: Fn(&'a (), &()) {}
    |                             ^^^^^^^^^^^^^^^ required by this bound in `f3`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     f3(|_: &(), _: ()| {});
    |            ~~~
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     f3(|_: (), _: &()| {});
    |                   ~~~
@@ -85,11 +85,11 @@ note: required by a bound in `f4`
    |
 LL | fn f4<F>(_: F) where F: for<'r> Fn(&(), &'r ()) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `f4`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     f4(|_: &(), _: ()| {});
    |            ~~~
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     f4(|_: (), _: &'r ()| {});
    |                   ~~~~~~
@@ -109,11 +109,11 @@ note: required by a bound in `f5`
    |
 LL | fn f5<F>(_: F) where F: for<'r> Fn(&'r (), &'r ()) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `f5`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     f5(|_: &'r (), _: ()| {});
    |            ~~~~~~
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     f5(|_: (), _: &'r ()| {});
    |                   ~~~~~~
@@ -133,7 +133,7 @@ note: required by a bound in `g1`
    |
 LL | fn g1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `g1`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     g1(|_: &(), _: ()| {});
    |            ~~~
@@ -153,7 +153,7 @@ note: required by a bound in `g2`
    |
 LL | fn g2<F>(_: F) where F: Fn(&(), fn(&())) {}
    |                         ^^^^^^^^^^^^^^^^ required by this bound in `g2`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     g2(|_: &(), _: ()| {});
    |            ~~~
@@ -173,7 +173,7 @@ note: required by a bound in `g3`
    |
 LL | fn g3<F>(_: F) where F: for<'s> Fn(&'s (), Box<dyn Fn(&())>) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `g3`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     g3(|_: &'s (), _: ()| {});
    |            ~~~~~~
@@ -193,7 +193,7 @@ note: required by a bound in `g4`
    |
 LL | fn g4<F>(_: F) where F: Fn(&(), for<'r> fn(&'r ())) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `g4`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     g4(|_: &(), _: ()| {});
    |            ~~~
@@ -213,11 +213,11 @@ note: required by a bound in `h1`
    |
 LL | fn h1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>, &(), fn(&(), &())) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `h1`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     h1(|_: &(), _: (), _: (), _: ()| {});
    |            ~~~
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     h1(|_: (), _: (), _: &(), _: ()| {});
    |                          ~~~
@@ -237,11 +237,11 @@ note: required by a bound in `h2`
    |
 LL | fn h2<F>(_: F) where F: for<'t0> Fn(&(), Box<dyn Fn(&())>, &'t0 (), fn(&(), &())) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `h2`
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     h2(|_: &(), _: (), _: (), _: ()| {});
    |            ~~~
-help: hint: consider borrowing here:
+help: consider borrowing here:
    |
 LL |     h2(|_: (), _: (), _: &'t0 (), _: ()| {});
    |                          ~~~~~~~
