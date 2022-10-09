@@ -1574,7 +1574,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..) => {
                                 self.access_levels.is_reachable(impl_item_ref.id.def_id.def_id)
                             }
-                            hir::ImplItemKind::TyAlias(_) => false,
+                            hir::ImplItemKind::Type(_) => false,
                         }
                     });
 
@@ -1596,7 +1596,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                     {
                                         intravisit::walk_impl_item(self, impl_item)
                                     }
-                                    hir::ImplItemKind::TyAlias(..) => {
+                                    hir::ImplItemKind::Type(..) => {
                                         intravisit::walk_impl_item(self, impl_item)
                                     }
                                     _ => {}
@@ -1622,7 +1622,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             // Those in 3. are warned with this call.
                             for impl_item_ref in impl_.items {
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
-                                if let hir::ImplItemKind::TyAlias(ty) = impl_item.kind {
+                                if let hir::ImplItemKind::Type(ty) = impl_item.kind {
                                     self.visit_ty(ty);
                                 }
                             }

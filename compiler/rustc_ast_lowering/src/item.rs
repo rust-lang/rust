@@ -908,11 +908,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| match ty {
                         None => {
                             let ty = this.arena.alloc(this.ty(i.span, hir::TyKind::Err));
-                            hir::ImplItemKind::TyAlias(ty)
+                            hir::ImplItemKind::Type(ty)
                         }
                         Some(ty) => {
                             let ty = this.lower_ty(ty, &ImplTraitContext::TypeAliasesOpaqueTy);
-                            hir::ImplItemKind::TyAlias(ty)
+                            hir::ImplItemKind::Type(ty)
                         }
                     },
                 )

@@ -49,7 +49,7 @@ pub(crate) fn target_from_impl_item<'tcx>(
                 Target::Method(MethodKind::Inherent)
             }
         }
-        hir::ImplItemKind::TyAlias(..) => Target::AssocTy,
+        hir::ImplItemKind::Type(..) => Target::AssocTy,
     }
 }
 

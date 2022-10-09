@@ -738,7 +738,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
         hir::ImplItemKind::Fn(..) => {
             tcx.ensure().fn_sig(def_id);
         }
-        hir::ImplItemKind::TyAlias(_) => {
+        hir::ImplItemKind::Type(_) => {
             // Account for `type T = _;`
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_impl_item(impl_item);

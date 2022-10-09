@@ -2598,7 +2598,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             for h in self.tcx.hir().parent_iter(param.hir_id) {
                                 break 'origin match h.1 {
                                     Node::ImplItem(hir::ImplItem {
-                                        kind: hir::ImplItemKind::TyAlias(..),
+                                        kind: hir::ImplItemKind::Type(..),
                                         generics,
                                         ..
                                     })
