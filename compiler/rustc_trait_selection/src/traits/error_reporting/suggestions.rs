@@ -21,6 +21,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::hir::map;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
@@ -28,7 +29,7 @@ use rustc_middle::ty::{
     ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use std::fmt;
@@ -814,80 +815,85 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // Skipping binder here, remapping below
         let self_ty = trait_pred.self_ty().skip_binder();
 
-        let (def_id, output_ty, callable) = match *self_ty.kind() {
-            ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig().output(), "closure"),
-            ty::FnDef(def_id, _) => (
-                def_id,
-                self_ty.fn_sig(self.tcx).output(),
-                match self.tcx.def_kind(def_id) {
-                    DefKind::Ctor(..) => "constructor",
-                    _ => "function",
-                },
-            ),
+        let (def_id, inputs, output, kind) = match *self_ty.kind() {
+            ty::Closure(def_id, substs) => {
+                let sig = substs.as_closure().sig();
+                (def_id, sig.inputs().map_bound(|inputs| &inputs[1..]), sig.output(), "closure")
+            }
+            ty::FnDef(def_id, _) => {
+                let sig = self_ty.fn_sig(self.tcx);
+                (
+                    def_id,
+                    sig.inputs(),
+                    sig.output(),
+                    match self.tcx.def_kind(def_id) {
+                        DefKind::Ctor(..) => "constructor",
+                        _ => "function",
+                    },
+                )
+            }
             _ => return false,
         };
-        let msg = format!("use parentheses to call the {}", callable);
-
-        // "We should really create a single list of bound vars from the combined vars
-        // from the predicate and function, but instead we just liberate the function bound vars"
-        let output_ty = self.tcx.liberate_late_bound_regions(def_id, output_ty);
+        let output = self.replace_bound_vars_with_fresh_vars(
+            obligation.cause.span,
+            LateBoundRegionConversionTime::FnCall,
+            output,
+        );
+        let inputs = inputs.skip_binder().iter().map(|ty| {
+            self.replace_bound_vars_with_fresh_vars(
+                obligation.cause.span,
+                LateBoundRegionConversionTime::FnCall,
+                inputs.rebind(*ty),
+            )
+        });
 
         // Remapping bound vars here
-        let trait_pred_and_self = trait_pred.map_bound(|trait_pred| (trait_pred, output_ty));
+        let trait_pred_and_self = trait_pred.map_bound(|trait_pred| (trait_pred, output));
 
         let new_obligation =
             self.mk_trait_obligation_with_new_self_ty(obligation.param_env, trait_pred_and_self);
-
         if !self.predicate_must_hold_modulo_regions(&new_obligation) {
             return false;
         }
 
-        let hir = self.tcx.hir();
         // Get the name of the callable and the arguments to be used in the suggestion.
-        let (snippet, sugg) = match hir.get_if_local(def_id) {
+        let hir = self.tcx.hir();
+
+        let msg = format!("use parentheses to call the {}", kind);
+
+        let args = inputs
+            .map(|ty| {
+                if ty.is_suggestable(self.tcx, false) {
+                    format!("/* {ty} */")
+                } else {
+                    "/* value */".to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        let name = match hir.get_if_local(def_id) {
             Some(hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(hir::Closure { fn_decl, fn_decl_span, .. }),
+                kind: hir::ExprKind::Closure(hir::Closure { fn_decl_span, .. }),
                 ..
             })) => {
                 err.span_label(*fn_decl_span, "consider calling this closure");
                 let Some(name) = self.get_closure_name(def_id, err, &msg) else {
                     return false;
                 };
-                let args = fn_decl.inputs.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                let sugg = format!("({})", args);
-                (format!("{}{}", name, sugg), sugg)
+                name.to_string()
             }
-            Some(hir::Node::Item(hir::Item {
-                ident,
-                kind: hir::ItemKind::Fn(.., body_id),
-                ..
-            })) => {
+            Some(hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(..), .. })) => {
                 err.span_label(ident.span, "consider calling this function");
-                let body = hir.body(*body_id);
-                let args = body
-                    .params
-                    .iter()
-                    .map(|arg| match &arg.pat.kind {
-                        hir::PatKind::Binding(_, _, ident, None)
-                        // FIXME: provide a better suggestion when encountering `SelfLower`, it
-                        // should suggest a method call.
-                        if ident.name != kw::SelfLower => ident.to_string(),
-                        _ => "_".to_string(),
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let sugg = format!("({})", args);
-                (format!("{}{}", ident, sugg), sugg)
+                ident.to_string()
             }
-            Some(hir::Node::Ctor(data)) => {
+            Some(hir::Node::Ctor(..)) => {
                 let name = self.tcx.def_path_str(def_id);
                 err.span_label(
                     self.tcx.def_span(def_id),
                     format!("consider calling the constructor for `{}`", name),
                 );
-                let args = data.fields().iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                let sugg = format!("({})", args);
-                (format!("{name}{sugg}"), sugg)
+                name
             }
             _ => return false,
         };
@@ -901,11 +907,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             err.span_suggestion_verbose(
                 obligation.cause.span.shrink_to_hi(),
                 &msg,
-                sugg,
+                format!("({args})"),
                 Applicability::HasPlaceholders,
             );
         } else {
-            err.help(&format!("{}: `{}`", msg, snippet));
+            err.help(&format!("{msg}: `{name}({args})`"));
         }
         true
     }
