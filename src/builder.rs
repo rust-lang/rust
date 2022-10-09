@@ -1597,7 +1597,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-
     pub fn vector_select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, else_val: RValue<'gcc>) -> RValue<'gcc> {
         // cond is a vector of integers, not of bools.
         let cond_type = cond.get_type();
@@ -1607,10 +1606,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let zeros = vec![self.context.new_rvalue_zero(element_type); num_units];
         let zeros = self.context.new_rvalue_from_vector(None, cond_type, &zeros);
 
+        let result_type = then_val.get_type();
+
         let masks = self.context.new_comparison(None, ComparisonOp::NotEquals, cond, zeros);
         // NOTE: masks is a vector of integers, but the values can be vectors of floats, so use bitcast to make
         // the & operation work.
-        let masks = self.bitcast_if_needed(masks, then_val.get_type());
+        let then_val = self.bitcast_if_needed(then_val, masks.get_type());
         let then_vals = masks & then_val;
 
         let minus_ones = vec![self.context.new_rvalue_from_int(element_type, -1); num_units];
@@ -1623,7 +1624,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let else_val = self.context.new_bitcast(None, else_val, then_val.get_type());
         let else_vals = inverted_masks & else_val;
 
-        then_vals | else_vals
+        let res = then_vals | else_vals;
+        self.bitcast_if_needed(res, result_type)
     }
 }
 

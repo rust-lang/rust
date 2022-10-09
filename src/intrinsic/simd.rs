@@ -93,14 +93,19 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let arg1_vector_type = arg1_type.unqualified().dyncast_vector().expect("vector type");
         let arg1_element_type = arg1_vector_type.get_element_type();
 
+        // NOTE: since the arguments can be vectors of floats, make sure the mask is a vector of
+        // integer.
+        let mask_element_type = bx.type_ix(arg1_element_type.get_size() as u64 * 8);
+        let vector_mask_type = bx.context.new_vector_type(mask_element_type, arg1_vector_type.get_num_units() as u64);
+
         let mut elements = vec![];
         let one = bx.context.new_rvalue_one(mask.get_type());
         for _ in 0..len {
-            let element = bx.context.new_cast(None, mask & one, arg1_element_type);
+            let element = bx.context.new_cast(None, mask & one, mask_element_type);
             elements.push(element);
             mask = mask >> one;
         }
-        let vector_mask = bx.context.new_rvalue_from_vector(None, arg1_type, &elements);
+        let vector_mask = bx.context.new_rvalue_from_vector(None, vector_mask_type, &elements);
 
         return Ok(bx.vector_select(vector_mask, arg1, args[2].immediate()));
     }
