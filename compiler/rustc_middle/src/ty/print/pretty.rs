@@ -2055,7 +2055,14 @@ struct RegionFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     current_index: ty::DebruijnIndex,
     region_map: BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
-    name: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
+    name: &'a mut (
+                dyn FnMut(
+        Option<ty::DebruijnIndex>, // Debruijn index of the folded late-bound region
+        ty::DebruijnIndex,         // Index corresponding to binder level
+        ty::BoundRegion,
+    ) -> ty::Region<'tcx>
+                    + 'a
+            ),
 }
 
 impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
@@ -2086,7 +2093,9 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let name = &mut self.name;
         let region = match *r {
-            ty::ReLateBound(_, br) => *self.region_map.entry(br).or_insert_with(|| name(br)),
+            ty::ReLateBound(db, br) if db >= self.current_index => {
+                *self.region_map.entry(br).or_insert_with(|| name(Some(db), self.current_index, br))
+            }
             ty::RePlaceholder(ty::PlaceholderRegion { name: kind, .. }) => {
                 // If this is an anonymous placeholder, don't rename. Otherwise, in some
                 // async fns, we get a `for<'r> Send` bound
@@ -2095,7 +2104,10 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
                         let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind };
-                        *self.region_map.entry(br).or_insert_with(|| name(br))
+                        *self
+                            .region_map
+                            .entry(br)
+                            .or_insert_with(|| name(None, self.current_index, br))
                     }
                 }
             }
@@ -2234,24 +2246,63 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             })
         } else {
             let tcx = self.tcx;
-            let mut name = |br: ty::BoundRegion| {
-                start_or_continue(&mut self, "for<", ", ");
-                let kind = match br.kind {
+
+            // Closure used in `RegionFolder` to create names for anonymous late-bound
+            // regions. We use two `DebruijnIndex`es (one for the currently folded
+            // late-bound region and the other for the binder level) to determine
+            // whether a name has already been created for the currently folded region,
+            // see issue #102392.
+            let mut name = |lifetime_idx: Option<ty::DebruijnIndex>,
+                            binder_level_idx: ty::DebruijnIndex,
+                            br: ty::BoundRegion| {
+                let (name, kind) = match br.kind {
                     ty::BrAnon(_) | ty::BrEnv => {
                         let name = next_name(&self);
-                        do_continue(&mut self, name);
-                        ty::BrNamed(CRATE_DEF_ID.to_def_id(), name)
+
+                        if let Some(lt_idx) = lifetime_idx {
+                            if lt_idx > binder_level_idx {
+                                let kind = ty::BrNamed(CRATE_DEF_ID.to_def_id(), name);
+                                return tcx.mk_region(ty::ReLateBound(
+                                    ty::INNERMOST,
+                                    ty::BoundRegion { var: br.var, kind },
+                                ));
+                            }
+                        }
+
+                        (name, ty::BrNamed(CRATE_DEF_ID.to_def_id(), name))
                     }
                     ty::BrNamed(def_id, kw::UnderscoreLifetime) => {
                         let name = next_name(&self);
-                        do_continue(&mut self, name);
-                        ty::BrNamed(def_id, name)
+
+                        if let Some(lt_idx) = lifetime_idx {
+                            if lt_idx > binder_level_idx {
+                                let kind = ty::BrNamed(def_id, name);
+                                return tcx.mk_region(ty::ReLateBound(
+                                    ty::INNERMOST,
+                                    ty::BoundRegion { var: br.var, kind },
+                                ));
+                            }
+                        }
+
+                        (name, ty::BrNamed(def_id, name))
                     }
                     ty::BrNamed(_, name) => {
-                        do_continue(&mut self, name);
-                        br.kind
+                        if let Some(lt_idx) = lifetime_idx {
+                            if lt_idx > binder_level_idx {
+                                let kind = br.kind;
+                                return tcx.mk_region(ty::ReLateBound(
+                                    ty::INNERMOST,
+                                    ty::BoundRegion { var: br.var, kind },
+                                ));
+                            }
+                        }
+
+                        (name, br.kind)
                     }
                 };
+
+                start_or_continue(&mut self, "for<", ", ");
+                do_continue(&mut self, name);
                 tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind }))
             };
             let mut folder = RegionFolder {
