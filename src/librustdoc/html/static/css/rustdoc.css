@@ -1494,10 +1494,31 @@ details.dir-entry {
 	padding-left: 4px;
 }
 
+details.dir-entry > summary::after {
+	content: " ►";
+	position: absolute;
+	left: -15px;
+	top: 0px;
+	font-size: 80%;
+	padding: 2px 0px;
+	/* set width to cover gap between arrow and text */
+	width: 25px;
+}
+
+details[open].dir-entry > summary::after {
+	content: " ▼";
+}
+
+details.dir-entry > summary::-webkit-details-marker,
+details.dir-entry > summary::marker {
+	display: none;
+}
+
 details.dir-entry > summary {
 	margin: 0 0 0 13px;
-	list-style-position: outside;
+	list-style: none;
 	cursor: pointer;
+	position: relative;
 }
 
 details.dir-entry div.folders, details.dir-entry div.files {

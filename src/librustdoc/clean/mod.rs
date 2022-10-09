@@ -22,7 +22,7 @@ use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Lift, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -176,8 +176,6 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
     poly_trait_ref: ty::PolyTraitRef<'tcx>,
     bindings: ThinVec<TypeBinding>,
 ) -> GenericBound {
-    let poly_trait_ref = poly_trait_ref.lift_to_tcx(cx.tcx).unwrap();
-
     // collect any late bound regions
     let late_bound_regions: Vec<_> = cx
         .tcx
@@ -417,8 +415,7 @@ fn clean_projection<'tcx>(
     cx: &mut DocContext<'tcx>,
     def_id: Option<DefId>,
 ) -> Type {
-    let lifted = ty.lift_to_tcx(cx.tcx).unwrap();
-    let trait_ = clean_trait_ref_with_bindings(cx, lifted.trait_ref(cx.tcx), ThinVec::new());
+    let trait_ = clean_trait_ref_with_bindings(cx, ty.trait_ref(cx.tcx), ThinVec::new());
     let self_type = clean_middle_ty(ty.self_ty(), cx, None);
     let self_def_id = if let Some(def_id) = def_id {
         cx.tcx.opt_parent(def_id).or(Some(def_id))
@@ -1094,7 +1091,7 @@ pub(crate) fn clean_impl_item<'tcx>(
                 let defaultness = cx.tcx.impl_defaultness(impl_.def_id);
                 MethodItem(m, Some(defaultness))
             }
-            hir::ImplItemKind::TyAlias(hir_ty) => {
+            hir::ImplItemKind::Type(hir_ty) => {
                 let type_ = clean_ty(hir_ty, cx);
                 let generics = clean_generics(impl_.generics, cx);
                 let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, hir_ty), cx, None);
@@ -1552,7 +1549,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
 }
 
 /// Returns `None` if the type could not be normalized
-fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
+fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
     if !cx.tcx.sess.opts.unstable_opts.normalize_docs {
         return None;
@@ -1563,11 +1560,10 @@ fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
     use rustc_middle::traits::ObligationCause;
 
     // Try to normalize `<X as Y>::T` to a type
-    let lifted = ty.lift_to_tcx(cx.tcx).unwrap();
     let infcx = cx.tcx.infer_ctxt().build();
     let normalized = infcx
         .at(&ObligationCause::dummy(), cx.param_env)
-        .normalize(lifted)
+        .normalize(ty)
         .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
     match normalized {
         Ok(normalized_value) => {
@@ -1582,12 +1578,12 @@ fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
 }
 
 pub(crate) fn clean_middle_ty<'tcx>(
-    this: Ty<'tcx>,
+    ty: Ty<'tcx>,
     cx: &mut DocContext<'tcx>,
     def_id: Option<DefId>,
 ) -> Type {
-    trace!("cleaning type: {:?}", this);
-    let ty = normalize(cx, this).unwrap_or(this);
+    trace!("cleaning type: {:?}", ty);
+    let ty = normalize(cx, ty).unwrap_or(ty);
     match *ty.kind() {
         ty::Never => Primitive(PrimitiveType::Never),
         ty::Bool => Primitive(PrimitiveType::Bool),
@@ -1597,8 +1593,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Float(float_ty) => Primitive(float_ty.into()),
         ty::Str => Primitive(PrimitiveType::Str),
         ty::Slice(ty) => Slice(Box::new(clean_middle_ty(ty, cx, None))),
-        ty::Array(ty, n) => {
-            let mut n = cx.tcx.lift(n).expect("array lift failed");
+        ty::Array(ty, mut n) => {
             n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
             let n = print_const(cx, n);
             Array(Box::new(clean_middle_ty(ty, cx, None)), n)
@@ -1610,7 +1605,6 @@ pub(crate) fn clean_middle_ty<'tcx>(
             type_: Box::new(clean_middle_ty(ty, cx, None)),
         },
         ty::FnDef(..) | ty::FnPtr(_) => {
-            let ty = cx.tcx.lift(this).expect("FnPtr lift failed");
             let sig = ty.fn_sig(cx.tcx);
             let decl = clean_fn_decl_from_did_and_sig(cx, None, sig);
             BareFunction(Box::new(BareFunctionDecl {
@@ -1644,7 +1638,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let did = obj
                 .principal_def_id()
                 .or_else(|| dids.next())
-                .unwrap_or_else(|| panic!("found trait object `{:?}` with no traits?", this));
+                .unwrap_or_else(|| panic!("found trait object `{:?}` with no traits?", ty));
             let substs = match obj.principal() {
                 Some(principal) => principal.skip_binder().substs,
                 // marker traits have no substs.
@@ -1668,8 +1662,6 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .map(|pb| TypeBinding {
                     assoc: projection_to_path_segment(
                         pb.skip_binder()
-                            .lift_to_tcx(cx.tcx)
-                            .unwrap()
                             // HACK(compiler-errors): Doesn't actually matter what self
                             // type we put here, because we're only using the GAT's substs.
                             .with_self_ty(cx.tcx, cx.tcx.types.self_param)
@@ -1702,7 +1694,6 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Opaque(def_id, substs) => {
             // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
             // by looking up the bounds associated with the def_id.
-            let substs = cx.tcx.lift(substs).expect("Opaque lift failed");
             let bounds = cx
                 .tcx
                 .explicit_item_bounds(def_id)

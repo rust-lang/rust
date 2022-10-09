@@ -887,7 +887,7 @@ impl<'a> State<'a> {
                 self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
-            hir::ImplItemKind::TyAlias(ty) => {
+            hir::ImplItemKind::Type(ty) => {
                 self.print_associated_type(ii.ident, ii.generics, None, Some(ty));
             }
         }

@@ -117,7 +117,7 @@ fn diagnostic_hir_wf_check<'tcx>(
     let ty = match loc {
         WellFormedLoc::Ty(_) => match hir.get(hir_id) {
             hir::Node::ImplItem(item) => match item.kind {
-                hir::ImplItemKind::TyAlias(ty) => Some(ty),
+                hir::ImplItemKind::Type(ty) => Some(ty),
                 hir::ImplItemKind::Const(ty, _) => Some(ty),
                 ref item => bug!("Unexpected ImplItem {:?}", item),
             },

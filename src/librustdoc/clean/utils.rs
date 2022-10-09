@@ -304,9 +304,9 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(
-    tcx: TyCtxt<'_>,
-    ct: mir::ConstantKind<'_>,
+fn print_const_with_custom_print_scalar<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ct: mir::ConstantKind<'tcx>,
     underscores_and_type: bool,
 ) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
@@ -320,7 +320,7 @@ fn print_const_with_custom_print_scalar(
             }
         }
         (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Int(i)) => {
-            let ty = tcx.lift(ct.ty()).unwrap();
+            let ty = ct.ty();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
