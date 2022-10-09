@@ -326,8 +326,6 @@ pub mod cell;
 pub mod char;
 pub mod ffi;
 pub mod iter;
-#[unstable(feature = "once_cell", issue = "74465")]
-pub mod lazy;
 pub mod option;
 pub mod panic;
 pub mod panicking;
