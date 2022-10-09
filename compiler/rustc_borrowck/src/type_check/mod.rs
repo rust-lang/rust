@@ -138,8 +138,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
     use_polonius: bool,
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
-    let mut universe_causes = FxHashMap::default();
-    universe_causes.insert(ty::UniverseIndex::from_u32(0), UniverseInfo::other());
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
@@ -148,7 +146,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         member_constraints: MemberConstraintSet::default(),
         closure_bounds_mapping: Default::default(),
         type_tests: Vec::default(),
-        universe_causes,
+        universe_causes: FxHashMap::default(),
     };
 
     let CreateResult {
@@ -165,9 +163,8 @@ pub(crate) fn type_check<'mir, 'tcx>(
 
     debug!(?normalized_inputs_and_output);
 
-    for u in ty::UniverseIndex::ROOT..infcx.universe() {
-        let info = UniverseInfo::other();
-        constraints.universe_causes.insert(u, info);
+    for u in ty::UniverseIndex::ROOT..=infcx.universe() {
+        constraints.universe_causes.insert(u, UniverseInfo::other());
     }
 
     let mut borrowck_context = BorrowCheckContext {
