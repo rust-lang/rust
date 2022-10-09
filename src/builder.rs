@@ -1613,9 +1613,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let masks = self.bitcast_if_needed(masks, then_val.get_type());
         let then_vals = masks & then_val;
 
-        let ones = vec![self.context.new_rvalue_one(element_type); num_units];
-        let ones = self.context.new_rvalue_from_vector(None, cond_type, &ones);
-        let inverted_masks = masks + ones;
+        let minus_ones = vec![self.context.new_rvalue_from_int(element_type, -1); num_units];
+        let minus_ones = self.context.new_rvalue_from_vector(None, cond_type, &minus_ones);
+        let inverted_masks = masks ^ minus_ones;
         // NOTE: sometimes, the type of else_val can be different than the type of then_val in
         // libgccjit (vector of int vs vector of int32_t), but they should be the same for the AND
         // operation to work.

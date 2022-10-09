@@ -20,3 +20,4 @@ src/test/ui/simd/intrinsic/inlining-issue67557-ice.rs
 src/test/ui/simd/intrinsic/inlining-issue67557.rs
 src/test/ui/simd/monomorphize-shuffle-index.rs
 src/test/ui/simd/shuffle.rs
+src/test/ui/simd/simd-bitmask.rs
