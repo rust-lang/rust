@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
         let method_names: Vec<&str> = method_names.iter().map(Symbol::as_str).collect();
         if_chain! {
             if let ["expn_data", "outer_expn"] = method_names.as_slice();
-            let (self_arg, args)= arg_lists[1];
+            let (self_arg, args) = arg_lists[1];
             if args.is_empty();
             let self_ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
             if match_type(cx, self_ty, &paths::SYNTAX_CONTEXT);

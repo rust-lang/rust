@@ -41,14 +41,17 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
             let body = cx.tcx.hir().body(body_id);
             let typeck_results = cx.tcx.typeck_body(body_id);
             if let Some(Constant::Vec(path)) = constant_simple(cx, typeck_results, body.value);
-            let path: Vec<&str> = path.iter().map(|x| {
+            let path: Vec<&str> = path
+                .iter()
+                .map(|x| {
                     if let Constant::Str(s) = x {
                         s.as_str()
                     } else {
                         // We checked the type of the constant above
                         unreachable!()
                     }
-                }).collect();
+                })
+                .collect();
             if !check_path(cx, &path[..]);
             then {
                 span_lint(cx, INVALID_PATHS, item.span, "invalid path");

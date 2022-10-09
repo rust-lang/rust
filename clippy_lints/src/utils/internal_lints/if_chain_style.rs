@@ -94,7 +94,10 @@ fn check_nested_if_chains(
             .iter()
             .all(|stmt| matches!(stmt.kind, StmtKind::Local(..)) && !sm.is_multiline(stmt.span));
         if if_chain_span.is_some() || !is_else_clause(cx.tcx, if_expr);
-        then {} else { return }
+        then {
+        } else {
+            return;
+        }
     }
     let (span, msg) = match (if_chain_span, is_expn_of(tail.span, "if_chain")) {
         (None, Some(_)) => (if_expr.span, "this `if` can be part of the inner `if_chain!`"),

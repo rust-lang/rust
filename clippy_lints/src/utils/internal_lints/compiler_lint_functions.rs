@@ -61,8 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(fn_name.as_str());
             let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
-            if match_type(cx, ty, &paths::EARLY_CONTEXT)
-                || match_type(cx, ty, &paths::LATE_CONTEXT);
+            if match_type(cx, ty, &paths::EARLY_CONTEXT) || match_type(cx, ty, &paths::LATE_CONTEXT);
             then {
                 span_lint_and_help(
                     cx,

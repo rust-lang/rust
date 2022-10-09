@@ -139,9 +139,9 @@ fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'t
         if args.bindings.len() == 1;
         let binding = &args.bindings[0];
         if binding.ident.name == sym::Output;
-        if let TypeBindingKind::Equality{term: Term::Ty(output)} = binding.kind;
+        if let TypeBindingKind::Equality { term: Term::Ty(output) } = binding.kind;
         then {
-            return Some(output)
+            return Some(output);
         }
     }
 
@@ -180,7 +180,10 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
             .from_generator_fn()
             .and_then(|def_id| match_function_call_with_def_id(cx, block_expr, def_id));
         if args.len() == 1;
-        if let Expr{kind: ExprKind::Closure(&Closure { body, .. }), ..} = args[0];
+        if let Expr {
+            kind: ExprKind::Closure(&Closure { body, .. }),
+            ..
+        } = args[0];
         let closure_body = cx.tcx.hir().body(body);
         if closure_body.generator_kind == Some(GeneratorKind::Async(AsyncGeneratorKind::Block));
         then {

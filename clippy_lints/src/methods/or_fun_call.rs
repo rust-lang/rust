@@ -121,10 +121,9 @@ pub(super) fn check<'tcx>(
                             macro_expanded_snipped = snippet(cx, snippet_span, "..");
                             match macro_expanded_snipped.strip_prefix("$crate::vec::") {
                                 Some(stripped) => Cow::from(stripped),
-                                None => macro_expanded_snipped
+                                None => macro_expanded_snipped,
                             }
-                        }
-                        else {
+                        } else {
                             not_macro_argument_snippet
                         }
                     };

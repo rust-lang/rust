@@ -317,11 +317,7 @@ pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<
             if tool_name.ident.name == sym::clippy;
             if attr_name.ident.name == sym::version;
             if let Some(version) = attr.value_str();
-            then {
-                Some(version)
-            } else {
-                None
-            }
+            then { Some(version) } else { None }
         }
     })
 }

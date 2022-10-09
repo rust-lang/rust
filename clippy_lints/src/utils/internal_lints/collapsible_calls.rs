@@ -92,7 +92,12 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
                 let mut sle = SpanlessEq::new(cx).deny_side_effects();
                 match ps.ident.as_str() {
                     "span_suggestion" if sle.eq_expr(&and_then_args[2], &span_call_args[0]) => {
-                        suggest_suggestion(cx, expr, &and_then_snippets, &span_suggestion_snippets(cx, span_call_args));
+                        suggest_suggestion(
+                            cx,
+                            expr,
+                            &and_then_snippets,
+                            &span_suggestion_snippets(cx, span_call_args),
+                        );
                     },
                     "span_help" if sle.eq_expr(&and_then_args[2], &span_call_args[0]) => {
                         let help_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
@@ -105,12 +110,12 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
                     "help" => {
                         let help_snippet = snippet(cx, span_call_args[0].span, r#""...""#);
                         suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), false);
-                    }
+                    },
                     "note" => {
                         let note_snippet = snippet(cx, span_call_args[0].span, r#""...""#);
                         suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), false);
-                    }
-                    _  => (),
+                    },
+                    _ => (),
                 }
             }
         }

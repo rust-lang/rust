@@ -98,11 +98,15 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
                         if trait_pred.self_ty() == inp;
                         if let Some(return_ty_pred) = get_projection_pred(cx, generics, *trait_pred);
                         then {
-                            if ord_preds.iter().any(|ord| Some(ord.self_ty()) == return_ty_pred.term.ty()) {
+                            if ord_preds
+                                .iter()
+                                .any(|ord| Some(ord.self_ty()) == return_ty_pred.term.ty())
+                            {
                                 args_to_check.push((i, "Ord".to_string()));
-                            } else if partial_ord_preds.iter().any(|pord| {
-                                pord.self_ty() == return_ty_pred.term.ty().unwrap()
-                            }) {
+                            } else if partial_ord_preds
+                                .iter()
+                                .any(|pord| pord.self_ty() == return_ty_pred.term.ty().unwrap())
+                            {
                                 args_to_check.push((i, "PartialOrd".to_string()));
                             }
                         }
