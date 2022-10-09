@@ -18,7 +18,7 @@ where
     (for<'a> fn(&'a ())): Foo,
 {
     called()
-    //[quiet]~^ ERROR the trait bound `for<'b> for<'b> fn(&'b ()): Foo` is not satisfied
+    //[quiet]~^ ERROR the trait bound `for<'b> fn(&'b ()): Foo` is not satisfied
     //[verbose]~^^ ERROR the trait bound `for<'b> fn(&ReLateBound(
 }
 
