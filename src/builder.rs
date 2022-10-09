@@ -1599,10 +1599,31 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     pub fn vector_select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, else_val: RValue<'gcc>) -> RValue<'gcc> {
         // cond is a vector of integers, not of bools.
-        let cond_type = cond.get_type();
-        let vector_type = cond_type.unqualified().dyncast_vector().expect("vector type");
+        let vector_type = cond.get_type().unqualified().dyncast_vector().expect("vector type");
         let num_units = vector_type.get_num_units();
         let element_type = vector_type.get_element_type();
+
+        #[cfg(feature="master")]
+        let (cond, element_type) = {
+            let then_val_vector_type = then_val.get_type().dyncast_vector().expect("vector type");
+            let then_val_element_type = then_val_vector_type.get_element_type();
+            let then_val_element_size = then_val_element_type.get_size();
+
+            // NOTE: the mask needs to be of the same size as the other arguments in order for the &
+            // operation to work.
+            if then_val_element_size != element_type.get_size() {
+                let new_element_type = self.type_ix(then_val_element_size as u64 * 8);
+                let new_vector_type = self.context.new_vector_type(new_element_type, num_units as u64);
+                let cond = self.context.convert_vector(None, cond, new_vector_type);
+                (cond, new_element_type)
+            }
+            else {
+                (cond, element_type)
+            }
+        };
+
+        let cond_type = cond.get_type();
+
         let zeros = vec![self.context.new_rvalue_zero(element_type); num_units];
         let zeros = self.context.new_rvalue_from_vector(None, cond_type, &zeros);
 
