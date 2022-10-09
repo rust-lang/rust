@@ -42,7 +42,6 @@ use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::span_bug;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::{CrateStore, CrateStoreDyn, MetadataLoaderDyn};
@@ -2081,8 +2080,4 @@ impl Finalize {
     fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
         Finalize { node_id, path_span, root_span, report_private: true }
     }
-}
-
-pub fn provide(providers: &mut Providers) {
-    late::lifetimes::provide(providers);
 }

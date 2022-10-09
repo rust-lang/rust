@@ -34,7 +34,6 @@ use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, take};
 
 mod diagnostics;
-pub(crate) mod lifetimes;
 
 type Res = def::Res<NodeId>;
 
