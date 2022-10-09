@@ -448,6 +448,12 @@ Otherwise, have a great day =^.^=
                                         None
                                     </label>
                                 </li>
+                                <li class="checkbox">
+                                    <label ng-click="resetGroupsToDefault()">
+                                        <input type="checkbox" class="invisible" />
+                                        Default
+                                    </label>
+                                </li>
                                 <li role="separator" class="divider"></li>
                                 <li class="checkbox" ng-repeat="(group, enabled) in groups">
                                     <label class="text-capitalize">
