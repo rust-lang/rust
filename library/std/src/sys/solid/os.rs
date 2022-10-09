@@ -151,23 +151,19 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     }
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let k = CString::new(k.as_bytes())?;
     let v = CString::new(v.as_bytes())?;
 
-    unsafe {
-        let _guard = ENV_LOCK.write();
-        cvt_env(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
-    }
+    let _guard = ENV_LOCK.write();
+    cvt_env(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
 }
 
-pub fn unsetenv(n: &OsStr) -> io::Result<()> {
+pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
-    unsafe {
-        let _guard = ENV_LOCK.write();
-        cvt_env(libc::unsetenv(nbuf.as_ptr())).map(drop)
-    }
+    let _guard = ENV_LOCK.write();
+    cvt_env(libc::unsetenv(nbuf.as_ptr())).map(drop)
 }
 
 /// In kmclib, `setenv` and `unsetenv` don't always set `errno`, so this
