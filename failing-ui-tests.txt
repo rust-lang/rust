@@ -38,7 +38,6 @@ src/test/ui/simd/issue-17170.rs
 src/test/ui/simd/issue-39720.rs
 src/test/ui/simd/issue-85915-simd-ptrs.rs
 src/test/ui/simd/issue-89193.rs
-src/test/ui/simd/simd-bitmask.rs
 src/test/ui/simd/type-generic-monomorphisation-extern-nonnull-ptr.rs
 src/test/ui/sse2.rs
 src/test/ui/statics/issue-91050-1.rs

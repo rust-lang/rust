@@ -337,28 +337,31 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let vector = args[0].immediate();
         let vector_type = vector.get_type().dyncast_vector().expect("vector type");
         let elem_type = vector_type.get_element_type();
-        let mut shifts = vec![];
-        let mut masks = vec![];
-        let mut mask = 1;
-        for i in 0..in_len {
-            shifts.push(bx.context.new_rvalue_from_int(elem_type, i as i32));
-            masks.push(bx.context.new_rvalue_from_int(elem_type, mask));
-            mask <<= 1;
-        }
-        masks.reverse();
-        let shifts = bx.context.new_rvalue_from_vector(None, vector.get_type(), &shifts);
-        let shifted = vector >> shifts;
-        let masks = bx.context.new_rvalue_from_vector(None, vector.get_type(), &masks);
-        let masked = shifted & masks;
-        let reduced = bx.vector_reduce_op(masked, BinaryOp::BitwiseOr);
 
         let expected_int_bits = in_len.max(8);
         let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
 
+        // FIXME(antoyo): that's not going to work for masks bigger than 128 bits.
+        let result_type = bx.type_ix(expected_int_bits);
+        let mut result = bx.context.new_rvalue_zero(result_type);
+
+        let elem_size = elem_type.get_size() * 8;
+        let sign_shift = bx.context.new_rvalue_from_int(elem_type, elem_size as i32);
+        let one = bx.context.new_rvalue_one(elem_type);
+
+        let mut shift = 0;
+        for i in 0..in_len {
+            let elem = bx.extract_element(vector, bx.context.new_rvalue_from_int(bx.int_type, i as i32));
+            let shifted = elem >> sign_shift;
+            let masked = shifted & one;
+            result = result | (bx.context.new_cast(None, masked, result_type) << bx.context.new_rvalue_from_int(result_type, shift));
+            shift += 1;
+        }
+
         match ret_ty.kind() {
             ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => {
                 // Zero-extend iN to the bitmask type:
-                return Ok(bx.zext(reduced, bx.type_ix(expected_int_bits)));
+                return Ok(result);
             }
             ty::Array(elem, len)
                 if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
@@ -366,7 +369,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                         == Some(expected_bytes) =>
             {
                 // Zero-extend iN to the array length:
-                let ze = bx.zext(reduced, bx.type_ix(expected_bytes * 8));
+                let ze = bx.zext(result, bx.type_ix(expected_bytes * 8));
 
                 // Convert the integer to a byte array
                 let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
