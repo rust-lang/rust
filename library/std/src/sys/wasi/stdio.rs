@@ -23,7 +23,7 @@ impl AsRawFd for Stdin {
     }
 }
 
-impl AsFd for Stdin {
+impl AsFd for io::Stdin {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         unsafe { BorrowedFd::borrow_raw(0) }
@@ -67,7 +67,7 @@ impl AsRawFd for Stdout {
     }
 }
 
-impl AsFd for Stdout {
+impl AsFd for io::Stdout {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         unsafe { BorrowedFd::borrow_raw(1) }
@@ -114,7 +114,7 @@ impl AsRawFd for Stderr {
     }
 }
 
-impl AsFd for Stderr {
+impl AsFd for io::Stderr {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         unsafe { BorrowedFd::borrow_raw(2) }
