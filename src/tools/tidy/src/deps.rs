@@ -18,10 +18,11 @@ const LICENSES: &[&str] = &[
     "ISC",
     "Unlicense/MIT",
     "Unlicense OR MIT",
-    "0BSD OR MIT OR Apache-2.0", // adler license
-    "Zlib OR Apache-2.0 OR MIT", // tinyvec
-    "MIT OR Apache-2.0 OR Zlib", // tinyvec_macros
-    "MIT OR Zlib OR Apache-2.0", // miniz_oxide
+    "0BSD OR MIT OR Apache-2.0",                // adler license
+    "Zlib OR Apache-2.0 OR MIT",                // tinyvec
+    "MIT OR Apache-2.0 OR Zlib",                // tinyvec_macros
+    "MIT OR Zlib OR Apache-2.0",                // miniz_oxide
+    "(MIT OR Apache-2.0) AND Unicode-DFS-2016", // unicode_ident
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -235,6 +236,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "unic-langid-macros",
     "unic-langid-macros-impl",
     "unic-ucd-version",
+    "unicode-ident",
     "unicode-normalization",
     "unicode-script",
     "unicode-security",
