@@ -70,6 +70,7 @@ impl TypoSuggestion {
 }
 
 /// A free importable items suggested in case of resolution failure.
+#[derive(Debug, Clone)]
 pub(crate) struct ImportSuggestion {
     pub did: Option<DefId>,
     pub descr: &'static str,
@@ -139,6 +140,7 @@ impl<'a> Resolver<'a> {
                     if instead { Instead::Yes } else { Instead::No },
                     found_use,
                     IsPattern::No,
+                    IsImport::No,
                     path,
                 );
                 err.emit();
@@ -698,6 +700,7 @@ impl<'a> Resolver<'a> {
                         Instead::No,
                         FoundUse::Yes,
                         IsPattern::Yes,
+                        IsImport::No,
                         vec![],
                     );
                 }
@@ -1481,6 +1484,7 @@ impl<'a> Resolver<'a> {
             Instead::No,
             FoundUse::Yes,
             IsPattern::No,
+            IsImport::No,
             vec![],
         );
 
@@ -2449,6 +2453,34 @@ enum IsPattern {
     No,
 }
 
+/// Whether a binding is part of a use statement. Used for diagnostics.
+enum IsImport {
+    Yes,
+    No,
+}
+
+pub(crate) fn import_candidates(
+    session: &Session,
+    source_span: &IndexVec<LocalDefId, Span>,
+    err: &mut Diagnostic,
+    // This is `None` if all placement locations are inside expansions
+    use_placement_span: Option<Span>,
+    candidates: &[ImportSuggestion],
+) {
+    show_candidates(
+        session,
+        source_span,
+        err,
+        use_placement_span,
+        candidates,
+        Instead::Yes,
+        FoundUse::Yes,
+        IsPattern::No,
+        IsImport::Yes,
+        vec![],
+    );
+}
+
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way
@@ -2462,6 +2494,7 @@ fn show_candidates(
     instead: Instead,
     found_use: FoundUse,
     is_pattern: IsPattern,
+    is_import: IsImport,
     path: Vec<Segment>,
 ) {
     if candidates.is_empty() {
@@ -2521,7 +2554,8 @@ fn show_candidates(
                 // produce an additional newline to separate the new use statement
                 // from the directly following item.
                 let additional_newline = if let FoundUse::Yes = found_use { "" } else { "\n" };
-                candidate.0 = format!("use {};\n{}", &candidate.0, additional_newline);
+                let add_use = if let IsImport::Yes = is_import { "" } else { "use " };
+                candidate.0 = format!("{}{};\n{}", add_use, &candidate.0, additional_newline);
             }
 
             err.span_suggestions(
@@ -2551,7 +2585,7 @@ fn show_candidates(
 
             err.note(&msg);
         }
-    } else {
+    } else if matches!(is_import, IsImport::No) {
         assert!(!inaccessible_path_strings.is_empty());
 
         let prefix =

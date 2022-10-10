@@ -26,6 +26,11 @@ error[E0432]: unresolved import `env`
    |
 LL |     use env;
    |         ^^^ no `env` in the root
+   |
+help: consider importing this module instead
+   |
+LL |     use std::env;
+   |         ~~~~~~~~~
 
 error: cannot determine resolution for the macro `env`
   --> $DIR/issue-55897.rs:6:22
