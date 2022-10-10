@@ -147,6 +147,22 @@ impl TryFrom<usize> for Alignment {
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl From<Alignment> for NonZeroUsize {
+    #[inline]
+    fn from(align: Alignment) -> NonZeroUsize {
+        align.as_nonzero()
+    }
+}
+
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl From<Alignment> for usize {
+    #[inline]
+    fn from(align: Alignment) -> usize {
+        align.as_usize()
+    }
+}
+
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl cmp::Ord for Alignment {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
