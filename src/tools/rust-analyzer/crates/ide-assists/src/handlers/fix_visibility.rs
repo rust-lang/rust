@@ -57,8 +57,8 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
         if current_module.krate() == target_module.krate() { "pub(crate)" } else { "pub" };
 
     let assist_label = match target_name {
-        None => format!("Change visibility to {}", missing_visibility),
-        Some(name) => format!("Change visibility of {} to {}", name, missing_visibility),
+        None => format!("Change visibility to {missing_visibility}"),
+        Some(name) => format!("Change visibility of {name} to {missing_visibility}"),
     };
 
     acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |builder| {
@@ -68,15 +68,15 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 Some(current_visibility) => builder.replace_snippet(
                     cap,
                     current_visibility.syntax().text_range(),
-                    format!("$0{}", missing_visibility),
+                    format!("$0{missing_visibility}"),
                 ),
-                None => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
+                None => builder.insert_snippet(cap, offset, format!("$0{missing_visibility} ")),
             },
             None => match current_visibility {
                 Some(current_visibility) => {
                     builder.replace(current_visibility.syntax().text_range(), missing_visibility)
                 }
-                None => builder.insert(offset, format!("{} ", missing_visibility)),
+                None => builder.insert(offset, format!("{missing_visibility} ")),
             },
         }
     })
@@ -114,7 +114,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let target_name = record_field_def.name(ctx.db());
     let assist_label =
-        format!("Change visibility of {}.{} to {}", parent_name, target_name, missing_visibility);
+        format!("Change visibility of {parent_name}.{target_name} to {missing_visibility}");
 
     acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |builder| {
         builder.edit_file(target_file);
@@ -123,15 +123,15 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
                 Some(current_visibility) => builder.replace_snippet(
                     cap,
                     current_visibility.syntax().text_range(),
-                    format!("$0{}", missing_visibility),
+                    format!("$0{missing_visibility}"),
                 ),
-                None => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
+                None => builder.insert_snippet(cap, offset, format!("$0{missing_visibility} ")),
             },
             None => match current_visibility {
                 Some(current_visibility) => {
                     builder.replace(current_visibility.syntax().text_range(), missing_visibility)
                 }
-                None => builder.insert(offset, format!("{} ", missing_visibility)),
+                None => builder.insert(offset, format!("{missing_visibility} ")),
             },
         }
     })
