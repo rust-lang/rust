@@ -34,13 +34,10 @@ pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
             let hashes = "#".repeat(required_hashes(&value).max(1));
             if matches!(value, Cow::Borrowed(_)) {
                 // Avoid replacing the whole string to better position the cursor.
-                edit.insert(token.syntax().text_range().start(), format!("r{}", hashes));
+                edit.insert(token.syntax().text_range().start(), format!("r{hashes}"));
                 edit.insert(token.syntax().text_range().end(), hashes);
             } else {
-                edit.replace(
-                    token.syntax().text_range(),
-                    format!("r{}\"{}\"{}", hashes, value, hashes),
-                );
+                edit.replace(token.syntax().text_range(), format!("r{hashes}\"{value}\"{hashes}"));
             }
         },
     )
@@ -83,7 +80,7 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
                 }
             }
 
-            edit.replace(token.syntax().text_range(), format!("\"{}\"", escaped));
+            edit.replace(token.syntax().text_range(), format!("\"{escaped}\""));
         },
     )
 }

@@ -190,10 +190,10 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                 PathResolution::Def(hir::ModuleDef::Function(f)) => f,
                 _ => return None,
             };
-            (function, format!("Inline `{}`", path))
+            (function, format!("Inline `{path}`"))
         }
         ast::CallableExpr::MethodCall(call) => {
-            (ctx.sema.resolve_method_call(call)?, format!("Inline `{}`", name_ref))
+            (ctx.sema.resolve_method_call(call)?, format!("Inline `{name_ref}`"))
         }
     };
 
