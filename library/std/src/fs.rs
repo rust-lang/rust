@@ -1670,6 +1670,7 @@ impl DirEntry {
     /// }
     /// ```
     #[must_use]
+    #[doc(alias = "basename")]
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn file_name(&self) -> OsString {
         self.0.file_name()
