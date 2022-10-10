@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use rustc_ast::ast::{Expr, ExprKind, LitFloatType, LitKind};
+use rustc_ast::ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -33,14 +33,14 @@ fn is_useless_rounding(expr: &Expr) -> Option<(&str, String)> {
     if let ExprKind::MethodCall(name_ident, receiver, _, _) = &expr.kind
         && let method_name = name_ident.ident.name.as_str()
         && (method_name == "ceil" || method_name == "round" || method_name == "floor")
-        && let ExprKind::Lit(spanned) = &receiver.kind
-        && let LitKind::Float(symbol, ty) = spanned.kind {
-            let f = symbol.as_str().parse::<f64>().unwrap();
-            let f_str = symbol.to_string() + if let LitFloatType::Suffixed(ty) = ty {
-                ty.name_str()
-            } else {
-                ""
-            };
+        && let ExprKind::Lit(token_lit) = &receiver.kind
+        && token_lit.is_semantic_float() {
+            let f = token_lit.symbol.as_str().parse::<f64>().unwrap();
+            let mut f_str = token_lit.symbol.to_string();
+            match token_lit.suffix {
+                Some(suffix) => f_str.push_str(suffix.as_str()),
+                None => {}
+            }
             if f.fract() == 0.0 {
                 Some((method_name, f_str))
             } else {
