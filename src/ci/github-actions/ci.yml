@@ -747,6 +747,10 @@ jobs:
           - &dist-x86_64-linux
             name: dist-x86_64-linux
             <<: *job-linux-xl
+          - name: dist-i586-gnu-i586-i686-musl
+            <<: *job-linux-xl
+          - name: dist-x86_64-musl
+            <<: *job-linux-xl
 
   master:
     name: master
