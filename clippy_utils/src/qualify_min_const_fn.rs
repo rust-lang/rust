@@ -301,13 +301,13 @@ fn check_terminator<'tcx>(
         | TerminatorKind::Goto { .. }
         | TerminatorKind::Return
         | TerminatorKind::Resume
+        | TerminatorKind::Terminate
         | TerminatorKind::Unreachable => Ok(()),
 
         TerminatorKind::Drop { place, .. } => check_place(tcx, *place, span, body),
 
         TerminatorKind::SwitchInt { discr, targets: _ } => check_operand(tcx, discr, span, body),
 
-        TerminatorKind::Abort => Err((span, "abort is not stable in const fn".into())),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
             Err((span, "const fn generators are unstable".into()))
         },
