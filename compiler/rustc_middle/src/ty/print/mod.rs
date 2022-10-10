@@ -3,7 +3,7 @@ use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 
 // `pretty` is a separate module only for organization.
@@ -323,5 +323,14 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
         cx.print_const(*self)
+    }
+}
+
+// This is only used by query descriptions
+pub fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
+    if def_id.is_top_level_module() {
+        "top-level module".to_string()
+    } else {
+        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
     }
 }
