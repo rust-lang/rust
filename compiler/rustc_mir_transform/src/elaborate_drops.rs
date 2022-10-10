@@ -399,7 +399,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let loc = Location { block: bb, statement_index: data.statements.len() };
             let terminator = data.terminator();
 
-            let resume_block = self.patch.resume_block();
             match terminator.kind {
                 TerminatorKind::Drop { mut place, target, unwind } => {
                     if let Some(new_place) = self.un_derefer.derefer(place.as_ref(), self.body) {
@@ -408,22 +407,29 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
                     self.init_data.seek_before(loc);
                     match self.move_data().rev_lookup.find(place.as_ref()) {
-                        LookupResult::Exact(path) => elaborate_drop(
-                            &mut Elaborator { ctxt: self },
-                            terminator.source_info,
-                            place,
-                            path,
-                            target,
-                            if data.is_cleanup {
+                        LookupResult::Exact(path) => {
+                            let unwind = if data.is_cleanup {
                                 Unwind::InCleanup
                             } else {
                                 match unwind {
                                     UnwindAction::Cleanup(cleanup) => Unwind::To(cleanup),
-                                    UnwindAction::Continue => Unwind::To(resume_block),
+                                    UnwindAction::Continue => Unwind::To(self.patch.resume_block()),
+                                    UnwindAction::Unreachable => {
+                                        Unwind::To(self.patch.unreachable_block())
+                                    }
+                                    UnwindAction::Terminate => Unwind::To(self.patch.terminate_block()),
                                 }
-                            },
-                            bb,
-                        ),
+                            };
+                            elaborate_drop(
+                                &mut Elaborator { ctxt: self },
+                                terminator.source_info,
+                                place,
+                                path,
+                                target,
+                                unwind,
+                                bb,
+                            )
+                        }
                         LookupResult::Parent(..) => {
                             if !matches!(
                                 terminator.source_info.span.desugaring_kind(),

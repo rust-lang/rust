@@ -1020,11 +1020,12 @@ impl Integrator<'_, '_> {
                 UnwindAction::Cleanup(_) => {
                     bug!("cleanup on cleanup block");
                 }
-                UnwindAction::Continue => return unwind,
+                UnwindAction::Continue | UnwindAction::Unreachable => return unwind,
             }
         }
 
         match unwind {
+            UnwindAction::Unreachable => unwind,
             UnwindAction::Cleanup(target) => UnwindAction::Cleanup(self.map_block(target)),
             // Add an unwind edge to the original call's cleanup block
             UnwindAction::Continue => self.cleanup_block,
@@ -1140,6 +1141,9 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                     terminator.kind = TerminatorKind::Goto { target: tgt };
                 }
                 UnwindAction::Continue => (),
+                UnwindAction::Unreachable => {
+                    terminator.kind = TerminatorKind::Unreachable;
+                }
             },
             TerminatorKind::Abort => {}
             TerminatorKind::Unreachable => {}

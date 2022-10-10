@@ -12,6 +12,8 @@ pub struct MirPatch<'tcx> {
     new_statements: Vec<(Location, StatementKind<'tcx>)>,
     new_locals: Vec<LocalDecl<'tcx>>,
     resume_block: Option<BasicBlock>,
+    // Only for unreachable in cleanup path.
+    unreachable_block: Option<BasicBlock>,
     body_span: Span,
     next_local: usize,
 }
@@ -25,11 +27,12 @@ impl<'tcx> MirPatch<'tcx> {
             new_locals: vec![],
             next_local: body.local_decls.len(),
             resume_block: None,
+            unreachable_block: None,
             body_span: body.span,
         };
 
-        // Check if we already have a resume block
         for (bb, block) in body.basic_blocks.iter_enumerated() {
+            // Check if we already have a resume block
             if let TerminatorKind::Resume = block.terminator().kind && block.statements.is_empty() {
                 result.resume_block = Some(bb);
                 break;

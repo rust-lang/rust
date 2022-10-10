@@ -13,7 +13,7 @@ use rustc_target::spec::abi::Abi;
 
 use super::{
     FnVal, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemoryKind, OpTy, Operand,
-    PlaceTy, Scalar, StackPopCleanup, StackPopUnwind,
+    PlaceTy, Scalar, StackPopCleanup,
 };
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -60,7 +60,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ref args,
                 destination,
                 target,
-                ref unwind,
+                unwind,
                 from_hir_call: _,
                 fn_span: _,
             } => {
@@ -106,13 +106,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     with_caller_location,
                     &destination,
                     target,
-                    match (unwind, fn_abi.can_unwind) {
-                        (mir::UnwindAction::Cleanup(cleanup), true) => {
-                            StackPopUnwind::Cleanup(*cleanup)
-                        }
-                        (mir::UnwindAction::Continue, true) => StackPopUnwind::Skip,
-                        (_, false) => StackPopUnwind::NotAllowed,
-                    },
+                    if fn_abi.can_unwind { unwind } else { mir::UnwindAction::Unreachable },
                 )?;
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
                 // did a jump to another block.
@@ -353,7 +347,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         with_caller_location: bool,
         destination: &PlaceTy<'tcx, M::Provenance>,
         target: Option<mir::BasicBlock>,
-        mut unwind: StackPopUnwind,
+        mut unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
 
@@ -412,9 +406,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 }
 
-                if !matches!(unwind, StackPopUnwind::NotAllowed) && !callee_fn_abi.can_unwind {
-                    // The callee cannot unwind.
-                    unwind = StackPopUnwind::NotAllowed;
+                if !callee_fn_abi.can_unwind {
+                    // The callee cannot unwind, so force the `Unreachable` unwind handling.
+                    unwind = mir::UnwindAction::Unreachable;
                 }
 
                 self.push_stack_frame(
@@ -719,10 +713,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             false,
             &ret.into(),
             Some(target),
-            match unwind {
-                mir::UnwindAction::Cleanup(cleanup) => StackPopUnwind::Cleanup(cleanup),
-                mir::UnwindAction::Continue => StackPopUnwind::Skip,
-            },
+            unwind,
         )
     }
 }

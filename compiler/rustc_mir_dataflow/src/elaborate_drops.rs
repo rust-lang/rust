@@ -946,7 +946,7 @@ where
             args,
             destination: unit_temp,
             target: Some(target),
-            unwind: UnwindAction::Continue,
+            unwind: UnwindAction::Unreachable,
             from_hir_call: false,
             fn_span: self.source_info.span,
         }; // FIXME(#43234)

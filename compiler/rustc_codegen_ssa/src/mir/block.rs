@@ -156,7 +156,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         fn_ptr: Bx::Value,
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
-        unwind: mir::UnwindAction,
+        mut unwind: mir::UnwindAction,
         copied_constant_arguments: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
         mergeable_succ: bool,
     ) -> MergingSucc {
@@ -164,27 +164,28 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         // do an invoke, otherwise do a call.
         let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
-        let cleanup = match unwind {
-            mir::UnwindAction::Cleanup(cleanup) => Some(cleanup),
+        if !fn_abi.can_unwind {
+            unwind = mir::UnwindAction::Unreachable;
+        }
+
+        let unwind_block = match unwind {
+            mir::UnwindAction::Cleanup(cleanup) => Some(self.llbb_with_cleanup(fx, cleanup)),
+            _ if fx.mir[self.bb].is_cleanup
+                && fn_abi.can_unwind
+                && !base::wants_msvc_seh(fx.cx.tcx().sess) =>
+            {
+                // Exception must not propagate out of the execution of a cleanup (doing so
+                // can cause undefined behaviour). We insert a double unwind guard for
+                // functions that can potentially unwind to protect against this.
+                //
+                // This is not necessary for SEH which does not use successive unwinding
+                // like Itanium EH. EH frames in SEH are different from normal function
+                // frames and SEH will abort automatically if an exception tries to
+                // propagate out from cleanup.
+                Some(fx.double_unwind_guard())
+            }
             mir::UnwindAction::Continue => None,
-        };
-        let unwind_block = if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
-            Some(self.llbb_with_cleanup(fx, cleanup))
-        } else if fx.mir[self.bb].is_cleanup
-            && fn_abi.can_unwind
-            && !base::wants_msvc_seh(fx.cx.tcx().sess)
-        {
-            // Exception must not propagate out of the execution of a cleanup (doing so
-            // can cause undefined behaviour). We insert a double unwind guard for
-            // functions that can potentially unwind to protect against this.
-            //
-            // This is not necessary for SEH which does not use successive unwinding
-            // like Itanium EH. EH frames in SEH are different from normal function
-            // frames and SEH will abort automatically if an exception tries to
-            // propagate out from cleanup.
-            Some(fx.double_unwind_guard())
-        } else {
-            None
+            mir::UnwindAction::Unreachable => None,
         };
 
         if let Some(unwind_block) = unwind_block {
@@ -640,7 +641,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, llfn) = common::build_langcall(bx, Some(span), LangItem::PanicCannotUnwind);
 
         // Codegen the actual panic invoke/call.
-        let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &[], None, mir::UnwindAction::Continue, &[], false);
+        let merging_succ = helper.do_call(
+            self,
+            bx,
+            fn_abi,
+            llfn,
+            &[],
+            None,
+            mir::UnwindAction::Unreachable,
+            &[],
+            false,
+        );
         assert_eq!(merging_succ, MergingSucc::False);
     }
 

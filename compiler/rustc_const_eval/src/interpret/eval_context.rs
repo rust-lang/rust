@@ -139,17 +139,6 @@ pub struct FrameInfo<'tcx> {
     pub lint_root: Option<hir::HirId>,
 }
 
-/// Unwind information.
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
-pub enum StackPopUnwind {
-    /// The cleanup block.
-    Cleanup(mir::BasicBlock),
-    /// No cleanup needs to be done.
-    Skip,
-    /// Unwinding is not allowed (UB).
-    NotAllowed,
-}
-
 #[derive(Clone, Copy, Eq, PartialEq, Debug)] // Miri debug-prints these
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
@@ -157,7 +146,7 @@ pub enum StackPopCleanup {
     /// we can validate it at that layout.
     /// `ret` stores the block we jump to on a normal return, while `unwind`
     /// stores the block used for cleanup during unwinding.
-    Goto { ret: Option<mir::BasicBlock>, unwind: StackPopUnwind },
+    Goto { ret: Option<mir::BasicBlock>, unwind: mir::UnwindAction },
     /// The root frame of the stack: nowhere else to jump to.
     /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
@@ -735,16 +724,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// *Unwind* to the given `target` basic block.
     /// Do *not* use for returning! Use `return_to_block` instead.
     ///
-    /// If `target` is `StackPopUnwind::Skip`, that indicates the function does not need cleanup
+    /// If `target` is `UnwindAction::Continue`, that indicates the function does not need cleanup
     /// during unwinding, and we will just keep propagating that upwards.
     ///
-    /// If `target` is `StackPopUnwind::NotAllowed`, that indicates the function does not allow
+    /// If `target` is `UnwindAction::Unreachable`, that indicates the function does not allow
     /// unwinding, and doing so is UB.
-    pub fn unwind_to_block(&mut self, target: StackPopUnwind) -> InterpResult<'tcx> {
+    pub fn unwind_to_block(&mut self, target: mir::UnwindAction) -> InterpResult<'tcx> {
         self.frame_mut().loc = match target {
-            StackPopUnwind::Cleanup(block) => Left(mir::Location { block, statement_index: 0 }),
-            StackPopUnwind::Skip => Right(self.frame_mut().body.span),
-            StackPopUnwind::NotAllowed => {
+            mir::UnwindAction::Cleanup(block) => Left(mir::Location { block, statement_index: 0 }),
+            mir::UnwindAction::Continue => Right(self.frame_mut().body.span),
+            mir::UnwindAction::Unreachable => {
                 throw_ub_format!("unwinding past a stack frame that does not allow unwinding")
             }
         };

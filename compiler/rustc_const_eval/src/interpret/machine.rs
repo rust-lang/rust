@@ -18,7 +18,7 @@ use crate::const_eval::CheckAlignment;
 
 use super::{
     AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx,
-    InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
+    InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -185,7 +185,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         args: &[OpTy<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>>;
 
     /// Execute `fn_val`. It is the hook's responsibility to advance the instruction
@@ -197,7 +197,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         args: &[OpTy<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
 
     /// Directly process an intrinsic without pushing a stack frame. It is the hook's
@@ -208,7 +208,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         args: &[OpTy<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
 
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
@@ -487,7 +487,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         _args: &[OpTy<$tcx>],
         _destination: &PlaceTy<$tcx, Self::Provenance>,
         _target: Option<mir::BasicBlock>,
-        _unwind: StackPopUnwind,
+        _unwind: mir::UnwindAction,
     ) -> InterpResult<$tcx> {
         match fn_val {}
     }

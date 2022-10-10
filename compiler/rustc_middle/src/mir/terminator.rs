@@ -270,11 +270,16 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
         let labels = self.fmt_successor_labels();
         assert_eq!(successor_count, labels.len());
 
-        match successor_count {
-            0 => Ok(()),
+        let unwind = match self.unwind() {
+            // Not needed or included in successors
+            None | Some(UnwindAction::Continue) | Some(UnwindAction::Cleanup(_)) => None,
+            Some(UnwindAction::Unreachable) => Some("unwind unreachable"),
+        };
 
-            1 => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
-
+        match (successor_count, unwind) {
+            (0, None) => Ok(()),
+            (0, Some(unwind)) => write!(fmt, " -> {}", unwind),
+            (1, None) => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
             _ => {
                 write!(fmt, " -> [")?;
                 for (i, target) in self.successors().enumerate() {
@@ -282,6 +287,9 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
                         write!(fmt, ", ")?;
                     }
                     write!(fmt, "{}: {:?}", labels[i], target)?;
+                }
+                if let Some(unwind) = unwind {
+                    write!(fmt, ", {unwind}")?;
                 }
                 write!(fmt, "]")
             }
@@ -391,30 +399,32 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { target: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
                 vec!["return".into(), "unwind".into()]
             }
-            Call { target: Some(_), unwind: UnwindAction::Continue, .. } => vec!["return".into()],
+            Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
             Call { target: None, unwind: UnwindAction::Cleanup(_), .. } => vec!["unwind".into()],
-            Call { target: None, unwind: UnwindAction::Continue, .. } => vec![],
+            Call { target: None, unwind: _, .. } => vec![],
             Yield { drop: Some(_), .. } => vec!["resume".into(), "drop".into()],
             Yield { drop: None, .. } => vec!["resume".into()],
-            Drop { unwind: UnwindAction::Continue, .. } => vec!["return".into()],
             Drop { unwind: UnwindAction::Cleanup(_), .. } => vec!["return".into(), "unwind".into()],
-            Assert { unwind: UnwindAction::Continue, .. } => vec!["".into()],
-            Assert { .. } => vec!["success".into(), "unwind".into()],
+            Drop { unwind: _, .. } => vec!["return".into()],
+            Assert { unwind: UnwindAction::Cleanup(_), .. } => {
+                vec!["success".into(), "unwind".into()]
+            }
+            Assert { unwind: _, .. } => vec!["success".into()],
             FalseEdge { .. } => vec!["real".into(), "imaginary".into()],
             FalseUnwind { unwind: UnwindAction::Cleanup(_), .. } => {
-                vec!["real".into(), "cleanup".into()]
+                vec!["real".into(), "unwind".into()]
             }
-            FalseUnwind { unwind: UnwindAction::Continue, .. } => vec!["real".into()],
+            FalseUnwind { unwind: _, .. } => vec!["real".into()],
             InlineAsm { destination: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
                 vec!["return".into(), "unwind".into()]
             }
-            InlineAsm { destination: Some(_), unwind: UnwindAction::Continue, .. } => {
+            InlineAsm { destination: Some(_), unwind: _, .. } => {
                 vec!["return".into()]
             }
             InlineAsm { destination: None, unwind: UnwindAction::Cleanup(_), .. } => {
                 vec!["unwind".into()]
             }
-            InlineAsm { destination: None, unwind: UnwindAction::Continue, .. } => vec![],
+            InlineAsm { destination: None, unwind: _, .. } => vec![],
         }
     }
 }

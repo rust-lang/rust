@@ -753,12 +753,17 @@ pub enum TerminatorKind<'tcx> {
 }
 
 /// Action to be taken when a stack unwind happens.
-#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum UnwindAction {
-    // No action is to be taken. Continue unwinding.
+    /// No action is to be taken. Continue unwinding.
+    ///
+    /// This is similar to `Cleanup(bb)` where `bb` does nothing but `Resume`, but they are not
+    /// equivalent, as presence of `Cleanup(_)` will make a frame non-POF.
     Continue,
-    // Cleanups to be done.
+    /// Triggers undefined behavior if unwind happens.
+    Unreachable,
+    /// Cleanups to be done.
     Cleanup(BasicBlock),
 }
 
