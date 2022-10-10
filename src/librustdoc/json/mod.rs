@@ -101,7 +101,7 @@ impl<'tcx> JsonRenderer<'tcx> {
     }
 
     fn get_trait_items(&mut self) -> Vec<(types::Id, types::Item)> {
-        debug!("Adding foreign trait items");
+        tracing::debug!("Adding foreign trait items");
         Rc::clone(&self.cache)
             .traits
             .iter()
@@ -109,7 +109,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                 // only need to synthesize items for external traits
                 if !id.is_local() {
                     for item in &trait_item.items {
-                        trace!("Adding subitem to {id:?}: {:?}", item.item_id);
+                        tracing::trace!("Adding subitem to {id:?}: {:?}", item.item_id);
                         self.item(item.clone()).unwrap();
                     }
                     let item_id = from_item_id(id.into(), self.tcx);
@@ -161,7 +161,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         cache: Cache,
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
-        debug!("Initializing json renderer");
+        tracing::debug!("Initializing json renderer");
 
         let (krate, imported_items) = import_finder::get_imports(krate);
 
@@ -187,7 +187,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn item(&mut self, item: clean::Item) -> Result<(), Error> {
         let item_type = item.type_();
         let item_name = item.name;
-        trace!("rendering {} {:?}", item_type, item_name);
+        tracing::trace!("rendering {} {:?}", item_type, item_name);
 
         // Flatten items that recursively store other items. We include orphaned items from
         // stripped modules and etc that are otherwise reachable.
@@ -259,7 +259,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             }
         }
 
-        trace!("done rendering {} {:?}", item_type, item_name);
+        tracing::trace!("done rendering {} {:?}", item_type, item_name);
         Ok(())
     }
 
@@ -268,9 +268,9 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     }
 
     fn after_krate(&mut self) -> Result<(), Error> {
-        debug!("Done with crate");
+        tracing::debug!("Done with crate");
 
-        debug!("Adding Primitve impls");
+        tracing::debug!("Adding Primitve impls");
         for primitive in Rc::clone(&self.cache).primitive_locations.values() {
             self.get_impls(*primitive);
         }
@@ -283,7 +283,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let mut index = (*self.index).clone().into_inner();
         index.extend(foreign_trait_items);
 
-        debug!("Constructing Output");
+        tracing::debug!("Constructing Output");
         // This needs to be the default HashMap for compatibility with the public interface for
         // rustdoc-json-types
         #[allow(rustc::default_hash_types)]

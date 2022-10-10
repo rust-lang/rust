@@ -54,7 +54,7 @@ pub(crate) fn try_inline(
     }
     let mut ret = Vec::new();
 
-    debug!("attrs={:?}", attrs);
+    tracing::debug!("attrs={:?}", attrs);
     let attrs_clone = attrs;
 
     let kind = match res {
@@ -493,9 +493,9 @@ pub(crate) fn build_impl(
     }
 
     let (merged_attrs, cfg) = merge_attrs(cx, parent_module, load_attrs(cx, did), attrs);
-    trace!("merged_attrs={:?}", merged_attrs);
+    tracing::trace!("merged_attrs={:?}", merged_attrs);
 
-    trace!(
+    tracing::trace!(
         "build_impl: impl {:?} for {:?}",
         trait_.as_ref().map(|t| t.def_id()),
         for_.def_id(&cx.cache)
@@ -715,7 +715,7 @@ pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
         cx.active_extern_traits.insert(did);
     }
 
-    debug!("record_extern_trait: {:?}", did);
+    tracing::debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);
 
     cx.external_traits.borrow_mut().insert(did, trait_);

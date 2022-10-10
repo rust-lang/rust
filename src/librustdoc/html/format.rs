@@ -592,7 +592,7 @@ fn generate_macro_def_id_path(
     let cstore = CStore::from_tcx(tcx);
     // We need this to prevent a `panic` when this function is used from intra doc links...
     if !cstore.has_crate_data(def_id.krate) {
-        debug!("No data for crate {}", crate_name);
+        tracing::debug!("No data for crate {}", crate_name);
         return Err(HrefError::NotInExternalCache);
     }
     // Check to see if it is a macro 2.0 or built-in macro.
@@ -613,7 +613,7 @@ fn generate_macro_def_id_path(
     if path.len() < 2 {
         // The minimum we can have is the crate name followed by the macro name. If shorter, then
         // it means that `relative` was empty, which is an error.
-        debug!("macro path cannot be empty!");
+        tracing::debug!("macro path cannot be empty!");
         return Err(HrefError::NotInExternalCache);
     }
 
@@ -631,7 +631,7 @@ fn generate_macro_def_id_path(
             format!("{}{}/{}", root_path.unwrap_or(""), crate_name, path.join("/"))
         }
         ExternalLocation::Unknown => {
-            debug!("crate {} not in cache when linkifying macros", crate_name);
+            tracing::debug!("crate {} not in cache when linkifying macros", crate_name);
             return Err(HrefError::NotInExternalCache);
         }
     };
@@ -670,7 +670,7 @@ pub(crate) fn href_with_root_path(
     let (fqp, shortty, mut url_parts) = match cache.paths.get(&did) {
         Some(&(ref fqp, shortty)) => (fqp, shortty, {
             let module_fqp = to_module_fqp(shortty, fqp.as_slice());
-            debug!(?fqp, ?shortty, ?module_fqp);
+            tracing::debug!(?fqp, ?shortty, ?module_fqp);
             href_relative_parts(module_fqp, relative_to).collect()
         }),
         None => {
@@ -706,7 +706,7 @@ pub(crate) fn href_with_root_path(
             url_parts.push_front(root);
         }
     }
-    debug!(?url_parts);
+    tracing::debug!(?url_parts);
     match shortty {
         ItemType::Module => {
             url_parts.push("index.html");
@@ -918,7 +918,7 @@ fn fmt_type<'cx>(
     use_absolute: bool,
     cx: &'cx Context<'_>,
 ) -> fmt::Result {
-    trace!("fmt_type(t = {:?})", t);
+    tracing::trace!("fmt_type(t = {:?})", t);
 
     match *t {
         clean::Generic(name) => write!(f, "{}", name),
@@ -1450,7 +1450,7 @@ impl clean::Visibility {
                     "pub(super) ".into()
                 } else {
                     let path = cx.tcx().def_path(vis_did);
-                    debug!("path={:?}", path);
+                    tracing::debug!("path={:?}", path);
                     // modified from `resolved_path()` to work with `DefPathData`
                     let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
                     let anchor = anchor(vis_did, last_name, cx).to_string();

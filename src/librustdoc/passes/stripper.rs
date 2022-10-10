@@ -37,7 +37,7 @@ impl<'a> DocFolder for Stripper<'a> {
                 // We need to recurse into stripped modules to strip things
                 // like impl methods but when doing so we must not add any
                 // items to the `retained` set.
-                debug!("Stripper: recursing into stripped {:?} {:?}", i.type_(), i.name);
+                tracing::debug!("Stripper: recursing into stripped {:?} {:?}", i.type_(), i.name);
                 let old = mem::replace(&mut self.update_retained, false);
                 let ret = self.fold_item_recur(i);
                 self.update_retained = old;
@@ -66,7 +66,7 @@ impl<'a> DocFolder for Stripper<'a> {
                 if item_id.is_local()
                     && !is_item_reachable(self.is_json_output, self.access_levels, item_id)
                 {
-                    debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
+                    tracing::debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
                     return None;
                 }
             }
@@ -79,7 +79,7 @@ impl<'a> DocFolder for Stripper<'a> {
 
             clean::ModuleItem(..) => {
                 if i.item_id.is_local() && !i.visibility.is_public() {
-                    debug!("Stripper: stripping module {:?}", i.name);
+                    tracing::debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = strip_item(self.fold_item_recur(i));
                     self.update_retained = old;
@@ -181,13 +181,13 @@ impl<'a> DocFolder for ImplStripper<'a> {
             if let Some(did) = imp.for_.def_id(self.cache) {
                 if did.is_local() && !imp.for_.is_assoc_ty() && !self.retained.contains(&did.into())
                 {
-                    debug!("ImplStripper: impl item for stripped type; removing");
+                    tracing::debug!("ImplStripper: impl item for stripped type; removing");
                     return None;
                 }
             }
             if let Some(did) = imp.trait_.as_ref().map(|t| t.def_id()) {
                 if did.is_local() && !self.retained.contains(&did.into()) {
-                    debug!("ImplStripper: impl item for stripped trait; removing");
+                    tracing::debug!("ImplStripper: impl item for stripped trait; removing");
                     return None;
                 }
             }
@@ -195,7 +195,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
                 for typaram in generics {
                     if let Some(did) = typaram.def_id(self.cache) {
                         if did.is_local() && !self.retained.contains(&did.into()) {
-                            debug!(
+                            tracing::debug!(
                                 "ImplStripper: stripped item in trait's generics; removing impl"
                             );
                             return None;

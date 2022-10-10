@@ -475,7 +475,7 @@ impl Item {
         cx: &mut DocContext<'_>,
         cfg: Option<Arc<Cfg>>,
     ) -> Item {
-        trace!("name={:?}, def_id={:?} cfg={:?}", name, def_id, cfg);
+        tracing::trace!("name={:?}, def_id={:?} cfg={:?}", name, def_id, cfg);
 
         // Primitives and Keywords are written in the source code as private modules.
         // The modules need to be private so that nobody actually uses them, but the
@@ -504,9 +504,9 @@ impl Item {
             .map_or(&[][..], |v| v.as_slice())
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: did, ref fragment }| {
-                debug!(?did);
+                tracing::debug!(?did);
                 if let Ok((mut href, ..)) = href(*did, cx) {
-                    debug!(?href);
+                    tracing::debug!(?href);
                     if let Some(ref fragment) = *fragment {
                         fragment.render(&mut href, cx.tcx())
                     }
@@ -1197,7 +1197,7 @@ impl Attributes {
         let mut other_attrs = ast::AttrVec::new();
         for (attr, parent_module) in attrs {
             if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
-                trace!("got doc_str={doc_str:?}");
+                tracing::trace!("got doc_str={doc_str:?}");
                 let doc = beautify_doc_string(doc_str, comment_kind);
                 let kind = if attr.is_doc_comment() {
                     DocFragmentKind::SugaredDoc
@@ -1929,7 +1929,7 @@ impl PrimitiveType {
             for &crate_num in tcx.crates(()) {
                 let e = ExternalCrate { crate_num };
                 let crate_name = e.name(tcx);
-                debug!(?crate_num, ?crate_name);
+                tracing::debug!(?crate_num, ?crate_name);
                 for &(def_id, prim) in &e.primitives(tcx) {
                     // HACK: try to link to std instead where possible
                     if crate_name == sym::core && primitive_locations.contains_key(&prim) {

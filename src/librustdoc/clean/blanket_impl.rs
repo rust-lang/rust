@@ -17,7 +17,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
         let param_env = cx.tcx.param_env(item_def_id);
         let ty = cx.tcx.bound_type_of(item_def_id);
 
-        trace!("get_blanket_impls({:?})", ty);
+        tracing::trace!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
         for trait_def_id in cx.tcx.all_traits() {
             if !cx.cache.access_levels.is_public(trait_def_id)
@@ -28,7 +28,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
             // NOTE: doesn't use `for_each_relevant_impl` to avoid looking at anything besides blanket impls
             let trait_impls = cx.tcx.trait_impls_of(trait_def_id);
             'blanket_impls: for &impl_def_id in trait_impls.blanket_impls() {
-                trace!(
+                tracing::trace!(
                     "get_blanket_impls: Considering impl for trait '{:?}' {:?}",
                     trait_def_id,
                     impl_def_id
@@ -74,7 +74,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .to_predicate(infcx.tcx),
                     ));
                 for predicate in predicates {
-                    debug!("testing predicate {:?}", predicate);
+                    tracing::debug!("testing predicate {:?}", predicate);
                     let obligation = traits::Obligation::new(
                         traits::ObligationCause::dummy(),
                         param_env,

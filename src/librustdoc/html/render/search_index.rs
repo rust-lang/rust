@@ -347,7 +347,7 @@ fn get_index_type_id(clean_type: &clean::Type) -> Option<RenderTypeId> {
 ///
 /// Important note: It goes through generics recursively. So if you have
 /// `T: Option<Result<(), ()>>`, it'll go into `Option` and then into `Result`.
-#[instrument(level = "trace", skip(tcx, res, cache))]
+#[tracing::instrument(level = "trace", skip(tcx, res, cache))]
 fn add_generics_and_bounds_as_types<'tcx, 'a>(
     self_: Option<&'a Type>,
     generics: &Generics,

@@ -80,7 +80,7 @@ pub(crate) fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             let (clean::StrippedItem(box clean::ModuleItem(module)) | clean::ModuleItem(module)) = *item.kind
             else { unreachable!() };
             for it in module.items {
-                debug!("Adding {:?} to worklist", it.name);
+                tracing::debug!("Adding {:?} to worklist", it.name);
                 work.push((cx.make_child_renderer(), it));
             }
 

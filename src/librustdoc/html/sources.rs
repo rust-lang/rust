@@ -19,7 +19,7 @@ use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 
 pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
-    info!("emitting source files");
+    tracing::info!("emitting source files");
 
     let dst = cx.dst.join("src").join(krate.name(cx.tcx()).as_str());
     cx.shared.ensure_dir(&dst)?;

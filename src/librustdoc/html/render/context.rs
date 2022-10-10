@@ -742,7 +742,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         self.dst.push(&*item_name.as_str());
         self.current.push(item_name);
 
-        info!("Recursing into {}", self.dst.display());
+        tracing::info!("Recursing into {}", self.dst.display());
 
         let buf = self.render_item(item, true);
         // buf will be empty if the module is stripped and there is no redirect for it
@@ -765,7 +765,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     }
 
     fn mod_item_out(&mut self) -> Result<(), Error> {
-        info!("Recursed; leaving {}", self.dst.display());
+        tracing::info!("Recursed; leaving {}", self.dst.display());
 
         // Go back to where we were at
         self.dst.pop();

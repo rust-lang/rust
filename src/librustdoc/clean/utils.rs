@@ -201,7 +201,7 @@ pub(crate) fn build_deref_target_impls(
 
 pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     use rustc_hir::*;
-    debug!("trying to get a name from pattern: {:?}", p);
+    tracing::debug!("trying to get a name from pattern: {:?}", p);
 
     Symbol::intern(&match p.kind {
         PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
@@ -217,7 +217,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         PatKind::Box(p) => return name_from_pat(&*p),
         PatKind::Ref(p, _) => return name_from_pat(&*p),
         PatKind::Lit(..) => {
-            warn!(
+            tracing::warn!(
                 "tried to get argument name from PatKind::Lit, which is silly in function arguments"
             );
             return Symbol::intern("()");
@@ -450,7 +450,7 @@ pub(crate) fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
 pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
-    debug!("resolve_type({:?})", path);
+    tracing::debug!("resolve_type({:?})", path);
 
     match path.res {
         Res::PrimTy(p) => Primitive(PrimitiveType::from(p)),
@@ -489,7 +489,7 @@ pub(crate) fn get_auto_trait_and_blanket_impls(
 /// [`href()`]: crate::html::format::href
 pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     use DefKind::*;
-    debug!("register_res({:?})", res);
+    tracing::debug!("register_res({:?})", res);
 
     let (kind, did) = match res {
         Res::Def(

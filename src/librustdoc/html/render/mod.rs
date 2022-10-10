@@ -418,7 +418,7 @@ fn document(
     heading_offset: HeadingOffset,
 ) {
     if let Some(ref name) = item.name {
-        info!("Documenting {}", name);
+        tracing::info!("Documenting {}", name);
     }
     document_item_info(w, cx, item, parent);
     if parent.is_none() {
@@ -509,7 +509,7 @@ fn document_full_inner(
     heading_offset: HeadingOffset,
 ) {
     if let Some(s) = item.collapsed_doc_value() {
-        debug!("Doc block: =====\n{}\n=====", s);
+        tracing::debug!("Doc block: =====\n{}\n=====", s);
         if is_collapsible {
             w.write_str(
                 "<details class=\"rustdoc-toggle top-doc\" open>\
@@ -560,7 +560,7 @@ fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<Strin
         (cfg, _) => cfg.as_deref().cloned(),
     };
 
-    debug!(
+    tracing::debug!(
         "Portability {:?} {:?} (parent: {:?}) - {:?} = {:?}",
         item.name,
         item.cfg,
@@ -1123,7 +1123,7 @@ fn render_assoc_items_inner(
     what: AssocItemRender<'_>,
     derefs: &mut FxHashSet<DefId>,
 ) {
-    info!("Documenting associated items of {:?}", containing_item.name);
+    tracing::info!("Documenting associated items of {:?}", containing_item.name);
     let shared = Rc::clone(&cx.shared);
     let cache = &shared.cache;
     let Some(v) = cache.impls.get(&it) else { return };
@@ -1226,7 +1226,11 @@ fn render_deref_methods(
             _ => None,
         })
         .expect("Expected associated type binding");
-    debug!("Render deref methods for {:#?}, target {:#?}", impl_.inner_impl().for_, target);
+    tracing::debug!(
+        "Render deref methods for {:#?}, target {:#?}",
+        impl_.inner_impl().for_,
+        target
+    );
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
     if let Some(did) = target.def_id(cache) {
@@ -2142,7 +2146,7 @@ fn sidebar_deref_methods(
 ) {
     let c = cx.cache();
 
-    debug!("found Deref: {:?}", impl_);
+    tracing::debug!("found Deref: {:?}", impl_);
     if let Some((target, real_target)) =
         impl_.inner_impl().items.iter().find_map(|item| match *item.kind {
             clean::AssocTypeItem(box ref t, _) => Some(match *t {
@@ -2152,7 +2156,7 @@ fn sidebar_deref_methods(
             _ => None,
         })
     {
-        debug!("found target, real_target: {:?} {:?}", target, real_target);
+        tracing::debug!("found target, real_target: {:?} {:?}", target, real_target);
         if let Some(did) = target.def_id(c) {
             if let Some(type_did) = impl_.inner_impl().for_.def_id(c) {
                 // `impl Deref<Target = S> for S`
@@ -2170,7 +2174,7 @@ fn sidebar_deref_methods(
             })
             .and_then(|did| c.impls.get(&did));
         if let Some(impls) = inner_impl {
-            debug!("found inner_impl: {:?}", impls);
+            tracing::debug!("found inner_impl: {:?}", impls);
             let mut ret = impls
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())

@@ -155,14 +155,14 @@ where
                 if let Some(ty) = types.node_type_opt(f.hir_id) {
                     (ty, ex.span, f.span)
                 } else {
-                    trace!("node_type_opt({}) = None", f.hir_id);
+                    tracing::trace!("node_type_opt({}) = None", f.hir_id);
                     return;
                 }
             }
             hir::ExprKind::MethodCall(path, _, _, call_span) => {
                 let types = tcx.typeck(ex.hir_id.owner.def_id);
                 let Some(def_id) = types.type_dependent_def_id(ex.hir_id) else {
-                    trace!("type_dependent_def_id({}) = None", ex.hir_id);
+                    tracing::trace!("type_dependent_def_id({}) = None", ex.hir_id);
                     return;
                 };
 
@@ -177,7 +177,7 @@ where
         // If this span comes from a macro expansion, then the source code may not actually show
         // a use of the given item, so it would be a poor example. Hence, we skip all uses in macros.
         if call_span.from_expansion() {
-            trace!("Rejecting expr from macro: {call_span:?}");
+            tracing::trace!("Rejecting expr from macro: {call_span:?}");
             return;
         }
 
@@ -186,14 +186,16 @@ where
         let enclosing_item_span =
             tcx.hir().span_with_body(tcx.hir().get_parent_item(ex.hir_id).into());
         if enclosing_item_span.from_expansion() {
-            trace!("Rejecting expr ({call_span:?}) from macro item: {enclosing_item_span:?}");
+            tracing::trace!(
+                "Rejecting expr ({call_span:?}) from macro item: {enclosing_item_span:?}"
+            );
             return;
         }
 
         // If the enclosing item doesn't actually enclose the call, this means we probably have a weird
         // macro issue even though the spans aren't tagged as being from an expansion.
         if !enclosing_item_span.contains(call_span) {
-            warn!(
+            tracing::warn!(
                 "Attempted to scrape call at [{call_span:?}] whose enclosing item [{enclosing_item_span:?}] doesn't contain the span of the call."
             );
             return;
@@ -201,7 +203,7 @@ where
 
         // Similarly for the call w/ the function ident.
         if !call_span.contains(ident_span) {
-            warn!(
+            tracing::warn!(
                 "Attempted to scrape call at [{call_span:?}] whose identifier [{ident_span:?}] was not contained in the span of the call."
             );
             return;
@@ -210,7 +212,7 @@ where
         // Save call site if the function resolves to a concrete definition
         if let ty::FnDef(def_id, _) = ty.kind() {
             if self.target_crates.iter().all(|krate| *krate != def_id.krate) {
-                trace!("Rejecting expr from crate not being documented: {call_span:?}");
+                tracing::trace!("Rejecting expr from crate not being documented: {call_span:?}");
                 return;
             }
 
@@ -225,7 +227,10 @@ where
                 let abs_path = match fs::canonicalize(file_path.clone()) {
                     Ok(abs_path) => abs_path,
                     Err(_) => {
-                        trace!("Could not canonicalize file path: {}", file_path.display());
+                        tracing::trace!(
+                            "Could not canonicalize file path: {}",
+                            file_path.display()
+                        );
                         return;
                     }
                 };
@@ -235,7 +240,7 @@ where
                 let url = match cx.href_from_span(clean_span, false) {
                     Some(url) => url,
                     None => {
-                        trace!(
+                        tracing::trace!(
                             "Rejecting expr ({call_span:?}) whose clean span ({clean_span:?}) cannot be turned into a link"
                         );
                         return;
@@ -251,14 +256,16 @@ where
                 let fn_key = tcx.def_path_hash(*def_id);
                 let fn_entries = self.calls.entry(fn_key).or_default();
 
-                trace!("Including expr: {:?}", call_span);
+                tracing::trace!("Including expr: {:?}", call_span);
                 let enclosing_item_span =
                     source_map.span_extend_to_prev_char(enclosing_item_span, '\n', false);
                 let location =
                     match CallLocation::new(call_span, ident_span, enclosing_item_span, &file) {
                         Some(location) => location,
                         None => {
-                            trace!("Could not get serializable call location for {call_span:?}");
+                            tracing::trace!(
+                                "Could not get serializable call location for {call_span:?}"
+                            );
                             return;
                         }
                     };
@@ -295,8 +302,8 @@ pub(crate) fn run(
             .map(|(crate_num, _)| **crate_num)
             .collect::<Vec<_>>();
 
-        debug!("All crates in TyCtxt: {all_crates:?}");
-        debug!("Scrape examples target_crates: {target_crates:?}");
+        tracing::debug!("All crates in TyCtxt: {all_crates:?}");
+        tracing::debug!("Scrape examples target_crates: {target_crates:?}");
 
         // Run call-finder on all items
         let mut calls = FxHashMap::default();

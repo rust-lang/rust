@@ -316,7 +316,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             unresolved: path_str.into(),
         };
 
-        debug!("looking for enum variant {}", path_str);
+        tracing::debug!("looking for enum variant {}", path_str);
         let mut split = path_str.rsplitn(3, "::");
         let variant_field_name = split
             .next()
@@ -438,7 +438,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })
             .and_then(|res| res.try_into().ok())
             .or_else(|| resolve_primitive(path_str, ns));
-        debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
+        tracing::debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
         result
     }
 
@@ -480,7 +480,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             // If there's no `::`, it's not an associated item.
             // So we can be sure that `rustc_resolve` was accurate when it said it wasn't resolved.
             .ok_or_else(|| {
-                debug!("found no `::`, assuming {} was correctly not in scope", item_name);
+                tracing::debug!("found no `::`, assuming {} was correctly not in scope", item_name);
                 UnresolvedPath {
                     item_id,
                     module_id,
@@ -616,7 +616,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 def_kind @ (DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::ForeignTy),
                 did,
             ) => {
-                debug!("looking for associated item named {} for item {:?}", item_name, did);
+                tracing::debug!(
+                    "looking for associated item named {} for item {:?}",
+                    item_name,
+                    did
+                );
                 // Checks if item_name is a variant of the `SomeItem` enum
                 if ns == TypeNS && def_kind == DefKind::Enum {
                     match tcx.type_of(did).kind() {
@@ -661,7 +665,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         )
                     });
 
-                debug!("got associated item {:?}", assoc_item);
+                tracing::debug!("got associated item {:?}", assoc_item);
 
                 if let Some(item) = assoc_item {
                     return Some((root_res, item.def_id));
@@ -670,7 +674,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 if ns != Namespace::ValueNS {
                     return None;
                 }
-                debug!("looking for fields named {} for {:?}", item_name, did);
+                tracing::debug!("looking for fields named {} for {:?}", item_name, did);
                 // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
                 // NOTE: it's different from variant_field because it only resolves struct fields,
                 // not variant fields (2 path segments, not 3).
@@ -729,7 +733,7 @@ fn resolve_associated_trait_item<'a>(
     // Next consider explicit impls: `impl MyTrait for MyType`
     // Give precedence to inherent impls.
     let traits = trait_impls_for(cx, ty, module);
-    debug!("considering traits {:?}", traits);
+    tracing::debug!("considering traits {:?}", traits);
     let mut candidates = traits.iter().filter_map(|&(impl_, trait_)| {
         cx.tcx
             .associated_items(trait_)
@@ -740,7 +744,7 @@ fn resolve_associated_trait_item<'a>(
             })
     });
     // FIXME(#74563): warn about ambiguity
-    debug!("the candidates were {:?}", candidates.clone().collect::<Vec<_>>());
+    tracing::debug!("the candidates were {:?}", candidates.clone().collect::<Vec<_>>());
     candidates.next().copied()
 }
 
@@ -753,16 +757,16 @@ fn resolve_associated_trait_item<'a>(
 ///
 /// This is just a wrapper around [`TyCtxt::impl_item_implementor_ids()`] and
 /// [`TyCtxt::associated_item()`] (with some helpful logging added).
-#[instrument(level = "debug", skip(tcx), ret)]
+#[tracing::instrument(level = "debug", skip(tcx), ret)]
 fn trait_assoc_to_impl_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_id: DefId,
     trait_assoc_id: DefId,
 ) -> Option<&'tcx ty::AssocItem> {
     let trait_to_impl_assoc_map = tcx.impl_item_implementor_ids(impl_id);
-    debug!(?trait_to_impl_assoc_map);
+    tracing::debug!(?trait_to_impl_assoc_map);
     let impl_assoc_id = *trait_to_impl_assoc_map.get(&trait_assoc_id)?;
-    debug!(?impl_assoc_id);
+    tracing::debug!(?impl_assoc_id);
     Some(tcx.associated_item(impl_assoc_id))
 }
 
@@ -771,7 +775,7 @@ fn trait_assoc_to_impl_assoc_item<'tcx>(
 ///
 /// NOTE: this cannot be a query because more traits could be available when more crates are compiled!
 /// So it is not stable to serialize cross-crate.
-#[instrument(level = "debug", skip(cx))]
+#[tracing::instrument(level = "debug", skip(cx))]
 fn trait_impls_for<'a>(
     cx: &mut DocContext<'a>,
     ty: Ty<'a>,
@@ -780,14 +784,14 @@ fn trait_impls_for<'a>(
     let tcx = cx.tcx;
     let iter = cx.resolver_caches.traits_in_scope[&module].iter().flat_map(|trait_candidate| {
         let trait_ = trait_candidate.def_id;
-        trace!("considering explicit impl for trait {:?}", trait_);
+        tracing::trace!("considering explicit impl for trait {:?}", trait_);
 
         // Look at each trait implementation to see if it's an impl for `did`
         tcx.find_map_relevant_impl(trait_, ty, |impl_| {
             let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
             // Check if these are the same type.
             let impl_type = trait_ref.self_ty();
-            trace!(
+            tracing::trace!(
                 "comparing type {} with kind {:?} against type {:?}",
                 impl_type,
                 impl_type.kind(),
@@ -801,7 +805,11 @@ fn trait_impls_for<'a>(
             let saw_impl = impl_type == ty
                 || match (impl_type.kind(), ty.kind()) {
                     (ty::Adt(impl_def, _), ty::Adt(ty_def, _)) => {
-                        debug!("impl def_id: {:?}, ty def_id: {:?}", impl_def.did(), ty_def.did());
+                        tracing::debug!(
+                            "impl def_id: {:?}, ty def_id: {:?}",
+                            impl_def.did(),
+                            ty_def.did()
+                        );
                         impl_def.did() == ty_def.did()
                     }
                     _ => false,
@@ -832,7 +840,12 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
         let parent_node =
             item.item_id.as_def_id().and_then(|did| find_nearest_parent_module(self.cx.tcx, did));
         if parent_node.is_some() {
-            trace!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.item_id);
+            tracing::trace!(
+                "got parent node for {:?} {:?}, id {:?}",
+                item.type_(),
+                item.name,
+                item.item_id
+            );
         }
 
         let inner_docs = item.inner_docs(self.cx.tcx);
@@ -849,7 +862,7 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
             if !may_have_doc_links(&doc) {
                 continue;
             }
-            debug!("combined_docs={}", doc);
+            tracing::debug!("combined_docs={}", doc);
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let parent_node = parent_module.or(parent_node);
@@ -978,7 +991,7 @@ fn preprocess_link(
         match strip_generics_from_path(path_str) {
             Ok(path) => path,
             Err(err) => {
-                debug!("link has malformed generics: {}", path_str);
+                tracing::debug!("link has malformed generics: {}", path_str);
                 return Some(Err(PreprocessingError::MalformedGenerics(err, path_str.to_owned())));
             }
         }
@@ -1020,7 +1033,7 @@ impl LinkCollector<'_, '_> {
         link: &PreprocessedMarkdownLink,
     ) -> Option<ItemLink> {
         let PreprocessedMarkdownLink(pp_link, ori_link) = link;
-        trace!("considering link '{}'", ori_link.link);
+        tracing::trace!("considering link '{}'", ori_link.link);
 
         let diag_info = DiagnosticInfo {
             item,
@@ -1171,10 +1184,10 @@ impl LinkCollector<'_, '_> {
         item: &Item,
         diag_info: &DiagnosticInfo<'_>,
     ) -> Option<()> {
-        debug!("intra-doc link to {} resolved to {:?}", path_str, (kind, id));
+        tracing::debug!("intra-doc link to {} resolved to {:?}", path_str, (kind, id));
 
         // Disallow e.g. linking to enums with `struct@`
-        debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
+        tracing::debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
         match (kind, disambiguator) {
                 | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
                 // NOTE: this allows 'method' to mean both normal functions and associated functions
@@ -1603,7 +1616,7 @@ fn report_diagnostic(
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id)
     else {
         // If non-local, no need to check anything.
-        info!("ignoring warning from parent crate: {}", msg);
+        tracing::info!("ignoring warning from parent crate: {}", msg);
         return;
     };
 
@@ -1719,7 +1732,7 @@ fn resolution_failure(
                         name = start;
                         for ns in [TypeNS, ValueNS, MacroNS] {
                             if let Ok(res) = collector.resolve(start, ns, item_id, module_id) {
-                                debug!("found partial_res={:?}", res);
+                                tracing::debug!("found partial_res={:?}", res);
                                 *partial_res = Some(full_res(collector.cx.tcx, res));
                                 *unresolved = end.into();
                                 break 'outer;
@@ -2065,7 +2078,7 @@ fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
         "never" | "!" => Never,
         _ => return None,
     };
-    debug!("resolved primitives {:?}", prim);
+    tracing::debug!("resolved primitives {:?}", prim);
     Some(Res::Primitive(prim))
 }
 
@@ -2109,7 +2122,7 @@ fn strip_generics_from_path(path_str: &str) -> Result<String, MalformedGenerics>
             }
             _ => segment.push(chr),
         }
-        trace!("raw segment: {:?}", segment);
+        tracing::trace!("raw segment: {:?}", segment);
     }
 
     if !segment.is_empty() {
@@ -2119,7 +2132,7 @@ fn strip_generics_from_path(path_str: &str) -> Result<String, MalformedGenerics>
         }
     }
 
-    debug!("path_str: {:?}\nstripped segments: {:?}", path_str, &stripped_segments);
+    tracing::debug!("path_str: {:?}\nstripped segments: {:?}", path_str, &stripped_segments);
 
     let stripped_path = stripped_segments.join("::");
 

@@ -142,7 +142,7 @@ impl Cache {
         let tcx = cx.tcx;
 
         // Crawl the crate to build various caches used for the output
-        debug!(?cx.cache.crate_version);
+        tracing::debug!(?cx.cache.crate_version);
         cx.cache.traits = krate.external_traits.take();
 
         // Cache where all our extern crates are located
@@ -195,7 +195,7 @@ impl Cache {
 impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if item.item_id.is_local() {
-            debug!("folding {} \"{:?}\", id {:?}", item.type_(), item.name, item.item_id);
+            tracing::debug!("folding {} \"{:?}\", id {:?}", item.type_(), item.name, item.item_id);
         }
 
         // If this is a stripped module,

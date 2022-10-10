@@ -200,7 +200,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om: &mut Module<'tcx>,
         please_inline: bool,
     ) -> bool {
-        debug!("maybe_inline_local res: {:?}", res);
+        tracing::debug!("maybe_inline_local res: {:?}", res);
 
         if self.cx.output_format.is_json() {
             return false;
@@ -292,7 +292,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         renamed: Option<Symbol>,
         om: &mut Module<'tcx>,
     ) {
-        debug!("visiting item {:?}", item);
+        tracing::debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
 
         let def_id = item.def_id.to_def_id();

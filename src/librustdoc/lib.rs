@@ -20,8 +20,8 @@
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
 #![allow(rustc::potential_query_instability)]
 
-#[macro_use]
-extern crate tracing;
+// #[macro_use]
+// extern crate tracing;
 
 // N.B. these need `extern crate` even in 2018 edition
 // because they're loaded implicitly from the sysroot.
@@ -764,7 +764,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     let run_check = options.run_check;
 
     // First, parse the crate and extract all relevant information.
-    info!("starting to run rustc");
+    tracing::info!("starting to run rustc");
 
     // Interpret the input file as a rust source file, passing it through the
     // compiler all the way through the analysis passes. The rustdoc output is
@@ -833,7 +833,7 @@ fn main_args(at_args: &[String]) -> MainResult {
                         output_format,
                     )
                 });
-                info!("finished with rustc");
+                tracing::info!("finished with rustc");
 
                 if let Some(options) = scrape_examples_options {
                     return scrape_examples::run(krate, render_opts, cache, tcx, options);
@@ -850,7 +850,7 @@ fn main_args(at_args: &[String]) -> MainResult {
                     return Ok(());
                 }
 
-                info!("going to format");
+                tracing::info!("going to format");
                 match output_format {
                     config::OutputFormat::Html => sess.time("render_html", || {
                         run_renderer::<html::render::Context<'_>>(krate, render_opts, cache, tcx)

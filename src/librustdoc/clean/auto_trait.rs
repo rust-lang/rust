@@ -45,7 +45,10 @@ where
         let tcx = self.cx.tcx;
         let trait_ref = ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, &[]) };
         if !self.cx.generated_synthetics.insert((ty, trait_def_id)) {
-            debug!("get_auto_trait_impl_for({:?}): already generated, aborting", trait_ref);
+            tracing::debug!(
+                "get_auto_trait_impl_for({:?}): already generated, aborting",
+                trait_ref
+            );
             return None;
         }
 
@@ -70,10 +73,12 @@ where
                 info.vid_to_region,
             );
 
-            debug!(
+            tracing::debug!(
                 "find_auto_trait_generics(item_def_id={:?}, trait_def_id={:?}): \
                     finished with {:?}",
-                item_def_id, trait_def_id, new_generics
+                item_def_id,
+                trait_def_id,
+                new_generics
             );
 
             new_generics
@@ -139,7 +144,7 @@ where
         let ty = tcx.type_of(item_def_id);
         let f = auto_trait::AutoTraitFinder::new(tcx);
 
-        debug!("get_auto_trait_impls({:?})", ty);
+        tracing::debug!("get_auto_trait_impls({:?})", ty);
         let auto_traits: Vec<_> = self.cx.auto_traits.iter().copied().collect();
         let mut auto_traits: Vec<Item> = auto_traits
             .into_iter()
@@ -432,10 +437,12 @@ where
         mut existing_predicates: Vec<WherePredicate>,
         vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
     ) -> Generics {
-        debug!(
+        tracing::debug!(
             "param_env_to_generics(item_def_id={:?}, param_env={:?}, \
              existing_predicates={:?})",
-            item_def_id, param_env, existing_predicates
+            item_def_id,
+            param_env,
+            existing_predicates
         );
 
         let tcx = self.cx.tcx;
@@ -466,7 +473,11 @@ where
         );
         let mut generic_params = raw_generics.params;
 
-        debug!("param_env_to_generics({:?}): generic_params={:?}", item_def_id, generic_params);
+        tracing::debug!(
+            "param_env_to_generics({:?}): generic_params={:?}",
+            item_def_id,
+            generic_params
+        );
 
         let mut has_sized = FxHashSet::default();
         let mut ty_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();

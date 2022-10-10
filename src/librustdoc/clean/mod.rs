@@ -166,7 +166,7 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
     inline::record_extern_fqn(cx, trait_ref.def_id, kind);
     let path = external_path(cx, trait_ref.def_id, true, bindings, trait_ref.substs);
 
-    debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
+    tracing::debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
     path
 }
@@ -249,7 +249,7 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
         | ty::ReVar(..)
         | ty::RePlaceholder(..)
         | ty::ReErased => {
-            debug!("cannot clean region {:?}", region);
+            tracing::debug!("cannot clean region {:?}", region);
             None
         }
     }
@@ -1587,11 +1587,11 @@ fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> 
         .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
     match normalized {
         Ok(normalized_value) => {
-            debug!("normalized {:?} to {:?}", ty, normalized_value);
+            tracing::debug!("normalized {:?} to {:?}", ty, normalized_value);
             Some(normalized_value)
         }
         Err(err) => {
-            debug!("failed to normalize {:?}: {:?}", ty, err);
+            tracing::debug!("failed to normalize {:?}: {:?}", ty, err);
             None
         }
     }
@@ -1602,7 +1602,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
     cx: &mut DocContext<'tcx>,
     def_id: Option<DefId>,
 ) -> Type {
-    trace!("cleaning type: {:?}", ty);
+    tracing::trace!("cleaning type: {:?}", ty);
     let ty = normalize(cx, ty).unwrap_or(ty);
     match *ty.kind() {
         ty::Never => Primitive(PrimitiveType::Never),

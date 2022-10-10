@@ -43,7 +43,7 @@ struct Stripper<'a> {
 impl<'a> DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if i.attrs.lists(sym::doc).has_word(sym::hidden) {
-            debug!("strip_hidden: stripping {:?} {:?}", i.type_(), i.name);
+            tracing::debug!("strip_hidden: stripping {:?} {:?}", i.type_(), i.name);
             // Use a dedicated hidden item for fields, variants, and modules.
             // We need to keep private fields and variants, so that the docs
             // can show a placeholder "// some variants omitted". We need to keep

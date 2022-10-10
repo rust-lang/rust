@@ -129,7 +129,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         type_did: DefId,
     ) {
         if let Some(target) = map.get(&type_did) {
-            debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
+            tracing::debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
             if let Some(target_prim) = target.primitive_type() {
                 cleaner.prims.insert(target_prim);
             } else if let Some(target_did) = target.def_id(&cx.cache) {

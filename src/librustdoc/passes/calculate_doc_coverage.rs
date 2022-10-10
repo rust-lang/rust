@@ -262,7 +262,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
 
                 if let Some(span) = i.span(self.ctx.tcx) {
                     let filename = span.filename(self.ctx.sess());
-                    debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
+                    tracing::debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
                     self.items.entry(filename).or_default().count_item(
                         has_docs,
                         has_doc_example,

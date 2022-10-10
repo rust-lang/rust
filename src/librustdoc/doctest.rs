@@ -66,7 +66,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         }
     });
 
-    debug!(?lint_opts);
+    tracing::debug!(?lint_opts);
 
     let crate_types =
         if options.proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
@@ -715,7 +715,7 @@ pub(crate) fn make_test(
         prog.extend([&main_pre, everything_else, &main_post].iter().cloned());
     }
 
-    debug!("final doctest:\n{prog}");
+    tracing::debug!("final doctest:\n{prog}");
 
     (prog, line_offset, supports_color)
 }
@@ -756,7 +756,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {
                     Ok(p) => p,
                     Err(_) => {
-                        debug!("Cannot build a parser to check mod attr so skipping...");
+                        tracing::debug!("Cannot build a parser to check mod attr so skipping...");
                         return true;
                     }
                 };
@@ -865,9 +865,9 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
         }
     }
 
-    debug!("before:\n{before}");
-    debug!("crates:\n{crates}");
-    debug!("after:\n{after}");
+    tracing::debug!("before:\n{before}");
+    tracing::debug!("crates:\n{crates}");
+    tracing::debug!("after:\n{after}");
 
     (before, after, crates)
 }
@@ -1044,7 +1044,7 @@ impl Tester for Collector {
             )
         };
 
-        debug!("creating test {name}: {test}");
+        tracing::debug!("creating test {name}: {test}");
         self.tests.push(test::TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(name),

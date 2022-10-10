@@ -380,14 +380,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                 dest,
                 title,
             ))) => {
-                debug!("saw start of shortcut link to {} with title {}", dest, title);
+                tracing::debug!("saw start of shortcut link to {} with title {}", dest, title);
                 // If this is a shortcut link, it was resolved by the broken_link_callback.
                 // So the URL will already be updated properly.
                 let link = self.links.iter().find(|&link| *link.href == **dest);
                 // Since this is an external iterator, we can't replace the inner text just yet.
                 // Store that we saw a link so we know to replace it later.
                 if let Some(link) = link {
-                    trace!("it matched");
+                    tracing::trace!("it matched");
                     assert!(self.shortcut_link.is_none(), "shortcut links cannot be nested");
                     self.shortcut_link = Some(link);
                 }
@@ -398,7 +398,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                 dest,
                 _,
             ))) => {
-                debug!("saw end of shortcut link to {}", dest);
+                tracing::debug!("saw end of shortcut link to {}", dest);
                 if self.links.iter().any(|link| *link.href == **dest) {
                     assert!(self.shortcut_link.is_some(), "saw closing link without opening tag");
                     self.shortcut_link = None;
@@ -407,9 +407,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             // Handle backticks in inline code blocks, but only if we're in the middle of a shortcut link.
             // [`fn@f`]
             Some(Event::Code(text)) => {
-                trace!("saw code {}", text);
+                tracing::trace!("saw code {}", text);
                 if let Some(link) = self.shortcut_link {
-                    trace!("original text was {}", link.original_text);
+                    tracing::trace!("original text was {}", link.original_text);
                     // NOTE: this only replaces if the code block is the *entire* text.
                     // If only part of the link has code highlighting, the disambiguator will not be removed.
                     // e.g. [fn@`f`]
@@ -420,7 +420,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                     //
                     // NOTE: &[1..len() - 1] is to strip the backticks
                     if **text == link.original_text[1..link.original_text.len() - 1] {
-                        debug!("replacing {} with {}", text, link.new_text);
+                        tracing::debug!("replacing {} with {}", text, link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
                 }
@@ -428,12 +428,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             // Replace plain text in links, but only in the middle of a shortcut link.
             // [fn@f]
             Some(Event::Text(text)) => {
-                trace!("saw text {}", text);
+                tracing::trace!("saw text {}", text);
                 if let Some(link) = self.shortcut_link {
-                    trace!("original text was {}", link.original_text);
+                    tracing::trace!("original text was {}", link.original_text);
                     // NOTE: same limitations as `Event::Code`
                     if **text == *link.original_text {
-                        debug!("replacing {} with {}", text, link.new_text);
+                        tracing::debug!("replacing {} with {}", text, link.new_text);
                         *text = CowStr::Borrowed(&link.new_text);
                     }
                 }
@@ -1320,7 +1320,7 @@ pub(crate) fn markdown_links<R>(
             _,
         )) = ev.0
         {
-            debug!("found link: {dest}");
+            tracing::debug!("found link: {dest}");
             let span = span_for_link(&dest, ev.1);
             filter_map(MarkdownLink { kind, link: dest.into_string(), range: span })
                 .map(|link| links.borrow_mut().push(link));

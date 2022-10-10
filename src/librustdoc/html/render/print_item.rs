@@ -292,7 +292,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
         )
     });
 
-    debug!("{:?}", indices);
+    tracing::debug!("{:?}", indices);
     let mut last_section = None;
 
     for &idx in &indices {
@@ -487,7 +487,13 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
         (cfg, _) => cfg.as_deref().cloned(),
     };
 
-    debug!("Portability name={:?} {:?} - {:?} = {:?}", item.name, item.cfg, parent.cfg, cfg);
+    tracing::debug!(
+        "Portability name={:?} {:?} - {:?} = {:?}",
+        item.name,
+        item.cfg,
+        parent.cfg,
+        cfg
+    );
     if let Some(ref cfg) = cfg {
         tags += &tag_html("portability", &cfg.render_long_plain(), &cfg.render_short_html());
     }
@@ -709,7 +715,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
     fn trait_item(w: &mut Buffer, cx: &mut Context<'_>, m: &clean::Item, t: &clean::Item) {
         let name = m.name.unwrap();
-        info!("Documenting {} on {:?}", name, t.name);
+        tracing::info!("Documenting {} on {:?}", name, t.name);
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         let mut content = Buffer::empty_from(w);

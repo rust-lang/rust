@@ -304,7 +304,7 @@ pub(crate) fn create_config(
 
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(def_id));
-                debug!("visiting body for {:?}", def_id);
+                tracing::debug!("visiting body for {:?}", def_id);
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
@@ -376,7 +376,7 @@ pub(crate) fn run_global_ctxt(
         ctxt.external_traits.borrow_mut().insert(sized_trait_did, sized_trait);
     }
 
-    debug!("crate: {:?}", tcx.hir().krate());
+    tracing::debug!("crate: {:?}", tcx.hir().krate());
 
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
@@ -439,7 +439,7 @@ pub(crate) fn run_global_ctxt(
         }
     }
 
-    info!("Executing passes");
+    tracing::info!("Executing passes");
 
     for p in passes::defaults(show_coverage) {
         let run = match p.condition {
@@ -449,7 +449,7 @@ pub(crate) fn run_global_ctxt(
             WhenNotDocumentHidden => !ctxt.render_options.document_hidden,
         };
         if run {
-            debug!("running pass {}", p.pass.name);
+            tracing::debug!("running pass {}", p.pass.name);
             krate = tcx.sess.time(p.pass.name, || (p.pass.run)(krate, &mut ctxt));
         }
     }
@@ -489,7 +489,7 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
     }
 
     fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
-        debug!("visiting path {:?}", path);
+        tracing::debug!("visiting path {:?}", path);
         if path.res == Res::Err {
             // We have less context here than in rustc_resolve,
             // so we can only emit the name and span.
