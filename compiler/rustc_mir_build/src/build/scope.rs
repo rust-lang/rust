@@ -369,7 +369,7 @@ impl DropTree {
                     let terminator = TerminatorKind::Drop {
                         target: blocks[drop_data.1].unwrap(),
                         // The caller will handle this if needed.
-                        unwind: UnwindAction::Continue,
+                        unwind: UnwindAction::Terminate,
                         place: drop_data.0.local.into(),
                     };
                     cfg.terminate(block, drop_data.0.source_info, terminator);

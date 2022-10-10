@@ -417,7 +417,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                                     UnwindAction::Unreachable => {
                                         Unwind::To(self.patch.unreachable_block())
                                     }
-                                    UnwindAction::Terminate => Unwind::To(self.patch.terminate_block()),
+                                    UnwindAction::Terminate => {
+                                        Unwind::To(self.patch.terminate_block())
+                                    }
                                 }
                             };
                             elaborate_drop(
@@ -558,7 +560,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             if let TerminatorKind::Call {
                 destination,
                 target: Some(_),
-                unwind: UnwindAction::Continue,
+                unwind: UnwindAction::Continue | UnwindAction::Unreachable | UnwindAction::Terminate,
                 ..
             } = data.terminator().kind
             {

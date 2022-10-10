@@ -469,7 +469,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         } else {
                             Some(destination_block)
                         },
-                        unwind: UnwindAction::Continue,
+                        unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
+                            UnwindAction::Continue
+                        } else {
+                            UnwindAction::Unreachable
+                        },
                     },
                 );
                 if options.contains(InlineAsmOptions::MAY_UNWIND) {

@@ -763,6 +763,10 @@ pub enum UnwindAction {
     Continue,
     /// Triggers undefined behavior if unwind happens.
     Unreachable,
+    /// Terminates the execution if unwind happens.
+    ///
+    /// Depending on the platform and situation this may cause a non-unwindable panic or abort.
+    Terminate,
     /// Cleanups to be done.
     Cleanup(BasicBlock),
 }

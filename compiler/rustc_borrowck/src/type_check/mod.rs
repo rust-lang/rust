@@ -1663,8 +1663,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 self.assert_iscleanup(body, ctxt, unwind, true);
             }
-            UnwindAction::Continue => (),
-            UnwindAction::Unreachable => (),
+            UnwindAction::Continue => {
+                if is_cleanup {
+                    span_mirbug!(self, ctxt, "unwind on cleanup block")
+                }
+            }
+            UnwindAction::Unreachable | UnwindAction::Terminate => (),
         }
     }
 

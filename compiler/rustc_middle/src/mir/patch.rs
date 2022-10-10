@@ -14,6 +14,7 @@ pub struct MirPatch<'tcx> {
     resume_block: Option<BasicBlock>,
     // Only for unreachable in cleanup path.
     unreachable_block: Option<BasicBlock>,
+    terminate_block: Option<BasicBlock>,
     body_span: Span,
     next_local: usize,
 }
@@ -28,6 +29,7 @@ impl<'tcx> MirPatch<'tcx> {
             next_local: body.local_decls.len(),
             resume_block: None,
             unreachable_block: None,
+            terminate_block: None,
             body_span: body.span,
         };
 

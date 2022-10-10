@@ -274,6 +274,7 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
             // Not needed or included in successors
             None | Some(UnwindAction::Continue) | Some(UnwindAction::Cleanup(_)) => None,
             Some(UnwindAction::Unreachable) => Some("unwind unreachable"),
+            Some(UnwindAction::Terminate) => Some("unwind terminate"),
         };
 
         match (successor_count, unwind) {

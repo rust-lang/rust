@@ -54,7 +54,6 @@ fn lower_slice_len_call<'tcx>(
             args,
             destination,
             target: Some(bb),
-            unwind: UnwindAction::Unreachable,
             from_hir_call: true,
             ..
         } => {

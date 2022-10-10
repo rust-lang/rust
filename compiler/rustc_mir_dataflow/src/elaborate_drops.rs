@@ -80,7 +80,7 @@ impl Unwind {
     fn into_action(self) -> UnwindAction {
         match self {
             Unwind::To(bb) => UnwindAction::Cleanup(bb),
-            Unwind::InCleanup => UnwindAction::Continue,
+            Unwind::InCleanup => UnwindAction::Terminate,
         }
     }
 
@@ -946,7 +946,7 @@ where
             args,
             destination: unit_temp,
             target: Some(target),
-            unwind: UnwindAction::Unreachable,
+            unwind: UnwindAction::Terminate,
             from_hir_call: false,
             fn_span: self.source_info.span,
         }; // FIXME(#43234)

@@ -1017,15 +1017,15 @@ impl Integrator<'_, '_> {
     fn map_unwind(&self, unwind: UnwindAction) -> UnwindAction {
         if self.in_cleanup_block {
             match unwind {
-                UnwindAction::Cleanup(_) => {
+                UnwindAction::Cleanup(_) | UnwindAction::Continue => {
                     bug!("cleanup on cleanup block");
                 }
-                UnwindAction::Continue | UnwindAction::Unreachable => return unwind,
+                UnwindAction::Unreachable | UnwindAction::Terminate => return unwind,
             }
         }
 
         match unwind {
-            UnwindAction::Unreachable => unwind,
+            UnwindAction::Unreachable | UnwindAction::Terminate => unwind,
             UnwindAction::Cleanup(target) => UnwindAction::Cleanup(self.map_block(target)),
             // Add an unwind edge to the original call's cleanup block
             UnwindAction::Continue => self.cleanup_block,
@@ -1141,7 +1141,10 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                     terminator.kind = TerminatorKind::Goto { target: tgt };
                 }
                 UnwindAction::Continue => (),
-                UnwindAction::Unreachable => {
+                UnwindAction::Unreachable | UnwindAction::Terminate => {
+                    // If the action is terminate, then we would have mapped marked
+                    // all our call-sites as `UnwindAction::Terminate` and no cleanup
+                    // blocks would ever be executed.
                     terminator.kind = TerminatorKind::Unreachable;
                 }
             },

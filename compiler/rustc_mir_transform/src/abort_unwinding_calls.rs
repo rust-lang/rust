@@ -34,11 +34,6 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
             return;
         }
 
-        // This pass only runs on functions which themselves cannot unwind,
-        // forcibly changing the body of the function to structurally provide
-        // this guarantee by aborting on an unwind. If this function can unwind,
-        // then there's nothing to do because it already should work correctly.
-        //
         // Here we test for this function itself whether its ABI allows
         // unwinding or not.
         let body_ty = tcx.type_of(def_id).skip_binder();
@@ -107,26 +102,9 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
             }
         }
 
-        // For call instructions which need to be terminated, we insert a
-        // singular basic block which simply terminates, and then configure the
-        // `cleanup` attribute for all calls we found to this basic block we
-        // insert which means that any unwinding that happens in the functions
-        // will force an abort of the process.
-        if !calls_to_terminate.is_empty() {
-            let bb = BasicBlockData {
-                statements: Vec::new(),
-                is_cleanup: true,
-                terminator: Some(Terminator {
-                    source_info: SourceInfo::outermost(body.span),
-                    kind: TerminatorKind::Abort,
-                }),
-            };
-            let abort_bb = body.basic_blocks_mut().push(bb);
-
-            for bb in calls_to_terminate {
-                let cleanup = body.basic_blocks_mut()[bb].terminator_mut().unwind_mut().unwrap();
-                *cleanup = UnwindAction::Cleanup(abort_bb);
-            }
+        for id in calls_to_terminate {
+            let cleanup = body.basic_blocks_mut()[id].terminator_mut().unwind_mut().unwrap();
+            *cleanup = UnwindAction::Terminate;
         }
 
         for id in cleanups_to_remove {
