@@ -1425,7 +1425,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
                     }
                     (DefKind::AssocFn, ValueNS)
                 }
-                AssocItemKind::TyAlias(..) => (DefKind::AssocTy, TypeNS),
+                AssocItemKind::Type(..) => (DefKind::AssocTy, TypeNS),
                 AssocItemKind::MacCall(_) => bug!(), // handled above
             };
 

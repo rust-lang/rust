@@ -26,7 +26,7 @@ ast-stats-1 Block                    288 ( 3.4%)             6            48
 ast-stats-1 GenericBound             352 ( 4.2%)             4            88
 ast-stats-1 - Trait                    352 ( 4.2%)             4
 ast-stats-1 AssocItem                416 ( 4.9%)             4           104
-ast-stats-1 - TyAlias                  208 ( 2.5%)             2
+ast-stats-1 - Type                     208 ( 2.5%)             2
 ast-stats-1 - Fn                       208 ( 2.5%)             2
 ast-stats-1 GenericParam             480 ( 5.7%)             5            96
 ast-stats-1 PathSegment              720 ( 8.6%)            30            24
@@ -84,7 +84,7 @@ ast-stats-2 Block                    288 ( 3.1%)             6            48
 ast-stats-2 GenericBound             352 ( 3.8%)             4            88
 ast-stats-2 - Trait                    352 ( 3.8%)             4
 ast-stats-2 AssocItem                416 ( 4.5%)             4           104
-ast-stats-2 - TyAlias                  208 ( 2.3%)             2
+ast-stats-2 - Type                     208 ( 2.3%)             2
 ast-stats-2 - Fn                       208 ( 2.3%)             2
 ast-stats-2 GenericParam             480 ( 5.2%)             5            96
 ast-stats-2 PathSegment              792 ( 8.7%)            33            24

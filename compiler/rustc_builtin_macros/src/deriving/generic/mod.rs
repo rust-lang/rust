@@ -566,7 +566,7 @@ impl<'a> TraitDef<'a> {
                     tokens: None,
                 },
                 attrs: ast::AttrVec::new(),
-                kind: ast::AssocItemKind::TyAlias(Box::new(ast::TyAlias {
+                kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
                     defaultness: ast::Defaultness::Final,
                     generics: Generics::default(),
                     where_clauses: (

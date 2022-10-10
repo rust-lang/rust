@@ -1021,7 +1021,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx().shallow_resolve(obligation.self_ty().skip_binder());
         match self_ty.kind() {
             ty::Tuple(_) => {
-                candidates.vec.push(TupleCandidate);
+                candidates.vec.push(BuiltinCandidate { has_nested: false });
             }
             ty::Infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;

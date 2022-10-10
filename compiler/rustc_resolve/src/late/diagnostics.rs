@@ -1482,7 +1482,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             .filter(|(_, res)| match (kind, res) {
                 (AssocItemKind::Const(..), Res::Def(DefKind::AssocConst, _)) => true,
                 (AssocItemKind::Fn(_), Res::Def(DefKind::AssocFn, _)) => true,
-                (AssocItemKind::TyAlias(..), Res::Def(DefKind::AssocTy, _)) => true,
+                (AssocItemKind::Type(..), Res::Def(DefKind::AssocTy, _)) => true,
                 _ => false,
             })
             .map(|(key, _)| key.ident.name)
@@ -1546,7 +1546,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             AssocSuggestion::MethodWithSelf
                         }
                         ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn,
-                        ast::AssocItemKind::TyAlias(..) => AssocSuggestion::AssocType,
+                        ast::AssocItemKind::Type(..) => AssocSuggestion::AssocType,
                         ast::AssocItemKind::MacCall(_) => continue,
                     });
                 }

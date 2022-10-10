@@ -2,6 +2,7 @@
 //!
 //! This crate also contains the match exhaustiveness and usefulness checking.
 #![allow(rustc::potential_query_instability)]
+#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]

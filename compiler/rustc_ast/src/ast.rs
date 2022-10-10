@@ -2953,7 +2953,7 @@ pub enum AssocItemKind {
     /// An associated function.
     Fn(Box<Fn>),
     /// An associated type.
-    TyAlias(Box<TyAlias>),
+    Type(Box<TyAlias>),
     /// A macro expanding to associated items.
     MacCall(P<MacCall>),
 }
@@ -2963,7 +2963,7 @@ impl AssocItemKind {
         match *self {
             Self::Const(defaultness, ..)
             | Self::Fn(box Fn { defaultness, .. })
-            | Self::TyAlias(box TyAlias { defaultness, .. }) => defaultness,
+            | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) => Defaultness::Final,
         }
     }
@@ -2974,7 +2974,7 @@ impl From<AssocItemKind> for ItemKind {
         match assoc_item_kind {
             AssocItemKind::Const(a, b, c) => ItemKind::Const(a, b, c),
             AssocItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
-            AssocItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
+            AssocItemKind::Type(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
         }
     }
@@ -2987,7 +2987,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
         Ok(match item_kind {
             ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
             ItemKind::Fn(fn_kind) => AssocItemKind::Fn(fn_kind),
-            ItemKind::TyAlias(ty_alias_kind) => AssocItemKind::TyAlias(ty_alias_kind),
+            ItemKind::TyAlias(ty_kind) => AssocItemKind::Type(ty_kind),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
             _ => return Err(item_kind),
         })

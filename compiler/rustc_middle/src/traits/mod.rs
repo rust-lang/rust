@@ -664,10 +664,6 @@ pub enum ImplSource<'tcx, N> {
 
     /// ImplSource for a `const Drop` implementation.
     ConstDestruct(ImplSourceConstDestructData<N>),
-
-    /// ImplSource for a `std::marker::Tuple` implementation.
-    /// This has no nested predicates ever, so no data.
-    Tuple,
 }
 
 impl<'tcx, N> ImplSource<'tcx, N> {
@@ -682,8 +678,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Object(d) => d.nested,
             ImplSource::FnPointer(d) => d.nested,
             ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
-            | ImplSource::Pointee(ImplSourcePointeeData)
-            | ImplSource::Tuple => Vec::new(),
+            | ImplSource::Pointee(ImplSourcePointeeData) => vec![],
             ImplSource::TraitAlias(d) => d.nested,
             ImplSource::TraitUpcasting(d) => d.nested,
             ImplSource::ConstDestruct(i) => i.nested,
@@ -701,8 +696,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Object(d) => &d.nested,
             ImplSource::FnPointer(d) => &d.nested,
             ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
-            | ImplSource::Pointee(ImplSourcePointeeData)
-            | ImplSource::Tuple => &[],
+            | ImplSource::Pointee(ImplSourcePointeeData) => &[],
             ImplSource::TraitAlias(d) => &d.nested,
             ImplSource::TraitUpcasting(d) => &d.nested,
             ImplSource::ConstDestruct(i) => &i.nested,
@@ -769,7 +763,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                     nested: i.nested.into_iter().map(f).collect(),
                 })
             }
-            ImplSource::Tuple => ImplSource::Tuple,
         }
     }
 }
