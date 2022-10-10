@@ -289,7 +289,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
-    let mut cached_queries = quote! {};
 
     for query in queries.0 {
         let Query { name, arg, modifiers, .. } = &query;
@@ -298,12 +297,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             ReturnType::Default => quote! { -> () },
             _ => quote! { #result_full },
         };
-
-        if modifiers.cache.is_some() {
-            cached_queries.extend(quote! {
-                #name,
-            });
-        }
 
         let mut attributes = Vec::new();
 
