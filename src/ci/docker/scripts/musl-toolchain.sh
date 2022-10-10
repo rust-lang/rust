@@ -4,7 +4,7 @@
 #
 # Versions of the toolchain components are configurable in `musl-cross-make/Makefile` and
 # musl unlike GLIBC is forward compatible so upgrading it shouldn't break old distributions.
-# Right now we have: Binutils 2.31.1, GCC 9.2.0, musl 1.1.24.
+# Right now we have: Binutils 2.31.1, GCC 9.2.0, musl 1.2.3.
 
 # ignore-tidy-linelength
 
@@ -45,17 +45,10 @@ export CFLAGS="-fPIC -g1 $CFLAGS"
 git clone https://github.com/richfelker/musl-cross-make # -b v0.9.9
 cd musl-cross-make
 # A few commits ahead of v0.9.9 to include the cowpatch fix:
-git checkout a54eb56f33f255dfca60be045f12a5cfaf5a72a9
+git checkout f442c9178b75cf12206113323a49f2e33ecd060b
 
-# Fix the cfi detection script in musl's configure so cfi is generated
-# when debug info is asked for. This patch is derived from
-# https://git.musl-libc.org/cgit/musl/commit/?id=c4d4028dde90562f631edf559fbc42d8ec1b29de.
-# When we upgrade to a version that includes this commit, we can remove the patch.
-mkdir patches/musl-1.1.24
-cp ../musl-patch-configure.diff patches/musl-1.1.24/0001-fix-cfi-detection.diff
-
-hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.1.24 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE
-hide_output make install TARGET=$TARGET MUSL_VER=1.1.24 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE OUTPUT=$OUTPUT
+hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.2.3 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE
+hide_output make install TARGET=$TARGET MUSL_VER=1.2.3 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE OUTPUT=$OUTPUT
 
 cd -
 
