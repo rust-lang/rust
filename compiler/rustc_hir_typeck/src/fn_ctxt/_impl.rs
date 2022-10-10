@@ -808,47 +808,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expect_args
     }
 
-    pub(in super::super) fn resolve_lang_item_path(
-        &self,
-        lang_item: hir::LangItem,
-        span: Span,
-        hir_id: hir::HirId,
-        expr_hir_id: Option<hir::HirId>,
-    ) -> (Res, Ty<'tcx>) {
-        let def_id = self.tcx.require_lang_item(lang_item, Some(span));
-        let def_kind = self.tcx.def_kind(def_id);
-
-        let item_ty = if let DefKind::Variant = def_kind {
-            self.tcx.bound_type_of(self.tcx.parent(def_id))
-        } else {
-            self.tcx.bound_type_of(def_id)
-        };
-        let substs = self.fresh_substs_for_item(span, def_id);
-        let ty = item_ty.subst(self.tcx, substs);
-
-        self.write_resolution(hir_id, Ok((def_kind, def_id)));
-
-        let code = match lang_item {
-            hir::LangItem::IntoFutureIntoFuture => {
-                Some(ObligationCauseCode::AwaitableExpr(expr_hir_id))
-            }
-            hir::LangItem::IteratorNext | hir::LangItem::IntoIterIntoIter => {
-                Some(ObligationCauseCode::ForLoopIterator)
-            }
-            hir::LangItem::TryTraitFromOutput
-            | hir::LangItem::TryTraitFromResidual
-            | hir::LangItem::TryTraitBranch => Some(ObligationCauseCode::QuestionMark),
-            _ => None,
-        };
-        if let Some(code) = code {
-            self.add_required_obligations_with_code(span, def_id, substs, move |_, _| code.clone());
-        } else {
-            self.add_required_obligations_for_hir(span, def_id, substs, hir_id);
-        }
-
-        (Res::Def(def_kind, def_id), ty)
-    }
-
     /// Resolves an associated value path into a base type and associated constant, or method
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
     pub fn resolve_ty_and_res_fully_qualified_call(
@@ -880,9 +839,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We manually call `register_wf_obligation` in the success path
                 // below.
                 (<dyn AstConv<'_>>::ast_ty_to_ty_in_path(self, qself), qself, segment)
-            }
-            QPath::LangItem(..) => {
-                bug!("`resolve_ty_and_res_fully_qualified_call` called on `LangItem`")
             }
         };
         if let Some(&cached_result) = self.typeck_results.borrow().type_dependent_defs().get(hir_id)
@@ -1066,6 +1022,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         res: Res,
         span: Span,
         hir_id: hir::HirId,
+        code: Option<ObligationCauseCode<'tcx>>,
     ) -> (Ty<'tcx>, Res) {
         let tcx = self.tcx;
 
@@ -1103,7 +1060,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // inherent impl, we need to record the
                             // `T` for posterity (see `UserSelfTy` for
                             // details).
-                            let self_ty = self_ty.expect("UFCS sugared assoc missing Self");
+                            let self_ty = self_ty.unwrap_or_else(|| span_bug!(span, "UFCS sugared assoc {def_id:?} missing Self"));
                             user_self_ty = Some(UserSelfTy { impl_def_id: container_id, self_ty });
                         }
                     }
@@ -1357,7 +1314,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First, store the "user substs" for later.
         self.write_user_type_annotation_from_substs(hir_id, def_id, substs, user_self_ty);
 
-        self.add_required_obligations_for_hir(span, def_id, &substs, hir_id);
+        match code {
+            None => {
+                self.add_required_obligations_for_hir(span, def_id, &substs, hir_id);
+            }
+            Some(code) => {
+                self.add_required_obligations_with_code(span, def_id, &substs, move |_, _| {
+                    code.clone()
+                });
+            }
+        }
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.

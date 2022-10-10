@@ -371,6 +371,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     }
 }
 impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
+    #[instrument(level = "debug", skip(self))]
     fn report_fulfillment_errors(
         &self,
         errors: &[FulfillmentError<'tcx>],
@@ -422,6 +423,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // We do this in 2 passes because we want to display errors in order, though
         // maybe it *is* better to sort errors by span or something.
         let mut is_suppressed = vec![false; errors.len()];
+        debug!(?error_map);
         for (_, error_set) in error_map.iter() {
             // We want to suppress "duplicate" errors with the same span.
             for error in error_set {

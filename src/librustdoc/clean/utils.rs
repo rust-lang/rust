@@ -156,7 +156,6 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, path) => &path.segments,
         hir::QPath::TypeRelative(_, segment) => return segment.ident.to_string(),
-        hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
     let mut s = String::new();
@@ -413,8 +412,6 @@ pub(crate) fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
             // FIXME: Claiming that those kinds of QPaths are simple is probably not true if the Ty
             //        contains const arguments. Is there a *concise* way to check for this?
             hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => Simple,
-            // FIXME: Can they contain const arguments and thus leak private struct fields?
-            hir::ExprKind::Path(hir::QPath::LangItem(..)) => Simple,
             _ => Complex,
         }
     }

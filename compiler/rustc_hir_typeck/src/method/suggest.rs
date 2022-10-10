@@ -1217,73 +1217,71 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
         ty_str: &str,
     ) -> bool {
-        if let SelfSource::MethodCall(expr) = source {
-            for (_, parent) in tcx.hir().parent_iter(expr.hir_id).take(5) {
-                if let Node::Expr(parent_expr) = parent {
-                    let lang_item = match parent_expr.kind {
-                        ExprKind::Struct(ref qpath, _, _) => match **qpath {
-                            QPath::LangItem(LangItem::Range, ..) => Some(LangItem::Range),
-                            QPath::LangItem(LangItem::RangeTo, ..) => Some(LangItem::RangeTo),
-                            QPath::LangItem(LangItem::RangeToInclusive, ..) => {
-                                Some(LangItem::RangeToInclusive)
-                            }
-                            _ => None,
-                        },
-                        ExprKind::Call(ref func, _) => match func.kind {
-                            // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
-                            ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)) => {
-                                Some(LangItem::RangeInclusiveStruct)
-                            }
-                            _ => None,
-                        },
-                        _ => None,
-                    };
-
-                    if lang_item.is_none() {
-                        continue;
-                    }
-
-                    let span_included = match parent_expr.kind {
-                        hir::ExprKind::Struct(_, eps, _) => {
-                            eps.len() > 0 && eps.last().map_or(false, |ep| ep.span.contains(span))
-                        }
-                        // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
-                        hir::ExprKind::Call(ref func, ..) => func.span.contains(span),
-                        _ => false,
-                    };
-
-                    if !span_included {
-                        continue;
-                    }
-
-                    let range_def_id = self.tcx.require_lang_item(lang_item.unwrap(), None);
-                    let range_ty =
-                        self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
-
-                    let pick = self.probe_for_name(
-                        span,
-                        Mode::MethodCall,
-                        item_name,
-                        IsSuggestion(true),
-                        range_ty,
-                        expr.hir_id,
-                        ProbeScope::AllTraits,
-                    );
-                    if pick.is_ok() {
-                        let range_span = parent_expr.span.with_hi(expr.span.hi());
-                        tcx.sess.emit_err(errors::MissingParentheseInRange {
-                            span,
-                            ty_str: ty_str.to_string(),
-                            method_name: item_name.as_str().to_string(),
-                            add_missing_parentheses: Some(errors::AddMissingParenthesesInRange {
-                                func_name: item_name.name.as_str().to_string(),
-                                left: range_span.shrink_to_lo(),
-                                right: range_span.shrink_to_hi(),
-                            }),
-                        });
-                        return true;
-                    }
+        let SelfSource::MethodCall(expr) = source else { return false };
+        for (_, parent) in tcx.hir().parent_iter(expr.hir_id).take(5) {
+            let Node::Expr(parent_expr) = parent else { continue };
+            let lang_item = match parent_expr.kind {
+                ExprKind::Struct(QPath::Resolved(_, path), _, _) => {
+                    path.res.opt_def_id().and_then(|id| {
+                        [LangItem::Range, LangItem::RangeTo, LangItem::RangeToInclusive]
+                            .into_iter()
+                            .find(|&l| Some(id) == tcx.lang_items().get(l))
+                    })
                 }
+                ExprKind::Call(ref func, _) => match func.kind {
+                    // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
+                    ExprKind::Path(QPath::Resolved(_, path)) => path
+                        .res
+                        .opt_def_id()
+                        .is_some_and(|id| Some(id) == tcx.lang_items().range_inclusive_new_method())
+                        .then_some(LangItem::RangeInclusiveStruct),
+                    _ => None,
+                },
+                _ => None,
+            };
+
+            if lang_item.is_none() {
+                continue;
+            }
+
+            let span_included = match parent_expr.kind {
+                hir::ExprKind::Struct(_, eps, _) => {
+                    eps.len() > 0 && eps.last().map_or(false, |ep| ep.span.contains(span))
+                }
+                // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
+                hir::ExprKind::Call(ref func, ..) => func.span.contains(span),
+                _ => false,
+            };
+
+            if !span_included {
+                continue;
+            }
+
+            let range_def_id = self.tcx.require_lang_item(lang_item.unwrap(), None);
+            let range_ty = self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
+
+            let pick = self.probe_for_name(
+                span,
+                Mode::MethodCall,
+                item_name,
+                IsSuggestion(true),
+                range_ty,
+                expr.hir_id,
+                ProbeScope::AllTraits,
+            );
+            if pick.is_ok() {
+                let range_span = parent_expr.span.with_hi(expr.span.hi());
+                tcx.sess.emit_err(errors::MissingParentheseInRange {
+                    span,
+                    ty_str: ty_str.to_string(),
+                    method_name: item_name.as_str().to_string(),
+                    add_missing_parentheses: Some(errors::AddMissingParenthesesInRange {
+                        func_name: item_name.name.as_str().to_string(),
+                        left: range_span.shrink_to_lo(),
+                        right: range_span.shrink_to_hi(),
+                    }),
+                });
+                return true;
             }
         }
         false

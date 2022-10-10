@@ -618,7 +618,7 @@ impl<'tcx> SaveContext<'tcx> {
             })
             | Node::Ty(&hir::Ty { kind: hir::TyKind::Path(ref qpath), .. }) => match qpath {
                 hir::QPath::Resolved(_, path) => path.res,
-                hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
+                hir::QPath::TypeRelative(..) => {
                     // #75962: `self.typeck_results` may be different from the `hir_id`'s result.
                     if self.tcx.has_typeck_results(hir_id.owner.to_def_id()) {
                         self.tcx.typeck(hir_id.owner.def_id).qpath_res(qpath, hir_id)
@@ -637,14 +637,11 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_path_data(&self, id: hir::HirId, path: &hir::QPath<'_>) -> Option<Ref> {
-        let segment = match path {
-            hir::QPath::Resolved(_, path) => path.segments.last(),
-            hir::QPath::TypeRelative(_, segment) => Some(*segment),
-            hir::QPath::LangItem(..) => None,
+        let seg = match path {
+            hir::QPath::Resolved(_, path) => path.segments.last()?,
+            hir::QPath::TypeRelative(_, segment) => *segment,
         };
-        segment.and_then(|seg| {
-            self.get_path_segment_data(seg).or_else(|| self.get_path_segment_data_with_id(seg, id))
-        })
+        self.get_path_segment_data(seg).or_else(|| self.get_path_segment_data_with_id(seg, id))
     }
 
     pub fn get_path_segment_data(&self, path_seg: &hir::PathSegment<'_>) -> Option<Ref> {

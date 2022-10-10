@@ -1479,7 +1479,7 @@ impl TypeAliasBounds {
                     _ => false,
                 }
             }
-            hir::QPath::Resolved(..) | hir::QPath::LangItem(..) => false,
+            hir::QPath::Resolved(..) => false,
         }
     }
 

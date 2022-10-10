@@ -704,7 +704,6 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath<'v>, id:
             visitor.visit_ty(qself);
             visitor.visit_path_segment(segment);
         }
-        QPath::LangItem(..) => {}
     }
 }
 

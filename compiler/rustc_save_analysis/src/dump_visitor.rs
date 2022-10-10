@@ -746,7 +746,6 @@ impl<'tcx> DumpVisitor<'tcx> {
                 self.visit_ty(ty);
                 std::slice::from_ref(*segment)
             }
-            hir::QPath::LangItem(..) => return,
         };
         for seg in segments {
             if let Some(ref generic_args) = seg.args {

@@ -2676,21 +2676,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|_| tcx.ty_error())
             }
-            hir::TyKind::Path(hir::QPath::LangItem(lang_item, span, _)) => {
-                let def_id = tcx.require_lang_item(lang_item, Some(span));
-                let (substs, _) = self.create_substs_for_ast_path(
-                    span,
-                    def_id,
-                    &[],
-                    &hir::PathSegment::invalid(),
-                    &GenericArgs::none(),
-                    true,
-                    None,
-                    None,
-                );
-                EarlyBinder(self.normalize_ty(span, tcx.at(span).type_of(def_id)))
-                    .subst(tcx, substs)
-            }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length = match length {
                     &hir::ArrayLen::Infer(_, span) => self.ct_infer(tcx.types.usize, None, span),

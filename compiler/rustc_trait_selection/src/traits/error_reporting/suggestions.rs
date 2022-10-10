@@ -1244,9 +1244,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn suggest_remove_await(&self, obligation: &PredicateObligation<'tcx>, err: &mut Diagnostic) {
         let span = obligation.cause.span;
 
-        if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code().peel_derives() {
+        if let ObligationCauseCode::AwaitableExpr(hir_id) = *obligation.cause.code().peel_derives()
+        {
             let hir = self.tcx.hir();
-            if let Some(node) = hir_id.and_then(|hir_id| hir.find(hir_id)) {
+            if let Some(node) = hir.find(hir_id) {
                 if let hir::Node::Expr(expr) = node {
                     // FIXME: use `obligation.predicate.kind()...trait_ref.self_ty()` to see if we have `()`
                     // and if not maybe suggest doing something else? If we kept the expression around we
@@ -2886,7 +2887,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ..
                 })) = hir.find(call_hir_id)
                 {
-                    if Some(*span) != err.span.primary_span() {
+                    if Some(*span) != err.span.primary_span() && span.desugaring_kind().is_none() {
                         err.span_label(*span, "required by a bound introduced by this call");
                     }
                 }

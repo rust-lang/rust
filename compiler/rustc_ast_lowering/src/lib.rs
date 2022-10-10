@@ -59,7 +59,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::DefPathData;
-use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
+use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, Target, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -71,6 +71,7 @@ use rustc_span::{Span, DUMMY_SP};
 
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
+use std::iter;
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => (
@@ -798,6 +799,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_ident(&self, ident: Ident) -> Ident {
         Ident::new(ident.name, self.lower_span(ident.span))
+    }
+
+    fn lang_item_qpath(&mut self, lang_item: hir::LangItem, span: Span) -> hir::QPath<'hir> {
+        let def_id = self.tcx.require_lang_item(lang_item, Some(span));
+        let res = Res::Def(lang_item.target().to_def_kind(), def_id);
+        let name = self.tcx.item_name(def_id);
+        let span = self.lower_span(span);
+        let self_segment =
+            matches!(lang_item.target(), Target::Method(_) | Target::AssocConst | Target::AssocTy)
+                .then(|| {
+                    // associated items require a self segment - this works well enough
+                    hir::PathSegment::new(Ident::empty(), self.next_id(), Res::Err)
+                });
+        let segment = hir::PathSegment::new(Ident::new(name, span), self.next_id(), res);
+        let segments =
+            self.arena.alloc_from_iter(self_segment.into_iter().chain(iter::once(segment)));
+        let path = self.arena.alloc(hir::Path { span, res, segments });
+        hir::QPath::Resolved(None, path)
     }
 
     /// Converts a lifetime into a new generic parameter.
@@ -2423,21 +2442,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn pat_cf_continue(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowContinue, field, None)
+        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowContinue, field)
     }
 
     fn pat_cf_break(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowBreak, field, None)
+        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowBreak, field)
     }
 
     fn pat_some(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::OptionSome, field, None)
+        self.pat_lang_item_variant(span, hir::LangItem::OptionSome, field)
     }
 
     fn pat_none(&mut self, span: Span) -> &'hir hir::Pat<'hir> {
-        self.pat_lang_item_variant(span, hir::LangItem::OptionNone, &[], None)
+        self.pat_lang_item_variant(span, hir::LangItem::OptionNone, &[])
     }
 
     fn single_pat_field(
@@ -2460,9 +2479,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         lang_item: hir::LangItem,
         fields: &'hir [hir::PatField<'hir>],
-        hir_id: Option<hir::HirId>,
     ) -> &'hir hir::Pat<'hir> {
-        let qpath = hir::QPath::LangItem(lang_item, self.lower_span(span), hir_id);
+        let qpath = self.lang_item_qpath(lang_item, span);
         self.pat(span, hir::PatKind::Struct(qpath, fields, false))
     }
 

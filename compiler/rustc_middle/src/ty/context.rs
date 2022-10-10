@@ -625,7 +625,7 @@ impl<'tcx> TypeckResults<'tcx> {
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {
             hir::QPath::Resolved(_, ref path) => path.res,
-            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
+            hir::QPath::TypeRelative(..) => self
                 .type_dependent_def(id)
                 .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
         }

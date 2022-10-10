@@ -480,7 +480,10 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
         ExpnKind::Inlined
         | ExpnKind::Root
         | ExpnKind::Desugaring(
-            DesugaringKind::ForLoop | DesugaringKind::WhileLoop | DesugaringKind::OpaqueTy,
+            DesugaringKind::ForLoop
+            | DesugaringKind::WhileLoop
+            | DesugaringKind::OpaqueTy
+            | DesugaringKind::RangeLiteral,
         ) => false,
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {

@@ -222,12 +222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_diverges = self.diverges.replace(Diverges::Maybe);
         let old_has_errors = self.has_errors.replace(false);
 
-        let ty = ensure_sufficient_stack(|| match &expr.kind {
-            hir::ExprKind::Path(
-                qpath @ hir::QPath::Resolved(..) | qpath @ hir::QPath::TypeRelative(..),
-            ) => self.check_expr_path(qpath, expr, args),
-            _ => self.check_expr_kind(expr, expected),
-        });
+        let ty = ensure_sufficient_stack(|| self.check_expr_kind(expr, expected, args));
 
         // Warn for non-block expressions with diverging children.
         match expr.kind {
@@ -272,6 +267,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
+        args: &'tcx [hir::Expr<'tcx>],
     ) -> Ty<'tcx> {
         trace!("expr={:#?}", expr);
 
@@ -290,10 +286,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::AddrOf(kind, mutbl, oprnd) => {
                 self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
             }
-            ExprKind::Path(QPath::LangItem(lang_item, _, hir_id)) => {
-                self.check_lang_item_path(lang_item, expr, hir_id)
-            }
-            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, &[]),
+            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, args),
             ExprKind::InlineAsm(asm) => {
                 // We defer some asm checks as we may not have resolved the input and output types yet (they may still be infer vars).
                 self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
@@ -504,15 +497,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_lang_item_path(
-        &self,
-        lang_item: hir::LangItem,
-        expr: &'tcx hir::Expr<'tcx>,
-        hir_id: Option<hir::HirId>,
-    ) -> Ty<'tcx> {
-        self.resolve_lang_item_path(lang_item, expr.span, expr.hir_id, hir_id).1
-    }
-
     pub(crate) fn check_expr_path(
         &self,
         qpath: &'tcx hir::QPath<'tcx>,
@@ -531,7 +515,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 report_unexpected_variant_res(tcx, res, qpath, expr.span);
                 tcx.ty_error()
             }
-            _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
+            _ => {
+                let code = self.call_obligation_code(qpath, expr, args);
+                self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id, code).0
+            }
         };
 
         if let ty::FnDef(did, ..) = *ty.kind() {
@@ -592,6 +579,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.add_wf_bounds(substs, expr);
 
         ty
+    }
+
+    fn call_obligation_code(
+        &self,
+        qpath: &'tcx QPath<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
+        args: &'tcx [hir::Expr<'tcx>],
+    ) -> Option<ObligationCauseCode<'tcx>> {
+        let QPath::Resolved(_, path) = qpath else { return None };
+        let id = path.res.opt_def_id()?;
+        match expr.span.desugaring_kind()? {
+            DesugaringKind::Await => {
+                let [arg] = args else { return None };
+                if Some(id) != self.tcx.lang_items().into_future_fn() {
+                    return None;
+                }
+                Some(ObligationCauseCode::AwaitableExpr(arg.hir_id))
+            }
+            DesugaringKind::ForLoop => {
+                if ![hir::LangItem::IteratorNext, hir::LangItem::IntoIterIntoIter]
+                    .iter()
+                    .any(|&l| self.tcx.lang_items().get(l) == Some(id))
+                {
+                    return None;
+                }
+                Some(ObligationCauseCode::ForLoopIterator)
+            }
+            DesugaringKind::QuestionMark => {
+                if ![
+                    LangItem::TryTraitFromOutput,
+                    LangItem::TryTraitFromResidual,
+                    LangItem::TryTraitBranch,
+                ]
+                .iter()
+                .any(|&l| self.tcx.lang_items().get(l) == Some(id))
+                {
+                    return None;
+                }
+                Some(ObligationCauseCode::QuestionMark)
+            }
+            _ => None,
+        }
     }
 
     fn check_expr_break(
@@ -1862,10 +1891,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         // I don't use 'is_range_literal' because only double-sided, half-open ranges count.
         if let ExprKind::Struct(
-                QPath::LangItem(LangItem::Range, ..),
+                QPath::Resolved(_, path),
                 &[ref range_start, ref range_end],
                 _,
             ) = last_expr_field.expr.kind
+            && let Some(range_id) = self.tcx.lang_items().range_struct()
+            && path.res.opt_def_id() == Some(range_id)
             && let variant_field =
                 variant.fields.iter().find(|field| field.ident(self.tcx) == last_expr_field.ident)
             && let range_def_id = self.tcx.lang_items().range_struct()

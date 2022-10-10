@@ -99,28 +99,28 @@ impl Target {
         }
     }
 
-    // FIXME: For now, should only be used with def_kinds from ItemIds
-    pub fn from_def_kind(def_kind: DefKind) -> Target {
-        match def_kind {
-            DefKind::ExternCrate => Target::ExternCrate,
-            DefKind::Use => Target::Use,
-            DefKind::Static(..) => Target::Static,
-            DefKind::Const => Target::Const,
-            DefKind::Fn => Target::Fn,
-            DefKind::Macro(..) => Target::MacroDef,
-            DefKind::Mod => Target::Mod,
-            DefKind::ForeignMod => Target::ForeignMod,
-            DefKind::GlobalAsm => Target::GlobalAsm,
-            DefKind::TyAlias => Target::TyAlias,
-            DefKind::OpaqueTy => Target::OpaqueTy,
-            DefKind::ImplTraitPlaceholder => Target::ImplTraitPlaceholder,
-            DefKind::Enum => Target::Enum,
-            DefKind::Struct => Target::Struct,
-            DefKind::Union => Target::Union,
-            DefKind::Trait => Target::Trait,
-            DefKind::TraitAlias => Target::TraitAlias,
-            DefKind::Impl => Target::Impl,
-            _ => panic!("impossible case reached"),
+    pub fn to_def_kind(self) -> DefKind {
+        match self {
+            Target::ExternCrate => DefKind::ExternCrate,
+            Target::Use => DefKind::Use,
+            Target::Static => DefKind::Static(ast::Mutability::Not),
+            Target::Const => DefKind::Const,
+            Target::Fn => DefKind::Fn,
+            Target::Mod => DefKind::Mod,
+            Target::ForeignMod => DefKind::ForeignMod,
+            Target::GlobalAsm => DefKind::GlobalAsm,
+            Target::TyAlias => DefKind::TyAlias,
+            Target::OpaqueTy => DefKind::OpaqueTy,
+            Target::ImplTraitPlaceholder => DefKind::ImplTraitPlaceholder,
+            Target::Enum => DefKind::Enum,
+            Target::Struct => DefKind::Struct,
+            Target::Union => DefKind::Union,
+            Target::Trait => DefKind::Trait,
+            Target::TraitAlias => DefKind::TraitAlias,
+            Target::Impl => DefKind::Impl,
+            Target::Method(_) => DefKind::AssocFn,
+            Target::Variant => DefKind::Variant,
+            _ => panic!("unsupported Target::to_def_kind: {self:?}"),
         }
     }
 

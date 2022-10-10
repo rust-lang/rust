@@ -80,12 +80,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let original_callee_ty = match &callee_expr.kind {
-            hir::ExprKind::Path(hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)) => self
-                .check_expr_with_expectation_and_args(
-                    callee_expr,
-                    Expectation::NoExpectation,
-                    arg_exprs,
-                ),
+            hir::ExprKind::Path(..) => self.check_expr_with_expectation_and_args(
+                callee_expr,
+                Expectation::NoExpectation,
+                arg_exprs,
+            ),
             _ => self.check_expr(callee_expr),
         };
 

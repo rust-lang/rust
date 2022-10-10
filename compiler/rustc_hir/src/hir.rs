@@ -19,7 +19,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{def_id::LocalDefId, BytePos, Span, DUMMY_SP};
+use rustc_span::{def_id::LocalDefId, BytePos, DesugaringKind, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 
@@ -1706,9 +1706,6 @@ impl Expr<'_> {
                 allow_projections_from(base) || base.is_place_expr(allow_projections_from)
             }
 
-            // Lang item paths cannot currently be local variables or statics.
-            ExprKind::Path(QPath::LangItem(..)) => false,
-
             // Partially qualified paths in expressions can only legally
             // refer to associated items which are always rvalues.
             ExprKind::Path(QPath::TypeRelative(..))
@@ -1847,27 +1844,9 @@ impl Expr<'_> {
 /// Checks if the specified expression is a built-in range literal.
 /// (See: `LoweringContext::lower_expr()`).
 pub fn is_range_literal(expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        // All built-in range literals but `..=` and `..` desugar to `Struct`s.
-        ExprKind::Struct(ref qpath, _, _) => matches!(
-            **qpath,
-            QPath::LangItem(
-                LangItem::Range
-                    | LangItem::RangeTo
-                    | LangItem::RangeFrom
-                    | LangItem::RangeFull
-                    | LangItem::RangeToInclusive,
-                ..
-            )
-        ),
-
-        // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
-        ExprKind::Call(ref func, _) => {
-            matches!(func.kind, ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)))
-        }
-
-        _ => false,
-    }
+    // range literals desugar to a struct literal or `RangeInclusive::new(..)`
+    matches!(expr.kind, ExprKind::Call(..) | ExprKind::Struct(..))
+        && expr.span.is_desugaring(DesugaringKind::RangeLiteral)
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -2015,9 +1994,6 @@ pub enum QPath<'hir> {
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
     /// the `X` and `Y` nodes each being a `TyKind::Path(QPath::TypeRelative(..))`.
     TypeRelative(&'hir Ty<'hir>, &'hir PathSegment<'hir>),
-
-    /// Reference to a `#[lang = "foo"]` item. `HirId` of the inner expr.
-    LangItem(LangItem, Span, Option<HirId>),
 }
 
 impl<'hir> QPath<'hir> {
@@ -2026,7 +2002,6 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, ps) => qself.span.to(ps.ident.span),
-            QPath::LangItem(_, span, _) => span,
         }
     }
 
@@ -2036,7 +2011,6 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, _) => qself.span,
-            QPath::LangItem(_, span, _) => span,
         }
     }
 
@@ -2046,7 +2020,6 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.segments.last().unwrap().ident.span,
             QPath::TypeRelative(_, segment) => segment.ident.span,
-            QPath::LangItem(_, span, _) => span,
         }
     }
 }

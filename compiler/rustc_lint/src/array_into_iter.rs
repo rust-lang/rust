@@ -1,6 +1,7 @@
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_errors::{fluent, Applicability};
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::lint::FutureIncompatibilityReason;
@@ -48,16 +49,13 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         // Save the span of expressions in `for _ in expr` syntax,
         // so we can give a better suggestion for those later.
-        if let hir::ExprKind::Match(arg, [_], hir::MatchSource::ForLoopDesugar) = &expr.kind {
-            if let hir::ExprKind::Call(path, [arg]) = &arg.kind {
-                if let hir::ExprKind::Path(hir::QPath::LangItem(
-                    hir::LangItem::IntoIterIntoIter,
-                    ..,
-                )) = &path.kind
-                {
-                    self.for_expr_span = arg.span;
-                }
-            }
+        if let hir::ExprKind::Match(arg, [_], hir::MatchSource::ForLoopDesugar) = &expr.kind
+            && let hir::ExprKind::Call(expr, [arg]) = &arg.kind
+            && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &expr.kind
+            && let Res::Def(_, def_id) = path.res
+            && Some(def_id) == cx.tcx.lang_items().into_iter_fn()
+        {
+            self.for_expr_span = arg.span;
         }
 
         // We only care about method call expressions.

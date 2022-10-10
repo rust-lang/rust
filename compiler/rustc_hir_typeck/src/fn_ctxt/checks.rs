@@ -1658,9 +1658,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
             }
-            QPath::LangItem(lang_item, span, id) => {
-                self.resolve_lang_item_path(lang_item, span, hir_id, id)
-            }
         }
     }
 
@@ -2009,7 +2006,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
             }
-            _ => {}
         }
 
         false
