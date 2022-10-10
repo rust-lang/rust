@@ -1,4 +1,5 @@
 use crate::fmt;
+use crate::mem::MaybeUninit;
 use crate::time::Duration;
 
 pub use self::inner::Instant;
@@ -136,10 +137,12 @@ impl Timespec {
 
     #[allow(dead_code)]
     pub fn to_timespec(&self) -> Option<libc::timespec> {
-        Some(libc::timespec {
-            tv_sec: self.tv_sec.try_into().ok()?,
-            tv_nsec: self.tv_nsec.0.try_into().ok()?,
-        })
+        // SAFETY: libc::timespec is safe to zero init including its padding bytes
+        let mut ts: libc::timespec = unsafe { MaybeUninit::zeroed().assume_init() };
+        ts.tv_sec = self.tv_sec.try_into().ok()?;
+        ts.tv_nsec = self.tv_nsec.0.try_into().ok()?;
+
+        Some(ts)
     }
 }
 

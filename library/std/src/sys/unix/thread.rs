@@ -228,10 +228,11 @@ impl Thread {
         // nanosleep will fill in `ts` with the remaining time.
         unsafe {
             while secs > 0 || nsecs > 0 {
-                let mut ts = libc::timespec {
-                    tv_sec: cmp::min(libc::time_t::MAX as u64, secs) as libc::time_t,
-                    tv_nsec: nsecs,
-                };
+                // SAFETY: libc::timespec is safe to zero init including its padding bytes
+                let mut ts: libc::timespec = mem::MaybeUninit::zeroed().assume_init();
+                ts.tv_sec = cmp::min(libc::time_t::MAX as u64, secs) as libc::time_t;
+                ts.tv_nsec = nsecs;
+
                 secs -= ts.tv_sec as u64;
                 let ts_ptr = &mut ts as *mut _;
                 if libc::nanosleep(ts_ptr, ts_ptr) == -1 {

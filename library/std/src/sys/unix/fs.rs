@@ -1111,7 +1111,12 @@ impl File {
                 Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
                 Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too large to set as a file time")),
                 Some(_) => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too small to set as a file time")),
-                None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
+                None => {
+                    // SAFETY: libc::timespec is safe to zero init including its padding bytes
+                    let mut ts: libc::timespec = unsafe { mem::MaybeUninit::zeroed().assume_init() };
+                    ts.tv_nsec = libc::UTIME_OMIT as _;
+                    Ok(ts)
+                },
             }
         };
         #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
