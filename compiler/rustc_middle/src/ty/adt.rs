@@ -332,13 +332,13 @@ impl<'tcx> AdtDef<'tcx> {
         self.flags().contains(AdtFlags::IS_PHANTOM_DATA)
     }
 
-    /// Returns `true` if this is Box<T>.
+    /// Returns `true` if this is `Box<T>`.
     #[inline]
     pub fn is_box(self) -> bool {
         self.flags().contains(AdtFlags::IS_BOX)
     }
 
-    /// Returns `true` if this is UnsafeCell<T>.
+    /// Returns `true` if this is `UnsafeCell<T>`.
     #[inline]
     pub fn is_unsafe_cell(self) -> bool {
         self.flags().contains(AdtFlags::IS_UNSAFE_CELL)

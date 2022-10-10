@@ -62,7 +62,8 @@ enum ProjectionCandidate<'tcx> {
     /// From a where-clause in the env or object type
     ParamEnv(ty::PolyProjectionPredicate<'tcx>),
 
-    /// From the definition of `Trait` when you have something like <<A as Trait>::B as Trait2>::C
+    /// From the definition of `Trait` when you have something like
+    /// `<<A as Trait>::B as Trait2>::C`.
     TraitDef(ty::PolyProjectionPredicate<'tcx>),
 
     /// Bounds specified on an object type
@@ -1367,7 +1368,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
     );
 }
 
-/// In the case of a nested projection like <<A as Foo>::FooT as Bar>::BarT, we may find
+/// In the case of a nested projection like `<<A as Foo>::FooT as Bar>::BarT`, we may find
 /// that the definition of `Foo` has some clues:
 ///
 /// ```ignore (illustrative)

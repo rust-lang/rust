@@ -826,7 +826,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// must be met of course). One obvious case this comes up is
     /// marker traits like `Send`. Think of a linked list:
     ///
-    ///    struct List<T> { data: T, next: Option<Box<List<T>>> }
+    ///     struct List<T> { data: T, next: Option<Box<List<T>>> }
     ///
     /// `Box<List<T>>` will be `Send` if `T` is `Send` and
     /// `Option<Box<List<T>>>` is `Send`, and in turn

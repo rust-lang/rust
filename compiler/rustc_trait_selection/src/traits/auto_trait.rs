@@ -66,13 +66,13 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// struct Foo<T> { data: Box<T> }
     /// ```
     ///
-    /// then this might return that Foo<T>: Send if T: Send (encoded in the AutoTraitResult type).
-    /// The analysis attempts to account for custom impls as well as other complex cases. This
-    /// result is intended for use by rustdoc and other such consumers.
+    /// then this might return that `Foo<T>: Send` if `T: Send` (encoded in the AutoTraitResult
+    /// type). The analysis attempts to account for custom impls as well as other complex cases.
+    /// This result is intended for use by rustdoc and other such consumers.
     ///
     /// (Note that due to the coinductive nature of Send, the full and correct result is actually
     /// quite simple to generate. That is, when a type has no custom impl, it is Send iff its field
-    /// types are all Send. So, in our example, we might have that Foo<T>: Send if Box<T>: Send.
+    /// types are all Send. So, in our example, we might have that `Foo<T>: Send` if `Box<T>: Send`.
     /// But this is often not the best way to present to the user.)
     ///
     /// Warning: The API should be considered highly unstable, and it may be refactored or removed

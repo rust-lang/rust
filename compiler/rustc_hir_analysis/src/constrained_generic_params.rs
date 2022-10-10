@@ -114,9 +114,9 @@ pub fn identify_constrained_generic_params<'tcx>(
 /// ```
 /// The impl's predicates are collected from left to right. Ignoring
 /// the implicit `Sized` bounds, these are
-///   * T: Debug
-///   * U: Iterator
-///   * <U as Iterator>::Item = T -- a desugared ProjectionPredicate
+///   * `T: Debug`
+///   * `U: Iterator`
+///   * `<U as Iterator>::Item = T` -- a desugared ProjectionPredicate
 ///
 /// When we, for example, try to go over the trait-reference
 /// `IntoIter<u32> as Trait`, we substitute the impl parameters with fresh
@@ -132,12 +132,16 @@ pub fn identify_constrained_generic_params<'tcx>(
 ///
 /// We *do* have to be somewhat careful when projection targets contain
 /// projections themselves, for example in
+///
+/// ```ignore (illustrative)
 ///     impl<S,U,V,W> Trait for U where
 /// /* 0 */   S: Iterator<Item = U>,
 /// /* - */   U: Iterator,
 /// /* 1 */   <U as Iterator>::Item: ToOwned<Owned=(W,<V as Iterator>::Item)>
 /// /* 2 */   W: Iterator<Item = V>
 /// /* 3 */   V: Debug
+/// ```
+///
 /// we have to evaluate the projections in the order I wrote them:
 /// `V: Debug` requires `V` to be evaluated. The only projection that
 /// *determines* `V` is 2 (1 contains it, but *does not determine it*,
