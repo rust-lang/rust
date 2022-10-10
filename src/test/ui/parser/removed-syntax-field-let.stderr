@@ -1,10 +1,16 @@
 error: expected identifier, found keyword `let`
   --> $DIR/removed-syntax-field-let.rs:2:5
    |
-LL | struct S {
-   |        - while parsing this struct
 LL |     let foo: (),
    |     ^^^ expected identifier, found keyword
+   |
+   = note: the `let` keyword is not allowed in `struct` fields
+   = note: see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information
+help: remove the let, the `let` keyword is not allowed in struct field definitions
+   |
+LL -     let foo: (),
+LL +     foo: (),
+   |
 
 error: aborting due to previous error
 
