@@ -16,7 +16,7 @@ LL |     Ok(Err(123_i32)?)
              <f64 as From<i16>>
              <f64 as From<i32>>
              <f64 as From<i8>>
-           and 67 others
+           and 68 others
    = note: required for `Result<u64, u8>` to implement `FromResidual<Result<Infallible, i32>>`
 
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`

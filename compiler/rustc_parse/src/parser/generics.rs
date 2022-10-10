@@ -1,7 +1,9 @@
 use super::{ForceCollect, Parser, TrailingToken};
 
 use rustc_ast::token;
-use rustc_ast::{self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, WhereClause};
+use rustc_ast::{
+    self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, TyKind, WhereClause,
+};
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::kw;
 
@@ -31,13 +33,43 @@ impl<'a> Parser<'a> {
         let mut colon_span = None;
         let bounds = if self.eat(&token::Colon) {
             colon_span = Some(self.prev_token.span);
+            // recover from `impl Trait` in type param bound
+            if self.token.is_keyword(kw::Impl) {
+                let impl_span = self.token.span;
+                let snapshot = self.create_snapshot_for_diagnostic();
+                match self.parse_ty() {
+                    Ok(p) => {
+                        if let TyKind::ImplTrait(_, bounds) = &(*p).kind {
+                            let span = impl_span.to(self.token.span.shrink_to_lo());
+                            let mut err = self.struct_span_err(
+                                span,
+                                "expected trait bound, found `impl Trait` type",
+                            );
+                            err.span_label(span, "not a trait");
+                            if let [bound, ..] = &bounds[..] {
+                                err.span_suggestion_verbose(
+                                    impl_span.until(bound.span()),
+                                    "use the trait bounds directly",
+                                    String::new(),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            err.emit();
+                            return Err(err);
+                        }
+                    }
+                    Err(err) => {
+                        err.cancel();
+                    }
+                }
+                self.restore_snapshot(snapshot);
+            }
             self.parse_generic_bounds(colon_span)?
         } else {
             Vec::new()
         };
 
         let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
-
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,

@@ -1333,12 +1333,41 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         && let hir::IsAsync::NotAsync = self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id)
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {
-                        rustc_session::parse::feature_err(
+                        let mut diag =  rustc_session::parse::feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::anonymous_lifetime_in_impl_trait,
                             lifetime_ref.span,
                             "anonymous lifetimes in `impl Trait` are unstable",
-                        ).emit();
+                        );
+
+                        match self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.def_id) {
+                            Some(generics) => {
+
+                                let new_param_sugg_tuple;
+
+                                new_param_sugg_tuple = match generics.span_for_param_suggestion() {
+                                    Some(_) => {
+                                        Some((self.tcx.sess.source_map().span_through_char(generics.span, '<').shrink_to_hi(), "'a, ".to_owned()))
+                                    },
+                                    None => Some((generics.span, "<'a>".to_owned()))
+                                };
+
+                                let mut multi_sugg_vec = vec![(lifetime_ref.span.shrink_to_hi(), "'a ".to_owned())];
+
+                                if let Some(new_tuple) =  new_param_sugg_tuple{
+                                    multi_sugg_vec.push(new_tuple);
+                                }
+
+                                diag.span_label(lifetime_ref.span, "expected named lifetime parameter");
+                                diag.multipart_suggestion("consider introducing a named lifetime parameter",
+                                multi_sugg_vec,
+                                rustc_errors::Applicability::MaybeIncorrect);
+
+                            },
+                            None => { }
+                        }
+
+                        diag.emit();
                         return;
                     }
                     scope = s;

@@ -414,6 +414,8 @@ declare_features! (
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
     /// Allows using `..X`, `..=X`, `...X`, and `X..` as a pattern.
     (active, half_open_range_patterns, "1.41.0", Some(67264), None),
+    /// Allows using `..=X` as a patterns in slices.
+    (active, half_open_range_patterns_in_slices, "CURRENT_RUSTC_VERSION", Some(67264), None),
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
     /// Allows using imported `main` function

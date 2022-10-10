@@ -1,8 +1,6 @@
 // Test `X...` and `X..=` range patterns not being allowed syntactically.
 // FIXME(Centril): perhaps these should be semantic restrictions.
 
-#![feature(half_open_range_patterns)]
-
 fn main() {}
 
 #[cfg(FALSE)]
