@@ -46,7 +46,7 @@ error: `doc(no_auto_cfg)` is enabled by default before the 2024 edition
 LL | #![doc(auto_cfg, no_auto_cfg)]
    |                  ^^^^^^^^^^^
 
-error: please don't specify both `doc(auto_cfg)` and `doc(no_auto_cfg)`
+error: conflicting attributes `doc(auto_cfg)` and `doc(no_auto_cfg)`
   --> $DIR/doc_no_auto_cfg.rs:3:8
    |
 LL | #![doc(no_auto_cfg)]

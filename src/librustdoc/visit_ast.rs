@@ -168,8 +168,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .sess()
                     .diagnostic()
                     .struct_warn(
-                        "the `doc_auto_cfg` feature is used but `#![doc(auto_cfg)]` isn't so it \
-                         won't do anything",
+                        "feature `doc_auto_cfg` now requires attribute `#![doc(auto_cfg)]` to \
+                         enable the behavior",
                     )
                     .emit();
             }
