@@ -135,11 +135,11 @@ where
 
     let mut correction: u32 =
         negate_u32(((reciprocal as u64).wrapping_mul(q31b as u64) >> 32) as u32);
-    reciprocal = ((reciprocal as u64).wrapping_mul(correction as u64) as u64 >> 31) as u32;
+    reciprocal = ((reciprocal as u64).wrapping_mul(correction as u64) >> 31) as u32;
     correction = negate_u32(((reciprocal as u64).wrapping_mul(q31b as u64) >> 32) as u32);
-    reciprocal = ((reciprocal as u64).wrapping_mul(correction as u64) as u64 >> 31) as u32;
+    reciprocal = ((reciprocal as u64).wrapping_mul(correction as u64) >> 31) as u32;
     correction = negate_u32(((reciprocal as u64).wrapping_mul(q31b as u64) >> 32) as u32);
-    reciprocal = ((reciprocal as u64).wrapping_mul(correction as u64) as u64 >> 31) as u32;
+    reciprocal = ((reciprocal as u64).wrapping_mul(correction as u64) >> 31) as u32;
 
     // Exhaustive testing shows that the error in reciprocal after three steps
     // is in the interval [-0x1.f58108p-31, 0x1.d0e48cp-29], in line with our
