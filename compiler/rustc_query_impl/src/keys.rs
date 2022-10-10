@@ -1,7 +1,6 @@
 //! Defines the set of legal keys that can be used in queries.
 
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-use rustc_hir::hir_id::HirId;
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::mir;
 use rustc_middle::traits;
@@ -542,21 +541,5 @@ impl<'tcx> Key for (Ty<'tcx>, ty::ValTree<'tcx>) {
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
-    }
-}
-
-impl Key for HirId {
-    #[inline(always)]
-    fn query_crate_is_local(&self) -> bool {
-        true
-    }
-
-    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        tcx.hir().span(*self)
-    }
-
-    #[inline(always)]
-    fn key_as_def_id(&self) -> Option<DefId> {
-        None
     }
 }

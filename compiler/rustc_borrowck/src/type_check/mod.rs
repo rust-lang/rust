@@ -312,6 +312,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     }
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+        debug!(?constant, ?location, "visit_constant");
+
         self.super_constant(constant, location);
         let ty = self.sanitize_type(constant, constant.literal.ty());
 
@@ -1815,6 +1817,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     fn check_operand(&mut self, op: &Operand<'tcx>, location: Location) {
+        debug!(?op, ?location, "check_operand");
+
         if let Operand::Constant(constant) = op {
             let maybe_uneval = match constant.literal {
                 ConstantKind::Val(..) | ConstantKind::Ty(_) => None,
@@ -2593,7 +2597,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 .enumerate()
                 .filter_map(|(idx, constraint)| {
                     let ty::OutlivesPredicate(k1, r2) =
-                        constraint.no_bound_vars().unwrap_or_else(|| {
+                        constraint.0.no_bound_vars().unwrap_or_else(|| {
                             bug!("query_constraint {:?} contained bound vars", constraint,);
                         });
 

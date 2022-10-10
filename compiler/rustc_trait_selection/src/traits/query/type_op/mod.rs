@@ -26,7 +26,7 @@ pub use rustc_middle::traits::query::type_op::*;
 /// extract out the resulting region constraints (or an error if it
 /// cannot be completed).
 pub trait TypeOp<'tcx>: Sized + fmt::Debug {
-    type Output;
+    type Output: fmt::Debug;
     type ErrorInfo;
 
     /// Processes the operation and all resulting obligations,

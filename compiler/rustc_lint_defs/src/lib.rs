@@ -92,7 +92,7 @@ pub enum LintExpectationId {
     /// stable and can be cached. The additional index ensures that nodes with
     /// several expectations can correctly match diagnostics to the individual
     /// expectation.
-    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16>, attr_id: Option<AttrId> },
+    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
 }
 
 impl LintExpectationId {
@@ -116,31 +116,13 @@ impl LintExpectationId {
 
         *lint_index = new_lint_index
     }
-
-    /// Prepares the id for hashing. Removes references to the ast.
-    /// Should only be called when the id is stable.
-    pub fn normalize(self) -> Self {
-        match self {
-            Self::Stable { hir_id, attr_index, lint_index, .. } => {
-                Self::Stable { hir_id, attr_index, lint_index, attr_id: None }
-            }
-            Self::Unstable { .. } => {
-                unreachable!("`normalize` called when `ExpectationId` is unstable")
-            }
-        }
-    }
 }
 
 impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         match self {
-            LintExpectationId::Stable {
-                hir_id,
-                attr_index,
-                lint_index: Some(lint_index),
-                attr_id: _,
-            } => {
+            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 hir_id.hash_stable(hcx, hasher);
                 attr_index.hash_stable(hcx, hasher);
                 lint_index.hash_stable(hcx, hasher);
@@ -160,12 +142,9 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
     #[inline]
     fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
         match self {
-            LintExpectationId::Stable {
-                hir_id,
-                attr_index,
-                lint_index: Some(lint_index),
-                attr_id: _,
-            } => (*hir_id, *attr_index, *lint_index),
+            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
+                (*hir_id, *attr_index, *lint_index)
+            }
             _ => {
                 unreachable!("HashStable should only be called for a filled `LintExpectationId`")
             }

@@ -11,6 +11,12 @@ LL | fn test2<'a>() {
    |          -- lifetime `'a` defined here
 LL |     outlives_forall::<Value<'a>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+   |
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+  --> $DIR/type-test-universe.rs:6:16
+   |
+LL |     for<'u> T: 'u,
+   |                ^^
 
 error: aborting due to 2 previous errors
 

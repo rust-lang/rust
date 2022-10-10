@@ -110,6 +110,7 @@ infer_relate_param_bound = ...so that the type `{$name}` will meet its required 
 infer_relate_param_bound_2 = ...that is required by this bound
 infer_relate_region_param_bound = ...so that the declared lifetime parameter bounds are satisfied
 infer_compare_impl_item_obligation = ...so that the definition in impl matches the definition from the trait
+infer_ascribe_user_type_prove_predicate = ...so that the where clause holds
 
 infer_nothing = {""}
 

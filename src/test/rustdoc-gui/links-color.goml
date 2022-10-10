@@ -1,0 +1,85 @@
+// This test checks links colors.
+goto: file://|DOC_PATH|/test_docs/index.html
+
+// This is needed so that the text color is computed.
+show-text: true
+
+// Ayu theme
+local-storage: {
+    "rustdoc-theme": "ayu",
+    "rustdoc-use-system-theme": "false",
+}
+reload:
+
+assert-css: (".item-table .mod", {"color": "rgb(57, 175, 215)"}, ALL)
+assert-css: (".item-table .macro", {"color": "rgb(163, 122, 204)"}, ALL)
+assert-css: (".item-table .struct", {"color": "rgb(255, 160, 165)"}, ALL)
+assert-css: (".item-table .enum", {"color": "rgb(255, 160, 165)"}, ALL)
+assert-css: (".item-table .trait", {"color": "rgb(57, 175, 215)"}, ALL)
+assert-css: (".item-table .fn", {"color": "rgb(253, 214, 135)"}, ALL)
+assert-css: (".item-table .type", {"color": "rgb(255, 160, 165)"}, ALL)
+assert-css: (".item-table .union", {"color": "rgb(255, 160, 165)"}, ALL)
+assert-css: (".item-table .keyword", {"color": "rgb(57, 175, 215)"}, ALL)
+
+assert-css: (
+    ".sidebar-elems a:not(.current)",
+    {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)", "font-weight": "400"},
+    ALL,
+)
+assert-css: (
+    ".sidebar-elems a.current",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)", "font-weight": "500"},
+    ALL,
+)
+
+
+// Dark theme
+local-storage: {"rustdoc-theme": "dark"}
+reload:
+
+assert-css: (".item-table .mod", {"color": "rgb(210, 153, 29)"}, ALL)
+assert-css: (".item-table .macro", {"color": "rgb(9, 189, 0)"}, ALL)
+assert-css: (".item-table .struct", {"color": "rgb(45, 191, 184)"}, ALL)
+assert-css: (".item-table .enum", {"color": "rgb(45, 191, 184)"}, ALL)
+assert-css: (".item-table .trait", {"color": "rgb(183, 140, 242)"}, ALL)
+assert-css: (".item-table .fn", {"color": "rgb(43, 171, 99)"}, ALL)
+assert-css: (".item-table .type", {"color": "rgb(45, 191, 184)"}, ALL)
+assert-css: (".item-table .union", {"color": "rgb(45, 191, 184)"}, ALL)
+assert-css: (".item-table .keyword", {"color": "rgb(210, 153, 29)"}, ALL)
+
+assert-css: (
+    ".sidebar-elems a:not(.current)",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)", "font-weight": "400"},
+    ALL,
+)
+assert-css: (
+    ".sidebar-elems a.current",
+    {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)", "font-weight": "500"},
+    ALL,
+)
+
+
+// Light theme
+local-storage: {"rustdoc-theme": "light"}
+reload:
+
+assert-css: (".item-table .mod", {"color": "rgb(56, 115, 173)"}, ALL)
+assert-css: (".item-table .macro", {"color": "rgb(6, 128, 0)"}, ALL)
+assert-css: (".item-table .struct", {"color": "rgb(173, 55, 138)"}, ALL)
+assert-css: (".item-table .enum", {"color": "rgb(173, 55, 138)"}, ALL)
+assert-css: (".item-table .trait", {"color": "rgb(110, 79, 201)"}, ALL)
+assert-css: (".item-table .fn", {"color": "rgb(173, 124, 55)"}, ALL)
+assert-css: (".item-table .type", {"color": "rgb(173, 55, 138)"}, ALL)
+assert-css: (".item-table .union", {"color": "rgb(173, 55, 138)"}, ALL)
+assert-css: (".item-table .keyword", {"color": "rgb(56, 115, 173)"}, ALL)
+
+assert-css: (
+    ".sidebar-elems a:not(.current)",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)", "font-weight": "400"},
+    ALL,
+)
+assert-css: (
+    ".sidebar-elems a.current",
+    {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)", "font-weight": "500"},
+    ALL,
+)

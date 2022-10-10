@@ -4,7 +4,7 @@ error[E0404]: expected trait, found type parameter `Add`
 LL | impl<T: Clone, Add> Add for Foo<T> {
    |                ---  ^^^ not a trait
    |                |
-   |                found this type pararmeter
+   |                found this type parameter
    |
 help: consider importing this trait instead
    |

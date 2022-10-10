@@ -272,7 +272,10 @@ impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>, C: Lift<'tcx>> Lift<'tcx> for (A, B, C)
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
     type Lifted = Option<T::Lifted>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(self?).map(Some)
+        Some(match self {
+            Some(x) => Some(tcx.lift(x)?),
+            None => None,
+        })
     }
 }
 

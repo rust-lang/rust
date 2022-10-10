@@ -27,6 +27,14 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
 	--codeblock-ignore-color: rgba(255, 142, 0, .6);
+	--type-link-color: #ffa0a5;
+	--trait-link-color: #39afd7;
+	--assoc-item-link-color: #39afd7;
+	--function-link-color: #fdd687;
+	--macro-link-color: #a37acc;
+	--keyword-link-color: #39afd7;
+	--mod-link-color: #39afd7;
+	--link-color: #39afd7;
 }
 
 .slider {
@@ -111,43 +119,11 @@ pre, .rustdoc.source .example-wrap {
 
 .content .item-info::before { color: #ccc; }
 
-.content span.foreigntype, .content a.foreigntype { color: #ffa0a5; }
-.content span.union, .content a.union { color: #ffa0a5; }
-.content span.constant, .content a.constant,
-.content span.static, .content a.static { color: #39AFD7; }
-.content span.primitive, .content a.primitive { color: #ffa0a5; }
-.content span.traitalias, .content a.traitalias { color: #39AFD7; }
-.content span.keyword, .content a.keyword { color: #39AFD7; }
-.content span.mod, .content a.mod {
-	color: #39AFD7;
-}
-.content span.struct, .content a.struct {
-	color: #ffa0a5;
-}
-.content span.enum, .content a.enum {
-	color: #ffa0a5;
-}
-.content span.trait, .content a.trait {
-	color: #39AFD7;
-}
-.content span.type, .content a.type { color: #39AFD7; }
-.content span.associatedtype, .content a.associatedtype { color: #39AFD7; }
-.content span.fn, .content a.fn,
-.content .fnname { color: #fdd687; }
-.content span.attr, .content a.attr, .content span.derive,
-.content a.derive, .content span.macro, .content a.macro {
-	color: #a37acc;
-}
-
 .sidebar a { color: #53b1db; }
 .sidebar a.current.type { color: #53b1db; }
 
 pre.rust .comment { color: #788797; }
 pre.rust .doccomment { color: #a1ac88; }
-
-a {
-	color: #39AFD7;
-}
 
 .sidebar h2 a,
 .sidebar h3 a {

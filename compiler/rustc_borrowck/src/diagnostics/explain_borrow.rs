@@ -15,7 +15,7 @@ use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
 
-use crate::region_infer::BlameConstraint;
+use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::{
     borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
     WriteKind,
@@ -38,6 +38,7 @@ pub(crate) enum BorrowExplanation<'tcx> {
         span: Span,
         region_name: RegionName,
         opt_place_desc: Option<String>,
+        extra_info: Vec<ExtraConstraintInfo>,
     },
     Unexplained,
 }
@@ -243,6 +244,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 ref region_name,
                 ref opt_place_desc,
                 from_closure: _,
+                ref extra_info,
             } => {
                 region_name.highlight_region_name(err);
 
@@ -267,6 +269,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         ),
                     );
                 };
+
+                for extra in extra_info {
+                    match extra {
+                        ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
+                            err.span_note(*span, format!("due to current limitations in the borrow checker, this implies a `'static` lifetime"));
+                        }
+                    }
+                }
 
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
             }
@@ -309,16 +319,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
-    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>) {
-        let BlameConstraint { category, from_closure, cause, variance_info: _ } = self
-            .regioncx
-            .best_blame_constraint(borrow_region, NllRegionVariableOrigin::FreeRegion, |r| {
-                self.regioncx.provides_universal_region(r, borrow_region, outlived_region)
-            });
+    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>, Vec<ExtraConstraintInfo>) {
+        let (blame_constraint, extra_info) = self.regioncx.best_blame_constraint(
+            borrow_region,
+            NllRegionVariableOrigin::FreeRegion,
+            |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
+        );
+        let BlameConstraint { category, from_closure, cause, .. } = blame_constraint;
 
         let outlived_fr_name = self.give_region_a_name(outlived_region);
 
-        (category, from_closure, cause.span, outlived_fr_name)
+        (category, from_closure, cause.span, outlived_fr_name, extra_info)
     }
 
     /// Returns structured explanation for *why* the borrow contains the
@@ -390,7 +401,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             None => {
                 if let Some(region) = self.to_error_region_vid(borrow_region_vid) {
-                    let (category, from_closure, span, region_name) =
+                    let (category, from_closure, span, region_name, extra_info) =
                         self.free_region_constraint_info(borrow_region_vid, region);
                     if let Some(region_name) = region_name {
                         let opt_place_desc = self.describe_place(borrow.borrowed_place.as_ref());
@@ -400,6 +411,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             span,
                             region_name,
                             opt_place_desc,
+                            extra_info,
                         }
                     } else {
                         debug!("Could not generate a region name");

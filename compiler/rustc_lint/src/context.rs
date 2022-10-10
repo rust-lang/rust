@@ -560,7 +560,7 @@ pub struct LateContext<'tcx> {
 
 /// Context for lint checking of the AST, after expansion, before lowering to HIR.
 pub struct EarlyContext<'a> {
-    pub builder: LintLevelsBuilder<'a, crate::levels::TopDown>,
+    pub builder: LintLevelsBuilder<'a>,
     pub buffered: LintBuffer,
 }
 

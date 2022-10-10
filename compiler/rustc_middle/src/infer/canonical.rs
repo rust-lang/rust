@@ -22,6 +22,7 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::MemberConstraint;
+use crate::mir::ConstraintCategory;
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
 use rustc_index::vec::IndexVec;
@@ -301,8 +302,10 @@ impl<'tcx, V> Canonical<'tcx, V> {
     }
 }
 
-pub type QueryOutlivesConstraint<'tcx> =
-    ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>;
+pub type QueryOutlivesConstraint<'tcx> = (
+    ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>,
+    ConstraintCategory<'tcx>,
+);
 
 TrivialTypeTraversalAndLiftImpls! {
     for <'tcx> {
