@@ -224,22 +224,14 @@ enum LifetimeUseSet {
 
 #[derive(Copy, Clone, Debug)]
 enum LifetimeRibKind {
-    /// This rib acts as a barrier to forbid reference to lifetimes of a parent item.
-    Item,
-
+    // -- Ribs introducing named lifetimes
+    //
     /// This rib declares generic parameters.
+    /// Only for this kind the `LifetimeRib::bindings` field can be non-empty.
     Generics { binder: NodeId, span: Span, kind: LifetimeBinderKind },
 
-    /// FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
-    /// generics. We are disallowing this until we can decide on how we want to handle non-'static
-    /// lifetimes in const generics. See issue #74052 for discussion.
-    ConstGeneric,
-
-    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
-    /// This function will emit an error if `generic_const_exprs` is not enabled, the body identified by
-    /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
-    AnonConst,
-
+    // -- Ribs introducing unnamed lifetimes
+    //
     /// Create a new anonymous lifetime parameter and reference it.
     ///
     /// If `report_in_path`, report an error when encountering lifetime elision in a path:
@@ -256,16 +248,31 @@ enum LifetimeRibKind {
     /// ```
     AnonymousCreateParameter { binder: NodeId, report_in_path: bool },
 
+    /// Replace all anonymous lifetimes by provided lifetime.
+    Elided(LifetimeRes),
+
+    // -- Barrier ribs that stop lifetime lookup, or continue it but produce an error later.
+    //
     /// Give a hard error when either `&` or `'_` is written. Used to
     /// rule out things like `where T: Foo<'_>`. Does not imply an
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
     AnonymousReportError,
 
-    /// Replace all anonymous lifetimes by provided lifetime.
-    Elided(LifetimeRes),
-
     /// Signal we cannot find which should be the anonymous lifetime.
     ElisionFailure,
+
+    /// FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
+    /// generics. We are disallowing this until we can decide on how we want to handle non-'static
+    /// lifetimes in const generics. See issue #74052 for discussion.
+    ConstGeneric,
+
+    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
+    /// This function will emit an error if `generic_const_exprs` is not enabled, the body
+    /// identified by `body_id` is an anonymous constant and `lifetime_ref` is non-static.
+    AnonConst,
+
+    /// This rib acts as a barrier to forbid reference to lifetimes of a parent item.
+    Item,
 }
 
 #[derive(Copy, Clone, Debug)]
