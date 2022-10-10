@@ -1106,7 +1106,7 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        AssocItemKind::TyAlias(box TyAlias {
+        AssocItemKind::Type(box TyAlias {
             defaultness,
             generics,
             where_clauses,

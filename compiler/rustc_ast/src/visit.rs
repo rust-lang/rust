@@ -685,7 +685,7 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
             let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, generics, body.as_deref());
             visitor.visit_fn(kind, span, id);
         }
-        AssocItemKind::TyAlias(box TyAlias { generics, bounds, ty, .. }) => {
+        AssocItemKind::Type(box TyAlias { generics, bounds, ty, .. }) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
             walk_list!(visitor, visit_ty, ty);
