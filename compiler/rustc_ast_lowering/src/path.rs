@@ -29,11 +29,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let partial_res =
             self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
+        let base_res = partial_res.base_res();
+        let unresolved_segments = partial_res.unresolved_segments();
 
         let path_span_lo = p.span.shrink_to_lo();
-        let proj_start = p.segments.len() - partial_res.unresolved_segments();
+        let proj_start = p.segments.len() - unresolved_segments;
         let path = self.arena.alloc(hir::Path {
-            res: self.lower_res(partial_res.base_res()),
+            res: self.lower_res(base_res),
             segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
                 |(i, segment)| {
                     let param_mode = match (qself_position, param_mode) {
@@ -46,7 +48,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => param_mode,
                     };
 
-                    let parenthesized_generic_args = match partial_res.base_res() {
+                    let parenthesized_generic_args = match base_res {
                         // `a::b::Trait(Args)`
                         Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
                             ParenthesizedGenericArgs::Ok
@@ -83,7 +85,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Simple case, either no projections, or only fully-qualified.
         // E.g., `std::mem::size_of` or `<I as Iterator>::Item`.
-        if partial_res.unresolved_segments() == 0 {
+        if unresolved_segments == 0 {
             return hir::QPath::Resolved(qself, path);
         }
 

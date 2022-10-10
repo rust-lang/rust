@@ -326,7 +326,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     }
                     PathResult::Module(..) => Err(VisResolutionError::ModuleOnly(path.span)),
                     PathResult::NonModule(partial_res) => {
-                        expected_found_error(partial_res.base_res())
+                        expected_found_error(partial_res.expect_full_res())
                     }
                     PathResult::Failed { span, label, suggestion, .. } => {
                         Err(VisResolutionError::FailedToResolve(span, label, suggestion))
