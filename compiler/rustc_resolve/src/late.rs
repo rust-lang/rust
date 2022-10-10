@@ -748,35 +748,31 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         match foreign_item.kind {
             ForeignItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
-                self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
-                    this.with_generic_param_rib(
-                        &generics.params,
-                        ItemRibKind(HasGenericParams::Yes(generics.span)),
-                        LifetimeRibKind::Generics {
-                            binder: foreign_item.id,
-                            kind: LifetimeBinderKind::Item,
-                            span: generics.span,
-                        },
-                        |this| visit::walk_foreign_item(this, foreign_item),
-                    )
-                });
+                self.with_generic_param_rib(
+                    &generics.params,
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
+                    LifetimeRibKind::Generics {
+                        binder: foreign_item.id,
+                        kind: LifetimeBinderKind::Item,
+                        span: generics.span,
+                    },
+                    |this| visit::walk_foreign_item(this, foreign_item),
+                );
             }
             ForeignItemKind::Fn(box Fn { ref generics, .. }) => {
-                self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
-                    this.with_generic_param_rib(
-                        &generics.params,
-                        ItemRibKind(HasGenericParams::Yes(generics.span)),
-                        LifetimeRibKind::Generics {
-                            binder: foreign_item.id,
-                            kind: LifetimeBinderKind::Function,
-                            span: generics.span,
-                        },
-                        |this| visit::walk_foreign_item(this, foreign_item),
-                    )
-                });
+                self.with_generic_param_rib(
+                    &generics.params,
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
+                    LifetimeRibKind::Generics {
+                        binder: foreign_item.id,
+                        kind: LifetimeBinderKind::Function,
+                        span: generics.span,
+                    },
+                    |this| visit::walk_foreign_item(this, foreign_item),
+                );
             }
             ForeignItemKind::Static(..) => {
-                self.with_item_rib(|this| {
+                self.with_static_rib(|this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
             }
@@ -1391,9 +1387,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             return self.resolve_anonymous_lifetime(lifetime, false);
         }
 
-        let mut indices = (0..self.lifetime_ribs.len()).rev();
-        for i in &mut indices {
-            let rib = &self.lifetime_ribs[i];
+        let mut lifetime_rib_iter = self.lifetime_ribs.iter().rev();
+        while let Some(rib) = lifetime_rib_iter.next() {
             let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some(&(_, res)) = rib.bindings.get(&normalized_ident) {
                 self.record_lifetime_res(lifetime.id, res, LifetimeElisionCandidate::Named);
@@ -1470,8 +1465,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
 
         let mut outer_res = None;
-        for i in indices {
-            let rib = &self.lifetime_ribs[i];
+        for rib in lifetime_rib_iter {
             let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some((&outer, _)) = rib.bindings.get_key_value(&normalized_ident) {
                 outer_res = Some(outer);
@@ -1498,8 +1492,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             count: 1,
         };
         let elision_candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
-        for i in (0..self.lifetime_ribs.len()).rev() {
-            let rib = &mut self.lifetime_ribs[i];
+        for rib in self.lifetime_ribs.iter().rev() {
             debug!(?rib.kind);
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
@@ -2213,7 +2206,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(_, ref ty, ref expr) => {
-                self.with_item_rib(|this| {
+                self.with_static_rib(|this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
                     });
@@ -2408,11 +2401,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.label_ribs.pop();
     }
 
-    fn with_item_rib(&mut self, f: impl FnOnce(&mut Self)) {
+    fn with_static_rib(&mut self, f: impl FnOnce(&mut Self)) {
         let kind = ItemRibKind(HasGenericParams::No);
-        self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
-            this.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
-        })
+        self.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
     }
 
     // HACK(min_const_generics,const_evaluatable_unchecked): We
