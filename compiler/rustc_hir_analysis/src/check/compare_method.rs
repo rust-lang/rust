@@ -466,30 +466,30 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     let ocx = ObligationCtxt::new(infcx);
 
     let norm_cause = ObligationCause::misc(return_span, impl_m_hir_id);
-    let impl_return_ty = ocx.normalize(
+    let impl_sig = ocx.normalize(
         norm_cause.clone(),
         param_env,
-        infcx
-            .replace_bound_vars_with_fresh_vars(
-                return_span,
-                infer::HigherRankedType,
-                tcx.fn_sig(impl_m.def_id),
-            )
-            .output(),
+        infcx.replace_bound_vars_with_fresh_vars(
+            return_span,
+            infer::HigherRankedType,
+            tcx.fn_sig(impl_m.def_id),
+        ),
     );
+    let impl_return_ty = impl_sig.output();
 
     let mut collector = ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_hir_id);
-    let unnormalized_trait_return_ty = tcx
+    let unnormalized_trait_sig = tcx
         .liberate_late_bound_regions(
             impl_m.def_id,
             tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
         )
-        .output()
         .fold_with(&mut collector);
-    let trait_return_ty =
-        ocx.normalize(norm_cause.clone(), param_env, unnormalized_trait_return_ty);
+    let trait_sig = ocx.normalize(norm_cause.clone(), param_env, unnormalized_trait_sig);
+    let trait_return_ty = trait_sig.output();
 
-    let wf_tys = FxHashSet::from_iter([unnormalized_trait_return_ty, trait_return_ty]);
+    let wf_tys = FxHashSet::from_iter(
+        unnormalized_trait_sig.inputs_and_output.iter().chain(trait_sig.inputs_and_output.iter()),
+    );
 
     match infcx.at(&cause, param_env).eq(trait_return_ty, impl_return_ty) {
         Ok(infer::InferOk { value: (), obligations }) => {
@@ -520,6 +520,26 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                 false,
             );
             return Err(diag.emit());
+        }
+    }
+
+    // Unify the whole function signature. We need to do this to fully infer
+    // the lifetimes of the return type, but do this after unifying just the
+    // return types, since we want to avoid duplicating errors from
+    // `compare_predicate_entailment`.
+    match infcx
+        .at(&cause, param_env)
+        .eq(tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig)), tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig)))
+    {
+        Ok(infer::InferOk { value: (), obligations }) => {
+            ocx.register_obligations(obligations);
+        }
+        Err(terr) => {
+            let guar = tcx.sess.delay_span_bug(
+                return_span,
+                format!("could not unify `{trait_sig}` and `{impl_sig}`: {terr:?}"),
+            );
+            return Err(guar);
         }
     }
 
