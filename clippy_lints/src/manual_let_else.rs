@@ -73,6 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
             if !in_external_macro(cx.sess(), stmt.span);
             if let StmtKind::Local(local) = stmt.kind;
             if let Some(init) = local.init;
+            if local.els.is_none();
             if init.span.ctxt() == stmt.span.ctxt();
             if let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init);
             then {

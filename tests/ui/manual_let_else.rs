@@ -194,4 +194,7 @@ fn not_fire() {
         };
     }
     create_binding_if_some_nf!(v, g());
+
+    // Already a let-else
+    let Some(a) = (if let Some(b) = Some(Some(())) { b } else { return }) else { panic!() };
 }
