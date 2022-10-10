@@ -1041,6 +1041,8 @@ fn check_type_defn<'tcx, F>(
 ) where
     F: FnMut(&WfCheckingCtxt<'_, 'tcx>) -> Vec<AdtVariant<'tcx>>,
 {
+    let _ = tcx.representability(item.def_id.def_id);
+
     enter_wf_checking_ctxt(tcx, item.span, item.def_id.def_id, |wfcx| {
         let variants = lookup_fields(wfcx);
         let packed = tcx.adt_def(item.def_id).repr().packed();

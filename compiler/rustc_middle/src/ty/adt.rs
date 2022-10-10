@@ -26,9 +26,6 @@ use super::{
     Destructor, FieldDef, GenericPredicates, ReprOptions, Ty, TyCtxt, VariantDef, VariantDiscr,
 };
 
-#[derive(Copy, Clone, HashStable, Debug)]
-pub struct AdtSizedConstraint<'tcx>(pub &'tcx [Ty<'tcx>]);
-
 bitflags! {
     #[derive(HashStable, TyEncodable, TyDecodable)]
     pub struct AdtFlags: u32 {
@@ -563,7 +560,7 @@ impl<'tcx> AdtDef<'tcx> {
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer (e.g., issue #31299).
     pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx [Ty<'tcx>]> {
-        ty::EarlyBinder(tcx.adt_sized_constraint(self.did()).0)
+        ty::EarlyBinder(tcx.adt_sized_constraint(self.did()))
     }
 }
 

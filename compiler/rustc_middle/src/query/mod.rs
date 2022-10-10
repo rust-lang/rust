@@ -613,16 +613,8 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    // The cycle error here should be reported as an error by `check_representable`.
-    // We consider the type as Sized in the meanwhile to avoid
-    // further errors (done in impl Value for AdtSizedConstraint).
-    // Use `cycle_delay_bug` to delay the cycle error here to be emitted later
-    // in case we accidentally otherwise don't emit an error.
-    query adt_sized_constraint(
-        key: DefId
-    ) -> AdtSizedConstraint<'tcx> {
+    query adt_sized_constraint(key: DefId) -> &'tcx [Ty<'tcx>] {
         desc { |tcx| "computing `Sized` constraints for `{}`", tcx.def_path_str(key) }
-        cycle_delay_bug
     }
 
     query adt_dtorck_constraint(
