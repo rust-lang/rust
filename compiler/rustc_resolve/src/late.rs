@@ -2498,7 +2498,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 AssocItemKind::Fn(box Fn { generics, .. }) => {
                     walk_assoc_item(self, generics, LifetimeBinderKind::Function, item);
                 }
-                AssocItemKind::TyAlias(box TyAlias { generics, .. }) => self
+                AssocItemKind::Type(box TyAlias { generics, .. }) => self
                     .with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
                         walk_assoc_item(this, generics, LifetimeBinderKind::Item, item)
                     }),
@@ -2694,8 +2694,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     },
                 );
             }
-            AssocItemKind::TyAlias(box TyAlias { generics, .. }) => {
-                debug!("resolve_implementation AssocItemKind::TyAlias");
+            AssocItemKind::Type(box TyAlias { generics, .. }) => {
+                debug!("resolve_implementation AssocItemKind::Type");
                 // We also need a new scope for the impl item type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -2770,7 +2770,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let res = binding.res();
         let Res::Def(def_kind, _) = res else { bug!() };
         match (def_kind, kind) {
-            (DefKind::AssocTy, AssocItemKind::TyAlias(..))
+            (DefKind::AssocTy, AssocItemKind::Type(..))
             | (DefKind::AssocFn, AssocItemKind::Fn(..))
             | (DefKind::AssocConst, AssocItemKind::Const(..)) => {
                 self.r.record_partial_res(id, PartialRes::new(res));
@@ -2784,7 +2784,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let (code, kind) = match kind {
             AssocItemKind::Const(..) => (rustc_errors::error_code!(E0323), "const"),
             AssocItemKind::Fn(..) => (rustc_errors::error_code!(E0324), "method"),
-            AssocItemKind::TyAlias(..) => (rustc_errors::error_code!(E0325), "type"),
+            AssocItemKind::Type(..) => (rustc_errors::error_code!(E0325), "type"),
             AssocItemKind::MacCall(..) => span_bug!(span, "unexpanded macro"),
         };
         let trait_path = path_names_to_string(path);

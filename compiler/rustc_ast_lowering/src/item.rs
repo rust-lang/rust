@@ -804,7 +804,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)), true)
             }
-            AssocItemKind::TyAlias(box TyAlias {
+            AssocItemKind::Type(box TyAlias {
                 ref generics,
                 where_clauses,
                 ref bounds,
@@ -850,7 +850,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {
         let kind = match &i.kind {
             AssocItemKind::Const(..) => hir::AssocItemKind::Const,
-            AssocItemKind::TyAlias(..) => hir::AssocItemKind::Type,
+            AssocItemKind::Type(..) => hir::AssocItemKind::Type,
             AssocItemKind::Fn(box Fn { sig, .. }) => {
                 hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }
             }
@@ -898,7 +898,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
             }
-            AssocItemKind::TyAlias(box TyAlias { generics, where_clauses, ty, .. }) => {
+            AssocItemKind::Type(box TyAlias { generics, where_clauses, ty, .. }) => {
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, *where_clauses, false);
                 self.lower_generics(
@@ -941,7 +941,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: self.lower_span(i.span),
             kind: match &i.kind {
                 AssocItemKind::Const(..) => hir::AssocItemKind::Const,
-                AssocItemKind::TyAlias(..) => hir::AssocItemKind::Type,
+                AssocItemKind::Type(..) => hir::AssocItemKind::Type,
                 AssocItemKind::Fn(box Fn { sig, .. }) => {
                     hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }
                 }

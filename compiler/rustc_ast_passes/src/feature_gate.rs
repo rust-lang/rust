@@ -517,7 +517,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
         let is_fn = match i.kind {
             ast::AssocItemKind::Fn(_) => true,
-            ast::AssocItemKind::TyAlias(box ast::TyAlias { ref ty, .. }) => {
+            ast::AssocItemKind::Type(box ast::TyAlias { ref ty, .. }) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,

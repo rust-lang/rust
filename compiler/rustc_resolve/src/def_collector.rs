@@ -239,7 +239,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let def_data = match &i.kind {
             AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident.name),
-            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
+            AssocItemKind::Type(..) => DefPathData::TypeNs(i.ident.name),
             AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
         };
 

@@ -1556,7 +1556,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         });
                     }
                 }
-                AssocItemKind::TyAlias(box TyAlias {
+                AssocItemKind::Type(box TyAlias {
                     generics,
                     where_clauses,
                     where_predicates_split,
@@ -1595,7 +1595,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         match item.kind {
-            AssocItemKind::TyAlias(box TyAlias { ref generics, ref bounds, ref ty, .. })
+            AssocItemKind::Type(box TyAlias { ref generics, ref bounds, ref ty, .. })
                 if ctxt == AssocCtxt::Trait =>
             {
                 self.visit_vis(&item.vis);
