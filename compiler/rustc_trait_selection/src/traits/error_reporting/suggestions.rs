@@ -254,7 +254,14 @@ pub trait TypeErrCtxtExt<'tcx> {
         found_span: Option<Span>,
         found: ty::PolyTraitRef<'tcx>,
         expected: ty::PolyTraitRef<'tcx>,
+        cause: &ObligationCauseCode<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
+
+    fn note_conflicting_closure_bounds(
+        &self,
+        cause: &ObligationCauseCode<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+    );
 
     fn suggest_fully_qualified_path(
         &self,
@@ -1584,6 +1591,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         found_span: Option<Span>,
         found: ty::PolyTraitRef<'tcx>,
         expected: ty::PolyTraitRef<'tcx>,
+        cause: &ObligationCauseCode<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         pub(crate) fn build_fn_sig_ty<'tcx>(
             infcx: &InferCtxt<'tcx>,
@@ -1645,7 +1653,66 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let signature_kind = format!("{argument_kind} signature");
         err.note_expected_found(&signature_kind, expected_str, &signature_kind, found_str);
 
+        self.note_conflicting_closure_bounds(cause, &mut err);
+
         err
+    }
+
+    // Add a note if there are two `Fn`-family bounds that have conflicting argument
+    // requirements, which will always cause a closure to have a type error.
+    fn note_conflicting_closure_bounds(
+        &self,
+        cause: &ObligationCauseCode<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+    ) {
+        // First, look for an `ExprBindingObligation`, which means we can get
+        // the unsubstituted predicate list of the called function. And check
+        // that the predicate that we failed to satisfy is a `Fn`-like trait.
+        if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = cause
+            && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
+            && let Some(pred) = predicates.predicates.get(*idx)
+            && let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder()
+            && ty::ClosureKind::from_def_id(self.tcx, trait_pred.def_id()).is_some()
+        {
+            let expected_self =
+                self.tcx.anonymize_late_bound_regions(pred.kind().rebind(trait_pred.self_ty()));
+            let expected_substs = self
+                .tcx
+                .anonymize_late_bound_regions(pred.kind().rebind(trait_pred.trait_ref.substs));
+
+            // Find another predicate whose self-type is equal to the expected self type,
+            // but whose substs don't match.
+            let other_pred = std::iter::zip(&predicates.predicates, &predicates.spans)
+                .enumerate()
+                .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
+                    ty::PredicateKind::Trait(trait_pred)
+                        if ty::ClosureKind::from_def_id(self.tcx, trait_pred.def_id())
+                            .is_some()
+                            && other_idx != idx
+                            // Make sure that the self type matches
+                            // (i.e. constraining this closure)
+                            && expected_self
+                                == self.tcx.anonymize_late_bound_regions(
+                                    pred.kind().rebind(trait_pred.self_ty()),
+                                )
+                            // But the substs don't match (i.e. incompatible args)
+                            && expected_substs
+                                != self.tcx.anonymize_late_bound_regions(
+                                    pred.kind().rebind(trait_pred.trait_ref.substs),
+                                ) =>
+                    {
+                        true
+                    }
+                    _ => false,
+                });
+            // If we found one, then it's very likely the cause of the error.
+            if let Some((_, (_, other_pred_span))) = other_pred {
+                err.span_note(
+                    *other_pred_span,
+                    "closure inferred to have a different signature due to this bound",
+                );
+            }
+        }
     }
 
     fn suggest_fully_qualified_path(
