@@ -28,7 +28,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
 
     acc.add(
         AssistId("generate_impl", AssistKind::Generate),
-        format!("Generate impl for `{}`", name),
+        format!("Generate impl for `{name}`"),
         target,
         |edit| {
             let start_offset = nominal.syntax().text_range().end();
