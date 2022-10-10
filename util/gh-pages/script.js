@@ -171,9 +171,7 @@
             $scope.resetGroupsToDefault = function () {
                 const groups = $scope.groups;
                 for (const [key, value] of Object.entries(GROUPS_FILTER_DEFAULT)) {
-                    if (groups.hasOwnProperty(key)) {
-                        groups[key] = value;
-                    }
+                    groups[key] = value;
                 }
             };
 
