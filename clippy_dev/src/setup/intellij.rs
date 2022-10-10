@@ -36,9 +36,8 @@ impl ClippyProjectInfo {
 }
 
 pub fn setup_rustc_src(rustc_path: &str) {
-    let rustc_source_dir = match check_and_get_rustc_dir(rustc_path) {
-        Ok(path) => path,
-        Err(_) => return,
+    let Ok(rustc_source_dir) = check_and_get_rustc_dir(rustc_path) else {
+        return
     };
 
     for project in CLIPPY_PROJECTS {
@@ -172,14 +171,10 @@ pub fn remove_rustc_src() {
 }
 
 fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> bool {
-    let mut cargo_content = if let Ok(content) = read_project_file(project.cargo_file) {
-        content
-    } else {
+    let Ok(mut cargo_content) = read_project_file(project.cargo_file) else {
         return false;
     };
-    let section_start = if let Some(section_start) = cargo_content.find(RUSTC_PATH_SECTION) {
-        section_start
-    } else {
+    let Some(section_start) = cargo_content.find(RUSTC_PATH_SECTION) else {
         println!(
             "info: dependencies could not be found in `{}` for {}, skipping file",
             project.cargo_file, project.name
@@ -187,9 +182,7 @@ fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> bool {
         return true;
     };
 
-    let end_point = if let Some(end_point) = cargo_content.find(DEPENDENCIES_SECTION) {
-        end_point
-    } else {
+    let Some(end_point) = cargo_content.find(DEPENDENCIES_SECTION) else {
         eprintln!(
             "error: the end of the rustc dependencies section could not be found in `{}`",
             project.cargo_file

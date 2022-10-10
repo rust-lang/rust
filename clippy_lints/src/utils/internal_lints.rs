@@ -1402,18 +1402,12 @@ impl<'tcx> LateLintPass<'tcx> for IfChainStyle {
         } else {
             return;
         };
-        let then_block = match then.kind {
-            ExprKind::Block(block, _) => block,
-            _ => return,
-        };
+        let ExprKind::Block(then_block, _) = then.kind else { return };
         let if_chain_span = is_expn_of(expr.span, "if_chain");
         if !els {
             check_nested_if_chains(cx, expr, then_block, if_chain_span);
         }
-        let if_chain_span = match if_chain_span {
-            None => return,
-            Some(span) => span,
-        };
+        let Some(if_chain_span) = if_chain_span else { return };
         // check for `if a && b;`
         if_chain! {
             if let ExprKind::Binary(op, _, _) = cond.kind;

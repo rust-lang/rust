@@ -339,10 +339,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
         Some(id) if trait_ref.trait_def_id() == Some(id) => id,
         _ => return,
     };
-    let copy_id = match cx.tcx.lang_items().copy_trait() {
-        Some(id) => id,
-        None => return,
-    };
+    let Some(copy_id) = cx.tcx.lang_items().copy_trait() else { return };
     let (ty_adt, ty_subs) = match *ty.kind() {
         // Unions can't derive clone.
         ty::Adt(adt, subs) if !adt.is_union() => (adt, subs),
