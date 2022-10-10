@@ -737,6 +737,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 throw_ub_format!("unwinding past a stack frame that does not allow unwinding")
             }
             mir::UnwindAction::Terminate => {
+                self.frame_mut().loc = Right(self.frame_mut().body.span);
                 M::abort(self, "panic in a function that cannot unwind".to_owned())?;
             }
         };
