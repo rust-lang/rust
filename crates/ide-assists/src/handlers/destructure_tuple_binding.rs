@@ -133,7 +133,7 @@ fn generate_name(
     _usages: &Option<UsageSearchResult>,
 ) -> String {
     // FIXME: detect if name already used
-    format!("_{}", index)
+    format!("_{index}")
 }
 
 enum RefType {
@@ -168,12 +168,12 @@ fn edit_tuple_assignment(
     let add_cursor = |text: &str| {
         // place cursor on first tuple item
         let first_tuple = &data.field_names[0];
-        text.replacen(first_tuple, &format!("$0{}", first_tuple), 1)
+        text.replacen(first_tuple, &format!("$0{first_tuple}"), 1)
     };
 
     // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
     if in_sub_pattern {
-        let text = format!(" @ {}", tuple_pat);
+        let text = format!(" @ {tuple_pat}");
         match ctx.config.snippet_cap {
             Some(cap) => {
                 let snip = add_cursor(&text);
@@ -314,9 +314,9 @@ struct RefData {
 impl RefData {
     fn format(&self, field_name: &str) -> String {
         match (self.needs_deref, self.needs_parentheses) {
-            (true, true) => format!("(*{})", field_name),
-            (true, false) => format!("*{}", field_name),
-            (false, true) => format!("({})", field_name),
+            (true, true) => format!("(*{field_name})"),
+            (true, false) => format!("*{field_name}"),
+            (false, true) => format!("({field_name})"),
             (false, false) => field_name.to_string(),
         }
     }
