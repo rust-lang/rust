@@ -17,6 +17,10 @@ export type Workspace =
       };
 
 export class Ctx {
+    // Helps VS Code to correctly link problems from runnables. This is used by
+    // `rust-analyzer.cargoWorkspaceRootForCurrentRun` command of $rustc-run problem matcher.
+    cargoWorkspaceRootForCurrentRun?: string = undefined;
+
     private constructor(
         readonly config: Config,
         private readonly extCtx: vscode.ExtensionContext,
