@@ -197,4 +197,8 @@ fn not_fire() {
 
     // Already a let-else
     let Some(a) = (if let Some(b) = Some(Some(())) { b } else { return }) else { panic!() };
+
+    // If a type annotation is present, don't lint as
+    // expressing the type might be too hard
+    let v: () = if let Some(v_some) = g() { v_some } else { panic!() };
 }
