@@ -63,6 +63,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         // in them, so this code has no effect, but it is looking
         // forward to the day when we *do* want to carry universes
         // through into queries.
+        //
+        // Instantiate the root-universe content into the current universe,
+        // and create fresh universes for the higher universes.
         let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(self.universe())
             .chain((1..=canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
             .collect();
