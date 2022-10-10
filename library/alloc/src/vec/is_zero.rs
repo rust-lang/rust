@@ -160,3 +160,25 @@ unsafe impl<T: IsZero> IsZero for Saturating<T> {
         self.0.is_zero()
     }
 }
+
+macro_rules! impl_for_optional_bool {
+    ($($t:ty,)+) => {$(
+        unsafe impl IsZero for $t {
+            #[inline]
+            fn is_zero(&self) -> bool {
+                // SAFETY: This is *not* a stable layout guarantee, but
+                // inside `core` we're allowed to rely on the current rustc
+                // behaviour that options of bools will be one byte with
+                // no padding, so long as they're nested less than 254 deep.
+                let raw: u8 = unsafe { core::mem::transmute(*self) };
+                raw == 0
+            }
+        }
+    )+};
+}
+impl_for_optional_bool! {
+    Option<bool>,
+    Option<Option<bool>>,
+    Option<Option<Option<bool>>>,
+    // Could go further, but not worth the metadata overhead
+}
