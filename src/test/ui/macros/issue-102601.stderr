@@ -1,0 +1,11 @@
+error: cannot find macro `bitflags` in this scope
+  --> $DIR/issue-102601.rs:6:5
+   |
+LL |     bitflags! {
+   |     ^^^^^^^^
+   |
+   = help: consider importing this macro:
+           use hey::bitflags;
+
+error: aborting due to previous error
+

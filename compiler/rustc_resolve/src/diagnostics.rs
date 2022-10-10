@@ -2441,10 +2441,9 @@ fn show_candidates(
 
             for candidate in accessible_path_strings {
                 msg.push('\n');
-                msg.push_str(&candidate.0);
+                msg.push_str(&format!("use {};", &candidate.0));
             }
-
-            err.note(&msg);
+            err.help(&msg);
         }
     } else if !matches!(mode, DiagnosticMode::Import) {
         assert!(!inaccessible_path_strings.is_empty());
