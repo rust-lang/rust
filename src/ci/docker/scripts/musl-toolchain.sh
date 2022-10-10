@@ -44,8 +44,8 @@ export CFLAGS="-fPIC -g1 $CFLAGS"
 
 git clone https://github.com/richfelker/musl-cross-make # -b v0.9.9
 cd musl-cross-make
-# A few commits ahead of v0.9.9 to include the cowpatch fix:
-git checkout f442c9178b75cf12206113323a49f2e33ecd060b
+# A version that includes support for building musl 1.2.3
+git checkout fe915821b652a7fa37b34a596f47d8e20bc72338
 
 hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.2.3 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE
 hide_output make install TARGET=$TARGET MUSL_VER=1.2.3 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE OUTPUT=$OUTPUT
