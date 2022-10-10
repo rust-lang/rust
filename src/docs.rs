@@ -170,7 +170,6 @@ docs! {
     "fn_to_numeric_cast_any",
     "fn_to_numeric_cast_with_truncation",
     "for_kv_map",
-    "for_loops_over_fallibles",
     "forget_copy",
     "forget_non_drop",
     "forget_ref",
