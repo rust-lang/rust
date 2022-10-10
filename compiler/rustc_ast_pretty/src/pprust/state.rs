@@ -373,8 +373,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_literal(&mut self, lit: &ast::Lit) {
-        self.maybe_print_comment(lit.span.lo());
-        self.word(lit.token_lit.to_string())
+        self.print_token_literal(lit.token_lit, lit.span)
+    }
+
+    fn print_token_literal(&mut self, token_lit: token::Lit, span: Span) {
+        self.maybe_print_comment(span.lo());
+        self.word(token_lit.to_string())
     }
 
     fn print_string(&mut self, st: &str, style: ast::StrStyle) {
@@ -1735,7 +1739,7 @@ impl<'a> State<'a> {
             }
             ast::Extern::Explicit(abi, _) => {
                 self.word_nbsp("extern");
-                self.print_literal(&abi.as_lit());
+                self.print_token_literal(abi.as_token_lit(), abi.span);
                 self.nbsp();
             }
         }

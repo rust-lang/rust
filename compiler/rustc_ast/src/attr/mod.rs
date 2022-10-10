@@ -533,7 +533,7 @@ impl MetaItemKind {
             MetaItemKind::NameValue(lit) => {
                 let expr = P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::Lit(lit.clone()),
+                    kind: ast::ExprKind::Lit(lit.token_lit.clone()),
                     span: lit.span,
                     attrs: ast::AttrVec::new(),
                     tokens: None,
@@ -605,7 +605,7 @@ impl MetaItemKind {
                 MetaItemKind::name_value_from_tokens(&mut inner_tokens.into_trees())
             }
             Some(TokenTree::Token(token, _)) => {
-                Lit::from_token(&token).ok().map(MetaItemKind::NameValue)
+                Lit::from_token(&token).map(MetaItemKind::NameValue)
             }
             _ => None,
         }
@@ -618,8 +618,10 @@ impl MetaItemKind {
                 MetaItemKind::list_from_tokens(tokens.clone())
             }
             MacArgs::Delimited(..) => None,
-            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => match &expr.kind {
-                ast::ExprKind::Lit(lit) => Some(MetaItemKind::NameValue(lit.clone())),
+            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => match expr.kind {
+                ast::ExprKind::Lit(token_lit) => Some(MetaItemKind::NameValue(
+                    Lit::from_token_lit(token_lit, expr.span).expect("token_lit in from_mac_args"),
+                )),
                 _ => None,
             },
             MacArgs::Eq(_, MacArgsEq::Hir(lit)) => Some(MetaItemKind::NameValue(lit.clone())),
@@ -668,7 +670,7 @@ impl NestedMetaItem {
     {
         match tokens.peek() {
             Some(TokenTree::Token(token, _))
-                if let Ok(lit) = Lit::from_token(token) =>
+                if let Some(lit) = Lit::from_token(token) =>
             {
                 tokens.next();
                 return Some(NestedMetaItem::Literal(lit));

@@ -661,6 +661,7 @@ impl<'a> StringReader<'a> {
         prefix_len: u32,
         postfix_len: u32,
     ) -> (token::LitKind, Symbol) {
+        let mut has_fatal_err = false;
         let content_start = start + BytePos(prefix_len);
         let content_end = end - BytePos(postfix_len);
         let lit_content = self.str_from_to(content_start, content_end);
@@ -672,6 +673,9 @@ impl<'a> StringReader<'a> {
                 let lo = content_start + BytePos(start);
                 let hi = lo + BytePos(end - start);
                 let span = self.mk_sp(lo, hi);
+                if err.is_fatal() {
+                    has_fatal_err = true;
+                }
                 emit_unescape_error(
                     &self.sess.span_diagnostic,
                     lit_content,
@@ -683,7 +687,14 @@ impl<'a> StringReader<'a> {
                 );
             }
         });
-        (kind, Symbol::intern(lit_content))
+
+        // We normally exclude the quotes for the symbol, but for errors we
+        // include it because it results in clearer error messages.
+        if !has_fatal_err {
+            (kind, Symbol::intern(lit_content))
+        } else {
+            (token::Err, self.symbol_from_to(start, end))
+        }
     }
 }
 

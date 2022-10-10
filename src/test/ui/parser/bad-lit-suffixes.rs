@@ -28,12 +28,11 @@ fn main() {
 }
 
 #[rustc_dummy = "string"suffix]
-//~^ ERROR suffixes on string literals are invalid
+//~^ ERROR unexpected expression: `"string"suffix`
 fn f() {}
 
 #[must_use = "string"suffix]
-//~^ ERROR suffixes on string literals are invalid
-//~^^ ERROR malformed `must_use` attribute input
+//~^ ERROR unexpected expression: `"string"suffix`
 fn g() {}
 
 #[link(name = "string"suffix)]

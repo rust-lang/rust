@@ -49,10 +49,12 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                 MetaItemKind::List(nmis)
             }
             MacArgs::Eq(_, MacArgsEq::Ast(expr)) => {
-                if let ast::ExprKind::Lit(lit) = &expr.kind {
-                    if !lit.kind.is_unsuffixed() {
+                if let ast::ExprKind::Lit(token_lit) = expr.kind
+                    && let Ok(lit) = ast::Lit::from_token_lit(token_lit, expr.span)
+                {
+                    if token_lit.suffix.is_some() {
                         let mut err = sess.span_diagnostic.struct_span_err(
-                            lit.span,
+                            expr.span,
                             "suffixed literals are not allowed in attributes",
                         );
                         err.help(
@@ -61,7 +63,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                         );
                         return Err(err);
                     } else {
-                        MetaItemKind::NameValue(lit.clone())
+                        MetaItemKind::NameValue(lit)
                     }
                 } else {
                     // The non-error case can happen with e.g. `#[foo = 1+1]`. The error case can

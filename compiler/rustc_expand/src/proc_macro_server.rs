@@ -516,14 +516,14 @@ impl server::TokenStream for Rustc<'_, '_> {
         // We don't use `TokenStream::from_ast` as the tokenstream currently cannot
         // be recovered in the general case.
         match &expr.kind {
-            ast::ExprKind::Lit(l) if l.token_lit.kind == token::Bool => {
+            ast::ExprKind::Lit(token_lit) if token_lit.kind == token::Bool => {
                 Ok(tokenstream::TokenStream::token_alone(
-                    token::Ident(l.token_lit.symbol, false),
-                    l.span,
+                    token::Ident(token_lit.symbol, false),
+                    expr.span,
                 ))
             }
-            ast::ExprKind::Lit(l) => {
-                Ok(tokenstream::TokenStream::token_alone(token::Literal(l.token_lit), l.span))
+            ast::ExprKind::Lit(token_lit) => {
+                Ok(tokenstream::TokenStream::token_alone(token::Literal(*token_lit), expr.span))
             }
             ast::ExprKind::IncludedBytes(bytes) => {
                 let lit = ast::Lit::from_included_bytes(bytes, expr.span);
@@ -533,16 +533,13 @@ impl server::TokenStream for Rustc<'_, '_> {
                 ))
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
-                ast::ExprKind::Lit(l) => match l.token_lit {
+                ast::ExprKind::Lit(token_lit) => match token_lit {
                     token::Lit { kind: token::Integer | token::Float, .. } => {
                         Ok(Self::TokenStream::from_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
                             tokenstream::TokenTree::token_alone(token::BinOp(token::Minus), e.span),
-                            tokenstream::TokenTree::token_alone(
-                                token::Literal(l.token_lit),
-                                l.span,
-                            ),
+                            tokenstream::TokenTree::token_alone(token::Literal(*token_lit), e.span),
                         ]))
                     }
                     _ => Err(()),

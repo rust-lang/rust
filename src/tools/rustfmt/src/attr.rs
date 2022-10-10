@@ -260,7 +260,9 @@ impl Rewrite for ast::NestedMetaItem {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
             ast::NestedMetaItem::MetaItem(ref meta_item) => meta_item.rewrite(context, shape),
-            ast::NestedMetaItem::Literal(ref l) => rewrite_literal(context, l, shape),
+            ast::NestedMetaItem::Literal(ref l) => {
+                rewrite_literal(context, l.token_lit, l.span, shape)
+            }
         }
     }
 }
@@ -318,7 +320,7 @@ impl Rewrite for ast::MetaItem {
                 // we might be better off ignoring the fact that the attribute
                 // is longer than the max width and continue on formatting.
                 // See #2479 for example.
-                let value = rewrite_literal(context, literal, lit_shape)
+                let value = rewrite_literal(context, literal.token_lit, literal.span, lit_shape)
                     .unwrap_or_else(|| context.snippet(literal.span).to_owned());
                 format!("{} = {}", path, value)
             }

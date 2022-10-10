@@ -305,61 +305,6 @@ pub(crate) struct FloatLiteralRequiresIntegerPart {
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_invalid_int_literal_width)]
-#[help]
-pub(crate) struct InvalidIntLiteralWidth {
-    #[primary_span]
-    pub span: Span,
-    pub width: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser_invalid_num_literal_base_prefix)]
-#[note]
-pub(crate) struct InvalidNumLiteralBasePrefix {
-    #[primary_span]
-    #[suggestion(applicability = "maybe-incorrect", code = "{fixed}")]
-    pub span: Span,
-    pub fixed: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser_invalid_num_literal_suffix)]
-#[help]
-pub(crate) struct InvalidNumLiteralSuffix {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub suffix: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser_invalid_float_literal_width)]
-#[help]
-pub(crate) struct InvalidFloatLiteralWidth {
-    #[primary_span]
-    pub span: Span,
-    pub width: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser_invalid_float_literal_suffix)]
-#[help]
-pub(crate) struct InvalidFloatLiteralSuffix {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub suffix: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser_int_literal_too_large)]
-pub(crate) struct IntLiteralTooLarge {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parser_missing_semicolon_before_array)]
 pub(crate) struct MissingSemicolonBeforeArray {
     #[primary_span]
@@ -738,41 +683,6 @@ pub(crate) struct StructLiteralNotAllowedHereSugg {
 pub(crate) struct InvalidInterpolatedExpression {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser_hexadecimal_float_literal_not_supported)]
-pub(crate) struct HexadecimalFloatLiteralNotSupported {
-    #[primary_span]
-    #[label(parser_not_supported)]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser_octal_float_literal_not_supported)]
-pub(crate) struct OctalFloatLiteralNotSupported {
-    #[primary_span]
-    #[label(parser_not_supported)]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser_binary_float_literal_not_supported)]
-pub(crate) struct BinaryFloatLiteralNotSupported {
-    #[primary_span]
-    #[label(parser_not_supported)]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parser_invalid_literal_suffix)]
-pub(crate) struct InvalidLiteralSuffix {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    // FIXME(#100717)
-    pub kind: String,
-    pub suffix: Symbol,
 }
 
 #[derive(Diagnostic)]

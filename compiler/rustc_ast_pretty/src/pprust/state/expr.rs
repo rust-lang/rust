@@ -319,8 +319,8 @@ impl<'a> State<'a> {
             ast::ExprKind::AddrOf(k, m, ref expr) => {
                 self.print_expr_addr_of(k, m, expr);
             }
-            ast::ExprKind::Lit(ref lit) => {
-                self.print_literal(lit);
+            ast::ExprKind::Lit(token_lit) => {
+                self.print_token_literal(token_lit, expr.span);
             }
             ast::ExprKind::IncludedBytes(ref bytes) => {
                 let lit = ast::Lit::from_included_bytes(bytes, expr.span);
