@@ -734,9 +734,7 @@ a {
 	display: initial;
 }
 
-.impl:hover > .anchor, .method.trait-impl:hover > .anchor,
-.type.trait-impl:hover > .anchor, .associatedconstant.trait-impl:hover > .anchor,
-.associatedtype.trait-impl:hover > .anchor {
+.impl:hover > .anchor, .trait-impl:hover > .anchor {
 	display: inline-block;
 	position: absolute;
 }
