@@ -236,21 +236,22 @@ impl ast::GenericParamList {
         }
     }
 
-    /// Extracts the const, type, and lifetime names into a new [`ast::GenericParamList`]
-    pub fn to_generic_args(&self) -> ast::GenericParamList {
-        let params = self.generic_params().filter_map(|param| match param {
-            ast::GenericParam::ConstParam(it) => {
-                Some(ast::GenericParam::TypeParam(make::type_param(it.name()?, None)))
-            }
+    /// Constructs a matching [`ast::GenericArgList`]
+    pub fn to_generic_args(&self) -> ast::GenericArgList {
+        let args = self.generic_params().filter_map(|param| match param {
             ast::GenericParam::LifetimeParam(it) => {
-                Some(ast::GenericParam::LifetimeParam(make::lifetime_param(it.lifetime()?)))
+                Some(ast::GenericArg::LifetimeArg(make::lifetime_arg(it.lifetime()?)))
             }
             ast::GenericParam::TypeParam(it) => {
-                Some(ast::GenericParam::TypeParam(make::type_param(it.name()?, None)))
+                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
+            }
+            ast::GenericParam::ConstParam(it) => {
+                // Name-only const params get parsed as `TypeArg`s
+                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
             }
         });
 
-        make::generic_param_list(params)
+        make::generic_arg_list(args)
     }
 }
 
@@ -317,7 +318,7 @@ impl Removable for ast::TypeBoundList {
 impl ast::PathSegment {
     pub fn get_or_create_generic_arg_list(&self) -> ast::GenericArgList {
         if self.generic_arg_list().is_none() {
-            let arg_list = make::generic_arg_list().clone_for_update();
+            let arg_list = make::generic_arg_list(empty()).clone_for_update();
             ted::append_child(self.syntax(), arg_list.syntax());
         }
         self.generic_arg_list().unwrap()
