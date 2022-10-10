@@ -33,7 +33,6 @@ RUN curl -sL --output ovmf-ia32.deb http://mirrors.kernel.org/ubuntu/pool/univer
 RUN dpkg -i ovmf-ia32.deb && rm ovmf-ia32.deb
 
 WORKDIR /build/
-COPY scripts/musl-patch-configure.diff /build/
 COPY scripts/musl-toolchain.sh /build/
 RUN bash musl-toolchain.sh x86_64 && rm -rf build
 WORKDIR /
