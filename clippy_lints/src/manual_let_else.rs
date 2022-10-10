@@ -1,16 +1,19 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
+use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{for_each_expr, Descend};
 use clippy_utils::{meets_msrv, msrvs, peel_blocks};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
+use rustc_span::Span;
 use serde::Deserialize;
 use std::ops::ControlFlow;
 
@@ -80,20 +83,15 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
         };
 
         match if_let_or_match {
-            IfLetOrMatch::IfLet(_let_expr, let_pat, if_then, if_else) => if_chain! {
+            IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => if_chain! {
                 if expr_is_simple_identity(let_pat, if_then);
                 if let Some(if_else) = if_else;
                 if expr_diverges(cx, if_else);
                 then {
-                    span_lint(
-                        cx,
-                        MANUAL_LET_ELSE,
-                        stmt.span,
-                        "this could be rewritten as `let else`",
-                    );
+                    emit_manual_let_else(cx, stmt.span, if_let_expr, let_pat, if_else);
                 }
             },
-            IfLetOrMatch::Match(_match_expr, arms, source) => {
+            IfLetOrMatch::Match(match_expr, arms, source) => {
                 if self.matches_behaviour == MatchLintBehaviour::Never {
                     return;
                 }
@@ -105,32 +103,58 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
                 if arms.len() != 2 {
                     return;
                 }
-                let check_types = self.matches_behaviour == MatchLintBehaviour::WellKnownTypes;
-                // We iterate over both arms, trying to find one that is an identity,
-                // one that diverges. Our check needs to work regardless of the order
-                // of both arms.
-                let mut found_identity_arm = false;
-                let mut found_diverging_arm = false;
-                for arm in arms {
-                    // Guards don't give us an easy mapping to let else
-                    if arm.guard.is_some() {
-                        return;
-                    }
-                    if expr_is_simple_identity(arm.pat, arm.body) {
-                        found_identity_arm = true;
-                    } else if expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types) {
-                        found_diverging_arm = true;
-                    }
-                }
-                if !(found_identity_arm && found_diverging_arm) {
+                // Guards don't give us an easy mapping either
+                if arms.iter().any(|arm| arm.guard.is_some()) {
                     return;
                 }
-                span_lint(cx, MANUAL_LET_ELSE, stmt.span, "this could be rewritten as `let else`");
+                let check_types = self.matches_behaviour == MatchLintBehaviour::WellKnownTypes;
+                let diverging_arm_opt = arms
+                    .iter()
+                    .enumerate()
+                    .find(|(_, arm)| expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types));
+                let Some((idx, diverging_arm)) = diverging_arm_opt else { return; };
+                let pat_arm = &arms[1 - idx];
+                if !expr_is_simple_identity(pat_arm.pat, pat_arm.body) {
+                    return;
+                }
+
+                emit_manual_let_else(cx, stmt.span, match_expr, pat_arm.pat, diverging_arm.body);
             },
         }
     }
 
     extract_msrv_attr!(LateContext);
+}
+
+fn emit_manual_let_else(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, pat: &Pat<'_>, else_body: &Expr<'_>) {
+    span_lint_and_then(
+        cx,
+        MANUAL_LET_ELSE,
+        span,
+        "this could be rewritten as `let...else`",
+        |diag| {
+            // This is far from perfect, for example there needs to be:
+            // * mut additions for the bindings
+            // * renamings of the bindings
+            // * unused binding collision detection with existing ones
+            // * putting patterns with at the top level | inside ()
+            // for this to be machine applicable.
+            let app = Applicability::HasPlaceholders;
+
+            if let Some(sn_pat) = snippet_opt(cx, pat.span) &&
+                let Some(sn_expr) = snippet_opt(cx, expr.span) &&
+                let Some(sn_else) = snippet_opt(cx, else_body.span)
+            {
+                let else_bl = if matches!(else_body.kind, ExprKind::Block(..)) {
+                    sn_else
+                } else {
+                    format!("{{ {sn_else} }}")
+                };
+                let sugg = format!("let {sn_pat} = {sn_expr} else {else_bl};");
+                diag.span_suggestion(span, "consider writing", sugg, app);
+            }
+        },
+    );
 }
 
 fn expr_diverges(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {

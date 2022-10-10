@@ -158,14 +158,13 @@ fn not_fire() {
         }
     };
 
-
-    let v = if let Some(v_some) = g() {
+    enum Uninhabited {}
+    fn un() -> Uninhabited {
+        panic!()
+    }
+    let v = if let Some(v_some) = None {
         v_some
     } else {
-        enum Uninhabited {}
-        fn un() -> Uninhabited {
-            panic!()
-        }
         // Don't lint if the type is uninhabited but not !
         un()
     };
