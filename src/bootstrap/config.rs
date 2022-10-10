@@ -161,6 +161,8 @@ pub struct Config {
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
+    pub llvm_bolt_profile_generate: bool,
+    pub llvm_bolt_profile_use: Option<String>,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -806,6 +808,15 @@ impl Config {
         }
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
+        config.llvm_bolt_profile_generate = flags.llvm_bolt_profile_generate;
+        config.llvm_bolt_profile_use = flags.llvm_bolt_profile_use;
+
+        if config.llvm_bolt_profile_generate && config.llvm_bolt_profile_use.is_some() {
+            eprintln!(
+                "Cannot use both `llvm_bolt_profile_generate` and `llvm_bolt_profile_use` at the same time"
+            );
+            crate::detail_exit(1);
+        }
 
         // Infer the rest of the configuration.
 

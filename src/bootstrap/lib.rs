@@ -122,6 +122,7 @@ use crate::util::{
     check_run, exe, libdir, mtime, output, run, run_suppressed, try_run, try_run_suppressed, CiEnv,
 };
 
+mod bolt;
 mod builder;
 mod cache;
 mod cc_detect;
