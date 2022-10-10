@@ -3,7 +3,7 @@ use std::cmp::min;
 
 use itertools::Itertools;
 use rustc_ast::token::{Delimiter, LitKind};
-use rustc_ast::{ast, ptr};
+use rustc_ast::{ast, ptr, token};
 use rustc_span::{BytePos, Span};
 
 use crate::chains::rewrite_chain;
@@ -75,12 +75,12 @@ pub(crate) fn format_expr(
             choose_separator_tactic(context, expr.span),
             None,
         ),
-        ast::ExprKind::Lit(ref l) => {
-            if let Some(expr_rw) = rewrite_literal(context, l, shape) {
+        ast::ExprKind::Lit(token_lit) => {
+            if let Some(expr_rw) = rewrite_literal(context, token_lit, expr.span, shape) {
                 Some(expr_rw)
             } else {
-                if let LitKind::StrRaw(_) = l.token_lit.kind {
-                    Some(context.snippet(l.span).trim().into())
+                if let LitKind::StrRaw(_) = token_lit.kind {
+                    Some(context.snippet(expr.span).trim().into())
                 } else {
                     None
                 }
@@ -274,9 +274,9 @@ pub(crate) fn format_expr(
 
             fn needs_space_before_range(context: &RewriteContext<'_>, lhs: &ast::Expr) -> bool {
                 match lhs.kind {
-                    ast::ExprKind::Lit(ref lit) => match lit.kind {
-                        ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
-                            context.snippet(lit.span).ends_with('.')
+                    ast::ExprKind::Lit(token_lit) => match token_lit.kind {
+                        token::LitKind::Float if token_lit.suffix.is_none() => {
+                            context.snippet(lhs.span).ends_with('.')
                         }
                         _ => false,
                     },
@@ -1185,14 +1185,15 @@ pub(crate) fn is_unsafe_block(block: &ast::Block) -> bool {
 
 pub(crate) fn rewrite_literal(
     context: &RewriteContext<'_>,
-    l: &ast::Lit,
+    token_lit: token::Lit,
+    span: Span,
     shape: Shape,
 ) -> Option<String> {
-    match l.kind {
-        ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
-        ast::LitKind::Int(..) => rewrite_int_lit(context, l, shape),
+    match token_lit.kind {
+        token::LitKind::Str => rewrite_string_lit(context, span, shape),
+        token::LitKind::Integer => rewrite_int_lit(context, token_lit, span, shape),
         _ => wrap_str(
-            context.snippet(l.span).to_owned(),
+            context.snippet(span).to_owned(),
             context.config.max_width(),
             shape,
         ),
@@ -1225,9 +1226,13 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
     )
 }
 
-fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -> Option<String> {
-    let span = lit.span;
-    let symbol = lit.token_lit.symbol.as_str();
+fn rewrite_int_lit(
+    context: &RewriteContext<'_>,
+    token_lit: token::Lit,
+    span: Span,
+    shape: Shape,
+) -> Option<String> {
+    let symbol = token_lit.symbol.as_str();
 
     if let Some(symbol_stripped) = symbol.strip_prefix("0x") {
         let hex_lit = match context.config.hex_literal_case() {
@@ -1240,9 +1245,7 @@ fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -
                 format!(
                     "0x{}{}",
                     hex_lit,
-                    lit.token_lit
-                        .suffix
-                        .map_or(String::new(), |s| s.to_string())
+                    token_lit.suffix.map_or(String::new(), |s| s.to_string())
                 ),
                 context.config.max_width(),
                 shape,
