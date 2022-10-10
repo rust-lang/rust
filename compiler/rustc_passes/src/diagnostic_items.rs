@@ -45,7 +45,6 @@ fn collect_item(tcx: TyCtxt<'_>, items: &mut DiagnosticItems, name: Symbol, item
                 Some(span) => tcx.sess.emit_err(DuplicateDiagnosticItem { span, name }),
                 None => tcx.sess.emit_err(DuplicateDiagnosticItemInCrate {
                     span: orig_span,
-                    // FIXME: We should not provide `name` to `orig_crate_name`. How do you create a blank/empty symbol?
                     orig_crate_name: orig_crate_name.unwrap_or(Empty),
                     have_orig_crate_name: orig_crate_name.map(|_| ()),
                     crate_name: tcx.crate_name(item_def_id.krate),
@@ -59,7 +58,11 @@ fn collect_item(tcx: TyCtxt<'_>, items: &mut DiagnosticItems, name: Symbol, item
 /// Extract the first `rustc_diagnostic_item = "$name"` out of a list of attributes.
 fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
     attrs.iter().find_map(|attr| {
-        if attr.has_name(sym::rustc_diagnostic_item) { attr.value_str() } else { None }
+        if attr.has_name(sym::rustc_diagnostic_item) {
+            attr.value_str()
+        } else {
+            None
+        }
     })
 }
 
