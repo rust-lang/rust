@@ -509,7 +509,11 @@ impl Step for JsonStd {
         let target = self.target;
         let out = builder.json_doc_out(target);
         t!(fs::create_dir_all(&out));
-        let extra_args = [OsStr::new("--output-format"), OsStr::new("json")];
+        let extra_args = [
+            OsStr::new("--document-private-items"),
+            OsStr::new("--output-format"),
+            OsStr::new("json"),
+        ];
         doc_std(builder, DocumentationFormat::JSON, stage, target, &out, &extra_args, &[])
     }
 }
