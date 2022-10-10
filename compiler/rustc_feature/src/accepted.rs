@@ -169,6 +169,8 @@ declare_features! (
     (accepted, global_allocator, "1.28.0", Some(27389), None),
     // FIXME: explain `globs`.
     (accepted, globs, "1.0.0", None, None),
+    /// Allows using `..=X` as a pattern.
+    (accepted, half_open_range_patterns, "CURRENT_RUSTC_VERSION", Some(67264), None),
     /// Allows using the `u128` and `i128` types.
     (accepted, i128_type, "1.26.0", Some(35118), None),
     /// Allows the use of `if let` expressions.

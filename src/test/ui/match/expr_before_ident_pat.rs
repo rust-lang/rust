@@ -1,5 +1,3 @@
-#![feature(half_open_range_patterns)]
-
 macro_rules! funny {
     ($a:expr, $b:ident) => {
         match [1, 2] {
