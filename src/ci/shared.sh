@@ -12,7 +12,7 @@ export MIRRORS_BASE="https://ci-mirrors.rust-lang.org/rustc"
 function retry {
   echo "Attempting with retry:" "$@"
   local n=1
-  local max=5
+  local max=1
   while true; do
     "$@" && break || {
       if [[ $n -lt $max ]]; then

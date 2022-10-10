@@ -32,6 +32,7 @@ TARGET=$ARCH-linux-musl
 
 # Don't depend on the mirrors of sabotage linux that musl-cross-make uses.
 LINUX_HEADERS_SITE=https://ci-mirrors.rust-lang.org/rustc/sabotage-linux-tarballs
+LINUX_VER=headers-4.19.88
 
 OUTPUT=/usr/local
 shift
@@ -47,8 +48,8 @@ cd musl-cross-make
 # A version that includes support for building musl 1.2.3
 git checkout fe915821b652a7fa37b34a596f47d8e20bc72338
 
-hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.2.3 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE
-hide_output make install TARGET=$TARGET MUSL_VER=1.2.3 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE OUTPUT=$OUTPUT
+hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.2.3 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE LINUX_VER=$LINUX_VER
+hide_output make install TARGET=$TARGET MUSL_VER=1.2.3 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE LINUX_VER=$LINUX_VER OUTPUT=$OUTPUT
 
 cd -
 
