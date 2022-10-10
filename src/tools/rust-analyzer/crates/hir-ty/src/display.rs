@@ -751,9 +751,19 @@ impl HirDisplay for Ty {
             }
             TyKind::BoundVar(idx) => idx.hir_fmt(f)?,
             TyKind::Dyn(dyn_ty) => {
+                // Reorder bounds to satisfy `write_bounds_like_dyn_trait()`'s expectation.
+                // FIXME: `Iterator::partition_in_place()` or `Vec::drain_filter()` may make it
+                // more efficient when either of them hits stable.
+                let mut bounds: SmallVec<[_; 4]> =
+                    dyn_ty.bounds.skip_binders().iter(Interner).cloned().collect();
+                let (auto_traits, others): (SmallVec<[_; 4]>, _) =
+                    bounds.drain(1..).partition(|b| b.skip_binders().trait_id().is_some());
+                bounds.extend(others);
+                bounds.extend(auto_traits);
+
                 write_bounds_like_dyn_trait_with_prefix(
                     "dyn",
-                    dyn_ty.bounds.skip_binders().interned(),
+                    &bounds,
                     SizedByDefault::NotSized,
                     f,
                 )?;
