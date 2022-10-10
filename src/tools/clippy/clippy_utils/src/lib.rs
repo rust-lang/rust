@@ -2064,9 +2064,9 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
     }
 }
 
-/// Returns Option<String> where String is a textual representation of the type encapsulated in the
-/// slice iff the given expression is a slice of primitives (as defined in the
-/// `is_recursively_primitive_type` function) and None otherwise.
+/// Returns `Option<String>` where String is a textual representation of the type encapsulated in
+/// the slice iff the given expression is a slice of primitives (as defined in the
+/// `is_recursively_primitive_type` function) and `None` otherwise.
 pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
     let expr_kind = expr_type.kind();
