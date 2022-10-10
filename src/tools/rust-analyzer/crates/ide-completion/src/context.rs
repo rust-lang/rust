@@ -1,4 +1,4 @@
-//! See `CompletionContext` structure.
+//! See [`CompletionContext`] structure.
 
 mod analysis;
 #[cfg(test)]
