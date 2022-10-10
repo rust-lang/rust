@@ -466,7 +466,14 @@ macro_rules! define_queries {
         }
 
         impl<'tcx> QueryDescription<QueryCtxt<'tcx>> for queries::$name<'tcx> {
-            rustc_query_description! { $name }
+            fn describe(tcx: QueryCtxt<'tcx>, key: Self::Key) -> String {
+                ::rustc_middle::query::descs::$name(tcx.tcx, key)
+            }
+
+            #[inline]
+            fn cache_on_disk(tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
+                ::rustc_middle::query::cached::$name(tcx, key)
+            }
 
             type Cache = query_storage::$name<'tcx>;
 
