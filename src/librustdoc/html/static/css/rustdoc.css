@@ -501,13 +501,14 @@ img {
 	width: 100px;
 }
 
-.block ul, .block li {
+ul.block, .block li {
 	padding: 0;
 	margin: 0;
 	list-style: none;
 }
 
 .block a,
+.sidebar h3 a,
 h2.location a {
 	display: block;
 	padding: 0.25rem;
@@ -767,7 +768,7 @@ h2.small-section-header > .anchor {
 	text-decoration: underline;
 }
 
-.block a.current.crate { font-weight: 500; }
+.crate.block a.current { font-weight: 500; }
 
 /*  In most contexts we use `overflow-wrap: anywhere` to ensure that we can wrap
 	as much as needed on mobile (see
