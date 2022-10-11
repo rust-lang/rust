@@ -1,14 +1,11 @@
-use super::{
-    maybe_storage_live::MaybeStorageLive, possible_origin::PossibleOriginVisitor,
-    transitive_relation::TransitiveRelation,
-};
+use super::{possible_origin::PossibleOriginVisitor, transitive_relation::TransitiveRelation};
 use crate::ty::is_copy;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_lint::LateContext;
 use rustc_middle::mir::{self, visit::Visitor as _, Mutability};
 use rustc_middle::ty::{self, visit::TypeVisitor};
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_mir_dataflow::{impls::MaybeStorageLive, Analysis, ResultsCursor};
 use std::ops::ControlFlow;
 
 /// Collects the possible borrowers of each local.
@@ -182,7 +179,7 @@ impl<'a, 'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
             vis.visit_body(mir);
             vis.into_map(cx)
         };
-        let maybe_storage_live_result = MaybeStorageLive
+        let maybe_storage_live_result = MaybeStorageLive::new(BitSet::new_empty(mir.local_decls.len()))
             .into_engine(cx.tcx, mir)
             .pass_name("redundant_clone")
             .iterate_to_fixpoint()
