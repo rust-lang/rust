@@ -246,6 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 trait_def_id,
                 adjusted_ty,
                 opt_input_type.as_ref().map(slice::from_ref),
+                call_expr.hir_id,
             ) {
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;

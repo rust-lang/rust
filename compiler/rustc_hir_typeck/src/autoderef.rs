@@ -20,7 +20,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         base_ty: Ty<'tcx>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        self.try_overloaded_place_op(span, base_ty, &[], PlaceOp::Deref)
+        self.try_overloaded_place_op(span, base_ty, &[], PlaceOp::Deref, self.body_id)
     }
 
     /// Returns the adjustment steps.

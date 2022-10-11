@@ -12,6 +12,7 @@ pub use self::MethodError::*;
 
 use crate::errors::OpMethodGenericParams;
 use crate::FnCtxt;
+use hir::HirId;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
@@ -273,6 +274,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         opt_input_types: Option<&[Ty<'tcx>]>,
+        _hir_id: HirId,
     ) -> (traits::Obligation<'tcx, ty::Predicate<'tcx>>, &'tcx ty::List<ty::subst::GenericArg<'tcx>>)
     {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
@@ -320,9 +322,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         opt_input_types: Option<&[Ty<'tcx>]>,
+        hir_id: HirId,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         let (obligation, substs) =
-            self.obligation_for_method(cause, trait_def_id, self_ty, opt_input_types);
+            self.obligation_for_method(cause, trait_def_id, self_ty, opt_input_types, hir_id);
         self.construct_obligation_for_trait(m_name, trait_def_id, obligation, substs)
     }
 

@@ -1,5 +1,6 @@
 use crate::method::MethodCallee;
 use crate::{FnCtxt, PlaceOp};
+use hir::HirId;
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -155,8 +156,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: TypeVariableOriginKind::AutoDeref,
                 span: base_expr.span,
             });
-            let method =
-                self.try_overloaded_place_op(expr.span, self_ty, &[input_ty], PlaceOp::Index);
+            let method = self.try_overloaded_place_op(
+                expr.span,
+                self_ty,
+                &[input_ty],
+                PlaceOp::Index,
+                expr.hir_id,
+            );
 
             if let Some(result) = method {
                 debug!("try_index_step: success, using overloaded indexing");
@@ -201,6 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_ty: Ty<'tcx>,
         arg_tys: &[Ty<'tcx>],
         op: PlaceOp,
+        hir_id: HirId,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("try_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
 
@@ -216,6 +223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 trait_did,
                 base_ty,
                 Some(arg_tys),
+                hir_id,
             )
         })
     }
@@ -226,6 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_ty: Ty<'tcx>,
         arg_tys: &[Ty<'tcx>],
         op: PlaceOp,
+        hir_id: HirId,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("try_mutable_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
 
@@ -241,6 +250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 trait_did,
                 base_ty,
                 Some(arg_tys),
+                hir_id,
             )
         })
     }
@@ -294,6 +304,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             source,
                             &[],
                             PlaceOp::Deref,
+                            expr.hir_id,
                         )
                     {
                         let method = self.register_infer_ok_obligations(ok);
@@ -373,7 +384,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(ref ty) => slice::from_ref(ty),
         };
 
-        let method = self.try_mutable_overloaded_place_op(expr.span, base_ty, arg_tys, op);
+        let method =
+            self.try_mutable_overloaded_place_op(expr.span, base_ty, arg_tys, op, expr.hir_id);
         let method = match method {
             Some(ok) => self.register_infer_ok_obligations(ok),
             // Couldn't find the mutable variant of the place op, keep the

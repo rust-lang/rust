@@ -3,6 +3,7 @@
 use super::method::MethodCallee;
 use super::FnCtxt;
 use crate::Expectation;
+use hir::HirId;
 use rustc_ast as ast;
 use rustc_errors::{self, struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
@@ -52,6 +53,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         lhs_deref_ty,
                         Some((rhs, rhs_ty)),
                         Op::Binary(op, IsAssign::Yes),
+                        expr.hir_id,
                         expected,
                     )
                     .is_ok()
@@ -63,6 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_ty,
                             Some((rhs, rhs_ty)),
                             Op::Binary(op, IsAssign::Yes),
+                            expr.hir_id,
                             expected,
                         )
                         .is_err()
@@ -250,6 +253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lhs_ty,
             Some((rhs_expr, rhs_ty_var)),
             Op::Binary(op, is_assign),
+            expr.hir_id,
             expected,
         );
 
@@ -383,6 +387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_deref_ty,
                             Some((rhs_expr, rhs_ty)),
                             Op::Binary(op, is_assign),
+                            expr.hir_id,
                             expected,
                         )
                         .is_ok()
@@ -410,6 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         lhs_ty,
                         Some((rhs_expr, rhs_ty)),
                         Op::Binary(op, is_assign),
+                        expr.hir_id,
                         expected,
                     )
                     .is_ok()
@@ -470,6 +476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 lhs_ty,
                                 Some((rhs_expr, rhs_ty)),
                                 Op::Binary(op, is_assign),
+                                expr.hir_id,
                                 expected,
                             )
                             .unwrap_err();
@@ -622,7 +629,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         assert!(op.is_by_value());
-        match self.lookup_op_method(operand_ty, None, Op::Unary(op, ex.span), expected) {
+        match self.lookup_op_method(operand_ty, None, Op::Unary(op, ex.span), ex.hir_id, expected) {
             Ok(method) => {
                 self.write_method_call(ex.hir_id, method);
                 method.sig.output()
@@ -711,6 +718,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs_ty: Ty<'tcx>,
         opt_rhs: Option<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)>,
         op: Op,
+        hir_id: HirId,
         expected: Expectation<'tcx>,
     ) -> Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>> {
         let span = match op {
@@ -738,7 +746,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let method = trait_did.and_then(|trait_did| {
-            self.lookup_method_in_trait(cause.clone(), opname, trait_did, lhs_ty, Some(input_types))
+            self.lookup_method_in_trait(
+                cause.clone(),
+                opname,
+                trait_did,
+                lhs_ty,
+                Some(input_types),
+                hir_id,
+            )
         });
 
         match (method, trait_did) {
@@ -750,7 +765,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (None, None) => Err(vec![]),
             (None, Some(trait_did)) => {
                 let (obligation, _) =
-                    self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types));
+                    self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types), hir_id);
                 Err(rustc_trait_selection::traits::fully_solve_obligation(self, obligation))
             }
         }
