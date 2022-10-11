@@ -131,13 +131,10 @@ impl HirEqInterExpr<'_, '_, '_> {
             ([], None, [], None) => {
                 // For empty blocks, check to see if the tokens are equal. This will catch the case where a macro
                 // expanded to nothing, or the cfg attribute was used.
-                let (left, right) = match (
+                let (Some(left), Some(right)) = (
                     snippet_opt(self.inner.cx, left.span),
                     snippet_opt(self.inner.cx, right.span),
-                ) {
-                    (Some(left), Some(right)) => (left, right),
-                    _ => return true,
-                };
+                ) else { return true };
                 let mut left_pos = 0;
                 let left = tokenize(&left)
                     .map(|t| {
