@@ -98,7 +98,7 @@ fn main() {
 
     let listener = t!(TcpListener::bind(config.bind));
     let (work, tmp): (PathBuf, PathBuf) = if cfg!(target_os = "android") {
-        ("/data/tmp/work".into(), "/data/tmp/work/tmp".into())
+        ("/data/local/tmp/work".into(), "/data/local/tmp/work/tmp".into())
     } else {
         let mut work_dir = env::temp_dir();
         work_dir.push("work");
