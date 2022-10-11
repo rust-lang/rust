@@ -148,12 +148,11 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             // inherent impls without warning.
             SkipLeakCheck::Yes,
             overlap_mode,
-            |overlap| {
-                self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id, overlap);
-                false
-            },
-            || true,
-        );
+        )
+        .map_or(true, |overlap| {
+            self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id, overlap);
+            false
+        });
     }
 
     fn check_item(&mut self, id: hir::ItemId) {
