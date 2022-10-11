@@ -134,6 +134,13 @@ fn h1(hash: u64) -> usize {
     hash as usize
 }
 
+// Constant for h2 function that grabing the top 7 bits of the hash.
+const MIN_HASH_LEN: usize = if mem::size_of::<usize>() < mem::size_of::<u64>() {
+    mem::size_of::<usize>()
+} else {
+    mem::size_of::<u64>()
+};
+
 /// Secondary hash function, saved in the low 7 bits of the control byte.
 #[inline]
 #[allow(clippy::cast_possible_truncation)]
@@ -141,8 +148,8 @@ fn h2(hash: u64) -> u8 {
     // Grab the top 7 bits of the hash. While the hash is normally a full 64-bit
     // value, some hash functions (such as FxHash) produce a usize result
     // instead, which means that the top 32 bits are 0 on 32-bit platforms.
-    let hash_len = usize::min(mem::size_of::<usize>(), mem::size_of::<u64>());
-    let top7 = hash >> (hash_len * 8 - 7);
+    // So we use MIN_HASH_LEN constant to handle this.
+    let top7 = hash >> (MIN_HASH_LEN * 8 - 7);
     (top7 & 0x7f) as u8 // truncation
 }
 
