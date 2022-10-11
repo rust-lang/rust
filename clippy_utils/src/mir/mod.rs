@@ -121,8 +121,7 @@ pub fn expr_local(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> Option<Local> {
     })
 }
 
-/// Returns a vector of `mir::Location` where `local` is assigned. Each statement referred to has
-/// kind `StatementKind::Assign`.
+/// Returns a vector of `mir::Location` where `local` is assigned.
 pub fn local_assignments(mir: &Body<'_>, local: Local) -> Vec<Location> {
     let mut locations = Vec::new();
     for (block, data) in mir.basic_blocks.iter_enumerated() {
