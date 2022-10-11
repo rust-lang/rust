@@ -458,7 +458,7 @@ pub fn parse_tt_as_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Pat
     Some(paths)
 }
 
-pub fn get_outer_macro(string: &ast::String) -> Option<MacroCall> {
+pub fn macro_call_for_string_token(string: &ast::String) -> Option<MacroCall> {
     let macro_call = string.syntax().parent_ancestors().find_map(ast::MacroCall::cast)?;
     Some(macro_call)
 }
