@@ -138,7 +138,7 @@ where
 
     // check exact rounding for zero- and negative-width cases
     let start;
-    if expected[0] >= b'5' {
+    if expected[0] > b'5' {
         try_fixed!(f(&decoded) => &mut buf, expectedk, b"1", expectedk + 1;
                    "zero-width rounding-up mismatch for v={v}: \
                     actual {actual:?}, expected {expected:?}",
@@ -1007,7 +1007,7 @@ where
     assert_eq!(to_string(f, 999.5, Minus, 3), "999.500");
     assert_eq!(to_string(f, 999.5, Minus, 30), "999.500000000000000000000000000000");
 
-    assert_eq!(to_string(f, 0.5, Minus, 0), "1");
+    assert_eq!(to_string(f, 0.5, Minus, 0), "0");
     assert_eq!(to_string(f, 0.5, Minus, 1), "0.5");
     assert_eq!(to_string(f, 0.5, Minus, 2), "0.50");
     assert_eq!(to_string(f, 0.5, Minus, 3), "0.500");
