@@ -319,9 +319,7 @@ impl Diagnostic {
                 message: translated_message.to_string(),
                 code: None,
                 level: "help",
-                spans: Self::filter_empty_spans_with_no_replacement(
-                    DiagnosticSpan::from_suggestion(sugg, &args, je),
-                ),
+                spans: Self::filter_empty_spans_with_no_replacement(DiagnosticSpan::from_suggestion(sugg, &args, je)),
                 children: vec![],
                 rendered: None,
             }
@@ -375,12 +373,8 @@ impl Diagnostic {
     }
 
     fn filter_empty_spans_with_no_replacement(spans: Vec<DiagnosticSpan>) -> Vec<DiagnosticSpan> {
-        spans
-            .into_iter()
-            .filter(|span| {
-                !(span.byte_start == span.byte_end
-                    && span.suggested_replacement == Some(String::new()))
-            })
+        spans.into_iter()
+            .filter(|span| !(span.byte_start == span.byte_end && span.suggested_replacement == Some(String::new())))
             .collect()
     }
 
