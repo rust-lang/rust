@@ -337,19 +337,6 @@ impl DiagnosticMessage {
             }
         }
     }
-
-    /// Returns the `String` contained within the `DiagnosticMessage::Str` variant, assuming that
-    /// this diagnostic message is of the legacy, non-translatable variety. Panics if this
-    /// assumption does not hold.
-    ///
-    /// Don't use this - it exists to support some places that do comparison with diagnostic
-    /// strings.
-    pub fn expect_str(&self) -> &str {
-        match self {
-            DiagnosticMessage::Str(s) => s,
-            _ => panic!("expected non-translatable diagnostic message"),
-        }
-    }
 }
 
 /// `From` impl that enables existing diagnostic calls to functions which now take
