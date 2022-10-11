@@ -46,6 +46,7 @@ use std::iter;
 
 mod generics_of;
 mod item_bounds;
+mod lifetimes;
 mod predicates_of;
 mod type_of;
 
@@ -57,6 +58,7 @@ fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 }
 
 pub fn provide(providers: &mut Providers) {
+    lifetimes::provide(providers);
     *providers = Providers {
         opt_const_param_of: type_of::opt_const_param_of,
         type_of: type_of::type_of,
