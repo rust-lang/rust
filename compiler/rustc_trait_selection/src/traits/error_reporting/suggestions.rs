@@ -3412,23 +3412,9 @@ fn hint_missing_borrow<'tcx>(
         }
     };
 
-    let fn_decl = match found_node {
-        Node::Expr(expr) => match &expr.kind {
-            hir::ExprKind::Closure(hir::Closure { fn_decl, .. }) => fn_decl,
-            kind => {
-                span_bug!(found_span, "expression must be a closure but is {:?}", kind)
-            }
-        },
-        Node::Item(item) => match &item.kind {
-            hir::ItemKind::Fn(signature, _generics, _body) => signature.decl,
-            kind => {
-                span_bug!(found_span, "item must be a function but is {:?}", kind)
-            }
-        },
-        node => {
-            span_bug!(found_span, "node must be a expr or item but is {:?}", node)
-        }
-    };
+    let fn_decl = found_node
+        .fn_decl()
+        .unwrap_or_else(|| span_bug!(found_span, "found node must be a function"));
 
     let arg_spans = fn_decl.inputs.iter().map(|ty| ty.span);
 
