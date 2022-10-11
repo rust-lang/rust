@@ -6,6 +6,7 @@
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::fmt;
 use crate::fs;
+use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::forget;
 #[cfg(not(any(target_arch = "wasm32", target_env = "sgx")))]
@@ -383,5 +384,56 @@ impl<T: AsFd> AsFd for Box<T> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         (**self).as_fd()
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for io::Stdin {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(0) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StdinLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stdin out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(0) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for io::Stdout {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(1) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StdoutLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stdout out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(1) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for io::Stderr {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(2) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StderrLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stderr out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(2) }
     }
 }
