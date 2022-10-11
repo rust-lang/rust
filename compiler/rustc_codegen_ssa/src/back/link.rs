@@ -31,7 +31,9 @@ use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{create_rmeta_file, MetadataPosition};
 use super::rpath::{self, RPathConfig};
-use crate::{looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib};
+use crate::{
+    errors, looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
+};
 
 use cc::windows_registry;
 use regex::Regex;
@@ -93,7 +95,7 @@ pub fn link_binary<'a>(
             let tmpdir = TempFileBuilder::new()
                 .prefix("rustc")
                 .tempdir()
-                .unwrap_or_else(|err| sess.fatal(&format!("couldn't create a temp dir: {}", err)));
+                .unwrap_or_else(|error| sess.emit_fatal(errors::CreateTempDir { error }));
             let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
             let out_filename = out_filename(
                 sess,
@@ -208,7 +210,7 @@ pub fn link_binary<'a>(
 pub fn each_linked_rlib(
     info: &CrateInfo,
     f: &mut dyn FnMut(CrateNum, &Path),
-) -> Result<(), String> {
+) -> Result<(), errors::LinkRlibError> {
     let crates = info.used_crates.iter();
     let mut fmts = None;
     for (ty, list) in info.dependency_formats.iter() {
@@ -224,26 +226,23 @@ pub fn each_linked_rlib(
         }
     }
     let Some(fmts) = fmts else {
-        return Err("could not find formats for rlibs".to_string());
+        return Err(errors::LinkRlibError::MissingFormat);
     };
     for &cnum in crates {
         match fmts.get(cnum.as_usize() - 1) {
             Some(&Linkage::NotLinked | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
-            None => return Err("could not find formats for rlibs".to_string()),
+            None => return Err(errors::LinkRlibError::MissingFormat),
         }
-        let name = info.crate_name[&cnum];
+        let crate_name = info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
         if let Some((path, _)) = &used_crate_source.rlib {
             f(cnum, &path);
         } else {
             if used_crate_source.rmeta.is_some() {
-                return Err(format!(
-                    "could not find rlib for: `{}`, found rmeta (metadata) file",
-                    name
-                ));
+                return Err(errors::LinkRlibError::OnlyRmetaFound { crate_name });
             } else {
-                return Err(format!("could not find rlib for: `{}`", name));
+                return Err(errors::LinkRlibError::NotFound { crate_name });
             }
         }
     }
@@ -340,10 +339,7 @@ fn link_rlib<'a>(
                 // -whole-archive and it isn't clear how we can currently handle such a
                 // situation correctly.
                 // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
-                sess.err(
-                    "the linking modifiers `+bundle` and `+whole-archive` are not compatible \
-                        with each other when generating rlibs",
-                );
+                sess.emit_err(errors::IncompatibleLinkingModifiers);
             }
             NativeLibKind::Static { bundle: None | Some(true), .. } => {}
             NativeLibKind::Static { bundle: Some(false), .. }
@@ -365,12 +361,8 @@ fn link_rlib<'a>(
                 ));
                 continue;
             }
-            ab.add_archive(&location, Box::new(|_| false)).unwrap_or_else(|e| {
-                sess.fatal(&format!(
-                    "failed to add native library {}: {}",
-                    location.to_string_lossy(),
-                    e
-                ));
+            ab.add_archive(&location, Box::new(|_| false)).unwrap_or_else(|error| {
+                sess.emit_fatal(errors::AddNativeLibrary { library_path: location, error });
             });
         }
     }
@@ -385,8 +377,8 @@ fn link_rlib<'a>(
             tmpdir.as_ref(),
         );
 
-        ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|e| {
-            sess.fatal(&format!("failed to add native library {}: {}", output_path.display(), e));
+        ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|error| {
+            sess.emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
         });
     }
 
@@ -451,14 +443,11 @@ fn collate_raw_dylibs(
                     // FIXME: when we add support for ordinals, figure out if we need to do anything
                     // if we have two DllImport values with the same name but different ordinals.
                     if import.calling_convention != old_import.calling_convention {
-                        sess.span_err(
-                            import.span,
-                            &format!(
-                                "multiple declarations of external function `{}` from \
-                                 library `{}` have different calling conventions",
-                                import.name, name,
-                            ),
-                        );
+                        sess.emit_err(errors::MultipleExternalFuncDecl {
+                            span: import.span,
+                            function: import.name,
+                            library_name: &name,
+                        });
                     }
                 }
             }
@@ -560,7 +549,7 @@ fn link_staticlib<'a>(
         all_native_libs.extend(codegen_results.crate_info.native_libraries[&cnum].iter().cloned());
     });
     if let Err(e) = res {
-        sess.fatal(&e);
+        sess.emit_fatal(e);
     }
 
     ab.build(out_filename);
@@ -673,9 +662,7 @@ fn link_dwarf_object<'a>(
     }) {
         Ok(()) => {}
         Err(e) => {
-            sess.struct_err("linking dwarf objects with thorin failed")
-                .note(&format!("{:?}", e))
-                .emit();
+            sess.emit_err(errors::ThorinErrorWrapper(e));
             sess.abort_if_errors();
         }
     }
@@ -879,23 +866,14 @@ fn link_natively<'a>(
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 let escaped_output = escape_string(&output);
-                let mut err = sess.struct_err(&format!(
-                    "linking with `{}` failed: {}",
-                    linker_path.display(),
-                    prog.status
-                ));
-                err.note(&format!("{:?}", &cmd)).note(&escaped_output);
-                if escaped_output.contains("undefined reference to") {
-                    err.help(
-                        "some `extern` functions couldn't be found; some native libraries may \
-                         need to be installed or have their path specified",
-                    );
-                    err.note("use the `-l` flag to specify native libraries to link");
-                    err.note("use the `cargo:rustc-link-lib` directive to specify the native \
-                              libraries to link with Cargo (see https://doc.rust-lang.org/cargo/reference/build-scripts.html#cargorustc-link-libkindname)");
-                }
-                err.emit();
-
+                // FIXME: Add UI tests for this error.
+                let err = errors::LinkingFailed {
+                    linker_path: &linker_path,
+                    exit_status: prog.status,
+                    command: &cmd,
+                    escaped_output: &escaped_output,
+                };
+                sess.diagnostic().emit_err(err);
                 // If MSVC's `link.exe` was expected but the return code
                 // is not a Microsoft LNK error then suggest a way to fix or
                 // install the Visual Studio build tools.

@@ -1,5 +1,6 @@
 use super::command::Command;
 use super::symbol_export;
+use crate::errors;
 use rustc_span::symbol::sym;
 
 use std::ffi::{OsStr, OsString};
@@ -434,11 +435,11 @@ impl<'a> Linker for GccLinker<'a> {
                 // FIXME(81490): ld64 doesn't support these flags but macOS 11
                 // has -needed-l{} / -needed_library {}
                 // but we have no way to detect that here.
-                self.sess.warn("`as-needed` modifier not implemented yet for ld64");
+                self.sess.emit_warning(errors::Ld64UnimplementedModifier);
             } else if self.is_gnu && !self.sess.target.is_like_windows {
                 self.linker_arg("--no-as-needed");
             } else {
-                self.sess.warn("`as-needed` modifier not supported for current linker");
+                self.sess.emit_warning(errors::LinkerUnsupportedModifier);
             }
         }
         self.hint_dynamic();
@@ -492,7 +493,7 @@ impl<'a> Linker for GccLinker<'a> {
             // FIXME(81490): ld64 as of macOS 11 supports the -needed_framework
             // flag but we have no way to detect that here.
             // self.cmd.arg("-needed_framework").arg(framework);
-            self.sess.warn("`as-needed` modifier not implemented yet for ld64");
+            self.sess.emit_warning(errors::Ld64UnimplementedModifier);
         }
         self.cmd.arg("-framework").arg(framework);
     }
@@ -665,8 +666,8 @@ impl<'a> Linker for GccLinker<'a> {
                     writeln!(f, "_{}", sym)?;
                 }
             };
-            if let Err(e) = res {
-                self.sess.fatal(&format!("failed to write lib.def file: {}", e));
+            if let Err(error) = res {
+                self.sess.emit_fatal(errors::LibDefWriteFailure { error });
             }
         } else if is_windows {
             let res: io::Result<()> = try {
@@ -680,8 +681,8 @@ impl<'a> Linker for GccLinker<'a> {
                     writeln!(f, "  {}", symbol)?;
                 }
             };
-            if let Err(e) = res {
-                self.sess.fatal(&format!("failed to write list.def file: {}", e));
+            if let Err(error) = res {
+                self.sess.emit_fatal(errors::LibDefWriteFailure { error });
             }
         } else {
             // Write an LD version script
@@ -697,8 +698,8 @@ impl<'a> Linker for GccLinker<'a> {
                 }
                 writeln!(f, "\n  local:\n    *;\n}};")?;
             };
-            if let Err(e) = res {
-                self.sess.fatal(&format!("failed to write version script: {}", e));
+            if let Err(error) = res {
+                self.sess.emit_fatal(errors::VersionScriptWriteFailure { error });
             }
         }
 
@@ -915,9 +916,8 @@ impl<'a> Linker for MsvcLinker<'a> {
                                     self.cmd.arg(arg);
                                 }
                             }
-                            Err(err) => {
-                                self.sess
-                                    .warn(&format!("error enumerating natvis directory: {}", err));
+                            Err(error) => {
+                                self.sess.emit_warning(errors::NoNatvisDirectory { error });
                             }
                         }
                     }
@@ -971,8 +971,8 @@ impl<'a> Linker for MsvcLinker<'a> {
                 writeln!(f, "  {}", symbol)?;
             }
         };
-        if let Err(e) = res {
-            self.sess.fatal(&format!("failed to write lib.def file: {}", e));
+        if let Err(error) = res {
+            self.sess.emit_fatal(errors::LibDefWriteFailure { error });
         }
         let mut arg = OsString::from("/DEF:");
         arg.push(path);
@@ -1435,7 +1435,7 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[String]) {
         // ToDo, not implemented, copy from GCC
-        self.sess.warn("exporting symbols not implemented yet for L4Bender");
+        self.sess.emit_warning(errors::L4BenderExportingSymbolsUnimplemented);
         return;
     }
 
@@ -1727,8 +1727,8 @@ impl<'a> Linker for BpfLinker<'a> {
                 writeln!(f, "{}", sym)?;
             }
         };
-        if let Err(e) = res {
-            self.sess.fatal(&format!("failed to write symbols file: {}", e));
+        if let Err(error) = res {
+            self.sess.emit_fatal(errors::SymbolFileWriteFailure { error });
         } else {
             self.cmd.arg("--export-symbols").arg(&path);
         }
