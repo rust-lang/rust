@@ -2258,7 +2258,6 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
     }
 }
 
-/// Don't call this function directly!!! Use `print_sidebar_title` or `print_sidebar_block` instead!
 fn print_sidebar_title(buf: &mut Buffer, id: &str, title: &str) {
     write!(
         buf,
