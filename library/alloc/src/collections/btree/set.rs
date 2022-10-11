@@ -786,7 +786,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -797,7 +796,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.first(), Some(&1));
     /// ```
     #[must_use]
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn first(&self) -> Option<&T>
     where
         T: Ord,
@@ -813,7 +812,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -824,7 +822,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.last(), Some(&2));
     /// ```
     #[must_use]
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn last(&self) -> Option<&T>
     where
         T: Ord,
@@ -838,7 +836,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -849,7 +846,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_first(&mut self) -> Option<T>
     where
         T: Ord,
@@ -863,7 +860,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -874,7 +870,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_last(&mut self) -> Option<T>
     where
         T: Ord,

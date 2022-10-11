@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![feature(map_first_last)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]

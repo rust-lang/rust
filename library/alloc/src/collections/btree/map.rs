@@ -703,7 +703,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -712,7 +711,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(2, "a");
     /// assert_eq!(map.first_key_value(), Some((&1, &"b")));
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn first_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
@@ -727,7 +726,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -741,7 +739,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(*map.get(&1).unwrap(), "first");
     /// assert_eq!(*map.get(&2).unwrap(), "b");
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, A>>
     where
         K: Ord,
@@ -765,7 +763,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Draining elements in ascending order, while keeping a usable map each iteration.
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -776,7 +773,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_first(&mut self) -> Option<(K, V)>
     where
         K: Ord,
@@ -792,7 +789,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -800,7 +796,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(2, "a");
     /// assert_eq!(map.last_key_value(), Some((&2, &"a")));
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn last_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
@@ -815,7 +811,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -829,7 +824,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(*map.get(&1).unwrap(), "a");
     /// assert_eq!(*map.get(&2).unwrap(), "last");
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, A>>
     where
         K: Ord,
@@ -853,7 +848,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Draining elements in descending order, while keeping a usable map each iteration.
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -864,7 +858,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_last(&mut self) -> Option<(K, V)>
     where
         K: Ord,
