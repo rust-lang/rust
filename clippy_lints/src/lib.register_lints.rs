@@ -66,6 +66,7 @@ store.register_lints(&[
     cargo::NEGATIVE_FEATURE_NAMES,
     cargo::REDUNDANT_FEATURE_NAMES,
     cargo::WILDCARD_DEPENDENCIES,
+    casts::AS_PTR_CAST_MUT,
     casts::AS_UNDERSCORE,
     casts::BORROW_AS_PTR,
     casts::CAST_ABS_TO_UNSIGNED,
