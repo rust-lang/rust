@@ -160,7 +160,7 @@ use crate::ffi::{CStr, CString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
-use crate::mem;
+use crate::mem::{self, forget};
 use crate::num::NonZeroU64;
 use crate::num::NonZeroUsize;
 use crate::panic;
@@ -851,10 +851,22 @@ pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
 }
 
+/// Used to ensure that `park` and `park_timeout` do not unwind, as that can
+/// cause undefined behaviour if not handled correctly (see #102398 for context).
+struct PanicGuard;
+
+impl Drop for PanicGuard {
+    fn drop(&mut self) {
+        rtabort!("an irrecoverable error occurred while synchronizing threads")
+    }
+}
+
 /// Blocks unless or until the current thread's token is made available.
 ///
 /// A call to `park` does not guarantee that the thread will remain parked
-/// forever, and callers should be prepared for this possibility.
+/// forever, and callers should be prepared for this possibility. However,
+/// it is guaranteed that this function will not panic (it may abort the
+/// process if the implementation encounters some rare errors).
 ///
 /// # park and unpark
 ///
@@ -939,10 +951,13 @@ pub fn sleep(dur: Duration) {
 /// [`thread::park_timeout`]: park_timeout
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park() {
+    let guard = PanicGuard;
     // SAFETY: park_timeout is called on the parker owned by this thread.
     unsafe {
         current().inner.as_ref().parker().park();
     }
+    // No panic occurred, do not abort.
+    forget(guard);
 }
 
 /// Use [`park_timeout`].
@@ -1003,10 +1018,13 @@ pub fn park_timeout_ms(ms: u32) {
 /// ```
 #[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
+    let guard = PanicGuard;
     // SAFETY: park_timeout is called on the parker owned by this thread.
     unsafe {
         current().inner.as_ref().parker().park_timeout(dur);
     }
+    // No panic occurred, do not abort.
+    forget(guard);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
