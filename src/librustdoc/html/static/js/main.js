@@ -442,12 +442,10 @@ function loadCss(cssFileName) {
                 return;
             }
 
-            const div = document.createElement("div");
-            div.className = "block " + shortty;
             const h3 = document.createElement("h3");
             h3.innerHTML = `<a href="index.html#${id}">${longty}</a>`;
-            div.appendChild(h3);
             const ul = document.createElement("ul");
+            ul.className = "block " + shortty;
 
             for (const item of filtered) {
                 const name = item[0];
@@ -473,8 +471,8 @@ function loadCss(cssFileName) {
                 li.appendChild(link);
                 ul.appendChild(li);
             }
-            div.appendChild(ul);
-            sidebar.appendChild(div);
+            sidebar.appendChild(h3);
+            sidebar.appendChild(ul);
         }
 
         if (sidebar) {
@@ -592,27 +590,25 @@ function loadCss(cssFileName) {
             return;
         }
         // Draw a convenient sidebar of known crates if we have a listing
-        const div = document.createElement("div");
-        div.className = "block crate";
-        div.innerHTML = "<h3>Crates</h3>";
+        const h3 = document.createElement("h3");
+        h3.innerHTML = "Crates";
         const ul = document.createElement("ul");
-        div.appendChild(ul);
+        ul.className = "block crate";
 
         for (const crate of window.ALL_CRATES) {
-            let klass = "crate";
-            if (window.rootPath !== "./" && crate === window.currentCrate) {
-                klass += " current";
-            }
             const link = document.createElement("a");
             link.href = window.rootPath + crate + "/index.html";
-            link.className = klass;
+            if (window.rootPath !== "./" && crate === window.currentCrate) {
+                link.className = "current";
+            }
             link.textContent = crate;
 
             const li = document.createElement("li");
             li.appendChild(link);
             ul.appendChild(li);
         }
-        sidebarElems.appendChild(div);
+        sidebarElems.appendChild(h3);
+        sidebarElems.appendChild(ul);
     }
 
 
