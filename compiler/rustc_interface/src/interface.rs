@@ -25,7 +25,10 @@ use std::result;
 
 pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 
-/// Represents a compiler session.
+/// Represents a compiler session. Note that every `Compiler` contains a
+/// `Session`, but `Compiler` also contains some things that cannot be in
+/// `Session`, due to `Session` being in a crate that has many fewer
+/// dependencies than this crate.
 ///
 /// Can be used to run `rustc_interface` queries.
 /// Created by passing [`Config`] to [`run_compiler`].
