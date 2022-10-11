@@ -199,7 +199,7 @@ pub trait Hash {
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn hash<H: Hasher>(&self, state: &mut H);
+    fn hash<H: ~const Hasher>(&self, state: &mut H);
 
     /// Feeds a slice of this type into the given [`Hasher`].
     ///
@@ -980,7 +980,7 @@ mod impls {
     #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
     impl<T: ?Sized + ~const Hash> const Hash for &mut T {
         #[inline]
-        fn hash<H: Hasher>(&self, state: &mut H) {
+        fn hash<H: ~const Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }
     }
