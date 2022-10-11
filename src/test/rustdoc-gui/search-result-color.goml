@@ -1,4 +1,57 @@
 // The goal of this test is to ensure the color of the text is the one expected.
+
+define-function: (
+    "check-result-color",
+    (result_kind, color, hover_color),
+    [
+        (
+            "assert-css",
+            (".result-" + |result_kind| + " ." + |result_kind|, {"color": |color|}, ALL),
+        ),
+        (
+            "assert-css",
+            (
+                ".result-" + |result_kind|,
+                {"color": |entry_color|, "background-color": |background_color|},
+            ),
+        ),
+        (
+            "move-cursor-to",
+            ".result-" + |result_kind|,
+        ),
+        (
+            "assert-css",
+            (
+                ".result-" + |result_kind| + ":hover",
+                {"color": |hover_entry_color|, "background-color": |hover_background_color|},
+            ),
+        ),
+        (
+            "assert-css",
+            (".result-" + |result_kind| + ":hover ." + |result_kind|, {"color": |hover_color|}),
+        ),
+        (
+            "move-cursor-to",
+            ".search-input",
+        ),
+        (
+            "focus",
+            ".result-" + |result_kind|,
+        ),
+        (
+            "assert-css",
+            (
+                ".result-" + |result_kind| + ":focus",
+                {"color": |hover_entry_color|, "background-color": |hover_background_color|},
+            ),
+        ),
+        (
+            "assert-css",
+            (".result-" + |result_kind| + ":focus ." + |result_kind|, {"color": |hover_color|}),
+        ),
+    ],
+)
+
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html?search=coo"
 
 // This is needed so that the text color is computed.
@@ -28,240 +81,66 @@ assert-css: (
     {"color": "rgb(120, 135, 151)"},
 )
 
-// Checking the color of "keyword".
-assert-css: (
-    ".result-keyword .keyword",
-    {"color": "rgb(57, 175, 215)"},
-    ALL,
-)
-assert-css: (
-    ".result-keyword",
-    {"color": "rgb(0, 150, 207)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-keyword"
-assert-css: (
-    ".result-keyword:hover",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-keyword:hover .keyword",
-    {"color": "rgb(57, 175, 215)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-keyword"
-assert-css: (
-    ".result-keyword:focus",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-keyword:focus .keyword",
-    {"color": "rgb(57, 175, 215)"},
-)
+store-value: (entry_color, "rgb(0, 150, 207)") // color of the search entry
+store-value: (hover_entry_color, "rgb(255, 255, 255)") // color of the hovered/focused search entry
+store-value: (background_color, "rgba(0, 0, 0, 0)") // background color
+store-value: (hover_background_color, "rgb(60, 60, 60)") // hover background color
 
-// Check the color of "struct".
-assert-css: (
-    ".result-struct .struct",
-    {"color": "rgb(255, 160, 165)"},
-    ALL,
+call-function: (
+    "check-result-color", (
+        "keyword", // item kind
+        "rgb(57, 175, 215)", // color of item kind
+        "rgb(57, 175, 215)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-struct",
-    {"color": "rgb(0, 150, 207)", "background-color": "rgba(0, 0, 0, 0)"},
+call-function: (
+    "check-result-color", (
+        "struct", // item kind
+        "rgb(255, 160, 165)", // color of item kind
+        "rgb(255, 160, 165)", // color of hovered/focused item kind
+    ),
 )
-move-cursor-to: ".result-struct"
-assert-css: (
-    ".result-struct:hover",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
+call-function: (
+    "check-result-color", (
+        "associatedtype", // item kind
+        "rgb(57, 175, 215)", // color of item kind
+        "rgb(57, 175, 215)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-struct:hover .struct",
-    {"color": "rgb(255, 160, 165)"},
+call-function: (
+    "check-result-color", (
+        "tymethod", // item kind
+        "rgb(253, 214, 135)", // color of item kind
+        "rgb(253, 214, 135)", // color of hovered/focused item kind
+    ),
 )
-move-cursor-to: ".search-input"
-focus: ".result-struct"
-assert-css: (
-    ".result-struct:focus",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
+call-function: (
+    "check-result-color", (
+        "method", // item kind
+        "rgb(253, 214, 135)", // color of item kind
+        "rgb(253, 214, 135)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-struct:focus .struct",
-    {"color": "rgb(255, 160, 165)"},
+call-function: (
+    "check-result-color", (
+        "structfield", // item kind
+        "rgb(0, 150, 207)", // color of item kind
+        "rgb(255, 255, 255)", // color of hovered/focused item kind
+    ),
 )
-
-// Check the color of "associated type".
-assert-css: (
-    ".result-associatedtype .associatedtype",
-    {"color": "rgb(57, 175, 215)"},
-    ALL,
+call-function: (
+    "check-result-color", (
+        "macro", // item kind
+        "rgb(163, 122, 204)", // color of item kind
+        "rgb(163, 122, 204)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-associatedtype",
-    {"color": "rgb(0, 150, 207)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-associatedtype"
-assert-css: (
-    ".result-associatedtype:hover",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-associatedtype:hover .associatedtype",
-    {"color": "rgb(57, 175, 215)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-associatedtype"
-assert-css: (
-    ".result-associatedtype:focus",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-associatedtype:focus .associatedtype",
-    {"color": "rgb(57, 175, 215)"},
-)
-
-// Check the color of "type method".
-assert-css: (
-    ".result-tymethod .tymethod",
-    {"color": "rgb(253, 214, 135)"},
-    ALL,
-)
-assert-css: (
-    ".result-tymethod",
-    {"color": "rgb(0, 150, 207)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-assert-css: (
-    ".result-tymethod .tymethod",
-    {"color": "rgb(253, 214, 135)"},
-)
-move-cursor-to: ".result-tymethod"
-assert-css: (
-    ".result-tymethod:hover",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-tymethod"
-assert-css: (
-    ".result-tymethod:focus",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-
-// Check the color of "method".
-assert-css: (
-    ".result-method .method",
-    {"color": "rgb(253, 214, 135)"},
-    ALL,
-)
-assert-css: (
-    ".result-method",
-    {"color": "rgb(0, 150, 207)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-method"
-assert-css: (
-    ".result-method:hover",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-method:hover .method",
-    {"color": "rgb(253, 214, 135)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-method"
-assert-css: (
-    ".result-method:focus",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-method:focus .method",
-    {"color": "rgb(253, 214, 135)"},
-)
-
-// Check the color of "struct field".
-assert-css: (
-    ".result-structfield .structfield",
-    {"color": "rgb(0, 150, 207)"},
-    ALL,
-)
-assert-css: (
-    ".result-structfield",
-    {"color": "rgb(0, 150, 207)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-structfield"
-assert-css: (
-    ".result-structfield:hover",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-structfield:hover .structfield",
-    {"color": "rgb(255, 255, 255)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-structfield"
-assert-css: (
-    ".result-structfield:focus",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-structfield:focus .structfield",
-    {"color": "rgb(255, 255, 255)"},
-)
-
-// Check the color of "macro".
-assert-css: (
-    ".result-macro .macro",
-    {"color": "rgb(163, 122, 204)"},
-    ALL,
-)
-assert-css: (
-    ".result-macro",
-    {"color": "rgb(0, 150, 207)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-macro"
-assert-css: (
-    ".result-macro:hover",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-macro:hover .macro",
-    {"color": "rgb(163, 122, 204)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-macro"
-assert-css: (
-    ".result-macro:focus",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-macro:focus .macro",
-    {"color": "rgb(163, 122, 204)"},
-)
-
-// Check the color of "fn".
-assert-css: (
-    ".result-fn .fn",
-    {"color": "rgb(253, 214, 135)"},
-    ALL,
-)
-assert-css: (
-    ".result-fn",
-    {"color": "rgb(0, 150, 207)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-fn"
-assert-css: (
-    ".result-fn:hover",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-fn:hover .fn",
-    {"color": "rgb(253, 214, 135)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-fn"
-assert-css: (
-    ".result-fn:focus",
-    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
-)
-assert-css: (
-    ".result-fn:focus .fn",
-    {"color": "rgb(253, 214, 135)"},
+call-function: (
+    "check-result-color", (
+        "fn", // item kind
+        "rgb(253, 214, 135)", // color of item kind
+        "rgb(253, 214, 135)", // color of hovered/focused item kind
+    ),
 )
 
 // Checking the `<a>` container.
@@ -308,244 +187,66 @@ assert-css: (
     {"color": "rgb(221, 221, 221)"},
 )
 
-// Checking the color of "keyword".
-assert-css: (
-    ".result-keyword .keyword",
-    {"color": "rgb(210, 153, 29)"},
-    ALL,
-)
-assert-css: (
-    ".result-keyword",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-keyword"
-assert-css: (
-    ".result-keyword:hover",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-keyword:hover .keyword",
-    {"color": "rgb(210, 153, 29)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-keyword"
-assert-css: (
-    ".result-keyword:focus",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-keyword:focus .keyword",
-    {"color": "rgb(210, 153, 29)"},
-)
+store-value: (entry_color, "rgb(221, 221, 221)") // color of the search entry
+store-value: (hover_entry_color, "rgb(221, 221, 221)") // color of the hovered/focused search entry
+store-value: (background_color, "rgba(0, 0, 0, 0)") // background color
+store-value: (hover_background_color, "rgb(97, 97, 97)") // hover background color
 
-// Check the color of "struct".
-assert-css: (
-    ".result-struct .struct",
-    {"color": "rgb(45, 191, 184)"},
-    ALL,
+call-function: (
+    "check-result-color", (
+        "keyword", // item kind
+        "rgb(210, 153, 29)", // color of item kind
+        "rgb(210, 153, 29)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-struct",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
+call-function: (
+    "check-result-color", (
+        "struct", // item kind
+        "rgb(45, 191, 184)", // color of item kind
+        "rgb(45, 191, 184)", // color of hovered/focused item kind
+    ),
 )
-move-cursor-to: ".result-struct"
-assert-css: (
-    ".result-struct:hover",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
+call-function: (
+    "check-result-color", (
+        "associatedtype", // item kind
+        "rgb(210, 153, 29)", // color of item kind
+        "rgb(210, 153, 29)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-struct:hover .struct",
-    {"color": "rgb(45, 191, 184)"},
+call-function: (
+    "check-result-color", (
+        "tymethod", // item kind
+        "rgb(43, 171, 99)", // color of item kind
+        "rgb(43, 171, 99)", // color of hovered/focused item kind
+    ),
 )
-move-cursor-to: ".search-input"
-focus: ".result-struct"
-assert-css: (
-    ".result-struct:focus",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
+call-function: (
+    "check-result-color", (
+        "method", // item kind
+        "rgb(43, 171, 99)", // color of item kind
+        "rgb(43, 171, 99)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-struct:focus .struct",
-    {"color": "rgb(45, 191, 184)"},
+call-function: (
+    "check-result-color", (
+        "structfield", // item kind
+        "rgb(221, 221, 221)", // color of item kind
+        "rgb(221, 221, 221)", // color of hovered/focused item kind
+    ),
 )
-
-// Check the color of "associated type".
-assert-css: (
-    ".result-associatedtype .associatedtype",
-    {"color": "rgb(210, 153, 29)"},
-    ALL,
+call-function: (
+    "check-result-color", (
+        "macro", // item kind
+        "rgb(9, 189, 0)", // color of item kind
+        "rgb(9, 189, 0)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-associatedtype",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-associatedtype"
-assert-css: (
-    ".result-associatedtype:hover",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-associatedtype:hover .associatedtype",
-    {"color": "rgb(210, 153, 29)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-associatedtype"
-assert-css: (
-    ".result-associatedtype:focus",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-associatedtype:focus .associatedtype",
-    {"color": "rgb(210, 153, 29)"},
-)
-
-// Check the color of "type method".
-assert-css: (
-    ".result-tymethod .tymethod",
-    {"color": "rgb(43, 171, 99)"},
-    ALL,
-)
-assert-css: (
-    ".result-tymethod",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-tymethod"
-assert-css: (
-    ".result-tymethod:hover",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-tymethod:hover .tymethod",
-    {"color": "rgb(43, 171, 99)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-tymethod"
-assert-css: (
-    ".result-tymethod:focus",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-tymethod:focus .tymethod",
-    {"color": "rgb(43, 171, 99)"},
-)
-
-// Check the color of "method".
-assert-css: (
-    ".result-method .method",
-    {"color": "rgb(43, 171, 99)"},
-    ALL,
-)
-assert-css: (
-    ".result-method",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-method"
-assert-css: (
-    ".result-method:hover",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-method:hover .method",
-    {"color": "rgb(43, 171, 99)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-method"
-assert-css: (
-    ".result-method:focus",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-method:focus .method",
-    {"color": "rgb(43, 171, 99)"},
-)
-
-// Check the color of "struct field".
-assert-css: (
-    ".result-structfield .structfield",
-    {"color": "rgb(221, 221, 221)"},
-    ALL,
-)
-assert-css: (
-    ".result-structfield",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-structfield"
-assert-css: (
-    ".result-structfield:hover",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-structfield:hover .structfield",
-    {"color": "rgb(221, 221, 221)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-structfield"
-assert-css: (
-    ".result-structfield:focus",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-structfield:focus .structfield",
-    {"color": "rgb(221, 221, 221)"},
-)
-
-// Check the color of "macro".
-assert-css: (
-    ".result-macro .macro",
-    {"color": "rgb(9, 189, 0)"},
-    ALL,
-)
-assert-css: (
-    ".result-macro",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-macro"
-assert-css: (
-    ".result-macro:hover",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-macro:hover .macro",
-    {"color": "rgb(9, 189, 0)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-macro"
-assert-css: (
-    ".result-macro:focus",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-macro:focus .macro",
-    {"color": "rgb(9, 189, 0)"},
-)
-
-// Check the color of "fn".
-assert-css: (
-    ".result-fn .fn",
-    {"color": "rgb(43, 171, 99)"},
-    ALL,
-)
-assert-css: (
-    ".result-fn",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-fn"
-assert-css: (
-    ".result-fn:hover",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-fn:hover .fn",
-    {"color": "rgb(43, 171, 99)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-fn"
-assert-css: (
-    ".result-fn:focus",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(97, 97, 97)"},
-)
-assert-css: (
-    ".result-fn:focus .fn",
-    {"color": "rgb(43, 171, 99)"},
+call-function: (
+    "check-result-color", (
+        "fn", // item kind
+        "rgb(43, 171, 99)", // color of item kind
+        "rgb(43, 171, 99)", // color of hovered/focused item kind
+    ),
 )
 
 // Checking the `<a>` container.
@@ -577,244 +278,66 @@ assert-css: (
     {"color": "rgb(0, 0, 0)"},
 )
 
-// Checking the color of "keyword".
-assert-css: (
-    ".result-keyword .keyword",
-    {"color": "rgb(56, 115, 173)"},
-    ALL,
-)
-assert-css: (
-    ".result-keyword",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-keyword"
-assert-css: (
-    ".result-keyword:hover",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-keyword:hover .keyword",
-    {"color": "rgb(56, 115, 173)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-keyword"
-assert-css: (
-    ".result-keyword:focus",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-keyword:focus .keyword",
-    {"color": "rgb(56, 115, 173)"},
-)
+store-value: (entry_color, "rgb(0, 0, 0)") // color of the search entry
+store-value: (hover_entry_color, "rgb(0, 0, 0)") // color of the hovered/focused search entry
+store-value: (background_color, "rgba(0, 0, 0, 0)") // background color
+store-value: (hover_background_color, "rgb(204, 204, 204)") // hover background color
 
-// Check the color of "struct".
-assert-css: (
-    ".result-struct .struct",
-    {"color": "rgb(173, 55, 138)"},
-    ALL,
+call-function: (
+    "check-result-color", (
+        "keyword", // item kind
+        "rgb(56, 115, 173)", // color of item kind
+        "rgb(56, 115, 173)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-struct",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
+call-function: (
+    "check-result-color", (
+        "struct", // item kind
+        "rgb(173, 55, 138)", // color of item kind
+        "rgb(173, 55, 138)", // color of hovered/focused item kind
+    ),
 )
-move-cursor-to: ".result-struct"
-assert-css: (
-    ".result-struct:hover",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
+call-function: (
+    "check-result-color", (
+        "associatedtype", // item kind
+        "rgb(56, 115, 173)", // color of item kind
+        "rgb(56, 115, 173)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-struct:hover .struct",
-    {"color": "rgb(173, 55, 138)"},
+call-function: (
+    "check-result-color", (
+        "tymethod", // item kind
+        "rgb(173, 124, 55)", // color of item kind
+        "rgb(173, 124, 55)", // color of hovered/focused item kind
+    ),
 )
-move-cursor-to: ".search-input"
-focus: ".result-struct"
-assert-css: (
-    ".result-struct:focus",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
+call-function: (
+    "check-result-color", (
+        "method", // item kind
+        "rgb(173, 124, 55)", // color of item kind
+        "rgb(173, 124, 55)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-struct:focus .struct",
-    {"color": "rgb(173, 55, 138)"},
+call-function: (
+    "check-result-color", (
+        "structfield", // item kind
+        "rgb(0, 0, 0)", // color of item kind
+        "rgb(0, 0, 0)", // color of hovered/focused item kind
+    ),
 )
-
-// Check the color of "associated type".
-assert-css: (
-    ".result-associatedtype .associatedtype",
-    {"color": "rgb(56, 115, 173)"},
-    ALL,
+call-function: (
+    "check-result-color", (
+        "macro", // item kind
+        "rgb(6, 128, 0)", // color of item kind
+        "rgb(6, 128, 0)", // color of hovered/focused item kind
+    ),
 )
-assert-css: (
-    ".result-associatedtype",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-associatedtype"
-assert-css: (
-    ".result-associatedtype:hover",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-associatedtype:hover .associatedtype",
-    {"color": "rgb(56, 115, 173)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-associatedtype"
-assert-css: (
-    ".result-associatedtype:focus",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-associatedtype:focus .associatedtype",
-    {"color": "rgb(56, 115, 173)"},
-)
-
-// Check the color of "type method".
-assert-css: (
-    ".result-tymethod .tymethod",
-    {"color": "rgb(173, 124, 55)"},
-    ALL,
-)
-assert-css: (
-    ".result-tymethod",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-tymethod"
-assert-css: (
-    ".result-tymethod:hover",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-tymethod:hover .tymethod",
-    {"color": "rgb(173, 124, 55)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-tymethod"
-assert-css: (
-    ".result-tymethod:focus",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-tymethod:focus .tymethod",
-    {"color": "rgb(173, 124, 55)"},
-)
-
-// Check the color of "method".
-assert-css: (
-    ".result-method .method",
-    {"color": "rgb(173, 124, 55)"},
-    ALL,
-)
-assert-css: (
-    ".result-method",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-method"
-assert-css: (
-    ".result-method:hover",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-method:hover .method",
-    {"color": "rgb(173, 124, 55)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-method"
-assert-css: (
-    ".result-method:focus",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-method:focus .method",
-    {"color": "rgb(173, 124, 55)"},
-)
-
-// Check the color of "struct field".
-assert-css: (
-    ".result-structfield .structfield",
-    {"color": "rgb(0, 0, 0)"},
-    ALL,
-)
-assert-css: (
-    ".result-structfield",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-structfield"
-assert-css: (
-    ".result-structfield:hover",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-structfield:hover .structfield",
-    {"color": "rgb(0, 0, 0)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-structfield"
-assert-css: (
-    ".result-structfield:focus",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-structfield:focus .structfield",
-    {"color": "rgb(0, 0, 0)"},
-)
-
-// Check the color of "macro".
-assert-css: (
-    ".result-macro .macro",
-    {"color": "rgb(6, 128, 0)"},
-    ALL,
-)
-assert-css: (
-    ".result-macro",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-macro"
-assert-css: (
-    ".result-macro:hover",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-macro:hover .macro",
-    {"color": "rgb(6, 128, 0)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-macro"
-assert-css: (
-    ".result-macro:focus",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-macro:focus .macro",
-    {"color": "rgb(6, 128, 0)"},
-)
-
-// Check the color of "fn".
-assert-css: (
-    ".result-fn .fn",
-    {"color": "rgb(173, 124, 55)"},
-    ALL,
-)
-assert-css: (
-    ".result-fn",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-move-cursor-to: ".result-fn"
-assert-css: (
-    ".result-fn:hover",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-fn:hover .fn",
-    {"color": "rgb(173, 124, 55)"},
-)
-move-cursor-to: ".search-input"
-focus: ".result-fn"
-assert-css: (
-    ".result-fn:focus",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(204, 204, 204)"},
-)
-assert-css: (
-    ".result-fn:focus .fn",
-    {"color": "rgb(173, 124, 55)"},
+call-function: (
+    "check-result-color", (
+        "fn", // item kind
+        "rgb(173, 124, 55)", // color of item kind
+        "rgb(173, 124, 55)", // color of hovered/focused item kind
+    ),
 )
 
 // Checking the `<a>` container.

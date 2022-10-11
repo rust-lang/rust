@@ -1788,7 +1788,23 @@ impl<'a> Parser<'a> {
                     }
                 }
             } else {
-                self.expected_ident_found()
+                let mut err = self.expected_ident_found();
+                if let Some((ident, _)) = self.token.ident() && ident.as_str() == "let" {
+                    self.bump(); // `let`
+                    let span = self.prev_token.span.until(self.token.span);
+                    err.span_suggestion(
+                        span,
+                        "remove the let, the `let` keyword is not allowed in struct field definitions",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
+                    err.note("the `let` keyword is not allowed in `struct` fields");
+                    err.note("see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information");
+                    err.emit();
+                    self.bump();
+                    return Ok(ident);
+                }
+                err
             };
             return Err(err);
         }
