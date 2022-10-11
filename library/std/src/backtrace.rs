@@ -14,8 +14,8 @@
 //! Backtraces are attempted to be as accurate as possible, but no guarantees
 //! are provided about the exact accuracy of a backtrace. Instruction pointers,
 //! symbol names, filenames, line numbers, etc, may all be incorrect when
-//! reported. Accuracy is attempted on a best-effort basis, however, and bugs
-//! are always welcome to indicate areas of improvement!
+//! reported. Accuracy is attempted on a best-effort basis, however, any bug
+//! reports are always welcome to indicate areas of improvement!
 //!
 //! For most platforms a backtrace with a filename/line number requires that
 //! programs be compiled with debug information. Without debug information
@@ -39,7 +39,7 @@
 //! default. Its behavior is governed by two environment variables:
 //!
 //! * `RUST_LIB_BACKTRACE` - if this is set to `0` then `Backtrace::capture`
-//!   will never capture a backtrace. Any other value this is set to will enable
+//!   will never capture a backtrace. Any other value set will enable
 //!   `Backtrace::capture`.
 //!
 //! * `RUST_BACKTRACE` - if `RUST_LIB_BACKTRACE` is not set, then this variable
