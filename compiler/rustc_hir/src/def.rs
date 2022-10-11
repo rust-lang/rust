@@ -464,6 +464,16 @@ impl PartialRes {
     pub fn unresolved_segments(&self) -> usize {
         self.unresolved_segments
     }
+
+    #[inline]
+    pub fn full_res(&self) -> Option<Res<NodeId>> {
+        (self.unresolved_segments == 0).then_some(self.base_res)
+    }
+
+    #[inline]
+    pub fn expect_full_res(&self) -> Res<NodeId> {
+        self.full_res().expect("unexpected unresolved segments")
+    }
 }
 
 /// Different kinds of symbols can coexist even if they share the same textual name.

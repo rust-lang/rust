@@ -205,13 +205,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let static_def_id = self
                             .resolver
                             .get_partial_res(sym.id)
-                            .filter(|res| res.unresolved_segments() == 0)
-                            .and_then(|res| {
-                                if let Res::Def(DefKind::Static(_), def_id) = res.base_res() {
-                                    Some(def_id)
-                                } else {
-                                    None
-                                }
+                            .and_then(|res| res.full_res())
+                            .and_then(|res| match res {
+                                Res::Def(DefKind::Static(_), def_id) => Some(def_id),
+                                _ => None,
                             });
 
                         if let Some(def_id) = static_def_id {
