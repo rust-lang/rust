@@ -3851,9 +3851,8 @@ impl SelfKind {
                 hir::Mutability::Mut => &paths::ASMUT_TRAIT,
             };
 
-            let trait_def_id = match get_trait_def_id(cx, trait_path) {
-                Some(did) => did,
-                None => return false,
+            let Some(trait_def_id) = get_trait_def_id(cx, trait_path) else {
+                return false
             };
             implements_trait(cx, ty, trait_def_id, &[parent_ty.into()])
         }

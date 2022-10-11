@@ -26,10 +26,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             if !cx.tcx.is_diagnostic_item(sym::Vec, id) {
                 return false;
             }
-            let qpath = match &ty.kind {
-                TyKind::Path(qpath) => qpath,
-                _ => return false,
-            };
+            let TyKind::Path(qpath) = &ty.kind else { return false };
             let inner_span = match qpath_generic_tys(qpath).next() {
                 Some(ty) => ty.span,
                 None => return false,
@@ -65,10 +62,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             if !cx.tcx.is_diagnostic_item(sym::Vec, id) {
                 return false;
             }
-            let qpath = match &ty.kind {
-                TyKind::Path(qpath) => qpath,
-                _ => return false,
-            };
+            let TyKind::Path(qpath) = &ty.kind else { return false };
             let inner_span = match qpath_generic_tys(qpath).next() {
                 Some(ty) => ty.span,
                 None => return false,

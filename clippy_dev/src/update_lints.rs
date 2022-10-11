@@ -869,13 +869,11 @@ fn clippy_lints_src_files() -> impl Iterator<Item = (PathBuf, DirEntry)> {
 macro_rules! match_tokens {
     ($iter:ident, $($token:ident $({$($fields:tt)*})? $(($capture:ident))?)*) => {
          {
-            $($(let $capture =)? if let Some(LintDeclSearchResult {
+            $(#[allow(clippy::redundant_pattern)] let Some(LintDeclSearchResult {
                     token_kind: TokenKind::$token $({$($fields)*})?,
-                    content: _x,
+                    content: $($capture @)? _,
                     ..
-            }) = $iter.next() {
-                _x
-            } else {
+            }) = $iter.next() else {
                 continue;
             };)*
             #[allow(clippy::unused_unit)]

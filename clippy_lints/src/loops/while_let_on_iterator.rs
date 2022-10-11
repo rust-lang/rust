@@ -331,9 +331,8 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
     }
 
     if let Some(e) = get_enclosing_loop_or_multi_call_closure(cx, loop_expr) {
-        let local_id = match iter_expr.path {
-            Res::Local(id) => id,
-            _ => return true,
+        let Res::Local(local_id) = iter_expr.path else {
+            return true
         };
         let mut v = NestedLoopVisitor {
             cx,

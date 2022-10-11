@@ -47,9 +47,8 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         _ => return false,
     };
 
-    let inner_qpath = match &ty.kind {
-        TyKind::Path(inner_qpath) => inner_qpath,
-        _ => return false,
+    let TyKind::Path(inner_qpath) = &ty.kind else {
+        return false
     };
     let inner_span = match qpath_generic_tys(inner_qpath).next() {
         Some(ty) => {

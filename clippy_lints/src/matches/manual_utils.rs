@@ -60,9 +60,8 @@ where
         return None;
     }
 
-    let some_expr = match get_some_expr_fn(cx, some_pat, some_expr, expr_ctxt) {
-        Some(expr) => expr,
-        None => return None,
+    let Some(some_expr) = get_some_expr_fn(cx, some_pat, some_expr, expr_ctxt) else {
+        return None;
     };
 
     // These two lints will go back and forth with each other.

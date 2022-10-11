@@ -552,9 +552,8 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
             }
 
             // Check if this is local we care about
-            let args_idx = match path_to_local(e).and_then(|id| self.bindings.get(&id)) {
-                Some(&i) => i,
-                None => return walk_expr(self, e),
+            let Some(&args_idx) = path_to_local(e).and_then(|id| self.bindings.get(&id)) else {
+                return walk_expr(self, e);
             };
             let args = &self.args[args_idx];
             let result = &mut self.results[args_idx];
@@ -609,9 +608,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             }
                         }
 
-                        let id = if let Some(x) = self.cx.typeck_results().type_dependent_def_id(e.hir_id) {
-                            x
-                        } else {
+                        let Some(id) = self.cx.typeck_results().type_dependent_def_id(e.hir_id) else {
                             set_skip_flag();
                             return;
                         };
