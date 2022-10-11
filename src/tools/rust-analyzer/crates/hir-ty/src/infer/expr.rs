@@ -10,7 +10,10 @@ use chalk_ir::{
     cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyVariableKind,
 };
 use hir_def::{
-    expr::{ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, LabelId, Literal, Statement, UnaryOp},
+    expr::{
+        ArithOp, Array, BinaryOp, ClosureKind, CmpOp, Expr, ExprId, LabelId, Literal, Statement,
+        UnaryOp,
+    },
     generics::TypeOrConstParamData,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
@@ -204,8 +207,10 @@ impl<'a> InferenceContext<'a> {
             }
             &Expr::For { iterable, body, pat, label } => {
                 let iterable_ty = self.infer_expr(iterable, &Expectation::none());
-                let pat_ty =
+                let into_iter_ty =
                     self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
+                let pat_ty =
+                    self.resolve_associated_type(into_iter_ty, self.resolve_iterator_item());
 
                 self.infer_pat(pat, &pat_ty, BindingMode::default());
                 self.with_breakable_ctx(BreakableKind::Loop, self.err_ty(), label, |this| {
@@ -216,7 +221,7 @@ impl<'a> InferenceContext<'a> {
                 self.diverges = Diverges::Maybe;
                 TyBuilder::unit()
             }
-            Expr::Closure { body, args, ret_type, arg_types } => {
+            Expr::Closure { body, args, ret_type, arg_types, closure_kind } => {
                 assert_eq!(args.len(), arg_types.len());
 
                 let mut sig_tys = Vec::new();
@@ -244,20 +249,40 @@ impl<'a> InferenceContext<'a> {
                     ),
                 })
                 .intern(Interner);
-                let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
-                let closure_ty =
-                    TyKind::Closure(closure_id, Substitution::from1(Interner, sig_ty.clone()))
-                        .intern(Interner);
+
+                let (ty, resume_yield_tys) = if matches!(closure_kind, ClosureKind::Generator(_)) {
+                    // FIXME: report error when there are more than 1 parameter.
+                    let resume_ty = match sig_tys.first() {
+                        // When `sig_tys.len() == 1` the first type is the return type, not the
+                        // first parameter type.
+                        Some(ty) if sig_tys.len() > 1 => ty.clone(),
+                        _ => self.result.standard_types.unit.clone(),
+                    };
+                    let yield_ty = self.table.new_type_var();
+
+                    let subst = TyBuilder::subst_for_generator(self.db, self.owner)
+                        .push(resume_ty.clone())
+                        .push(yield_ty.clone())
+                        .push(ret_ty.clone())
+                        .build();
+
+                    let generator_id = self.db.intern_generator((self.owner, tgt_expr)).into();
+                    let generator_ty = TyKind::Generator(generator_id, subst).intern(Interner);
+
+                    (generator_ty, Some((resume_ty, yield_ty)))
+                } else {
+                    let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
+                    let closure_ty =
+                        TyKind::Closure(closure_id, Substitution::from1(Interner, sig_ty.clone()))
+                            .intern(Interner);
+
+                    (closure_ty, None)
+                };
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
                 // infer the body.
-                self.deduce_closure_type_from_expectations(
-                    tgt_expr,
-                    &closure_ty,
-                    &sig_ty,
-                    expected,
-                );
+                self.deduce_closure_type_from_expectations(tgt_expr, &ty, &sig_ty, expected);
 
                 // Now go through the argument patterns
                 for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {
@@ -266,6 +291,8 @@ impl<'a> InferenceContext<'a> {
 
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
+                let prev_resume_yield_tys =
+                    mem::replace(&mut self.resume_yield_tys, resume_yield_tys);
 
                 self.with_breakable_ctx(BreakableKind::Border, self.err_ty(), None, |this| {
                     this.infer_expr_coerce(*body, &Expectation::has_type(ret_ty));
@@ -273,8 +300,9 @@ impl<'a> InferenceContext<'a> {
 
                 self.diverges = prev_diverges;
                 self.return_ty = prev_ret_ty;
+                self.resume_yield_tys = prev_resume_yield_tys;
 
-                closure_ty
+                ty
             }
             Expr::Call { callee, args, .. } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
@@ -423,11 +451,18 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Never.intern(Interner)
             }
             Expr::Yield { expr } => {
-                // FIXME: track yield type for coercion
-                if let Some(expr) = expr {
-                    self.infer_expr(*expr, &Expectation::none());
+                if let Some((resume_ty, yield_ty)) = self.resume_yield_tys.clone() {
+                    if let Some(expr) = expr {
+                        self.infer_expr_coerce(*expr, &Expectation::has_type(yield_ty));
+                    } else {
+                        let unit = self.result.standard_types.unit.clone();
+                        let _ = self.coerce(Some(tgt_expr), &unit, &yield_ty);
+                    }
+                    resume_ty
+                } else {
+                    // FIXME: report error (yield expr in non-generator)
+                    TyKind::Error.intern(Interner)
                 }
-                TyKind::Never.intern(Interner)
             }
             Expr::RecordLit { path, fields, spread, .. } => {
                 let (ty, def_id) = self.resolve_variant(path.as_deref(), false);
@@ -952,11 +987,13 @@ impl<'a> InferenceContext<'a> {
         let lhs_ty = self.infer_expr(lhs, &lhs_expectation);
         let rhs_ty = self.table.new_type_var();
 
-        let func = lang_names_for_bin_op(op).and_then(|(name, lang_item)| {
-            self.db.trait_data(self.resolve_lang_item(lang_item)?.as_trait()?).method_by_name(&name)
+        let trait_func = lang_names_for_bin_op(op).and_then(|(name, lang_item)| {
+            let trait_id = self.resolve_lang_item(lang_item)?.as_trait()?;
+            let func = self.db.trait_data(trait_id).method_by_name(&name)?;
+            Some((trait_id, func))
         });
-        let func = match func {
-            Some(func) => func,
+        let (trait_, func) = match trait_func {
+            Some(it) => it,
             None => {
                 let rhs_ty = self.builtin_binary_op_rhs_expectation(op, lhs_ty.clone());
                 let rhs_ty = self.infer_expr_coerce(rhs, &Expectation::from_option(rhs_ty));
@@ -966,7 +1003,9 @@ impl<'a> InferenceContext<'a> {
             }
         };
 
-        let subst = TyBuilder::subst_for_def(self.db, func)
+        // HACK: We can use this substitution for the function because the function itself doesn't
+        // have its own generic parameters.
+        let subst = TyBuilder::subst_for_def(self.db, trait_, None)
             .push(lhs_ty.clone())
             .push(rhs_ty.clone())
             .build();
@@ -1245,19 +1284,7 @@ impl<'a> InferenceContext<'a> {
         assert_eq!(self_params, 0); // method shouldn't have another Self param
         let total_len = parent_params + type_params + const_params + impl_trait_params;
         let mut substs = Vec::with_capacity(total_len);
-        // Parent arguments are unknown
-        for (id, param) in def_generics.iter_parent() {
-            match param {
-                TypeOrConstParamData::TypeParamData(_) => {
-                    substs.push(GenericArgData::Ty(self.table.new_type_var()).intern(Interner));
-                }
-                TypeOrConstParamData::ConstParamData(_) => {
-                    let ty = self.db.const_param_ty(ConstParamId::from_unchecked(id));
-                    substs
-                        .push(GenericArgData::Const(self.table.new_const_var(ty)).intern(Interner));
-                }
-            }
-        }
+
         // handle provided arguments
         if let Some(generic_args) = generic_args {
             // if args are provided, it should be all of them, but we can't rely on that
@@ -1266,7 +1293,7 @@ impl<'a> InferenceContext<'a> {
                 .iter()
                 .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
                 .take(type_params + const_params)
-                .zip(def_generics.iter_id().skip(parent_params))
+                .zip(def_generics.iter_id())
             {
                 if let Some(g) = generic_arg_to_chalk(
                     self.db,
@@ -1290,6 +1317,9 @@ impl<'a> InferenceContext<'a> {
                 }
             }
         };
+
+        // Handle everything else as unknown. This also handles generic arguments for the method's
+        // parent (impl or trait), which should come after those for the method.
         for (id, data) in def_generics.iter().skip(substs.len()) {
             match data {
                 TypeOrConstParamData::TypeParamData(_) => {
@@ -1327,9 +1357,13 @@ impl<'a> InferenceContext<'a> {
                 CallableDefId::FunctionId(f) => {
                     if let ItemContainerId::TraitId(trait_) = f.lookup(self.db.upcast()).container {
                         // construct a TraitRef
-                        let substs = crate::subst_prefix(
-                            &*parameters,
-                            generics(self.db.upcast(), trait_.into()).len(),
+                        let params_len = parameters.len(Interner);
+                        let trait_params_len = generics(self.db.upcast(), trait_.into()).len();
+                        let substs = Substitution::from_iter(
+                            Interner,
+                            // The generic parameters for the trait come after those for the
+                            // function.
+                            &parameters.as_slice(Interner)[params_len - trait_params_len..],
                         );
                         self.push_obligation(
                             TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs }

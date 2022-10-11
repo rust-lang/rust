@@ -140,6 +140,7 @@ impl From<DefWithBody> for DefWithBodyId {
             DefWithBody::Function(it) => DefWithBodyId::FunctionId(it.id),
             DefWithBody::Static(it) => DefWithBodyId::StaticId(it.id),
             DefWithBody::Const(it) => DefWithBodyId::ConstId(it.id),
+            DefWithBody::Variant(it) => DefWithBodyId::VariantId(it.into()),
         }
     }
 }
@@ -150,6 +151,7 @@ impl From<DefWithBodyId> for DefWithBody {
             DefWithBodyId::FunctionId(it) => DefWithBody::Function(it.into()),
             DefWithBodyId::StaticId(it) => DefWithBody::Static(it.into()),
             DefWithBodyId::ConstId(it) => DefWithBody::Const(it.into()),
+            DefWithBodyId::VariantId(it) => DefWithBody::Variant(it.into()),
         }
     }
 }
@@ -172,9 +174,7 @@ impl From<GenericDef> for GenericDefId {
             GenericDef::Trait(it) => GenericDefId::TraitId(it.id),
             GenericDef::TypeAlias(it) => GenericDefId::TypeAliasId(it.id),
             GenericDef::Impl(it) => GenericDefId::ImplId(it.id),
-            GenericDef::Variant(it) => {
-                GenericDefId::EnumVariantId(EnumVariantId { parent: it.parent.id, local_id: it.id })
-            }
+            GenericDef::Variant(it) => GenericDefId::EnumVariantId(it.into()),
             GenericDef::Const(it) => GenericDefId::ConstId(it.id),
         }
     }
@@ -188,9 +188,7 @@ impl From<GenericDefId> for GenericDef {
             GenericDefId::TraitId(it) => GenericDef::Trait(it.into()),
             GenericDefId::TypeAliasId(it) => GenericDef::TypeAlias(it.into()),
             GenericDefId::ImplId(it) => GenericDef::Impl(it.into()),
-            GenericDefId::EnumVariantId(it) => {
-                GenericDef::Variant(Variant { parent: it.parent.into(), id: it.local_id })
-            }
+            GenericDefId::EnumVariantId(it) => GenericDef::Variant(it.into()),
             GenericDefId::ConstId(it) => GenericDef::Const(it.into()),
         }
     }

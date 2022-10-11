@@ -11,6 +11,3 @@ doctest = false
 
 [dependencies]
 xshell = "0.2.2"
-
-[features]
-in-rust-tree = []

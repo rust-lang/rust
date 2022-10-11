@@ -185,10 +185,47 @@ impl GlobalState {
         let (change, changed_files) = {
             let mut change = Change::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
-            let changed_files = vfs.take_changes();
+            let mut changed_files = vfs.take_changes();
             if changed_files.is_empty() {
                 return false;
             }
+
+            // important: this needs to be a stable sort, the order between changes is relevant
+            // for the same file ids
+            changed_files.sort_by_key(|file| file.file_id);
+            // We need to fix up the changed events a bit, if we have a create or modify for a file
+            // id that is followed by a delete we actually no longer observe the file text from the
+            // create or modify which may cause problems later on
+            changed_files.dedup_by(|a, b| {
+                use vfs::ChangeKind::*;
+
+                if a.file_id != b.file_id {
+                    return false;
+                }
+
+                match (a.change_kind, b.change_kind) {
+                    // duplicate can be merged
+                    (Create, Create) | (Modify, Modify) | (Delete, Delete) => true,
+                    // just leave the create, modify is irrelevant
+                    (Create, Modify) => {
+                        std::mem::swap(a, b);
+                        true
+                    }
+                    // modify becomes irrelevant if the file is deleted
+                    (Modify, Delete) => true,
+                    // we should fully remove this occurrence,
+                    // but leaving just a delete works as well
+                    (Create, Delete) => true,
+                    // this is equivalent to a modify
+                    (Delete, Create) => {
+                        a.change_kind = Modify;
+                        true
+                    }
+                    // can't really occur
+                    (Modify, Create) => false,
+                    (Delete, Modify) => false,
+                }
+            });
 
             for file in &changed_files {
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
@@ -315,6 +352,10 @@ impl GlobalState {
         if let Some(response) = self.req_queue.incoming.cancel(request_id) {
             self.send(response.into());
         }
+    }
+
+    pub(crate) fn is_completed(&self, request: &lsp_server::Request) -> bool {
+        self.req_queue.incoming.is_completed(&request.id)
     }
 
     fn send(&mut self, message: lsp_server::Message) {
