@@ -18,3 +18,12 @@ middle_limit_invalid =
 
 middle_const_eval_non_int =
     constant evaluation of enum discriminant resulted in non-integer
+
+middle_unknown_layout =
+    the type `{$ty}` has an unknown layout
+
+middle_values_too_big =
+    values of the type `{$ty}` are too big for the current architecture
+
+middle_cannot_be_normalized =
+    unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized

@@ -255,6 +255,56 @@ impl EmissionGuarantee for () {
     }
 }
 
+/// Marker type which enables implementation of `create_note` and `emit_note` functions for
+/// note-without-error struct diagnostics.
+#[derive(Copy, Clone)]
+pub struct Noted;
+
+impl<'a> DiagnosticBuilder<'a, Noted> {
+    /// Convenience function for internal use, clients should use one of the
+    /// `struct_*` methods on [`Handler`].
+    pub(crate) fn new_note(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
+        let diagnostic = Diagnostic::new_with_code(Level::Note, None, message);
+        Self::new_diagnostic_note(handler, diagnostic)
+    }
+
+    /// Creates a new `DiagnosticBuilder` with an already constructed
+    /// diagnostic.
+    pub(crate) fn new_diagnostic_note(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
+        debug!("Created new diagnostic");
+        Self {
+            inner: DiagnosticBuilderInner {
+                state: DiagnosticBuilderState::Emittable(handler),
+                diagnostic: Box::new(diagnostic),
+            },
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl EmissionGuarantee for Noted {
+    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
+        match db.inner.state {
+            // First `.emit()` call, the `&Handler` is still available.
+            DiagnosticBuilderState::Emittable(handler) => {
+                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
+                handler.emit_diagnostic(&mut db.inner.diagnostic);
+            }
+            // `.emit()` was previously called, disallowed from repeating it.
+            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
+        }
+
+        Noted
+    }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new_note(handler, msg)
+    }
+}
+
 impl<'a> DiagnosticBuilder<'a, !> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
