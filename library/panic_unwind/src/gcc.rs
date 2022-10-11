@@ -42,7 +42,7 @@ use core::ptr;
 
 use unwind as uw;
 
-// In case where multiple copies of std is compiled into a single binary,
+// In case where multiple copies of std exist in a single process,
 // we use address of this static variable to distinguish an exception raised by
 // this copy and some other copy (which needs to be treated as foreign exception).
 static CANARY: u8 = 0;
