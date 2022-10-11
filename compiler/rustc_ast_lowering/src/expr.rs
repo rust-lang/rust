@@ -617,8 +617,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             hir::ExprKind::Closure(c)
         };
+        let generator_hir_id = self.lower_node_id(closure_node_id);
+        // FIXME: only add track caller if the parent is track_caller
+        self.lower_attrs(
+            generator_hir_id,
+            &[Attribute {
+                kind: AttrKind::Normal(ptr::P(NormalAttr {
+                    item: AttrItem {
+                        path: Path::from_ident(Ident::new(sym::track_caller, span)),
+                        args: MacArgs::Empty,
+                        tokens: None,
+                    },
+                    tokens: None,
+                })),
+                id: self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id(),
+                style: AttrStyle::Outer,
+                span,
+            }],
+        );
         let generator = hir::Expr {
-            hir_id: self.lower_node_id(closure_node_id),
+            hir_id: generator_hir_id,
             kind: generator_kind,
             span: self.lower_span(span),
         };

@@ -1,5 +1,6 @@
 // run-pass
 // edition:2021
+#![feature(closure_track_caller)]
 
 use std::future::Future;
 use std::panic;
