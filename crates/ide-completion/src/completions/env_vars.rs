@@ -18,7 +18,8 @@ const CARGO_DEFINED_VARS: &[(&str, &str)] = &[
 ("CARGO_PKG_NAME","The name of your package"),
 ("CARGO_PKG_DESCRIPTION","The description from the manifest of your package"),
 ("CARGO_PKG_HOMEPAGE","The home page from the manifest of your package"),
-("CARGO_PKG_REPOSITORY","The repository from the manifest of your package"),
+        ("CARGO_PKG_REPOSITORY",
+"The repository from the manifest of your package"),
 ("CARGO_PKG_LICENSE","The license from the manifest of your package"),
 ("CARGO_PKG_LICENSE_FILE","The license file from the manifest of your package"),
 ("CARGO_PKG_RUST_VERSION","The Rust version from the manifest of your package. Note that this is the minimum Rust version supported by the package, not the current Rust version"),
@@ -33,7 +34,7 @@ pub(crate) fn complete_cargo_env_vars(
     ctx: &CompletionContext<'_>,
     expanded: &ast::String,
 ) -> Option<()> {
-    guard_env_macro(expanded, &ctx.sema, &ctx.db)?;
+    guard_env_macro(expanded, &ctx.sema)?;
     let range = expanded.text_range_between_quotes()?;
 
     CARGO_DEFINED_VARS.iter().for_each(|(var, detail)| {
@@ -48,11 +49,11 @@ pub(crate) fn complete_cargo_env_vars(
 fn guard_env_macro(
     string: &ast::String,
     semantics: &Semantics<'_, RootDatabase>,
-    db: &RootDatabase,
 ) -> Option<()> {
     let call = get_outer_macro(string)?;
     let name = call.path()?.segment()?.name_ref()?;
     let makro = semantics.resolve_macro_call(&call)?;
+    let db = semantics.db;
 
     match name.text().as_str() {
         "env" | "option_env" if makro.kind(db) == hir::MacroKind::BuiltIn => Some(()),
