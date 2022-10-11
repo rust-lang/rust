@@ -1,11 +1,10 @@
 //! Completes environment variables defined by Cargo (https://doc.rust-lang.org/cargo/reference/environment-variables.html)
 use hir::Semantics;
-use ide_db::{syntax_helpers::node_ext::get_outer_macro, RootDatabase};
+use ide_db::{syntax_helpers::node_ext::macro_call_for_string_token, RootDatabase};
 use syntax::ast::{self, IsString};
 
-use crate::{context::CompletionContext, CompletionItem, CompletionItemKind};
+use crate::{context::CompletionContext, CompletionItem, CompletionItemKind, completions::Completions};
 
-use super::Completions;
 const CARGO_DEFINED_VARS: &[(&str, &str)] = &[
 ("CARGO","Path to the cargo binary performing the build"),
 ("CARGO_MANIFEST_DIR","The directory containing the manifest of your package"),
@@ -50,7 +49,7 @@ fn guard_env_macro(
     string: &ast::String,
     semantics: &Semantics<'_, RootDatabase>,
 ) -> Option<()> {
-    let call = get_outer_macro(string)?;
+    let call = macro_call_for_string_token(string)?;
     let name = call.path()?.segment()?.name_ref()?;
     let makro = semantics.resolve_macro_call(&call)?;
     let db = semantics.db;
