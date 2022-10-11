@@ -464,6 +464,11 @@ fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem
         return;
     }
 
+    // Check if the attribute is in an external macro and therefore out of the developer's control
+    if in_external_macro(cx.sess(), attr.span) {
+        return;
+    }
+
     span_lint_and_help(
         cx,
         ALLOW_ATTRIBUTES_WITHOUT_REASON,
