@@ -13,7 +13,7 @@ note: required by a bound in `map`
    |
 LL |         F: FnMut(Self::Item) -> B,
    |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::map`
-help: consider borrowing here:
+help: consider borrowing the argument
    |
 LL |     a.iter().map(|_: &(u32, u32)| 45);
    |                      ~~~~~~~~~~~

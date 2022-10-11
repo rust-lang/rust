@@ -3449,11 +3449,11 @@ fn hint_missing_borrow<'tcx>(
 
         if found_ty == expected_ty {
             let hint = if found_refs < expected_refs {
-                "consider borrowing here:"
+                "consider borrowing the argument"
             } else if found_refs == expected_refs {
                 continue;
             } else {
-                "consider removing the borrow:"
+                "do not borrow the argument"
             };
             err.span_suggestion_verbose(
                 arg_span,
