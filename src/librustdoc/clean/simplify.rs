@@ -14,13 +14,14 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
+use thin_vec::ThinVec;
 
 use crate::clean;
 use crate::clean::GenericArgs as PP;
 use crate::clean::WherePredicate as WP;
 use crate::core::DocContext;
 
-pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
+pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> ThinVec<WP> {
     // First, partition the where clause into its separate components.
     //
     // We use `FxIndexMap` so that the insertion order is preserved to prevent messing up to
@@ -59,7 +60,7 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     });
 
     // And finally, let's reassemble everything
-    let mut clauses = Vec::new();
+    let mut clauses = ThinVec::with_capacity(lifetimes.len() + tybounds.len() + equalities.len());
     clauses.extend(
         lifetimes.into_iter().map(|(lt, bounds)| WP::RegionPredicate { lifetime: lt, bounds }),
     );
