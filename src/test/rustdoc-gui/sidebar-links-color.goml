@@ -13,72 +13,72 @@ reload:
 
 // Struct
 assert-css: (
-    ".sidebar a.struct:not(.current)",
+    ".sidebar .block.struct a:not(.current)",
     {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.struct:not(.current)"
+move-cursor-to: ".sidebar .block.struct a:not(.current)"
 assert-css: (
-    ".sidebar a.struct:hover",
+    ".sidebar .block.struct a:hover",
     {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
 )
 // Enum
 assert-css: (
-    ".sidebar a.enum",
+    ".sidebar .block.enum a",
     {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.enum"
+move-cursor-to: ".sidebar .block.enum a"
 assert-css: (
-    ".sidebar a.enum:hover",
+    ".sidebar .block.enum a:hover",
     {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
 )
 // Union
 assert-css: (
-    ".sidebar a.union",
+    ".sidebar .block.union a",
     {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.union"
+move-cursor-to: ".sidebar .block.union a"
 assert-css: (
-    ".sidebar a.union:hover",
+    ".sidebar .block.union a:hover",
     {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
 )
 // Trait
 assert-css: (
-    ".sidebar a.trait",
+    ".sidebar .block.trait a",
     {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.trait"
+move-cursor-to: ".sidebar .block.trait a"
 assert-css: (
-    ".sidebar a.trait:hover",
+    ".sidebar .block.trait a:hover",
     {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
 )
 // Function
 assert-css: (
-    ".sidebar a.fn",
+    ".sidebar .block.fn a",
     {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.fn"
+move-cursor-to: ".sidebar .block.fn a"
 assert-css: (
-    ".sidebar a.fn:hover",
+    ".sidebar .block.fn a:hover",
     {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
 )
 // Type definition
 assert-css: (
-    ".sidebar a.type",
+    ".sidebar .block.type a",
     {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.type"
+move-cursor-to: ".sidebar .block.type a"
 assert-css: (
-    ".sidebar a.type:hover",
+    ".sidebar .block.type a:hover",
     {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
 )
 // Keyword
 assert-css: (
-    ".sidebar a.keyword",
+    ".sidebar .block.keyword a",
     {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.keyword"
+move-cursor-to: ".sidebar .block.keyword a"
 assert-css: (
-    ".sidebar a.keyword:hover",
+    ".sidebar .block.keyword a:hover",
     {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)"},
 )
 
@@ -88,72 +88,72 @@ reload:
 
 // Struct
 assert-css: (
-    ".sidebar a.struct:not(.current)",
+    ".sidebar .block.struct a:not(.current)",
     {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.struct:not(.current)"
+move-cursor-to: ".sidebar .block.struct a:not(.current)"
 assert-css: (
-    ".sidebar a.struct:hover",
+    ".sidebar .block.struct a:hover",
     {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
 )
 // Enum
 assert-css: (
-    ".sidebar a.enum",
+    ".sidebar .block.enum a",
     {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.enum"
+move-cursor-to: ".sidebar .block.enum a"
 assert-css: (
-    ".sidebar a.enum:hover",
+    ".sidebar .block.enum a:hover",
     {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
 )
 // Union
 assert-css: (
-    ".sidebar a.union",
+    ".sidebar .block.union a",
     {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.union"
+move-cursor-to: ".sidebar .block.union a"
 assert-css: (
-    ".sidebar a.union:hover",
+    ".sidebar .block.union a:hover",
     {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
 )
 // Trait
 assert-css: (
-    ".sidebar a.trait",
+    ".sidebar .block.trait a",
     {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.trait"
+move-cursor-to: ".sidebar .block.trait a"
 assert-css: (
-    ".sidebar a.trait:hover",
+    ".sidebar .block.trait a:hover",
     {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
 )
 // Function
 assert-css: (
-    ".sidebar a.fn",
+    ".sidebar .block.fn a",
     {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.fn"
+move-cursor-to: ".sidebar .block.fn a"
 assert-css: (
-    ".sidebar a.fn:hover",
+    ".sidebar .block.fn a:hover",
     {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
 )
 // Type definition
 assert-css: (
-    ".sidebar a.type",
+    ".sidebar .block.type a",
     {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.type"
+move-cursor-to: ".sidebar .block.type a"
 assert-css: (
-    ".sidebar a.type:hover",
+    ".sidebar .block.type a:hover",
     {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
 )
 // Keyword
 assert-css: (
-    ".sidebar a.keyword",
+    ".sidebar .block.keyword a",
     {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.keyword"
+move-cursor-to: ".sidebar .block.keyword a"
 assert-css: (
-    ".sidebar a.keyword:hover",
+    ".sidebar .block.keyword a:hover",
     {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)"},
 )
 
@@ -163,71 +163,71 @@ reload:
 
 // Struct
 assert-css: (
-    ".sidebar a.struct:not(.current)",
+    ".sidebar .block.struct a:not(.current)",
     {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.struct:not(.current)"
+move-cursor-to: ".sidebar .block.struct a:not(.current)"
 assert-css: (
-    ".sidebar a.struct:hover",
+    ".sidebar .block.struct a:hover",
     {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
 )
 // Enum
 assert-css: (
-    ".sidebar a.enum",
+    ".sidebar .block.enum a",
     {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.enum"
+move-cursor-to: ".sidebar .block.enum a"
 assert-css: (
-    ".sidebar a.enum:hover",
+    ".sidebar .block.enum a:hover",
     {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
 )
 // Union
 assert-css: (
-    ".sidebar a.union",
+    ".sidebar .block.union a",
     {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.union"
+move-cursor-to: ".sidebar .block.union a"
 assert-css: (
-    ".sidebar a.union:hover",
+    ".sidebar .block.union a:hover",
     {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
 )
 // Trait
 assert-css: (
-    ".sidebar a.trait",
+    ".sidebar .block.trait a",
     {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.trait"
+move-cursor-to: ".sidebar .block.trait a"
 assert-css: (
-    ".sidebar a.trait:hover",
+    ".sidebar .block.trait a:hover",
     {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
 )
 // Function
 assert-css: (
-    ".sidebar a.fn",
+    ".sidebar .block.fn a",
     {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.fn"
+move-cursor-to: ".sidebar .block.fn a"
 assert-css: (
-    ".sidebar a.fn:hover",
+    ".sidebar .block.fn a:hover",
     {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
 )
 // Type definition
 assert-css: (
-    ".sidebar a.type",
+    ".sidebar .block.type a",
     {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.type"
+move-cursor-to: ".sidebar .block.type a"
 assert-css: (
-    ".sidebar a.type:hover",
+    ".sidebar .block.type a:hover",
     {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
 )
 // Keyword
 assert-css: (
-    ".sidebar a.keyword",
+    ".sidebar .block.keyword a",
     {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)"},
 )
-move-cursor-to: ".sidebar a.keyword"
+move-cursor-to: ".sidebar .block.keyword a"
 assert-css: (
-    ".sidebar a.keyword:hover",
+    ".sidebar .block.keyword a:hover",
     {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)"},
 )

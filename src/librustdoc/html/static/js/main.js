@@ -451,7 +451,6 @@ function loadCss(cssFileName) {
                 const name = item[0];
                 const desc = item[1]; // can be null
 
-                let klass = shortty;
                 let path;
                 if (shortty === "mod") {
                     path = name + "/index.html";
@@ -459,13 +458,12 @@ function loadCss(cssFileName) {
                     path = shortty + "." + name + ".html";
                 }
                 const current_page = document.location.href.split("/").pop();
-                if (path === current_page) {
-                    klass += " current";
-                }
                 const link = document.createElement("a");
                 link.href = path;
                 link.title = desc;
-                link.className = klass;
+                if (path === current_page) {
+                    link.className = "current";
+                }
                 link.textContent = name;
                 const li = document.createElement("li");
                 li.appendChild(link);
