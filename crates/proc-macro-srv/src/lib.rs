@@ -20,6 +20,8 @@
 mod dylib;
 mod abis;
 
+pub mod cli;
+
 use std::{
     collections::{hash_map::Entry, HashMap},
     env,
@@ -149,7 +151,10 @@ impl EnvSnapshot {
     }
 }
 
-pub mod cli;
+#[cfg(all(feature = "sysroot-abi", test))]
+mod tests;
 
 #[cfg(test)]
-mod tests;
+pub fn proc_macro_test_dylib_path() -> std::path::PathBuf {
+    proc_macro_test::PROC_MACRO_TEST_LOCATION.into()
+}

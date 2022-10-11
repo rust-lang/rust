@@ -97,24 +97,33 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
 
+    #[salsa::invoke(StructData::struct_data_with_diagnostics_query)]
+    fn struct_data_with_diagnostics(&self, id: StructId)
+        -> (Arc<StructData>, Arc<[DefDiagnostic]>);
+
     #[salsa::invoke(StructData::union_data_query)]
     fn union_data(&self, id: UnionId) -> Arc<StructData>;
 
+    #[salsa::invoke(StructData::union_data_with_diagnostics_query)]
+    fn union_data_with_diagnostics(&self, id: UnionId) -> (Arc<StructData>, Arc<[DefDiagnostic]>);
+
     #[salsa::invoke(EnumData::enum_data_query)]
     fn enum_data(&self, e: EnumId) -> Arc<EnumData>;
+
+    #[salsa::invoke(EnumData::enum_data_with_diagnostics_query)]
+    fn enum_data_with_diagnostics(&self, e: EnumId) -> (Arc<EnumData>, Arc<[DefDiagnostic]>);
 
     #[salsa::invoke(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
 
     #[salsa::invoke(ImplData::impl_data_with_diagnostics_query)]
-    fn impl_data_with_diagnostics(&self, e: ImplId) -> (Arc<ImplData>, Arc<Vec<DefDiagnostic>>);
+    fn impl_data_with_diagnostics(&self, e: ImplId) -> (Arc<ImplData>, Arc<[DefDiagnostic]>);
 
     #[salsa::invoke(TraitData::trait_data_query)]
     fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
 
     #[salsa::invoke(TraitData::trait_data_with_diagnostics_query)]
-    fn trait_data_with_diagnostics(&self, tr: TraitId)
-        -> (Arc<TraitData>, Arc<Vec<DefDiagnostic>>);
+    fn trait_data_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitData>, Arc<[DefDiagnostic]>);
 
     #[salsa::invoke(TypeAliasData::type_alias_data_query)]
     fn type_alias_data(&self, e: TypeAliasId) -> Arc<TypeAliasData>;

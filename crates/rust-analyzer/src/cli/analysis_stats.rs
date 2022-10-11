@@ -24,7 +24,7 @@ use ide_db::base_db::{
 use itertools::Itertools;
 use oorandom::Rand32;
 use profile::{Bytes, StopWatch};
-use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
+use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustcSource};
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use stdx::format_to;
@@ -55,7 +55,10 @@ impl flags::AnalysisStats {
         };
 
         let mut cargo_config = CargoConfig::default();
-        cargo_config.no_sysroot = self.no_sysroot;
+        cargo_config.sysroot = match self.no_sysroot {
+            true => None,
+            false => Some(RustcSource::Discover),
+        };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: !self.disable_build_scripts,
             with_proc_macro: !self.disable_proc_macros,
@@ -81,7 +84,7 @@ impl flags::AnalysisStats {
         };
 
         let (host, vfs, _proc_macro) =
-            load_workspace(workspace, &cargo_config, &load_cargo_config)?;
+            load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;
         let db = host.raw_database();
         eprint!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
         eprint!(" (metadata {}", metadata_time);

@@ -95,6 +95,14 @@ fn try_lookup_include_path(
     if !matches!(&*name.text(), "include" | "include_str" | "include_bytes") {
         return None;
     }
+
+    // Ignore non-built-in macros to account for shadowing
+    if let Some(it) = sema.resolve_macro_call(&macro_call) {
+        if !matches!(it.kind(sema.db), hir::MacroKind::BuiltIn) {
+            return None;
+        }
+    }
+
     let file_id = sema.db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
     let size = sema.db.file_text(file_id).len().try_into().ok()?;
     Some(NavigationTarget {
@@ -156,9 +164,6 @@ mod tests {
     fn check(ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
-        if navs.is_empty() {
-            panic!("unresolved reference")
-        }
 
         let cmp = |&FileRange { file_id, range }: &_| (file_id, range.start());
         let navs = navs
@@ -1348,6 +1353,10 @@ fn f(e: Enum) {
         check(
             r#"
 //- /main.rs
+
+#[rustc_builtin_macro]
+macro_rules! include_str {}
+
 fn main() {
     let str = include_str!("foo.txt$0");
 }
@@ -1357,6 +1366,42 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn goto_doc_include_str() {
+        check(
+            r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include_str {}
+
+#[doc = include_str!("docs.md$0")]
+struct Item;
+
+//- /docs.md
+// docs
+//^file
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_shadow_include() {
+        check(
+            r#"
+//- /main.rs
+macro_rules! include {
+    ("included.rs") => {}
+}
+
+include!("included.rs$0");
+
+//- /included.rs
+// empty
+"#,
+        );
+    }
+
     #[cfg(test)]
     mod goto_impl_of_trait_fn {
         use super::check;

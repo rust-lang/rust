@@ -18,7 +18,6 @@ mod tidy;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
-use expect_test::expect;
 use lsp_types::{
     notification::DidOpenTextDocument,
     request::{
@@ -60,7 +59,7 @@ use std::collections::Spam;
 "#,
     )
     .with_config(serde_json::json!({
-        "cargo": { "noSysroot": false }
+        "cargo": { "sysroot": "discover" }
     }))
     .server()
     .wait_until_workspace_is_loaded();
@@ -615,7 +614,7 @@ fn main() {{}}
         librs, libs
     ))
     .with_config(serde_json::json!({
-        "cargo": { "noSysroot": false }
+        "cargo": { "sysroot": "discover" }
     }))
     .server()
     .wait_until_workspace_is_loaded();
@@ -743,7 +742,7 @@ fn main() {
             "buildScripts": {
                 "enable": true
             },
-            "noSysroot": true,
+            "sysroot": null,
         }
     }))
     .server()
@@ -821,7 +820,10 @@ fn main() {
 }
 
 #[test]
+// FIXME: Re-enable once we can run proc-macro tests on rust-lang/rust-analyzer again
+#[cfg(any())]
 fn resolve_proc_macro() {
+    use expect_test::expect;
     if skip_slow_tests() {
         return;
     }
@@ -898,7 +900,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
             "buildScripts": {
                 "enable": true
             },
-            "noSysroot": true,
+            "sysroot": null,
         },
         "procMacro": {
             "enable": true,

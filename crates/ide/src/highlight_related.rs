@@ -1376,4 +1376,20 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn test_assoc_type_highlighting() {
+        check(
+            r#"
+trait Trait {
+    type Output;
+      // ^^^^^^
+}
+impl Trait for () {
+    type Output$0 = ();
+      // ^^^^^^
+}
+"#,
+        );
+    }
 }
