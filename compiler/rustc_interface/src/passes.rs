@@ -739,7 +739,6 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     ty::provide(providers);
     traits::provide(providers);
     rustc_passes::provide(providers);
-    rustc_resolve::provide(providers);
     rustc_traits::provide(providers);
     rustc_ty_utils::provide(providers);
     rustc_metadata::provide(providers);

@@ -32,8 +32,6 @@ trait RegionExt {
     fn id(&self) -> Option<DefId>;
 
     fn shifted(self, amount: u32) -> Region;
-
-    fn shifted_out_to_binder(self, binder: ty::DebruijnIndex) -> Region;
 }
 
 impl RegionExt for Region {
@@ -69,15 +67,6 @@ impl RegionExt for Region {
             _ => self,
         }
     }
-
-    fn shifted_out_to_binder(self, binder: ty::DebruijnIndex) -> Region {
-        match self {
-            Region::LateBound(debruijn, index, id) => {
-                Region::LateBound(debruijn.shifted_out_to_binder(binder), index, id)
-            }
-            _ => self,
-        }
-    }
 }
 
 /// Maps the id of each lifetime reference to the lifetime decl
@@ -101,8 +90,8 @@ struct NamedRegionMap {
     late_bound_vars: HirIdMap<Vec<ty::BoundVariableKind>>,
 }
 
-pub(crate) struct LifetimeContext<'a, 'tcx> {
-    pub(crate) tcx: TyCtxt<'tcx>,
+struct LifetimeContext<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
 
@@ -234,7 +223,7 @@ type ScopeRef<'a> = &'a Scope<'a>;
 
 const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub(crate) fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         resolve_lifetimes_trait_definition,
         resolve_lifetimes,
