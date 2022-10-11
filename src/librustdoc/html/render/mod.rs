@@ -1853,12 +1853,12 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
 
     buffer.write_str("<div class=\"sidebar-elems\">");
     if it.is_crate() {
-        write!(buffer, "<div class=\"block\"><ul>");
+        write!(buffer, "<ul class=\"block\">");
         if let Some(ref version) = cx.cache().crate_version {
             write!(buffer, "<li class=\"version\">Version {}</li>", Escape(version));
         }
         write!(buffer, "<li><a id=\"all-types\" href=\"all.html\">All Items</a></li>");
-        buffer.write_str("</ul></div>");
+        buffer.write_str("</ul>");
     }
 
     match *it.kind {
@@ -2258,8 +2258,7 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
     }
 }
 
-/// Don't call this function directly!!! Use `print_sidebar_title` or `print_sidebar_block` instead!
-fn print_sidebar_title_inner(buf: &mut Buffer, id: &str, title: &str) {
+fn print_sidebar_title(buf: &mut Buffer, id: &str, title: &str) {
     write!(
         buf,
         "<h3 class=\"sidebar-title\">\
@@ -2269,25 +2268,18 @@ fn print_sidebar_title_inner(buf: &mut Buffer, id: &str, title: &str) {
     );
 }
 
-fn print_sidebar_title(buf: &mut Buffer, id: &str, title: &str) {
-    buf.push_str("<div class=\"block\">");
-    print_sidebar_title_inner(buf, id, title);
-    buf.push_str("</div>");
-}
-
 fn print_sidebar_block(
     buf: &mut Buffer,
     id: &str,
     title: &str,
     items: impl Iterator<Item = impl fmt::Display>,
 ) {
-    buf.push_str("<div class=\"block\">");
-    print_sidebar_title_inner(buf, id, title);
-    buf.push_str("<ul>");
+    print_sidebar_title(buf, id, title);
+    buf.push_str("<ul class=\"block\">");
     for item in items {
         write!(buf, "<li>{}</li>", item);
     }
-    buf.push_str("</ul></div>");
+    buf.push_str("</ul>");
 }
 
 fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
@@ -2676,9 +2668,7 @@ pub(crate) fn sidebar_module_like(buf: &mut Buffer, item_sections_in_use: FxHash
         write!(
             buf,
             "<section>\
-                 <div class=\"block\">\
-                     <ul>{}</ul>\
-                 </div>\
+                 <ul class=\"block\">{}</ul>\
              </section>",
             sidebar
         );
