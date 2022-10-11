@@ -641,8 +641,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 // Check whether we should interpret this as a bare trait object.
                 if qself.is_none()
                     && let Some(partial_res) = self.r.partial_res_map.get(&ty.id)
-                    && partial_res.unresolved_segments() == 0
-                    && let Res::Def(DefKind::Trait | DefKind::TraitAlias, _) = partial_res.base_res()
+                    && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = partial_res.full_res()
                 {
                     // This path is actually a bare trait object.  In case of a bare `Fn`-trait
                     // object with anonymous lifetimes, we need this rib to correctly place the
@@ -1929,7 +1928,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 match ty.kind {
                     TyKind::ImplicitSelf => true,
                     TyKind::Path(None, _) => {
-                        let path_res = self.r.partial_res_map[&ty.id].base_res();
+                        let path_res = self.r.partial_res_map[&ty.id].expect_full_res();
                         if let Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } = path_res {
                             return true;
                         }
@@ -1970,7 +1969,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     None
                 }
             })
-            .map(|res| res.base_res())
+            .map(|res| res.expect_full_res())
             .filter(|res| {
                 // Permit the types that unambiguously always
                 // result in the same type constructor being used
@@ -2530,7 +2529,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 Finalize::new(trait_ref.ref_id, trait_ref.path.span),
             );
             self.diagnostic_metadata.currently_processing_impl_trait = None;
-            if let Some(def_id) = res.base_res().opt_def_id() {
+            if let Some(def_id) = res.expect_full_res().opt_def_id() {
                 new_id = Some(def_id);
                 new_val = Some((self.r.expect_module(def_id), trait_ref.clone()));
             }
@@ -2618,8 +2617,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         this.with_current_self_type(self_type, |this| {
                                             this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
                                                 debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
+                                                let mut seen_trait_items = Default::default();
                                                 for item in impl_items {
-                                                    this.resolve_impl_item(&**item);
+                                                    this.resolve_impl_item(&**item, &mut seen_trait_items);
                                                 }
                                             });
                                         });
@@ -2633,7 +2633,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
     }
 
-    fn resolve_impl_item(&mut self, item: &'ast AssocItem) {
+    fn resolve_impl_item(
+        &mut self,
+        item: &'ast AssocItem,
+        seen_trait_items: &mut FxHashMap<DefId, Span>,
+    ) {
         use crate::ResolutionError::*;
         match &item.kind {
             AssocItemKind::Const(_, ty, default) => {
@@ -2646,6 +2650,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     &item.kind,
                     ValueNS,
                     item.span,
+                    seen_trait_items,
                     |i, s, c| ConstNotMemberOfTrait(i, s, c),
                 );
 
@@ -2686,6 +2691,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             &item.kind,
                             ValueNS,
                             item.span,
+                            seen_trait_items,
                             |i, s, c| MethodNotMemberOfTrait(i, s, c),
                         );
 
@@ -2714,6 +2720,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 &item.kind,
                                 TypeNS,
                                 item.span,
+                                seen_trait_items,
                                 |i, s, c| TypeNotMemberOfTrait(i, s, c),
                             );
 
@@ -2735,6 +2742,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         kind: &AssocItemKind,
         ns: Namespace,
         span: Span,
+        seen_trait_items: &mut FxHashMap<DefId, Span>,
         err: F,
     ) where
         F: FnOnce(Ident, String, Option<Symbol>) -> ResolutionError<'a>,
@@ -2767,7 +2775,25 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         };
 
         let res = binding.res();
-        let Res::Def(def_kind, _) = res else { bug!() };
+        let Res::Def(def_kind, id_in_trait) = res else { bug!() };
+
+        match seen_trait_items.entry(id_in_trait) {
+            Entry::Occupied(entry) => {
+                self.report_error(
+                    span,
+                    ResolutionError::TraitImplDuplicate {
+                        name: ident.name,
+                        old_span: *entry.get(),
+                        trait_item_span: binding.span,
+                    },
+                );
+                return;
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(span);
+            }
+        };
+
         match (def_kind, kind) {
             (DefKind::AssocTy, AssocItemKind::Type(..))
             | (DefKind::AssocFn, AssocItemKind::Fn(..))
@@ -2859,7 +2885,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn is_base_res_local(&self, nid: NodeId) -> bool {
-        matches!(self.r.partial_res_map.get(&nid).map(|res| res.base_res()), Some(Res::Local(..)))
+        matches!(
+            self.r.partial_res_map.get(&nid).map(|res| res.expect_full_res()),
+            Some(Res::Local(..))
+        )
     }
 
     /// Checks that all of the arms in an or-pattern have exactly the
@@ -3346,12 +3375,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             source.defer_to_typeck(),
             finalize,
         ) {
-            Ok(Some(partial_res)) if partial_res.unresolved_segments() == 0 => {
-                if source.is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err
-                {
+            Ok(Some(partial_res)) if let Some(res) = partial_res.full_res() => {
+                if source.is_expected(res) || res == Res::Err {
                     partial_res
                 } else {
-                    report_errors(self, Some(partial_res.base_res()))
+                    report_errors(self, Some(res))
                 }
             }
 
@@ -3559,20 +3587,21 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         };
 
         if path.len() > 1
-            && result.base_res() != Res::Err
+            && let Some(res) = result.full_res()
+            && res != Res::Err
             && path[0].ident.name != kw::PathRoot
             && path[0].ident.name != kw::DollarCrate
         {
             let unqualified_result = {
                 match self.resolve_path(&[*path.last().unwrap()], Some(ns), None) {
-                    PathResult::NonModule(path_res) => path_res.base_res(),
+                    PathResult::NonModule(path_res) => path_res.expect_full_res(),
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         module.res().unwrap()
                     }
                     _ => return Ok(Some(result)),
                 }
             };
-            if result.base_res() == unqualified_result {
+            if res == unqualified_result {
                 let lint = lint::builtin::UNUSED_QUALIFICATIONS;
                 self.r.lint_buffer.buffer_lint(
                     lint,

@@ -20,13 +20,14 @@ use hir_def::{
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
 use itertools::Itertools;
+use smallvec::SmallVec;
 use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase,
     from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, lt_from_placeholder_idx,
     mapping::from_chalk,
-    primitive, subst_prefix, to_assoc_type_id,
+    primitive, to_assoc_type_id,
     utils::{self, generics},
     AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Const, ConstValue, DomainGoal,
     GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives, Mutability,
@@ -221,6 +222,7 @@ pub enum DisplaySourceCodeError {
     PathNotFound,
     UnknownType,
     Closure,
+    Generator,
 }
 
 pub enum HirDisplayError {
@@ -504,8 +506,15 @@ impl HirDisplay for Ty {
                     let total_len = parent_params + self_param + type_params + const_params;
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if total_len > 0 {
+                        // `parameters` are in the order of fn's params (including impl traits),
+                        // parent's params (those from enclosing impl or trait, if any).
+                        let parameters = parameters.as_slice(Interner);
+                        let fn_params_len = self_param + type_params + const_params;
+                        let fn_params = parameters.get(..fn_params_len);
+                        let parent_params = parameters.get(parameters.len() - parent_params..);
+                        let params = parent_params.into_iter().chain(fn_params).flatten();
                         write!(f, "<")?;
-                        f.write_joined(&parameters.as_slice(Interner)[..total_len], ", ")?;
+                        f.write_joined(params, ", ")?;
                         write!(f, ">")?;
                     }
                 }
@@ -577,9 +586,8 @@ impl HirDisplay for Ty {
                                         Some(x) => x,
                                         None => return true,
                                     };
-                                    let actual_default = default_parameter
-                                        .clone()
-                                        .substitute(Interner, &subst_prefix(parameters, i));
+                                    let actual_default =
+                                        default_parameter.clone().substitute(Interner, &parameters);
                                     parameter != &actual_default
                                 }
                                 let mut default_from = 0;
@@ -783,7 +791,34 @@ impl HirDisplay for Ty {
                 write!(f, "{{unknown}}")?;
             }
             TyKind::InferenceVar(..) => write!(f, "_")?,
-            TyKind::Generator(..) => write!(f, "{{generator}}")?,
+            TyKind::Generator(_, subst) => {
+                if f.display_target.is_source_code() {
+                    return Err(HirDisplayError::DisplaySourceCodeError(
+                        DisplaySourceCodeError::Generator,
+                    ));
+                }
+
+                let subst = subst.as_slice(Interner);
+                let a: Option<SmallVec<[&Ty; 3]>> = subst
+                    .get(subst.len() - 3..)
+                    .map(|args| args.iter().map(|arg| arg.ty(Interner)).collect())
+                    .flatten();
+
+                if let Some([resume_ty, yield_ty, ret_ty]) = a.as_deref() {
+                    write!(f, "|")?;
+                    resume_ty.hir_fmt(f)?;
+                    write!(f, "|")?;
+
+                    write!(f, " yields ")?;
+                    yield_ty.hir_fmt(f)?;
+
+                    write!(f, " -> ")?;
+                    ret_ty.hir_fmt(f)?;
+                } else {
+                    // This *should* be unreachable, but fallback just in case.
+                    write!(f, "{{generator}}")?;
+                }
+            }
             TyKind::GeneratorWitness(..) => write!(f, "{{generator witness}}")?,
         }
         Ok(())

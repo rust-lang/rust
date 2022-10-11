@@ -947,7 +947,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 AssocItemKind::MacCall(..) => unimplemented!(),
             },
-            trait_item_def_id: self.resolver.get_partial_res(i.id).map(|r| r.base_res().def_id()),
+            trait_item_def_id: self
+                .resolver
+                .get_partial_res(i.id)
+                .map(|r| r.expect_full_res().def_id()),
         }
     }
 
@@ -1349,9 +1352,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 match self
                     .resolver
                     .get_partial_res(bound_pred.bounded_ty.id)
-                    .map(|d| (d.base_res(), d.unresolved_segments()))
+                    .and_then(|r| r.full_res())
                 {
-                    Some((Res::Def(DefKind::TyParam, def_id), 0))
+                    Some(Res::Def(DefKind::TyParam, def_id))
                         if bound_pred.bound_generic_params.is_empty() =>
                     {
                         generics

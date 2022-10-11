@@ -235,6 +235,8 @@ enum ResolutionError<'a> {
         trait_item_span: Span,
         code: rustc_errors::DiagnosticId,
     },
+    /// Error E0201: multiple impl items for the same trait item.
+    TraitImplDuplicate { name: Symbol, trait_item_span: Span, old_span: Span },
     /// Inline asm `sym` operand must refer to a `fn` or `static`.
     InvalidAsmSym,
 }
@@ -1881,12 +1883,10 @@ impl<'a> Resolver<'a> {
 
         match self.maybe_resolve_path(&segments, Some(ns), &parent_scope) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
-            PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
-                Some(path_res.base_res())
+            PathResult::NonModule(path_res) => path_res.full_res(),
+            PathResult::Module(ModuleOrUniformRoot::ExternPrelude) | PathResult::Failed { .. } => {
+                None
             }
-            PathResult::Module(ModuleOrUniformRoot::ExternPrelude)
-            | PathResult::NonModule(..)
-            | PathResult::Failed { .. } => None,
             PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
         }
     }
@@ -1937,12 +1937,8 @@ impl<'a> Resolver<'a> {
                 return None;
             }
 
-            let partial_res = self.partial_res_map.get(&expr.id)?;
-            if partial_res.unresolved_segments() != 0 {
-                return None;
-            }
-
-            if let Res::Def(def::DefKind::Fn, def_id) = partial_res.base_res() {
+            let res = self.partial_res_map.get(&expr.id)?.full_res()?;
+            if let Res::Def(def::DefKind::Fn, def_id) = res {
                 // We only support cross-crate argument rewriting. Uses
                 // within the same crate should be updated to use the new
                 // const generics style.

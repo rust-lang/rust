@@ -6,6 +6,7 @@
 #![feature(strict_provenance)]
 #![feature(int_roundings)]
 #![feature(if_let_guard)]
+#![feature(never_type)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
@@ -43,6 +44,7 @@ pub mod base;
 pub mod common;
 pub mod coverageinfo;
 pub mod debuginfo;
+pub mod errors;
 pub mod glue;
 pub mod meth;
 pub mod mir;

@@ -40,9 +40,10 @@ fluent_messages! {
     attr => "../locales/en-US/attr.ftl",
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
+    codegen_gcc => "../locales/en-US/codegen_gcc.ftl",
+    codegen_ssa => "../locales/en-US/codegen_ssa.ftl",
     compiletest => "../locales/en-US/compiletest.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
-    codegen_gcc => "../locales/en-US/codegen_gcc.ftl",
     driver => "../locales/en-US/driver.ftl",
     expand => "../locales/en-US/expand.ftl",
     hir_analysis => "../locales/en-US/hir_analysis.ftl",
@@ -334,19 +335,6 @@ impl DiagnosticMessage {
             DiagnosticMessage::FluentIdentifier(id, _) => {
                 DiagnosticMessage::FluentIdentifier(id.clone(), Some(attr))
             }
-        }
-    }
-
-    /// Returns the `String` contained within the `DiagnosticMessage::Str` variant, assuming that
-    /// this diagnostic message is of the legacy, non-translatable variety. Panics if this
-    /// assumption does not hold.
-    ///
-    /// Don't use this - it exists to support some places that do comparison with diagnostic
-    /// strings.
-    pub fn expect_str(&self) -> &str {
-        match self {
-            DiagnosticMessage::Str(s) => s,
-            _ => panic!("expected non-translatable diagnostic message"),
         }
     }
 }

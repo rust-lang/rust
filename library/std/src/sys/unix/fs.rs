@@ -1172,7 +1172,12 @@ impl FromRawFd for File {
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(any(target_os = "linux", target_os = "netbsd"))]
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "netbsd",
+            target_os = "illumos",
+            target_os = "solaris"
+        ))]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             let mut p = PathBuf::from("/proc/self/fd");
             p.push(&fd.to_string());
@@ -1227,7 +1232,9 @@ impl fmt::Debug for File {
             target_os = "macos",
             target_os = "vxworks",
             all(target_os = "freebsd", target_arch = "x86_64"),
-            target_os = "netbsd"
+            target_os = "netbsd",
+            target_os = "illumos",
+            target_os = "solaris"
         )))]
         fn get_path(_fd: c_int) -> Option<PathBuf> {
             // FIXME(#24570): implement this for other Unix platforms

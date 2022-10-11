@@ -136,7 +136,7 @@ impl ops::Deref for CrateName {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CrateOrigin {
     /// Crates that are from crates.io official registry,
-    CratesIo { repo: Option<String> },
+    CratesIo { repo: Option<String>, name: Option<String> },
     /// Crates that are provided by the language, like std, core, proc-macro, ...
     Lang(LangCrateOrigin),
 }
@@ -648,7 +648,7 @@ mod tests {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -660,7 +660,7 @@ mod tests {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -672,7 +672,7 @@ mod tests {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -698,7 +698,7 @@ mod tests {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -710,7 +710,7 @@ mod tests {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -733,7 +733,7 @@ mod tests {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -745,7 +745,7 @@ mod tests {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -757,7 +757,7 @@ mod tests {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -780,7 +780,7 @@ mod tests {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -792,7 +792,7 @@ mod tests {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         assert!(graph
             .add_dep(

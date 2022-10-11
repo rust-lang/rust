@@ -968,11 +968,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else {
                 return false;
             };
-            if !(matches!(
-                partial_res.base_res(),
-                hir::def::Res::Def(hir::def::DefKind::AssocTy, _)
-            ) && partial_res.unresolved_segments() == 0)
-            {
+            if !matches!(
+                partial_res.full_res(),
+                Some(hir::def::Res::Def(hir::def::DefKind::AssocTy, _))
+            ) {
                 return false;
             }
             (ty, position, path)
@@ -986,11 +985,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             let Some(partial_res) = self.r.partial_res_map.get(&peeled_ty.id) else {
                 return false;
             };
-            if !(matches!(
-                partial_res.base_res(),
-                hir::def::Res::Def(hir::def::DefKind::TyParam, _)
-            ) && partial_res.unresolved_segments() == 0)
-            {
+            if !matches!(
+                partial_res.full_res(),
+                Some(hir::def::Res::Def(hir::def::DefKind::TyParam, _))
+            ) {
                 return false;
             }
             if let (
@@ -1518,20 +1516,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             {
                 // Look for a field with the same name in the current self_type.
                 if let Some(resolution) = self.r.partial_res_map.get(&node_id) {
-                    match resolution.base_res() {
-                        Res::Def(DefKind::Struct | DefKind::Union, did)
-                            if resolution.unresolved_segments() == 0 =>
-                        {
-                            if let Some(field_names) = self.r.field_names.get(&did) {
-                                if field_names
-                                    .iter()
-                                    .any(|&field_name| ident.name == field_name.node)
-                                {
-                                    return Some(AssocSuggestion::Field);
-                                }
+                    if let Some(Res::Def(DefKind::Struct | DefKind::Union, did)) =
+                        resolution.full_res()
+                    {
+                        if let Some(field_names) = self.r.field_names.get(&did) {
+                            if field_names.iter().any(|&field_name| ident.name == field_name.node) {
+                                return Some(AssocSuggestion::Field);
                             }
                         }
-                        _ => {}
                     }
                 }
             }

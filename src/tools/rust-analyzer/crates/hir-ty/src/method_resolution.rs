@@ -654,7 +654,7 @@ fn find_matching_impl(
         let r = table.run_in_snapshot(|table| {
             let impl_data = db.impl_data(impl_);
             let substs =
-                TyBuilder::subst_for_def(db, impl_).fill_with_inference_vars(table).build();
+                TyBuilder::subst_for_def(db, impl_, None).fill_with_inference_vars(table).build();
             let impl_ty = db.impl_self_ty(impl_).substitute(Interner, &substs);
 
             table
@@ -1147,10 +1147,9 @@ fn is_valid_candidate(
             }));
             if let ItemContainerId::ImplId(impl_id) = c.lookup(db.upcast()).container {
                 let self_ty_matches = table.run_in_snapshot(|table| {
-                    let subst =
-                        TyBuilder::subst_for_def(db, c).fill_with_inference_vars(table).build();
-                    let expected_self_ty =
-                        subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner);
+                    let expected_self_ty = TyBuilder::impl_self_ty(db, impl_id)
+                        .fill_with_inference_vars(table)
+                        .build();
                     table.unify(&expected_self_ty, &self_ty)
                 });
                 if !self_ty_matches {
@@ -1186,31 +1185,26 @@ fn is_valid_fn_candidate(
 
     table.run_in_snapshot(|table| {
         let container = fn_id.lookup(db.upcast()).container;
-        let impl_subst = match container {
+        let (impl_subst, expect_self_ty) = match container {
             ItemContainerId::ImplId(it) => {
-                TyBuilder::subst_for_def(db, it).fill_with_inference_vars(table).build()
+                let subst =
+                    TyBuilder::subst_for_def(db, it, None).fill_with_inference_vars(table).build();
+                let self_ty = db.impl_self_ty(it).substitute(Interner, &subst);
+                (subst, self_ty)
             }
             ItemContainerId::TraitId(it) => {
-                TyBuilder::subst_for_def(db, it).fill_with_inference_vars(table).build()
+                let subst =
+                    TyBuilder::subst_for_def(db, it, None).fill_with_inference_vars(table).build();
+                let self_ty = subst.at(Interner, 0).assert_ty_ref(Interner).clone();
+                (subst, self_ty)
             }
             _ => unreachable!(),
         };
 
-        let fn_subst = TyBuilder::subst_for_def(db, fn_id)
-            .use_parent_substs(&impl_subst)
+        let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
             .fill_with_inference_vars(table)
             .build();
 
-        let expect_self_ty = match container {
-            ItemContainerId::TraitId(_) => fn_subst.at(Interner, 0).assert_ty_ref(Interner).clone(),
-            ItemContainerId::ImplId(impl_id) => {
-                fn_subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner)
-            }
-            // We should only get called for associated items (impl/trait)
-            ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
-                unreachable!()
-            }
-        };
         check_that!(table.unify(&expect_self_ty, self_ty));
 
         if let Some(receiver_ty) = receiver_ty {

@@ -1044,9 +1044,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a tuple struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
-                if partial_res.unresolved_segments() == 0
-                    && !partial_res.base_res().expected_in_tuple_struct_pat()
-                {
+                if let Some(res) = partial_res.full_res() && !res.expected_in_tuple_struct_pat() {
                     return None;
                 }
             }
@@ -1066,9 +1064,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a unit struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
-                if partial_res.unresolved_segments() == 0
-                    && !partial_res.base_res().expected_in_unit_struct_pat()
-                {
+                if let Some(res) = partial_res.full_res() && !res.expected_in_unit_struct_pat() {
                     return None;
                 }
             }

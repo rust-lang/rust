@@ -19,14 +19,15 @@ use std::sync::Arc;
 use chalk_ir::{cast::Cast, ConstValue, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use hir_def::{
     body::Body,
+    builtin_type::BuiltinType,
     data::{ConstData, StaticData},
     expr::{BindingAnnotation, ExprId, PatId},
     lang_item::LangItemTarget,
     path::{path, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::TypeRef,
-    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule, Lookup,
-    TraitId, TypeAliasId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule,
+    ItemContainerId, Lookup, TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{name, Name};
 use itertools::Either;
@@ -67,6 +68,12 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
         DefWithBodyId::ConstId(c) => ctx.collect_const(&db.const_data(c)),
         DefWithBodyId::FunctionId(f) => ctx.collect_fn(f),
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_data(s)),
+        DefWithBodyId::VariantId(v) => {
+            ctx.return_ty = TyBuilder::builtin(match db.enum_data(v.parent).variant_body_type() {
+                Either::Left(builtin) => BuiltinType::Int(builtin),
+                Either::Right(builtin) => BuiltinType::Uint(builtin),
+            });
+        }
     }
 
     ctx.infer_body();
@@ -332,7 +339,7 @@ pub struct InferenceResult {
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
     pub type_of_pat: ArenaMap<PatId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
-    /// Interned Unknown to return references to.
+    /// Interned common types to return references to.
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
     pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
@@ -412,6 +419,8 @@ pub(crate) struct InferenceContext<'a> {
     /// closures, but currently this is the only field that will change there,
     /// so it doesn't make sense.
     return_ty: Ty,
+    /// The resume type and the yield type, respectively, of the generator being inferred.
+    resume_yield_tys: Option<(Ty, Ty)>,
     diverges: Diverges,
     breakables: Vec<BreakableContext>,
 }
@@ -476,6 +485,7 @@ impl<'a> InferenceContext<'a> {
             table: unify::InferenceTable::new(db, trait_env.clone()),
             trait_env,
             return_ty: TyKind::Error.intern(Interner), // set in collect_fn_signature
+            resume_yield_tys: None,
             db,
             owner,
             body,
@@ -703,6 +713,8 @@ impl<'a> InferenceContext<'a> {
         &mut self,
         inner_ty: Ty,
         assoc_ty: Option<TypeAliasId>,
+        // FIXME(GATs): these are args for the trait ref, args for assoc type itself should be
+        // handled when we support them.
         params: &[GenericArg],
     ) -> Ty {
         match assoc_ty {
@@ -794,7 +806,18 @@ impl<'a> InferenceContext<'a> {
                 self.resolve_variant_on_alias(ty, unresolved, path)
             }
             TypeNs::TypeAliasId(it) => {
-                let ty = TyBuilder::def_ty(self.db, it.into())
+                let container = it.lookup(self.db.upcast()).container;
+                let parent_subst = match container {
+                    ItemContainerId::TraitId(id) => {
+                        let subst = TyBuilder::subst_for_def(self.db, id, None)
+                            .fill_with_inference_vars(&mut self.table)
+                            .build();
+                        Some(subst)
+                    }
+                    // Type aliases do not exist in impls.
+                    _ => None,
+                };
+                let ty = TyBuilder::def_ty(self.db, it.into(), parent_subst)
                     .fill_with_inference_vars(&mut self.table)
                     .build();
                 self.resolve_variant_on_alias(ty, unresolved, path)
@@ -872,6 +895,12 @@ impl<'a> InferenceContext<'a> {
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
         let path = path![core::iter::IntoIterator];
+        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name![IntoIter])
+    }
+
+    fn resolve_iterator_item(&self) -> Option<TypeAliasId> {
+        let path = path![core::iter::Iterator];
         let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Item])
     }
