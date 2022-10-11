@@ -1462,8 +1462,8 @@ impl GenericParamDef {
 // maybe use a Generic enum and use Vec<Generic>?
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Generics {
-    pub(crate) params: Vec<GenericParamDef>,
-    pub(crate) where_predicates: Vec<WherePredicate>,
+    pub(crate) params: ThinVec<GenericParamDef>,
+    pub(crate) where_predicates: ThinVec<WherePredicate>,
 }
 
 impl Generics {
