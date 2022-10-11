@@ -34,7 +34,7 @@ impl<'a> Project<'a> {
             config: serde_json::json!({
                 "cargo": {
                     // Loading standard library is costly, let's ignore it by default
-                    "noSysroot": true,
+                    "sysroot": null,
                     // Can't use test binary as rustc wrapper.
                     "buildScripts": {
                         "useRustcWrapper": false

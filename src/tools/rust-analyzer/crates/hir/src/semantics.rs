@@ -257,6 +257,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
         self.imp.original_ast_node(node)
     }
+    /// Attempts to map the node out of macro expanded files.
+    /// This only work for attribute expansions, as other ones do not have nodes as input.
+    pub fn original_syntax_node(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
+        self.imp.original_syntax_node(node)
+    }
 
     pub fn diagnostics_display_range(&self, diagnostics: InFile<SyntaxNodePtr>) -> FileRange {
         self.imp.diagnostics_display_range(diagnostics)
@@ -951,6 +956,16 @@ impl<'db> SemanticsImpl<'db> {
         self.wrap_node_infile(node).original_ast_node(self.db.upcast()).map(
             |InFile { file_id, value }| {
                 self.cache(find_root(value.syntax()), file_id);
+                value
+            },
+        )
+    }
+
+    fn original_syntax_node(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
+        let InFile { file_id, .. } = self.find_file(node);
+        InFile::new(file_id, node).original_syntax_node(self.db.upcast()).map(
+            |InFile { file_id, value }| {
+                self.cache(find_root(&value), file_id);
                 value
             },
         )

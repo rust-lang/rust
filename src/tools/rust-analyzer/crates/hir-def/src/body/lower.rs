@@ -29,8 +29,9 @@ use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     db::DefDatabase,
     expr::{
-        dummy_expr_id, Array, BindingAnnotation, Expr, ExprId, FloatTypeWrapper, Label, LabelId,
-        Literal, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        dummy_expr_id, Array, BindingAnnotation, ClosureKind, Expr, ExprId, FloatTypeWrapper,
+        Label, LabelId, Literal, MatchArm, Movability, Pat, PatId, RecordFieldPat, RecordLitField,
+        Statement,
     },
     intern::Interned,
     item_scope::BuiltinShadowMode,
@@ -97,6 +98,7 @@ pub(super) fn lower(
         name_to_pat_grouping: Default::default(),
         is_lowering_inside_or_pat: false,
         is_lowering_assignee_expr: false,
+        is_lowering_generator: false,
     }
     .collect(params, body)
 }
@@ -111,6 +113,7 @@ struct ExprCollector<'a> {
     name_to_pat_grouping: FxHashMap<Name, Vec<PatId>>,
     is_lowering_inside_or_pat: bool,
     is_lowering_assignee_expr: bool,
+    is_lowering_generator: bool,
 }
 
 impl ExprCollector<'_> {
@@ -358,6 +361,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
             ast::Expr::YieldExpr(e) => {
+                self.is_lowering_generator = true;
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Yield { expr }, syntax_ptr)
             }
@@ -459,13 +463,31 @@ impl ExprCollector<'_> {
                     .ret_type()
                     .and_then(|r| r.ty())
                     .map(|it| Interned::new(TypeRef::from_ast(&self.ctx(), it)));
+
+                let prev_is_lowering_generator = self.is_lowering_generator;
+                self.is_lowering_generator = false;
+
                 let body = self.collect_expr_opt(e.body());
+
+                let closure_kind = if self.is_lowering_generator {
+                    let movability = if e.static_token().is_some() {
+                        Movability::Static
+                    } else {
+                        Movability::Movable
+                    };
+                    ClosureKind::Generator(movability)
+                } else {
+                    ClosureKind::Closure
+                };
+                self.is_lowering_generator = prev_is_lowering_generator;
+
                 self.alloc_expr(
                     Expr::Closure {
                         args: args.into(),
                         arg_types: arg_types.into(),
                         ret_type,
                         body,
+                        closure_kind,
                     },
                     syntax_ptr,
                 )

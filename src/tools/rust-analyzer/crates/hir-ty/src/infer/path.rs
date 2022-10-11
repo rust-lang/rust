@@ -12,8 +12,8 @@ use crate::{
     builder::ParamKind,
     consteval,
     method_resolution::{self, VisibleFromModule},
-    GenericArgData, Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
-    ValueTyDefId,
+    utils::generics,
+    Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, ValueTyDefId,
 };
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
@@ -96,17 +96,21 @@ impl<'a> InferenceContext<'a> {
             ValueNs::GenericParam(it) => return Some(self.db.const_param_ty(it)),
         };
 
-        let parent_substs = self_subst.unwrap_or_else(|| Substitution::empty(Interner));
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         let substs = ctx.substs_from_path(path, typable, true);
-        let mut it = substs.as_slice(Interner)[parent_substs.len(Interner)..].iter().cloned();
-        let ty = TyBuilder::value_ty(self.db, typable)
-            .use_parent_substs(&parent_substs)
+        let substs = substs.as_slice(Interner);
+        let parent_substs = self_subst.or_else(|| {
+            let generics = generics(self.db.upcast(), typable.to_generic_def_id()?);
+            let parent_params_len = generics.parent_generics()?.len();
+            let parent_args = &substs[substs.len() - parent_params_len..];
+            Some(Substitution::from_iter(Interner, parent_args))
+        });
+        let parent_substs_len = parent_substs.as_ref().map_or(0, |s| s.len(Interner));
+        let mut it = substs.iter().take(substs.len() - parent_substs_len).cloned();
+        let ty = TyBuilder::value_ty(self.db, typable, parent_substs)
             .fill(|x| {
                 it.next().unwrap_or_else(|| match x {
-                    ParamKind::Type => {
-                        GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
-                    }
+                    ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
                     ParamKind::Const(ty) => consteval::unknown_const_as_generic(ty.clone()),
                 })
             })
@@ -249,7 +253,7 @@ impl<'a> InferenceContext<'a> {
                 };
                 let substs = match container {
                     ItemContainerId::ImplId(impl_id) => {
-                        let impl_substs = TyBuilder::subst_for_def(self.db, impl_id)
+                        let impl_substs = TyBuilder::subst_for_def(self.db, impl_id, None)
                             .fill_with_inference_vars(&mut self.table)
                             .build();
                         let impl_self_ty =

@@ -239,6 +239,7 @@ impl Definition {
                 DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
                 DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
                 DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
+                DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
             };
             return match def {
                 Some(def) => SearchScope::file_range(def.as_ref().original_file_range(db)),
