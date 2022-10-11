@@ -598,6 +598,17 @@ impl Handler {
         }
     }
 
+    /// Translate `message` eagerly with `args`.
+    pub fn eagerly_translate<'a>(
+        &self,
+        message: DiagnosticMessage,
+        args: impl Iterator<Item = DiagnosticArg<'a, 'static>>,
+    ) -> SubdiagnosticMessage {
+        let inner = self.inner.borrow();
+        let args = crate::translation::to_fluent_args(args);
+        SubdiagnosticMessage::Eager(inner.emitter.translate_message(&message, &args).to_string())
+    }
+
     // This is here to not allow mutation of flags;
     // as of this writing it's only used in tests in librustc_middle.
     pub fn can_emit_warnings(&self) -> bool {

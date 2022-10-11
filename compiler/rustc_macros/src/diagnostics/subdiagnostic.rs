@@ -5,7 +5,7 @@ use crate::diagnostics::error::{
     DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    build_field_mapping, report_error_if_not_applied_to_applicability,
+    build_field_mapping, new_code_ident, report_error_if_not_applied_to_applicability,
     report_error_if_not_applied_to_span, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap, SetOnce,
     SpannedOption, SubdiagnosticKind,
 };
@@ -15,19 +15,19 @@ use syn::{spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, NestedMeta
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
-pub(crate) struct SubdiagnosticDerive<'a> {
-    structure: Structure<'a>,
+pub(crate) struct SubdiagnosticDeriveBuilder {
     diag: syn::Ident,
+    f: syn::Ident,
 }
 
-impl<'a> SubdiagnosticDerive<'a> {
-    pub(crate) fn new(structure: Structure<'a>) -> Self {
+impl SubdiagnosticDeriveBuilder {
+    pub(crate) fn new() -> Self {
         let diag = format_ident!("diag");
-        Self { structure, diag }
+        let f = format_ident!("f");
+        Self { diag, f }
     }
 
-    pub(crate) fn into_tokens(self) -> TokenStream {
-        let SubdiagnosticDerive { mut structure, diag } = self;
+    pub(crate) fn into_tokens<'a>(self, mut structure: Structure<'a>) -> TokenStream {
         let implementation = {
             let ast = structure.ast();
             let span = ast.span().unwrap();
@@ -53,10 +53,11 @@ impl<'a> SubdiagnosticDerive<'a> {
 
             structure.bind_with(|_| synstructure::BindStyle::Move);
             let variants_ = structure.each_variant(|variant| {
-                let mut builder = SubdiagnosticDeriveBuilder {
-                    diag: &diag,
+                let mut builder = SubdiagnosticDeriveVariantBuilder {
+                    parent: &self,
                     variant,
                     span,
+                    formatting_init: TokenStream::new(),
                     fields: build_field_mapping(variant),
                     span_field: None,
                     applicability: None,
@@ -72,9 +73,17 @@ impl<'a> SubdiagnosticDerive<'a> {
             }
         };
 
+        let diag = &self.diag;
+        let f = &self.f;
         let ret = structure.gen_impl(quote! {
             gen impl rustc_errors::AddToDiagnostic for @Self {
-                fn add_to_diagnostic(self, #diag: &mut rustc_errors::Diagnostic) {
+                fn add_to_diagnostic_with<__F>(self, #diag: &mut rustc_errors::Diagnostic, #f: __F)
+                where
+                    __F: Fn(
+                        &mut rustc_errors::Diagnostic,
+                        rustc_errors::SubdiagnosticMessage
+                    ) -> rustc_errors::SubdiagnosticMessage,
+                {
                     use rustc_errors::{Applicability, IntoDiagnosticArg};
                     #implementation
                 }
@@ -88,14 +97,17 @@ impl<'a> SubdiagnosticDerive<'a> {
 /// for the final generated method. This is a separate struct to `SubdiagnosticDerive`
 /// only to be able to destructure and split `self.builder` and the `self.structure` up to avoid a
 /// double mut borrow later on.
-struct SubdiagnosticDeriveBuilder<'a> {
+struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     /// The identifier to use for the generated `DiagnosticBuilder` instance.
-    diag: &'a syn::Ident,
+    parent: &'parent SubdiagnosticDeriveBuilder,
 
     /// Info for the current variant (or the type if not an enum).
     variant: &'a VariantInfo<'a>,
     /// Span for the entire type.
     span: proc_macro::Span,
+
+    /// Initialization of format strings for code suggestions.
+    formatting_init: TokenStream,
 
     /// Store a map of field name to its corresponding field. This is built on construction of the
     /// derive builder.
@@ -112,7 +124,7 @@ struct SubdiagnosticDeriveBuilder<'a> {
     has_suggestion_parts: bool,
 }
 
-impl<'a> HasFieldMap for SubdiagnosticDeriveBuilder<'a> {
+impl<'parent, 'a> HasFieldMap for SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     fn get_field_binding(&self, field: &String) -> Option<&TokenStream> {
         self.fields.get(field)
     }
@@ -156,7 +168,7 @@ impl<'a> FromIterator<&'a SubdiagnosticKind> for KindsStatistics {
     }
 }
 
-impl<'a> SubdiagnosticDeriveBuilder<'a> {
+impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     fn identify_kind(&mut self) -> Result<Vec<(SubdiagnosticKind, Path)>, DiagnosticDeriveError> {
         let mut kind_slugs = vec![];
 
@@ -187,7 +199,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
         let ast = binding.ast();
         assert_eq!(ast.attrs.len(), 0, "field with attribute used as diagnostic arg");
 
-        let diag = &self.diag;
+        let diag = &self.parent.diag;
         let ident = ast.ident.as_ref().unwrap();
         // strip `r#` prefix, if present
         let ident = format_ident!("{}", ident);
@@ -222,7 +234,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                 };
 
                 let generated = self
-                    .generate_field_code_inner(kind_stats, attr, info)
+                    .generate_field_code_inner(kind_stats, attr, info, inner_ty.will_iterate())
                     .unwrap_or_else(|v| v.to_compile_error());
 
                 inner_ty.with(binding, generated)
@@ -235,13 +247,18 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
         kind_stats: KindsStatistics,
         attr: &Attribute,
         info: FieldInfo<'_>,
+        clone_suggestion_code: bool,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let meta = attr.parse_meta()?;
         match meta {
             Meta::Path(path) => self.generate_field_code_inner_path(kind_stats, attr, info, path),
-            Meta::List(list @ MetaList { .. }) => {
-                self.generate_field_code_inner_list(kind_stats, attr, info, list)
-            }
+            Meta::List(list @ MetaList { .. }) => self.generate_field_code_inner_list(
+                kind_stats,
+                attr,
+                info,
+                list,
+                clone_suggestion_code,
+            ),
             _ => throw_invalid_attr!(attr, &meta),
         }
     }
@@ -345,6 +362,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
         attr: &Attribute,
         info: FieldInfo<'_>,
         list: MetaList,
+        clone_suggestion_code: bool,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let span = attr.span().unwrap();
         let ident = &list.path.segments.last().unwrap().ident;
@@ -382,7 +400,8 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                     match nested_name {
                         "code" => {
                             let formatted_str = self.build_format(&value.value(), value.span());
-                            code.set_once(formatted_str, span);
+                            let code_field = new_code_ident();
+                            code.set_once((code_field, formatted_str), span);
                         }
                         _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
                             diag.help("`code` is the only valid nested attribute")
@@ -390,14 +409,20 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                     }
                 }
 
-                let Some((code, _)) = code else {
+                let Some((code_field, formatted_str)) = code.value() else {
                     span_err(span, "`#[suggestion_part(...)]` attribute without `code = \"...\"`")
                         .emit();
                     return Ok(quote! {});
                 };
                 let binding = info.binding;
 
-                Ok(quote! { suggestions.push((#binding, #code)); })
+                self.formatting_init.extend(quote! { let #code_field = #formatted_str; });
+                let code_field = if clone_suggestion_code {
+                    quote! { #code_field.clone() }
+                } else {
+                    quote! { #code_field }
+                };
+                Ok(quote! { suggestions.push((#binding, #code_field)); })
             }
             _ => throw_invalid_attr!(attr, &Meta::List(list), |diag| {
                 let mut span_attrs = vec![];
@@ -442,13 +467,23 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
 
         let span_field = self.span_field.value_ref();
 
-        let diag = &self.diag;
+        let diag = &self.parent.diag;
+        let f = &self.parent.f;
         let mut calls = TokenStream::new();
         for (kind, slug) in kind_slugs {
+            let message = format_ident!("__message");
+            calls.extend(quote! { let #message = #f(#diag, rustc_errors::fluent::#slug.into()); });
+
             let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
-            let message = quote! { rustc_errors::fluent::#slug };
             let call = match kind {
-                SubdiagnosticKind::Suggestion { suggestion_kind, applicability, code } => {
+                SubdiagnosticKind::Suggestion {
+                    suggestion_kind,
+                    applicability,
+                    code_init,
+                    code_field,
+                } => {
+                    self.formatting_init.extend(code_init);
+
                     let applicability = applicability
                         .value()
                         .map(|a| quote! { #a })
@@ -457,8 +492,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
 
                     if let Some(span) = span_field {
                         let style = suggestion_kind.to_suggestion_style();
-
-                        quote! { #diag.#name(#span, #message, #code, #applicability, #style); }
+                        quote! { #diag.#name(#span, #message, #code_field, #applicability, #style); }
                     } else {
                         span_err(self.span, "suggestion without `#[primary_span]` field").emit();
                         quote! { unreachable!(); }
@@ -499,6 +533,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                     }
                 }
             };
+
             calls.extend(call);
         }
 
@@ -510,11 +545,13 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
             .map(|binding| self.generate_field_set_arg(binding))
             .collect();
 
+        let formatting_init = &self.formatting_init;
         Ok(quote! {
             #init
+            #formatting_init
             #attr_args
-            #calls
             #plain_args
+            #calls
         })
     }
 }

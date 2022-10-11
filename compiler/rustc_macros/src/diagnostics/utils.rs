@@ -4,15 +4,28 @@ use crate::diagnostics::error::{
 use proc_macro::Span;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
-use std::cmp::Ordering;
+use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt;
 use std::str::FromStr;
 use syn::{spanned::Spanned, Attribute, Field, Meta, Type, TypeTuple};
 use syn::{MetaList, MetaNameValue, NestedMeta, Path};
-use synstructure::{BindStyle, BindingInfo, VariantInfo};
+use synstructure::{BindingInfo, VariantInfo};
 
 use super::error::invalid_nested_attr;
+
+thread_local! {
+    pub static CODE_IDENT_COUNT: RefCell<u32> = RefCell::new(0);
+}
+
+/// Returns an ident of the form `__code_N` where `N` is incremented once with every call.
+pub(crate) fn new_code_ident() -> syn::Ident {
+    CODE_IDENT_COUNT.with(|count| {
+        let ident = format_ident!("__code_{}", *count.borrow());
+        *count.borrow_mut() += 1;
+        ident
+    })
+}
 
 /// Checks whether the type name of `ty` matches `name`.
 ///
@@ -140,6 +153,15 @@ impl<'ty> FieldInnerTy<'ty> {
         }
 
         unreachable!();
+    }
+
+    /// Returns `true` if `FieldInnerTy::with` will result in iteration for this inner type (i.e.
+    /// that cloning might be required for values moved in the loop body).
+    pub(crate) fn will_iterate(&self) -> bool {
+        match self {
+            FieldInnerTy::Vec(..) => true,
+            FieldInnerTy::Option(..) | FieldInnerTy::None => false,
+        }
     }
 
     /// Returns `Option` containing inner type if there is one.
@@ -434,7 +456,12 @@ pub(super) enum SubdiagnosticKind {
     Suggestion {
         suggestion_kind: SuggestionKind,
         applicability: SpannedOption<Applicability>,
-        code: TokenStream,
+        /// Identifier for variable used for formatted code, e.g. `___code_0`. Enables separation
+        /// of formatting and diagnostic emission so that `set_arg` calls can happen in-between..
+        code_field: syn::Ident,
+        /// Initialization logic for `code_field`'s variable, e.g.
+        /// `let __formatted_code = /* whatever */;`
+        code_init: TokenStream,
     },
     /// `#[multipart_suggestion{,_short,_hidden,_verbose}]`
     MultipartSuggestion {
@@ -469,7 +496,8 @@ impl SubdiagnosticKind {
                     SubdiagnosticKind::Suggestion {
                         suggestion_kind,
                         applicability: None,
-                        code: TokenStream::new(),
+                        code_field: new_code_ident(),
+                        code_init: TokenStream::new(),
                     }
                 } else if let Some(suggestion_kind) =
                     name.strip_prefix("multipart_suggestion").and_then(|s| s.parse().ok())
@@ -548,9 +576,10 @@ impl SubdiagnosticKind {
             };
 
             match (nested_name, &mut kind) {
-                ("code", SubdiagnosticKind::Suggestion { .. }) => {
+                ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
                     let formatted_str = fields.build_format(&value.value(), value.span());
-                    code.set_once(formatted_str, span);
+                    let code_init = quote! { let #code_field = #formatted_str; };
+                    code.set_once(code_init, span);
                 }
                 (
                     "applicability",
@@ -582,13 +611,13 @@ impl SubdiagnosticKind {
         }
 
         match kind {
-            SubdiagnosticKind::Suggestion { code: ref mut code_field, .. } => {
-                *code_field = if let Some((code, _)) = code {
-                    code
+            SubdiagnosticKind::Suggestion { ref code_field, ref mut code_init, .. } => {
+                *code_init = if let Some(init) = code.value() {
+                    init
                 } else {
                     span_err(span, "suggestion without `code = \"...\"`").emit();
-                    quote! { "" }
-                }
+                    quote! { let #code_field: String = unreachable!(); }
+                };
             }
             SubdiagnosticKind::Label
             | SubdiagnosticKind::Note
@@ -620,65 +649,8 @@ impl quote::IdentFragment for SubdiagnosticKind {
     }
 }
 
-/// Wrapper around `synstructure::BindStyle` which implements `Ord`.
-#[derive(PartialEq, Eq)]
-pub(super) struct OrderedBindStyle(pub(super) BindStyle);
-
-impl OrderedBindStyle {
-    /// Is `BindStyle::Move` or `BindStyle::MoveMut`?
-    pub(super) fn is_move(&self) -> bool {
-        matches!(self.0, BindStyle::Move | BindStyle::MoveMut)
-    }
-}
-
-impl Ord for OrderedBindStyle {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match (self.is_move(), other.is_move()) {
-            // If both `self` and `other` are the same, then ordering is equal.
-            (true, true) | (false, false) => Ordering::Equal,
-            // If `self` is not a move then it should be considered less than `other` (so that
-            // references are sorted first).
-            (false, _) => Ordering::Less,
-            // If `self` is a move then it must be greater than `other` (again, so that references
-            // are sorted first).
-            (true, _) => Ordering::Greater,
-        }
-    }
-}
-
-impl PartialOrd for OrderedBindStyle {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 /// Returns `true` if `field` should generate a `set_arg` call rather than any other diagnostic
 /// call (like `span_label`).
 pub(super) fn should_generate_set_arg(field: &Field) -> bool {
     field.attrs.is_empty()
-}
-
-/// Returns `true` if `field` needs to have code generated in the by-move branch of the
-/// generated derive rather than the by-ref branch.
-pub(super) fn bind_style_of_field(field: &Field) -> OrderedBindStyle {
-    let generates_set_arg = should_generate_set_arg(field);
-    let is_multispan = type_matches_path(&field.ty, &["rustc_errors", "MultiSpan"]);
-    // FIXME(davidtwco): better support for one field needing to be in the by-move and
-    // by-ref branches.
-    let is_subdiagnostic = field
-        .attrs
-        .iter()
-        .map(|attr| attr.path.segments.last().unwrap().ident.to_string())
-        .any(|attr| attr == "subdiagnostic");
-
-    // `set_arg` calls take their argument by-move..
-    let needs_move = generates_set_arg
-        // If this is a `MultiSpan` field then it needs to be moved to be used by any
-        // attribute..
-        || is_multispan
-        // If this a `#[subdiagnostic]` then it needs to be moved as the other diagnostic is
-        // unlikely to be `Copy`..
-        || is_subdiagnostic;
-
-    OrderedBindStyle(if needs_move { BindStyle::Move } else { BindStyle::Ref })
 }
