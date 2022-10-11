@@ -1,9 +1,9 @@
 //! Tools to work with format string literals for the `format_args!` family of macros.
+use crate::syntax_helpers::node_ext::macro_call_for_string_token;
 use syntax::{
     ast::{self, IsString},
     TextRange, TextSize,
 };
-use crate::syntax_helpers::node_ext::macro_call_for_string_token;
 
 pub fn is_format_string(string: &ast::String) -> bool {
     // Check if `string` is a format string argument of a macro invocation.

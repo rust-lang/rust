@@ -3,7 +3,9 @@ use hir::Semantics;
 use ide_db::{syntax_helpers::node_ext::macro_call_for_string_token, RootDatabase};
 use syntax::ast::{self, IsString};
 
-use crate::{context::CompletionContext, CompletionItem, CompletionItemKind, completions::Completions};
+use crate::{
+    completions::Completions, context::CompletionContext, CompletionItem, CompletionItemKind,
+};
 
 const CARGO_DEFINED_VARS: &[(&str, &str)] = &[
     ("CARGO","Path to the cargo binary performing the build"),
@@ -44,10 +46,7 @@ pub(crate) fn complete_cargo_env_vars(
     Some(())
 }
 
-fn guard_env_macro(
-    string: &ast::String,
-    semantics: &Semantics<'_, RootDatabase>,
-) -> Option<()> {
+fn guard_env_macro(string: &ast::String, semantics: &Semantics<'_, RootDatabase>) -> Option<()> {
     let call = macro_call_for_string_token(string)?;
     let name = call.path()?.segment()?.name_ref()?;
     let makro = semantics.resolve_macro_call(&call)?;
