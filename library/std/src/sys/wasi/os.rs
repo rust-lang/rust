@@ -38,10 +38,10 @@ cfg_if::cfg_if! {
     } else {
         // No need for a lock if we are single-threaded.
         pub fn env_read_lock() -> impl Drop {
-            ()
+            Box::new(())
         }
         pub fn env_write_lock() -> impl Drop {
-            ()
+            Box::new(())
         }
     }
 }
