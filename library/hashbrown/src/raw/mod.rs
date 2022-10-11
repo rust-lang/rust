@@ -296,9 +296,11 @@ impl<T> Clone for Bucket<T> {
 }
 
 impl<T> Bucket<T> {
+    const IS_ZERO_SIZED_TYPE: bool = mem::size_of::<T>() == 0;
+
     #[inline]
     unsafe fn from_base_index(base: NonNull<T>, index: usize) -> Self {
-        let ptr = if mem::size_of::<T>() == 0 {
+        let ptr = if Self::IS_ZERO_SIZED_TYPE {
             // won't overflow because index must be less than length
             (index + 1) as *mut T
         } else {
@@ -310,7 +312,7 @@ impl<T> Bucket<T> {
     }
     #[inline]
     unsafe fn to_base_index(&self, base: NonNull<T>) -> usize {
-        if mem::size_of::<T>() == 0 {
+        if Self::IS_ZERO_SIZED_TYPE {
             self.ptr.as_ptr() as usize - 1
         } else {
             offset_from(base.as_ptr(), self.ptr.as_ptr())
@@ -318,7 +320,7 @@ impl<T> Bucket<T> {
     }
     #[inline]
     pub fn as_ptr(&self) -> *mut T {
-        if mem::size_of::<T>() == 0 {
+        if Self::IS_ZERO_SIZED_TYPE {
             // Just return an arbitrary ZST pointer which is properly aligned
             mem::align_of::<T>() as *mut T
         } else {
@@ -327,7 +329,7 @@ impl<T> Bucket<T> {
     }
     #[inline]
     unsafe fn next_n(&self, offset: usize) -> Self {
-        let ptr = if mem::size_of::<T>() == 0 {
+        let ptr = if Self::IS_ZERO_SIZED_TYPE {
             (self.ptr.as_ptr() as usize + offset) as *mut T
         } else {
             self.ptr.as_ptr().sub(offset)
