@@ -1050,6 +1050,19 @@ impl<'a> Resolver<'a> {
                 err.span_label(trait_item_span, "item in trait");
                 err
             }
+            ResolutionError::TraitImplDuplicate { name, trait_item_span, old_span } => {
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0201,
+                    "duplicate definitions with name `{}`:",
+                    name,
+                );
+                err.span_label(old_span, "previous definition here");
+                err.span_label(trait_item_span, "item in trait");
+                err.span_label(span, "duplicate definition");
+                err
+            }
             ResolutionError::InvalidAsmSym => {
                 let mut err = self.session.struct_span_err(span, "invalid `sym` operand");
                 err.span_label(span, "is a local variable");
