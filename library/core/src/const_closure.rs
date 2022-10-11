@@ -51,7 +51,7 @@ macro_rules! impl_fn_mut_tuple {
         impl<'a, $($var,)* ClosureArguments, Function, ClosureReturnValue> const
             FnOnce<ClosureArguments> for ConstFnMutClosure<($(&'a mut $var),*), Function>
         where
-            Function: ~const Fn(($(&mut $var),*), ClosureArguments) -> ClosureReturnValue+ ~const Destruct,
+            Function: ~const Fn(($(&mut $var),*), ClosureArguments) -> ClosureReturnValue + ~const Destruct,
         {
             type Output = ClosureReturnValue;
 
@@ -64,7 +64,7 @@ macro_rules! impl_fn_mut_tuple {
         impl<'a, $($var,)* ClosureArguments, Function, ClosureReturnValue> const
             FnMut<ClosureArguments> for ConstFnMutClosure<($(&'a mut $var),*), Function>
         where
-            Function: ~const Fn(($(&mut $var),*), ClosureArguments)-> ClosureReturnValue,
+            Function: ~const Fn(($(&mut $var),*), ClosureArguments)-> ClosureReturnValue + ~const Destruct,
         {
             extern "rust-call" fn call_mut(&mut self, args: ClosureArguments) -> Self::Output {
                 #[allow(non_snake_case)]
