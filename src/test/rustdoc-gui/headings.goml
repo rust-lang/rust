@@ -106,8 +106,8 @@ assert-css: ("h6#sub-heading-for-enum-impl-item-doc", {"border-bottom-width": "0
 assert-css: ("h6#sub-sub-heading-for-enum-impl-item-doc", {"font-size": "14px"})
 assert-css: ("h6#sub-sub-heading-for-enum-impl-item-doc", {"border-bottom-width": "0px"})
 
-assert-text: (".sidebar .mod h3", "Modules")
-assert-css: (".sidebar .mod h3", {"border-bottom-width": "0px"}, ALL)
+assert-text: ("//ul[@class='block mod']/preceding-sibling::h3", "Modules")
+assert-css: ("//ul[@class='block mod']/preceding-sibling::h3", {"border-bottom-width": "0px"}, ALL)
 
 goto: "file://" + |DOC_PATH| + "/test_docs/union.HeavilyDocumentedUnion.html"
 
