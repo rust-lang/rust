@@ -45,7 +45,6 @@ use rustc_target::spec::{
 use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
-use std::io::Write;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -1212,11 +1211,10 @@ fn default_emitter(
     source_map: Lrc<SourceMap>,
     bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: LazyFallbackBundle,
-    emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
-    match (sopts.error_format, emitter_dest) {
-        (config::ErrorOutputType::HumanReadable(kind), dst) => {
+    match sopts.error_format {
+        config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
 
             if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
@@ -1229,48 +1227,21 @@ fn default_emitter(
                 );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
-                let emitter = match dst {
-                    None => EmitterWriter::stderr(
-                        color_config,
-                        Some(source_map),
-                        bundle,
-                        fallback_bundle,
-                        short,
-                        sopts.unstable_opts.teach,
-                        sopts.diagnostic_width,
-                        macro_backtrace,
-                    ),
-                    Some(dst) => EmitterWriter::new(
-                        dst,
-                        Some(source_map),
-                        bundle,
-                        fallback_bundle,
-                        short,
-                        false, // no teach messages when writing to a buffer
-                        false, // no colors when writing to a buffer
-                        None,  // no diagnostic width
-                        macro_backtrace,
-                    ),
-                };
+                let emitter = EmitterWriter::stderr(
+                    color_config,
+                    Some(source_map),
+                    bundle,
+                    fallback_bundle,
+                    short,
+                    sopts.unstable_opts.teach,
+                    sopts.diagnostic_width,
+                    macro_backtrace,
+                );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         }
-        (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
+        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(
             JsonEmitter::stderr(
-                Some(registry),
-                source_map,
-                bundle,
-                fallback_bundle,
-                pretty,
-                json_rendered,
-                sopts.diagnostic_width,
-                macro_backtrace,
-            )
-            .ui_testing(sopts.unstable_opts.ui_testing),
-        ),
-        (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
-            JsonEmitter::new(
-                dst,
                 Some(registry),
                 source_map,
                 bundle,
@@ -1285,11 +1256,6 @@ fn default_emitter(
     }
 }
 
-pub enum DiagnosticOutput {
-    Default,
-    Raw(Box<dyn Write + Send>),
-}
-
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
 pub fn build_session(
@@ -1297,7 +1263,6 @@ pub fn build_session(
     local_crate_source_file: Option<PathBuf>,
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
-    diagnostics_output: DiagnosticOutput,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target_override: Option<Target>,
@@ -1312,11 +1277,6 @@ pub fn build_session(
         .map_or(false, |&(_, level)| level == lint::Allow);
     let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
-
-    let write_dest = match diagnostics_output {
-        DiagnosticOutput::Default => None,
-        DiagnosticOutput::Raw(write) => Some(write),
-    };
 
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
@@ -1350,8 +1310,7 @@ pub fn build_session(
         rustc_errors::DEFAULT_LOCALE_RESOURCES,
         sopts.unstable_opts.translate_directionality_markers,
     );
-    let emitter =
-        default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle, write_dest);
+    let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
     let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
