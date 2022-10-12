@@ -1,8 +1,10 @@
-error: expected one of `!`, `(`, `,`, `=`, `>`, `?`, `for`, `~`, lifetime, or path, found keyword `const`
+error: const bounds must start with `~`
   --> $DIR/without-tilde.rs:5:13
    |
 LL | struct S<T: const Tr>;
-   |             ^^^^^ expected one of 10 possible tokens
+   |             -^^^^
+   |             |
+   |             help: add `~`: `~`
 
 error: aborting due to previous error
 

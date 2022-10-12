@@ -1,0 +1,43 @@
+### What it does
+Suggests alternatives for useless applications of `?` in terminating expressions
+
+### Why is this bad?
+There's no reason to use `?` to short-circuit when execution of the body will end there anyway.
+
+### Example
+```
+struct TO {
+    magic: Option<usize>,
+}
+
+fn f(to: TO) -> Option<usize> {
+    Some(to.magic?)
+}
+
+struct TR {
+    magic: Result<usize, bool>,
+}
+
+fn g(tr: Result<TR, bool>) -> Result<usize, bool> {
+    tr.and_then(|t| Ok(t.magic?))
+}
+
+```
+Use instead:
+```
+struct TO {
+    magic: Option<usize>,
+}
+
+fn f(to: TO) -> Option<usize> {
+   to.magic
+}
+
+struct TR {
+    magic: Result<usize, bool>,
+}
+
+fn g(tr: Result<TR, bool>) -> Result<usize, bool> {
+    tr.and_then(|t| t.magic)
+}
+```

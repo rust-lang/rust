@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         memory access failed: alloc7 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
+   |         memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
    |         inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
   ::: $DIR/out_of_bounds_read.rs:12:33
@@ -18,7 +18,7 @@ error[E0080]: evaluation of constant value failed
 LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         memory access failed: alloc7 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
+   |         memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
    |         inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
   ::: $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -37,7 +37,7 @@ error[E0080]: evaluation of constant value failed
 LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         memory access failed: alloc7 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
+   |         memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
    |         inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
   ::: $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL

@@ -1,4 +1,4 @@
-error: expected type, found `<[_]>::into_vec(box [0, 1])`
+error: expected type, found `<[_]>::into_vec(#[rustc_box] ::alloc::boxed::Box::new([0, 1]))`
   --> $DIR/issue-47666.rs:3:25
    |
 LL |     let _ = Option:Some(vec![0, 1]);
@@ -10,7 +10,7 @@ LL |     let _ = Option:Some(vec![0, 1]);
    |                   help: maybe write a path separator here: `::`
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: this error originates in the macro `$crate::__rust_force_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::__rust_force_expr` which comes from the expansion of the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

@@ -5,7 +5,6 @@
 //! its name suggest, is to provide an abstraction boundary for creating
 //! interned Chalk types.
 
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::{self, AdtDef, TyCtxt};
 
 use rustc_hir::def_id::DefId;
@@ -62,7 +61,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     type InternedType = Box<chalk_ir::TyData<Self>>;
     type InternedLifetime = Box<chalk_ir::LifetimeData<Self>>;
     type InternedConst = Box<chalk_ir::ConstData<Self>>;
-    type InternedConcreteConst = ConstValue<'tcx>;
+    type InternedConcreteConst = ty::ValTree<'tcx>;
     type InternedGenericArg = Box<chalk_ir::GenericArgData<Self>>;
     type InternedGoal = Box<chalk_ir::GoalData<Self>>;
     type InternedGoals = Vec<chalk_ir::Goal<Self>>;
@@ -391,7 +390,7 @@ impl<'tcx> chalk_ir::interner::HasInterner for RustInterner<'tcx> {
 }
 
 /// A chalk environment and goal.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct ChalkEnvironmentAndGoal<'tcx> {
     pub environment: &'tcx ty::List<ty::Predicate<'tcx>>,
     pub goal: ty::Predicate<'tcx>,

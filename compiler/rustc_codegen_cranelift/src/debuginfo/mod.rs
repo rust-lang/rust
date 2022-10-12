@@ -7,35 +7,34 @@ mod unwind;
 
 use crate::prelude::*;
 
-use rustc_index::vec::IndexVec;
-
-use cranelift_codegen::entity::EntityRef;
-use cranelift_codegen::ir::{Endianness, LabelValueLoc, ValueLabel};
+use cranelift_codegen::ir::Endianness;
 use cranelift_codegen::isa::TargetIsa;
-use cranelift_codegen::ValueLocRange;
 
 use gimli::write::{
-    Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString, Location,
-    LocationList, Range, RangeList, UnitEntryId,
+    Address, AttributeValue, DwarfUnit, FileId, LineProgram, LineString, Range, RangeList,
+    UnitEntryId,
 };
-use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, X86_64};
+use gimli::{Encoding, Format, LineEncoding, RunTimeEndian};
+use indexmap::IndexSet;
 
 pub(crate) use emit::{DebugReloc, DebugRelocName};
 pub(crate) use unwind::UnwindContext;
 
-pub(crate) struct DebugContext<'tcx> {
-    tcx: TyCtxt<'tcx>,
-
+pub(crate) struct DebugContext {
     endian: RunTimeEndian,
 
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
-
-    types: FxHashMap<Ty<'tcx>, UnitEntryId>,
 }
 
-impl<'tcx> DebugContext<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa) -> Self {
+pub(crate) struct FunctionDebugContext {
+    entry_id: UnitEntryId,
+    function_source_loc: (FileId, u64, u64),
+    source_loc_set: indexmap::IndexSet<(FileId, u64, u64)>,
+}
+
+impl DebugContext {
+    pub(crate) fn new(tcx: TyCtxt<'_>, isa: &dyn TargetIsa) -> Self {
         let encoding = Encoding {
             format: Format::Dwarf32,
             // FIXME this should be configurable
@@ -101,127 +100,18 @@ impl<'tcx> DebugContext<'tcx> {
             root.set(gimli::DW_AT_low_pc, AttributeValue::Address(Address::Constant(0)));
         }
 
-        DebugContext {
-            tcx,
-
-            endian,
-
-            dwarf,
-            unit_range_list: RangeList(Vec::new()),
-
-            types: FxHashMap::default(),
-        }
-    }
-
-    fn dwarf_ty(&mut self, ty: Ty<'tcx>) -> UnitEntryId {
-        if let Some(type_id) = self.types.get(&ty) {
-            return *type_id;
-        }
-
-        let new_entry = |dwarf: &mut DwarfUnit, tag| dwarf.unit.add(dwarf.unit.root(), tag);
-
-        let primitive = |dwarf: &mut DwarfUnit, ate| {
-            let type_id = new_entry(dwarf, gimli::DW_TAG_base_type);
-            let type_entry = dwarf.unit.get_mut(type_id);
-            type_entry.set(gimli::DW_AT_encoding, AttributeValue::Encoding(ate));
-            type_id
-        };
-
-        let name = format!("{}", ty);
-        let layout = self.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
-
-        let type_id = match ty.kind() {
-            ty::Bool => primitive(&mut self.dwarf, gimli::DW_ATE_boolean),
-            ty::Char => primitive(&mut self.dwarf, gimli::DW_ATE_UTF),
-            ty::Uint(_) => primitive(&mut self.dwarf, gimli::DW_ATE_unsigned),
-            ty::Int(_) => primitive(&mut self.dwarf, gimli::DW_ATE_signed),
-            ty::Float(_) => primitive(&mut self.dwarf, gimli::DW_ATE_float),
-            ty::Ref(_, pointee_ty, _mutbl)
-            | ty::RawPtr(ty::TypeAndMut { ty: pointee_ty, mutbl: _mutbl }) => {
-                let type_id = new_entry(&mut self.dwarf, gimli::DW_TAG_pointer_type);
-
-                // Ensure that type is inserted before recursing to avoid duplicates
-                self.types.insert(ty, type_id);
-
-                let pointee = self.dwarf_ty(*pointee_ty);
-
-                let type_entry = self.dwarf.unit.get_mut(type_id);
-
-                //type_entry.set(gimli::DW_AT_mutable, AttributeValue::Flag(mutbl == rustc_hir::Mutability::Mut));
-                type_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(pointee));
-
-                type_id
-            }
-            ty::Adt(adt_def, _substs) if adt_def.is_struct() && !layout.is_unsized() => {
-                let type_id = new_entry(&mut self.dwarf, gimli::DW_TAG_structure_type);
-
-                // Ensure that type is inserted before recursing to avoid duplicates
-                self.types.insert(ty, type_id);
-
-                let variant = adt_def.non_enum_variant();
-
-                for (field_idx, field_def) in variant.fields.iter().enumerate() {
-                    let field_offset = layout.fields.offset(field_idx);
-                    let field_layout = layout.field(
-                        &layout::LayoutCx { tcx: self.tcx, param_env: ParamEnv::reveal_all() },
-                        field_idx,
-                    );
-
-                    let field_type = self.dwarf_ty(field_layout.ty);
-
-                    let field_id = self.dwarf.unit.add(type_id, gimli::DW_TAG_member);
-                    let field_entry = self.dwarf.unit.get_mut(field_id);
-
-                    field_entry.set(
-                        gimli::DW_AT_name,
-                        AttributeValue::String(field_def.name.as_str().to_string().into_bytes()),
-                    );
-                    field_entry.set(
-                        gimli::DW_AT_data_member_location,
-                        AttributeValue::Udata(field_offset.bytes()),
-                    );
-                    field_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(field_type));
-                }
-
-                type_id
-            }
-            _ => new_entry(&mut self.dwarf, gimli::DW_TAG_structure_type),
-        };
-
-        let type_entry = self.dwarf.unit.get_mut(type_id);
-
-        type_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
-        type_entry.set(gimli::DW_AT_byte_size, AttributeValue::Udata(layout.size.bytes()));
-
-        self.types.insert(ty, type_id);
-
-        type_id
-    }
-
-    fn define_local(&mut self, scope: UnitEntryId, name: String, ty: Ty<'tcx>) -> UnitEntryId {
-        let dw_ty = self.dwarf_ty(ty);
-
-        let var_id = self.dwarf.unit.add(scope, gimli::DW_TAG_variable);
-        let var_entry = self.dwarf.unit.get_mut(var_id);
-
-        var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
-        var_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(dw_ty));
-
-        var_id
+        DebugContext { endian, dwarf, unit_range_list: RangeList(Vec::new()) }
     }
 
     pub(crate) fn define_function(
         &mut self,
-        instance: Instance<'tcx>,
-        func_id: FuncId,
+        tcx: TyCtxt<'_>,
         name: &str,
-        isa: &dyn TargetIsa,
-        context: &Context,
-        source_info_set: &indexmap::IndexSet<SourceInfo>,
-        local_map: IndexVec<mir::Local, CPlace<'tcx>>,
-    ) {
-        let symbol = func_id.as_u32() as usize;
-        let mir = self.tcx.instance_mir(instance.def);
+        function_span: Span,
+    ) -> FunctionDebugContext {
+        let (file, line, column) = DebugContext::get_span_loc(tcx, function_span, function_span);
+
+        let file_id = self.add_source_file(&file);
 
         // FIXME: add to appropriate scope instead of root
         let scope = self.dwarf.unit.root();
@@ -233,14 +123,35 @@ impl<'tcx> DebugContext<'tcx> {
         entry.set(gimli::DW_AT_name, AttributeValue::StringRef(name_id));
         entry.set(gimli::DW_AT_linkage_name, AttributeValue::StringRef(name_id));
 
-        let end = self.create_debug_lines(symbol, entry_id, context, mir.span, source_info_set);
+        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
+        entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
+        entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(column));
 
-        self.unit_range_list.0.push(Range::StartLength {
+        FunctionDebugContext {
+            entry_id,
+            function_source_loc: (file_id, line, column),
+            source_loc_set: IndexSet::new(),
+        }
+    }
+}
+
+impl FunctionDebugContext {
+    pub(crate) fn finalize(
+        mut self,
+        debug_context: &mut DebugContext,
+        func_id: FuncId,
+        context: &Context,
+    ) {
+        let symbol = func_id.as_u32() as usize;
+
+        let end = self.create_debug_lines(debug_context, symbol, context);
+
+        debug_context.unit_range_list.0.push(Range::StartLength {
             begin: Address::Symbol { symbol, addend: 0 },
             length: u64::from(end),
         });
 
-        let func_entry = self.dwarf.unit.get_mut(entry_id);
+        let func_entry = debug_context.dwarf.unit.get_mut(self.entry_id);
         // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.
         func_entry.set(
             gimli::DW_AT_low_pc,
@@ -248,110 +159,5 @@ impl<'tcx> DebugContext<'tcx> {
         );
         // Using Udata for DW_AT_high_pc requires at least DWARF4
         func_entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(end)));
-
-        // FIXME make it more reliable and implement scopes before re-enabling this.
-        if false {
-            let value_labels_ranges = std::collections::HashMap::new(); // FIXME
-
-            for (local, _local_decl) in mir.local_decls.iter_enumerated() {
-                let ty = self.tcx.subst_and_normalize_erasing_regions(
-                    instance.substs,
-                    ty::ParamEnv::reveal_all(),
-                    mir.local_decls[local].ty,
-                );
-                let var_id = self.define_local(entry_id, format!("{:?}", local), ty);
-
-                let location = place_location(
-                    self,
-                    isa,
-                    symbol,
-                    &local_map,
-                    &value_labels_ranges,
-                    Place { local, projection: ty::List::empty() },
-                );
-
-                let var_entry = self.dwarf.unit.get_mut(var_id);
-                var_entry.set(gimli::DW_AT_location, location);
-            }
-        }
-
-        // FIXME create locals for all entries in mir.var_debug_info
-    }
-}
-
-fn place_location<'tcx>(
-    debug_context: &mut DebugContext<'tcx>,
-    isa: &dyn TargetIsa,
-    symbol: usize,
-    local_map: &IndexVec<mir::Local, CPlace<'tcx>>,
-    #[allow(rustc::default_hash_types)] value_labels_ranges: &std::collections::HashMap<
-        ValueLabel,
-        Vec<ValueLocRange>,
-    >,
-    place: Place<'tcx>,
-) -> AttributeValue {
-    assert!(place.projection.is_empty()); // FIXME implement them
-
-    match local_map[place.local].inner() {
-        CPlaceInner::Var(_local, var) => {
-            let value_label = cranelift_codegen::ir::ValueLabel::new(var.index());
-            if let Some(value_loc_ranges) = value_labels_ranges.get(&value_label) {
-                let loc_list = LocationList(
-                    value_loc_ranges
-                        .iter()
-                        .map(|value_loc_range| Location::StartEnd {
-                            begin: Address::Symbol {
-                                symbol,
-                                addend: i64::from(value_loc_range.start),
-                            },
-                            end: Address::Symbol { symbol, addend: i64::from(value_loc_range.end) },
-                            data: translate_loc(isa, value_loc_range.loc).unwrap(),
-                        })
-                        .collect(),
-                );
-                let loc_list_id = debug_context.dwarf.unit.locations.add(loc_list);
-
-                AttributeValue::LocationListRef(loc_list_id)
-            } else {
-                // FIXME set value labels for unused locals
-
-                AttributeValue::Exprloc(Expression::new())
-            }
-        }
-        CPlaceInner::VarPair(_, _, _) => {
-            // FIXME implement this
-
-            AttributeValue::Exprloc(Expression::new())
-        }
-        CPlaceInner::VarLane(_, _, _) => {
-            // FIXME implement this
-
-            AttributeValue::Exprloc(Expression::new())
-        }
-        CPlaceInner::Addr(_, _) => {
-            // FIXME implement this (used by arguments and returns)
-
-            AttributeValue::Exprloc(Expression::new())
-
-            // For PointerBase::Stack:
-            //AttributeValue::Exprloc(translate_loc(ValueLoc::Stack(*stack_slot)).unwrap())
-        }
-    }
-}
-
-// Adapted from https://github.com/CraneStation/wasmtime/blob/5a1845b4caf7a5dba8eda1fef05213a532ed4259/crates/debug/src/transform/expression.rs#L59-L137
-fn translate_loc(isa: &dyn TargetIsa, loc: LabelValueLoc) -> Option<Expression> {
-    match loc {
-        LabelValueLoc::Reg(reg) => {
-            let machine_reg = isa.map_regalloc_reg_to_dwarf(reg).unwrap();
-            let mut expr = Expression::new();
-            expr.op_reg(gimli::Register(machine_reg));
-            Some(expr)
-        }
-        LabelValueLoc::SPOffset(offset) => {
-            let mut expr = Expression::new();
-            expr.op_breg(X86_64::RSP, offset);
-            Some(expr)
-        }
     }
 }

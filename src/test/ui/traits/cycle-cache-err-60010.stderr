@@ -17,12 +17,12 @@ note: required because it appears within the type `RootDatabase`
    |
 LL | struct RootDatabase {
    |        ^^^^^^^^^^^^
-note: required because of the requirements on the impl of `SourceDatabase` for `RootDatabase`
+note: required for `RootDatabase` to implement `SourceDatabase`
   --> $DIR/cycle-cache-err-60010.rs:44:9
    |
 LL | impl<T> SourceDatabase for T
    |         ^^^^^^^^^^^^^^     ^
-note: required because of the requirements on the impl of `Query<RootDatabase>` for `ParseQuery`
+note: required for `ParseQuery` to implement `Query<RootDatabase>`
   --> $DIR/cycle-cache-err-60010.rs:37:10
    |
 LL | impl<DB> Query<DB> for ParseQuery

@@ -1,0 +1,22 @@
+error: accessing first element with `x.get(0)`
+  --> $DIR/get_first.rs:19:13
+   |
+LL |     let _ = x.get(0); // Use x.first()
+   |             ^^^^^^^^ help: try: `x.first()`
+   |
+   = note: `-D clippy::get-first` implied by `-D warnings`
+
+error: accessing first element with `y.get(0)`
+  --> $DIR/get_first.rs:24:13
+   |
+LL |     let _ = y.get(0); // Use y.first()
+   |             ^^^^^^^^ help: try: `y.first()`
+
+error: accessing first element with `z.get(0)`
+  --> $DIR/get_first.rs:29:13
+   |
+LL |     let _ = z.get(0); // Use z.first()
+   |             ^^^^^^^^ help: try: `z.first()`
+
+error: aborting due to 3 previous errors
+

@@ -10,7 +10,7 @@ error: vtable entries for `<std::vec::IntoIter<u8> as A>`: [
   --> $DIR/vtable-non-object-safe.rs:8:1
    |
 LL | trait A: Iterator {}
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

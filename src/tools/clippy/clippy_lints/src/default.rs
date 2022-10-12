@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::ty::{has_drop, is_copy};
-use clippy_utils::{any_parent_is_automatically_derived, contains_name, get_parent_expr, match_def_path, paths};
+use clippy_utils::{
+    any_parent_is_automatically_derived, contains_name, get_parent_expr, is_from_proc_macro, match_def_path, paths,
+};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -18,15 +20,16 @@ declare_clippy_lint! {
     /// Checks for literal calls to `Default::default()`.
     ///
     /// ### Why is this bad?
-    /// It's more clear to the reader to use the name of the type whose default is
-    /// being gotten than the generic `Default`.
+    /// It's easier for the reader if the name of the type is used, rather than the
+    /// generic `Default`.
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let s: String = Default::default();
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let s = String::default();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -47,13 +50,13 @@ declare_clippy_lint! {
     /// Assignments to patterns that are of tuple type are not linted.
     ///
     /// ### Example
-    /// Bad:
     /// ```
     /// # #[derive(Default)]
     /// # struct A { i: i32 }
     /// let mut a: A = Default::default();
     /// a.i = 42;
     /// ```
+    ///
     /// Use instead:
     /// ```
     /// # #[derive(Default)]
@@ -93,6 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             if let QPath::Resolved(None, _path) = qpath;
             let expr_ty = cx.typeck_results().expr_ty(expr);
             if let ty::Adt(def, ..) = expr_ty.kind();
+            if !is_from_proc_macro(cx, expr);
             then {
                 // TODO: Work out a way to put "whatever the imported way of referencing
                 // this type in this file" rather than a fully-qualified type.
@@ -101,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     cx,
                     DEFAULT_TRAIT_ACCESS,
                     expr.span,
-                    &format!("calling `{}` is more clear than this expression", replacement),
+                    &format!("calling `{replacement}` is more clear than this expression"),
                     "try",
                     replacement,
                     Applicability::Unspecified, // First resolve the TODO above
@@ -138,7 +142,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 if adt.is_struct();
                 let variant = adt.non_enum_variant();
                 if adt.did().is_local() || !variant.is_field_list_non_exhaustive();
-                let module_did = cx.tcx.parent_module(stmt.hir_id).to_def_id();
+                let module_did = cx.tcx.parent_module(stmt.hir_id);
                 if variant
                     .fields
                     .iter()
@@ -206,7 +210,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     .map(|(field, rhs)| {
                         // extract and store the assigned value for help message
                         let value_snippet = snippet_with_macro_callsite(cx, rhs.span, "..");
-                        format!("{}: {}", field, value_snippet)
+                        format!("{field}: {value_snippet}")
                     })
                     .collect::<Vec<String>>()
                     .join(", ");
@@ -223,7 +227,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                             .map(ToString::to_string)
                             .collect::<Vec<_>>()
                             .join(", ");
-                        format!("{}::<{}>", adt_def_ty_name, &tys_str)
+                        format!("{adt_def_ty_name}::<{}>", &tys_str)
                     } else {
                         binding_type.to_string()
                     }
@@ -231,12 +235,12 @@ impl<'tcx> LateLintPass<'tcx> for Default {
 
                 let sugg = if ext_with_default {
                     if field_list.is_empty() {
-                        format!("{}::default()", binding_type)
+                        format!("{binding_type}::default()")
                     } else {
-                        format!("{} {{ {}, ..Default::default() }}", binding_type, field_list)
+                        format!("{binding_type} {{ {field_list}, ..Default::default() }}")
                     }
                 } else {
-                    format!("{} {{ {} }}", binding_type, field_list)
+                    format!("{binding_type} {{ {field_list} }}")
                 };
 
                 // span lint once per statement that binds default
@@ -246,10 +250,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     first_assign.unwrap().span,
                     "field assignment outside of initializer for an instance created with Default::default()",
                     Some(local.span),
-                    &format!(
-                        "consider initializing the variable with `{}` and removing relevant reassignments",
-                        sugg
-                    ),
+                    &format!("consider initializing the variable with `{sugg}` and removing relevant reassignments"),
                 );
                 self.reassigned_linted.insert(span);
             }

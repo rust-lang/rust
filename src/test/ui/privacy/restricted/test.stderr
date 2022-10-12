@@ -3,6 +3,8 @@ error[E0433]: failed to resolve: maybe a missing crate `bad`?
    |
 LL |     pub(in bad::path) mod m1 {}
    |            ^^^ maybe a missing crate `bad`?
+   |
+   = help: consider adding `extern crate bad` to use the `bad` crate
 
 error[E0742]: visibilities can only be restricted to ancestor modules
   --> $DIR/test.rs:51:12
@@ -32,7 +34,7 @@ note: the struct `Crate` is defined here
   --> $DIR/auxiliary/pub_restricted.rs:1:1
    |
 LL | pub(crate) struct Crate;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0603]: function `f` is private
   --> $DIR/test.rs:30:19

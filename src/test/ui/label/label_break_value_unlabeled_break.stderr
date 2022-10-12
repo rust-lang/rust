@@ -1,11 +1,11 @@
 error[E0695]: unlabeled `break` inside of a labeled block
-  --> $DIR/label_break_value_unlabeled_break.rs:7:9
+  --> $DIR/label_break_value_unlabeled_break.rs:6:9
    |
 LL |         break;
    |         ^^^^^ `break` statements that would diverge to or through a labeled block need to bear a label
 
 error[E0695]: unlabeled `break` inside of a labeled block
-  --> $DIR/label_break_value_unlabeled_break.rs:15:13
+  --> $DIR/label_break_value_unlabeled_break.rs:14:13
    |
 LL |             break;
    |             ^^^^^ `break` statements that would diverge to or through a labeled block need to bear a label

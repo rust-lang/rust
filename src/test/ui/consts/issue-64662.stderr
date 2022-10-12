@@ -2,25 +2,23 @@ error[E0282]: type annotations needed
   --> $DIR/issue-64662.rs:2:9
    |
 LL |     A = foo(),
-   |         ^^^ cannot infer type for type parameter `T` declared on the function `foo`
+   |         ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
    |
-help: type parameter declared here
-  --> $DIR/issue-64662.rs:6:14
+help: consider specifying the generic argument
    |
-LL | const fn foo<T>() -> isize {
-   |              ^
+LL |     A = foo::<T>(),
+   |            +++++
 
 error[E0282]: type annotations needed
   --> $DIR/issue-64662.rs:3:9
    |
 LL |     B = foo(),
-   |         ^^^ cannot infer type for type parameter `T` declared on the function `foo`
+   |         ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
    |
-help: type parameter declared here
-  --> $DIR/issue-64662.rs:6:14
+help: consider specifying the generic argument
    |
-LL | const fn foo<T>() -> isize {
-   |              ^
+LL |     B = foo::<T>(),
+   |            +++++
 
 error: aborting due to 2 previous errors
 

@@ -1,0 +1,152 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RANGE_EXPR
+            DOT2 ".."
+            BIN_EXPR
+              LITERAL
+                INT_NUMBER "1"
+              WHITESPACE " "
+              PLUS "+"
+              WHITESPACE " "
+              LITERAL
+                INT_NUMBER "1"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            RANGE_EXPR
+              DOT2 ".."
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "z"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "2"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "x"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            RANGE_EXPR
+              LITERAL
+                FALSE_KW "false"
+              DOT2 ".."
+              BIN_EXPR
+                LITERAL
+                  INT_NUMBER "1"
+                WHITESPACE " "
+                EQ2 "=="
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "1"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "x"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          RANGE_EXPR
+            LITERAL
+              INT_NUMBER "1"
+            DOT2 ".."
+          SEMICOLON ";"
+        WHITESPACE "\n    \n    "
+        EXPR_STMT
+          RANGE_EXPR
+            DOT2EQ "..="
+            BIN_EXPR
+              LITERAL
+                INT_NUMBER "1"
+              WHITESPACE " "
+              PLUS "+"
+              WHITESPACE " "
+              LITERAL
+                INT_NUMBER "1"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            RANGE_EXPR
+              DOT2EQ "..="
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "z"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "2"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "x"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            RANGE_EXPR
+              LITERAL
+                FALSE_KW "false"
+              DOT2EQ "..="
+              BIN_EXPR
+                LITERAL
+                  INT_NUMBER "1"
+                WHITESPACE " "
+                EQ2 "=="
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "1"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "x"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          RANGE_EXPR
+            LITERAL
+              INT_NUMBER "1"
+            DOT2 ".."
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

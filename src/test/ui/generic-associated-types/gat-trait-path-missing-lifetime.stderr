@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `X::Y`
-  --> $DIR/gat-trait-path-missing-lifetime.rs:10:20
+  --> $DIR/gat-trait-path-missing-lifetime.rs:8:20
    |
 LL |   fn foo<'a, T1: X<Y = T1>>(t : T1) -> T1::Y<'a> {
    |                    ^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/gat-trait-path-missing-lifetime.rs:4:8
+  --> $DIR/gat-trait-path-missing-lifetime.rs:2:8
    |
 LL |   type Y<'a>;
    |        ^ --
@@ -15,13 +15,13 @@ LL |   fn foo<'a, T1: X<Y<'a> = T1>>(t : T1) -> T1::Y<'a> {
    |                    ~~~~~
 
 error[E0107]: missing generics for associated type `X::Y`
-  --> $DIR/gat-trait-path-missing-lifetime.rs:10:20
+  --> $DIR/gat-trait-path-missing-lifetime.rs:8:20
    |
 LL |   fn foo<'a, T1: X<Y = T1>>(t : T1) -> T1::Y<'a> {
    |                    ^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/gat-trait-path-missing-lifetime.rs:4:8
+  --> $DIR/gat-trait-path-missing-lifetime.rs:2:8
    |
 LL |   type Y<'a>;
    |        ^ --

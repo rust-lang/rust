@@ -1,5 +1,5 @@
 error: proc-macro derive panicked
-  --> $DIR/load-panic.rs:6:10
+  --> $DIR/load-panic.rs:7:10
    |
 LL | #[derive(Panic)]
    |          ^^^^^

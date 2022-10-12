@@ -11,8 +11,8 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser;
-use rustc_ast::{self as ast, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use rustc_ast::{attr, Term};
+use rustc_ast::{self as ast, BlockCheckMode, Mutability, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::{attr, BindingAnnotation, ByRef, Term};
 use rustc_ast::{GenericArg, MacArgs, MacArgsEq};
 use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
@@ -22,6 +22,7 @@ use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
 use rustc_span::{BytePos, FileName, Span};
 
+use rustc_ast::attr::AttrIdGenerator;
 use std::borrow::Cow;
 
 pub use self::delimited::IterDelimited;
@@ -107,6 +108,7 @@ pub fn print_crate<'a>(
     ann: &'a dyn PpAnn,
     is_expanded: bool,
     edition: Edition,
+    g: &AttrIdGenerator,
 ) -> String {
     let mut s =
         State { s: pp::Printer::new(), comments: Some(Comments::new(sm, filename, input)), ann };
@@ -120,7 +122,7 @@ pub fn print_crate<'a>(
         // `#![feature(prelude_import)]`
         let pi_nested = attr::mk_nested_word_item(Ident::with_dummy_span(sym::prelude_import));
         let list = attr::mk_list_item(Ident::with_dummy_span(sym::feature), vec![pi_nested]);
-        let fake_attr = attr::mk_attr_inner(list);
+        let fake_attr = attr::mk_attr_inner(g, list);
         s.print_attribute(&fake_attr);
 
         // Currently, in Rust 2018 we don't have `extern crate std;` at the crate
@@ -128,7 +130,7 @@ pub fn print_crate<'a>(
         if edition == Edition::Edition2015 {
             // `#![no_std]`
             let no_std_meta = attr::mk_word_item(Ident::with_dummy_span(sym::no_std));
-            let fake_attr = attr::mk_attr_inner(no_std_meta);
+            let fake_attr = attr::mk_attr_inner(g, no_std_meta);
             s.print_attribute(&fake_attr);
         }
     }
@@ -145,7 +147,7 @@ pub fn print_crate<'a>(
 /// This makes printed token streams look slightly nicer,
 /// and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
-    if let TokenTree::Token(token) = prev {
+    if let TokenTree::Token(token, _) = prev {
         if matches!(token.kind, token::Dot | token::Dollar) {
             return false;
         }
@@ -154,12 +156,12 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
         }
     }
     match tt {
-        TokenTree::Token(token) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
+        TokenTree::Token(token, _) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
         TokenTree::Delimited(_, Delimiter::Parenthesis, _) => {
-            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }))
+            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }, _))
         }
         TokenTree::Delimited(_, Delimiter::Bracket, _) => {
-            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }))
+            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }, _))
         }
         TokenTree::Delimited(..) => true,
     }
@@ -372,12 +374,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn print_literal(&mut self, lit: &ast::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.word(lit.token.to_string())
+        self.word(lit.token_lit.to_string())
     }
 
     fn print_string(&mut self, st: &str, style: ast::StrStyle) {
         let st = match style {
-            ast::StrStyle::Cooked => (format!("\"{}\"", st.escape_debug())),
+            ast::StrStyle::Cooked => format!("\"{}\"", st.escape_debug()),
             ast::StrStyle::Raw(n) => {
                 format!("r{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = st)
             }
@@ -442,12 +444,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
         self.maybe_print_comment(attr.span.lo());
         match attr.kind {
-            ast::AttrKind::Normal(ref item, _) => {
+            ast::AttrKind::Normal(ref normal) => {
                 match attr.style {
                     ast::AttrStyle::Inner => self.word("#!["),
                     ast::AttrStyle::Outer => self.word("#["),
                 }
-                self.print_attr_item(&item, attr.span);
+                self.print_attr_item(&normal.item, attr.span);
                 self.word("]");
             }
             ast::AttrKind::DocComment(comment_kind, data) => {
@@ -526,7 +528,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     /// expression arguments as expressions). It can be done! I think.
     fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) {
         match tt {
-            TokenTree::Token(token) => {
+            TokenTree::Token(token, _) => {
                 let token_str = self.token_to_string_ext(&token, convert_dollar_crate);
                 self.word(token_str);
                 if let token::DocComment(..) = token.kind {
@@ -590,28 +592,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     self.nbsp();
                 }
                 self.word("{");
-                let empty = tts.is_empty();
-                if !empty {
+                if !tts.is_empty() {
                     self.space();
                 }
                 self.ibox(0);
                 self.print_tts(tts, convert_dollar_crate);
                 self.end();
+                let empty = tts.is_empty();
                 self.bclose(span, empty);
-            }
-            Some(Delimiter::Invisible) => {
-                self.word("/*«*/");
-                let empty = tts.is_empty();
-                if !empty {
-                    self.space();
-                }
-                self.ibox(0);
-                self.print_tts(tts, convert_dollar_crate);
-                self.end();
-                if !empty {
-                    self.space();
-                }
-                self.word("/*»*/");
             }
             Some(delim) => {
                 let token_str = self.token_kind_to_string(&token::OpenDelim(delim));
@@ -786,8 +774,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::CloseDelim(Delimiter::Bracket) => "]".into(),
             token::OpenDelim(Delimiter::Brace) => "{".into(),
             token::CloseDelim(Delimiter::Brace) => "}".into(),
-            token::OpenDelim(Delimiter::Invisible) => "/*«*/".into(),
-            token::CloseDelim(Delimiter::Invisible) => "/*»*/".into(),
+            token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible) => {
+                "".into()
+            }
             token::Pound => "#".into(),
             token::Dollar => "$".into(),
             token::Question => "?".into(),
@@ -827,7 +816,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn bounds_to_string(&self, bounds: &[ast::GenericBound]) -> String {
-        Self::to_string(|s| s.print_type_bounds("", bounds))
+        Self::to_string(|s| s.print_type_bounds(bounds))
     }
 
     fn pat_to_string(&self, pat: &ast::Pat) -> String {
@@ -1004,7 +993,12 @@ impl<'a> State<'a> {
                     Term::Const(c) => self.print_expr_anon_const(c, &[]),
                 }
             }
-            ast::AssocConstraintKind::Bound { bounds } => self.print_type_bounds(":", &*bounds),
+            ast::AssocConstraintKind::Bound { bounds } => {
+                if !bounds.is_empty() {
+                    self.word_nbsp(":");
+                    self.print_type_bounds(&bounds);
+                }
+            }
         }
     }
 
@@ -1058,11 +1052,14 @@ impl<'a> State<'a> {
             }
             ast::TyKind::Path(Some(ref qself), ref path) => self.print_qpath(path, qself, false),
             ast::TyKind::TraitObject(ref bounds, syntax) => {
-                let prefix = if syntax == ast::TraitObjectSyntax::Dyn { "dyn" } else { "" };
-                self.print_type_bounds(prefix, &bounds);
+                if syntax == ast::TraitObjectSyntax::Dyn {
+                    self.word_nbsp("dyn");
+                }
+                self.print_type_bounds(bounds);
             }
             ast::TyKind::ImplTrait(_, ref bounds) => {
-                self.print_type_bounds("impl", &bounds);
+                self.word_nbsp("impl");
+                self.print_type_bounds(bounds);
             }
             ast::TyKind::Array(ref ty, ref length) => {
                 self.word("[");
@@ -1404,16 +1401,12 @@ impl<'a> State<'a> {
         is that it doesn't matter */
         match pat.kind {
             PatKind::Wild => self.word("_"),
-            PatKind::Ident(binding_mode, ident, ref sub) => {
-                match binding_mode {
-                    ast::BindingMode::ByRef(mutbl) => {
-                        self.word_nbsp("ref");
-                        self.print_mutability(mutbl, false);
-                    }
-                    ast::BindingMode::ByValue(ast::Mutability::Not) => {}
-                    ast::BindingMode::ByValue(ast::Mutability::Mut) => {
-                        self.word_nbsp("mut");
-                    }
+            PatKind::Ident(BindingAnnotation(by_ref, mutbl), ident, ref sub) => {
+                if by_ref == ByRef::Yes {
+                    self.word_nbsp("ref");
+                }
+                if mutbl == Mutability::Mut {
+                    self.word_nbsp("mut");
                 }
                 self.print_ident(ident);
                 if let Some(ref p) = *sub {
@@ -1492,12 +1485,10 @@ impl<'a> State<'a> {
             }
             PatKind::Ref(ref inner, mutbl) => {
                 self.word("&");
-                if mutbl == ast::Mutability::Mut {
+                if mutbl == Mutability::Mut {
                     self.word("mut ");
                 }
-                if let PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Mut), ..) =
-                    inner.kind
-                {
+                if let PatKind::Ident(ast::BindingAnnotation::MUT, ..) = inner.kind {
                     self.popen();
                     self.print_pat(inner);
                     self.pclose();
@@ -1562,29 +1553,24 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_type_bounds(&mut self, prefix: &'static str, bounds: &[ast::GenericBound]) {
-        if !bounds.is_empty() {
-            self.word(prefix);
-            let mut first = true;
-            for bound in bounds {
-                if !(first && prefix.is_empty()) {
-                    self.nbsp();
-                }
-                if first {
-                    first = false;
-                } else {
-                    self.word_space("+");
-                }
+    pub fn print_type_bounds(&mut self, bounds: &[ast::GenericBound]) {
+        let mut first = true;
+        for bound in bounds {
+            if first {
+                first = false;
+            } else {
+                self.nbsp();
+                self.word_space("+");
+            }
 
-                match bound {
-                    GenericBound::Trait(tref, modifier) => {
-                        if modifier == &TraitBoundModifier::Maybe {
-                            self.word("?");
-                        }
-                        self.print_poly_trait_ref(tref);
+            match bound {
+                GenericBound::Trait(tref, modifier) => {
+                    if modifier == &TraitBoundModifier::Maybe {
+                        self.word("?");
                     }
-                    GenericBound::Outlives(lt) => self.print_lifetime(*lt),
+                    self.print_poly_trait_ref(tref);
                 }
+                GenericBound::Outlives(lt) => self.print_lifetime(*lt),
             }
         }
     }
@@ -1593,22 +1579,14 @@ impl<'a> State<'a> {
         self.print_name(lifetime.ident.name)
     }
 
-    pub(crate) fn print_lifetime_bounds(
-        &mut self,
-        lifetime: ast::Lifetime,
-        bounds: &ast::GenericBounds,
-    ) {
-        self.print_lifetime(lifetime);
-        if !bounds.is_empty() {
-            self.word(": ");
-            for (i, bound) in bounds.iter().enumerate() {
-                if i != 0 {
-                    self.word(" + ");
-                }
-                match bound {
-                    ast::GenericBound::Outlives(lt) => self.print_lifetime(*lt),
-                    _ => panic!(),
-                }
+    pub(crate) fn print_lifetime_bounds(&mut self, bounds: &ast::GenericBounds) {
+        for (i, bound) in bounds.iter().enumerate() {
+            if i != 0 {
+                self.word(" + ");
+            }
+            match bound {
+                ast::GenericBound::Outlives(lt) => self.print_lifetime(*lt),
+                _ => panic!(),
             }
         }
     }
@@ -1626,11 +1604,18 @@ impl<'a> State<'a> {
             match param.kind {
                 ast::GenericParamKind::Lifetime => {
                     let lt = ast::Lifetime { id: param.id, ident: param.ident };
-                    s.print_lifetime_bounds(lt, &param.bounds)
+                    s.print_lifetime(lt);
+                    if !param.bounds.is_empty() {
+                        s.word_nbsp(":");
+                        s.print_lifetime_bounds(&param.bounds)
+                    }
                 }
                 ast::GenericParamKind::Type { ref default } => {
                     s.print_ident(param.ident);
-                    s.print_type_bounds(":", &param.bounds);
+                    if !param.bounds.is_empty() {
+                        s.word_nbsp(":");
+                        s.print_type_bounds(&param.bounds);
+                    }
                     if let Some(ref default) = default {
                         s.space();
                         s.word_space("=");
@@ -1643,7 +1628,10 @@ impl<'a> State<'a> {
                     s.space();
                     s.word_space(":");
                     s.print_type(ty);
-                    s.print_type_bounds(":", &param.bounds);
+                    if !param.bounds.is_empty() {
+                        s.word_nbsp(":");
+                        s.print_type_bounds(&param.bounds);
+                    }
                     if let Some(ref default) = default {
                         s.space();
                         s.word_space("=");
@@ -1742,10 +1730,10 @@ impl<'a> State<'a> {
 
         match header.ext {
             ast::Extern::None => {}
-            ast::Extern::Implicit => {
+            ast::Extern::Implicit(_) => {
                 self.word_nbsp("extern");
             }
-            ast::Extern::Explicit(abi) => {
+            ast::Extern::Explicit(abi, _) => {
                 self.word_nbsp("extern");
                 self.print_literal(&abi.as_lit());
                 self.nbsp();

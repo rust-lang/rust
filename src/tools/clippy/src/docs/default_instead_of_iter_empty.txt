@@ -1,0 +1,15 @@
+### What it does
+It checks for `std::iter::Empty::default()` and suggests replacing it with
+`std::iter::empty()`.
+### Why is this bad?
+`std::iter::empty()` is the more idiomatic way.
+### Example
+```
+let _ = std::iter::Empty::<usize>::default();
+let iter: std::iter::Empty<usize> = std::iter::Empty::default();
+```
+Use instead:
+```
+let _ = std::iter::empty::<usize>();
+let iter: std::iter::Empty<usize> = std::iter::empty();
+```

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{higher, peel_blocks_with_stmt, SpanlessEq};
+use clippy_utils::{higher, is_integer_literal, peel_blocks_with_stmt, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -16,17 +16,21 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// let end: u32 = 10;
-    /// let start: u32 = 5;
-    ///
+    /// # let end: u32 = 10;
+    /// # let start: u32 = 5;
     /// let mut i: u32 = end - start;
     ///
-    /// // Bad
     /// if i != 0 {
     ///     i -= 1;
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let end: u32 = 10;
+    /// # let start: u32 = 5;
+    /// let mut i: u32 = end - start;
+    ///
     /// i = i.saturating_sub(1);
     /// ```
     #[clippy::version = "1.44.0"]
@@ -48,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             // Check if the conditional expression is a binary operation
             if let ExprKind::Binary(ref cond_op, cond_left, cond_right) = cond.kind;
 
-            // Ensure that the binary operator is >, != and <
+            // Ensure that the binary operator is >, !=, or <
             if BinOpKind::Ne == cond_op.node || BinOpKind::Gt == cond_op.node || BinOpKind::Lt == cond_op.node;
 
             // Check if assign operation is done
@@ -127,17 +131,8 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
 fn subtracts_one<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a Expr<'a>> {
     match peel_blocks_with_stmt(expr).kind {
         ExprKind::AssignOp(ref op1, target, value) => {
-            if_chain! {
-                if BinOpKind::Sub == op1.node;
-                // Check if literal being subtracted is one
-                if let ExprKind::Lit(ref lit1) = value.kind;
-                if let LitKind::Int(1, _) = lit1.node;
-                then {
-                    Some(target)
-                } else {
-                    None
-                }
-            }
+            // Check if literal being subtracted is one
+            (BinOpKind::Sub == op1.node && is_integer_literal(value, 1)).then_some(target)
         },
         ExprKind::Assign(target, value, _) => {
             if_chain! {
@@ -146,8 +141,7 @@ fn subtracts_one<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a Exp
 
                 if SpanlessEq::new(cx).eq_expr(left1, target);
 
-                if let ExprKind::Lit(ref lit1) = right1.kind;
-                if let LitKind::Int(1, _) = lit1.node;
+                if is_integer_literal(right1, 1);
                 then {
                     Some(target)
                 } else {
@@ -166,7 +160,7 @@ fn print_lint_and_sugg(cx: &LateContext<'_>, var_name: &str, expr: &Expr<'_>) {
         expr.span,
         "implicitly performing saturating subtraction",
         "try",
-        format!("{} = {}.saturating_sub({});", var_name, var_name, '1'),
+        format!("{var_name} = {var_name}.saturating_sub({});", '1'),
         Applicability::MachineApplicable,
     );
 }

@@ -104,3 +104,9 @@ fn _cond_push_with_large_start(x: bool) -> Vec<u32> {
 
     v2
 }
+
+fn f() {
+    let mut v = Vec::new();
+    v.push((0i32, 0i32));
+    let y = v[0].0.abs();
+}

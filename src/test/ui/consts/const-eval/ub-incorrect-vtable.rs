@@ -18,27 +18,79 @@ trait Trait {}
 const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
     unsafe { std::mem::transmute((&92u8, &[0usize, 1usize, 1000usize])) };
 //~^ ERROR evaluation of constant value failed
-//~| invalid vtable: alignment `1000` is not a power of 2
+//~| does not point to a vtable
 
 const INVALID_VTABLE_SIZE: &dyn Trait =
     unsafe { std::mem::transmute((&92u8, &[1usize, usize::MAX, 1usize])) };
 //~^ ERROR evaluation of constant value failed
-//~| invalid vtable: size is bigger than largest supported object
+//~| does not point to a vtable
 
 #[repr(transparent)]
 struct W<T>(T);
 
-// The drop fn is checked before size/align are, so get ourselves a "sufficiently valid" drop fn
 fn drop_me(_: *mut usize) {}
 
 const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1usize, 1000usize))) };
 //~^^ ERROR it is undefined behavior to use this value
-//~| invalid vtable: alignment `1000` is not a power of 2
+//~| expected a vtable pointer
 
 const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), usize::MAX, 1usize))) };
 //~^^ ERROR it is undefined behavior to use this value
-//~| invalid vtable: size is bigger than largest supported object
+//~| expected a vtable pointer
+
+// Even if the vtable has a fn ptr and a reasonable size+align, it still does not work.
+const INVALID_VTABLE_UB: W<&dyn Trait> =
+    unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1usize, 1usize))) };
+//~^^ ERROR it is undefined behavior to use this value
+//~| expected a vtable pointer
+
+// Trying to access the data in a vtable does not work, either.
+
+#[derive(Copy, Clone)]
+struct Wide<'a>(&'a Foo, &'static VTable);
+
+struct VTable {
+    drop: Option<for<'a> fn(&'a mut Foo)>,
+    size: usize,
+    align: usize,
+    bar: for<'a> fn(&'a Foo) -> u32,
+}
+
+trait Bar {
+    fn bar(&self) -> u32;
+}
+
+struct Foo {
+    foo: u32,
+    bar: bool,
+}
+
+impl Bar for Foo {
+    fn bar(&self) -> u32 {
+        self.foo
+    }
+}
+
+impl Drop for Foo {
+    fn drop(&mut self) {
+        assert!(!self.bar);
+        self.bar = true;
+        println!("dropping Foo");
+    }
+}
+
+#[repr(C)]
+union Transmute<T: Copy, U: Copy> {
+    t: T,
+    u: U,
+}
+
+const FOO: &dyn Bar = &Foo { foo: 128, bar: false };
+const G: Wide = unsafe { Transmute { t: FOO }.u };
+//~^ ERROR it is undefined behavior to use this value
+//~| encountered a dangling reference
+// (it is dangling because vtables do not contain memory that can be dereferenced)
 
 fn main() {}

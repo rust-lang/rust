@@ -528,6 +528,4 @@ pub mod netc {
 
     #[derive(Copy, Clone)]
     pub struct sockaddr {}
-
-    pub type socklen_t = usize;
 }

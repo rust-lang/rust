@@ -5,12 +5,11 @@
 
 extern crate test;
 
-use crate::common::{
-    expected_output_path, output_base_dir, output_relative_path, PanicStrategy, UI_EXTENSIONS,
-};
+use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
 use getopts::Options;
+use lazycell::LazyCell;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -63,6 +62,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "rust-demangler-path", "path to rust-demangler to use in tests", "PATH")
         .reqopt("", "python", "path to python to use for doc tests", "PATH")
         .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
+        .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
         .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
         .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
@@ -102,7 +102,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
         .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
-        .optopt("", "target-panic", "what panic strategy the target supports", "unwind | abort")
+        .optflag("", "optimize-tests", "run tests with optimizations enabled")
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
             "",
@@ -224,6 +224,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         rust_demangler_path: matches.opt_str("rust-demangler-path").map(PathBuf::from),
         python: matches.opt_str("python").unwrap(),
         jsondocck_path: matches.opt_str("jsondocck-path"),
+        jsondoclint_path: matches.opt_str("jsondoclint-path"),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
@@ -253,11 +254,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         runtool: matches.opt_str("runtool"),
         host_rustcflags: Some(matches.opt_strs("host-rustcflags").join(" ")),
         target_rustcflags: Some(matches.opt_strs("target-rustcflags").join(" ")),
-        target_panic: match matches.opt_str("target-panic").as_deref() {
-            Some("unwind") | None => PanicStrategy::Unwind,
-            Some("abort") => PanicStrategy::Abort,
-            _ => panic!("unknown `--target-panic` option `{}` given", mode),
-        },
+        optimize_tests: matches.opt_present("optimize-tests"),
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
@@ -297,6 +294,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         npm: matches.opt_str("npm"),
 
         force_rerun: matches.opt_present("force-rerun"),
+
+        target_cfg: LazyCell::new(),
     }
 }
 
@@ -351,11 +350,6 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 }
 
 pub fn run_tests(config: Config) {
-    // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
-    if let Mode::CodegenUnits = config.mode {
-        let _ = fs::remove_dir_all("tmp/partitioning-tests");
-    }
-
     // If we want to collect rustfix coverage information,
     // we first make sure that the coverage file does not exist.
     // It will be created later on.
@@ -444,7 +438,7 @@ fn configure_cdb(config: &Config) -> Option<Config> {
 fn configure_gdb(config: &Config) -> Option<Config> {
     config.gdb_version?;
 
-    if util::matches_env(&config.target, "msvc") {
+    if config.matches_env("msvc") {
         return None;
     }
 
@@ -544,6 +538,8 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         let path = rust_src_dir.join(file);
         stamp.add_path(&path);
     }
+
+    stamp.add_dir(&rust_src_dir.join("src/etc/natvis"));
 
     stamp.add_dir(&config.run_lib_path);
 
@@ -801,7 +797,10 @@ fn make_test_closure(
     let config = config.clone();
     let testpaths = testpaths.clone();
     let revision = revision.cloned();
-    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths, revision.as_deref())))
+    test::DynTestFn(Box::new(move || {
+        runtest::run(config, &testpaths, revision.as_deref());
+        Ok(())
+    }))
 }
 
 /// Returns `true` if the given target is an Android target for the

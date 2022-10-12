@@ -15,10 +15,10 @@ LL | const B;
    |        help: provide a definition for the constant: `= <expr>;`
 
 error: missing type for `const` item
-  --> $DIR/item-free-const-no-body-semantic-fail.rs:6:7
+  --> $DIR/item-free-const-no-body-semantic-fail.rs:6:8
    |
 LL | const B;
-   |       ^ help: provide a type for the item: `B: <type>`
+   |        ^ help: provide a type for the item: `: <type>`
 
 error: aborting due to 3 previous errors
 

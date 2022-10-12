@@ -1,9 +1,9 @@
-use crate::def_id::DefId;
 use crate::hir;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_macros::HashStable_Generic;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::Symbol;
 
@@ -45,8 +45,6 @@ pub enum NonMacroAttrKind {
     /// Single-segment custom attribute registered by a derive macro
     /// but used before that derive macro was expanded (deprecated).
     DeriveHelperCompat,
-    /// Single-segment custom attribute registered with `#[register_attr]`.
-    Registered,
 }
 
 /// What kind of definition something is; e.g., `mod` vs `struct`.
@@ -111,6 +109,8 @@ pub enum DefKind {
     InlineConst,
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
+    /// A return-position `impl Trait` in a trait definition
+    ImplTraitPlaceholder,
     Field,
     /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
     LifetimeParam,
@@ -140,6 +140,7 @@ impl DefKind {
                 panic!("impossible struct constructor")
             }
             DefKind::OpaqueTy => "opaque type",
+            DefKind::ImplTraitPlaceholder => "opaque type in trait",
             DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
             DefKind::AssocTy => "associated type",
@@ -219,7 +220,8 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
-            | DefKind::Impl => None,
+            | DefKind::Impl
+            | DefKind::ImplTraitPlaceholder => None,
         }
     }
 
@@ -256,6 +258,7 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::OpaqueTy
+            | DefKind::ImplTraitPlaceholder
             | DefKind::Impl
             | DefKind::Field
             | DefKind::TyParam
@@ -310,72 +313,76 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// **Belongs to the type namespace.**
     PrimTy(hir::PrimTy),
-    /// The `Self` type, optionally with the [`DefId`] of the trait it belongs to and
-    /// optionally with the [`DefId`] of the item introducing the `Self` type alias.
+
+    /// The `Self` type, as used within a trait.
+    ///
+    /// **Belongs to the type namespace.**
+    ///
+    /// See the examples on [`Res::SelfTyAlias`] for details.
+    SelfTyParam {
+        /// The trait this `Self` is a generic parameter for.
+        trait_: DefId,
+    },
+
+    /// The `Self` type, as used somewhere other than within a trait.
     ///
     /// **Belongs to the type namespace.**
     ///
     /// Examples:
     /// ```
-    /// struct Bar(Box<Self>);
-    /// // `Res::SelfTy { trait_: None, alias_of: Some(Bar) }`
+    /// struct Bar(Box<Self>); // SelfTyAlias
     ///
     /// trait Foo {
-    ///     fn foo() -> Box<Self>;
-    ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: None }`
+    ///     fn foo() -> Box<Self>; // SelfTyParam
     /// }
     ///
     /// impl Bar {
     ///     fn blah() {
-    ///         let _: Self;
-    ///         // `Res::SelfTy { trait_: None, alias_of: Some(::{impl#0}) }`
+    ///         let _: Self; // SelfTyAlias
     ///     }
     /// }
     ///
     /// impl Foo for Bar {
-    ///     fn foo() -> Box<Self> {
-    ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
-    ///         let _: Self;
-    ///         // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
+    ///     fn foo() -> Box<Self> { // SelfTyAlias
+    ///         let _: Self;        // SelfTyAlias
     ///
     ///         todo!()
     ///     }
     /// }
     /// ```
-    ///
     /// *See also [`Res::SelfCtor`].*
     ///
-    /// -----
-    ///
-    /// HACK(min_const_generics): self types also have an optional requirement to **not** mention
-    /// any generic parameters to allow the following with `min_const_generics`:
-    /// ```
-    /// # struct Foo;
-    /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
-    ///
-    /// struct Bar([u8; baz::<Self>()]);
-    /// const fn baz<T>() -> usize { 10 }
-    /// ```
-    /// We do however allow `Self` in repeat expression even if it is generic to not break code
-    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat lint:
-    /// ```
-    /// fn foo<T>() {
-    ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
-    /// }
-    /// ```
-    // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
-    SelfTy {
-        /// The trait this `Self` is a generic arg for.
-        trait_: Option<DefId>,
+    SelfTyAlias {
         /// The item introducing the `Self` type alias. Can be used in the `type_of` query
-        /// to get the underlying type. Additionally whether the `Self` type is disallowed
-        /// from mentioning generics (i.e. when used in an anonymous constant).
-        alias_to: Option<(DefId, bool)>,
+        /// to get the underlying type.
+        alias_to: DefId,
+
+        /// Whether the `Self` type is disallowed from mentioning generics (i.e. when used in an
+        /// anonymous constant).
+        ///
+        /// HACK(min_const_generics): self types also have an optional requirement to **not**
+        /// mention any generic parameters to allow the following with `min_const_generics`:
+        /// ```
+        /// # struct Foo;
+        /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
+        ///
+        /// struct Bar([u8; baz::<Self>()]);
+        /// const fn baz<T>() -> usize { 10 }
+        /// ```
+        /// We do however allow `Self` in repeat expression even if it is generic to not break code
+        /// which already works on stable while causing the `const_evaluatable_unchecked` future
+        /// compat lint:
+        /// ```
+        /// fn foo<T>() {
+        ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
+        /// }
+        /// ```
+        // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
+        forbid_generic: bool,
+
+        /// Is this within an `impl Foo for bar`?
+        is_trait_impl: bool,
     },
-    /// A tool attribute module; e.g., the `rustfmt` in `#[rustfmt::skip]`.
-    ///
-    /// **Belongs to the type namespace.**
-    ToolMod,
 
     // Value namespace
     /// The `Self` constructor, along with the [`DefId`]
@@ -383,12 +390,18 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// **Belongs to the value namespace.**
     ///
-    /// *See also [`Res::SelfTy`].*
+    /// *See also [`Res::SelfTyParam`] and [`Res::SelfTyAlias`].*
     SelfCtor(DefId),
+
     /// A local variable or function parameter.
     ///
     /// **Belongs to the value namespace.**
     Local(Id),
+
+    /// A tool attribute module; e.g., the `rustfmt` in `#[rustfmt::skip]`.
+    ///
+    /// **Belongs to the type namespace.**
+    ToolMod,
 
     // Macro namespace
     /// An attribute that is *not* implemented via macro.
@@ -451,11 +464,21 @@ impl PartialRes {
     pub fn unresolved_segments(&self) -> usize {
         self.unresolved_segments
     }
+
+    #[inline]
+    pub fn full_res(&self) -> Option<Res<NodeId>> {
+        (self.unresolved_segments == 0).then_some(self.base_res)
+    }
+
+    #[inline]
+    pub fn expect_full_res(&self) -> Res<NodeId> {
+        self.full_res().expect("unexpected unresolved segments")
+    }
 }
 
 /// Different kinds of symbols can coexist even if they share the same textual name.
 /// Therefore, they each have a separate universe (known as a "namespace").
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Namespace {
     /// The type namespace includes `struct`s, `enum`s, `union`s, `trait`s, and `mod`s
     /// (and, by extension, crates).
@@ -564,15 +587,11 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::DeriveHelper | NonMacroAttrKind::DeriveHelperCompat => {
                 "derive helper attribute"
             }
-            NonMacroAttrKind::Registered => "explicitly registered attribute",
         }
     }
 
     pub fn article(self) -> &'static str {
-        match self {
-            NonMacroAttrKind::Registered => "an",
-            _ => "a",
-        }
+        "a"
     }
 
     /// Users of some attributes cannot mark them as used, so they are considered always used.
@@ -581,7 +600,7 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::Tool
             | NonMacroAttrKind::DeriveHelper
             | NonMacroAttrKind::DeriveHelperCompat => true,
-            NonMacroAttrKind::Builtin(..) | NonMacroAttrKind::Registered => false,
+            NonMacroAttrKind::Builtin(..) => false,
         }
     }
 }
@@ -603,7 +622,8 @@ impl<Id> Res<Id> {
 
             Res::Local(..)
             | Res::PrimTy(..)
-            | Res::SelfTy { .. }
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..)
             | Res::ToolMod
             | Res::NonMacroAttr(..)
@@ -626,7 +646,7 @@ impl<Id> Res<Id> {
             Res::SelfCtor(..) => "self constructor",
             Res::PrimTy(..) => "builtin type",
             Res::Local(..) => "local variable",
-            Res::SelfTy { .. } => "self type",
+            Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => "self type",
             Res::ToolMod => "tool module",
             Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
             Res::Err => "unresolved item",
@@ -649,7 +669,10 @@ impl<Id> Res<Id> {
             Res::SelfCtor(id) => Res::SelfCtor(id),
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)),
-            Res::SelfTy { trait_, alias_to } => Res::SelfTy { trait_, alias_to },
+            Res::SelfTyParam { trait_ } => Res::SelfTyParam { trait_ },
+            Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl } => {
+                Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl }
+            }
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
@@ -662,7 +685,10 @@ impl<Id> Res<Id> {
             Res::SelfCtor(id) => Res::SelfCtor(id),
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)?),
-            Res::SelfTy { trait_, alias_to } => Res::SelfTy { trait_, alias_to },
+            Res::SelfTyParam { trait_ } => Res::SelfTyParam { trait_ },
+            Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl } => {
+                Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl }
+            }
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
@@ -671,7 +697,10 @@ impl<Id> Res<Id> {
 
     #[track_caller]
     pub fn expect_non_local<OtherId>(self) -> Res<OtherId> {
-        self.map_id(|_| panic!("unexpected `Res::Local`"))
+        self.map_id(
+            #[track_caller]
+            |_| panic!("unexpected `Res::Local`"),
+        )
     }
 
     pub fn macro_kind(self) -> Option<MacroKind> {
@@ -686,7 +715,9 @@ impl<Id> Res<Id> {
     pub fn ns(&self) -> Option<Namespace> {
         match self {
             Res::Def(kind, ..) => kind.ns(),
-            Res::PrimTy(..) | Res::SelfTy { .. } | Res::ToolMod => Some(Namespace::TypeNS),
+            Res::PrimTy(..) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::ToolMod => {
+                Some(Namespace::TypeNS)
+            }
             Res::SelfCtor(..) | Res::Local(..) => Some(Namespace::ValueNS),
             Res::NonMacroAttr(..) => Some(Namespace::MacroNS),
             Res::Err => None,
@@ -707,4 +738,40 @@ impl<Id> Res<Id> {
     pub fn expected_in_unit_struct_pat(&self) -> bool {
         matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Const), _) | Res::SelfCtor(..))
     }
+}
+
+/// Resolution for a lifetime appearing in a type.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum LifetimeRes {
+    /// Successfully linked the lifetime to a generic parameter.
+    Param {
+        /// Id of the generic parameter that introduced it.
+        param: LocalDefId,
+        /// Id of the introducing place. That can be:
+        /// - an item's id, for the item's generic parameters;
+        /// - a TraitRef's ref_id, identifying the `for<...>` binder;
+        /// - a BareFn type's id.
+        ///
+        /// This information is used for impl-trait lifetime captures, to know when to or not to
+        /// capture any given lifetime.
+        binder: NodeId,
+    },
+    /// Created a generic parameter for an anonymous lifetime.
+    Fresh {
+        /// Id of the generic parameter that introduced it.
+        ///
+        /// Creating the associated `LocalDefId` is the responsibility of lowering.
+        param: NodeId,
+        /// Id of the introducing place. See `Param`.
+        binder: NodeId,
+    },
+    /// This variant is used for anonymous lifetimes that we did not resolve during
+    /// late resolution.  Those lifetimes will be inferred by typechecking.
+    Infer,
+    /// Explicit `'static` lifetime.
+    Static,
+    /// Resolution failure.
+    Error,
+    /// HACK: This is used to recover the NodeId of an elided lifetime.
+    ElidedAnchor { start: NodeId, end: NodeId },
 }

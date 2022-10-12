@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_lint_allowed;
+use clippy_utils::macros::span_is_local;
 use clippy_utils::source::snippet;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -41,7 +42,8 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = String::from("€");
     /// ```
-    /// Could be written as:
+    ///
+    /// Use instead:
     /// ```rust
     /// let x = String::from("\u{20ac}");
     /// ```
@@ -97,6 +99,10 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
 }
 
 fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
+    if !span_is_local(span) {
+        return;
+    }
+
     let string = snippet(cx, span, "");
     if string.chars().any(|c| ['\u{200B}', '\u{ad}', '\u{2060}'].contains(&c)) {
         span_lint_and_sugg(
@@ -112,6 +118,7 @@ fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
             Applicability::MachineApplicable,
         );
     }
+
     if string.chars().any(|c| c as u32 > 0x7F) {
         span_lint_and_sugg(
             cx,
@@ -127,6 +134,7 @@ fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
             Applicability::MachineApplicable,
         );
     }
+
     if is_lint_allowed(cx, NON_ASCII_LITERAL, id) && string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
         span_lint_and_sugg(
             cx,

@@ -4,12 +4,12 @@ error: some ranges overlap
 LL |         0..=10 => println!("0..=10"),
    |         ^^^^^^
    |
-   = note: `-D clippy::match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:14:9
    |
 LL |         0..=11 => println!("0..=11"),
    |         ^^^^^^
+   = note: `-D clippy::match-overlapping-arm` implied by `-D warnings`
 
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:19:9

@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 #![feature(box_patterns)]
 
 use std::ops::{Deref, DerefMut};
@@ -35,7 +34,7 @@ impl DerefMut for X {
 
 fn main() {
     {
-        let mut test = X(box 5);
+        let mut test = X(Box::new(5));
         {
             let mut change = || { *test = 10 };
             change();

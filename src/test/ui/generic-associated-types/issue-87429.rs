@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
 trait Family {
     type Member<'a>: for<'b> PartialEq<Self::Member<'b>>;
 }

@@ -1,9 +1,5 @@
 #![feature(fn_traits, unboxed_closures)]
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 fn test<F: for<'x> FnOnce<(&'x str,)>>(_: F) {}
 
 struct Compose<F, G>(F, G);

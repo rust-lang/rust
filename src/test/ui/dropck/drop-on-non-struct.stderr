@@ -15,11 +15,11 @@ LL | impl<'a> Drop for &'a mut isize {
    |
    = note: define and implement a trait or new type instead
 
-error[E0120]: the `Drop` trait may only be implemented for structs, enums, and unions
+error[E0120]: the `Drop` trait may only be implemented for local structs, enums, and unions
   --> $DIR/drop-on-non-struct.rs:1:19
    |
 LL | impl<'a> Drop for &'a mut isize {
-   |                   ^^^^^^^^^^^^^ must be a struct, enum, or union
+   |                   ^^^^^^^^^^^^^ must be a struct, enum, or union in the current crate
 
 error: aborting due to 3 previous errors
 

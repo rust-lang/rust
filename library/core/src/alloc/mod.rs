@@ -21,6 +21,7 @@ pub use self::layout::LayoutErr;
 #[stable(feature = "alloc_layout_error", since = "1.50.0")]
 pub use self::layout::LayoutError;
 
+use crate::error::Error;
 use crate::fmt;
 use crate::ptr::{self, NonNull};
 
@@ -31,6 +32,13 @@ use crate::ptr::{self, NonNull};
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct AllocError;
+
+#[unstable(
+    feature = "allocator_api",
+    reason = "the precise API and guarantees it provides may be tweaked.",
+    issue = "32838"
+)]
+impl Error for AllocError {}
 
 // (we need this for downstream impl of trait Error)
 #[unstable(feature = "allocator_api", issue = "32838")]
@@ -97,6 +105,7 @@ impl fmt::Display for AllocError {
 ///
 /// [*currently allocated*]: #currently-allocated-memory
 #[unstable(feature = "allocator_api", issue = "32838")]
+#[const_trait]
 pub unsafe trait Allocator {
     /// Attempts to allocate a block of memory.
     ///

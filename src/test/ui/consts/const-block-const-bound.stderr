@@ -2,7 +2,7 @@ error[E0277]: can't drop `UnconstDrop` in const contexts
   --> $DIR/const-block-const-bound.rs:20:11
    |
 LL |         f(UnconstDrop);
-   |         - ^^^^^^^^^^^ expected an implementor of trait `~const Destruct`
+   |         - ^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `UnconstDrop`
    |         |
    |         required by a bound introduced by this call
    |
@@ -23,7 +23,7 @@ error[E0277]: can't drop `NonDrop` in const contexts
   --> $DIR/const-block-const-bound.rs:22:11
    |
 LL |         f(NonDrop);
-   |         - ^^^^^^^ expected an implementor of trait `~const Destruct`
+   |         - ^^^^^^^ the trait `~const Destruct` is not implemented for `NonDrop`
    |         |
    |         required by a bound introduced by this call
    |

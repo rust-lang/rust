@@ -8,17 +8,21 @@ extern crate rustc_macros;
 extern crate rustc_serialize;
 
 use rustc_macros::{Decodable, Encodable};
-use rustc_serialize::opaque;
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::opaque::{MemDecoder, MemEncoder};
+use rustc_serialize::{Decodable, Encodable, Encoder};
 
 #[derive(Encodable, Decodable, PartialEq, Debug)]
 struct UnitLikeStruct;
 
 pub fn main() {
     let obj = UnitLikeStruct;
-    let mut encoder = opaque::Encoder::new(vec![]);
-    obj.encode(&mut encoder).unwrap();
-    let mut decoder = opaque::Decoder::new(&encoder.data, 0);
+
+    let mut encoder = MemEncoder::new();
+    obj.encode(&mut encoder);
+    let data = encoder.finish();
+
+    let mut decoder = MemDecoder::new(&data, 0);
     let obj2 = UnitLikeStruct::decode(&mut decoder);
+
     assert_eq!(obj, obj2);
 }

@@ -180,7 +180,7 @@ mod sip;
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html
 /// [`hash`]: Hash::hash
-/// [impl]: ../../std/primitive.str.html#impl-Hash
+/// [impl]: ../../std/primitive.str.html#impl-Hash-for-str
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Hash"]
 pub trait Hash {
@@ -883,16 +883,33 @@ mod impls {
         );
 
         ( $($name:ident)+) => (
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($name: Hash),+> Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
-                #[allow(non_snake_case)]
-                #[inline]
-                fn hash<S: Hasher>(&self, state: &mut S) {
-                    let ($(ref $name,)+) = *self;
-                    $($name.hash(state);)+
+            maybe_tuple_doc! {
+                $($name)+ @
+                #[stable(feature = "rust1", since = "1.0.0")]
+                impl<$($name: Hash),+> Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
+                    #[allow(non_snake_case)]
+                    #[inline]
+                    fn hash<S: Hasher>(&self, state: &mut S) {
+                        let ($(ref $name,)+) = *self;
+                        $($name.hash(state);)+
+                    }
                 }
             }
         );
+    }
+
+    macro_rules! maybe_tuple_doc {
+        ($a:ident @ #[$meta:meta] $item:item) => {
+            #[doc(fake_variadic)]
+            #[doc = "This trait is implemented for tuples up to twelve items long."]
+            #[$meta]
+            $item
+        };
+        ($a:ident $($rest_a:ident)+ @ #[$meta:meta] $item:item) => {
+            #[doc(hidden)]
+            #[$meta]
+            $item
+        };
     }
 
     macro_rules! last_type {
@@ -901,18 +918,18 @@ mod impls {
     }
 
     impl_hash_tuple! {}
-    impl_hash_tuple! { A }
-    impl_hash_tuple! { A B }
-    impl_hash_tuple! { A B C }
-    impl_hash_tuple! { A B C D }
-    impl_hash_tuple! { A B C D E }
-    impl_hash_tuple! { A B C D E F }
-    impl_hash_tuple! { A B C D E F G }
-    impl_hash_tuple! { A B C D E F G H }
-    impl_hash_tuple! { A B C D E F G H I }
-    impl_hash_tuple! { A B C D E F G H I J }
-    impl_hash_tuple! { A B C D E F G H I J K }
-    impl_hash_tuple! { A B C D E F G H I J K L }
+    impl_hash_tuple! { T }
+    impl_hash_tuple! { T B }
+    impl_hash_tuple! { T B C }
+    impl_hash_tuple! { T B C D }
+    impl_hash_tuple! { T B C D E }
+    impl_hash_tuple! { T B C D E F }
+    impl_hash_tuple! { T B C D E F G }
+    impl_hash_tuple! { T B C D E F G H }
+    impl_hash_tuple! { T B C D E F G H I }
+    impl_hash_tuple! { T B C D E F G H I J }
+    impl_hash_tuple! { T B C D E F G H I J K }
+    impl_hash_tuple! { T B C D E F G H I J K L }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: Hash> Hash for [T] {

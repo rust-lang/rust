@@ -87,15 +87,20 @@ impl Cfg {
                 }),
             },
             MetaItemKind::List(ref items) => {
+                let orig_len = items.len();
                 let sub_cfgs =
                     items.iter().filter_map(|i| Cfg::parse_nested(i, exclude).transpose());
                 let ret = match name {
                     sym::all => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
                     sym::any => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
                     sym::not => {
-                        let mut sub_cfgs = sub_cfgs.collect::<Vec<_>>();
-                        if sub_cfgs.len() == 1 {
-                            Ok(!sub_cfgs.pop().unwrap()?)
+                        if orig_len == 1 {
+                            let mut sub_cfgs = sub_cfgs.collect::<Vec<_>>();
+                            if sub_cfgs.len() == 1 {
+                                Ok(!sub_cfgs.pop().unwrap()?)
+                            } else {
+                                return Ok(None);
+                            }
                         } else {
                             Err(InvalidCfgError { msg: "expected 1 cfg-pattern", span: cfg.span })
                         }
@@ -304,8 +309,7 @@ impl ops::BitAnd for Cfg {
 impl ops::BitOrAssign for Cfg {
     fn bitor_assign(&mut self, other: Cfg) {
         match (self, other) {
-            (&mut Cfg::True, _) | (_, Cfg::False) => {}
-            (s, Cfg::True) => *s = Cfg::True,
+            (Cfg::True, _) | (_, Cfg::False) | (_, Cfg::True) => {}
             (s @ &mut Cfg::False, b) => *s = b,
             (&mut Cfg::Any(ref mut a), Cfg::Any(ref mut b)) => {
                 for c in b.drain(..) {

@@ -6,4 +6,4 @@ fn main() {
     //~| ERROR expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `,`
     //~| ERROR expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `,`
 }
-//~^ ERROR expected one of `,`, `:`, `=`, or `>`, found `}`
+//~^ ERROR expected one of `,` or `>`, found `}`

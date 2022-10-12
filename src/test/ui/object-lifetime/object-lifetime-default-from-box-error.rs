@@ -1,7 +1,3 @@
-// ignore-compare-mode-nll
-// revisions: base nll
-// [nll]compile-flags: -Zborrowck=mir
-
 // Test various cases where the defaults should lead to errors being
 // reported.
 
@@ -20,9 +16,8 @@ fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
     // is illegal.
 
     ss.r
-    //[base]~^ ERROR E0759
-    //[nll]~^^ ERROR lifetime may not live long enough
-    //[nll]~| ERROR cannot move out of
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR cannot move out of
 }
 
 fn store(ss: &mut SomeStruct, b: Box<dyn SomeTrait>) {

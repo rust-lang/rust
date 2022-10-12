@@ -137,12 +137,12 @@ fn insert_necessary_parens(pat: &mut P<Pat>) {
     struct Visitor;
     impl MutVisitor for Visitor {
         fn visit_pat(&mut self, pat: &mut P<Pat>) {
-            use ast::{BindingMode::*, Mutability::*};
+            use ast::BindingAnnotation;
             noop_visit_pat(pat, self);
             let target = match &mut pat.kind {
                 // `i @ a | b`, `box a | b`, and `& mut? a | b`.
                 Ident(.., Some(p)) | Box(p) | Ref(p, _) if matches!(&p.kind, Or(ps) if ps.len() > 1) => p,
-                Ref(p, Not) if matches!(p.kind, Ident(ByValue(Mut), ..)) => p, // `&(mut x)`
+                Ref(p, Mutability::Not) if matches!(p.kind, Ident(BindingAnnotation::MUT, ..)) => p, // `&(mut x)`
                 _ => return,
             };
             target.kind = Paren(P(take_pat(target)));

@@ -3,10 +3,10 @@
 
 static A: () = {
     let a: [String; 1];
-    //~^ ERROR destructors cannot be evaluated at compile-time
+    //~^ ERROR destructor of
     a[0] = String::new();
-    //~^ ERROR destructors cannot be evaluated at compile-time
-    //~| ERROR use of possibly-uninitialized variable
+    //~^ ERROR destructor of
+    //~| ERROR binding `a` isn't initialized
 };
 
 struct B<T>([T; 1]);
@@ -14,9 +14,9 @@ struct B<T>([T; 1]);
 impl<T> B<T> {
     pub const fn f(mut self, other: T) -> Self {
         let _this = self;
-        //~^ ERROR destructors cannot be evaluated at compile-time
+        //~^ ERROR destructor of
         self.0[0] = other;
-        //~^ ERROR destructors cannot be evaluated at compile-time
+        //~^ ERROR destructor of
         //~| ERROR use of moved value
         self
     }

@@ -4,8 +4,6 @@
 #![allow(non_snake_case)]
 // ignore-pretty unreported
 
-#![feature(box_syntax)]
-
 pub trait bomb { fn boom(&self, _: Ident); }
 pub struct S;
 impl bomb for S { fn boom(&self, _: Ident) { } }
@@ -29,6 +27,6 @@ pub fn light_fuse(fld: Box<dyn bomb>) {
 }
 
 pub fn main() {
-    let b = box S as Box<dyn bomb>;
+    let b = Box::new(S) as Box<dyn bomb>;
     light_fuse(b);
 }

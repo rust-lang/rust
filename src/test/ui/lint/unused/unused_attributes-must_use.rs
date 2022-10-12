@@ -122,4 +122,10 @@ fn main() {
         Some(res) => res,
         None => 0,
     };
+
+    struct PatternField {
+        foo: i32,
+    }
+    let s = PatternField { #[must_use]  foo: 123 }; //~ ERROR `#[must_use]` has no effect
+    let PatternField { #[must_use] foo } = s; //~ ERROR `#[must_use]` has no effect
 }

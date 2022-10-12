@@ -1,13 +1,13 @@
-error[E0282]: type annotations needed for the closure `fn((), ()) -> Result<(), _>`
+error[E0282]: type annotations needed
   --> $DIR/cannot-infer-closure.rs:4:9
    |
 LL |         Ok(b)
-   |         ^^ cannot infer type for type parameter `E` declared on the enum `Result`
+   |         ^^ cannot infer type of the type parameter `E` declared on the enum `Result`
    |
-help: give this closure an explicit return type without `_` placeholders
+help: consider specifying the generic arguments
    |
-LL |     let x = |a: (), b: ()| -> Result<(), _> {
-   |                            ++++++++++++++++
+LL |         Ok::<(), E>(b)
+   |           +++++++++
 
 error: aborting due to previous error
 

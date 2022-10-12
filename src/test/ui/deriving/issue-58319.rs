@@ -3,6 +3,7 @@ fn main() {}
 #[derive(Clone)]
 pub struct Little;
 #[derive(Clone)]
+#[allow(unused_tuple_struct_fields)]
 pub struct Big(
     Little,
     Little,

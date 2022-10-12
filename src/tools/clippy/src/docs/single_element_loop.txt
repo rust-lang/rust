@@ -1,0 +1,21 @@
+### What it does
+Checks whether a for loop has a single element.
+
+### Why is this bad?
+There is no reason to have a loop of a
+single element.
+
+### Example
+```
+let item1 = 2;
+for item in &[item1] {
+    println!("{}", item);
+}
+```
+
+Use instead:
+```
+let item1 = 2;
+let item = &item1;
+println!("{}", item);
+```

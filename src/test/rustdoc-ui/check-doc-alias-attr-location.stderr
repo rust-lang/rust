@@ -1,4 +1,4 @@
-error: `#[doc(alias = "...")]` isn't allowed on extern block
+error: `#[doc(alias = "...")]` isn't allowed on foreign module
   --> $DIR/check-doc-alias-attr-location.rs:7:7
    |
 LL | #[doc(alias = "foo")]

@@ -2,11 +2,10 @@
 
 #![feature(const_size_of_val, const_align_of_val)]
 #![feature(const_size_of_val_raw, const_align_of_val_raw, layout_for_ptr)]
-#![feature(const_slice_from_raw_parts)]
 
 use std::{mem, ptr};
 
-struct Foo(u32);
+struct Foo(#[allow(unused_tuple_struct_fields)] u32);
 
 #[derive(Clone, Copy)]
 struct Bar {

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # TODO(antoyo): rewrite to cargo-make (or just) or something like that to only rebuild the sysroot when needed?
 
@@ -14,25 +14,87 @@ fi
 export LD_LIBRARY_PATH="$GCC_PATH"
 export LIBRARY_PATH="$GCC_PATH"
 
-features=
+flags=
+gcc_master_branch=1
+channel="debug"
+func=all
+build_only=0
 
-if [[ "$1" == "--features" ]]; then
-    shift
-    features="--features $1"
-    shift
-fi
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --release)
+            codegen_channel=release
+            shift
+            ;;
+        --release-sysroot)
+            sysroot_channel=release
+            shift
+            ;;
+        --no-default-features)
+            gcc_master_branch=0
+            flags="$flags --no-default-features"
+            shift
+            ;;
+        --features)
+            shift
+            flags="$flags --features $1"
+            shift
+            ;;
+        --release)
+            channel="release"
+            shift
+            ;;
+        "--test-rustc")
+            func=test_rustc
+            shift
+            ;;
 
-if [[ "$1" == "--release" ]]; then
+        "--test-libcore")
+            func=test_libcore
+            shift
+            ;;
+
+        "--clean-ui-tests")
+            func=clean_ui_tests
+            shift
+            ;;
+
+        "--std-tests")
+            func=std_tests
+            shift
+            ;;
+
+        "--extended-tests")
+            func=extended_sysroot_tests
+            shift
+            ;;
+
+        "--build-sysroot")
+            func=build_sysroot
+            shift
+            ;;
+        "--build")
+            build_only=1
+            shift
+            ;;
+        *)
+            echo "Unknown option $1"
+            exit 1
+            ;;
+    esac
+done
+
+if [[ $channel == "release" ]]; then
     export CHANNEL='release'
-    CARGO_INCREMENTAL=1 cargo rustc --release $features
+    CARGO_INCREMENTAL=1 cargo rustc --release $flags
     shift
 else
     echo $LD_LIBRARY_PATH
     export CHANNEL='debug'
-    cargo rustc $features
+    cargo rustc $flags
 fi
 
-if [[ "$1" == "--build" ]]; then
+if (( $build_only == 1 )); then
     exit
 fi
 
@@ -78,7 +140,11 @@ function std_tests() {
     $RUN_WRAPPER ./target/out/dst_field_align || (echo $?; false)
 
     echo "[AOT] std_example"
-    $RUSTC example/std_example.rs --crate-type bin --target $TARGET_TRIPLE
+    std_flags="--cfg feature=\"master\""
+    if (( $gcc_master_branch == 0 )); then
+        std_flags=""
+    fi
+    $RUSTC example/std_example.rs --crate-type bin --target $TARGET_TRIPLE $std_flags
     $RUN_WRAPPER ./target/out/std_example --target $TARGET_TRIPLE
 
     echo "[AOT] subslice-patterns-const-eval"
@@ -97,25 +163,6 @@ function std_tests() {
 #echo "[BUILD] sysroot in release mode"
 #./build_sysroot/build_sysroot.sh --release
 
-# TODO(antoyo): uncomment when it works.
-#pushd simple-raytracer
-#if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
-    #echo "[BENCH COMPILE] ebobby/simple-raytracer"
-    #hyperfine --runs ${RUN_RUNS:-10} --warmup 1 --prepare "rm -r target/*/debug || true" \
-    #"RUSTFLAGS='' cargo build --target $TARGET_TRIPLE" \
-    #"../cargo.sh build"
-
-    #echo "[BENCH RUN] ebobby/simple-raytracer"
-    #cp ./target/*/debug/main ./raytracer_cg_gccjit
-    #hyperfine --runs ${RUN_RUNS:-10} ./raytracer_cg_llvm ./raytracer_cg_gccjit
-#else
-    #echo "[BENCH COMPILE] ebobby/simple-raytracer (skipped)"
-    #echo "[COMPILE] ebobby/simple-raytracer"
-    #../cargo.sh build
-    #echo "[BENCH RUN] ebobby/simple-raytracer (skipped)"
-#fi
-#popd
-
 function test_libcore() {
     pushd build_sysroot/sysroot_src/library/core/tests
     echo "[TEST] libcore"
@@ -123,19 +170,6 @@ function test_libcore() {
     ../../../../../cargo.sh test
     popd
 }
-
-# TODO(antoyo): uncomment when it works.
-#pushd regex
-#echo "[TEST] rust-lang/regex example shootout-regex-dna"
-#../cargo.sh clean
-## Make sure `[codegen mono items] start` doesn't poison the diff
-#../cargo.sh build --example shootout-regex-dna
-#cat examples/regexdna-input.txt | ../cargo.sh run --example shootout-regex-dna | grep -v "Spawned thread" > res.txt
-#diff -u res.txt examples/regexdna-output.txt
-
-#echo "[TEST] rust-lang/regex tests"
-#../cargo.sh test --tests -- --exclude-should-panic --test-threads 1 -Zunstable-options
-#popd
 
 #echo
 #echo "[BENCH COMPILE] mod_bench"
@@ -153,6 +187,44 @@ function test_libcore() {
 #echo "[BENCH RUN] mod_bench"
 #hyperfine --runs ${RUN_RUNS:-10} ./target/out/mod_bench{,_inline} ./target/out/mod_bench_llvm_*
 
+function extended_sysroot_tests() {
+    if (( $gcc_master_branch == 0 )); then
+        return
+    fi
+
+    pushd rand
+    cargo clean
+    echo "[TEST] rust-random/rand"
+    ../cargo.sh test --workspace
+    popd
+
+    #pushd simple-raytracer
+    #echo "[BENCH COMPILE] ebobby/simple-raytracer"
+    #hyperfine --runs "${RUN_RUNS:-10}" --warmup 1 --prepare "cargo clean" \
+    #"RUSTC=rustc RUSTFLAGS='' cargo build" \
+    #"../cargo.sh build"
+
+    #echo "[BENCH RUN] ebobby/simple-raytracer"
+    #cp ./target/debug/main ./raytracer_cg_gcc
+    #hyperfine --runs "${RUN_RUNS:-10}" ./raytracer_cg_llvm ./raytracer_cg_gcc
+    #popd
+
+    pushd regex
+    echo "[TEST] rust-lang/regex example shootout-regex-dna"
+    cargo clean
+    export CG_RUSTFLAGS="--cap-lints warn" # newer aho_corasick versions throw a deprecation warning
+    # Make sure `[codegen mono items] start` doesn't poison the diff
+    ../cargo.sh build --example shootout-regex-dna
+    cat examples/regexdna-input.txt \
+        | ../cargo.sh run --example shootout-regex-dna \
+        | grep -v "Spawned thread" > res.txt
+    diff -u res.txt examples/regexdna-output.txt
+
+    echo "[TEST] rust-lang/regex tests"
+    ../cargo.sh test --tests -- --exclude-should-panic --test-threads 1 -Zunstable-options -q
+    popd
+}
+
 function test_rustc() {
     echo
     echo "[TEST] rust-lang/rust"
@@ -165,23 +237,7 @@ function test_rustc() {
     git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(')
     export RUSTFLAGS=
 
-    git apply - <<EOF
-diff --git a/src/tools/compiletest/src/header.rs b/src/tools/compiletest/src/header.rs
-index 887d27fd6dca4..2c2239f2b83d1 100644
---- a/src/tools/compiletest/src/header.rs
-+++ b/src/tools/compiletest/src/header.rs
-@@ -806,8 +806,8 @@ pub fn make_test_description<R: Read>(
-     cfg: Option<&str>,
- ) -> test::TestDesc {
-     let mut ignore = false;
-     #[cfg(not(bootstrap))]
--    let ignore_message: Option<String> = None;
-+    let ignore_message: Option<&str> = None;
-     let mut should_fail = false;
-
-     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
-
-EOF
+    git apply ../rustc_patches/compile_test.patch || true
 
     rm config.toml || true
 
@@ -205,7 +261,7 @@ EOF
 
     git checkout -- src/test/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 
-    rm -r src/test/ui/{abi*,extern/,panic-runtime/,panics/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,simd*,borrowck/,test*,*lto*.rs} || true
+    rm -r src/test/ui/{abi*,extern/,panic-runtime/,panics/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,borrowck/,test*,*lto*.rs} || true
     for test in $(rg --files-with-matches "catch_unwind|should_panic|thread|lto" src/test/ui); do
       rm $test
     done
@@ -222,33 +278,14 @@ function clean_ui_tests() {
     find rust/build/x86_64-unknown-linux-gnu/test/ui/ -name stamp -exec rm -rf {} \;
 }
 
-case $1 in
-    "--test-rustc")
-        test_rustc
-        ;;
+function all() {
+    clean
+    mini_tests
+    build_sysroot
+    std_tests
+    test_libcore
+    extended_sysroot_tests
+    test_rustc
+}
 
-    "--test-libcore")
-        test_libcore
-        ;;
-
-    "--clean-ui-tests")
-        clean_ui_tests
-        ;;
-
-    "--std-tests")
-        std_tests
-        ;;
-
-    "--build-sysroot")
-        build_sysroot
-        ;;
-
-    *)
-        clean
-        mini_tests
-        build_sysroot
-        std_tests
-        test_libcore
-        test_rustc
-        ;;
-esac
+$func

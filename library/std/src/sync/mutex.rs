@@ -10,11 +10,10 @@ use crate::sys_common::mutex as sys;
 /// A mutual exclusion primitive useful for protecting shared data
 ///
 /// This mutex will block threads waiting for the lock to become available. The
-/// mutex can also be statically initialized or created via a [`new`]
-/// constructor. Each mutex has a type parameter which represents the data that
-/// it is protecting. The data can only be accessed through the RAII guards
-/// returned from [`lock`] and [`try_lock`], which guarantees that the data is only
-/// ever accessed when the mutex is locked.
+/// mutex can be created via a [`new`] constructor. Each mutex has a type parameter
+/// which represents the data that it is protecting. The data can only be accessed
+/// through the RAII guards returned from [`lock`] and [`try_lock`], which
+/// guarantees that the data is only ever accessed when the mutex is locked.
 ///
 /// # Poisoning
 ///
@@ -193,6 +192,7 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
                       and cause Futures to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
+#[cfg_attr(not(test), rustc_diagnostic_item = "MutexGuard")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     lock: &'a Mutex<T>,
     poison: poison::Guard,
@@ -214,7 +214,9 @@ impl<T> Mutex<T> {
     /// let mutex = Mutex::new(0);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(t: T) -> Mutex<T> {
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
+    #[inline]
+    pub const fn new(t: T) -> Mutex<T> {
         Mutex {
             inner: sys::MovableMutex::new(),
             poison: poison::Flag::new(),
@@ -424,7 +426,7 @@ impl<T: ?Sized> Mutex<T> {
         T: Sized,
     {
         let data = self.data.into_inner();
-        poison::map_result(self.poison.borrow(), |_| data)
+        poison::map_result(self.poison.borrow(), |()| data)
     }
 
     /// Returns a mutable reference to the underlying data.
@@ -449,7 +451,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "mutex_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         let data = self.data.get_mut();
-        poison::map_result(self.poison.borrow(), |_| data)
+        poison::map_result(self.poison.borrow(), |()| data)
     }
 }
 
@@ -498,7 +500,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     unsafe fn new(lock: &'mutex Mutex<T>) -> LockResult<MutexGuard<'mutex, T>> {
-        poison::map_result(lock.poison.borrow(), |guard| MutexGuard { lock, poison: guard })
+        poison::map_result(lock.poison.guard(), |guard| MutexGuard { lock, poison: guard })
     }
 }
 

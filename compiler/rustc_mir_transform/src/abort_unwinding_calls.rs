@@ -1,6 +1,5 @@
 use crate::MirPass;
 use rustc_ast::InlineAsmOptions;
-use rustc_hir::def::DefKind;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
 use rustc_middle::ty::{self, TyCtxt};
@@ -31,11 +30,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
 
         // We don't simplify the MIR of constants at this time because that
         // namely results in a cyclic query when we call `tcx.type_of` below.
-        let is_function = match kind {
-            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
-            _ => tcx.is_closure(def_id),
-        };
-        if !is_function {
+        if !kind.is_fn_like() {
             return;
         }
 
@@ -61,7 +56,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         // example.
         let mut calls_to_terminate = Vec::new();
         let mut cleanups_to_remove = Vec::new();
-        for (id, block) in body.basic_blocks().iter_enumerated() {
+        for (id, block) in body.basic_blocks.iter_enumerated() {
             if block.is_cleanup {
                 continue;
             }
@@ -80,7 +75,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                     layout::fn_can_unwind(tcx, fn_def_id, sig.abi())
                 }
                 TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } => {
-                    tcx.sess.opts.debugging_opts.panic_in_drop == PanicStrategy::Unwind
+                    tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Unwind
                         && layout::fn_can_unwind(tcx, None, Abi::Rust)
                 }
                 TerminatorKind::Assert { .. } | TerminatorKind::FalseUnwind { .. } => {

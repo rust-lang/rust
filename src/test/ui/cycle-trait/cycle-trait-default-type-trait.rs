@@ -3,7 +3,6 @@
 
 trait Foo<X = Box<dyn Foo>> {
     //~^ ERROR cycle detected
-    //~| ERROR cycle detected
 }
 
 fn main() { }

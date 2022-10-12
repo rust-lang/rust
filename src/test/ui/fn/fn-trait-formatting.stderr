@@ -8,6 +8,10 @@ LL |     let _: () = Box::new(|_: isize| {}) as Box<dyn FnOnce(isize)>;
    |
    = note: expected unit type `()`
                  found struct `Box<dyn FnOnce(isize)>`
+help: use parentheses to call this trait object
+   |
+LL |     let _: () = (Box::new(|_: isize| {}) as Box<dyn FnOnce(isize)>)(/* isize */);
+   |                 +                                                 ++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/fn-trait-formatting.rs:10:17
@@ -19,6 +23,10 @@ LL |     let _: () = Box::new(|_: isize, isize| {}) as Box<dyn Fn(isize, isize)>
    |
    = note: expected unit type `()`
                  found struct `Box<dyn Fn(isize, isize)>`
+help: use parentheses to call this trait object
+   |
+LL |     let _: () = (Box::new(|_: isize, isize| {}) as Box<dyn Fn(isize, isize)>)(/* isize */, /* isize */);
+   |                 +                                                           +++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/fn-trait-formatting.rs:14:17

@@ -1,0 +1,61 @@
+### What it does
+The lint checks for `if`-statements appearing in loops
+that contain a `continue` statement in either their main blocks or their
+`else`-blocks, when omitting the `else`-block possibly with some
+rearrangement of code can make the code easier to understand.
+
+### Why is this bad?
+Having explicit `else` blocks for `if` statements
+containing `continue` in their THEN branch adds unnecessary branching and
+nesting to the code. Having an else block containing just `continue` can
+also be better written by grouping the statements following the whole `if`
+statement within the THEN block and omitting the else block completely.
+
+### Example
+```
+while condition() {
+    update_condition();
+    if x {
+        // ...
+    } else {
+        continue;
+    }
+    println!("Hello, world");
+}
+```
+
+Could be rewritten as
+
+```
+while condition() {
+    update_condition();
+    if x {
+        // ...
+        println!("Hello, world");
+    }
+}
+```
+
+As another example, the following code
+
+```
+loop {
+    if waiting() {
+        continue;
+    } else {
+        // Do something useful
+    }
+    # break;
+}
+```
+Could be rewritten as
+
+```
+loop {
+    if waiting() {
+        continue;
+    }
+    // Do something useful
+    # break;
+}
+```

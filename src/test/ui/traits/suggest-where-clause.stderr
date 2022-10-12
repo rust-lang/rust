@@ -16,16 +16,16 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn check<T: Iterator, U: ?Sized>() {
 LL + fn check<T: Iterator, U>() {
-   | 
+   |
 
 error[E0277]: the size for values of type `U` cannot be known at compilation time
-  --> $DIR/suggest-where-clause.rs:10:5
+  --> $DIR/suggest-where-clause.rs:10:20
    |
 LL | fn check<T: Iterator, U: ?Sized>() {
    |                       - this type parameter needs to be `std::marker::Sized`
 ...
 LL |     mem::size_of::<Misc<U>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                    ^^^^^^^ doesn't have a size known at compile-time
    |
 note: required because it appears within the type `Misc<U>`
   --> $DIR/suggest-where-clause.rs:3:8
@@ -41,7 +41,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn check<T: Iterator, U: ?Sized>() {
 LL + fn check<T: Iterator, U>() {
-   | 
+   |
 
 error[E0277]: the trait bound `u64: From<T>` is not satisfied
   --> $DIR/suggest-where-clause.rs:15:5
@@ -49,7 +49,7 @@ error[E0277]: the trait bound `u64: From<T>` is not satisfied
 LL |     <u64 as From<T>>::from;
    |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `From<T>` is not implemented for `u64`
    |
-help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
 LL | fn check<T: Iterator, U: ?Sized>() where u64: From<T> {
    |                                    ++++++++++++++++++
@@ -60,7 +60,7 @@ error[E0277]: the trait bound `u64: From<<T as Iterator>::Item>` is not satisfie
 LL |     <u64 as From<<T as Iterator>::Item>>::from;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<<T as Iterator>::Item>` is not implemented for `u64`
    |
-help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
 LL | fn check<T: Iterator, U: ?Sized>() where u64: From<<T as Iterator>::Item> {
    |                                    ++++++++++++++++++++++++++++++++++++++
@@ -85,10 +85,10 @@ LL | pub const fn size_of<T>() -> usize {
    |                      ^ required by this bound in `std::mem::size_of`
 
 error[E0277]: the size for values of type `[&U]` cannot be known at compilation time
-  --> $DIR/suggest-where-clause.rs:31:5
+  --> $DIR/suggest-where-clause.rs:31:20
    |
 LL |     mem::size_of::<[&U]>();
-   |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                    ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[&U]`
 note: required by a bound in `std::mem::size_of`

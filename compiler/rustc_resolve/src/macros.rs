@@ -7,7 +7,6 @@ use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment};
 use rustc_ast::{self as ast, Inline, ItemKind, ModKind, NodeId};
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::fx::FxHashSet;
@@ -113,47 +112,32 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
-/// The code common between processing `#![register_tool]` and `#![register_attr]`.
-fn registered_idents(
-    sess: &Session,
-    attrs: &[ast::Attribute],
-    attr_name: Symbol,
-    descr: &str,
-) -> FxHashSet<Ident> {
-    let mut registered = FxHashSet::default();
-    for attr in sess.filter_by_name(attrs, attr_name) {
+pub(crate) fn registered_tools(sess: &Session, attrs: &[ast::Attribute]) -> FxHashSet<Ident> {
+    let mut registered_tools = FxHashSet::default();
+    for attr in sess.filter_by_name(attrs, sym::register_tool) {
         for nested_meta in attr.meta_item_list().unwrap_or_default() {
             match nested_meta.ident() {
                 Some(ident) => {
-                    if let Some(old_ident) = registered.replace(ident) {
-                        let msg = format!("{} `{}` was already registered", descr, ident);
+                    if let Some(old_ident) = registered_tools.replace(ident) {
+                        let msg = format!("{} `{}` was already registered", "tool", ident);
                         sess.struct_span_err(ident.span, &msg)
                             .span_label(old_ident.span, "already registered here")
                             .emit();
                     }
                 }
                 None => {
-                    let msg = format!("`{}` only accepts identifiers", attr_name);
+                    let msg = format!("`{}` only accepts identifiers", sym::register_tool);
                     let span = nested_meta.span();
                     sess.struct_span_err(span, &msg).span_label(span, "not an identifier").emit();
                 }
             }
         }
     }
-    registered
-}
-
-pub(crate) fn registered_attrs_and_tools(
-    sess: &Session,
-    attrs: &[ast::Attribute],
-) -> (FxHashSet<Ident>, FxHashSet<Ident>) {
-    let registered_attrs = registered_idents(sess, attrs, sym::register_attr, "attribute");
-    let mut registered_tools = registered_idents(sess, attrs, sym::register_tool, "tool");
     // We implicitly add `rustfmt` and `clippy` to known tools,
     // but it's not an error to register them explicitly.
     let predefined_tools = [sym::clippy, sym::rustfmt];
     registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
-    (registered_attrs, registered_tools)
+    registered_tools
 }
 
 // Some feature gates for inner attributes are reported as lints for backward compatibility.
@@ -326,7 +310,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 UNUSED_MACROS,
                 node_id,
                 ident.span,
-                &format!("unused macro definition: `{}`", ident.as_str()),
+                &format!("unused macro definition: `{}`", ident.name),
             );
         }
         for (&(def_id, arm_i), &(ident, rule_span)) in self.unused_macro_rules.iter() {
@@ -342,7 +326,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 &format!(
                     "{} rule of macro `{}` is never used",
                     crate::diagnostics::ordinalize(arm_i + 1),
-                    ident.as_str()
+                    ident.name
                 ),
             );
         }
@@ -443,11 +427,22 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);
                 }
+                PathResult::NonModule(..) |
+                // HACK(Urgau): This shouldn't be necessary
+                PathResult::Failed { is_error_from_last_segment: false, .. } => {
+                    self.session
+                        .struct_span_err(span, "not sure whether the path is accessible or not")
+                        .note("the type may have associated items, but we are currently not checking them")
+                        .emit();
+
+                    // If we get a partially resolved NonModule in one namespace, we should get the
+                    // same result in any other namespaces, so we can return early.
+                    return Ok(false);
+                }
                 PathResult::Indeterminate => indeterminate = true,
-                // FIXME: `resolve_path` is not ready to report partially resolved paths
-                // correctly, so we just report an error if the path was reported as unresolved.
-                // This needs to be fixed for `cfg_accessible` to be useful.
-                PathResult::NonModule(..) | PathResult::Failed { .. } => {}
+                // We can only be sure that a path doesn't exist after having tested all the
+                // possibilities, only at that time we can return false.
+                PathResult::Failed { .. } => {}
                 PathResult::Module(_) => panic!("unexpected path resolution"),
             }
         }
@@ -456,10 +451,6 @@ impl<'a> ResolverExpand for Resolver<'a> {
             return Err(Indeterminate);
         }
 
-        self.session
-            .struct_span_err(span, "not sure whether the path is accessible or not")
-            .span_note(span, "`cfg_accessible` is not fully implemented")
-            .emit();
         Ok(false)
     }
 
@@ -599,9 +590,7 @@ impl<'a> Resolver<'a> {
 
         let res = if path.len() > 1 {
             let res = match self.maybe_resolve_path(&path, Some(MacroNS), parent_scope) {
-                PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
-                    Ok(path_res.base_res())
-                }
+                PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => Ok(res),
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
                 PathResult::NonModule(..)
                 | PathResult::Indeterminate
@@ -651,7 +640,7 @@ impl<'a> Resolver<'a> {
             res
         };
 
-        res.map(|res| (self.get_macro(res), res))
+        res.map(|res| (self.get_macro(res).map(|macro_data| macro_data.ext), res))
     }
 
     pub(crate) fn finalize_macro_resolutions(&mut self) {
@@ -701,9 +690,8 @@ impl<'a> Resolver<'a> {
                 Some(Finalize::new(ast::CRATE_NODE_ID, path_span)),
                 None,
             ) {
-                PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
-                    let res = path_res.base_res();
-                    check_consistency(self, &path, path_span, kind, initial_res, res);
+                PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => {
+                    check_consistency(self, &path, path_span, kind, initial_res, res)
                 }
                 path_res @ PathResult::NonModule(..) | path_res @ PathResult::Failed { .. } => {
                     let (span, label) = if let PathResult::Failed { span, label, .. } = path_res {
@@ -790,16 +778,23 @@ impl<'a> Resolver<'a> {
     ) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
+            if let StabilityLevel::Unstable { reason, issue, is_soft, implied_by } = stability.level
+            {
                 let feature = stability.feature;
-                if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
+
+                let is_allowed = |feature| {
+                    self.active_features.contains(&feature) || span.allows_unstable(feature)
+                };
+                let allowed_by_implication =
+                    implied_by.map(|feature| is_allowed(feature)).unwrap_or(false);
+                if !is_allowed(feature) && !allowed_by_implication {
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler =
                         |lint, span, msg: &_| lint_buffer.buffer_lint(lint, node_id, span, msg);
                     stability::report_unstable(
                         self.session,
                         feature,
-                        reason,
+                        reason.to_opt_reason(),
                         issue,
                         None,
                         is_soft,
@@ -846,7 +841,7 @@ impl<'a> Resolver<'a> {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
         if ident.name == sym::cfg || ident.name == sym::cfg_attr {
-            let macro_kind = self.get_macro(res).map(|ext| ext.macro_kind());
+            let macro_kind = self.get_macro(res).map(|macro_data| macro_data.ext.macro_kind());
             if macro_kind.is_some() && sub_namespace_match(macro_kind, Some(MacroKind::Attr)) {
                 self.session.span_err(
                     ident.span,
@@ -863,7 +858,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         item: &ast::Item,
         edition: Edition,
-    ) -> (SyntaxExtension, Vec<Span>) {
+    ) -> (SyntaxExtension, Vec<(usize, Span)>) {
         let (mut result, mut rule_spans) = compile_declarative_macro(
             &self.session,
             self.session.features_untracked(),

@@ -2,9 +2,9 @@
 #![allow(unused_imports)]
 
 use super::fd::WasiFd;
-use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::iter;
 use crate::mem::{self, ManuallyDrop};
 use crate::os::raw::c_int;
@@ -14,6 +14,7 @@ use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd
 use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Arc;
+use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -65,6 +66,12 @@ pub struct FilePermissions {
     readonly: bool,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {
+    accessed: Option<SystemTime>,
+    modified: Option<SystemTime>,
+}
+
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 pub struct FileType {
     bits: wasi::Filetype,
@@ -111,6 +118,16 @@ impl FilePermissions {
 
     pub fn set_readonly(&mut self, readonly: bool) {
         self.readonly = readonly;
+    }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.accessed = Some(t);
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.modified = Some(t);
     }
 }
 
@@ -425,8 +442,8 @@ impl File {
         true
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        crate::io::default_read_buf(|buf| self.read(buf), buf)
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -459,6 +476,22 @@ impl File {
         // Permissions haven't been fully figured out in wasi yet, so this is
         // likely temporary
         unsupported()
+    }
+
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        let to_timestamp = |time: Option<SystemTime>| {
+            match time {
+                Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
+                Some(_) => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too large to set as a file time")),
+                None => Ok(0),
+            }
+        };
+        self.fd.filestat_set_times(
+            to_timestamp(times.accessed)?,
+            to_timestamp(times.modified)?,
+            times.accessed.map_or(0, |_| wasi::FSTFLAGS_ATIM)
+                | times.modified.map_or(0, |_| wasi::FSTFLAGS_MTIM),
+        )
     }
 
     pub fn read_link(&self, file: &Path) -> io::Result<PathBuf> {
@@ -663,60 +696,53 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 ///
 /// Note that this can fail if `p` doesn't look like it can be opened relative
 /// to any pre-opened file descriptor.
-fn open_parent(path: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
-    let p = CString::new(path.as_os_str().as_bytes())?;
-    let mut buf = Vec::<u8>::with_capacity(512);
-    loop {
-        unsafe {
-            let mut relative_path = buf.as_ptr().cast();
-            let mut abs_prefix = ptr::null();
-            let fd = __wasilibc_find_relpath(
-                p.as_ptr(),
-                &mut abs_prefix,
-                &mut relative_path,
-                buf.capacity(),
-            );
-            if fd == -1 {
-                if io::Error::last_os_error().raw_os_error() == Some(libc::ENOMEM) {
-                    // Trigger the internal buffer resizing logic of `Vec` by requiring
-                    // more space than the current capacity.
-                    let cap = buf.capacity();
-                    buf.set_len(cap);
-                    buf.reserve(1);
-                    continue;
-                }
-                let msg = format!(
-                    "failed to find a pre-opened file descriptor \
-                     through which {:?} could be opened",
-                    p
+fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
+    run_path_with_cstr(p, |p| {
+        let mut buf = Vec::<u8>::with_capacity(512);
+        loop {
+            unsafe {
+                let mut relative_path = buf.as_ptr().cast();
+                let mut abs_prefix = ptr::null();
+                let fd = __wasilibc_find_relpath(
+                    p.as_ptr(),
+                    &mut abs_prefix,
+                    &mut relative_path,
+                    buf.capacity(),
                 );
-                return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
-            }
-            /*
-            let mut relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
-            if let Some(test) = p.as_c_str().as_str() {
-                if test.starts_with("/") {
-                    relative = p;
+                if fd == -1 {
+                    if io::Error::last_os_error().raw_os_error() == Some(libc::ENOMEM) {
+                        // Trigger the internal buffer resizing logic of `Vec` by requiring
+                        // more space than the current capacity.
+                        let cap = buf.capacity();
+                        buf.set_len(cap);
+                        buf.reserve(1);
+                        continue;
+                    }
+                    let msg = format!(
+                        "failed to find a pre-opened file descriptor \
+                     through which {:?} could be opened",
+                        p
+                    );
+                    return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
                 }
+                let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
+
+                return Ok((
+                    ManuallyDrop::new(WasiFd::from_raw_fd(fd as c_int)),
+                    PathBuf::from(OsString::from_vec(relative)),
+                ));
             }
-            */
-            let relative = path.as_os_str().as_bytes().to_vec();
-
-            return Ok((
-                ManuallyDrop::new(WasiFd::from_raw_fd(fd as c_int)),
-                PathBuf::from(OsString::from_vec(relative)),
-            ));
         }
-    }
 
-    extern "C" {
-        pub fn __wasilibc_find_relpath(
-            path: *const libc::c_char,
-            abs_prefix: *mut *const libc::c_char,
-            relative_path: *mut *const libc::c_char,
-            relative_path_len: libc::size_t,
-        ) -> libc::c_int;
-    }
+        extern "C" {
+            pub fn __wasilibc_find_relpath(
+                path: *const libc::c_char,
+                abs_prefix: *mut *const libc::c_char,
+                relative_path: *mut *const libc::c_char,
+                relative_path_len: libc::size_t,
+            ) -> libc::c_int;
+        }
+    })
 }
 
 pub fn osstr2str(f: &OsStr) -> io::Result<&str> {

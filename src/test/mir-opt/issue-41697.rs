@@ -13,7 +13,7 @@ trait Foo {
     fn get(&self) -> [u8; 2];
 }
 
-// EMIT_MIR_FOR_EACH_BIT_WIDTH
+
 // EMIT_MIR issue_41697.{impl#0}-{constant#0}.SimplifyCfg-promote-consts.after.mir
 impl Foo for [u8; 1+1] {
     fn get(&self) -> [u8; 2] {

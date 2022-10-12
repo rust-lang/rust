@@ -44,7 +44,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
                 .saturating_sub(constant_int(cx, right).map_or(0, |s| u64::try_from(s).expect("shift too high"))),
             _ => nbits,
         },
-        ExprKind::MethodCall(method, [left, right], _) => {
+        ExprKind::MethodCall(method, left, [right], _) => {
             if signed {
                 return nbits;
             }
@@ -55,7 +55,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             };
             apply_reductions(cx, nbits, left, signed).min(max_bits.unwrap_or(u64::max_value()))
         },
-        ExprKind::MethodCall(method, [_, lo, hi], _) => {
+        ExprKind::MethodCall(method, _, [lo, hi], _) => {
             if method.ident.as_str() == "clamp" {
                 //FIXME: make this a diagnostic item
                 if let (Some(lo_bits), Some(hi_bits)) = (get_constant_bits(cx, lo), get_constant_bits(cx, hi)) {
@@ -64,7 +64,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             }
             nbits
         },
-        ExprKind::MethodCall(method, [_value], _) => {
+        ExprKind::MethodCall(method, _value, [], _) => {
             if method.ident.name.as_str() == "signum" {
                 0 // do not lint if cast comes from a `signum` function
             } else {
@@ -103,10 +103,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
                 return;
             }
 
-            format!(
-                "casting `{}` to `{}` may truncate the value{}",
-                cast_from, cast_to, suffix,
-            )
+            format!("casting `{cast_from}` to `{cast_to}` may truncate the value{suffix}",)
         },
 
         (ty::Adt(def, _), true) if def.is_enum() => {
@@ -142,20 +139,17 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
                     CAST_ENUM_TRUNCATION,
                     expr.span,
                     &format!(
-                        "casting `{}::{}` to `{}` will truncate the value{}",
-                        cast_from, variant.name, cast_to, suffix,
+                        "casting `{cast_from}::{}` to `{cast_to}` will truncate the value{suffix}",
+                        variant.name,
                     ),
                 );
                 return;
             }
-            format!(
-                "casting `{}` to `{}` may truncate the value{}",
-                cast_from, cast_to, suffix,
-            )
+            format!("casting `{cast_from}` to `{cast_to}` may truncate the value{suffix}",)
         },
 
         (ty::Float(_), true) => {
-            format!("casting `{}` to `{}` may truncate the value", cast_from, cast_to)
+            format!("casting `{cast_from}` to `{cast_to}` may truncate the value")
         },
 
         (ty::Float(FloatTy::F64), false) if matches!(cast_to.kind(), &ty::Float(FloatTy::F32)) => {

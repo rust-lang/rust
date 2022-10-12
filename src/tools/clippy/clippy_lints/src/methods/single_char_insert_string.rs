@@ -8,13 +8,13 @@ use rustc_lint::LateContext;
 use super::SINGLE_CHAR_ADD_STR;
 
 /// lint for length-1 `str`s as argument for `insert_str`
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
-    if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[2], &mut applicability) {
+    if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[1], &mut applicability) {
         let base_string_snippet =
-            snippet_with_applicability(cx, args[0].span.source_callsite(), "_", &mut applicability);
-        let pos_arg = snippet_with_applicability(cx, args[1].span, "..", &mut applicability);
-        let sugg = format!("{}.insert({}, {})", base_string_snippet, pos_arg, extension_string);
+            snippet_with_applicability(cx, receiver.span.source_callsite(), "_", &mut applicability);
+        let pos_arg = snippet_with_applicability(cx, args[0].span, "..", &mut applicability);
+        let sugg = format!("{base_string_snippet}.insert({pos_arg}, {extension_string})");
         span_lint_and_sugg(
             cx,
             SINGLE_CHAR_ADD_STR,

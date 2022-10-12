@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Regression test for ICE #18943 when compiling as lib
 

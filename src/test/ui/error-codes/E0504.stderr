@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `fancy_num` because it is borrowed
    |
 LL |     let fancy_ref = &fancy_num;
    |                     ---------- borrow of `fancy_num` occurs here
-LL | 
+LL |
 LL |     let x = move || {
    |             ^^^^^^^ move out of `fancy_num` occurs here
 LL |         println!("child function: {}", fancy_num.num);

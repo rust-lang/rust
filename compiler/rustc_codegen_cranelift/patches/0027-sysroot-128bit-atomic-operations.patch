@@ -19,7 +19,7 @@ index 092b7cf..158cf71 100644
  #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
  impl RefUnwindSafe for crate::sync::atomic::AtomicI64 {}
 -#[cfg(target_has_atomic_load_store = "128")]
--#[unstable(feature = "integer_atomics", issue = "32976")]
+-#[unstable(feature = "integer_atomics", issue = "99069")]
 -impl RefUnwindSafe for crate::sync::atomic::AtomicI128 {}
 
  #[cfg(target_has_atomic_load_store = "ptr")]
@@ -29,7 +29,7 @@ index 092b7cf..158cf71 100644
  #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
  impl RefUnwindSafe for crate::sync::atomic::AtomicU64 {}
 -#[cfg(target_has_atomic_load_store = "128")]
--#[unstable(feature = "integer_atomics", issue = "32976")]
+-#[unstable(feature = "integer_atomics", issue = "99069")]
 -impl RefUnwindSafe for crate::sync::atomic::AtomicU128 {}
 
  #[cfg(target_has_atomic_load_store = "8")]
@@ -46,14 +46,14 @@ index d9de37e..8293fce 100644
 -atomic_int! {
 -    cfg(target_has_atomic = "128"),
 -    cfg(target_has_atomic_equal_alignment = "128"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
 -    rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
--    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
 -    cfg_attr(not(test), rustc_diagnostic_item = "AtomicI128"),
 -    "i128",
 -    "#![feature(integer_atomics)]\n\n",
@@ -66,14 +66,14 @@ index d9de37e..8293fce 100644
 -atomic_int! {
 -    cfg(target_has_atomic = "128"),
 -    cfg(target_has_atomic_equal_alignment = "128"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
 -    rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
--    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "99069"),
 -    cfg_attr(not(test), rustc_diagnostic_item = "AtomicU128"),
 -    "u128",
 -    "#![feature(integer_atomics)]\n\n",

@@ -6,7 +6,7 @@ LL |     is_fn(f);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Fn<()>` is not implemented for `extern "C" fn() {f}`
+   = help: the trait `Fn<()>` is not implemented for fn item `extern "C" fn() {f}`
    = note: wrap the `extern "C" fn() {f}` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `is_fn`
   --> $DIR/extern-wrong-value-type.rs:4:28

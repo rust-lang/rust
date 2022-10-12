@@ -1,0 +1,46 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        ATTR
+          POUND "#"
+          L_BRACK "["
+          META
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "lt_attr"
+          R_BRACK "]"
+        WHITESPACE " "
+        LIFETIME
+          LIFETIME_IDENT "'a"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_PARAM
+        ATTR
+          POUND "#"
+          L_BRACK "["
+          META
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "t_attr"
+          R_BRACK "]"
+        WHITESPACE " "
+        NAME
+          IDENT "T"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

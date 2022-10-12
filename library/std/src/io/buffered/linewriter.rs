@@ -89,8 +89,8 @@ impl<W: Write> LineWriter<W> {
         LineWriter::with_capacity(1024, inner)
     }
 
-    /// Creates a new `LineWriter` with a specified capacity for the internal
-    /// buffer.
+    /// Creates a new `LineWriter` with at least the specified capacity for the
+    /// internal buffer.
     ///
     /// # Examples
     ///

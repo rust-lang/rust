@@ -1,0 +1,8 @@
+error: `unix_sigpipe` attribute can only be used on root `fn main()`
+  --> $DIR/unix_sigpipe-non-root-main.rs:4:5
+   |
+LL |     #[unix_sigpipe = "inherit"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

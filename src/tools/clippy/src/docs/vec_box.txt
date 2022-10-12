@@ -1,0 +1,26 @@
+### What it does
+Checks for use of `Vec<Box<T>>` where T: Sized anywhere in the code.
+Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
+
+### Why is this bad?
+`Vec` already keeps its contents in a separate area on
+the heap. So if you `Box` its contents, you just add another level of indirection.
+
+### Known problems
+Vec<Box<T: Sized>> makes sense if T is a large type (see [#3530](https://github.com/rust-lang/rust-clippy/issues/3530),
+1st comment).
+
+### Example
+```
+struct X {
+    values: Vec<Box<i32>>,
+}
+```
+
+Better:
+
+```
+struct X {
+    values: Vec<i32>,
+}
+```

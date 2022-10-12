@@ -1,10 +1,12 @@
+use core::fmt;
 use core::iter::FusedIterator;
+use core::marker::PhantomData;
+use core::mem::{self, MaybeUninit};
 use core::ptr::{self, NonNull};
-use core::{fmt, mem};
 
 use crate::alloc::{Allocator, Global};
 
-use super::{count, Iter, VecDeque};
+use super::{count, wrap_index, VecDeque};
 
 /// A draining iterator over the elements of a `VecDeque`.
 ///
@@ -20,18 +22,24 @@ pub struct Drain<
 > {
     after_tail: usize,
     after_head: usize,
-    iter: Iter<'a, T>,
+    ring: NonNull<[T]>,
+    tail: usize,
+    head: usize,
     deque: NonNull<VecDeque<T, A>>,
+    _phantom: PhantomData<&'a T>,
 }
 
 impl<'a, T, A: Allocator> Drain<'a, T, A> {
     pub(super) unsafe fn new(
         after_tail: usize,
         after_head: usize,
-        iter: Iter<'a, T>,
+        ring: &'a [MaybeUninit<T>],
+        tail: usize,
+        head: usize,
         deque: NonNull<VecDeque<T, A>>,
     ) -> Self {
-        Drain { after_tail, after_head, iter, deque }
+        let ring = unsafe { NonNull::new_unchecked(ring as *const [MaybeUninit<T>] as *mut _) };
+        Drain { after_tail, after_head, ring, tail, head, deque, _phantom: PhantomData }
     }
 }
 
@@ -41,7 +49,9 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
         f.debug_tuple("Drain")
             .field(&self.after_tail)
             .field(&self.after_head)
-            .field(&self.iter)
+            .field(&self.ring)
+            .field(&self.tail)
+            .field(&self.head)
             .finish()
     }
 }
@@ -118,12 +128,21 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        self.iter.next().map(|elt| unsafe { ptr::read(elt) })
+        if self.tail == self.head {
+            return None;
+        }
+        let tail = self.tail;
+        self.tail = wrap_index(self.tail.wrapping_add(1), self.ring.len());
+        // Safety:
+        // - `self.tail` in a ring buffer is always a valid index.
+        // - `self.head` and `self.tail` equality is checked above.
+        unsafe { Some(ptr::read(self.ring.as_ptr().get_unchecked_mut(tail))) }
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
+        let len = count(self.tail, self.head, self.ring.len());
+        (len, Some(len))
     }
 }
 
@@ -131,7 +150,14 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
 impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
-        self.iter.next_back().map(|elt| unsafe { ptr::read(elt) })
+        if self.tail == self.head {
+            return None;
+        }
+        self.head = wrap_index(self.head.wrapping_sub(1), self.ring.len());
+        // Safety:
+        // - `self.head` in a ring buffer is always a valid index.
+        // - `self.head` and `self.tail` equality is checked above.
+        unsafe { Some(ptr::read(self.ring.as_ptr().get_unchecked_mut(self.head))) }
     }
 }
 

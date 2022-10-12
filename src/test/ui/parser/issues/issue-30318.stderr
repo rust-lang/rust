@@ -25,7 +25,7 @@ help: to annotate the function, change the attribute from inner to outer style
    |
 LL - #![test]
 LL + #[test]
-   | 
+   |
 
 error[E0753]: expected outer doc comment
   --> $DIR/issue-30318.rs:13:1
@@ -52,7 +52,7 @@ help: you might have meant to write a regular comment
    |
 LL - //! Misplaced comment...
 LL + // Misplaced comment...
-   | 
+   |
 
 error[E0753]: expected outer doc comment
   --> $DIR/issue-30318.rs:23:1
@@ -65,7 +65,7 @@ help: you might have meant to write a regular comment
    |
 LL - /*! Misplaced comment... */
 LL + /* Misplaced comment... */
-   | 
+   |
 
 error: expected item after doc comment
   --> $DIR/issue-30318.rs:23:1

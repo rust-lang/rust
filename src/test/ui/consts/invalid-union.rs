@@ -9,8 +9,9 @@
 // build-fail
 // stderr-per-bitwidth
 #![feature(const_mut_refs)]
-#![feature(untagged_unions)]
+
 use std::cell::Cell;
+use std::mem::ManuallyDrop;
 
 #[repr(C)]
 struct S {
@@ -25,7 +26,7 @@ enum E {
 }
 
 union U {
-    cell: Cell<u32>,
+    cell: ManuallyDrop<Cell<u32>>,
 }
 
 const C: S = {
@@ -39,5 +40,4 @@ const C: S = {
 
 fn main() { //~ ERROR it is undefined behavior to use this value
     let _: &'static _ = &C; //~ ERROR erroneous constant used
-    //~^ WARN this was previously accepted
 }

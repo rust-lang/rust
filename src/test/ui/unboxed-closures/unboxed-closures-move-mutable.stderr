@@ -4,8 +4,8 @@ warning: unused variable: `x`
 LL |         move || x += 1;
    |                 ^
    |
-   = note: `#[warn(unused_variables)]` on by default
    = help: did you mean to capture by reference instead?
+   = note: `#[warn(unused_variables)]` on by default
 
 warning: unused variable: `x`
   --> $DIR/unboxed-closures-move-mutable.rs:21:17

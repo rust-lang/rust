@@ -1,0 +1,24 @@
+### What it does
+Checks for unnecessary '..' pattern binding on struct when all fields are explicitly matched.
+
+### Why is this bad?
+Correctness and readability. It's like having a wildcard pattern after
+matching all enum variants explicitly.
+
+### Example
+```
+let a = A { a: 5 };
+
+match a {
+    A { a: 5, .. } => {},
+    _ => {},
+}
+```
+
+Use instead:
+```
+match a {
+    A { a: 5 } => {},
+    _ => {},
+}
+```

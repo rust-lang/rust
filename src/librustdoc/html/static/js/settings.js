@@ -1,6 +1,6 @@
 // Local js definitions:
 /* global getSettingValue, getVirtualKey, updateLocalStorage, updateSystemTheme */
-/* global addClass, removeClass, onEach, onEachLazy */
+/* global addClass, removeClass, onEach, onEachLazy, blurHandler, elemIsInParent */
 /* global MAIN_ID, getVar, getSettingsButton */
 
 "use strict";
@@ -18,6 +18,13 @@
             case "use-system-theme":
                 updateSystemTheme();
                 updateLightAndDark();
+                break;
+            case "line-numbers":
+                if (value === true) {
+                    window.rustdoc_add_line_numbers_to_examples();
+                } else {
+                    window.rustdoc_remove_line_numbers_from_examples();
+                }
                 break;
         }
     }
@@ -209,6 +216,7 @@
         const innerHTML = `<div class="settings">${buildSettingsPageSections(settings)}</div>`;
         const el = document.createElement(elementKind);
         el.id = "settings";
+        el.className = "popover";
         el.innerHTML = innerHTML;
 
         if (isSettingsPage) {
@@ -226,23 +234,8 @@
         settingsMenu.style.display = "";
     }
 
-    function elemIsInParent(elem, parent) {
-        while (elem && elem !== document.body) {
-            if (elem === parent) {
-                return true;
-            }
-            elem = elem.parentElement;
-        }
-        return false;
-    }
-
-    function blurHandler(event) {
-        const settingsButton = getSettingsButton();
-        if (!elemIsInParent(document.activeElement, settingsButton) &&
-            !elemIsInParent(event.relatedTarget, settingsButton)
-        ) {
-            window.hideSettings();
-        }
+    function settingsBlurHandler(event) {
+        blurHandler(event, getSettingsButton(), window.hidePopoverMenus);
     }
 
     if (isSettingsPage) {
@@ -254,26 +247,24 @@
         // We replace the existing "onclick" callback.
         const settingsButton = getSettingsButton();
         const settingsMenu = document.getElementById("settings");
-        window.hideSettings = function() {
-            settingsMenu.style.display = "none";
-        };
         settingsButton.onclick = function(event) {
             if (elemIsInParent(event.target, settingsMenu)) {
                 return;
             }
             event.preventDefault();
-            if (settingsMenu.style.display !== "none") {
-                window.hideSettings();
-            } else {
+            const shouldDisplaySettings = settingsMenu.style.display === "none";
+
+            window.hidePopoverMenus();
+            if (shouldDisplaySettings) {
                 displaySettings();
             }
         };
-        settingsButton.onblur = blurHandler;
-        settingsButton.querySelector("a").onblur = blurHandler;
+        settingsButton.onblur = settingsBlurHandler;
+        settingsButton.querySelector("a").onblur = settingsBlurHandler;
         onEachLazy(settingsMenu.querySelectorAll("input"), el => {
-            el.onblur = blurHandler;
+            el.onblur = settingsBlurHandler;
         });
-        settingsMenu.onblur = blurHandler;
+        settingsMenu.onblur = settingsBlurHandler;
     }
 
     // We now wait a bit for the web browser to end re-computing the DOM...

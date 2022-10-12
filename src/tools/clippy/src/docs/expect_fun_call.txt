@@ -1,0 +1,24 @@
+### What it does
+Checks for calls to `.expect(&format!(...))`, `.expect(foo(..))`,
+etc., and suggests to use `unwrap_or_else` instead
+
+### Why is this bad?
+The function will always be called.
+
+### Known problems
+If the function has side-effects, not calling it will
+change the semantics of the program, but you shouldn't rely on that anyway.
+
+### Example
+```
+foo.expect(&format!("Err {}: {}", err_code, err_msg));
+
+// or
+
+foo.expect(format!("Err {}: {}", err_code, err_msg).as_str());
+```
+
+Use instead:
+```
+foo.unwrap_or_else(|| panic!("Err {}: {}", err_code, err_msg));
+```

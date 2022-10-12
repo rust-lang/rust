@@ -1,7 +1,6 @@
 //! Tests that unwinding from an asm block is caught and forced to abort
 //! when `-C panic=abort`.
 
-// min-llvm-version: 13.0.0
 // only-x86_64
 // compile-flags: -C panic=abort
 // no-prefer-dynamic

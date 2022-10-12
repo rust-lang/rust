@@ -1,10 +1,10 @@
 // edition:2021
 // run-pass
 
-// Test that closures can catpure paths that are more precise than just one level
+// Test that closures can capture paths that are more precise than just one level
 // from the root variable.
 //
-// If the closures can handle such precison we should be able to mutate one path in the closure
+// If the closures can handle such precision we should be able to mutate one path in the closure
 // while being able to mutate another path outside the closure, where the two paths are disjoint
 // after applying two projections on the root variable.
 

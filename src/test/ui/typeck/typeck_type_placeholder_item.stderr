@@ -189,10 +189,10 @@ LL ~     b: (T, T),
    |
 
 error: missing type for `static` item
-  --> $DIR/typeck_type_placeholder_item.rs:73:12
+  --> $DIR/typeck_type_placeholder_item.rs:73:13
    |
 LL |     static A = 42;
-   |            ^ help: provide a type for the static variable: `A: i32`
+   |             ^ help: provide a type for the static variable: `: i32`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/typeck_type_placeholder_item.rs:75:15

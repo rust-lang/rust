@@ -1,4 +1,4 @@
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
 use super::type_variable::TypeVariableOrigin;
@@ -43,7 +43,7 @@ struct VariableLengths {
     region_constraints_len: usize,
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     fn variable_lengths(&self) -> VariableLengths {
         let mut inner = self.inner.borrow_mut();
         VariableLengths {
@@ -167,7 +167,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 }
 
 pub struct InferenceFudger<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     type_vars: (Range<TyVid>, Vec<TypeVariableOrigin>),
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
@@ -229,7 +229,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.val() {
+        if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
             if self.const_vars.0.contains(&vid) {
                 // This variable was created during the fudging.
                 // Recreate it with a fresh variable here.

@@ -1,6 +1,6 @@
 // from rfc2005 test suite
 
-#![feature(let_else)]
+
 
 // Without caching type lookups in FnCtxt.resolve_ty_and_def_ufcs
 // the error below would be reported twice (once when checking

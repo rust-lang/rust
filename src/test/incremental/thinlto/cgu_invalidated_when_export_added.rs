@@ -3,7 +3,7 @@
 
 // rust-lang/rust#69798:
 //
-// This is analgous to cgu_invalidated_when_import_added, but it covers a
+// This is analogous to cgu_invalidated_when_import_added, but it covers a
 // problem uncovered where a change to the *export* set caused a link failure
 // when reusing post-LTO optimized object code.
 

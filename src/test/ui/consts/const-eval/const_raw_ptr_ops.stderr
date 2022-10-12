@@ -1,18 +1,49 @@
-error: pointers cannot be reliably compared during const eval
-  --> $DIR/const_raw_ptr_ops.rs:4:26
+error[E0277]: can't compare `*const i32` with `_` in const contexts
+  --> $DIR/const_raw_ptr_ops.rs:4:43
    |
 LL | const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 };
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                           ^^ no implementation for `*const i32 == _`
    |
-   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+   = help: the trait `~const PartialEq<_>` is not implemented for `*const i32`
+note: the trait `PartialEq<_>` is implemented for `*const i32`, but that implementation is not `const`
+  --> $DIR/const_raw_ptr_ops.rs:4:43
+   |
+LL | const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 };
+   |                                           ^^
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+             i8
+             isize
+           and 6 others
 
-error: pointers cannot be reliably compared during const eval
-  --> $DIR/const_raw_ptr_ops.rs:6:27
+error[E0277]: can't compare `*const i32` with `_` in const contexts
+  --> $DIR/const_raw_ptr_ops.rs:6:44
    |
 LL | const X2: bool = unsafe { 42 as *const i32 == 43 as *const i32 };
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                            ^^ no implementation for `*const i32 == _`
    |
-   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+   = help: the trait `~const PartialEq<_>` is not implemented for `*const i32`
+note: the trait `PartialEq<_>` is implemented for `*const i32`, but that implementation is not `const`
+  --> $DIR/const_raw_ptr_ops.rs:6:44
+   |
+LL | const X2: bool = unsafe { 42 as *const i32 == 43 as *const i32 };
+   |                                            ^^
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+             i8
+             isize
+           and 6 others
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0277`.

@@ -1,4 +1,4 @@
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 #only-x86_64-fortanix-unknown-sgx
 

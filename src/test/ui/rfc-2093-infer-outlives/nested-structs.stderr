@@ -1,10 +1,8 @@
 error: rustc_outlives
   --> $DIR/nested-structs.rs:4:1
    |
-LL | / struct Foo<'a, T> {
-LL | |     field1: Bar<'a, T>
-LL | | }
-   | |_^
+LL | struct Foo<'a, T> {
+   | ^^^^^^^^^^^^^^^^^
    |
    = note: T: 'a
 

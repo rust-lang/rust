@@ -97,11 +97,7 @@ declare_clippy_lint! {
 declare_lint_pass!(MapUnit => [OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN]);
 
 fn is_unit_type(ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Tuple(slice) => slice.is_empty(),
-        ty::Never => true,
-        _ => false,
-    }
+    ty.is_unit() || ty.is_never()
 }
 
 fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
@@ -135,12 +131,12 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
         },
         hir::ExprKind::Block(block, _) => {
             match (block.stmts, block.expr.as_ref()) {
-                (&[], Some(inner_expr)) => {
+                ([], Some(inner_expr)) => {
                     // If block only contains an expression,
                     // reduce `{ X }` to `X`
                     reduce_unit_expression(cx, inner_expr)
                 },
-                (&[ref inner_stmt], None) => {
+                ([inner_stmt], None) => {
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.kind {
@@ -169,12 +165,12 @@ fn unit_closure<'tcx>(
     expr: &hir::Expr<'_>,
 ) -> Option<(&'tcx hir::Param<'tcx>, &'tcx hir::Expr<'tcx>)> {
     if_chain! {
-        if let hir::ExprKind::Closure(_, decl, inner_expr_id, _, _) = expr.kind;
-        let body = cx.tcx.hir().body(inner_expr_id);
+        if let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = expr.kind;
+        let body = cx.tcx.hir().body(body);
         let body_expr = &body.value;
-        if decl.inputs.len() == 1;
+        if fn_decl.inputs.len() == 1;
         if is_unit_expression(cx, body_expr);
-        if let Some(binding) = iter_input_pats(decl, body).next();
+        if let Some(binding) = iter_input_pats(fn_decl, body).next();
         then {
             return Some((binding, body_expr));
         }
@@ -198,14 +194,16 @@ fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
 
 #[must_use]
 fn suggestion_msg(function_type: &str, map_type: &str) -> String {
-    format!(
-        "called `map(f)` on an `{0}` value where `f` is a {1} that returns the unit type `()`",
-        map_type, function_type
-    )
+    format!("called `map(f)` on an `{map_type}` value where `f` is a {function_type} that returns the unit type `()`")
 }
 
-fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr<'_>, map_args: &[hir::Expr<'_>]) {
-    let var_arg = &map_args[0];
+fn lint_map_unit_fn(
+    cx: &LateContext<'_>,
+    stmt: &hir::Stmt<'_>,
+    expr: &hir::Expr<'_>,
+    map_args: (&hir::Expr<'_>, &[hir::Expr<'_>]),
+) {
+    let var_arg = &map_args.0;
 
     let (map_type, variant, lint) = if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::Option) {
         ("Option", "Some", OPTION_MAP_UNIT_FN)
@@ -214,7 +212,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
     } else {
         return;
     };
-    let fn_arg = &map_args[1];
+    let fn_arg = &map_args.1[0];
 
     if is_unit_function(cx, fn_arg) {
         let mut applicability = Applicability::MachineApplicable;

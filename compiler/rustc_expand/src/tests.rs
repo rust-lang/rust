@@ -136,7 +136,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
         let mut msp = MultiSpan::from_span(primary_span);
         for span_label in span_labels {
             let span = make_span(&file_text, &span_label.start, &span_label.end);
-            msp.push_span_label(span, span_label.label.to_string());
+            msp.push_span_label(span, span_label.label);
             println!("span: {:?} label: {:?}", span, span_label.label);
             println!("text: {:?}", source_map.span_to_snippet(span));
         }

@@ -52,14 +52,8 @@ LL | struct S { x: u8, y: u8 }
 note: the following trait must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-LL | / pub trait AddAssign<Rhs = Self> {
-LL | |     /// Performs the `+=` operation.
-LL | |     ///
-LL | |     /// # Example
-...  |
-LL | |     fn add_assign(&mut self, rhs: Rhs);
-LL | | }
-   | |_^
+LL | pub trait AddAssign<Rhs = Self> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0067]: invalid left-hand side of assignment
   --> $DIR/note-unsupported.rs:17:22

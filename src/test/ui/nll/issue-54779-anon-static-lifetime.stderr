@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-54779-anon-static-lifetime.rs:34:24
+  --> $DIR/issue-54779-anon-static-lifetime.rs:32:24
    |
 LL |         cx: &dyn DebugContext,
    |             - let's call the lifetime of this reference `'1`

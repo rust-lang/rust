@@ -4,6 +4,7 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
+use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::fmt as numfmt;
@@ -117,6 +118,10 @@ pub trait Write {
     /// # Errors
     ///
     /// This function will return an instance of [`Error`] on error.
+    ///
+    /// The purpose of std::fmt::Error is to abort the formatting operation when the underlying
+    /// destination encounters some error preventing it from accepting more text; it should
+    /// generally be propagated rather than handled, at least when implementing formatting traits.
     ///
     /// # Examples
     ///
@@ -320,6 +325,7 @@ macro_rules! arg_new {
     };
 }
 
+#[rustc_diagnostic_item = "ArgumentV1Methods"]
 impl<'a> ArgumentV1<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
@@ -692,7 +698,7 @@ pub(crate) mod macros {
     /// Derive macro generating an impl of the trait `Debug`.
     #[rustc_builtin_macro]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-    #[allow_internal_unstable(core_intrinsics)]
+    #[allow_internal_unstable(core_intrinsics, fmt_helpers_for_derive)]
     pub macro Debug($item:item) {
         /* compiler built-in */
     }
@@ -703,12 +709,19 @@ pub use macros::Debug;
 
 /// Format trait for an empty format, `{}`.
 ///
+/// Implementing this trait for a type will automatically implement the
+/// [`ToString`][tostring] trait for the type, allowing the usage
+/// of the [`.to_string()`][tostring_function] method. Prefer implementing
+/// the `Display` trait for a type, rather than [`ToString`][tostring].
+///
 /// `Display` is similar to [`Debug`], but `Display` is for user-facing
 /// output, and so cannot be derived.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
 /// [module]: ../../std/fmt/index.html
+/// [tostring]: ../../std/string/trait.ToString.html
+/// [tostring_function]: ../../std/string/trait.ToString.html#tymethod.to_string
 ///
 /// # Examples
 ///
@@ -1813,7 +1826,7 @@ impl<'a> Formatter<'a> {
     ///             write!(formatter,
     ///                    "Foo({}{})",
     ///                    if self.0 < 0 { '-' } else { '+' },
-    ///                    self.0)
+    ///                    self.0.abs())
     ///         } else {
     ///             write!(formatter, "Foo({})", self.0)
     ///         }
@@ -1821,6 +1834,7 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// assert_eq!(&format!("{:+}", Foo(23)), "Foo(+23)");
+    /// assert_eq!(&format!("{:+}", Foo(-23)), "Foo(-23)");
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[must_use]
@@ -1963,6 +1977,129 @@ impl<'a> Formatter<'a> {
         builders::debug_struct_new(self, name)
     }
 
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_struct_fields_finish` is more general, but this is faster for 1 field.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_field1_finish<'b>(
+        &'b mut self,
+        name: &str,
+        name1: &str,
+        value1: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_struct_new(self, name);
+        builder.field(name1, value1);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_struct_fields_finish` is more general, but this is faster for 2 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_field2_finish<'b>(
+        &'b mut self,
+        name: &str,
+        name1: &str,
+        value1: &dyn Debug,
+        name2: &str,
+        value2: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_struct_new(self, name);
+        builder.field(name1, value1);
+        builder.field(name2, value2);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_struct_fields_finish` is more general, but this is faster for 3 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_field3_finish<'b>(
+        &'b mut self,
+        name: &str,
+        name1: &str,
+        value1: &dyn Debug,
+        name2: &str,
+        value2: &dyn Debug,
+        name3: &str,
+        value3: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_struct_new(self, name);
+        builder.field(name1, value1);
+        builder.field(name2, value2);
+        builder.field(name3, value3);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_struct_fields_finish` is more general, but this is faster for 4 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_field4_finish<'b>(
+        &'b mut self,
+        name: &str,
+        name1: &str,
+        value1: &dyn Debug,
+        name2: &str,
+        value2: &dyn Debug,
+        name3: &str,
+        value3: &dyn Debug,
+        name4: &str,
+        value4: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_struct_new(self, name);
+        builder.field(name1, value1);
+        builder.field(name2, value2);
+        builder.field(name3, value3);
+        builder.field(name4, value4);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_struct_fields_finish` is more general, but this is faster for 5 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_field5_finish<'b>(
+        &'b mut self,
+        name: &str,
+        name1: &str,
+        value1: &dyn Debug,
+        name2: &str,
+        value2: &dyn Debug,
+        name3: &str,
+        value3: &dyn Debug,
+        name4: &str,
+        value4: &dyn Debug,
+        name5: &str,
+        value5: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_struct_new(self, name);
+        builder.field(name1, value1);
+        builder.field(name2, value2);
+        builder.field(name3, value3);
+        builder.field(name4, value4);
+        builder.field(name5, value5);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// For the cases not covered by `debug_struct_field[12345]_finish`.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_fields_finish<'b>(
+        &'b mut self,
+        name: &str,
+        names: &[&str],
+        values: &[&dyn Debug],
+    ) -> Result {
+        assert_eq!(names.len(), values.len());
+        let mut builder = builders::debug_struct_new(self, name);
+        for (name, value) in iter::zip(names, values) {
+            builder.field(name, value);
+        }
+        builder.finish()
+    }
+
     /// Creates a `DebugTuple` builder designed to assist with creation of
     /// `fmt::Debug` implementations for tuple structs.
     ///
@@ -1992,6 +2129,108 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
         builders::debug_tuple_new(self, name)
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_tuple_fields_finish` is more general, but this is faster for 1 field.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_field1_finish<'b>(&'b mut self, name: &str, value1: &dyn Debug) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        builder.field(value1);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_tuple_fields_finish` is more general, but this is faster for 2 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_field2_finish<'b>(
+        &'b mut self,
+        name: &str,
+        value1: &dyn Debug,
+        value2: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        builder.field(value1);
+        builder.field(value2);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_tuple_fields_finish` is more general, but this is faster for 3 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_field3_finish<'b>(
+        &'b mut self,
+        name: &str,
+        value1: &dyn Debug,
+        value2: &dyn Debug,
+        value3: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        builder.field(value1);
+        builder.field(value2);
+        builder.field(value3);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_tuple_fields_finish` is more general, but this is faster for 4 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_field4_finish<'b>(
+        &'b mut self,
+        name: &str,
+        value1: &dyn Debug,
+        value2: &dyn Debug,
+        value3: &dyn Debug,
+        value4: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        builder.field(value1);
+        builder.field(value2);
+        builder.field(value3);
+        builder.field(value4);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_tuple_fields_finish` is more general, but this is faster for 5 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_field5_finish<'b>(
+        &'b mut self,
+        name: &str,
+        value1: &dyn Debug,
+        value2: &dyn Debug,
+        value3: &dyn Debug,
+        value4: &dyn Debug,
+        value5: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        builder.field(value1);
+        builder.field(value2);
+        builder.field(value3);
+        builder.field(value4);
+        builder.field(value5);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// For the cases not covered by `debug_tuple_field[12345]_finish`.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_fields_finish<'b>(
+        &'b mut self,
+        name: &str,
+        values: &[&dyn Debug],
+    ) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        for value in values {
+            builder.field(value);
+        }
+        builder.finish()
     }
 
     /// Creates a `DebugList` builder designed to assist with creation of
@@ -2233,35 +2472,41 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        /// Since the formatting will be identical for all pointer types, use a non-monomorphized
-        /// implementation for the actual formatting to reduce the amount of codegen work needed
-        fn inner(ptr: *const (), f: &mut Formatter<'_>) -> Result {
-            let old_width = f.width;
-            let old_flags = f.flags;
-
-            // The alternate flag is already treated by LowerHex as being special-
-            // it denotes whether to prefix with 0x. We use it to work out whether
-            // or not to zero extend, and then unconditionally set it to get the
-            // prefix.
-            if f.alternate() {
-                f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
-
-                if f.width.is_none() {
-                    f.width = Some((usize::BITS / 4) as usize + 2);
-                }
-            }
-            f.flags |= 1 << (FlagV1::Alternate as u32);
-
-            let ret = LowerHex::fmt(&(ptr.addr()), f);
-
-            f.width = old_width;
-            f.flags = old_flags;
-
-            ret
-        }
-
-        inner(*self as *const (), f)
+        // Cast is needed here because `.addr()` requires `T: Sized`.
+        pointer_fmt_inner((*self as *const ()).addr(), f)
     }
+}
+
+/// Since the formatting will be identical for all pointer types, use a non-monomorphized
+/// implementation for the actual formatting to reduce the amount of codegen work needed.
+///
+/// This uses `ptr_addr: usize` and not `ptr: *const ()` to be able to use this for
+/// `fn(...) -> ...` without using [problematic] "Oxford Casts".
+///
+/// [problematic]: https://github.com/rust-lang/rust/issues/95489
+pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Result {
+    let old_width = f.width;
+    let old_flags = f.flags;
+
+    // The alternate flag is already treated by LowerHex as being special-
+    // it denotes whether to prefix with 0x. We use it to work out whether
+    // or not to zero extend, and then unconditionally set it to get the
+    // prefix.
+    if f.alternate() {
+        f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
+
+        if f.width.is_none() {
+            f.width = Some((usize::BITS / 4) as usize + 2);
+        }
+    }
+    f.flags |= 1 << (FlagV1::Alternate as u32);
+
+    let ret = LowerHex::fmt(&ptr_addr, f);
+
+    f.width = old_width;
+    f.flags = old_flags;
+
+    ret
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2307,21 +2552,38 @@ macro_rules! peel {
 macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<$($name:Debug),+> Debug for ($($name,)+) where last_type!($($name,)+): ?Sized {
-            #[allow(non_snake_case, unused_assignments)]
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-                let mut builder = f.debug_tuple("");
-                let ($(ref $name,)+) = *self;
-                $(
-                    builder.field(&$name);
-                )+
+        maybe_tuple_doc! {
+            $($name)+ @
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl<$($name:Debug),+> Debug for ($($name,)+) where last_type!($($name,)+): ?Sized {
+                #[allow(non_snake_case, unused_assignments)]
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    let mut builder = f.debug_tuple("");
+                    let ($(ref $name,)+) = *self;
+                    $(
+                        builder.field(&$name);
+                    )+
 
-                builder.finish()
+                    builder.finish()
+                }
             }
         }
         peel! { $($name,)+ }
     )
+}
+
+macro_rules! maybe_tuple_doc {
+    ($a:ident @ #[$meta:meta] $item:item) => {
+        #[doc(fake_variadic)]
+        #[doc = "This trait is implemented for tuples up to twelve items long."]
+        #[$meta]
+        $item
+    };
+    ($a:ident $($rest_a:ident)+ @ #[$meta:meta] $item:item) => {
+        #[doc(hidden)]
+        #[$meta]
+        $item
+    };
 }
 
 macro_rules! last_type {
@@ -2329,7 +2591,7 @@ macro_rules! last_type {
     ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
 }
 
-tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
+tuple! { E, D, C, B, A, Z, Y, X, W, V, U, T, }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for [T] {
@@ -2348,7 +2610,7 @@ impl Debug for () {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for PhantomData<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.debug_struct("PhantomData").finish()
+        write!(f, "PhantomData<{}>", crate::any::type_name::<T>())
     }
 }
 

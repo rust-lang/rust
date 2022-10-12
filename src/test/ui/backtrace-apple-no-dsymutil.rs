@@ -1,9 +1,8 @@
 // run-pass
 
+// compile-flags:-Cstrip=none
 // compile-flags:-g -Csplit-debuginfo=unpacked
 // only-macos
-
-#![feature(backtrace)]
 
 use std::process::Command;
 use std::str;

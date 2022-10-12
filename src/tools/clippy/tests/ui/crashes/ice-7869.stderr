@@ -8,8 +8,8 @@ LL | |     TyöValmis,
 LL | | }
    | |_^
    |
-   = note: `-D clippy::enum-variant-names` implied by `-D warnings`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
+   = note: `-D clippy::enum-variant-names` implied by `-D warnings`
 
 error: aborting due to previous error
 

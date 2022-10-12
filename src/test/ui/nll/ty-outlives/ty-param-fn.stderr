@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-fn.rs:11:5
+  --> $DIR/ty-param-fn.rs:9:5
    |
 LL |     x
    |     ^ ...so that the type `T` will meet its required lifetime bounds
@@ -10,7 +10,7 @@ LL |     T: Debug + 'a,
    |              ++++
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-fn.rs:26:5
+  --> $DIR/ty-param-fn.rs:24:5
    |
 LL |     x
    |     ^ ...so that the type `T` will meet its required lifetime bounds

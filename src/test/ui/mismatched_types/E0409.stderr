@@ -17,6 +17,10 @@ LL |         (0, ref y) | (y, 0) => {}
    |             first introduced with type `&{integer}` here
    |
    = note: in the same arm, a binding must have the same type in all alternatives
+help: consider adding `ref`
+   |
+LL |         (0, ref y) | (ref y, 0) => {}
+   |                       +++
 
 error: aborting due to 2 previous errors
 

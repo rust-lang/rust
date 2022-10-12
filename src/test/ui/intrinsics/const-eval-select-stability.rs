@@ -1,5 +1,6 @@
 #![feature(staged_api)]
 #![feature(const_eval_select)]
+#![feature(core_intrinsics)]
 #![stable(since = "1.0", feature = "ui_test")]
 
 use std::intrinsics::const_eval_select;

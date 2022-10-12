@@ -33,7 +33,7 @@ jobs:
     - name: disable git eol translation
       run: git config --global core.autocrlf false
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
       # Run build
     - name: Install Rustup using win.rustup.rs
@@ -57,13 +57,6 @@ jobs:
       if: matrix.target == 'x86_64-pc-windows-gnu' && matrix.channel == 'nightly'
       shell: bash
 
-    - name: build
-      run: |
-        rustc -Vv
-        cargo -V
-        cargo build
+    - name: Build and Test
       shell: cmd
-
-    - name: test
-      run: cargo test
-      shell: cmd
+      run: ci\build_and_test.bat

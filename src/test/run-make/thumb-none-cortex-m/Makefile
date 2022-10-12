@@ -1,4 +1,4 @@
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 # How to run this
 # $ ./x.py clean

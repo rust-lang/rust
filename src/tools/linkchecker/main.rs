@@ -215,6 +215,7 @@ impl Checker {
                 || url.starts_with("ftp:")
                 || url.starts_with("irc:")
                 || url.starts_with("data:")
+                || url.starts_with("mailto:")
             {
                 report.links_ignored_external += 1;
                 return;
@@ -345,11 +346,6 @@ impl Checker {
                 // Fragments like `#1-6` are most likely line numbers to be
                 // interpreted by javascript, so we're ignoring these
                 if fragment.splitn(2, '-').all(|f| f.chars().all(|c| c.is_numeric())) {
-                    return;
-                }
-
-                // These appear to be broken in mdbook right now?
-                if fragment.starts_with('-') {
                     return;
                 }
 

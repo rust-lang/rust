@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: $(TMPDIR)/$(call BIN,bar)
 	$(call RUN,bar)

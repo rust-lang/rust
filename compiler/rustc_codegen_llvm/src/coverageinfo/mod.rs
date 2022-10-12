@@ -28,7 +28,6 @@ use std::cell::RefCell;
 use std::ffi::CString;
 
 use std::iter;
-use tracing::debug;
 
 pub mod mapgen;
 

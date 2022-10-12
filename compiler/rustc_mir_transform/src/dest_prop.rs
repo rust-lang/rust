@@ -104,7 +104,7 @@ use rustc_middle::mir::{
     Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::{MaybeInitializedLocals, MaybeLiveLocals};
+use rustc_mir_dataflow::impls::{borrowed_locals, MaybeInitializedLocals, MaybeLiveLocals};
 use rustc_mir_dataflow::Analysis;
 
 // Empirical measurements have resulted in some observations:
@@ -122,7 +122,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
         //
         // Only run at mir-opt-level=3 or higher for now (we don't fix up debuginfo and remove
         // storage statements at the moment).
-        sess.opts.debugging_opts.unsound_mir_opts && sess.mir_opt_level() >= 3
+        sess.opts.unstable_opts.unsound_mir_opts && sess.mir_opt_level() >= 3
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -150,7 +150,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             def_id,
             body.local_decls.len(),
             relevant,
-            body.basic_blocks().len()
+            body.basic_blocks.len()
         );
         if relevant > MAX_LOCALS {
             warn!(
@@ -159,11 +159,11 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             );
             return;
         }
-        if body.basic_blocks().len() > MAX_BLOCKS {
+        if body.basic_blocks.len() > MAX_BLOCKS {
             warn!(
                 "too many blocks in {:?} ({}, max is {}), not optimizing",
                 def_id,
-                body.basic_blocks().len(),
+                body.basic_blocks.len(),
                 MAX_BLOCKS
             );
             return;
@@ -537,7 +537,7 @@ impl<'a> Conflicts<'a> {
             | StatementKind::FakeRead(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::Nop => {}
         }
     }
@@ -805,7 +805,7 @@ fn find_candidates<'tcx>(body: &Body<'tcx>) -> Vec<CandidateAssignment<'tcx>> {
     let mut visitor = FindAssignments {
         body,
         candidates: Vec::new(),
-        ever_borrowed_locals: ever_borrowed_locals(body),
+        ever_borrowed_locals: borrowed_locals(body),
         locals_used_as_array_index: locals_used_as_array_index(body),
     };
     visitor.visit_body(body);
@@ -883,69 +883,6 @@ fn is_local_required(local: Local, body: &Body<'_>) -> bool {
     match body.local_kind(local) {
         LocalKind::Arg | LocalKind::ReturnPointer => true,
         LocalKind::Var | LocalKind::Temp => false,
-    }
-}
-
-/// Walks MIR to find all locals that have their address taken anywhere.
-fn ever_borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
-    let mut visitor = BorrowCollector { locals: BitSet::new_empty(body.local_decls.len()) };
-    visitor.visit_body(body);
-    visitor.locals
-}
-
-struct BorrowCollector {
-    locals: BitSet<Local>,
-}
-
-impl<'tcx> Visitor<'tcx> for BorrowCollector {
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        self.super_rvalue(rvalue, location);
-
-        match rvalue {
-            Rvalue::AddressOf(_, borrowed_place) | Rvalue::Ref(_, _, borrowed_place) => {
-                if !borrowed_place.is_indirect() {
-                    self.locals.insert(borrowed_place.local);
-                }
-            }
-
-            Rvalue::Cast(..)
-            | Rvalue::ShallowInitBox(..)
-            | Rvalue::Use(..)
-            | Rvalue::Repeat(..)
-            | Rvalue::Len(..)
-            | Rvalue::BinaryOp(..)
-            | Rvalue::CheckedBinaryOp(..)
-            | Rvalue::NullaryOp(..)
-            | Rvalue::UnaryOp(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Aggregate(..)
-            | Rvalue::ThreadLocalRef(..) => {}
-        }
-    }
-
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        self.super_terminator(terminator, location);
-
-        match terminator.kind {
-            TerminatorKind::Drop { place: dropped_place, .. }
-            | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
-                self.locals.insert(dropped_place.local);
-            }
-
-            TerminatorKind::Abort
-            | TerminatorKind::Assert { .. }
-            | TerminatorKind::Call { .. }
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Return
-            | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Unreachable
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::InlineAsm { .. } => {}
-        }
     }
 }
 

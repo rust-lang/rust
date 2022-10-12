@@ -41,6 +41,23 @@ fn bitset_iter_works_2() {
 }
 
 #[test]
+fn bitset_clone_from() {
+    let mut a: BitSet<usize> = BitSet::new_empty(10);
+    a.insert(4);
+    a.insert(7);
+    a.insert(9);
+
+    let mut b = BitSet::new_empty(2);
+    b.clone_from(&a);
+    assert_eq!(b.domain_size(), 10);
+    assert_eq!(b.iter().collect::<Vec<_>>(), [4, 7, 9]);
+
+    b.clone_from(&BitSet::new_empty(40));
+    assert_eq!(b.domain_size(), 40);
+    assert_eq!(b.iter().collect::<Vec<_>>(), []);
+}
+
+#[test]
 fn union_two_sets() {
     let mut set1: BitSet<usize> = BitSet::new_empty(65);
     let mut set2: BitSet<usize> = BitSet::new_empty(65);
@@ -342,38 +359,82 @@ fn chunked_bitset() {
     b10000b.assert_valid();
 }
 
+fn with_elements_chunked(elements: &[usize], domain_size: usize) -> ChunkedBitSet<usize> {
+    let mut s = ChunkedBitSet::new_empty(domain_size);
+    for &e in elements {
+        assert!(s.insert(e));
+    }
+    s
+}
+
+fn with_elements_standard(elements: &[usize], domain_size: usize) -> BitSet<usize> {
+    let mut s = BitSet::new_empty(domain_size);
+    for &e in elements {
+        assert!(s.insert(e));
+    }
+    s
+}
+
+#[test]
+fn chunked_bitset_into_bitset_operations() {
+    let a = vec![1, 5, 7, 11, 15, 2000, 3000];
+    let b = vec![3, 4, 11, 3000, 4000];
+    let aub = vec![1, 3, 4, 5, 7, 11, 15, 2000, 3000, 4000];
+    let aib = vec![11, 3000];
+
+    let b = with_elements_chunked(&b, 9876);
+
+    let mut union = with_elements_standard(&a, 9876);
+    assert!(union.union(&b));
+    assert!(!union.union(&b));
+    assert!(union.iter().eq(aub.iter().copied()));
+
+    let mut intersection = with_elements_standard(&a, 9876);
+    assert!(intersection.intersect(&b));
+    assert!(!intersection.intersect(&b));
+    assert!(intersection.iter().eq(aib.iter().copied()));
+}
+
 #[test]
 fn chunked_bitset_iter() {
-    fn with_elements(elements: &[usize], domain_size: usize) -> ChunkedBitSet<usize> {
-        let mut s = ChunkedBitSet::new_empty(domain_size);
-        for &e in elements {
-            s.insert(e);
+    fn check_iter(bit: &ChunkedBitSet<usize>, vec: &Vec<usize>) {
+        // Test collecting via both `.next()` and `.fold()` calls, to make sure both are correct
+        let mut collect_next = Vec::new();
+        let mut bit_iter = bit.iter();
+        while let Some(item) = bit_iter.next() {
+            collect_next.push(item);
         }
-        s
+        assert_eq!(vec, &collect_next);
+
+        let collect_fold = bit.iter().fold(Vec::new(), |mut v, item| {
+            v.push(item);
+            v
+        });
+        assert_eq!(vec, &collect_fold);
     }
 
     // Empty
     let vec: Vec<usize> = Vec::new();
-    let bit = with_elements(&vec, 9000);
-    assert_eq!(vec, bit.iter().collect::<Vec<_>>());
+    let bit = with_elements_chunked(&vec, 9000);
+    check_iter(&bit, &vec);
 
     // Filled
     let n = 10000;
     let vec: Vec<usize> = (0..n).collect();
-    let bit = with_elements(&vec, n);
-    assert_eq!(vec, bit.iter().collect::<Vec<_>>());
+    let bit = with_elements_chunked(&vec, n);
+    check_iter(&bit, &vec);
 
     // Filled with trailing zeros
     let n = 10000;
     let vec: Vec<usize> = (0..n).collect();
-    let bit = with_elements(&vec, 2 * n);
-    assert_eq!(vec, bit.iter().collect::<Vec<_>>());
+    let bit = with_elements_chunked(&vec, 2 * n);
+    check_iter(&bit, &vec);
 
     // Mixed
     let n = 12345;
     let vec: Vec<usize> = vec![0, 1, 2, 2010, 2047, 2099, 6000, 6002, 6004];
-    let bit = with_elements(&vec, n);
-    assert_eq!(vec, bit.iter().collect::<Vec<_>>());
+    let bit = with_elements_chunked(&vec, n);
+    check_iter(&bit, &vec);
 }
 
 #[test]

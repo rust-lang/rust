@@ -43,6 +43,7 @@ rustc_index::newtype_index! {
 impl DepNodeIndex {
     pub const INVALID: DepNodeIndex = DepNodeIndex::MAX;
     pub const SINGLETON_DEPENDENCYLESS_ANON_NODE: DepNodeIndex = DepNodeIndex::from_u32(0);
+    pub const FOREVER_RED_NODE: DepNodeIndex = DepNodeIndex::from_u32(1);
 }
 
 impl std::convert::From<DepNodeIndex> for QueryInvocationId {
@@ -59,6 +60,7 @@ pub enum DepNodeColor {
 }
 
 impl DepNodeColor {
+    #[inline]
     pub fn is_green(self) -> bool {
         match self {
             DepNodeColor::Red => false,
@@ -124,6 +126,8 @@ impl<K: DepKind> DepGraph<K> {
             record_stats,
         );
 
+        let colors = DepNodeColorMap::new(prev_graph_node_count);
+
         // Instantiate a dependy-less node only once for anonymous queries.
         let _green_node_index = current.intern_new_node(
             profiler,
@@ -131,7 +135,19 @@ impl<K: DepKind> DepGraph<K> {
             smallvec![],
             Fingerprint::ZERO,
         );
-        debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
+        assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
+
+        // Instantiate a dependy-less red node only once for anonymous queries.
+        let (_red_node_index, _prev_and_index) = current.intern_node(
+            profiler,
+            &prev_graph,
+            DepNode { kind: DepKind::RED, hash: Fingerprint::ZERO.into() },
+            smallvec![],
+            None,
+            false,
+        );
+        assert_eq!(_red_node_index, DepNodeIndex::FOREVER_RED_NODE);
+        assert!(matches!(_prev_and_index, None | Some((_, DepNodeColor::Red))));
 
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
@@ -140,7 +156,7 @@ impl<K: DepKind> DepGraph<K> {
                 current,
                 processed_side_effects: Default::default(),
                 previous: prev_graph,
-                colors: DepNodeColorMap::new(prev_graph_node_count),
+                colors,
                 debug_loaded_from_disk: Default::default(),
             })),
             virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
@@ -328,12 +344,10 @@ impl<K: DepKind> DepGraph<K> {
 
         let dcx = cx.dep_context();
         let hashing_timer = dcx.profiler().incr_result_hashing();
-        let current_fingerprint = hash_result.map(|f| {
-            let mut hcx = dcx.create_stable_hashing_context();
-            f(&mut hcx, &result)
-        });
+        let current_fingerprint =
+            hash_result.map(|f| dcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, &result)));
 
-        let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
+        let print_status = cfg!(debug_assertions) && dcx.sess().opts.unstable_opts.dep_tasks;
 
         // Intern the new `DepNode`.
         let (dep_node_index, prev_and_color) = data.current.intern_node(
@@ -750,7 +764,7 @@ impl<K: DepKind> DepGraph<K> {
             dep_node
         );
 
-        if unlikely!(!side_effects.is_empty()) {
+        if !side_effects.is_empty() {
             self.emit_side_effects(tcx, data, dep_node_index, side_effects);
         }
 
@@ -842,7 +856,7 @@ impl<K: DepKind> DepGraph<K> {
         if let Some(data) = &self.data {
             data.current.encoder.steal().finish(profiler)
         } else {
-            Ok(())
+            Ok(0)
         }
     }
 
@@ -886,8 +900,12 @@ impl<K: DepKind> DepGraph<K> {
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct WorkProduct {
     pub cgu_name: String,
-    /// Saved file associated with this CGU.
-    pub saved_file: Option<String>,
+    /// Saved files associated with this CGU. In each key/value pair, the value is the path to the
+    /// saved file and the key is some identifier for the type of file being saved.
+    ///
+    /// By convention, file extensions are currently used as identifiers, i.e. the key "o" maps to
+    /// the object file's path, and "dwo" to the dwarf object file's path.
+    pub saved_files: FxHashMap<String, String>,
 }
 
 // Index type for `DepNodeData`'s edges.
@@ -967,6 +985,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         let nanos = duration.as_secs() * 1_000_000_000 + duration.subsec_nanos() as u64;
         let mut stable_hasher = StableHasher::new();
         nanos.hash(&mut stable_hasher);
+        let anon_id_seed = stable_hasher.finish();
 
         #[cfg(debug_assertions)]
         let forbidden_edge = match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
@@ -1002,7 +1021,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 )
             }),
             prev_index_to_index: Lock::new(IndexVec::from_elem_n(None, prev_graph_node_count)),
-            anon_id_seed: stable_hasher.finish(),
+            anon_id_seed,
             #[cfg(debug_assertions)]
             forbidden_edge,
             total_read_count: AtomicU64::new(0),

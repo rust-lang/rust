@@ -2,16 +2,36 @@
 //! compilation. This is used for incremental compilation tests and debug
 //! output.
 
+use crate::errors::{CguNotRecorded, IncorrectCguReuseType};
+use crate::Session;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_span::{Span, Symbol};
+use std::borrow::Cow;
+use std::fmt::{self};
 use std::sync::{Arc, Mutex};
-use tracing::debug;
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum CguReuse {
     No,
     PreLto,
     PostLto,
+}
+
+impl fmt::Display for CguReuse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            CguReuse::No => write!(f, "No"),
+            CguReuse::PreLto => write!(f, "PreLto "),
+            CguReuse::PostLto => write!(f, "PostLto "),
+        }
+    }
+}
+
+impl IntoDiagnosticArg for CguReuse {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -84,7 +104,7 @@ impl CguReuseTracker {
         }
     }
 
-    pub fn check_expected_reuse(&self, diag: &rustc_errors::Handler) {
+    pub fn check_expected_reuse(&self, sess: &Session) {
         if let Some(ref data) = self.data {
             let data = data.lock().unwrap();
 
@@ -98,19 +118,17 @@ impl CguReuseTracker {
                     };
 
                     if error {
-                        let at_least = if at_least { "at least " } else { "" };
-                        let msg = format!(
-                            "CGU-reuse for `{cgu_user_name}` is `{actual_reuse:?}` but \
-                                           should be {at_least}`{expected_reuse:?}`"
-                        );
-                        diag.span_err(error_span.0, &msg);
+                        let at_least = if at_least { 1 } else { 0 };
+                        IncorrectCguReuseType {
+                            span: error_span.0,
+                            cgu_user_name: &cgu_user_name,
+                            actual_reuse,
+                            expected_reuse,
+                            at_least,
+                        };
                     }
                 } else {
-                    let msg = format!(
-                        "CGU-reuse for `{cgu_user_name}` (mangled: `{cgu_name}`) was \
-                                       not recorded"
-                    );
-                    diag.span_fatal(error_span.0, &msg)
+                    sess.emit_fatal(CguNotRecorded { cgu_user_name, cgu_name });
                 }
             }
         }

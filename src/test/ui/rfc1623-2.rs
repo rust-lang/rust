@@ -9,5 +9,6 @@ static NON_ELIDABLE_FN: &fn(&u8, &u8) -> &u8 =
 //~^ ERROR missing lifetime specifier [E0106]
     &(non_elidable as fn(&u8, &u8) -> &u8);
     //~^ ERROR missing lifetime specifier [E0106]
+    //~| ERROR non-primitive cast
 
 fn main() {}

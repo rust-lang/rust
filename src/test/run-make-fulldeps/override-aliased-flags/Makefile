@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # FIXME: it would be good to check that it's actually the rightmost flags
 # that are used when multiple flags are specified, but I can't think of a

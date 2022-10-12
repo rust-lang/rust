@@ -72,10 +72,6 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     ) -> Self {
         let layout = bx.layout_of(ty);
 
-        if layout.is_zst() {
-            return OperandRef::new_zst(bx, layout);
-        }
-
         let val = match val {
             ConstValue::Scalar(x) => {
                 let Abi::Scalar(scalar) = layout.abi else {
@@ -84,6 +80,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
                 OperandValue::Immediate(llval)
             }
+            ConstValue::ZeroSized => return OperandRef::new_zst(bx, layout),
             ConstValue::Slice { data, start, end } => {
                 let Abi::ScalarPair(a_scalar, _) = layout.abi else {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
@@ -118,22 +115,20 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     }
 
     pub fn deref<Cx: LayoutTypeMethods<'tcx>>(self, cx: &Cx) -> PlaceRef<'tcx, V> {
+        if self.layout.ty.is_box() {
+            bug!("dereferencing {:?} in codegen", self.layout.ty);
+        }
+
         let projected_ty = self
             .layout
             .ty
             .builtin_deref(true)
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self))
             .ty;
+
         let (llptr, llextra) = match self.val {
             OperandValue::Immediate(llptr) => (llptr, None),
-            OperandValue::Pair(llptr, llextra) => {
-                // if the box's allocator isn't a ZST, then "llextra" is actually the allocator
-                if self.layout.ty.is_box() && !self.layout.field(cx, 1).is_zst() {
-                    (llptr, None)
-                } else {
-                    (llptr, Some(llextra))
-                }
-            }
+            OperandValue::Pair(llptr, llextra) => (llptr, Some(llextra)),
             OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self),
         };
         let layout = cx.layout_of(projected_ty);
@@ -357,7 +352,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
 
         // Allocate an appropriate region on the stack, and copy the value into it
         let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
-        let lldst = bx.array_alloca(bx.cx().type_i8(), llsize, max_align);
+        let lldst = bx.byte_array_alloca(llsize, max_align);
         bx.memcpy(lldst, max_align, llptr, min_align, llsize, flags);
 
         // Store the allocated region and the extra to the indirect place.

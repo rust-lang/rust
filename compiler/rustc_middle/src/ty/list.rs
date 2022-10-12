@@ -65,6 +65,10 @@ impl<T> List<T> {
     pub fn len(&self) -> usize {
         self.len
     }
+
+    pub fn as_slice(&self) -> &[T] {
+        self
+    }
 }
 
 impl<T: Copy> List<T> {
@@ -117,8 +121,8 @@ impl<T: fmt::Debug> fmt::Debug for List<T> {
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for List<T> {
     #[inline]
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        (**self).encode(s)
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s);
     }
 }
 

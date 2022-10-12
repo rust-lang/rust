@@ -10,4 +10,4 @@ change in any release.
 
 In the past the most common use case for customizing passes was to omit the `strip-private` pass.
 You can do this more easily, and without risk of the pass being changed, by passing
-[`--document-private-items`](./unstable-features.md#--document-private-items).
+[`--document-private-items`](command-line-arguments.md#--document-private-items-show-items-that-are-not-public).

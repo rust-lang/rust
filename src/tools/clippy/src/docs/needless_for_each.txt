@@ -1,0 +1,24 @@
+### What it does
+Checks for usage of `for_each` that would be more simply written as a
+`for` loop.
+
+### Why is this bad?
+`for_each` may be used after applying iterator transformers like
+`filter` for better readability and performance. It may also be used to fit a simple
+operation on one line.
+But when none of these apply, a simple `for` loop is more idiomatic.
+
+### Example
+```
+let v = vec![0, 1, 2];
+v.iter().for_each(|elem| {
+    println!("{}", elem);
+})
+```
+Use instead:
+```
+let v = vec![0, 1, 2];
+for elem in v.iter() {
+    println!("{}", elem);
+}
+```

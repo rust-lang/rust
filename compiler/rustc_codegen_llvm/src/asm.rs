@@ -3,7 +3,6 @@ use crate::builder::Builder;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm;
-use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -20,7 +19,6 @@ use rustc_target::asm::*;
 
 use libc::{c_char, c_uint};
 use smallvec::SmallVec;
-use tracing::debug;
 
 impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_inline_asm(
@@ -419,13 +417,6 @@ pub(crate) fn inline_asm_call<'ll>(
         let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr().cast(), cons.len());
         debug!("constraint verification result: {:?}", constraints_ok);
         if constraints_ok {
-            if unwind && llvm_util::get_version() < (13, 0, 0) {
-                bx.cx.sess().span_fatal(
-                    line_spans[0],
-                    "unwinding from inline assembly is only supported on llvm >= 13.",
-                );
-            }
-
             let v = llvm::LLVMRustInlineAsm(
                 fty,
                 asm.as_ptr().cast(),
@@ -439,9 +430,9 @@ pub(crate) fn inline_asm_call<'ll>(
             );
 
             let call = if let Some((dest, catch, funclet)) = dest_catch_funclet {
-                bx.invoke(fty, v, inputs, dest, catch, funclet)
+                bx.invoke(fty, None, v, inputs, dest, catch, funclet)
             } else {
-                bx.call(fty, v, inputs, None)
+                bx.call(fty, None, v, inputs, None)
             };
 
             // Store mark in a metadata node so we can map LLVM errors

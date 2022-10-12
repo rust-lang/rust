@@ -1,8 +1,13 @@
 error[E0282]: type annotations needed
-  --> $DIR/fallback_inference.rs:3:27
+  --> $DIR/fallback_inference.rs:4:5
    |
-LL | fn weird() -> PhantomData<impl Sized> {
-   |                           ^^^^^^^^^^ cannot infer type
+LL |     PhantomData
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `PhantomData`
+   |
+help: consider specifying the generic argument
+   |
+LL |     PhantomData::<T>
+   |                +++++
 
 error: aborting due to previous error
 

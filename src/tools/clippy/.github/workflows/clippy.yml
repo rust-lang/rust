@@ -24,6 +24,7 @@ env:
   RUST_BACKTRACE: 1
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
   NO_FMT_TEST: 1
+  CARGO_INCREMENTAL: 0
 
 jobs:
   base:

@@ -1,7 +1,3 @@
-// ignore-compare-mode-nll
-// revisions: base nll
-// [nll]compile-flags: -Zborrowck=mir
-
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 use std::marker::PhantomData;

@@ -1,9 +1,5 @@
 #![allow(dead_code)]
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 // Get<T> is covariant in T
 trait Get<T> {
     fn get(&self) -> T;

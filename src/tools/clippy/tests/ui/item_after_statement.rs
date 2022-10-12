@@ -1,4 +1,5 @@
 #![warn(clippy::items_after_statements)]
+#![allow(clippy::uninlined_format_args)]
 
 fn ok() {
     fn foo() {

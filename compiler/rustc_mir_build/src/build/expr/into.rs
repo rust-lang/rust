@@ -15,14 +15,13 @@ use std::iter;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn expr_into_dest(
         &mut self,
         destination: Place<'tcx>,
         mut block: BasicBlock,
         expr: &Expr<'tcx>,
     ) -> BlockAnd<()> {
-        debug!("expr_into_dest(destination={:?}, block={:?}, expr={:?})", destination, block, expr);
-
         // since we frequently have to reference `self` from within a
         // closure, where `self` would be shadowed, it's easier to
         // just use the name `this` uniformly
@@ -46,7 +45,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                 })
             }
-            ExprKind::Block { body: ref ast_block } => {
+            ExprKind::Block { block: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
             }
             ExprKind::Match { scrutinee, ref arms } => {
@@ -63,15 +62,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         (if_then_scope, then_source_info),
                         LintLevel::Inherited,
                         |this| {
+                            let source_info = if this.is_let(cond) {
+                                let variable_scope = this.new_source_scope(
+                                    then_expr.span,
+                                    LintLevel::Inherited,
+                                    None,
+                                );
+                                this.source_scope = variable_scope;
+                                SourceInfo { span: then_expr.span, scope: variable_scope }
+                            } else {
+                                this.source_info(then_expr.span)
+                            };
                             let (then_block, else_block) =
-                                this.in_if_then_scope(condition_scope, |this| {
+                                this.in_if_then_scope(condition_scope, then_expr.span, |this| {
                                     let then_blk = unpack!(this.then_else_break(
                                         block,
                                         &this.thir[cond],
                                         Some(condition_scope),
                                         condition_scope,
-                                        then_expr.span,
+                                        source_info
                                     ));
+
                                     this.expr_into_dest(destination, then_blk, then_expr)
                                 });
                             then_block.and(else_block)
@@ -96,8 +107,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Let { expr, ref pat } => {
                 let scope = this.local_scope();
-                let (true_block, false_block) = this.in_if_then_scope(scope, |this| {
-                    this.lower_let_expr(block, &this.thir[expr], pat, scope, expr_span)
+                let (true_block, false_block) = this.in_if_then_scope(scope, expr_span, |this| {
+                    this.lower_let_expr(block, &this.thir[expr], pat, scope, None, expr_span)
                 });
 
                 this.cfg.push_assign_constant(
@@ -302,11 +313,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
-            ExprKind::Adt(box Adt {
+            ExprKind::Adt(box AdtExpr {
                 adt_def,
                 variant_index,
                 substs,
-                user_ty,
+                ref user_ty,
                 ref fields,
                 ref base,
             }) => {
@@ -354,9 +365,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             None => {
                                 let place_builder = place_builder.clone();
                                 this.consume_by_copy_or_move(
-                                    place_builder
-                                        .field(n, *ty)
-                                        .into_place(this.tcx, this.typeck_results),
+                                    place_builder.field(n, *ty).into_place(this),
                                 )
                             }
                         })
@@ -366,10 +375,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 let inferred_ty = expr.ty;
-                let user_ty = user_ty.map(|ty| {
+                let user_ty = user_ty.as_ref().map(|user_ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                         span: source_info.span,
-                        user_ty: ty,
+                        user_ty: user_ty.clone(),
                         inferred_ty,
                     })
                 });
@@ -388,7 +397,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
-            ExprKind::InlineAsm { template, ref operands, options, line_spans } => {
+            ExprKind::InlineAsm(box InlineAsmExpr {
+                template,
+                ref operands,
+                options,
+                line_spans,
+            }) => {
                 use rustc_middle::{mir, thir};
                 let operands = operands
                     .into_iter()
@@ -547,6 +561,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Literal { .. }
             | ExprKind::NamedConst { .. }
             | ExprKind::NonHirLiteral { .. }
+            | ExprKind::ZstLiteral { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::StaticRef { .. } => {
@@ -574,5 +589,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         block_and
+    }
+
+    fn is_let(&self, expr: ExprId) -> bool {
+        match self.thir[expr].kind {
+            ExprKind::Let { .. } => true,
+            ExprKind::Scope { value, .. } => self.is_let(value),
+            _ => false,
+        }
     }
 }

@@ -158,30 +158,21 @@ pub struct SelfProfilerRef {
     // actually enabled.
     event_filter_mask: EventFilter,
 
-    // Print verbose generic activities to stdout
+    // Print verbose generic activities to stderr?
     print_verbose_generic_activities: bool,
-
-    // Print extra verbose generic activities to stdout
-    print_extra_verbose_generic_activities: bool,
 }
 
 impl SelfProfilerRef {
     pub fn new(
         profiler: Option<Arc<SelfProfiler>>,
         print_verbose_generic_activities: bool,
-        print_extra_verbose_generic_activities: bool,
     ) -> SelfProfilerRef {
         // If there is no SelfProfiler then the filter mask is set to NONE,
         // ensuring that nothing ever tries to actually access it.
         let event_filter_mask =
             profiler.as_ref().map_or(EventFilter::empty(), |p| p.event_filter_mask);
 
-        SelfProfilerRef {
-            profiler,
-            event_filter_mask,
-            print_verbose_generic_activities,
-            print_extra_verbose_generic_activities,
-        }
+        SelfProfilerRef { profiler, event_filter_mask, print_verbose_generic_activities }
     }
 
     /// This shim makes sure that calls only get executed if the filter mask
@@ -195,6 +186,7 @@ impl SelfProfilerRef {
         F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
     {
         #[inline(never)]
+        #[cold]
         fn cold_call<F>(profiler_ref: &SelfProfilerRef, f: F) -> TimingGuard<'_>
         where
             F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
@@ -203,7 +195,7 @@ impl SelfProfilerRef {
             f(&**profiler)
         }
 
-        if unlikely!(self.event_filter_mask.contains(event_filter)) {
+        if self.event_filter_mask.contains(event_filter) {
             cold_call(self, f)
         } else {
             TimingGuard::none()
@@ -213,7 +205,7 @@ impl SelfProfilerRef {
     /// Start profiling a verbose generic activity. Profiling continues until the
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "verbose" generic activities also print a timing entry to
-    /// stdout if the compiler is invoked with -Ztime or -Ztime-passes.
+    /// stderr if the compiler is invoked with -Ztime-passes.
     pub fn verbose_generic_activity<'a>(
         &'a self,
         event_label: &'static str,
@@ -224,11 +216,8 @@ impl SelfProfilerRef {
         VerboseTimingGuard::start(message, self.generic_activity(event_label))
     }
 
-    /// Start profiling an extra verbose generic activity. Profiling continues until the
-    /// VerboseTimingGuard returned from this call is dropped. In addition to recording
-    /// a measureme event, "extra verbose" generic activities also print a timing entry to
-    /// stdout if the compiler is invoked with -Ztime-passes.
-    pub fn extra_verbose_generic_activity<'a, A>(
+    /// Like `verbose_generic_activity`, but with an extra arg.
+    pub fn verbose_generic_activity_with_arg<'a, A>(
         &'a self,
         event_label: &'static str,
         event_arg: A,
@@ -236,7 +225,7 @@ impl SelfProfilerRef {
     where
         A: Borrow<str> + Into<String>,
     {
-        let message = if self.print_extra_verbose_generic_activities {
+        let message = if self.print_verbose_generic_activities {
             Some(format!("{}({})", event_label, event_arg.borrow()))
         } else {
             None
@@ -550,14 +539,20 @@ impl SelfProfiler {
     pub fn new(
         output_directory: &Path,
         crate_name: Option<&str>,
-        event_filters: &Option<Vec<String>>,
+        event_filters: Option<&[String]>,
+        counter_name: &str,
     ) -> Result<SelfProfiler, Box<dyn Error + Send + Sync>> {
         fs::create_dir_all(output_directory)?;
 
         let crate_name = crate_name.unwrap_or("unknown-crate");
-        let filename = format!("{}-{}.rustc_profile", crate_name, process::id());
+        // HACK(eddyb) we need to pad the PID, strange as it may seem, as its
+        // length can behave as a source of entropy for heap addresses, when
+        // ASLR is disabled and the heap is otherwise determinic.
+        let pid: u32 = process::id();
+        let filename = format!("{}-{:07}.rustc_profile", crate_name, pid);
         let path = output_directory.join(&filename);
-        let profiler = Profiler::new(&path)?;
+        let profiler =
+            Profiler::with_counter(&path, measureme::counters::Counter::by_name(counter_name)?)?;
 
         let query_event_kind = profiler.alloc_string("Query");
         let generic_activity_event_kind = profiler.alloc_string("GenericActivity");
@@ -570,7 +565,7 @@ impl SelfProfiler {
 
         let mut event_filter_mask = EventFilter::empty();
 
-        if let Some(ref event_filters) = *event_filters {
+        if let Some(event_filters) = event_filters {
             let mut unknown_events = vec![];
             for item in event_filters {
                 if let Some(&(_, mask)) =
@@ -738,27 +733,9 @@ impl Drop for VerboseTimingGuard<'_> {
         if let Some((start_time, start_rss, ref message)) = self.start_and_message {
             let end_rss = get_resident_set_size();
             let dur = start_time.elapsed();
-
-            if should_print_passes(dur, start_rss, end_rss) {
-                print_time_passes_entry(&message, dur, start_rss, end_rss);
-            }
+            print_time_passes_entry(&message, dur, start_rss, end_rss);
         }
     }
-}
-
-fn should_print_passes(dur: Duration, start_rss: Option<usize>, end_rss: Option<usize>) -> bool {
-    if dur.as_millis() > 5 {
-        return true;
-    }
-
-    if let (Some(start_rss), Some(end_rss)) = (start_rss, end_rss) {
-        let change_rss = end_rss.abs_diff(start_rss);
-        if change_rss > 0 {
-            return true;
-        }
-    }
-
-    false
 }
 
 pub fn print_time_passes_entry(
@@ -767,6 +744,26 @@ pub fn print_time_passes_entry(
     start_rss: Option<usize>,
     end_rss: Option<usize>,
 ) {
+    // Print the pass if its duration is greater than 5 ms, or it changed the
+    // measured RSS.
+    let is_notable = || {
+        if dur.as_millis() > 5 {
+            return true;
+        }
+
+        if let (Some(start_rss), Some(end_rss)) = (start_rss, end_rss) {
+            let change_rss = end_rss.abs_diff(start_rss);
+            if change_rss > 0 {
+                return true;
+            }
+        }
+
+        false
+    };
+    if !is_notable() {
+        return;
+    }
+
     let rss_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as usize;
     let rss_change_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as i128;
 
@@ -816,6 +813,24 @@ cfg_if! {
                 _ => {
                     let pmc = unsafe { pmc.assume_init() };
                     Some(pmc.WorkingSetSize as usize)
+                }
+            }
+        }
+    } else if #[cfg(target_os = "macos")] {
+        pub fn get_resident_set_size() -> Option<usize> {
+            use libc::{c_int, c_void, getpid, proc_pidinfo, proc_taskinfo, PROC_PIDTASKINFO};
+            use std::mem;
+            const PROC_TASKINFO_SIZE: c_int = mem::size_of::<proc_taskinfo>() as c_int;
+
+            unsafe {
+                let mut info: proc_taskinfo = mem::zeroed();
+                let info_ptr = &mut info as *mut proc_taskinfo as *mut c_void;
+                let pid = getpid() as c_int;
+                let ret = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, info_ptr, PROC_TASKINFO_SIZE);
+                if ret == PROC_TASKINFO_SIZE {
+                    Some(info.pti_resident_size as usize)
+                } else {
+                    None
                 }
             }
         }

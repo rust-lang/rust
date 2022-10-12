@@ -19,11 +19,21 @@ use crate::{
 };
 
 pub(crate) struct ConstraintConversion<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
+    /// Each RBP `GK: 'a` is assumed to be true. These encode
+    /// relationships like `T: 'a` that are added via implicit bounds
+    /// or the `param_env`.
+    ///
+    /// Each region here is guaranteed to be a key in the `indices`
+    /// map. We use the "original" regions (i.e., the keys from the
+    /// map, and not the values) because the code in
+    /// `process_registered_region_obligations` has some special-cased
+    /// logic expecting to see (e.g.) `ReStatic`, and if we supplied
+    /// our special inference variable there, we would mess that up.
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    implicit_region_bound: Option<ty::Region<'tcx>>,
+    implicit_region_bound: ty::Region<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
     span: Span,
@@ -33,10 +43,10 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
 
 impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     pub(crate) fn new(
-        infcx: &'a InferCtxt<'a, 'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-        implicit_region_bound: Option<ty::Region<'tcx>>,
+        implicit_region_bound: ty::Region<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
         span: Span,
@@ -76,7 +86,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
-    pub(super) fn convert(&mut self, query_constraint: &QueryOutlivesConstraint<'tcx>) {
+    fn convert(&mut self, query_constraint: &QueryOutlivesConstraint<'tcx>) {
         debug!("generate: constraints at: {:#?}", self.locations);
 
         // Extract out various useful fields we'll need below.
@@ -88,48 +98,58 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         // region constraints like `for<'a> 'a: 'b`. At some point
         // when we move to universes, we will, and this assertion
         // will start to fail.
-        let ty::OutlivesPredicate(k1, r2) = query_constraint.no_bound_vars().unwrap_or_else(|| {
-            bug!("query_constraint {:?} contained bound vars", query_constraint,);
-        });
+        let ty::OutlivesPredicate(k1, r2) =
+            query_constraint.0.no_bound_vars().unwrap_or_else(|| {
+                bug!("query_constraint {:?} contained bound vars", query_constraint,);
+            });
+
+        let constraint_category = query_constraint.1;
 
         match k1.unpack() {
             GenericArgKind::Lifetime(r1) => {
                 let r1_vid = self.to_region_vid(r1);
                 let r2_vid = self.to_region_vid(r2);
-                self.add_outlives(r1_vid, r2_vid);
+                self.add_outlives(r1_vid, r2_vid, constraint_category);
             }
 
-            GenericArgKind::Type(mut t1) => {
+            GenericArgKind::Type(t1) => {
                 // we don't actually use this for anything, but
                 // the `TypeOutlives` code needs an origin.
                 let origin = infer::RelateParamBound(DUMMY_SP, t1, None);
-
-                // Placeholder regions need to be converted now because it may
-                // create new region variables, which can't be done later when
-                // verifying these bounds.
-                if t1.has_placeholders() {
-                    t1 = tcx.fold_regions(t1, &mut false, |r, _| match *r {
-                        ty::RePlaceholder(placeholder) => {
-                            self.constraints.placeholder_region(self.infcx, placeholder)
-                        }
-                        _ => r,
-                    });
-                }
 
                 TypeOutlives::new(
                     &mut *self,
                     tcx,
                     region_bound_pairs,
-                    implicit_region_bound,
+                    Some(implicit_region_bound),
                     param_env,
                 )
-                .type_must_outlive(origin, t1, r2);
+                .type_must_outlive(origin, t1, r2, constraint_category);
             }
 
             GenericArgKind::Const(_) => {
                 // Consts cannot outlive one another, so we
                 // don't need to handle any relations here.
             }
+        }
+    }
+
+    /// Placeholder regions need to be converted eagerly because it may
+    /// create new region variables, which we must not do when verifying
+    /// our region bounds.
+    ///
+    /// FIXME: This should get removed once higher ranked region obligations
+    /// are dealt with during trait solving.
+    fn replace_placeholders_with_nll<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
+        if value.has_placeholders() {
+            self.tcx.fold_regions(value, |r, _| match *r {
+                ty::RePlaceholder(placeholder) => {
+                    self.constraints.placeholder_region(self.infcx, placeholder)
+                }
+                _ => r,
+            })
+        } else {
+            value
         }
     }
 
@@ -140,7 +160,6 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         verify_bound: VerifyBound<'tcx>,
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
-
         TypeTest { generic_kind, lower_bound, locations: self.locations, verify_bound }
     }
 
@@ -152,10 +171,19 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
-    fn add_outlives(&mut self, sup: ty::RegionVid, sub: ty::RegionVid) {
+    fn add_outlives(
+        &mut self,
+        sup: ty::RegionVid,
+        sub: ty::RegionVid,
+        category: ConstraintCategory<'tcx>,
+    ) {
+        let category = match self.category {
+            ConstraintCategory::Boring | ConstraintCategory::BoringNoLocation => category,
+            _ => self.category,
+        };
         self.constraints.outlives_constraints.push(OutlivesConstraint {
             locations: self.locations,
-            category: self.category,
+            category,
             span: self.span,
             sub,
             sup,
@@ -175,10 +203,11 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         _origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
+        constraint_category: ConstraintCategory<'tcx>,
     ) {
         let b = self.to_region_vid(b);
         let a = self.to_region_vid(a);
-        self.add_outlives(b, a);
+        self.add_outlives(b, a, constraint_category);
     }
 
     fn push_verify(
@@ -188,6 +217,8 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         a: ty::Region<'tcx>,
         bound: VerifyBound<'tcx>,
     ) {
+        let kind = self.replace_placeholders_with_nll(kind);
+        let bound = self.replace_placeholders_with_nll(bound);
         let type_test = self.verify_to_type_test(kind, a, bound);
         self.add_type_test(type_test);
     }

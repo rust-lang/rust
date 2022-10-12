@@ -15,8 +15,8 @@ pub fn provide(providers: &mut Providers) {
             return None;
         }
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        let body = tcx.hir().body(tcx.hir().maybe_body_owned_by(hir_id)?);
+        let local_def_id = def_id.expect_local();
+        let body = tcx.hir().body(tcx.hir().maybe_body_owned_by(local_def_id)?);
 
         let mut local_collector = LocalCollector::default();
         local_collector.visit_body(body);
@@ -75,7 +75,7 @@ impl<'tcx> Visitor<'tcx> for CaptureCollector<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure(..) = expr.kind {
+        if let hir::ExprKind::Closure { .. } = expr.kind {
             let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
                 // Every capture of a closure expression is a local in scope,

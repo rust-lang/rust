@@ -2,9 +2,8 @@ error[E0382]: use of partially moved value
   --> $DIR/copy-and-move-mixed.rs:12:9
    |
 LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
-   |         ^^^^^^^^^^------------^
-   |         |         |
-   |         |         value partially moved here
+   |         ^         - value partially moved here
+   |         |
    |         value used here after partial move
    |
    = note: partial move occurs because value has type `NC<C, C>`, which does not implement the `Copy` trait

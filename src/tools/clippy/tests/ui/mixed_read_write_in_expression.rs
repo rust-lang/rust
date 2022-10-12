@@ -4,7 +4,7 @@
     unused_variables,
     clippy::no_effect,
     dead_code,
-    clippy::blacklisted_name
+    clippy::disallowed_names
 )]
 fn main() {
     let mut x = 0;

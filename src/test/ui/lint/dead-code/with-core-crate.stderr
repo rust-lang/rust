@@ -1,4 +1,4 @@
-error: function is never used: `foo`
+error: function `foo` is never used
   --> $DIR/with-core-crate.rs:7:4
    |
 LL | fn foo() {

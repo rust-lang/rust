@@ -1,0 +1,16 @@
+### What it does
+Checks for zipping a collection with the range of
+`0.._.len()`.
+
+### Why is this bad?
+The code is better expressed with `.enumerate()`.
+
+### Example
+```
+let _ = x.iter().zip(0..x.len());
+```
+
+Use instead:
+```
+let _ = x.iter().enumerate();
+```

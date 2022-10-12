@@ -1,0 +1,24 @@
+### What it does
+Checks for functions taking arguments by value, where
+the argument type is `Copy` and large enough to be worth considering
+passing by reference. Does not trigger if the function is being exported,
+because that might induce API breakage, if the parameter is declared as mutable,
+or if the argument is a `self`.
+
+### Why is this bad?
+Arguments passed by value might result in an unnecessary
+shallow copy, taking up more space in the stack and requiring a call to
+`memcpy`, which can be expensive.
+
+### Example
+```
+#[derive(Clone, Copy)]
+struct TooLarge([u8; 2048]);
+
+fn foo(v: TooLarge) {}
+```
+
+Use instead:
+```
+fn foo(v: &TooLarge) {}
+```

@@ -33,11 +33,10 @@ pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
 }
 
 impl Mutex {
+    #[inline]
     pub const fn new() -> Mutex {
         Mutex { srwlock: UnsafeCell::new(c::SRWLOCK_INIT) }
     }
-    #[inline]
-    pub unsafe fn init(&mut self) {}
 
     #[inline]
     pub unsafe fn lock(&self) {
@@ -52,10 +51,5 @@ impl Mutex {
     #[inline]
     pub unsafe fn unlock(&self) {
         c::ReleaseSRWLockExclusive(raw(self));
-    }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {
-        // SRWLock does not need to be destroyed.
     }
 }

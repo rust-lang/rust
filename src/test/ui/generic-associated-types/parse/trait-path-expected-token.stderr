@@ -1,5 +1,5 @@
 error: expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `=`
-  --> $DIR/trait-path-expected-token.rs:7:33
+  --> $DIR/trait-path-expected-token.rs:5:33
    |
 LL | fn f1<'a>(arg : Box<dyn X<Y = B = &'a ()>>) {}
    |                               - ^ expected one of 7 possible tokens

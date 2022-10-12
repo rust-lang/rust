@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Checks that all the targets returned by `rustc --print target-list` are valid
 # target specifications

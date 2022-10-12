@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::ty::{has_debug_impl, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -15,7 +15,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
         if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
         let result_type = cx.typeck_results().expr_ty(recv);
         if let Some(error_type) = get_error_type(cx, result_type);
-        if has_debug_impl(error_type, cx);
+        if has_debug_impl(cx, error_type);
 
         then {
             span_lint_and_help(
@@ -36,11 +36,4 @@ fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
         ty::Adt(_, substs) if is_type_diagnostic_item(cx, ty, sym::Result) => substs.types().nth(1),
         _ => None,
     }
-}
-
-/// This checks whether a given type is known to implement Debug.
-fn has_debug_impl<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
-    cx.tcx
-        .get_diagnostic_item(sym::Debug)
-        .map_or(false, |debug| implements_trait(cx, ty, debug, &[]))
 }

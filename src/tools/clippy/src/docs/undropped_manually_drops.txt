@@ -1,0 +1,22 @@
+### What it does
+Prevents the safe `std::mem::drop` function from being called on `std::mem::ManuallyDrop`.
+
+### Why is this bad?
+The safe `drop` function does not drop the inner value of a `ManuallyDrop`.
+
+### Known problems
+Does not catch cases if the user binds `std::mem::drop`
+to a different name and calls it that way.
+
+### Example
+```
+struct S;
+drop(std::mem::ManuallyDrop::new(S));
+```
+Use instead:
+```
+struct S;
+unsafe {
+    std::mem::ManuallyDrop::drop(&mut std::mem::ManuallyDrop::new(S));
+}
+```

@@ -6,14 +6,12 @@
 // contravariance, this effectively requires a `T = &'b ()` where
 // `forall<'a> { 'a: 'b }`. Therefore, we get an error.
 //
-// Note the use of `-Zno-leak-check` and `feature(nll)` here. These
-// are presently required in order to skip the leak-check errors.
+// Note the use of `-Zno-leak-check` here. This is presently required in order
+// to skip the leak-check errors.
 //
 // c.f. Issue #57642.
 //
 // compile-flags:-Zno-leak-check
-
-#![feature(nll)]
 
 trait Y {
     type F;
@@ -31,5 +29,6 @@ impl<T> Y for fn(T) {
 fn main() {
     let _x = <fn(&())>::make_f();
     //~^ ERROR implementation of `Y` is not general enough
+    //~| ERROR implementation of `Y` is not general enough
     //~| ERROR implementation of `Y` is not general enough
 }

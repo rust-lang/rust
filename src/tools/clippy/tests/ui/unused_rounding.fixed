@@ -1,0 +1,9 @@
+// run-rustfix
+#![warn(clippy::unused_rounding)]
+
+fn main() {
+    let _ = 1f32;
+    let _ = 1.0f64;
+    let _ = 1.00f32;
+    let _ = 2e-54f64.floor();
+}

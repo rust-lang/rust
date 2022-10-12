@@ -5,7 +5,7 @@
 // relationships. In the 'main' variant, there are a number of
 // anonymous regions as well.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![feature(rustc_attrs)]
 

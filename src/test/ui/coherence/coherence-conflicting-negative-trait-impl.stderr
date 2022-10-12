@@ -3,7 +3,7 @@ error[E0751]: found both positive and negative implementation of trait `std::mar
    |
 LL | unsafe impl<T: MyTrait + 'static> Send for TestType<T> {}
    | ------------------------------------------------------ positive implementation here
-LL | 
+LL |
 LL | impl<T: MyTrait> !Send for TestType<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ negative implementation here
 

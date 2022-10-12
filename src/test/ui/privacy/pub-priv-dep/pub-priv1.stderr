@@ -20,7 +20,7 @@ error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
   --> $DIR/pub-priv1.rs:35:5
    |
 LL |     type Foo: OtherTrait;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

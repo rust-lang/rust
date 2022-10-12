@@ -1,6 +1,6 @@
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use crate::ty::fold::TypeFoldable;
+use crate::ty::visit::TypeVisitable;
 use crate::ty::{Ident, Ty, TyCtxt};
 use hir::def_id::LOCAL_CRATE;
 use rustc_hir as hir;
@@ -73,6 +73,10 @@ pub struct TraitImpls {
 impl TraitImpls {
     pub fn blanket_impls(&self) -> &[DefId] {
         self.blanket_impls.as_slice()
+    }
+
+    pub fn non_blanket_impls(&self) -> &FxIndexMap<SimplifiedType, Vec<DefId>> {
+        &self.non_blanket_impls
     }
 }
 
@@ -252,7 +256,6 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
 }
 
 // Query provider for `incoherent_impls`.
-#[instrument(level = "debug", skip(tcx))]
 pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
     let mut impls = Vec::new();
 

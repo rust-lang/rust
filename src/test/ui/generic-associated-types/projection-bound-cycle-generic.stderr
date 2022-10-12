@@ -1,11 +1,11 @@
 error[E0275]: overflow evaluating the requirement `<T as Foo>::Item: Sized`
-  --> $DIR/projection-bound-cycle-generic.rs:44:18
+  --> $DIR/projection-bound-cycle-generic.rs:42:18
    |
 LL |     type Assoc = OnlySized<<T as Foo>::Item>;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: required by a bound in `OnlySized`
-  --> $DIR/projection-bound-cycle-generic.rs:28:18
+  --> $DIR/projection-bound-cycle-generic.rs:26:18
    |
 LL | struct OnlySized<T> where T: Sized { f: T }
    |                  ^ required by this bound in `OnlySized`

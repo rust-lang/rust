@@ -4,13 +4,11 @@
  */
 
 use crate::mir::*;
-use crate::ty::cast::CastTy;
-use crate::ty::subst::Subst;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_target::abi::VariantIdx;
 
-#[derive(Copy, Clone, Debug, TypeFoldable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct PlaceTy<'tcx> {
     pub ty: Ty<'tcx>,
     /// Downcast to a particular variant of an enum or a generator, if included.
@@ -58,7 +56,7 @@ impl<'tcx> PlaceTy<'tcx> {
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
     pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty)
+        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty, |_, ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -72,6 +70,7 @@ impl<'tcx> PlaceTy<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         elem: &ProjectionElem<V, T>,
         mut handle_field: impl FnMut(&Self, Field, T) -> Ty<'tcx>,
+        mut handle_opaque_cast: impl FnMut(&Self, T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
         V: ::std::fmt::Debug,
@@ -110,6 +109,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 PlaceTy { ty: self.ty, variant_index: Some(index) }
             }
             ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
+            ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast(&self, ty)),
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer
@@ -206,12 +206,13 @@ impl<'tcx> Rvalue<'tcx> {
                 AggregateKind::Adt(did, _, substs, _, _) => {
                     tcx.bound_type_of(did).subst(tcx, substs)
                 }
-                AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
+                AggregateKind::Closure(did, substs) => tcx.mk_closure(did.to_def_id(), substs),
                 AggregateKind::Generator(did, substs, movability) => {
-                    tcx.mk_generator(did, substs, movability)
+                    tcx.mk_generator(did.to_def_id(), substs, movability)
                 }
             },
             Rvalue::ShallowInitBox(_, ty) => tcx.mk_box(ty),
+            Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
         }
     }
 
@@ -223,22 +224,6 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::ShallowInitBox(_, _) => RvalueInitializationState::Shallow,
             _ => RvalueInitializationState::Deep,
         }
-    }
-
-    pub fn is_pointer_int_cast<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> bool
-    where
-        D: HasLocalDecls<'tcx>,
-    {
-        if let Rvalue::Cast(CastKind::Misc, src_op, dest_ty) = self {
-            if let Some(CastTy::Int(_)) = CastTy::from_ty(*dest_ty) {
-                let src_ty = src_op.ty(local_decls, tcx);
-                if let Some(CastTy::FnPtr | CastTy::Ptr(_)) = CastTy::from_ty(src_ty) {
-                    return true;
-                }
-            }
-        }
-
-        false
     }
 }
 

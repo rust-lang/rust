@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'x`
-  --> $DIR/gat-in-trait-path-undeclared-lifetime.rs:8:35
+  --> $DIR/gat-in-trait-path-undeclared-lifetime.rs:6:35
    |
 LL |   fn _f(arg : Box<dyn for<'a> X<Y<'x> = &'a [u32]>>) {}
    |                                   ^^ undeclared lifetime
@@ -15,7 +15,7 @@ LL |   fn _f<'x>(arg : Box<dyn for<'a> X<Y<'x> = &'a [u32]>>) {}
    |        ++++
 
 error[E0582]: binding for associated type `Y` references lifetime `'a`, which does not appear in the trait input types
-  --> $DIR/gat-in-trait-path-undeclared-lifetime.rs:8:33
+  --> $DIR/gat-in-trait-path-undeclared-lifetime.rs:6:33
    |
 LL |   fn _f(arg : Box<dyn for<'a> X<Y<'x> = &'a [u32]>>) {}
    |                                 ^^^^^^^^^^^^^^^^^

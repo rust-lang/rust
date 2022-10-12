@@ -1,0 +1,15 @@
+### What it does
+Checks for loops that will always `break`, `return` or
+`continue` an outer loop.
+
+### Why is this bad?
+This loop never loops, all it does is obfuscating the
+code.
+
+### Example
+```
+loop {
+    ..;
+    break;
+}
+```

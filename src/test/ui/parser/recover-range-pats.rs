@@ -4,7 +4,6 @@
 // 2. Or at least we have parser recovery if they don't.
 
 #![feature(exclusive_range_pattern)]
-#![feature(half_open_range_patterns)]
 #![deny(ellipsis_inclusive_range_patterns)]
 
 fn main() {}

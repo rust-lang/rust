@@ -1,0 +1,42 @@
+### What it does
+Checks for late initializations that can be replaced by a `let` statement
+with an initializer.
+
+### Why is this bad?
+Assigning in the `let` statement is less repetitive.
+
+### Example
+```
+let a;
+a = 1;
+
+let b;
+match 3 {
+    0 => b = "zero",
+    1 => b = "one",
+    _ => b = "many",
+}
+
+let c;
+if true {
+    c = 1;
+} else {
+    c = -1;
+}
+```
+Use instead:
+```
+let a = 1;
+
+let b = match 3 {
+    0 => "zero",
+    1 => "one",
+    _ => "many",
+};
+
+let c = if true {
+    1
+} else {
+    -1
+};
+```

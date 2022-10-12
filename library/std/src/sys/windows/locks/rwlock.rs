@@ -11,6 +11,7 @@ unsafe impl Send for RwLock {}
 unsafe impl Sync for RwLock {}
 
 impl RwLock {
+    #[inline]
     pub const fn new() -> RwLock {
         RwLock { inner: UnsafeCell::new(c::SRWLOCK_INIT) }
     }
@@ -37,10 +38,5 @@ impl RwLock {
     #[inline]
     pub unsafe fn write_unlock(&self) {
         c::ReleaseSRWLockExclusive(self.inner.get())
-    }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {
-        // ...
     }
 }

@@ -1,0 +1,46 @@
+error: use of a disallowed/placeholder name `toto`
+  --> $DIR/conf_french_disallowed_name.rs:6:9
+   |
+LL | fn test(toto: ()) {}
+   |         ^^^^
+   |
+   = note: `-D clippy::disallowed-names` implied by `-D warnings`
+
+error: use of a disallowed/placeholder name `toto`
+  --> $DIR/conf_french_disallowed_name.rs:9:9
+   |
+LL |     let toto = 42;
+   |         ^^^^
+
+error: use of a disallowed/placeholder name `tata`
+  --> $DIR/conf_french_disallowed_name.rs:10:9
+   |
+LL |     let tata = 42;
+   |         ^^^^
+
+error: use of a disallowed/placeholder name `titi`
+  --> $DIR/conf_french_disallowed_name.rs:11:9
+   |
+LL |     let titi = 42;
+   |         ^^^^
+
+error: use of a disallowed/placeholder name `toto`
+  --> $DIR/conf_french_disallowed_name.rs:17:10
+   |
+LL |         (toto, Some(tata), titi @ Some(_)) => (),
+   |          ^^^^
+
+error: use of a disallowed/placeholder name `tata`
+  --> $DIR/conf_french_disallowed_name.rs:17:21
+   |
+LL |         (toto, Some(tata), titi @ Some(_)) => (),
+   |                     ^^^^
+
+error: use of a disallowed/placeholder name `titi`
+  --> $DIR/conf_french_disallowed_name.rs:17:28
+   |
+LL |         (toto, Some(tata), titi @ Some(_)) => (),
+   |                            ^^^^
+
+error: aborting due to 7 previous errors
+

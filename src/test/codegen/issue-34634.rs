@@ -1,5 +1,5 @@
 // Test that `wrapping_div` only checks divisor once.
-// This test checks that there is only a single compare agains -1 and -1 is not present as a
+// This test checks that there is only a single compare against -1 and -1 is not present as a
 // switch case (the second check present until rustc 1.12).
 // This test also verifies that a single panic call is generated (for the division by zero case).
 

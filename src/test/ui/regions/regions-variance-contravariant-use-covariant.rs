@@ -4,10 +4,6 @@
 // Note: see variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 // This is contravariant with respect to 'a, meaning that
 // Contravariant<'long> <: Contravariant<'short> iff
 // 'short <= 'long
@@ -25,8 +21,7 @@ fn use_<'short,'long>(c: Contravariant<'short>,
     // covariant with respect to its parameter 'a.
 
     let _: Contravariant<'long> = c;
-    //[base]~^ ERROR E0623
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

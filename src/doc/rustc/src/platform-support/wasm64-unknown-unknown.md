@@ -30,7 +30,7 @@ is 8-bytes large as well as pointers. The tradeoff, though, is that the maximum
 memory size is now the full 64-bit address space instead of the 4GB as limited
 by the 32-bit address space for `wasm32-unknown-unknown`.
 
-This target is not a stable target. The [memory64] WebAssembly proposal is stil
+This target is not a stable target. The [memory64] WebAssembly proposal is still
 in-progress and not standardized. This means that there are not many engines
 which implement the `memory64` feature and if they do they're likely behind a
 flag, for example:

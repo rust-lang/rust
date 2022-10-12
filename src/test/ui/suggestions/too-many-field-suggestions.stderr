@@ -1,0 +1,44 @@
+error[E0599]: no method named `bar` found for struct `Thing` in the current scope
+  --> $DIR/too-many-field-suggestions.rs:25:7
+   |
+LL | struct Thing {
+   | ------------ method `bar` not found for this struct
+...
+LL |     t.bar();
+   |       ^^^ method not found in `Thing`
+   |
+help: some of the expressions' fields have a method of the same name
+   |
+LL |     t.a0.bar();
+   |       +++
+LL |     t.a1.bar();
+   |       +++
+LL |     t.a2.bar();
+   |       +++
+LL |     t.a3.bar();
+   |       +++
+     and 6 other candidates
+
+error[E0609]: no field `field` on type `Thing`
+  --> $DIR/too-many-field-suggestions.rs:26:7
+   |
+LL |     t.field;
+   |       ^^^^^ unknown field
+   |
+   = note: available fields are: `a0`, `a1`, `a2`, `a3`, `a4` ... and 5 others
+help: some of the expressions' fields have a field of the same name
+   |
+LL |     t.a0.field;
+   |       +++
+LL |     t.a1.field;
+   |       +++
+LL |     t.a2.field;
+   |       +++
+LL |     t.a3.field;
+   |       +++
+     and 6 other candidates
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0599, E0609.
+For more information about an error, try `rustc --explain E0599`.

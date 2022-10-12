@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// Could be written:
+    /// Use instead:
     ///
     /// ```rust
     /// # fn a() {}

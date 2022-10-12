@@ -3,6 +3,9 @@ error[E0277]: the trait bound `(): Foo<FooX>` is not satisfied
    |
 LL | fn foo() -> impl Foo<FooX> {
    |             ^^^^^^^^^^^^^^ the trait `Foo<FooX>` is not implemented for `()`
+...
+LL |     ()
+   |     -- return type was inferred to be `()` here
    |
    = help: the trait `Foo<()>` is implemented for `()`
 

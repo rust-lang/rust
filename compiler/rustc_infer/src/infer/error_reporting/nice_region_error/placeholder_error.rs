@@ -204,14 +204,17 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         expected_substs: SubstsRef<'tcx>,
         actual_substs: SubstsRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let span = cause.span(self.tcx());
+        let span = cause.span();
         let msg = format!(
             "implementation of `{}` is not general enough",
             self.tcx().def_path_str(trait_def_id),
         );
         let mut err = self.tcx().sess.struct_span_err(span, &msg);
 
-        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id) = *cause.code() {
+        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id)
+        | ObligationCauseCode::ExprItemObligation(def_id, ..) =
+            *cause.code()
+        {
             err.span_label(span, "doesn't satisfy where-clause");
             err.span_label(
                 self.tcx().def_span(def_id),
@@ -223,12 +226,12 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             false
         };
 
-        let expected_trait_ref = self.infcx.resolve_vars_if_possible(ty::TraitRef {
+        let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef {
             def_id: trait_def_id,
             substs: expected_substs,
         });
         let actual_trait_ref = self
-            .infcx
+            .cx
             .resolve_vars_if_possible(ty::TraitRef { def_id: trait_def_id, substs: actual_substs });
 
         // Search the expected and actual trait references to see (a)

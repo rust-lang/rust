@@ -4,8 +4,8 @@ error[E0308]: method not compatible with trait
 LL |     fn size(&self) -> [usize; DIM] {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
    |
-   = note: expected type `Self::DIM`
-              found type `DIM`
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
 
 error: unconstrained generic constant
   --> $DIR/issue-83765.rs:32:24
@@ -26,8 +26,8 @@ error[E0308]: mismatched types
 LL |         self.reference.size()
    |         ^^^^^^^^^^^^^^^^^^^^^ expected `DIM`, found `Self::DIM`
    |
-   = note: expected type `DIM`
-              found type `Self::DIM`
+   = note: expected constant `DIM`
+              found constant `Self::DIM`
 
 error: aborting due to 3 previous errors
 

@@ -1,4 +1,6 @@
-// compile-flags: -Z mir-opt-level=4 -Zunsound-mir-opts
+// unit-test: EarlyOtherwiseBranch
+
+// FIXME: This test was broken by the derefer change.
 
 // example from #68867
 type CSSFloat = f32;
@@ -11,7 +13,6 @@ pub enum ViewportPercentageLength {
 }
 
 // EMIT_MIR early_otherwise_branch_68867.try_sum.EarlyOtherwiseBranch.diff
-// EMIT_MIR early_otherwise_branch_68867.try_sum EarlyOtherwiseBranch.before SimplifyConstCondition-final.after
 #[no_mangle]
 pub extern "C" fn try_sum(
     x: &ViewportPercentageLength,

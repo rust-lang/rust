@@ -1,5 +1,6 @@
 use super::Error;
 use crate::fmt;
+use core::any::Demand;
 
 #[derive(Debug, PartialEq)]
 struct A;
@@ -198,8 +199,8 @@ where
         self.source.as_deref()
     }
 
-    fn backtrace(&self) -> Option<&Backtrace> {
-        self.backtrace.as_ref()
+    fn provide<'a>(&'a self, req: &mut Demand<'a>) {
+        self.backtrace.as_ref().map(|bt| req.provide_ref::<Backtrace>(bt));
     }
 }
 

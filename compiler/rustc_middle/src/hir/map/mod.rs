@@ -14,31 +14,10 @@ use rustc_index::vec::Idx;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 
-fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
-    match node {
-        Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
-        | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
-        | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => Some(&sig.decl),
-        Node::Expr(Expr { kind: ExprKind::Closure(_, fn_decl, ..), .. })
-        | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, ..), .. }) => {
-            Some(fn_decl)
-        }
-        _ => None,
-    }
-}
-
-pub fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
-    match &node {
-        Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
-        | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
-        | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => Some(sig),
-        _ => None,
-    }
-}
-
+#[inline]
 pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
     match node {
         Node::Item(Item {
@@ -54,7 +33,7 @@ pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
             kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
             ..
         })
-        | Node::Expr(Expr { kind: ExprKind::Closure(.., body, _, _), .. }) => Some(*body),
+        | Node::Expr(Expr { kind: ExprKind::Closure(Closure { body, .. }), .. }) => Some(*body),
 
         Node::AnonConst(constant) => Some(constant.body),
 
@@ -82,7 +61,7 @@ pub struct ParentHirIterator<'hir> {
 }
 
 impl<'hir> Iterator for ParentHirIterator<'hir> {
-    type Item = (HirId, Node<'hir>);
+    type Item = HirId;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_id == CRATE_HIR_ID {
@@ -98,10 +77,7 @@ impl<'hir> Iterator for ParentHirIterator<'hir> {
             }
 
             self.current_id = parent_id;
-            if let Some(node) = self.map.find(parent_id) {
-                return Some((parent_id, node));
-            }
-            // If this `HirId` doesn't have an entry, skip it and look for its `parent_id`.
+            return Some(parent_id);
         }
     }
 }
@@ -114,7 +90,7 @@ pub struct ParentOwnerIterator<'hir> {
 }
 
 impl<'hir> Iterator for ParentOwnerIterator<'hir> {
-    type Item = (LocalDefId, OwnerNode<'hir>);
+    type Item = (OwnerId, OwnerNode<'hir>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_id.local_id.index() != 0 {
@@ -128,13 +104,13 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
         }
         loop {
             // There are nodes that do not have entries, so we need to skip them.
-            let parent_id = self.map.def_key(self.current_id.owner).parent;
+            let parent_id = self.map.def_key(self.current_id.owner.def_id).parent;
 
-            let parent_id = parent_id.map_or(CRATE_HIR_ID.owner, |local_def_index| {
+            let parent_id = parent_id.map_or(CRATE_OWNER_ID, |local_def_index| {
                 let def_id = LocalDefId { local_def_index };
                 self.map.local_def_id_to_hir_id(def_id).owner
             });
-            self.current_id = HirId::make_owner(parent_id);
+            self.current_id = HirId::make_owner(parent_id.def_id);
 
             // If this `HirId` doesn't have an entry, skip it and look for its `parent_id`.
             if let Some(node) = self.map.tcx.hir_owner(self.current_id.owner) {
@@ -145,32 +121,37 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
 }
 
 impl<'hir> Map<'hir> {
+    #[inline]
     pub fn krate(self) -> &'hir Crate<'hir> {
         self.tcx.hir_crate(())
     }
 
+    #[inline]
     pub fn root_module(self) -> &'hir Mod<'hir> {
-        match self.tcx.hir_owner(CRATE_DEF_ID).map(|o| o.node) {
+        match self.tcx.hir_owner(CRATE_OWNER_ID).map(|o| o.node) {
             Some(OwnerNode::Crate(item)) => item,
             _ => bug!(),
         }
     }
 
+    #[inline]
     pub fn items(self) -> impl Iterator<Item = ItemId> + 'hir {
         self.tcx.hir_crate_items(()).items.iter().copied()
     }
 
+    #[inline]
     pub fn module_items(self, module: LocalDefId) -> impl Iterator<Item = ItemId> + 'hir {
         self.tcx.hir_module_items(module).items()
     }
 
+    #[inline]
     pub fn par_for_each_item(self, f: impl Fn(ItemId) + Sync + Send) {
         par_for_each_in(&self.tcx.hir_crate_items(()).items[..], |id| f(*id));
     }
 
     pub fn def_key(self, def_id: LocalDefId) -> DefKey {
         // Accessing the DefKey is ok, since it is part of DefPathHash.
-        self.tcx.untracked_resolutions.definitions.def_key(def_id)
+        self.tcx.definitions_untracked().def_key(def_id)
     }
 
     pub fn def_path_from_hir_id(self, id: HirId) -> Option<DefPath> {
@@ -179,13 +160,13 @@ impl<'hir> Map<'hir> {
 
     pub fn def_path(self, def_id: LocalDefId) -> DefPath {
         // Accessing the DefPath is ok, since it is part of DefPathHash.
-        self.tcx.untracked_resolutions.definitions.def_path(def_id)
+        self.tcx.definitions_untracked().def_path(def_id)
     }
 
     #[inline]
     pub fn def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
         // Accessing the DefPathHash is ok, it is incr. comp. stable.
-        self.tcx.untracked_resolutions.definitions.def_path_hash(def_id)
+        self.tcx.definitions_untracked().def_path_hash(def_id)
     }
 
     #[inline]
@@ -202,7 +183,7 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn opt_local_def_id(self, hir_id: HirId) -> Option<LocalDefId> {
         if hir_id.local_id == ItemLocalId::new(0) {
-            Some(hir_id.owner)
+            Some(hir_id.owner.def_id)
         } else {
             self.tcx
                 .hir_owner_nodes(hir_id.owner)
@@ -218,14 +199,8 @@ impl<'hir> Map<'hir> {
         self.tcx.local_def_id_to_hir_id(def_id)
     }
 
-    pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'hir {
-        // Create a dependency to the crate to be sure we re-execute this when the amount of
-        // definitions change.
-        self.tcx.ensure().hir_crate(());
-        self.tcx.untracked_resolutions.definitions.iter_local_def_id()
-    }
-
-    pub fn opt_def_kind(self, local_def_id: LocalDefId) -> Option<DefKind> {
+    /// Do not call this function directly. The query should be called.
+    pub(super) fn opt_def_kind(self, local_def_id: LocalDefId) -> Option<DefKind> {
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
         let def_kind = match self.find(hir_id)? {
             Node::Item(item) => match item.kind {
@@ -234,7 +209,13 @@ impl<'hir> Map<'hir> {
                 ItemKind::Fn(..) => DefKind::Fn,
                 ItemKind::Macro(_, macro_kind) => DefKind::Macro(macro_kind),
                 ItemKind::Mod(..) => DefKind::Mod,
-                ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
+                ItemKind::OpaqueTy(ref opaque) => {
+                    if opaque.in_trait {
+                        DefKind::ImplTraitPlaceholder
+                    } else {
+                        DefKind::OpaqueTy
+                    }
+                }
                 ItemKind::TyAlias(..) => DefKind::TyAlias,
                 ItemKind::Enum(..) => DefKind::Enum,
                 ItemKind::Struct(..) => DefKind::Struct,
@@ -260,7 +241,7 @@ impl<'hir> Map<'hir> {
             Node::ImplItem(item) => match item.kind {
                 ImplItemKind::Const(..) => DefKind::AssocConst,
                 ImplItemKind::Fn(..) => DefKind::AssocFn,
-                ImplItemKind::TyAlias(..) => DefKind::AssocTy,
+                ImplItemKind::Type(..) => DefKind::AssocTy,
             },
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
@@ -285,8 +266,8 @@ impl<'hir> Map<'hir> {
             }
             Node::Field(_) => DefKind::Field,
             Node::Expr(expr) => match expr.kind {
-                ExprKind::Closure(.., None) => DefKind::Closure,
-                ExprKind::Closure(.., Some(_)) => DefKind::Generator,
+                ExprKind::Closure(Closure { movability: None, .. }) => DefKind::Closure,
+                ExprKind::Closure(Closure { movability: Some(_), .. }) => DefKind::Generator,
                 _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
             },
             Node::GenericParam(param) => match param.kind {
@@ -298,10 +279,12 @@ impl<'hir> Map<'hir> {
             Node::Stmt(_)
             | Node::PathSegment(_)
             | Node::Ty(_)
+            | Node::TypeBinding(_)
             | Node::Infer(_)
             | Node::TraitRef(_)
             | Node::Pat(_)
-            | Node::Binding(_)
+            | Node::PatField(_)
+            | Node::ExprField(_)
             | Node::Local(_)
             | Node::Param(_)
             | Node::Arm(_)
@@ -311,6 +294,9 @@ impl<'hir> Map<'hir> {
         Some(def_kind)
     }
 
+    /// Finds the id of the parent node to this one.
+    ///
+    /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
     pub fn find_parent_node(self, id: HirId) -> Option<HirId> {
         if id.local_id == ItemLocalId::from_u32(0) {
             Some(self.tcx.hir_owner_parent(id.owner))
@@ -318,12 +304,15 @@ impl<'hir> Map<'hir> {
             let owner = self.tcx.hir_owner_nodes(id.owner).as_owner()?;
             let node = owner.nodes[id.local_id].as_ref()?;
             let hir_id = HirId { owner: id.owner, local_id: node.parent };
+            // HIR indexing should have checked that.
+            debug_assert_ne!(id.local_id, node.parent);
             Some(hir_id)
         }
     }
 
     pub fn get_parent_node(self, hir_id: HirId) -> HirId {
-        self.find_parent_node(hir_id).unwrap()
+        self.find_parent_node(hir_id)
+            .unwrap_or_else(|| bug!("No parent for node {:?}", self.node_to_string(hir_id)))
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
@@ -360,24 +349,8 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_generics(self, id: LocalDefId) -> Option<&'hir Generics<'hir>> {
-        let node = self.tcx.hir_owner(id)?;
-        match node.node {
-            OwnerNode::ImplItem(impl_item) => Some(&impl_item.generics),
-            OwnerNode::TraitItem(trait_item) => Some(&trait_item.generics),
-            OwnerNode::Item(Item {
-                kind:
-                    ItemKind::Fn(_, generics, _)
-                    | ItemKind::TyAlias(_, generics)
-                    | ItemKind::Enum(_, generics)
-                    | ItemKind::Struct(_, generics)
-                    | ItemKind::Union(_, generics)
-                    | ItemKind::Trait(_, _, generics, ..)
-                    | ItemKind::TraitAlias(generics, _)
-                    | ItemKind::Impl(Impl { generics, .. }),
-                ..
-            }) => Some(generics),
-            _ => None,
-        }
+        let node = self.tcx.hir_owner(OwnerId { def_id: id })?;
+        node.node.generics()
     }
 
     pub fn item(self, id: ItemId) -> &'hir Item<'hir> {
@@ -402,7 +375,7 @@ impl<'hir> Map<'hir> {
 
     pub fn fn_decl_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
         if let Some(node) = self.find(hir_id) {
-            fn_decl(node)
+            node.fn_decl()
         } else {
             bug!("no node for hir_id `{}`", hir_id)
         }
@@ -410,16 +383,16 @@ impl<'hir> Map<'hir> {
 
     pub fn fn_sig_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnSig<'hir>> {
         if let Some(node) = self.find(hir_id) {
-            fn_sig(node)
+            node.fn_sig()
         } else {
             bug!("no node for hir_id `{}`", hir_id)
         }
     }
 
-    pub fn enclosing_body_owner(self, hir_id: HirId) -> HirId {
-        for (parent, _) in self.parent_iter(hir_id) {
-            if let Some(body) = self.maybe_body_owned_by(parent) {
-                return self.body_owner(body);
+    pub fn enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
+        for (_, node) in self.parent_iter(hir_id) {
+            if let Some(body) = associated_body(node) {
+                return self.body_owner_def_id(body);
             }
         }
 
@@ -439,19 +412,20 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.body_owner(id))
     }
 
-    /// Given a `HirId`, returns the `BodyId` associated with it,
+    /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
-    pub fn maybe_body_owned_by(self, hir_id: HirId) -> Option<BodyId> {
-        self.find(hir_id).map(associated_body).flatten()
+    pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
+        self.get_if_local(id.to_def_id()).map(associated_body).flatten()
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
-    pub fn body_owned_by(self, id: HirId) -> BodyId {
+    pub fn body_owned_by(self, id: LocalDefId) -> BodyId {
         self.maybe_body_owned_by(id).unwrap_or_else(|| {
+            let hir_id = self.local_def_id_to_hir_id(id);
             span_bug!(
-                self.span(id),
+                self.span(hir_id),
                 "body_owned_by: {} has no associated body",
-                self.node_to_string(id)
+                self.node_to_string(hir_id)
             );
         })
     }
@@ -506,43 +480,23 @@ impl<'hir> Map<'hir> {
     /// Returns an iterator of the `DefId`s for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
+    #[inline]
     pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
-        self.krate()
-            .owners
-            .iter_enumerated()
-            .flat_map(move |(owner, owner_info)| {
-                let bodies = &owner_info.as_owner()?.nodes.bodies;
-                Some(bodies.iter().map(move |&(local_id, _)| {
-                    let hir_id = HirId { owner, local_id };
-                    let body_id = BodyId { hir_id };
-                    self.body_owner_def_id(body_id)
-                }))
-            })
-            .flatten()
+        self.tcx.hir_crate_items(()).body_owners.iter().copied()
     }
 
-    pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
-        #[cfg(parallel_compiler)]
-        use rustc_rayon::iter::IndexedParallelIterator;
-
-        par_iter(&self.krate().owners.raw).enumerate().for_each(|(owner, owner_info)| {
-            let owner = LocalDefId::new(owner);
-            if let MaybeOwner::Owner(owner_info) = owner_info {
-                par_iter(owner_info.nodes.bodies.range(..)).for_each(|(local_id, _)| {
-                    let hir_id = HirId { owner, local_id: *local_id };
-                    let body_id = BodyId { hir_id };
-                    f(self.body_owner_def_id(body_id))
-                })
-            }
-        });
+    #[inline]
+    pub fn par_body_owners(self, f: impl Fn(LocalDefId) + Sync + Send) {
+        par_for_each_in(&self.tcx.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
     }
 
     pub fn ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {
         let def_kind = self.tcx.def_kind(def_id);
         match def_kind {
             DefKind::Trait | DefKind::TraitAlias => def_id,
-            DefKind::TyParam | DefKind::ConstParam => self.tcx.local_parent(def_id),
+            DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => {
+                self.tcx.local_parent(def_id)
+            }
             _ => bug!("ty_param_owner: {:?} is a {:?} not a type parameter", def_id, def_kind),
         }
     }
@@ -551,7 +505,9 @@ impl<'hir> Map<'hir> {
         let def_kind = self.tcx.def_kind(def_id);
         match def_kind {
             DefKind::Trait | DefKind::TraitAlias => kw::SelfUpper,
-            DefKind::TyParam | DefKind::ConstParam => self.tcx.item_name(def_id.to_def_id()),
+            DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => {
+                self.tcx.item_name(def_id.to_def_id())
+            }
             _ => bug!("ty_param_name: {:?} is a {:?} not a type parameter", def_id, def_kind),
         }
     }
@@ -573,7 +529,7 @@ impl<'hir> Map<'hir> {
 
     pub fn get_module(self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
         let hir_id = HirId::make_owner(module);
-        match self.tcx.hir_owner(module).map(|o| o.node) {
+        match self.tcx.hir_owner(hir_id.owner).map(|o| o.node) {
             Some(OwnerNode::Item(&Item { span, kind: ItemKind::Mod(ref m), .. })) => {
                 (m, span, hir_id)
             }
@@ -582,7 +538,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Walks the contents of a crate. See also `Crate::visit_all_items`.
+    /// Walks the contents of the local crate. See also `visit_all_item_likes_in_crate`.
     pub fn walk_toplevel_module(self, visitor: &mut impl Visitor<'hir>) {
         let (top_mod, span, hir_id) = self.get_module(CRATE_DEF_ID);
         visitor.visit_mod(top_mod, span, hir_id);
@@ -591,121 +547,105 @@ impl<'hir> Map<'hir> {
     /// Walks the attributes in a crate.
     pub fn walk_attributes(self, visitor: &mut impl Visitor<'hir>) {
         let krate = self.krate();
-        for (owner, info) in krate.owners.iter_enumerated() {
+        for info in krate.owners.iter() {
             if let MaybeOwner::Owner(info) = info {
-                for (local_id, attrs) in info.attrs.map.iter() {
-                    let id = HirId { owner, local_id: *local_id };
+                for attrs in info.attrs.map.values() {
                     for a in *attrs {
-                        visitor.visit_attribute(id, a)
+                        visitor.visit_attribute(a)
                     }
                 }
             }
         }
     }
 
-    /// Visits all items in the crate in some deterministic (but
-    /// unspecified) order. If you need to process every item,
-    /// and care about nesting -- usually because your algorithm
-    /// follows lexical scoping rules -- then this method is the best choice.
-    /// If you don't care about nesting, you should use the `tcx.hir_crate_items()` query
-    /// or `items()` instead.
+    /// Visits all item-likes in the crate in some deterministic (but unspecified) order. If you
+    /// need to process every item-like, and don't care about visiting nested items in a particular
+    /// order then this method is the best choice.  If you do care about this nesting, you should
+    /// use the `tcx.hir().walk_toplevel_module`.
+    ///
+    /// Note that this function will access HIR for all the item-likes in the crate.  If you only
+    /// need to access some of them, it is usually better to manually loop on the iterators
+    /// provided by `tcx.hir_crate_items(())`.
     ///
     /// Please see the notes in `intravisit.rs` for more information.
-    pub fn deep_visit_all_item_likes<V>(self, visitor: &mut V)
+    pub fn visit_all_item_likes_in_crate<V>(self, visitor: &mut V)
     where
         V: Visitor<'hir>,
     {
-        let krate = self.krate();
-        for owner in krate.owners.iter().filter_map(|i| i.as_owner()) {
-            match owner.node() {
-                OwnerNode::Item(item) => visitor.visit_item(item),
-                OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
-                OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
-                OwnerNode::TraitItem(item) => visitor.visit_trait_item(item),
-                OwnerNode::Crate(_) => {}
-            }
+        let krate = self.tcx.hir_crate_items(());
+
+        for id in krate.items() {
+            visitor.visit_item(self.item(id));
+        }
+
+        for id in krate.trait_items() {
+            visitor.visit_trait_item(self.trait_item(id));
+        }
+
+        for id in krate.impl_items() {
+            visitor.visit_impl_item(self.impl_item(id));
+        }
+
+        for id in krate.foreign_items() {
+            visitor.visit_foreign_item(self.foreign_item(id));
         }
     }
 
-    /// A parallel version of `visit_all_item_likes`.
-    pub fn par_visit_all_item_likes<V>(self, visitor: &V)
-    where
-        V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
-    {
-        let krate = self.krate();
-        par_for_each_in(&krate.owners.raw, |owner| match owner.map(OwnerInfo::node) {
-            MaybeOwner::Owner(OwnerNode::Item(item)) => visitor.visit_item(item),
-            MaybeOwner::Owner(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
-            MaybeOwner::Owner(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
-            MaybeOwner::Owner(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
-            MaybeOwner::Owner(OwnerNode::Crate(_))
-            | MaybeOwner::NonOwner(_)
-            | MaybeOwner::Phantom => {}
-        })
-    }
-
-    /// If you don't care about nesting, you should use the
-    /// `tcx.hir_module_items()` query or `module_items()` instead.
-    /// Please see notes in `deep_visit_all_item_likes`.
-    pub fn deep_visit_item_likes_in_module<V>(self, module: LocalDefId, visitor: &mut V)
+    /// This method is the equivalent of `visit_all_item_likes_in_crate` but restricted to
+    /// item-likes in a single module.
+    pub fn visit_item_likes_in_module<V>(self, module: LocalDefId, visitor: &mut V)
     where
         V: Visitor<'hir>,
     {
         let module = self.tcx.hir_module_items(module);
 
-        for id in module.items.iter() {
-            visitor.visit_item(self.item(*id));
+        for id in module.items() {
+            visitor.visit_item(self.item(id));
         }
 
-        for id in module.trait_items.iter() {
-            visitor.visit_trait_item(self.trait_item(*id));
+        for id in module.trait_items() {
+            visitor.visit_trait_item(self.trait_item(id));
         }
 
-        for id in module.impl_items.iter() {
-            visitor.visit_impl_item(self.impl_item(*id));
+        for id in module.impl_items() {
+            visitor.visit_impl_item(self.impl_item(id));
         }
 
-        for id in module.foreign_items.iter() {
-            visitor.visit_foreign_item(self.foreign_item(*id));
+        for id in module.foreign_items() {
+            visitor.visit_foreign_item(self.foreign_item(id));
         }
     }
 
     pub fn for_each_module(self, mut f: impl FnMut(LocalDefId)) {
         let crate_items = self.tcx.hir_crate_items(());
         for module in crate_items.submodules.iter() {
-            f(*module)
+            f(module.def_id)
         }
     }
 
-    #[cfg(not(parallel_compiler))]
     #[inline]
-    pub fn par_for_each_module(self, f: impl Fn(LocalDefId)) {
-        self.for_each_module(f)
-    }
-
-    #[cfg(parallel_compiler)]
-    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
-        par_iter_submodules(self.tcx, CRATE_DEF_ID, &f);
-
-        fn par_iter_submodules<F>(tcx: TyCtxt<'_>, module: LocalDefId, f: &F)
-        where
-            F: Fn(LocalDefId) + Sync,
-        {
-            (*f)(module);
-            let items = tcx.hir_module_items(module);
-            par_iter(&items.submodules[..]).for_each(|&sm| par_iter_submodules(tcx, sm, f));
-        }
+    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync + Send) {
+        let crate_items = self.tcx.hir_crate_items(());
+        par_for_each_in(&crate_items.submodules[..], |module| f(module.def_id))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
-    pub fn parent_iter(self, current_id: HirId) -> ParentHirIterator<'hir> {
+    #[inline]
+    pub fn parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> + 'hir {
         ParentHirIterator { current_id, map: self }
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    #[inline]
+    pub fn parent_iter(self, current_id: HirId) -> impl Iterator<Item = (HirId, Node<'hir>)> {
+        self.parent_id_iter(current_id).filter_map(move |id| Some((id, self.find(id)?)))
+    }
+
+    /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
+    /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    #[inline]
     pub fn parent_owner_iter(self, current_id: HirId) -> ParentOwnerIterator<'hir> {
         ParentOwnerIterator { current_id, map: self }
     }
@@ -724,7 +664,7 @@ impl<'hir> Map<'hir> {
     /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
     pub fn is_inside_const_context(self, hir_id: HirId) -> bool {
-        self.body_const_context(self.local_def_id(self.enclosing_body_owner(hir_id))).is_some()
+        self.body_const_context(self.enclosing_body_owner(hir_id)).is_some()
     }
 
     /// Retrieves the `HirId` for `id`'s enclosing method, unless there's a
@@ -772,7 +712,7 @@ impl<'hir> Map<'hir> {
                 Node::Item(_)
                 | Node::ForeignItem(_)
                 | Node::TraitItem(_)
-                | Node::Expr(Expr { kind: ExprKind::Closure(..), .. })
+                | Node::Expr(Expr { kind: ExprKind::Closure { .. }, .. })
                 | Node::ImplItem(_) => return Some(hir_id),
                 // Ignore `return`s on the first iteration
                 Node::Expr(Expr { kind: ExprKind::Loop(..) | ExprKind::Ret(..), .. })
@@ -785,27 +725,27 @@ impl<'hir> Map<'hir> {
         None
     }
 
-    /// Retrieves the `HirId` for `id`'s parent item, or `id` itself if no
+    /// Retrieves the `OwnerId` for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
-    pub fn get_parent_item(self, hir_id: HirId) -> LocalDefId {
+    pub fn get_parent_item(self, hir_id: HirId) -> OwnerId {
         if let Some((def_id, _node)) = self.parent_owner_iter(hir_id).next() {
             def_id
         } else {
-            CRATE_DEF_ID
+            CRATE_OWNER_ID
         }
     }
 
-    /// Returns the `HirId` of `id`'s nearest module parent, or `id` itself if no
+    /// Returns the `OwnerId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
-    pub(super) fn get_module_parent_node(self, hir_id: HirId) -> LocalDefId {
+    pub(super) fn get_module_parent_node(self, hir_id: HirId) -> OwnerId {
         for (def_id, node) in self.parent_owner_iter(hir_id) {
             if let OwnerNode::Item(&Item { kind: ItemKind::Mod(_), .. }) = node {
                 return def_id;
             }
         }
-        CRATE_DEF_ID
+        CRATE_OWNER_ID
     }
 
     /// When on an if expression, a match arm tail expression or a match arm, give back
@@ -878,26 +818,30 @@ impl<'hir> Map<'hir> {
         }
         bug!(
             "expected foreign mod or inlined parent, found {}",
-            self.node_to_string(HirId::make_owner(parent))
+            self.node_to_string(HirId::make_owner(parent.def_id))
         )
     }
 
+    pub fn expect_owner(self, id: OwnerId) -> OwnerNode<'hir> {
+        self.tcx.hir_owner(id).unwrap_or_else(|| bug!("expected owner for {:?}", id)).node
+    }
+
     pub fn expect_item(self, id: LocalDefId) -> &'hir Item<'hir> {
-        match self.tcx.hir_owner(id) {
+        match self.tcx.hir_owner(OwnerId { def_id: id }) {
             Some(Owner { node: OwnerNode::Item(item), .. }) => item,
             _ => bug!("expected item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
     pub fn expect_impl_item(self, id: LocalDefId) -> &'hir ImplItem<'hir> {
-        match self.tcx.hir_owner(id) {
+        match self.tcx.hir_owner(OwnerId { def_id: id }) {
             Some(Owner { node: OwnerNode::ImplItem(item), .. }) => item,
             _ => bug!("expected impl item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
     pub fn expect_trait_item(self, id: LocalDefId) -> &'hir TraitItem<'hir> {
-        match self.tcx.hir_owner(id) {
+        match self.tcx.hir_owner(OwnerId { def_id: id }) {
             Some(Owner { node: OwnerNode::TraitItem(item), .. }) => item,
             _ => bug!("expected trait item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
@@ -910,11 +854,14 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_foreign_item(self, id: LocalDefId) -> &'hir ForeignItem<'hir> {
+    pub fn expect_foreign_item(self, id: OwnerId) -> &'hir ForeignItem<'hir> {
         match self.tcx.hir_owner(id) {
             Some(Owner { node: OwnerNode::ForeignItem(item), .. }) => item,
             _ => {
-                bug!("expected foreign item, found {}", self.node_to_string(HirId::make_owner(id)))
+                bug!(
+                    "expected foreign item, found {}",
+                    self.node_to_string(HirId::make_owner(id.def_id))
+                )
             }
         }
     }
@@ -926,27 +873,33 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    #[inline]
+    fn opt_ident(self, id: HirId) -> Option<Ident> {
+        match self.get(id) {
+            Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
+            // A `Ctor` doesn't have an identifier itself, but its parent
+            // struct/variant does. Compare with `hir::Map::opt_span`.
+            Node::Ctor(..) => match self.find(self.get_parent_node(id))? {
+                Node::Item(item) => Some(item.ident),
+                Node::Variant(variant) => Some(variant.ident),
+                _ => unreachable!(),
+            },
+            node => node.ident(),
+        }
+    }
+
+    #[inline]
+    pub(super) fn opt_ident_span(self, id: HirId) -> Option<Span> {
+        self.opt_ident(id).map(|ident| ident.span)
+    }
+
+    #[inline]
     pub fn opt_name(self, id: HirId) -> Option<Symbol> {
-        Some(match self.get(id) {
-            Node::Item(i) => i.ident.name,
-            Node::ForeignItem(fi) => fi.ident.name,
-            Node::ImplItem(ii) => ii.ident.name,
-            Node::TraitItem(ti) => ti.ident.name,
-            Node::Variant(v) => v.ident.name,
-            Node::Field(f) => f.ident.name,
-            Node::Lifetime(lt) => lt.name.ident().name,
-            Node::GenericParam(param) => param.name.ident().name,
-            Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
-            Node::Ctor(..) => self.name(HirId::make_owner(self.get_parent_item(id))),
-            _ => return None,
-        })
+        self.opt_ident(id).map(|ident| ident.name)
     }
 
     pub fn name(self, id: HirId) -> Symbol {
-        match self.opt_name(id) {
-            Some(name) => name,
-            None => bug!("no name for {}", self.node_to_string(id)),
-        }
+        self.opt_name(id).unwrap_or_else(|| bug!("no name for {}", self.node_to_string(id)))
     }
 
     /// Given a node ID, gets a list of attributes associated with the AST
@@ -956,68 +909,158 @@ impl<'hir> Map<'hir> {
     }
 
     /// Gets the span of the definition of the specified HIR node.
-    /// This is used by `tcx.get_span`
+    /// This is used by `tcx.def_span`.
     pub fn span(self, hir_id: HirId) -> Span {
         self.opt_span(hir_id)
             .unwrap_or_else(|| bug!("hir::map::Map::span: id not in map: {:?}", hir_id))
     }
 
     pub fn opt_span(self, hir_id: HirId) -> Option<Span> {
+        fn until_within(outer: Span, end: Span) -> Span {
+            if let Some(end) = end.find_ancestor_inside(outer) {
+                outer.with_hi(end.hi())
+            } else {
+                outer
+            }
+        }
+
+        fn named_span(item_span: Span, ident: Ident, generics: Option<&Generics<'_>>) -> Span {
+            if ident.name != kw::Empty {
+                let mut span = until_within(item_span, ident.span);
+                if let Some(g) = generics
+                    && !g.span.is_dummy()
+                    && let Some(g_span) = g.span.find_ancestor_inside(item_span)
+                {
+                    span = span.to(g_span);
+                }
+                span
+            } else {
+                item_span
+            }
+        }
+
         let span = match self.find(hir_id)? {
-            Node::Param(param) => param.span,
+            // Function-like.
+            Node::Item(Item { kind: ItemKind::Fn(sig, ..), span: outer_span, .. })
+            | Node::TraitItem(TraitItem {
+                kind: TraitItemKind::Fn(sig, ..),
+                span: outer_span,
+                ..
+            })
+            | Node::ImplItem(ImplItem {
+                kind: ImplItemKind::Fn(sig, ..), span: outer_span, ..
+            }) => {
+                // Ensure that the returned span has the item's SyntaxContext, and not the
+                // SyntaxContext of the visibility.
+                sig.span.find_ancestor_in_same_ctxt(*outer_span).unwrap_or(*outer_span)
+            }
+            // Constants and Statics.
+            Node::Item(Item {
+                kind:
+                    ItemKind::Const(ty, ..)
+                    | ItemKind::Static(ty, ..)
+                    | ItemKind::Impl(Impl { self_ty: ty, .. }),
+                span: outer_span,
+                ..
+            })
+            | Node::TraitItem(TraitItem {
+                kind: TraitItemKind::Const(ty, ..),
+                span: outer_span,
+                ..
+            })
+            | Node::ImplItem(ImplItem {
+                kind: ImplItemKind::Const(ty, ..),
+                span: outer_span,
+                ..
+            })
+            | Node::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Static(ty, ..),
+                span: outer_span,
+                ..
+            }) => until_within(*outer_span, ty.span),
+            // With generics and bounds.
+            Node::Item(Item {
+                kind: ItemKind::Trait(_, _, generics, bounds, _),
+                span: outer_span,
+                ..
+            })
+            | Node::TraitItem(TraitItem {
+                kind: TraitItemKind::Type(bounds, _),
+                generics,
+                span: outer_span,
+                ..
+            }) => {
+                let end = if let Some(b) = bounds.last() { b.span() } else { generics.span };
+                until_within(*outer_span, end)
+            }
+            // Other cases.
             Node::Item(item) => match &item.kind {
-                ItemKind::Fn(sig, _, _) => sig.span,
-                _ => item.span,
+                ItemKind::Use(path, _) => {
+                    // Ensure that the returned span has the item's SyntaxContext, and not the
+                    // SyntaxContext of the path.
+                    path.span.find_ancestor_in_same_ctxt(item.span).unwrap_or(item.span)
+                }
+                _ => named_span(item.span, item.ident, item.kind.generics()),
             },
+            Node::Variant(variant) => named_span(variant.span, variant.ident, None),
+            Node::ImplItem(item) => named_span(item.span, item.ident, Some(item.generics)),
+            Node::ForeignItem(item) => match item.kind {
+                ForeignItemKind::Fn(decl, _, _) => until_within(item.span, decl.output.span()),
+                _ => named_span(item.span, item.ident, None),
+            },
+            Node::Ctor(_) => return self.opt_span(self.get_parent_node(hir_id)),
+            Node::Expr(Expr {
+                kind: ExprKind::Closure(Closure { fn_decl_span, .. }),
+                span,
+                ..
+            }) => {
+                // Ensure that the returned span has the item's SyntaxContext.
+                fn_decl_span.find_ancestor_in_same_ctxt(*span).unwrap_or(*span)
+            }
+            _ => self.span_with_body(hir_id),
+        };
+        debug_assert_eq!(span.ctxt(), self.span_with_body(hir_id).ctxt());
+        Some(span)
+    }
+
+    /// Like `hir.span()`, but includes the body of items
+    /// (instead of just the item header)
+    pub fn span_with_body(self, hir_id: HirId) -> Span {
+        match self.get(hir_id) {
+            Node::Param(param) => param.span,
+            Node::Item(item) => item.span,
             Node::ForeignItem(foreign_item) => foreign_item.span,
-            Node::TraitItem(trait_item) => match &trait_item.kind {
-                TraitItemKind::Fn(sig, _) => sig.span,
-                _ => trait_item.span,
-            },
-            Node::ImplItem(impl_item) => match &impl_item.kind {
-                ImplItemKind::Fn(sig, _) => sig.span,
-                _ => impl_item.span,
-            },
+            Node::TraitItem(trait_item) => trait_item.span,
+            Node::ImplItem(impl_item) => impl_item.span,
             Node::Variant(variant) => variant.span,
             Node::Field(field) => field.span,
             Node::AnonConst(constant) => self.body(constant.body).value.span,
             Node::Expr(expr) => expr.span,
+            Node::ExprField(field) => field.span,
             Node::Stmt(stmt) => stmt.span,
-            Node::PathSegment(seg) => seg.ident.span,
+            Node::PathSegment(seg) => {
+                let ident_span = seg.ident.span;
+                ident_span
+                    .with_hi(seg.args.map_or_else(|| ident_span.hi(), |args| args.span_ext.hi()))
+            }
             Node::Ty(ty) => ty.span,
+            Node::TypeBinding(tb) => tb.span,
             Node::TraitRef(tr) => tr.path.span,
-            Node::Binding(pat) => pat.span,
             Node::Pat(pat) => pat.span,
+            Node::PatField(field) => field.span,
             Node::Arm(arm) => arm.span,
             Node::Block(block) => block.span,
-            Node::Ctor(..) => match self.find(self.get_parent_node(hir_id))? {
-                Node::Item(item) => item.span,
-                Node::Variant(variant) => variant.span,
-                _ => unreachable!(),
-            },
+            Node::Ctor(..) => self.span_with_body(self.get_parent_node(hir_id)),
             Node::Lifetime(lifetime) => lifetime.span,
             Node::GenericParam(param) => param.span,
             Node::Infer(i) => i.span,
             Node::Local(local) => local.span,
             Node::Crate(item) => item.spans.inner_span,
-        };
-        Some(span)
-    }
-
-    /// Like `hir.span()`, but includes the body of function items
-    /// (instead of just the function header)
-    pub fn span_with_body(self, hir_id: HirId) -> Span {
-        match self.find(hir_id) {
-            Some(Node::TraitItem(item)) => item.span,
-            Some(Node::ImplItem(impl_item)) => impl_item.span,
-            Some(Node::Item(item)) => item.span,
-            Some(_) => self.span(hir_id),
-            _ => bug!("hir::map::Map::span_with_body: id not in map: {:?}", hir_id),
         }
     }
 
     pub fn span_if_local(self, id: DefId) -> Option<Span> {
-        id.as_local().and_then(|id| self.opt_span(self.local_def_id_to_hir_id(id)))
+        if id.is_local() { Some(self.tcx.def_span(id)) } else { None }
     }
 
     pub fn res_span(self, res: Res) -> Option<Span> {
@@ -1081,6 +1124,8 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
 
     let upstream_crates = upstream_crates(tcx);
 
+    let resolutions = tcx.resolutions(());
+
     // We hash the final, remapped names of all local source files so we
     // don't have to include the path prefix remapping commandline args.
     // If we included the full mapping in the SVH, we could only have
@@ -1097,35 +1142,35 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
 
     source_file_names.sort_unstable();
 
-    let mut hcx = tcx.create_stable_hashing_context();
-    let mut stable_hasher = StableHasher::new();
-    hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
-    upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
-    source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
-    if tcx.sess.opts.debugging_opts.incremental_relative_spans {
-        let definitions = &tcx.untracked_resolutions.definitions;
-        let mut owner_spans: Vec<_> = krate
-            .owners
-            .iter_enumerated()
-            .filter_map(|(def_id, info)| {
-                let _ = info.as_owner()?;
-                let def_path_hash = definitions.def_path_hash(def_id);
-                let span = definitions.def_span(def_id);
-                debug_assert_eq!(span.parent(), None);
-                Some((def_path_hash, span))
-            })
-            .collect();
-        owner_spans.sort_unstable_by_key(|bn| bn.0);
-        owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
-    }
-    tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
-    tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
-    // Hash visibility information since it does not appear in HIR.
-    let resolutions = tcx.resolutions(());
-    resolutions.visibilities.hash_stable(&mut hcx, &mut stable_hasher);
-    resolutions.has_pub_restricted.hash_stable(&mut hcx, &mut stable_hasher);
+    let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
+        let mut stable_hasher = StableHasher::new();
+        hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
+        upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
+        source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
+        if tcx.sess.opts.unstable_opts.incremental_relative_spans {
+            let definitions = tcx.definitions_untracked();
+            let mut owner_spans: Vec<_> = krate
+                .owners
+                .iter_enumerated()
+                .filter_map(|(def_id, info)| {
+                    let _ = info.as_owner()?;
+                    let def_path_hash = definitions.def_path_hash(def_id);
+                    let span = resolutions.source_span.get(def_id).unwrap_or(&DUMMY_SP);
+                    debug_assert_eq!(span.parent(), None);
+                    Some((def_path_hash, span))
+                })
+                .collect();
+            owner_spans.sort_unstable_by_key(|bn| bn.0);
+            owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
+        }
+        tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
+        tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
+        // Hash visibility information since it does not appear in HIR.
+        resolutions.visibilities.hash_stable(&mut hcx, &mut stable_hasher);
+        resolutions.has_pub_restricted.hash_stable(&mut hcx, &mut stable_hasher);
+        stable_hasher.finish()
+    });
 
-    let crate_hash: Fingerprint = stable_hasher.finish();
     Svh::new(crate_hash.to_smaller_hash())
 }
 
@@ -1134,7 +1179,7 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
         .crates(())
         .iter()
         .map(|&cnum| {
-            let stable_crate_id = tcx.resolutions(()).cstore.stable_crate_id(cnum);
+            let stable_crate_id = tcx.stable_crate_id(cnum);
             let hash = tcx.crate_hash(cnum);
             (stable_crate_id, hash)
         })
@@ -1177,7 +1222,13 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ItemKind::ForeignMod { .. } => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
                 ItemKind::TyAlias(..) => "ty",
-                ItemKind::OpaqueTy(..) => "opaque type",
+                ItemKind::OpaqueTy(ref opaque) => {
+                    if opaque.in_trait {
+                        "opaque type in trait"
+                    } else {
+                        "opaque type"
+                    }
+                }
                 ItemKind::Enum(..) => "enum",
                 ItemKind::Struct(..) => "struct",
                 ItemKind::Union(..) => "union",
@@ -1193,7 +1244,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 format!("assoc const {} in {}{}", ii.ident, path_str(), id_str)
             }
             ImplItemKind::Fn(..) => format!("method {} in {}{}", ii.ident, path_str(), id_str),
-            ImplItemKind::TyAlias(_) => {
+            ImplItemKind::Type(_) => {
                 format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
             }
         },
@@ -1214,12 +1265,14 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         }
         Some(Node::AnonConst(_)) => node_str("const"),
         Some(Node::Expr(_)) => node_str("expr"),
+        Some(Node::ExprField(_)) => node_str("expr field"),
         Some(Node::Stmt(_)) => node_str("stmt"),
         Some(Node::PathSegment(_)) => node_str("path segment"),
         Some(Node::Ty(_)) => node_str("type"),
+        Some(Node::TypeBinding(_)) => node_str("type binding"),
         Some(Node::TraitRef(_)) => node_str("trait ref"),
-        Some(Node::Binding(_)) => node_str("local"),
         Some(Node::Pat(_)) => node_str("pat"),
+        Some(Node::PatField(_)) => node_str("pattern field"),
         Some(Node::Param(_)) => node_str("param"),
         Some(Node::Arm(_)) => node_str("arm"),
         Some(Node::Block(_)) => node_str("block"),
@@ -1234,133 +1287,145 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
 }
 
 pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> ModuleItems {
-    let mut collector = ModuleCollector {
-        tcx,
-        submodules: Vec::default(),
-        items: Vec::default(),
-        trait_items: Vec::default(),
-        impl_items: Vec::default(),
-        foreign_items: Vec::default(),
-    };
+    let mut collector = ItemCollector::new(tcx, false);
 
     let (hir_mod, span, hir_id) = tcx.hir().get_module(module_id);
     collector.visit_mod(hir_mod, span, hir_id);
 
-    let ModuleCollector { submodules, items, trait_items, impl_items, foreign_items, .. } =
-        collector;
+    let ItemCollector {
+        submodules,
+        items,
+        trait_items,
+        impl_items,
+        foreign_items,
+        body_owners,
+        ..
+    } = collector;
     return ModuleItems {
         submodules: submodules.into_boxed_slice(),
         items: items.into_boxed_slice(),
         trait_items: trait_items.into_boxed_slice(),
         impl_items: impl_items.into_boxed_slice(),
         foreign_items: foreign_items.into_boxed_slice(),
+        body_owners: body_owners.into_boxed_slice(),
     };
+}
 
-    struct ModuleCollector<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        submodules: Vec<LocalDefId>,
-        items: Vec<ItemId>,
-        trait_items: Vec<TraitItemId>,
-        impl_items: Vec<ImplItemId>,
-        foreign_items: Vec<ForeignItemId>,
-    }
+pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
+    let mut collector = ItemCollector::new(tcx, true);
 
-    impl<'hir> Visitor<'hir> for ModuleCollector<'hir> {
-        type NestedFilter = nested_filter::All;
+    // A "crate collector" and "module collector" start at a
+    // module item (the former starts at the crate root) but only
+    // the former needs to collect it. ItemCollector does not do this for us.
+    collector.submodules.push(CRATE_OWNER_ID);
+    tcx.hir().walk_toplevel_module(&mut collector);
 
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.tcx.hir()
-        }
+    let ItemCollector {
+        submodules,
+        items,
+        trait_items,
+        impl_items,
+        foreign_items,
+        body_owners,
+        ..
+    } = collector;
 
-        fn visit_item(&mut self, item: &'hir Item<'hir>) {
-            self.items.push(item.item_id());
-            if let ItemKind::Mod(..) = item.kind {
-                // If this declares another module, do not recurse inside it.
-                self.submodules.push(item.def_id);
-            } else {
-                intravisit::walk_item(self, item)
-            }
-        }
+    return ModuleItems {
+        submodules: submodules.into_boxed_slice(),
+        items: items.into_boxed_slice(),
+        trait_items: trait_items.into_boxed_slice(),
+        impl_items: impl_items.into_boxed_slice(),
+        foreign_items: foreign_items.into_boxed_slice(),
+        body_owners: body_owners.into_boxed_slice(),
+    };
+}
 
-        fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
-            self.trait_items.push(item.trait_item_id());
-            intravisit::walk_trait_item(self, item)
-        }
+struct ItemCollector<'tcx> {
+    // When true, it collects all items in the create,
+    // otherwise it collects items in some module.
+    crate_collector: bool,
+    tcx: TyCtxt<'tcx>,
+    submodules: Vec<OwnerId>,
+    items: Vec<ItemId>,
+    trait_items: Vec<TraitItemId>,
+    impl_items: Vec<ImplItemId>,
+    foreign_items: Vec<ForeignItemId>,
+    body_owners: Vec<LocalDefId>,
+}
 
-        fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
-            self.impl_items.push(item.impl_item_id());
-            intravisit::walk_impl_item(self, item)
-        }
-
-        fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
-            self.foreign_items.push(item.foreign_item_id());
-            intravisit::walk_foreign_item(self, item)
+impl<'tcx> ItemCollector<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, crate_collector: bool) -> ItemCollector<'tcx> {
+        ItemCollector {
+            crate_collector,
+            tcx,
+            submodules: Vec::default(),
+            items: Vec::default(),
+            trait_items: Vec::default(),
+            impl_items: Vec::default(),
+            foreign_items: Vec::default(),
+            body_owners: Vec::default(),
         }
     }
 }
 
-pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
-    let mut collector = CrateCollector {
-        tcx,
-        submodules: Vec::default(),
-        items: Vec::default(),
-        trait_items: Vec::default(),
-        impl_items: Vec::default(),
-        foreign_items: Vec::default(),
-    };
+impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
+    type NestedFilter = nested_filter::All;
 
-    tcx.hir().walk_toplevel_module(&mut collector);
-
-    let CrateCollector { submodules, items, trait_items, impl_items, foreign_items, .. } =
-        collector;
-
-    return ModuleItems {
-        submodules: submodules.into_boxed_slice(),
-        items: items.into_boxed_slice(),
-        trait_items: trait_items.into_boxed_slice(),
-        impl_items: impl_items.into_boxed_slice(),
-        foreign_items: foreign_items.into_boxed_slice(),
-    };
-
-    struct CrateCollector<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        submodules: Vec<LocalDefId>,
-        items: Vec<ItemId>,
-        trait_items: Vec<TraitItemId>,
-        impl_items: Vec<ImplItemId>,
-        foreign_items: Vec<ForeignItemId>,
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
-    impl<'hir> Visitor<'hir> for CrateCollector<'hir> {
-        type NestedFilter = nested_filter::All;
-
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.tcx.hir()
+    fn visit_item(&mut self, item: &'hir Item<'hir>) {
+        if associated_body(Node::Item(item)).is_some() {
+            self.body_owners.push(item.def_id.def_id);
         }
 
-        fn visit_item(&mut self, item: &'hir Item<'hir>) {
-            self.items.push(item.item_id());
+        self.items.push(item.item_id());
+
+        // Items that are modules are handled here instead of in visit_mod.
+        if let ItemKind::Mod(module) = &item.kind {
+            self.submodules.push(item.def_id);
+            // A module collector does not recurse inside nested modules.
+            if self.crate_collector {
+                intravisit::walk_mod(self, module, item.hir_id());
+            }
+        } else {
             intravisit::walk_item(self, item)
         }
+    }
 
-        fn visit_mod(&mut self, m: &'hir Mod<'hir>, _s: Span, n: HirId) {
-            self.submodules.push(n.owner);
-            intravisit::walk_mod(self, m, n);
+    fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
+        self.foreign_items.push(item.foreign_item_id());
+        intravisit::walk_foreign_item(self, item)
+    }
+
+    fn visit_anon_const(&mut self, c: &'hir AnonConst) {
+        self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
+        intravisit::walk_anon_const(self, c)
+    }
+
+    fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
+        if matches!(ex.kind, ExprKind::Closure { .. }) {
+            self.body_owners.push(self.tcx.hir().local_def_id(ex.hir_id));
+        }
+        intravisit::walk_expr(self, ex)
+    }
+
+    fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
+        if associated_body(Node::TraitItem(item)).is_some() {
+            self.body_owners.push(item.def_id.def_id);
         }
 
-        fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
-            self.foreign_items.push(item.foreign_item_id());
-            intravisit::walk_foreign_item(self, item)
+        self.trait_items.push(item.trait_item_id());
+        intravisit::walk_trait_item(self, item)
+    }
+
+    fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
+        if associated_body(Node::ImplItem(item)).is_some() {
+            self.body_owners.push(item.def_id.def_id);
         }
 
-        fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
-            self.trait_items.push(item.trait_item_id());
-            intravisit::walk_trait_item(self, item)
-        }
-
-        fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
-            self.impl_items.push(item.impl_item_id());
-            intravisit::walk_impl_item(self, item)
-        }
+        self.impl_items.push(item.impl_item_id());
+        intravisit::walk_impl_item(self, item)
     }
 }

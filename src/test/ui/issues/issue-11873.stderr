@@ -7,7 +7,7 @@ LL |     let mut f = || v.push(2);
    |                 borrow of `v` occurs here
 LL |     let _w = v;
    |              ^ move out of `v` occurs here
-LL | 
+LL |
 LL |     f();
    |     - borrow later used here
 

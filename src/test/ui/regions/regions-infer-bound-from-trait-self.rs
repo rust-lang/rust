@@ -1,10 +1,6 @@
 // Test that we can derive lifetime bounds on `Self` from trait
 // inheritance.
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 trait Static : 'static { }
 
 trait Is<'a> : 'a { }

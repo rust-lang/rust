@@ -1,0 +1,16 @@
+### What it does
+Checks for usage of Intel x86 assembly syntax.
+
+### Why is this bad?
+The lint has been enabled to indicate a preference
+for AT&T x86 assembly syntax.
+
+### Example
+
+```
+asm!("lea {}, [{}]", lateout(reg) _, in(reg) ptr);
+```
+Use instead:
+```
+asm!("lea ({}), {}", in(reg) ptr, lateout(reg) _, options(att_syntax));
+```

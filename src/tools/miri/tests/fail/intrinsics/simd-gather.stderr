@@ -1,0 +1,20 @@
+error: Undefined Behavior: dereferencing pointer failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
+  --> RUSTLIB/core/src/../../portable-simd/crates/core_simd/src/vector.rs:LL:CC
+   |
+LL |         unsafe { intrinsics::simd_gather(or, ptrs, enable.to_int()) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `std::simd::Simd::<i8, 4>::gather_select_unchecked` at RUSTLIB/core/src/../../portable-simd/crates/core_simd/src/vector.rs:LL:CC
+note: inside `main` at $DIR/simd-gather.rs:LL:CC
+  --> $DIR/simd-gather.rs:LL:CC
+   |
+LL |         let _result = Simd::gather_select_unchecked(&vec, Mask::splat(true), idxs, Simd::splat(0));
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

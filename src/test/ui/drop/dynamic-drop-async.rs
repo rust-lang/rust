@@ -6,7 +6,6 @@
 // run-pass
 // needs-unwind
 // edition:2018
-// ignore-wasm32-bare compiled with panic=abort by default
 
 #![allow(unused)]
 

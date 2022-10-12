@@ -50,7 +50,9 @@ error[E0565]: literal in `cfg` predicate value must be a string
   --> $DIR/cfg-attr-syntax-validation.rs:25:11
    |
 LL | #[cfg(a = b"hi")]
-   |           ^^^^^ help: consider removing the prefix: `"hi"`
+   |           -^^^^
+   |           |
+   |           help: consider removing the prefix
 
 error: expected unsuffixed literal or identifier, found `concat!("nonexistent")`
   --> $DIR/cfg-attr-syntax-validation.rs:30:25

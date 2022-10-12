@@ -11,8 +11,8 @@ use std::cmp::{Ord, Ordering};
 use rustc_ast::ast;
 use rustc_span::{symbol::sym, Span};
 
-use crate::config::{Config, GroupImportsTactic, ImportGranularity};
-use crate::imports::{flatten_use_trees, merge_use_trees, SharedPrefix, UseSegment, UseTree};
+use crate::config::{Config, GroupImportsTactic};
+use crate::imports::{normalize_use_trees_with_granularity, UseSegmentKind, UseTree};
 use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use crate::lists::{itemize_list, write_list, ListFormatting, ListItem};
 use crate::rewrite::RewriteContext;
@@ -107,15 +107,10 @@ fn rewrite_reorderable_or_regroupable_items(
             for (item, list_item) in normalized_items.iter_mut().zip(list_items) {
                 item.list_item = Some(list_item.clone());
             }
-            normalized_items = match context.config.imports_granularity() {
-                ImportGranularity::Crate => merge_use_trees(normalized_items, SharedPrefix::Crate),
-                ImportGranularity::Module => {
-                    merge_use_trees(normalized_items, SharedPrefix::Module)
-                }
-                ImportGranularity::Item => flatten_use_trees(normalized_items),
-                ImportGranularity::One => merge_use_trees(normalized_items, SharedPrefix::One),
-                ImportGranularity::Preserve => normalized_items,
-            };
+            normalized_items = normalize_use_trees_with_granularity(
+                normalized_items,
+                context.config.imports_granularity(),
+            );
 
             let mut regrouped_items = match context.config.group_imports() {
                 GroupImportsTactic::Preserve | GroupImportsTactic::One => {
@@ -187,16 +182,16 @@ fn group_imports(uts: Vec<UseTree>) -> Vec<Vec<UseTree>> {
             external_imports.push(ut);
             continue;
         }
-        match &ut.path[0] {
-            UseSegment::Ident(id, _) => match id.as_ref() {
+        match &ut.path[0].kind {
+            UseSegmentKind::Ident(id, _) => match id.as_ref() {
                 "std" | "alloc" | "core" => std_imports.push(ut),
                 _ => external_imports.push(ut),
             },
-            UseSegment::Slf(_) | UseSegment::Super(_) | UseSegment::Crate(_) => {
+            UseSegmentKind::Slf(_) | UseSegmentKind::Super(_) | UseSegmentKind::Crate(_) => {
                 local_imports.push(ut)
             }
             // These are probably illegal here
-            UseSegment::Glob | UseSegment::List(_) => external_imports.push(ut),
+            UseSegmentKind::Glob | UseSegmentKind::List(_) => external_imports.push(ut),
         }
     }
 

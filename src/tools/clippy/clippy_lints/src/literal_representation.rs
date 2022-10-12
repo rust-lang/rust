@@ -22,11 +22,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let x: u64 = 61864918973511;
+    /// # let _: u64 =
+    /// 61864918973511
+    /// # ;
+    /// ```
     ///
-    /// // Good
-    /// let x: u64 = 61_864_918_973_511;
+    /// Use instead:
+    /// ```rust
+    /// # let _: u64 =
+    /// 61_864_918_973_511
+    /// # ;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub UNREADABLE_LITERAL,
@@ -46,6 +51,7 @@ declare_clippy_lint! {
     /// - Does not match on `_127` since that is a valid grouping for decimal and octal numbers
     ///
     /// ### Example
+    /// ```ignore
     /// `2_32` => `2_i32`
     /// `250_8 => `250_u8`
     /// ```
@@ -66,11 +72,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let x: u64 = 618_64_9189_73_511;
+    /// # let _: u64 =
+    /// 618_64_9189_73_511
+    /// # ;
+    /// ```
     ///
-    /// // Good
-    /// let x: u64 = 61_864_918_973_511;
+    /// Use instead:
+    /// ```rust
+    /// # let _: u64 =
+    /// 61_864_918_973_511
+    /// # ;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub INCONSISTENT_DIGIT_GROUPING,
@@ -125,9 +136,11 @@ declare_clippy_lint! {
     /// readable than a decimal representation.
     ///
     /// ### Example
+    /// ```text
     /// `255` => `0xFF`
     /// `65_535` => `0xFFFF`
     /// `4_042_322_160` => `0xF0F0_F0F0`
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub DECIMAL_LITERAL_REPRESENTATION,
     restriction,
@@ -465,7 +478,7 @@ impl DecimalLiteralRepresentation {
             if num_lit.radix == Radix::Decimal;
             if val >= u128::from(self.threshold);
             then {
-                let hex = format!("{:#X}", val);
+                let hex = format!("{val:#X}");
                 let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
                 let _ = Self::do_lint(num_lit.integer).map_err(|warning_type| {
                     warning_type.display(num_lit.format(), cx, lit.span);

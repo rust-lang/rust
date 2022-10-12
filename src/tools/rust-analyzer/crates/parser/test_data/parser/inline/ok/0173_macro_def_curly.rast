@@ -1,0 +1,27 @@
+SOURCE_FILE
+  MACRO_DEF
+    MACRO_KW "macro"
+    WHITESPACE " "
+    NAME
+      IDENT "m"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      WHITESPACE " "
+      TOKEN_TREE
+        L_PAREN "("
+        DOLLAR "$"
+        IDENT "i"
+        COLON ":"
+        IDENT "ident"
+        R_PAREN ")"
+      WHITESPACE " "
+      EQ "="
+      R_ANGLE ">"
+      WHITESPACE " "
+      TOKEN_TREE
+        L_CURLY "{"
+        R_CURLY "}"
+      WHITESPACE " "
+      R_CURLY "}"
+  WHITESPACE "\n"

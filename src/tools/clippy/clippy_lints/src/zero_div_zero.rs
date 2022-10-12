@@ -14,10 +14,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let nan = 0.0f32 / 0.0;
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let nan = f32::NAN;
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -56,8 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
                     "constant division of `0.0` with `0.0` will always result in NaN",
                     None,
                     &format!(
-                        "consider using `{}::NAN` if you would like a constant representing NaN",
-                        float_type,
+                        "consider using `{float_type}::NAN` if you would like a constant representing NaN",
                     ),
                 );
             }

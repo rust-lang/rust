@@ -1,6 +1,9 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where both the regions are anonymous.
 
+use crate::errors::AddLifetimeParamsSuggestion;
+use crate::errors::LifetimeMismatch;
+use crate::errors::LifetimeMismatchLabels;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::error_reporting::nice_region_error::util::AnonymousParamInfo;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
@@ -8,9 +11,9 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::SubregionOrigin;
 use crate::infer::TyCtxt;
 
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
-use rustc_hir as hir;
-use rustc_hir::{GenericParamKind, Ty};
+use rustc_errors::AddToDiagnostic;
+use rustc_errors::{Diagnostic, ErrorGuaranteed};
+use rustc_hir::Ty;
 use rustc_middle::ty::Region;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
@@ -97,132 +100,50 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let sub_is_ret_type =
             self.is_return_type_anon(scope_def_id_sub, bregion_sub, ty_fndecl_sub);
 
-        let span_label_var1 = match anon_param_sup.pat.simple_ident() {
-            Some(simple_ident) => format!(" from `{}`", simple_ident),
-            None => String::new(),
-        };
-
-        let span_label_var2 = match anon_param_sub.pat.simple_ident() {
-            Some(simple_ident) => format!(" into `{}`", simple_ident),
-            None => String::new(),
-        };
-
         debug!(
             "try_report_anon_anon_conflict: sub_is_ret_type={:?} sup_is_ret_type={:?}",
             sub_is_ret_type, sup_is_ret_type
         );
 
-        let mut err = struct_span_err!(self.tcx().sess, span, E0623, "lifetime mismatch");
-
-        match (sup_is_ret_type, sub_is_ret_type) {
+        let labels = match (sup_is_ret_type, sub_is_ret_type) {
             (ret_capture @ Some(ret_span), _) | (_, ret_capture @ Some(ret_span)) => {
                 let param_span =
                     if sup_is_ret_type == ret_capture { ty_sub.span } else { ty_sup.span };
-
-                err.span_label(
+                LifetimeMismatchLabels::InRet {
                     param_span,
-                    "this parameter and the return type are declared with different lifetimes...",
-                );
-                err.span_label(ret_span, "");
-                err.span_label(span, format!("...but data{} is returned here", span_label_var1));
-            }
-
-            (None, None) => {
-                if ty_sup.hir_id == ty_sub.hir_id {
-                    err.span_label(ty_sup.span, "this type is declared with multiple lifetimes...");
-                    err.span_label(ty_sub.span, "");
-                    err.span_label(span, "...but data with one lifetime flows into the other here");
-                } else {
-                    err.span_label(
-                        ty_sup.span,
-                        "these two types are declared with different lifetimes...",
-                    );
-                    err.span_label(ty_sub.span, "");
-                    err.span_label(
-                        span,
-                        format!("...but data{} flows{} here", span_label_var1, span_label_var2),
-                    );
+                    ret_span,
+                    span,
+                    label_var1: anon_param_sup.pat.simple_ident(),
                 }
             }
-        }
 
-        if suggest_adding_lifetime_params(self.tcx(), sub, ty_sup, ty_sub, &mut err) {
-            err.note("each elided lifetime in input position becomes a distinct lifetime");
-        }
+            (None, None) => LifetimeMismatchLabels::Normal {
+                hir_equal: ty_sup.hir_id == ty_sub.hir_id,
+                ty_sup: ty_sup.span,
+                ty_sub: ty_sub.span,
+                span,
+                sup: anon_param_sup.pat.simple_ident(),
+                sub: anon_param_sub.pat.simple_ident(),
+            },
+        };
 
-        let reported = err.emit();
+        let suggestion =
+            AddLifetimeParamsSuggestion { tcx: self.tcx(), sub, ty_sup, ty_sub, add_note: true };
+        let err = LifetimeMismatch { span, labels, suggestion };
+        let reported = self.tcx().sess.emit_err(err);
         Some(reported)
     }
 }
 
+/// Currently only used in rustc_borrowck, probably should be
+/// removed in favour of public_errors::AddLifetimeParamsSuggestion
 pub fn suggest_adding_lifetime_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     sub: Region<'tcx>,
-    ty_sup: &Ty<'_>,
-    ty_sub: &Ty<'_>,
+    ty_sup: &'tcx Ty<'_>,
+    ty_sub: &'tcx Ty<'_>,
     err: &mut Diagnostic,
-) -> bool {
-    let (
-        hir::Ty { kind: hir::TyKind::Rptr(lifetime_sub, _), .. },
-        hir::Ty { kind: hir::TyKind::Rptr(lifetime_sup, _), .. },
-    ) = (ty_sub, ty_sup) else {
-        return false;
-    };
-
-    if !lifetime_sub.name.is_elided() || !lifetime_sup.name.is_elided() {
-        return false;
-    };
-
-    let Some(anon_reg) = tcx.is_suitable_region(sub) else {
-        return false;
-    };
-
-    let hir_id = tcx.hir().local_def_id_to_hir_id(anon_reg.def_id);
-
-    let node = tcx.hir().get(hir_id);
-    let is_impl = matches!(&node, hir::Node::ImplItem(_));
-    let generics = match node {
-        hir::Node::Item(&hir::Item { kind: hir::ItemKind::Fn(_, ref generics, ..), .. })
-        | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
-        | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => generics,
-        _ => return false,
-    };
-
-    let (suggestion_param_name, introduce_new) = generics
-        .params
-        .iter()
-        .find(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
-        .and_then(|p| tcx.sess.source_map().span_to_snippet(p.span).ok())
-        .map(|name| (name, false))
-        .unwrap_or_else(|| ("'a".to_string(), true));
-
-    let mut suggestions = vec![
-        if let hir::LifetimeName::Underscore = lifetime_sub.name {
-            (lifetime_sub.span, suggestion_param_name.clone())
-        } else {
-            (lifetime_sub.span.shrink_to_hi(), suggestion_param_name.clone() + " ")
-        },
-        if let hir::LifetimeName::Underscore = lifetime_sup.name {
-            (lifetime_sup.span, suggestion_param_name.clone())
-        } else {
-            (lifetime_sup.span.shrink_to_hi(), suggestion_param_name.clone() + " ")
-        },
-    ];
-
-    if introduce_new {
-        let new_param_suggestion = match &generics.params {
-            [] => (generics.span, format!("<{}>", suggestion_param_name)),
-            [first, ..] => (first.span.shrink_to_lo(), format!("{}, ", suggestion_param_name)),
-        };
-
-        suggestions.push(new_param_suggestion);
-    }
-
-    let mut sugg = String::from("consider introducing a named lifetime parameter");
-    if is_impl {
-        sugg.push_str(" and update trait if needed");
-    }
-    err.multipart_suggestion(sugg.as_str(), suggestions, Applicability::MaybeIncorrect);
-
-    true
+) {
+    let suggestion = AddLifetimeParamsSuggestion { tcx, sub, ty_sup, ty_sub, add_note: false };
+    suggestion.add_to_diagnostic(err);
 }

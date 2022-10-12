@@ -10,6 +10,10 @@ type Inner = ErrorData<Box<Custom>>;
 pub(super) struct Repr(Inner);
 
 impl Repr {
+    #[inline]
+    pub(super) fn new(dat: ErrorData<Box<Custom>>) -> Self {
+        Self(dat)
+    }
     pub(super) fn new_custom(b: Box<Custom>) -> Self {
         Self(Inner::Custom(b))
     }

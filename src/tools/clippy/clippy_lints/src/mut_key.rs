@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::trait_ref_of_method;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{Adt, Array, Ref, Slice, Tuple, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -89,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'tcx>) {
         if let hir::ImplItemKind::Fn(ref sig, ..) = item.kind {
-            if trait_ref_of_method(cx, item.def_id).is_none() {
+            if trait_ref_of_method(cx, item.def_id.def_id).is_none() {
                 check_sig(cx, item.hir_id(), sig.decl);
             }
         }
@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
         if let hir::PatKind::Wild = local.pat.kind {
             return;
         }
-        check_ty(cx, local.span, cx.typeck_results().pat_ty(&*local.pat));
+        check_ty(cx, local.span, cx.typeck_results().pat_ty(local.pat));
     }
 }
 

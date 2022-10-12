@@ -1,0 +1,13 @@
+### What it does
+Checks for `#[deprecated]` annotations with a `since`
+field that is not a valid semantic version.
+
+### Why is this bad?
+For checking the version of the deprecation, it must be
+a valid semver. Failing that, the contained information is useless.
+
+### Example
+```
+#[deprecated(since = "forever")]
+fn something_else() { /* ... */ }
+```

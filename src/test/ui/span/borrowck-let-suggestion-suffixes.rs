@@ -20,7 +20,7 @@ fn f() {
     //~^ ERROR temporary value dropped while borrowed
     //~| NOTE creates a temporary which is freed while still in use
     //~| NOTE temporary value is freed at the end of this statement
-    //~| NOTE consider using a `let` binding to create a longer lived value
+    //~| HELP consider using a `let` binding to create a longer lived value
 
     {
 
@@ -41,7 +41,7 @@ fn f() {
     //~^ ERROR temporary value dropped while borrowed
     //~| NOTE creates a temporary which is freed while still in use
     //~| NOTE temporary value is freed at the end of this statement
-    //~| NOTE consider using a `let` binding to create a longer lived value
+    //~| HELP consider using a `let` binding to create a longer lived value
 
     v1.push(&old[0]);
 

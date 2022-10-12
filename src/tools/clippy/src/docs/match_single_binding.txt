@@ -1,0 +1,23 @@
+### What it does
+Checks for useless match that binds to only one value.
+
+### Why is this bad?
+Readability and needless complexity.
+
+### Known problems
+ Suggested replacements may be incorrect when `match`
+is actually binding temporary value, bringing a 'dropped while borrowed' error.
+
+### Example
+```
+match (a, b) {
+    (c, d) => {
+        // useless match
+    }
+}
+```
+
+Use instead:
+```
+let (c, d) = (a, b);
+```

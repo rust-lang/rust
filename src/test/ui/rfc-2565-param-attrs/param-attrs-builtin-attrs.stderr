@@ -70,7 +70,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Bar
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:9:9
    |
 LL |         #[must_use]
@@ -82,7 +82,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:13:9
    |
 LL |         #[no_mangle] b: i32,
@@ -100,7 +100,7 @@ error: documentation comments cannot be applied to function parameters
 LL |     /// Bar
    |     ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:25:5
    |
 LL |     #[must_use]
@@ -112,7 +112,7 @@ error: documentation comments cannot be applied to function parameters
 LL |     /// Baz
    |     ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:29:5
    |
 LL |     #[no_mangle] b: i32,
@@ -130,7 +130,7 @@ error: documentation comments cannot be applied to function parameters
 LL |     /// Bar
    |     ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:40:5
    |
 LL |     #[must_use]
@@ -142,7 +142,7 @@ error: documentation comments cannot be applied to function parameters
 LL |     /// Baz
    |     ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:44:5
    |
 LL |     #[no_mangle] b: i32,
@@ -166,7 +166,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:60:9
    |
 LL |         #[must_use]
@@ -178,7 +178,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Qux
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:64:9
    |
 LL |         #[no_mangle] b: i32,
@@ -196,7 +196,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:75:9
    |
 LL |         #[must_use]
@@ -208,7 +208,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Qux
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:79:9
    |
 LL |         #[no_mangle] b: i32,
@@ -232,7 +232,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:96:9
    |
 LL |         #[must_use]
@@ -244,7 +244,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Qux
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:100:9
    |
 LL |         #[no_mangle] b: i32,
@@ -268,7 +268,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:115:9
    |
 LL |         #[must_use]
@@ -280,7 +280,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Qux
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:119:9
    |
 LL |         #[no_mangle] b: i32,
@@ -298,7 +298,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:130:9
    |
 LL |         #[must_use]
@@ -310,7 +310,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Qux
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:134:9
    |
 LL |         #[no_mangle] b: i32,
@@ -334,7 +334,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:150:9
    |
 LL |         #[must_use]
@@ -346,7 +346,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Qux
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:154:9
    |
 LL |         #[no_mangle] b: i32,
@@ -364,7 +364,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Bar
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:167:9
    |
 LL |         #[must_use]
@@ -376,7 +376,7 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:171:9
    |
 LL |         #[no_mangle] b: i32

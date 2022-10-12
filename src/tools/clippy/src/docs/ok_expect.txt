@@ -1,0 +1,19 @@
+### What it does
+Checks for usage of `ok().expect(..)`.
+
+### Why is this bad?
+Because you usually call `expect()` on the `Result`
+directly to get a better error message.
+
+### Known problems
+The error type needs to implement `Debug`
+
+### Example
+```
+x.ok().expect("why did I do this again?");
+```
+
+Use instead:
+```
+x.expect("why did I do this again?");
+```

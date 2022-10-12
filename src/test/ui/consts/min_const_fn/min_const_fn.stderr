@@ -1,10 +1,10 @@
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:37:25
    |
 LL |     const fn into_inner(self) -> T { self.0 }
    |                         ^^^^                - value is dropped here
    |                         |
-   |                         constant functions cannot evaluate destructors
+   |                         the destructor for this type cannot be evaluated in constant functions
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:39:22
@@ -33,13 +33,13 @@ LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:46:28
    |
 LL |     const fn into_inner_lt(self) -> T { self.0 }
    |                            ^^^^                - value is dropped here
    |                            |
-   |                            constant functions cannot evaluate destructors
+   |                            the destructor for this type cannot be evaluated in constant functions
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:48:25
@@ -68,13 +68,13 @@ LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:55:27
    |
 LL |     const fn into_inner_s(self) -> T { self.0 }
    |                           ^^^^                - value is dropped here
    |                           |
-   |                           constant functions cannot evaluate destructors
+   |                           the destructor for this type cannot be evaluated in constant functions
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:57:24
@@ -191,21 +191,21 @@ LL | const fn inc(x: &mut i32) { *x += 1 }
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `AlanTuring<impl std::fmt::Debug>` cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:122:19
    |
 LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    |                   ^^                                     - value is dropped here
    |                   |
-   |                   constant functions cannot evaluate destructors
+   |                   the destructor for this type cannot be evaluated in constant functions
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `impl std::fmt::Debug` cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:124:18
    |
 LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    |                  ^^                         - value is dropped here
    |                  |
-   |                  constant functions cannot evaluate destructors
+   |                  the destructor for this type cannot be evaluated in constant functions
 
 error: aborting due to 24 previous errors
 

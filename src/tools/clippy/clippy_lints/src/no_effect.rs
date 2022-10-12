@@ -92,6 +92,7 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
         if_chain! {
             if !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id);
             if let Some(init) = local.init;
+            if local.els.is_none();
             if !local.pat.span.from_expansion();
             if has_no_effect(cx, init);
             if let PatKind::Binding(_, _, ident, _) = local.pat.kind;
@@ -116,7 +117,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         return false;
     }
     match peel_blocks(expr).kind {
-        ExprKind::Lit(..) | ExprKind::Closure(..) => true,
+        ExprKind::Lit(..) | ExprKind::Closure { .. } => true,
         ExprKind::Path(..) => !has_drop(cx, cx.typeck_results().expr_ty(expr)),
         ExprKind::Index(a, b) | ExprKind::Binary(_, a, b) => has_no_effect(cx, a) && has_no_effect(cx, b),
         ExprKind::Array(v) | ExprKind::Tup(v) => v.iter().all(|val| has_no_effect(cx, val)),

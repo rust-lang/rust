@@ -48,7 +48,7 @@ error[E0382]: borrow of moved value
   --> $DIR/default-binding-modes-both-sides-independent.rs:29:9
    |
 LL |     let ref mut a @ b = NotCopy;
-   |         ^^^^^^^^^^^^-   ------- move occurs because value has type `NotCopy`, which does not implement the `Copy` trait
+   |         ^^^^^^^^^   -   ------- move occurs because value has type `NotCopy`, which does not implement the `Copy` trait
    |         |           |
    |         |           value moved here
    |         value borrowed here after move

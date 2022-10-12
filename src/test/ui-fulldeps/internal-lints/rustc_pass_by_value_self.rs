@@ -44,11 +44,11 @@ struct WithParameters<T, const N: usize, M = u32> {
 }
 
 impl<T> WithParameters<T, 1> {
-    fn with_ref(&self) {} //~ ERROR passing `WithParameters<T, 1_usize>` by reference
+    fn with_ref(&self) {} //~ ERROR passing `WithParameters<T, 1>` by reference
 }
 
 impl<T> WithParameters<T, 1, u8> {
-    fn with_ref(&self) {} //~ ERROR passing `WithParameters<T, 1_usize, u8>` by reference
+    fn with_ref(&self) {} //~ ERROR passing `WithParameters<T, 1, u8>` by reference
 }
 
 fn main() {}

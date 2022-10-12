@@ -27,7 +27,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeVisitable};
 use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -36,10 +36,9 @@ use rustc_target::abi::Size;
 
 use libc::c_uint;
 use smallvec::SmallVec;
+use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::iter;
-use std::lazy::OnceCell;
-use tracing::debug;
 
 mod create_scope_map;
 pub mod gdb;
@@ -97,23 +96,26 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
         unsafe {
             llvm::LLVMRustDIBuilderFinalize(self.builder);
 
-            // Debuginfo generation in LLVM by default uses a higher
-            // version of dwarf than macOS currently understands. We can
-            // instruct LLVM to emit an older version of dwarf, however,
-            // for macOS to understand. For more info see #11352
-            // This can be overridden using --llvm-opts -dwarf-version,N.
-            // Android has the same issue (#22398)
-            if let Some(version) = sess.target.dwarf_version {
+            if !sess.target.is_like_msvc {
+                // Debuginfo generation in LLVM by default uses a higher
+                // version of dwarf than macOS currently understands. We can
+                // instruct LLVM to emit an older version of dwarf, however,
+                // for macOS to understand. For more info see #11352
+                // This can be overridden using --llvm-opts -dwarf-version,N.
+                // Android has the same issue (#22398)
+                let dwarf_version = sess
+                    .opts
+                    .unstable_opts
+                    .dwarf_version
+                    .unwrap_or(sess.target.default_dwarf_version);
                 llvm::LLVMRustAddModuleFlag(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,
                     "Dwarf Version\0".as_ptr().cast(),
-                    version,
-                )
-            }
-
-            // Indicate that we want CodeView debug information on MSVC
-            if sess.target.is_like_msvc {
+                    dwarf_version,
+                );
+            } else {
+                // Indicate that we want CodeView debug information on MSVC
                 llvm::LLVMRustAddModuleFlag(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,

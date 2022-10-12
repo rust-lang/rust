@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `c`
   --> $DIR/closure-print-generic-verbose-1.rs:17:5
    |
 LL |     let c = to_fn_once(move|| {
-   |         - move occurs because `c` has type `[f<T>::{closure#0} closure_kind_ty=i32 closure_sig_as_fn_ptr_ty=extern "rust-call" fn(()) upvar_tys=(Foo<&'_#10r str>, T)]`, which does not implement the `Copy` trait
+   |         - move occurs because `c` has type `[f<T>::{closure#0} closure_kind_ty=i32 closure_sig_as_fn_ptr_ty=extern "rust-call" fn(()) upvar_tys=(Foo<&'_#9r str>, T)]`, which does not implement the `Copy` trait
 ...
 LL |     c();
    |     --- `c` moved due to this call

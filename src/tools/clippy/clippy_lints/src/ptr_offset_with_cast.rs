@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for PtrOffsetWithCast {
             None => return,
         };
 
-        let msg = format!("use of `{}` with a `usize` casted to an `isize`", method);
+        let msg = format!("use of `{method}` with a `usize` casted to an `isize`");
         if let Some(sugg) = build_suggestion(cx, method, receiver_expr, cast_lhs_expr) {
             span_lint_and_sugg(
                 cx,
@@ -93,7 +93,7 @@ fn expr_as_ptr_offset_call<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Method)> {
-    if let ExprKind::MethodCall(path_segment, [arg_0, arg_1, ..], _) = &expr.kind {
+    if let ExprKind::MethodCall(path_segment, arg_0, [arg_1, ..], _) = &expr.kind {
         if is_expr_ty_raw_ptr(cx, arg_0) {
             if path_segment.ident.name == sym::offset {
                 return Some((arg_0, arg_1, Method::Offset));
@@ -124,7 +124,7 @@ fn build_suggestion<'tcx>(
 ) -> Option<String> {
     let receiver = snippet_opt(cx, receiver_expr.span)?;
     let cast_lhs = snippet_opt(cx, cast_lhs_expr.span)?;
-    Some(format!("{}.{}({})", receiver, method.suggestion(), cast_lhs))
+    Some(format!("{receiver}.{}({cast_lhs})", method.suggestion()))
 }
 
 #[derive(Copy, Clone)]

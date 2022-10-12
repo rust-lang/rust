@@ -90,7 +90,7 @@ impl<'tcx> MonoItem<'tcx> {
         let generate_cgu_internal_copies = tcx
             .sess
             .opts
-            .debugging_opts
+            .unstable_opts
             .inline_in_all_cgus
             .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
             && !tcx.sess.link_dead_code();
@@ -182,7 +182,7 @@ impl<'tcx> MonoItem<'tcx> {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => def.def_id().as_local(),
             MonoItem::Static(def_id) => def_id.as_local(),
-            MonoItem::GlobalAsm(item_id) => Some(item_id.def_id),
+            MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.def_id),
         }
         .map(|def_id| tcx.def_span(def_id))
     }
@@ -336,7 +336,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         WorkProductId::from_cgu_name(self.name().as_str())
     }
 
-    pub fn work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
+    pub fn previous_work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
         let work_product_id = self.work_product_id();
         tcx.dep_graph
             .previous_work_product(&work_product_id)
@@ -362,7 +362,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // the codegen tests and can even make item order
                             // unstable.
                             InstanceDef::Item(def) => def.did.as_local().map(Idx::index),
-                            InstanceDef::VtableShim(..)
+                            InstanceDef::VTableShim(..)
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
                             | InstanceDef::FnPtrShim(..)
@@ -373,7 +373,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                         }
                     }
                     MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.index()),
+                    MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.def_id.index()),
                 },
                 item.symbol_name(tcx),
             )
@@ -459,7 +459,7 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
     {
         let cgu_name = self.build_cgu_name_no_mangle(cnum, components, special_suffix);
 
-        if self.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
+        if self.tcx.sess.opts.unstable_opts.human_readable_cgu_names {
             cgu_name
         } else {
             Symbol::intern(&CodegenUnit::mangle_name(cgu_name.as_str()))

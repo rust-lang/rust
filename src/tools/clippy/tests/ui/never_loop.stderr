@@ -101,5 +101,18 @@ LL | |             break 'label;
 LL | |         }
    | |_________^
 
-error: aborting due to 9 previous errors
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:223:13
+   |
+LL |       let _ = loop {
+   |  _____________^
+LL | |         let Some(x) = x else {
+LL | |             return;
+LL | |         };
+LL | |
+LL | |         break x;
+LL | |     };
+   | |_____^
+
+error: aborting due to 10 previous errors
 

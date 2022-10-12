@@ -1,4 +1,5 @@
 use crate::builtin;
+use rustc_errors::fluent;
 use rustc_hir::HirId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::{lint::LintExpectation, ty::TyCtxt};
@@ -15,20 +16,22 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
         return;
     }
 
+    let lint_expectations = tcx.lint_expectations(());
     let fulfilled_expectations = tcx.sess.diagnostic().steal_fulfilled_expectation_ids();
-    let lint_expectations = &tcx.lint_levels(()).lint_expectations;
+
+    tracing::debug!(?lint_expectations, ?fulfilled_expectations);
 
     for (id, expectation) in lint_expectations {
-        if !fulfilled_expectations.contains(id)
-            && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
-        {
-            // This check will always be true, since `lint_expectations` only
-            // holds stable ids
-            if let LintExpectationId::Stable { hir_id, .. } = id {
+        // This check will always be true, since `lint_expectations` only
+        // holds stable ids
+        if let LintExpectationId::Stable { hir_id, .. } = id {
+            if !fulfilled_expectations.contains(&id)
+                && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
+            {
                 emit_unfulfilled_expectation_lint(tcx, *hir_id, expectation);
-            } else {
-                unreachable!("at this stage all `LintExpectationId`s are stable");
             }
+        } else {
+            unreachable!("at this stage all `LintExpectationId`s are stable");
         }
     }
 }
@@ -42,17 +45,17 @@ fn emit_unfulfilled_expectation_lint(
         builtin::UNFULFILLED_LINT_EXPECTATIONS,
         hir_id,
         expectation.emission_span,
-        |diag| {
-            let mut diag = diag.build("this lint expectation is unfulfilled");
+        fluent::lint::expectation,
+        |lint| {
             if let Some(rationale) = expectation.reason {
-                diag.note(rationale.as_str());
+                lint.note(rationale.as_str());
             }
 
             if expectation.is_unfulfilled_lint_expectations {
-                diag.note("the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message");
+                lint.note(fluent::lint::note);
             }
 
-            diag.emit();
+            lint
         },
     );
 }

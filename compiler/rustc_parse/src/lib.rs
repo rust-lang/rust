@@ -4,8 +4,8 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(never_type)]
+#![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -32,12 +32,15 @@ use parser::{emit_unclosed_delims, make_unclosed_delims_error, Parser};
 pub mod lexer;
 pub mod validate_attr;
 
+mod errors;
+
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
 // uses a HOF to parse anything, and <source> includes file and
 // `source_str`.
 
-/// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
+/// A variant of 'panictry!' that works on a `Vec<Diagnostic>` instead of a single
+/// `DiagnosticBuilder`.
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => {{
         use rustc_errors::FatalError;
@@ -62,7 +65,7 @@ pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'
 pub fn parse_crate_attrs_from_file<'a>(
     input: &Path,
     sess: &'a ParseSess,
-) -> PResult<'a, Vec<ast::Attribute>> {
+) -> PResult<'a, ast::AttrVec> {
     let mut parser = new_parser_from_file(sess, input, None);
     parser.parse_inner_attributes()
 }
@@ -79,7 +82,7 @@ pub fn parse_crate_attrs_from_source_str(
     name: FileName,
     source: String,
     sess: &ParseSess,
-) -> PResult<'_, Vec<ast::Attribute>> {
+) -> PResult<'_, ast::AttrVec> {
     new_parser_from_source_str(sess, name, source).parse_inner_attributes()
 }
 
@@ -116,12 +119,12 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Spa
     source_file_to_parser(sess, file_to_source_file(sess, path, sp))
 }
 
-/// Given a `source_file` and config, returns a parser.
+/// Given a session and a `source_file`, returns a parser.
 fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
     panictry_buffer!(&sess.span_diagnostic, maybe_source_file_to_parser(sess, source_file))
 }
 
-/// Given a `source_file` and config, return a parser. Returns any buffered errors from lexing the
+/// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing the
 /// initial token stream.
 fn maybe_source_file_to_parser(
     sess: &ParseSess,
@@ -282,7 +285,7 @@ fn error_malformed_cfg_attr_missing(span: Span, parse_sess: &ParseSess) {
         .span_suggestion(
             span,
             "missing condition and attribute",
-            CFG_ATTR_GRAMMAR_HELP.to_string(),
+            CFG_ATTR_GRAMMAR_HELP,
             Applicability::HasPlaceholders,
         )
         .note(CFG_ATTR_NOTE_REF)

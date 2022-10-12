@@ -2,8 +2,14 @@ use std::env;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    let target = env::var("TARGET").expect("TARGET was not set");
+    println!("cargo:rerun-if-env-changed=CARGO_CFG_MIRI");
 
+    if env::var_os("CARGO_CFG_MIRI").is_some() {
+        // Miri doesn't need the linker flags or a libunwind build.
+        return;
+    }
+
+    let target = env::var("TARGET").expect("TARGET was not set");
     if target.contains("android") {
         let build = cc::Build::new();
 
@@ -13,13 +19,8 @@ fn main() {
         let has_unwind = build.is_flag_supported("-lunwind").expect("Unable to invoke compiler");
 
         if has_unwind {
-            println!("cargo:rustc-link-lib=unwind");
-        } else {
-            println!("cargo:rustc-link-lib=gcc");
+            println!("cargo:rustc-cfg=feature=\"system-llvm-libunwind\"");
         }
-
-        // Android's unwinding library depends on dl_iterate_phdr in `libdl`.
-        println!("cargo:rustc-link-lib=dl");
     } else if target.contains("freebsd") {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("netbsd") {

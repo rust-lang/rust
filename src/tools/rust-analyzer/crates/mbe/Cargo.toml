@@ -1,0 +1,24 @@
+[package]
+name = "mbe"
+version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.57"
+
+[lib]
+doctest = false
+
+[dependencies]
+cov-mark = "2.0.0-pre.1"
+rustc-hash = "1.1.0"
+smallvec = "1.9.0"
+tracing = "0.1.35"
+
+syntax = { path = "../syntax", version = "0.0.0" }
+parser = { path = "../parser", version = "0.0.0" }
+tt = { path = "../tt", version = "0.0.0" }
+stdx = { path = "../stdx", version = "0.0.0" }
+
+[dev-dependencies]
+test-utils = { path = "../test-utils" }

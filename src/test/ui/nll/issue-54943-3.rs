@@ -4,7 +4,6 @@
 // out the value of that `_` requires type-checking the surrounding code, but that code is dead,
 // so our NLL region checker doesn't have access to it. This test should actually fail to compile.
 
-#![feature(nll)]
 #![allow(warnings)]
 
 use std::fmt::Debug;

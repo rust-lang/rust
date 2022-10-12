@@ -11,8 +11,8 @@ pub struct LowerIntrinsics;
 
 impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-        for block in basic_blocks {
+        let local_decls = &body.local_decls;
+        for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator.as_mut().unwrap();
             if let TerminatorKind::Call { func, args, destination, target, .. } =
                 &mut terminator.kind
@@ -34,7 +34,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                     Rvalue::Use(Operand::Constant(Box::new(Constant {
                                         span: terminator.source_info.span,
                                         user_ty: None,
-                                        literal: ty::Const::zero_sized(tcx, tcx.types.unit).into(),
+                                        literal: ConstantKind::zero_sized(tcx.types.unit),
                                     }))),
                                 ))),
                             });
@@ -46,12 +46,31 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         let mut args = args.drain(..);
                         block.statements.push(Statement {
                             source_info: terminator.source_info,
-                            kind: StatementKind::CopyNonOverlapping(Box::new(
-                                rustc_middle::mir::CopyNonOverlapping {
-                                    src: args.next().unwrap(),
-                                    dst: args.next().unwrap(),
-                                    count: args.next().unwrap(),
-                                },
+                            kind: StatementKind::Intrinsic(Box::new(
+                                NonDivergingIntrinsic::CopyNonOverlapping(
+                                    rustc_middle::mir::CopyNonOverlapping {
+                                        src: args.next().unwrap(),
+                                        dst: args.next().unwrap(),
+                                        count: args.next().unwrap(),
+                                    },
+                                ),
+                            )),
+                        });
+                        assert_eq!(
+                            args.next(),
+                            None,
+                            "Extra argument for copy_non_overlapping intrinsic"
+                        );
+                        drop(args);
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
+                    sym::assume => {
+                        let target = target.unwrap();
+                        let mut args = args.drain(..);
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Intrinsic(Box::new(
+                                NonDivergingIntrinsic::Assume(args.next().unwrap()),
                             )),
                         });
                         assert_eq!(

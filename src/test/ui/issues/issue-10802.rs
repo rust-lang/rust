@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-#![feature(box_syntax)]
 
 struct DroppableStruct;
 enum DroppableEnum {
@@ -33,14 +32,14 @@ impl  Whatever {
 
 fn main() {
     {
-        let f: Box<_> = box DroppableStruct;
-        let _a = Whatever::new(box f as Box<dyn MyTrait>);
+        let f: Box<_> = Box::new(DroppableStruct);
+        let _a = Whatever::new(Box::new(f) as Box<dyn MyTrait>);
     }
     assert!(unsafe { DROPPED });
     unsafe { DROPPED = false; }
     {
-        let f: Box<_> = box DroppableEnum::DroppableVariant1;
-        let _a = Whatever::new(box f as Box<dyn MyTrait>);
+        let f: Box<_> = Box::new(DroppableEnum::DroppableVariant1);
+        let _a = Whatever::new(Box::new(f) as Box<dyn MyTrait>);
     }
     assert!(unsafe { DROPPED });
 }

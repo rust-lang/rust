@@ -11,7 +11,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f<T: ?Sized>(t: T) {}
 LL + fn f<T>(t: T) {}
-   | 
+   |
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn f<T: ?Sized>(t: &T) {}

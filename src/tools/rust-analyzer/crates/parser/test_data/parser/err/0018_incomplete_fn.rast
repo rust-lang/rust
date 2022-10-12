@@ -1,0 +1,134 @@
+SOURCE_FILE
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "FnScopes"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "new_scope"
+        PARAM_LIST
+          L_PAREN "("
+          PARAM
+            REF_PAT
+              AMP "&"
+          R_PAREN ")"
+        WHITESPACE " "
+        RET_TYPE
+          THIN_ARROW "->"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "ScopeId"
+        WHITESPACE " "
+        BLOCK_EXPR
+          STMT_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            LET_STMT
+              LET_KW "let"
+              WHITESPACE " "
+              IDENT_PAT
+                NAME
+                  IDENT "res"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              METHOD_CALL_EXPR
+                FIELD_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          SELF_KW "self"
+                  DOT "."
+                  NAME_REF
+                    IDENT "scopes"
+                DOT "."
+                NAME_REF
+                  IDENT "len"
+                ARG_LIST
+                  L_PAREN "("
+                  R_PAREN ")"
+              SEMICOLON ";"
+            WHITESPACE "\n        "
+            METHOD_CALL_EXPR
+              FIELD_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        SELF_KW "self"
+                DOT "."
+                NAME_REF
+                  IDENT "scopes"
+              DOT "."
+              NAME_REF
+                IDENT "push"
+              ARG_LIST
+                L_PAREN "("
+                RECORD_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "ScopeData"
+                  WHITESPACE " "
+                  RECORD_EXPR_FIELD_LIST
+                    L_CURLY "{"
+                    WHITESPACE " "
+                    RECORD_EXPR_FIELD
+                      NAME_REF
+                        IDENT "parent"
+                      COLON ":"
+                      WHITESPACE " "
+                      PATH_EXPR
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "None"
+                    COMMA ","
+                    WHITESPACE " "
+                    RECORD_EXPR_FIELD
+                      NAME_REF
+                        IDENT "entries"
+                      COLON ":"
+                      WHITESPACE " "
+                      MACRO_EXPR
+                        MACRO_CALL
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "vec"
+                          BANG "!"
+                          TOKEN_TREE
+                            L_BRACK "["
+                            R_BRACK "]"
+                    WHITESPACE " "
+                    R_CURLY "}"
+                R_PAREN ")"
+            WHITESPACE "\n    "
+            R_CURLY "}"
+      WHITESPACE "\n\n    "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "set_parent"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"
+error 34: expected pattern
+error 34: missing type for function parameter
+error 180: expected function arguments
+error 180: expected a block

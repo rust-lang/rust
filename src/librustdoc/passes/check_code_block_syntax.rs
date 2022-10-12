@@ -1,7 +1,9 @@
 //! Validates syntax inside Rust code blocks (\`\`\`rust).
 use rustc_data_structures::sync::{Lock, Lrc};
-use rustc_errors::{emitter::Emitter, Applicability, Diagnostic, Handler, LazyFallbackBundle};
-use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_errors::{
+    emitter::Emitter, translation::Translate, Applicability, Diagnostic, Handler,
+    LazyFallbackBundle,
+};
 use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
@@ -52,7 +54,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             None,
             None,
         );
-        let expn_id = LocalExpnId::fresh(expn_data, self.cx.tcx.create_stable_hashing_context());
+        let expn_id =
+            self.cx.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
         let span = DUMMY_SP.fresh_expansion(expn_id);
 
         let is_empty = rustc_driver::catch_fatal_errors(|| {
@@ -94,48 +97,10 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             None => (item.attr_span(self.cx.tcx), false),
         };
 
-        // lambda that will use the lint to start a new diagnostic and add
-        // a suggestion to it when needed.
-        let diag_builder = |lint: LintDiagnosticBuilder<'_, ()>| {
-            let explanation = if is_ignore {
-                "`ignore` code blocks require valid Rust code for syntax highlighting; \
-                    mark blocks that do not contain Rust code as text"
-            } else {
-                "mark blocks that do not contain Rust code as text"
-            };
-            let msg = if buffer.has_errors {
-                "could not parse code block as Rust code"
-            } else {
-                "Rust code block is empty"
-            };
-            let mut diag = lint.build(msg);
-
-            if precise_span {
-                if is_ignore {
-                    // giving an accurate suggestion is hard because `ignore` might not have come first in the list.
-                    // just give a `help` instead.
-                    diag.span_help(
-                        sp.from_inner(InnerSpan::new(0, 3)),
-                        &format!("{}: ```text", explanation),
-                    );
-                } else if empty_block {
-                    diag.span_suggestion(
-                        sp.from_inner(InnerSpan::new(0, 3)).shrink_to_hi(),
-                        explanation,
-                        String::from("text"),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            } else if empty_block || is_ignore {
-                diag.help(&format!("{}: ```text", explanation));
-            }
-
-            // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
-            for message in buffer.messages.iter() {
-                diag.note(message);
-            }
-
-            diag.emit();
+        let msg = if buffer.has_errors {
+            "could not parse code block as Rust code"
+        } else {
+            "Rust code block is empty"
         };
 
         // Finally build and emit the completed diagnostic.
@@ -145,7 +110,42 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             crate::lint::INVALID_RUST_CODEBLOCKS,
             hir_id,
             sp,
-            diag_builder,
+            msg,
+            |lint| {
+                let explanation = if is_ignore {
+                    "`ignore` code blocks require valid Rust code for syntax highlighting; \
+                    mark blocks that do not contain Rust code as text"
+                } else {
+                    "mark blocks that do not contain Rust code as text"
+                };
+
+                if precise_span {
+                    if is_ignore {
+                        // giving an accurate suggestion is hard because `ignore` might not have come first in the list.
+                        // just give a `help` instead.
+                        lint.span_help(
+                            sp.from_inner(InnerSpan::new(0, 3)),
+                            &format!("{}: ```text", explanation),
+                        );
+                    } else if empty_block {
+                        lint.span_suggestion(
+                            sp.from_inner(InnerSpan::new(0, 3)).shrink_to_hi(),
+                            explanation,
+                            "text",
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                } else if empty_block || is_ignore {
+                    lint.help(&format!("{}: ```text", explanation));
+                }
+
+                // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
+                for message in buffer.messages.iter() {
+                    lint.note(message);
+                }
+
+                lint
+            },
         );
     }
 }
@@ -179,11 +179,24 @@ struct BufferEmitter {
     fallback_bundle: LazyFallbackBundle,
 }
 
+impl Translate for BufferEmitter {
+    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+        None
+    }
+
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+        &**self.fallback_bundle
+    }
+}
+
 impl Emitter for BufferEmitter {
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
         let mut buffer = self.buffer.borrow_mut();
-        // FIXME(davidtwco): need to support translation here eventually
-        buffer.messages.push(format!("error from rustc: {}", diag.message[0].0.expect_str()));
+
+        let fluent_args = self.to_fluent_args(diag.args());
+        let translated_main_message = self.translate_message(&diag.message[0].0, &fluent_args);
+
+        buffer.messages.push(format!("error from rustc: {}", translated_main_message));
         if diag.is_error() {
             buffer.has_errors = true;
         }
@@ -191,13 +204,5 @@ impl Emitter for BufferEmitter {
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         None
-    }
-
-    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
-        None
-    }
-
-    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
-        &**self.fallback_bundle
     }
 }

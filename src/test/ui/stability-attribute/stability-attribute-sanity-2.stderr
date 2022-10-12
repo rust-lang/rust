@@ -8,7 +8,7 @@ error[E0541]: unknown meta item 'sinse'
   --> $DIR/stability-attribute-sanity-2.rs:10:25
    |
 LL | #[stable(feature = "a", sinse = "1.0.0")]
-   |                         ^^^^^^^^^^^^^^^ expected one of `since`, `note`
+   |                         ^^^^^^^^^^^^^^^ expected one of `feature`, `since`
 
 error[E0545]: `issue` must be a non-zero numeric string or "none"
   --> $DIR/stability-attribute-sanity-2.rs:13:27

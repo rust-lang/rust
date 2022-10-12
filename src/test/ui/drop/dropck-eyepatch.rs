@@ -35,10 +35,10 @@ trait Foo { fn foo(&self, _: &str); }
 
 struct Dt<A: Foo>(&'static str, A);
 struct Dr<'a, B:'a+Foo>(&'static str, &'a B);
-struct Pt<A,B: Foo>(&'static str, A, B);
-struct Pr<'a, 'b, B:'a+'b+Foo>(&'static str, &'a B, &'b B);
-struct St<A: Foo>(&'static str, A);
-struct Sr<'a, B:'a+Foo>(&'static str, &'a B);
+struct Pt<A,B: Foo>(&'static str, #[allow(unused_tuple_struct_fields)] A, B);
+struct Pr<'a, 'b, B:'a+'b+Foo>(&'static str, #[allow(unused_tuple_struct_fields)] &'a B, &'b B);
+struct St<A: Foo>(&'static str, #[allow(unused_tuple_struct_fields)] A);
+struct Sr<'a, B:'a+Foo>(&'static str, #[allow(unused_tuple_struct_fields)] &'a B);
 
 impl<A: Foo> Drop for Dt<A> {
     fn drop(&mut self) { println!("drop {}", self.0); self.1.foo(self.0); }

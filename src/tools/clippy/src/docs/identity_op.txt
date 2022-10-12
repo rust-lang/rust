@@ -1,0 +1,11 @@
+### What it does
+Checks for identity operations, e.g., `x + 0`.
+
+### Why is this bad?
+This code can be removed without changing the
+meaning. So it just obscures what's going on. Delete it mercilessly.
+
+### Example
+```
+x / 1 + 0 * 1 - 0 | 0;
+```

@@ -25,11 +25,15 @@ name: CI
   pull_request:
     branches:
       - "**"
+permissions:
+  contents: read
 defaults:
   run:
     shell: bash
 jobs:
   pr:
+    permissions:
+      actions: write
     name: PR
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
@@ -43,7 +47,7 @@ jobs:
           - name: mingw-check
             os: ubuntu-20.04-xl
             env: {}
-          - name: x86_64-gnu-llvm-12
+          - name: x86_64-gnu-llvm-13
             os: ubuntu-20.04-xl
             env: {}
           - name: x86_64-gnu-tools
@@ -79,7 +83,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && github.ref != 'refs/heads/try-perf'"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
@@ -97,9 +101,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        if: success() && !env.SKIP_JOB
-      - name: ensure the build happens on a partition with enough space
-        run: src/ci/scripts/symlink-build-dir.sh
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
@@ -145,6 +146,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
         if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
   auto:
+    permissions:
+      actions: write
     name: auto
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
@@ -277,7 +280,11 @@ jobs:
           - name: x86_64-gnu-distcheck
             os: ubuntu-20.04-xl
             env: {}
-          - name: x86_64-gnu-llvm-12
+          - name: x86_64-gnu-llvm-13
+            env:
+              RUST_BACKTRACE: 1
+            os: ubuntu-20.04-xl
+          - name: x86_64-gnu-llvm-13-stage1
             env:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-xl
@@ -290,7 +297,7 @@ jobs:
             os: ubuntu-20.04-xl
           - name: dist-x86_64-apple
             env:
-              SCRIPT: "./x.py dist --host=x86_64-apple-darwin --target=x86_64-apple-darwin"
+              SCRIPT: "./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin"
               RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
@@ -301,7 +308,7 @@ jobs:
             os: macos-latest
           - name: dist-apple-various
             env:
-              SCRIPT: "./x.py dist --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim"
+              SCRIPT: "./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim"
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
@@ -311,7 +318,7 @@ jobs:
             os: macos-latest
           - name: dist-x86_64-apple-alt
             env:
-              SCRIPT: "./x.py dist"
+              SCRIPT: "./x.py dist bootstrap --include-default-paths"
               RUST_CONFIGURE_ARGS: "--enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
@@ -343,7 +350,7 @@ jobs:
             os: macos-latest
           - name: dist-aarch64-apple
             env:
-              SCRIPT: "./x.py dist --stage 2"
+              SCRIPT: "./x.py dist bootstrap --include-default-paths --stage 2"
               RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --host=aarch64-apple-darwin --target=aarch64-apple-darwin --enable-full-tools --enable-sanitizers --enable-profiler --disable-docs --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               USE_XCODE_CLANG: 1
@@ -388,65 +395,71 @@ jobs:
             os: windows-latest-xl
           - name: i686-mingw-1
             env:
-              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --set llvm.allow-old-toolchain"
               SCRIPT: make ci-mingw-subset-1
+              NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
             os: windows-latest-xl
           - name: i686-mingw-2
             env:
-              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --set llvm.allow-old-toolchain"
               SCRIPT: make ci-mingw-subset-2
+              NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
             os: windows-latest-xl
           - name: x86_64-mingw-1
             env:
               SCRIPT: make ci-mingw-subset-1
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler --set llvm.allow-old-toolchain"
+              NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
             os: windows-latest-xl
           - name: x86_64-mingw-2
             env:
               SCRIPT: make ci-mingw-subset-2
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler --set llvm.allow-old-toolchain"
+              NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
             os: windows-latest-xl
           - name: dist-x86_64-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler"
-              SCRIPT: python x.py dist
+              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc src/ci/pgo.sh python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-latest-xl
           - name: dist-i686-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-msvc --host=i686-pc-windows-msvc --target=i686-pc-windows-msvc,i586-pc-windows-msvc --enable-full-tools --enable-profiler"
-              SCRIPT: python x.py dist
+              SCRIPT: python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-latest-xl
           - name: dist-aarch64-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=aarch64-pc-windows-msvc --enable-full-tools --enable-profiler"
-              SCRIPT: python x.py dist
-              DIST_REQUIRE_ALL_TOOLS: 0
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              DIST_REQUIRE_ALL_TOOLS: 1
               WINDOWS_SDK_20348_HACK: 1
             os: windows-latest-xl
           - name: dist-i686-mingw
             env:
-              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools --enable-profiler"
-              SCRIPT: python x.py dist
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools --enable-profiler --set llvm.allow-old-toolchain"
+              NO_DOWNLOAD_CI_LLVM: 1
+              SCRIPT: python x.py dist bootstrap --include-default-paths
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-latest-xl
           - name: dist-x86_64-mingw
             env:
-              SCRIPT: python x.py dist
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler"
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler --set llvm.allow-old-toolchain"
+              NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-latest-xl
           - name: dist-x86_64-msvc-alt
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-extended --enable-profiler"
-              SCRIPT: python x.py dist
+              SCRIPT: python x.py dist bootstrap --include-default-paths
             os: windows-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
@@ -477,7 +490,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && github.ref != 'refs/heads/try-perf'"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
@@ -495,9 +508,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        if: success() && !env.SKIP_JOB
-      - name: ensure the build happens on a partition with enough space
-        run: src/ci/scripts/symlink-build-dir.sh
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
@@ -543,6 +553,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
         if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
   try:
+    permissions:
+      actions: write
     name: try
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
@@ -590,7 +602,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && github.ref != 'refs/heads/try-perf'"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
@@ -608,9 +620,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        if: success() && !env.SKIP_JOB
-      - name: ensure the build happens on a partition with enough space
-        run: src/ci/scripts/symlink-build-dir.sh
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh

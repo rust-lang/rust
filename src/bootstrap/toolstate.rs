@@ -69,7 +69,6 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
     ("reference", "src/doc/reference"),
     ("rust-by-example", "src/doc/rust-by-example"),
     ("edition-guide", "src/doc/edition-guide"),
-    ("rls", "src/tools/rls"),
 ];
 
 // These tools are permitted to not build on the beta/stable channels.
@@ -78,7 +77,6 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
 // though, as otherwise we will be unable to file an issue if they start
 // failing.
 static NIGHTLY_TOOLS: &[(&str, &str)] = &[
-    ("miri", "src/tools/miri"),
     ("embedded-book", "src/doc/embedded-book"),
     // ("rustc-dev-guide", "src/doc/rustc-dev-guide"),
 ];
@@ -93,7 +91,7 @@ fn print_error(tool: &str, submodule: &str) {
     eprintln!("If you do NOT intend to update '{}', please ensure you did not accidentally", tool);
     eprintln!("change the submodule at '{}'. You may ask your reviewer for the", submodule);
     eprintln!("proper steps.");
-    std::process::exit(3);
+    crate::detail_exit(3);
 }
 
 fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>) {
@@ -108,7 +106,7 @@ fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>) {
         Ok(o) => o,
         Err(e) => {
             eprintln!("Failed to get changed files: {:?}", e);
-            std::process::exit(1);
+            crate::detail_exit(1);
         }
     };
 
@@ -179,7 +177,7 @@ impl Step for ToolStateCheck {
         }
 
         if did_error {
-            std::process::exit(1);
+            crate::detail_exit(1);
         }
 
         check_changed_files(&toolstates);
@@ -225,7 +223,7 @@ impl Step for ToolStateCheck {
         }
 
         if did_error {
-            std::process::exit(1);
+            crate::detail_exit(1);
         }
 
         if builder.config.channel == "nightly" && env::var_os("TOOLSTATE_PUBLISH").is_some() {

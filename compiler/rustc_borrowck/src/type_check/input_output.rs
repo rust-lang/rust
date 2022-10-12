@@ -7,16 +7,11 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use crate::type_check::constraint_conversion::ConstraintConversion;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
-use rustc_span::DUMMY_SP;
-use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
-use rustc_trait_selection::traits::query::Fallible;
-use type_op::TypeOpOutput;
 
 use crate::universal_regions::UniversalRegions;
 
@@ -60,13 +55,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // Replace the bound items in the fn sig with fresh
                     // variables, so that they represent the view from
                     // "inside" the closure.
-                    self.infcx
-                        .replace_bound_vars_with_fresh_vars(
-                            body.span,
-                            LateBoundRegionConversionTime::FnCall,
-                            poly_sig,
-                        )
-                        .0
+                    self.infcx.replace_bound_vars_with_fresh_vars(
+                        body.span,
+                        LateBoundRegionConversionTime::FnCall,
+                        poly_sig,
+                    )
                 },
             );
         }
@@ -187,7 +180,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, span), level = "debug")]
+    #[instrument(skip(self), level = "debug")]
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
         if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
@@ -196,13 +189,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // `rustc_traits::normalize_after_erasing_regions`. Ideally, we'd
             // like to normalize *before* inserting into `local_decls`, but
             // doing so ends up causing some other trouble.
-            let b = match self.normalize_and_add_constraints(b) {
-                Ok(n) => n,
-                Err(_) => {
-                    debug!("equate_inputs_and_outputs: NoSolution");
-                    b
-                }
-            };
+            let b = self.normalize(b, Locations::All(span));
 
             // Note: if we have to introduce new placeholders during normalization above, then we won't have
             // added those universes to the universe info, which we would want in `relate_tys`.
@@ -219,29 +206,5 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 );
             }
         }
-    }
-
-    pub(crate) fn normalize_and_add_constraints(&mut self, t: Ty<'tcx>) -> Fallible<Ty<'tcx>> {
-        let TypeOpOutput { output: norm_ty, constraints, .. } =
-            self.param_env.and(type_op::normalize::Normalize::new(t)).fully_perform(self.infcx)?;
-
-        debug!("{:?} normalized to {:?}", t, norm_ty);
-
-        for data in constraints.into_iter().collect::<Vec<_>>() {
-            ConstraintConversion::new(
-                self.infcx,
-                &self.borrowck_context.universal_regions,
-                &self.region_bound_pairs,
-                Some(self.implicit_region_bound),
-                self.param_env,
-                Locations::All(DUMMY_SP),
-                DUMMY_SP,
-                ConstraintCategory::Internal,
-                &mut self.borrowck_context.constraints,
-            )
-            .convert_all(&*data);
-        }
-
-        Ok(norm_ty)
     }
 }

@@ -1,10 +1,56 @@
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:7:13
+  --> $DIR/redundant_closure_call_fixable.rs:16:13
    |
 LL |     let a = (|| 42)();
    |             ^^^^^^^^^ help: try doing something like: `42`
    |
    = note: `-D clippy::redundant-closure-call` implied by `-D warnings`
 
-error: aborting due to previous error
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:17:13
+   |
+LL |       let b = (async || {
+   |  _____________^
+LL | |         let x = something().await;
+LL | |         let y = something_else().await;
+LL | |         x * y
+LL | |     })();
+   | |________^
+   |
+help: try doing something like
+   |
+LL ~     let b = async {
+LL +         let x = something().await;
+LL +         let y = something_else().await;
+LL +         x * y
+LL ~     };
+   |
+
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:22:13
+   |
+LL |       let c = (|| {
+   |  _____________^
+LL | |         let x = 21;
+LL | |         let y = 2;
+LL | |         x * y
+LL | |     })();
+   | |________^
+   |
+help: try doing something like
+   |
+LL ~     let c = {
+LL +         let x = 21;
+LL +         let y = 2;
+LL +         x * y
+LL ~     };
+   |
+
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:27:13
+   |
+LL |     let d = (async || something().await)();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try doing something like: `async { something().await }`
+
+error: aborting due to 4 previous errors
 

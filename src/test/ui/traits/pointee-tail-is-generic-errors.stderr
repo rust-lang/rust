@@ -1,8 +1,8 @@
 error[E0271]: type mismatch resolving `<T as Pointee>::Metadata == ()`
-  --> $DIR/pointee-tail-is-generic-errors.rs:13:5
+  --> $DIR/pointee-tail-is-generic-errors.rs:13:15
    |
 LL |     is_thin::<T>();
-   |     ^^^^^^^^^^^^ expected `()`, found associated type
+   |               ^ expected `()`, found associated type
    |
    = note:    expected unit type `()`
            found associated type `<T as Pointee>::Metadata`
@@ -15,13 +15,13 @@ LL | fn is_thin<T: std::ptr::Pointee<Metadata = ()> + ?Sized>() {}
    |                                 ^^^^^^^^^^^^^ required by this bound in `is_thin`
 
 error[E0271]: type mismatch resolving `<Opaque as Pointee>::Metadata == ()`
-  --> $DIR/pointee-tail-is-generic-errors.rs:16:5
+  --> $DIR/pointee-tail-is-generic-errors.rs:16:15
    |
 LL | type Opaque = impl std::fmt::Debug + ?Sized;
    |               ----------------------------- the found opaque type
 ...
 LL |     is_thin::<Opaque>();
-   |     ^^^^^^^^^^^^^^^^^ expected `()`, found associated type
+   |               ^^^^^^ expected `()`, found associated type
    |
    = note:    expected unit type `()`
            found associated type `<Opaque as Pointee>::Metadata`

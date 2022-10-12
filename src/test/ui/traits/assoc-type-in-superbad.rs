@@ -4,13 +4,13 @@
 
 use std::vec::IntoIter;
 
-pub trait Foo: Iterator<Item=<Self as Foo>::Key> {
+pub trait Foo: Iterator<Item = <Self as Foo>::Key> {
     type Key;
 }
 
 impl Foo for IntoIter<i32> {
-    type Key = u32; //~ ERROR type mismatch
+    type Key = u32;
+    //~^ ERROR expected `std::vec::IntoIter<i32>` to be an iterator that yields `u32`, but it yields `i32`
 }
 
-fn main() {
-}
+fn main() {}

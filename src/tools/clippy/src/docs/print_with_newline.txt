@@ -1,0 +1,16 @@
+### What it does
+This lint warns when you use `print!()` with a format
+string that ends in a newline.
+
+### Why is this bad?
+You should use `println!()` instead, which appends the
+newline.
+
+### Example
+```
+print!("Hello {}!\n", name);
+```
+use println!() instead
+```
+println!("Hello {}!", name);
+```

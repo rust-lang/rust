@@ -1,11 +1,7 @@
 // Regression test for issue #57611
 // Ensures that we don't ICE
 // FIXME: This should compile, but it currently doesn't
-// known-bug
-
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
+// known-bug: unknown
 
 #![feature(trait_alias)]
 #![feature(type_alias_impl_trait)]

@@ -1,9 +1,10 @@
-use rustc_hir::def_id::DefId;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_index::vec::{Idx, IndexVec};
 
 use crate::middle::exported_symbols::ExportedSymbol;
 use crate::mir::Body;
-use crate::thir::abstract_const::Node;
+use crate::ty::abstract_const::Node;
 use crate::ty::{
     self, Const, FnSig, GeneratorDiagnosticData, GenericPredicates, Predicate, TraitRef, Ty,
 };
@@ -27,6 +28,10 @@ impl<A: ParameterizedOverTcx, B: ParameterizedOverTcx> ParameterizedOverTcx for 
 
 impl<I: Idx + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for IndexVec<I, T> {
     type Value<'tcx> = IndexVec<I, T::Value<'tcx>>;
+}
+
+impl<I: 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for FxHashMap<I, T> {
+    type Value<'tcx> = FxHashMap<I, T::Value<'tcx>>;
 }
 
 impl<T: ParameterizedOverTcx> ParameterizedOverTcx for ty::Binder<'static, T> {
@@ -53,17 +58,20 @@ trivially_parameterized_over_tcx! {
     crate::metadata::ModChild,
     crate::middle::codegen_fn_attrs::CodegenFnAttrs,
     crate::middle::exported_symbols::SymbolExportInfo,
+    crate::middle::resolve_lifetime::ObjectLifetimeDefault,
     crate::mir::ConstQualifs,
+    ty::AssocItemContainer,
     ty::Generics,
     ty::ImplPolarity,
     ty::ReprOptions,
     ty::TraitDef,
-    ty::Visibility,
+    ty::Visibility<DefIndex>,
     ty::adjustment::CoerceUnsizedInfo,
     ty::fast_reject::SimplifiedTypeGen<DefId>,
     rustc_ast::Attribute,
     rustc_ast::MacArgs,
     rustc_attr::ConstStability,
+    rustc_attr::DefaultBodyStability,
     rustc_attr::Deprecation,
     rustc_attr::Stability,
     rustc_hir::Constness,
@@ -74,6 +82,7 @@ trivially_parameterized_over_tcx! {
     rustc_hir::def::DefKind,
     rustc_hir::def_id::DefIndex,
     rustc_hir::definitions::DefKey,
+    rustc_index::bit_set::BitSet<u32>,
     rustc_index::bit_set::FiniteBitSet<u32>,
     rustc_session::cstore::ForeignModule,
     rustc_session::cstore::LinkagePreference,

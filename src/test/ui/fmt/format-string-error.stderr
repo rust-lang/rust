@@ -93,7 +93,7 @@ error: invalid format string: expected `'}'` but string was terminated
    |
 LL |     {
    |     - because of this opening brace
-LL | 
+LL |
 LL | "###);
    | ^ expected `'}'` in format string
    |

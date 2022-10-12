@@ -14,7 +14,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
     if_chain! {
         if is_type_diagnostic_item(cx, ty, sym::Vec);
         //check source object
-        if let ExprKind::MethodCall(src_method, [drain_vec, drain_arg], _) = &arg.kind;
+        if let ExprKind::MethodCall(src_method, drain_vec, [drain_arg], _) = &arg.kind;
         if src_method.ident.as_str() == "drain";
         let src_ty = cx.typeck_results().expr_ty(drain_vec);
         //check if actual src type is mutable for code suggestion

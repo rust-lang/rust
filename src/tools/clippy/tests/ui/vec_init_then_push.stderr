@@ -62,5 +62,12 @@ LL | |     v2.push(1);
 LL | |     v2.push(0);
    | |_______________^ help: consider using the `vec![]` macro: `let mut v2 = vec![..];`
 
-error: aborting due to 7 previous errors
+error: calls to `push` immediately after creation
+  --> $DIR/vec_init_then_push.rs:109:5
+   |
+LL | /     let mut v = Vec::new();
+LL | |     v.push((0i32, 0i32));
+   | |_________________________^ help: consider using the `vec![]` macro: `let v = vec![..];`
+
+error: aborting due to 8 previous errors
 

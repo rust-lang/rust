@@ -1,0 +1,160 @@
+error[E0061]: this function takes 6 arguments but 7 arguments were supplied
+  --> $DIR/issue-101097.rs:16:5
+   |
+LL |     f(C, A, A, A, B, B, C);
+   |     ^ -     -  -  - expected `C`, found `B`
+   |       |     |  |
+   |       |     |  argument of type `A` unexpected
+   |       |     expected `B`, found `A`
+   |       expected `A`, found `C`
+   |
+note: function defined here
+  --> $DIR/issue-101097.rs:6:4
+   |
+LL | fn f(
+   |    ^
+LL |     a1: A,
+   |     -----
+LL |     a2: A,
+   |     -----
+LL |     b1: B,
+   |     -----
+LL |     b2: B,
+   |     -----
+LL |     c1: C,
+   |     -----
+LL |     c2: C,
+   |     -----
+help: did you mean
+   |
+LL |     f(A, A, B, B, C, C);
+   |      ~~~~~~~~~~~~~~~~~~
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-101097.rs:17:5
+   |
+LL |     f(C, C, A, A, B, B);
+   |     ^
+   |
+note: function defined here
+  --> $DIR/issue-101097.rs:6:4
+   |
+LL | fn f(
+   |    ^
+LL |     a1: A,
+   |     -----
+LL |     a2: A,
+   |     -----
+LL |     b1: B,
+   |     -----
+LL |     b2: B,
+   |     -----
+LL |     c1: C,
+   |     -----
+LL |     c2: C,
+   |     -----
+help: did you mean
+   |
+LL |     f(A, A, B, B, C, C);
+   |      ~~~~~~~~~~~~~~~~~~
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-101097.rs:18:5
+   |
+LL |     f(A, A, D, D, B, B);
+   |     ^       -  -  ---- two arguments of type `C` and `C` are missing
+   |             |  |
+   |             |  argument of type `D` unexpected
+   |             argument of type `D` unexpected
+   |
+note: function defined here
+  --> $DIR/issue-101097.rs:6:4
+   |
+LL | fn f(
+   |    ^
+LL |     a1: A,
+   |     -----
+LL |     a2: A,
+   |     -----
+LL |     b1: B,
+   |     -----
+LL |     b2: B,
+   |     -----
+LL |     c1: C,
+   |     -----
+LL |     c2: C,
+   |     -----
+help: did you mean
+   |
+LL |     f(A, A, B, B, /* C */, /* C */);
+   |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-101097.rs:19:5
+   |
+LL |     f(C, C, B, B, A, A);
+   |     ^ -  -        -  - expected `C`, found `A`
+   |       |  |        |
+   |       |  |        expected `C`, found `A`
+   |       |  expected `A`, found `C`
+   |       expected `A`, found `C`
+   |
+note: function defined here
+  --> $DIR/issue-101097.rs:6:4
+   |
+LL | fn f(
+   |    ^
+LL |     a1: A,
+   |     -----
+LL |     a2: A,
+   |     -----
+LL |     b1: B,
+   |     -----
+LL |     b2: B,
+   |     -----
+LL |     c1: C,
+   |     -----
+LL |     c2: C,
+   |     -----
+help: did you mean
+   |
+LL |     f(A, A, B, B, C, C);
+   |      ~~~~~~~~~~~~~~~~~~
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-101097.rs:20:5
+   |
+LL |     f(C, C, A, B, A, A);
+   |     ^ -  -  -     -  - expected `C`, found `A`
+   |       |  |  |     |
+   |       |  |  |     expected `C`, found `A`
+   |       |  |  expected struct `B`, found struct `A`
+   |       |  expected `A`, found `C`
+   |       expected `A`, found `C`
+   |
+note: function defined here
+  --> $DIR/issue-101097.rs:6:4
+   |
+LL | fn f(
+   |    ^
+LL |     a1: A,
+   |     -----
+LL |     a2: A,
+   |     -----
+LL |     b1: B,
+   |     -----
+LL |     b2: B,
+   |     -----
+LL |     c1: C,
+   |     -----
+LL |     c2: C,
+   |     -----
+help: did you mean
+   |
+LL |     f(A, A, /* B */, B, C, C);
+   |      ~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0061, E0308.
+For more information about an error, try `rustc --explain E0061`.

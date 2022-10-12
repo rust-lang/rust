@@ -1,11 +1,4 @@
 // edition:2018
-// [nll] check-pass
-// revisions: migrate nll
-// Explicitly testing nll with revision, so ignore compare-mode=nll
-// ignore-compare-mode-nll
-
-#![cfg_attr(nll, feature(nll))]
-#![feature(generic_associated_types)]
 
 use std::future::Future;
 
@@ -18,12 +11,18 @@ trait Client {
 }
 
 fn call_connect<C>(c: &'_ C) -> impl '_ + Future + Send
-//[migrate]~^ ERROR the parameter
-//[migrate]~| ERROR the parameter
 where
     C: Client + Send + Sync,
 {
     async move { c.connect().await }
+    //~^ ERROR `C` does not live long enough
+    //
+    // FIXME(#71723). This is because we infer at some point a value of
+    //
+    // impl Future<Output = <C as Client>::Connection<'_>>
+    //
+    // and then we somehow fail the WF check because `where C: 'a` is not known,
+    // but I'm not entirely sure how that comes about.
 }
 
 fn main() {}

@@ -10,7 +10,7 @@ set -Eeuo pipefail
 # https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570
 unset GIT_DIR
 ROOT_DIR="$(git rev-parse --show-toplevel)"
-COMMAND="$ROOT_DIR/x.py test tidy --bless"
+COMMAND="$ROOT_DIR/x.py test tidy"
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
   COMMAND="python $COMMAND"

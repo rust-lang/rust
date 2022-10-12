@@ -7,12 +7,12 @@ LL |     icey_bounds(&p);
    |     required by a bound introduced by this call
    |
    = help: the trait `Foo<'de>` is implemented for `Baz<T>`
-note: required because of the requirements on the impl of `for<'de> Foo<'de>` for `Baz<EmptyBis<'de>>`
+note: required for `Baz<EmptyBis<'de>>` to implement `for<'de> Foo<'de>`
   --> $DIR/issue-96223.rs:16:14
    |
 LL | impl<'de, T> Foo<'de> for Baz<T> where T: Foo<'de> {}
    |              ^^^^^^^^     ^^^^^^
-note: required because of the requirements on the impl of `Dummy<EmptyMarker>` for `Empty`
+note: required for `Empty` to implement `Dummy<EmptyMarker>`
   --> $DIR/issue-96223.rs:20:9
    |
 LL | impl<M> Dummy<M> for Empty

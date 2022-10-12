@@ -11,7 +11,7 @@ fn infer_ty() {
 }
 
 fn ambig_return() {
-    let x = || -> Vec<_> { Vec::new() }; //~ ERROR type annotations needed for the closure `fn() -> Vec<_>`
+    let x = || -> Vec<_> { Vec::new() }; //~ ERROR type annotations needed
 }
 
 fn main() {}

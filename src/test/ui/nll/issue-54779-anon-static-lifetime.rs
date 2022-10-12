@@ -1,7 +1,5 @@
 // Regression test for #54779, checks if the diagnostics are confusing.
 
-#![feature(nll)]
-
 trait DebugWith<Cx: ?Sized> {
     fn debug_with<'me>(&'me self, cx: &'me Cx) -> DebugCxPair<'me, Self, Cx> {
         DebugCxPair { value: self, cx }

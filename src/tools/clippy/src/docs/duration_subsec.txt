@@ -1,0 +1,19 @@
+### What it does
+Checks for calculation of subsecond microseconds or milliseconds
+from other `Duration` methods.
+
+### Why is this bad?
+It's more concise to call `Duration::subsec_micros()` or
+`Duration::subsec_millis()` than to calculate them.
+
+### Example
+```
+let micros = duration.subsec_nanos() / 1_000;
+let millis = duration.subsec_nanos() / 1_000_000;
+```
+
+Use instead:
+```
+let micros = duration.subsec_micros();
+let millis = duration.subsec_millis();
+```

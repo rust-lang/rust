@@ -1,5 +1,5 @@
 error: transmute from `Ty2<u32, i32>` which has an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:27:33
+  --> $DIR/transmute_undefined_repr.rs:28:33
    |
 LL |         let _: Ty2C<u32, i32> = transmute(value::<Ty2<u32, i32>>()); // Lint, Ty2 is unordered
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,13 +7,13 @@ LL |         let _: Ty2C<u32, i32> = transmute(value::<Ty2<u32, i32>>()); // Lin
    = note: `-D clippy::transmute-undefined-repr` implied by `-D warnings`
 
 error: transmute into `Ty2<u32, i32>` which has an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:28:32
+  --> $DIR/transmute_undefined_repr.rs:29:32
    |
 LL |         let _: Ty2<u32, i32> = transmute(value::<Ty2C<u32, i32>>()); // Lint, Ty2 is unordered
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `Ty<Ty2<u32, i32>>` to `Ty2<u32, f32>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:33:32
+  --> $DIR/transmute_undefined_repr.rs:34:32
    |
 LL |         let _: Ty2<u32, f32> = transmute(value::<Ty<Ty2<u32, i32>>>()); // Lint, different Ty2 instances
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |         let _: Ty2<u32, f32> = transmute(value::<Ty<Ty2<u32, i32>>>()); // 
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute from `Ty2<u32, f32>` to `Ty<Ty2<u32, i32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:34:36
+  --> $DIR/transmute_undefined_repr.rs:35:36
    |
 LL |         let _: Ty<Ty2<u32, i32>> = transmute(value::<Ty2<u32, f32>>()); // Lint, different Ty2 instances
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |         let _: Ty<Ty2<u32, i32>> = transmute(value::<Ty2<u32, f32>>()); // 
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute from `Ty<&Ty2<u32, i32>>` to `&Ty2<u32, f32>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:39:33
+  --> $DIR/transmute_undefined_repr.rs:40:33
    |
 LL |         let _: &Ty2<u32, f32> = transmute(value::<Ty<&Ty2<u32, i32>>>()); // Lint, different Ty2 instances
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL |         let _: &Ty2<u32, f32> = transmute(value::<Ty<&Ty2<u32, i32>>>()); /
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute from `&Ty2<u32, f32>` to `Ty<&Ty2<u32, i32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:40:37
+  --> $DIR/transmute_undefined_repr.rs:41:37
    |
 LL |         let _: Ty<&Ty2<u32, i32>> = transmute(value::<&Ty2<u32, f32>>()); // Lint, different Ty2 instances
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |         let _: Ty<&Ty2<u32, i32>> = transmute(value::<&Ty2<u32, f32>>()); /
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute from `std::boxed::Box<Ty2<u32, u32>>` to `&mut Ty2<u32, f32>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:57:45
+  --> $DIR/transmute_undefined_repr.rs:58:45
    |
 LL |         let _: &'static mut Ty2<u32, f32> = transmute(value::<Box<Ty2<u32, u32>>>()); // Lint, different Ty2 instances
    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,15 +53,31 @@ LL |         let _: &'static mut Ty2<u32, f32> = transmute(value::<Box<Ty2<u32, 
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
 error: transmute from `&mut Ty2<u32, f32>` to `std::boxed::Box<Ty2<u32, u32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:58:37
+  --> $DIR/transmute_undefined_repr.rs:59:37
    |
 LL |         let _: Box<Ty2<u32, u32>> = transmute(value::<&'static mut Ty2<u32, f32>>()); // Lint, different Ty2 instances
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
+error: transmute into `*const Ty2<u32, u32>` which has an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:119:39
+   |
+LL |         let _: *const Ty2<u32, u32> = transmute(value::<*const Ty2C<u32, Ty2<u32, u32>>>()); // Err
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the contained type `Ty2<u32, u32>` has an undefined layout
+
+error: transmute from `*const Ty2<u32, u32>` which has an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:120:50
+   |
+LL |         let _: *const Ty2C<u32, Ty2<u32, u32>> = transmute(value::<*const Ty2<u32, u32>>()); // Err
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the contained type `Ty2<u32, u32>` has an undefined layout
+
 error: transmute from `std::vec::Vec<Ty2<U, i32>>` to `std::vec::Vec<Ty2<T, u32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:138:35
+  --> $DIR/transmute_undefined_repr.rs:150:35
    |
 LL |         let _: Vec<Ty2<T, u32>> = transmute(value::<Vec<Ty2<U, i32>>>()); // Err
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,12 +85,12 @@ LL |         let _: Vec<Ty2<T, u32>> = transmute(value::<Vec<Ty2<U, i32>>>()); /
    = note: two instances of the same generic type (`Vec`) may have different layouts
 
 error: transmute from `std::vec::Vec<Ty2<T, u32>>` to `std::vec::Vec<Ty2<U, i32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:139:35
+  --> $DIR/transmute_undefined_repr.rs:151:35
    |
 LL |         let _: Vec<Ty2<U, i32>> = transmute(value::<Vec<Ty2<T, u32>>>()); // Err
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: two instances of the same generic type (`Vec`) may have different layouts
 
-error: aborting due to 10 previous errors
+error: aborting due to 12 previous errors
 

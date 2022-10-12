@@ -1,5 +1,6 @@
 // build-fail
-// compile-flags:-Zpolymorphize=on
+// compile-flags: -Copt-level=0 -Zpolymorphize=on
+
 #![feature(rustc_attrs)]
 
 // This test checks that `T` is considered used in `foo`, because it is used in a predicate for

@@ -8,7 +8,7 @@ trait Future: 'static {
     }
 }
 
-struct Map<A>(A);
+struct Map<A>(#[allow(unused_tuple_struct_fields)] A);
 impl<A: Future> Future for Map<A> {}
 
 pub struct Promise;

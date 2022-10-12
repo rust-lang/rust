@@ -1,0 +1,301 @@
+[
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/compiler/mir/tagset.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 41,
+                    character: 23,
+                },
+                end: Position {
+                    line: 41,
+                    character: 28,
+                },
+            },
+            severity: Some(
+                Warning,
+            ),
+            code: Some(
+                String(
+                    "trivially_copy_pass_by_ref",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "rust-lang.github.io",
+                            ),
+                        ),
+                        port: None,
+                        path: "/rust-clippy/master/index.html",
+                        query: None,
+                        fragment: Some(
+                            "trivially_copy_pass_by_ref",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "clippy",
+            ),
+            message: "this argument is passed by reference, but would be more efficient if passed by value\n#[warn(clippy::trivially_copy_pass_by_ref)] implied by #[warn(clippy::all)]\nfor further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/compiler/lib.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 0,
+                                    character: 8,
+                                },
+                                end: Position {
+                                    line: 0,
+                                    character: 19,
+                                },
+                            },
+                        },
+                        message: "lint level defined here",
+                    },
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/compiler/mir/tagset.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 41,
+                                    character: 23,
+                                },
+                                end: Position {
+                                    line: 41,
+                                    character: 28,
+                                },
+                            },
+                        },
+                        message: "consider passing by value instead: `self`",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/compiler/lib.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 0,
+                    character: 8,
+                },
+                end: Position {
+                    line: 0,
+                    character: 19,
+                },
+            },
+            severity: Some(
+                Hint,
+            ),
+            code: Some(
+                String(
+                    "trivially_copy_pass_by_ref",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "rust-lang.github.io",
+                            ),
+                        ),
+                        port: None,
+                        path: "/rust-clippy/master/index.html",
+                        query: None,
+                        fragment: Some(
+                            "trivially_copy_pass_by_ref",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "clippy",
+            ),
+            message: "lint level defined here",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/compiler/mir/tagset.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 41,
+                                    character: 23,
+                                },
+                                end: Position {
+                                    line: 41,
+                                    character: 28,
+                                },
+                            },
+                        },
+                        message: "original diagnostic",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/compiler/mir/tagset.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 41,
+                    character: 23,
+                },
+                end: Position {
+                    line: 41,
+                    character: 28,
+                },
+            },
+            severity: Some(
+                Hint,
+            ),
+            code: Some(
+                String(
+                    "trivially_copy_pass_by_ref",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "rust-lang.github.io",
+                            ),
+                        ),
+                        port: None,
+                        path: "/rust-clippy/master/index.html",
+                        query: None,
+                        fragment: Some(
+                            "trivially_copy_pass_by_ref",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "clippy",
+            ),
+            message: "consider passing by value instead: `self`",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/compiler/mir/tagset.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 41,
+                                    character: 23,
+                                },
+                                end: Position {
+                                    line: 41,
+                                    character: 28,
+                                },
+                            },
+                        },
+                        message: "original diagnostic",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+]

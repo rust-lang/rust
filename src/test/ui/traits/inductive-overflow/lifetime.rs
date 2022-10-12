@@ -28,5 +28,5 @@ fn main() {
     is_send::<X<C<'static>>>();
     //~^ ERROR overflow evaluating
     //~| 3 redundant requirements hidden
-    //~| required because of
+    //~| required for
 }

@@ -1,0 +1,22 @@
+error: used the `ceil` method with a whole number float
+  --> $DIR/unused_rounding.rs:5:13
+   |
+LL |     let _ = 1f32.ceil();
+   |             ^^^^^^^^^^^ help: remove the `ceil` method call: `1f32`
+   |
+   = note: `-D clippy::unused-rounding` implied by `-D warnings`
+
+error: used the `floor` method with a whole number float
+  --> $DIR/unused_rounding.rs:6:13
+   |
+LL |     let _ = 1.0f64.floor();
+   |             ^^^^^^^^^^^^^^ help: remove the `floor` method call: `1.0f64`
+
+error: used the `round` method with a whole number float
+  --> $DIR/unused_rounding.rs:7:13
+   |
+LL |     let _ = 1.00f32.round();
+   |             ^^^^^^^^^^^^^^^ help: remove the `round` method call: `1.00f32`
+
+error: aborting due to 3 previous errors
+

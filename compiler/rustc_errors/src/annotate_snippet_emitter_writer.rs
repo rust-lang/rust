@@ -7,6 +7,7 @@
 
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
+use crate::translation::Translate;
 use crate::{
     CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, Emitter, FluentBundle,
     LazyFallbackBundle, Level, MultiSpan, Style, SubDiagnostic,
@@ -30,6 +31,16 @@ pub struct AnnotateSnippetEmitterWriter {
     ui_testing: bool,
 
     macro_backtrace: bool,
+}
+
+impl Translate for AnnotateSnippetEmitterWriter {
+    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+        self.fluent_bundle.as_ref()
+    }
+
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
+        &**self.fallback_bundle
+    }
 }
 
 impl Emitter for AnnotateSnippetEmitterWriter {
@@ -63,14 +74,6 @@ impl Emitter for AnnotateSnippetEmitterWriter {
         self.source_map.as_ref()
     }
 
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        self.fluent_bundle.as_ref()
-    }
-
-    fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &**self.fallback_bundle
-    }
-
     fn should_show_explain(&self) -> bool {
         !self.short_message
     }
@@ -87,7 +90,7 @@ fn annotation_type_for_level(level: Level) -> AnnotationType {
         Level::Bug | Level::DelayedBug | Level::Fatal | Level::Error { .. } => {
             AnnotationType::Error
         }
-        Level::Warning => AnnotationType::Warning,
+        Level::Warning(_) => AnnotationType::Warning,
         Level::Note | Level::OnceNote => AnnotationType::Note,
         Level::Help => AnnotationType::Help,
         // FIXME(#59346): Not sure how to map this level
@@ -183,7 +186,11 @@ impl AnnotateSnippetEmitterWriter {
                     annotation_type: annotation_type_for_level(*level),
                 }),
                 footer: vec![],
-                opt: FormatOptions { color: true, anonymized_line_numbers: self.ui_testing },
+                opt: FormatOptions {
+                    color: true,
+                    anonymized_line_numbers: self.ui_testing,
+                    margin: None,
+                },
                 slices: annotated_files
                     .iter()
                     .map(|(source, line_index, annotations)| {

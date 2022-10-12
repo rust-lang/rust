@@ -49,8 +49,8 @@ impl fmt::Display for Svh {
 }
 
 impl<S: Encoder> Encodable<S> for Svh {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u64(self.as_u64().to_le())
+    fn encode(&self, s: &mut S) {
+        s.emit_u64(self.as_u64().to_le());
     }
 }
 

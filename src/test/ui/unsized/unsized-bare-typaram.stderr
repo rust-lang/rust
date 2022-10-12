@@ -15,7 +15,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn foo<T: ?Sized>() { bar::<T>() }
 LL + fn foo<T>() { bar::<T>() }
-   | 
+   |
 
 error: aborting due to previous error
 

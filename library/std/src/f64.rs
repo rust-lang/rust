@@ -1,4 +1,4 @@
-//! Constants specific to the `f64` double-precision floating point type.
+//! Constants for the `f64` double-precision floating point type.
 //!
 //! *[See also the `f64` primitive type](primitive@f64).*
 //!

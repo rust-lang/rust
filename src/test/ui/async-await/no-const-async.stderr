@@ -35,7 +35,7 @@ note: cycle used when checking item types in top-level module
   --> $DIR/no-const-async.rs:4:1
    |
 LL | pub const async fn x() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

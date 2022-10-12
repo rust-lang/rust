@@ -7,7 +7,11 @@ use fortanix_sgx_abi::Tcs;
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn current() -> Tcs {
     extern "C" {
-        fn get_tcs_addr() -> Tcs;
+        fn get_tcs_addr() -> *mut u8;
     }
-    unsafe { get_tcs_addr() }
+    let addr = unsafe { get_tcs_addr() };
+    match Tcs::new(addr) {
+        Some(tcs) => tcs,
+        None => rtabort!("TCS must not be placed at address zero (this is a linker error)"),
+    }
 }

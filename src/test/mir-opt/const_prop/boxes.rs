@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 // compile-flags: -O
 // ignore-emscripten compiled with panic=abort by default
 // ignore-wasm32

@@ -12,7 +12,7 @@ help: if you import `Trait`, refer to it directly
    |
 LL -     pub struct A<H: A::Trait>(pub H);
 LL +     pub struct A<H: Trait>(pub H);
-   | 
+   |
 
 error: aborting due to previous error
 

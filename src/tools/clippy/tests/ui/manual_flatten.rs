@@ -1,5 +1,5 @@
 #![warn(clippy::manual_flatten)]
-#![allow(clippy::useless_vec)]
+#![allow(clippy::useless_vec, clippy::uninlined_format_args)]
 
 fn main() {
     // Test for loop over implicitly adjusted `Iterator` with `if let` expression
@@ -105,5 +105,21 @@ fn main() {
     // Using manual flatten should not trigger the lint
     for n in vec![Some(1), Some(2), Some(3)].iter().flatten() {
         println!("{}", n);
+    }
+
+    run_unformatted_tests();
+}
+
+#[rustfmt::skip]
+fn run_unformatted_tests() {
+    // Skip rustfmt here on purpose so the suggestion does not fit in one line
+    for n in vec![
+        Some(1),
+        Some(2),
+        Some(3)
+    ].iter() {
+        if let Some(n) = n {
+            println!("{:?}", n);
+        }
     }
 }

@@ -1,14 +1,14 @@
 // run-rustfix
-
-#![allow(
-    unused,
-    clippy::no_effect,
-    clippy::redundant_closure_call,
-    clippy::needless_pass_by_value,
-    clippy::option_map_unit_fn,
-    clippy::needless_borrow
-)]
 #![warn(clippy::redundant_closure, clippy::redundant_closure_for_method_calls)]
+#![allow(unused)]
+#![allow(
+    clippy::needless_borrow,
+    clippy::needless_pass_by_value,
+    clippy::no_effect,
+    clippy::option_map_unit_fn,
+    clippy::redundant_closure_call,
+    clippy::uninlined_format_args
+)]
 
 use std::path::{Path, PathBuf};
 
@@ -290,4 +290,29 @@ fn coerced_closure() {
     }
     fn slice_fn(_: impl FnOnce() -> &'static [u8]) {}
     slice_fn(|| arr());
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/7861
+fn box_dyn() {
+    fn f(_: impl Fn(usize) -> Box<dyn std::any::Any>) {}
+    f(|x| Box::new(x));
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/5939
+fn not_general_enough() {
+    fn f(_: impl FnMut(&Path) -> std::io::Result<()>) {}
+    f(|path| std::fs::remove_file(path));
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/9369
+pub fn mutable_impl_fn_mut(mut f: impl FnMut(), mut f_used_once: impl FnMut()) -> impl FnMut() {
+    fn takes_fn_mut(_: impl FnMut()) {}
+    takes_fn_mut(|| f());
+
+    fn takes_fn_once(_: impl FnOnce()) {}
+    takes_fn_once(|| f());
+
+    f();
+
+    move || takes_fn_mut(|| f_used_once())
 }

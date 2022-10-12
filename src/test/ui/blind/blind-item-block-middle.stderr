@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/blind-item-block-middle.rs:6:9
    |
 LL | mod foo { pub struct bar; }
-   |           --------------- unit struct defined here
+   |           -------------- unit struct defined here
 ...
 LL |     let bar = 5;
    |         ^^^   - this expression has type `{integer}`

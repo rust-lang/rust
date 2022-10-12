@@ -2,14 +2,12 @@ error[E0609]: no field `0` on type `fn(char, u16) -> Foo {Foo}`
   --> $DIR/tuple-field.rs:12:15
    |
 LL |     thing.bar.0;
-   |     --------- ^
-   |     |
-   |     this is the constructor of a struct
+   |               ^
    |
-help: call the constructor
+help: use parentheses to instantiate this tuple struct
    |
-LL |     (thing.bar)(_, _).0;
-   |     +         +++++++
+LL |     (thing.bar)(/* char */, /* u16 */).0;
+   |     +         ++++++++++++++++++++++++
 
 error: aborting due to previous error
 

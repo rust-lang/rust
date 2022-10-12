@@ -13,12 +13,12 @@
 //! move analysis runs after promotion on broken MIR.
 
 use rustc_hir as hir;
+use rustc_middle::mir;
 use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, List, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, List, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -42,7 +42,7 @@ pub struct PromoteTemps<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
     fn phase_change(&self) -> Option<MirPhase> {
-        Some(MirPhase::ConstsPromoted)
+        Some(MirPhase::Analysis(AnalysisPhase::Initial))
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -107,7 +107,7 @@ struct Collector<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
-    fn visit_local(&mut self, &index: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, index: Local, context: PlaceContext, location: Location) {
         debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries and the return place
         match self.ccx.body.local_kind(index) {
@@ -362,7 +362,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             return Err(Unpromotable);
                         }
                     }
-                    ProjectionElem::Downcast(..) => {
+                    ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
                         return Err(Unpromotable);
                     }
 
@@ -495,6 +495,10 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::Use(operand) | Rvalue::Repeat(operand, _) => {
                 self.validate_operand(operand)?;
             }
+            Rvalue::CopyForDeref(place) => {
+                let op = &Operand::Copy(*place);
+                self.validate_operand(op)?
+            }
 
             Rvalue::Discriminant(place) | Rvalue::Len(place) => {
                 self.validate_place(place.as_ref())?
@@ -502,18 +506,12 @@ impl<'tcx> Validator<'_, 'tcx> {
 
             Rvalue::ThreadLocalRef(_) => return Err(Unpromotable),
 
-            Rvalue::Cast(kind, operand, cast_ty) => {
-                if matches!(kind, CastKind::Misc) {
-                    let operand_ty = operand.ty(self.body, self.tcx);
-                    let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                    let cast_out = CastTy::from_ty(*cast_ty).expect("bad output type for cast");
-                    if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
-                        // ptr-to-int casts are not possible in consts and thus not promotable
-                        return Err(Unpromotable);
-                    }
-                    // int-to-ptr casts are fine, they just use the integer value at pointer type.
-                }
+            // ptr-to-int casts are not possible in consts and thus not promotable
+            Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => return Err(Unpromotable),
 
+            // all other casts including int-to-ptr casts are fine, they just use the integer value
+            // at pointer type.
+            Rvalue::Cast(_, operand, _) => {
                 self.validate_operand(operand)?;
             }
 
@@ -713,7 +711,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
-        let last = self.promoted.basic_blocks().last().unwrap();
+        let last = self.promoted.basic_blocks.last().unwrap();
         let data = &mut self.promoted[last];
         data.statements.push(Statement {
             source_info: SourceInfo::outermost(span),
@@ -772,7 +770,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         let unit = Rvalue::Use(Operand::Constant(Box::new(Constant {
                             span: statement.source_info.span,
                             user_ty: None,
-                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit).into(),
+                            literal: ConstantKind::zero_sized(self.tcx.types.unit),
                         })));
                         mem::replace(rhs, unit)
                     },
@@ -806,7 +804,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         self.visit_operand(arg, loc);
                     }
 
-                    let last = self.promoted.basic_blocks().last().unwrap();
+                    let last = self.promoted.basic_blocks.last().unwrap();
                     let new_target = self.new_block();
 
                     *self.promoted[last].terminator_mut() = Terminator {
@@ -842,29 +840,18 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let mut promoted_operand = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
+                let substs = tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def.did));
+                let uneval = mir::UnevaluatedConst { def, substs, promoted: Some(promoted_id) };
 
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: tcx
-                        .mk_const(ty::ConstS {
-                            ty,
-                            val: ty::ConstKind::Unevaluated(ty::Unevaluated {
-                                def,
-                                substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
-                                    if let ty::GenericParamDefKind::Lifetime = param.kind {
-                                        tcx.lifetimes.re_erased.into()
-                                    } else {
-                                        tcx.mk_param_from_def(param)
-                                    }
-                                }),
-                                promoted: Some(promoted_id),
-                            }),
-                        })
-                        .into(),
+                    literal: ConstantKind::Unevaluated(uneval, ty),
                 }))
             };
-            let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
+
+            let blocks = self.source.basic_blocks.as_mut();
+            let local_decls = &mut self.source.local_decls;
             let loc = candidate.location;
             let statement = &mut blocks[loc.block].statements[loc.statement_index];
             match statement.kind {
@@ -873,7 +860,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     Rvalue::Ref(ref mut region, borrow_kind, ref mut place),
                 )) => {
                     // Use the underlying local for this (necessarily interior) borrow.
-                    let ty = local_decls.local_decls()[place.local].ty;
+                    let ty = local_decls[place.local].ty;
                     let span = statement.source_info.span;
 
                     let ref_ty = tcx.mk_ref(
@@ -972,7 +959,7 @@ pub fn promote_candidates<'tcx>(
         let mut scope = body.source_scopes[body.source_info(candidate.location).scope].clone();
         scope.parent_scope = None;
 
-        let promoted = Body::new(
+        let mut promoted = Body::new(
             body.source, // `promoted` gets filled in below
             IndexVec::new(),
             IndexVec::from_elem_n(scope, 1),
@@ -984,6 +971,7 @@ pub fn promote_candidates<'tcx>(
             body.generator_kind(),
             body.tainted_by_errors,
         );
+        promoted.phase = MirPhase::Analysis(AnalysisPhase::Initial);
 
         let promoter = Promoter {
             promoted,
@@ -1049,7 +1037,7 @@ pub fn is_const_fn_in_array_repeat_expression<'tcx>(
         _ => {}
     }
 
-    for block in body.basic_blocks() {
+    for block in body.basic_blocks.iter() {
         if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
             &block.terminator
         {

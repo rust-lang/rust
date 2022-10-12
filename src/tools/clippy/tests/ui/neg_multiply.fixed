@@ -38,6 +38,9 @@ fn main() {
 
     0xcafe | -0xff00;
 
+    -(3_usize as i32);
+    -(3_usize as i32);
+
     -1 * -1; // should be ok
 
     X * -1; // should be ok

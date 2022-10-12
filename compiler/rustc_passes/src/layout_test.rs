@@ -16,7 +16,7 @@ pub fn test_layout(tcx: TyCtxt<'_>) {
                 DefKind::TyAlias | DefKind::Enum | DefKind::Struct | DefKind::Union
             ) {
                 for attr in tcx.get_attrs(id.def_id.to_def_id(), sym::rustc_layout) {
-                    dump_layout_of(tcx, id.def_id, attr);
+                    dump_layout_of(tcx, id.def_id.def_id, attr);
                 }
             }
         }

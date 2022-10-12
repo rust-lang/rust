@@ -193,9 +193,13 @@ impl<'a> State<'a> {
         self.print_call_post(args)
     }
 
-    fn print_expr_method_call(&mut self, segment: &ast::PathSegment, args: &[P<ast::Expr>]) {
-        let base_args = &args[1..];
-        self.print_expr_maybe_paren(&args[0], parser::PREC_POSTFIX);
+    fn print_expr_method_call(
+        &mut self,
+        segment: &ast::PathSegment,
+        receiver: &ast::Expr,
+        base_args: &[P<ast::Expr>],
+    ) {
+        self.print_expr_maybe_paren(receiver, parser::PREC_POSTFIX);
         self.word(".");
         self.print_ident(segment.ident);
         if let Some(ref args) = segment.args {
@@ -303,8 +307,8 @@ impl<'a> State<'a> {
             ast::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(func, &args);
             }
-            ast::ExprKind::MethodCall(ref segment, ref args, _) => {
-                self.print_expr_method_call(segment, &args);
+            ast::ExprKind::MethodCall(ref segment, ref receiver, ref args, _) => {
+                self.print_expr_method_call(segment, &receiver, &args);
             }
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
                 self.print_expr_binary(op, lhs, rhs);
@@ -389,6 +393,7 @@ impl<'a> State<'a> {
                 self.bclose(expr.span, empty);
             }
             ast::ExprKind::Closure(
+                ref binder,
                 capture_clause,
                 asyncness,
                 movability,
@@ -396,6 +401,7 @@ impl<'a> State<'a> {
                 ref body,
                 _,
             ) => {
+                self.print_closure_binder(binder);
                 self.print_movability(movability);
                 self.print_asyncness(asyncness);
                 self.print_capture_clause(capture_clause);
@@ -592,6 +598,15 @@ impl<'a> State<'a> {
             }
         }
         self.end(); // Close enclosing cbox.
+    }
+
+    fn print_closure_binder(&mut self, binder: &ast::ClosureBinder) {
+        match binder {
+            ast::ClosureBinder::NotPresent => {}
+            ast::ClosureBinder::For { generic_params, .. } => {
+                self.print_formal_generic_params(&generic_params)
+            }
+        }
     }
 
     fn print_movability(&mut self, movability: ast::Movability) {

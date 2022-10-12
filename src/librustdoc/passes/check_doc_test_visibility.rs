@@ -69,9 +69,9 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::ExternCrateItem { .. }
                 | clean::ImportItem(_)
                 | clean::PrimitiveItem(_)
-                | clean::KeywordItem(_)
+                | clean::KeywordItem
                 // check for trait impl
-                | clean::ImplItem(clean::Impl { trait_: Some(_), .. })
+                | clean::ImplItem(box clean::Impl { trait_: Some(_), .. })
         )
     {
         return false;
@@ -117,7 +117,7 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
 
     find_testable_code(dox, &mut tests, ErrorCodes::No, false, None);
 
-    if tests.found_tests == 0 && cx.tcx.sess.is_nightly_build() {
+    if tests.found_tests == 0 && cx.tcx.features().rustdoc_missing_doc_code_examples {
         if should_have_doc_example(cx, item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
             let sp = item.attr_span(cx.tcx);
@@ -125,9 +125,8 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
                 crate::lint::MISSING_DOC_CODE_EXAMPLES,
                 hir_id,
                 sp,
-                |lint| {
-                    lint.build("missing code example in this documentation").emit();
-                },
+                "missing code example in this documentation",
+                |lint| lint,
             );
         }
     } else if tests.found_tests > 0
@@ -137,9 +136,8 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
             item.attr_span(cx.tcx),
-            |lint| {
-                lint.build("documentation test in private item").emit();
-            },
+            "documentation test in private item",
+            |lint| lint,
         );
     }
 }

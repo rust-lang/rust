@@ -99,11 +99,11 @@ impl Iterator for Env {
                 }
                 let p = self.cur as *const u16;
                 let mut len = 0;
-                while *p.offset(len) != 0 {
+                while *p.add(len) != 0 {
                     len += 1;
                 }
-                let s = slice::from_raw_parts(p, len as usize);
-                self.cur = self.cur.offset(len + 1);
+                let s = slice::from_raw_parts(p, len);
+                self.cur = self.cur.add(len + 1);
 
                 // Windows allows environment variables to start with an equals
                 // symbol (in any other position, this is the separator between

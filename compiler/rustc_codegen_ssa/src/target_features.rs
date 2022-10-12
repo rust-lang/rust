@@ -210,8 +210,11 @@ const POWERPC_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("vsx", Some(sym::powerpc_target_feature)),
 ];
 
-const MIPS_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] =
-    &[("fp64", Some(sym::mips_target_feature)), ("msa", Some(sym::mips_target_feature))];
+const MIPS_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    ("fp64", Some(sym::mips_target_feature)),
+    ("msa", Some(sym::mips_target_feature)),
+    ("virt", Some(sym::mips_target_feature)),
+];
 
 const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("m", Some(sym::riscv_target_feature)),
@@ -227,6 +230,10 @@ const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("zhinxmin", Some(sym::riscv_target_feature)),
     ("zfh", Some(sym::riscv_target_feature)),
     ("zfhmin", Some(sym::riscv_target_feature)),
+    ("zba", Some(sym::riscv_target_feature)),
+    ("zbb", Some(sym::riscv_target_feature)),
+    ("zbc", Some(sym::riscv_target_feature)),
+    ("zbs", Some(sym::riscv_target_feature)),
     ("zbkb", Some(sym::riscv_target_feature)),
     ("zbkc", Some(sym::riscv_target_feature)),
     ("zbkx", Some(sym::riscv_target_feature)),
@@ -246,6 +253,10 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("simd128", None),
     ("atomics", Some(sym::wasm_target_feature)),
     ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
+    ("bulk-memory", Some(sym::wasm_target_feature)),
+    ("mutable-globals", Some(sym::wasm_target_feature)),
+    ("reference-types", Some(sym::wasm_target_feature)),
+    ("sign-ext", Some(sym::wasm_target_feature)),
 ];
 
 const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];

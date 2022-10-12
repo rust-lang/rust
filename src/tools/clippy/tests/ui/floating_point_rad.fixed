@@ -8,6 +8,11 @@ pub const fn const_context() {
     let _ = x * 180f32 / std::f32::consts::PI;
 }
 
+pub fn issue9391(degrees: i64) {
+    let _ = (degrees as f64).to_radians();
+    let _ = (degrees as f64).to_degrees();
+}
+
 fn main() {
     let x = 3f32;
     let _ = x.to_degrees();

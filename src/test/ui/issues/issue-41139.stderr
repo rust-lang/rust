@@ -5,9 +5,7 @@ LL | fn get_function<'a>() -> &'a dyn Fn() -> dyn Trait {
    | -------------------------------------------------- `get_function` defined here returns `&dyn Fn() -> (dyn Trait + 'static)`
 ...
 LL |     let t: &dyn Trait = &get_function()();
-   |                          ^^^^^^^^^^^^^^--
-   |                          |
-   |                          call expression requires function
+   |                          ^^^^^^^^^^^^^^ this trait object returns an unsized value `(dyn Trait + 'static)`, so it cannot be called
 
 error: aborting due to previous error
 

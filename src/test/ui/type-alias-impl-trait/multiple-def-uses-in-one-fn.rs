@@ -7,8 +7,8 @@
 type X<A, B> = impl Into<&'static A>;
 
 fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) {
-    (a, a)
     //~^ ERROR the trait bound `&'static B: From<&A>` is not satisfied
+    (a, a)
 }
 
 fn main() {

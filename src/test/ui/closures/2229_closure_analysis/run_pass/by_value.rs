@@ -1,8 +1,8 @@
 // edition:2021
 // run-pass
 
-// Test that ByValue captures compile sucessefully especially when the captures are
-// derefenced within the closure.
+// Test that ByValue captures compile successfully especially when the captures are
+// dereferenced within the closure.
 
 #[derive(Debug, Default)]
 struct SomeLargeType;

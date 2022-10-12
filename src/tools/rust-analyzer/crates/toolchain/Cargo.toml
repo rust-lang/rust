@@ -1,0 +1,13 @@
+[package]
+name = "toolchain"
+version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.57"
+
+[lib]
+doctest = false
+
+[dependencies]
+home = "0.5.3"

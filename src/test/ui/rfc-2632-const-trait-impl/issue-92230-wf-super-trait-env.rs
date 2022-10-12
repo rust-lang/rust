@@ -4,7 +4,9 @@
 
 #![feature(const_trait_impl)]
 
+#[const_trait]
 pub trait Super {}
+#[const_trait]
 pub trait Sub: Super {}
 
 impl<A> const Super for &A where A: ~const Super {}

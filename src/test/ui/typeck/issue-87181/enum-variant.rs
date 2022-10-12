@@ -6,7 +6,7 @@ enum Foo{
     Tup()
 }
 impl Foo {
-    fn foo() { }
+    fn foo(&self) { }
 }
 
 fn main() {

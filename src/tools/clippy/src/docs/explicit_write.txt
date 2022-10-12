@@ -1,0 +1,18 @@
+### What it does
+Checks for usage of `write!()` / `writeln()!` which can be
+replaced with `(e)print!()` / `(e)println!()`
+
+### Why is this bad?
+Using `(e)println! is clearer and more concise
+
+### Example
+```
+writeln!(&mut std::io::stderr(), "foo: {:?}", bar).unwrap();
+writeln!(&mut std::io::stdout(), "foo: {:?}", bar).unwrap();
+```
+
+Use instead:
+```
+eprintln!("foo: {:?}", bar);
+println!("foo: {:?}", bar);
+```

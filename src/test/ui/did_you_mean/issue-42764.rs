@@ -26,4 +26,5 @@ struct Context { wrapper: Wrapper }
 fn overton() {
     let _c = Context { wrapper: Payload{} };
     //~^ ERROR mismatched types
+    //~| try wrapping the expression in `Wrapper`
 }

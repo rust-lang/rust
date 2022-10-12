@@ -1,0 +1,15 @@
+error: Undefined Behavior: a SIMD bitmask less than 8 bits long must be filled with 0s for the remaining bits
+  --> $DIR/simd-select-bitmask-invalid.rs:LL:CC
+   |
+LL |         simd_select_bitmask(0b11111111u8, x, x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a SIMD bitmask less than 8 bits long must be filled with 0s for the remaining bits
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/simd-select-bitmask-invalid.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

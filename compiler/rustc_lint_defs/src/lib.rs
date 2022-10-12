@@ -1,4 +1,6 @@
 #![feature(min_specialization)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -7,12 +9,14 @@ pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_error_messages::MultiSpan;
+use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, Span, Symbol};
 use rustc_target::spec::abi::Abi;
+
+use serde::{Deserialize, Serialize};
 
 pub mod builtin;
 
@@ -21,8 +25,14 @@ macro_rules! pluralize {
     ($x:expr) => {
         if $x != 1 { "s" } else { "" }
     };
+    ("has", $x:expr) => {
+        if $x == 1 { "has" } else { "have" }
+    };
     ("is", $x:expr) => {
         if $x == 1 { "is" } else { "are" }
+    };
+    ("was", $x:expr) => {
+        if $x == 1 { "was" } else { "were" }
     };
     ("this", $x:expr) => {
         if $x == 1 { "this" } else { "these" }
@@ -34,7 +44,8 @@ macro_rules! pluralize {
 /// All suggestions are marked with an `Applicability`. Tools use the applicability of a suggestion
 /// to determine whether it should be automatically applied or if the user should be consulted
 /// before applying the suggestion.
-#[derive(Copy, Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, Hash, Encodable, Decodable, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Applicability {
     /// The suggestion is definitely what the user intended, or maintains the exact meaning of the code.
     /// This suggestion should be automatically applied.
@@ -84,7 +95,7 @@ pub enum LintExpectationId {
     /// stable and can be cached. The additional index ensures that nodes with
     /// several expectations can correctly match diagnostics to the individual
     /// expectation.
-    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
+    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16>, attr_id: Option<AttrId> },
 }
 
 impl LintExpectationId {
@@ -108,13 +119,31 @@ impl LintExpectationId {
 
         *lint_index = new_lint_index
     }
+
+    /// Prepares the id for hashing. Removes references to the ast.
+    /// Should only be called when the id is stable.
+    pub fn normalize(self) -> Self {
+        match self {
+            Self::Stable { hir_id, attr_index, lint_index, .. } => {
+                Self::Stable { hir_id, attr_index, lint_index, attr_id: None }
+            }
+            Self::Unstable { .. } => {
+                unreachable!("`normalize` called when `ExpectationId` is unstable")
+            }
+        }
+    }
 }
 
 impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
+            LintExpectationId::Stable {
+                hir_id,
+                attr_index,
+                lint_index: Some(lint_index),
+                attr_id: _,
+            } => {
                 hir_id.hash_stable(hcx, hasher);
                 attr_index.hash_stable(hcx, hasher);
                 lint_index.hash_stable(hcx, hasher);
@@ -134,9 +163,12 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
     #[inline]
     fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
         match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                (*hir_id, *attr_index, *lint_index)
-            }
+            LintExpectationId::Stable {
+                hir_id,
+                attr_index,
+                lint_index: Some(lint_index),
+                attr_id: _,
+            } => (*hir_id, *attr_index, *lint_index),
             _ => {
                 unreachable!("HashStable should only be called for a filled `LintExpectationId`")
             }
@@ -160,13 +192,19 @@ pub enum Level {
     ///
     /// See RFC 2383.
     ///
-    /// The `LintExpectationId` is used to later link a lint emission to the actual
+    /// The [`LintExpectationId`] is used to later link a lint emission to the actual
     /// expectation. It can be ignored in most cases.
     Expect(LintExpectationId),
     /// The `warn` level will produce a warning if the lint was violated, however the
     /// compiler will continue with its execution.
     Warn,
-    ForceWarn,
+    /// This lint level is a special case of [`Warn`], that can't be overridden. This is used
+    /// to ensure that a lint can't be suppressed. This lint level can currently only be set
+    /// via the console and is therefore session specific.
+    ///
+    /// The [`LintExpectationId`] is intended to fulfill expectations marked via the
+    /// `#[expect]` attribute, that will still be suppressed due to the level.
+    ForceWarn(Option<LintExpectationId>),
     /// The `deny` level will produce an error and stop further execution after the lint
     /// pass is complete.
     Deny,
@@ -182,7 +220,7 @@ impl Level {
             Level::Allow => "allow",
             Level::Expect(_) => "expect",
             Level::Warn => "warn",
-            Level::ForceWarn => "force-warn",
+            Level::ForceWarn(_) => "force-warn",
             Level::Deny => "deny",
             Level::Forbid => "forbid",
         }
@@ -217,8 +255,15 @@ impl Level {
 
     pub fn is_error(self) -> bool {
         match self {
-            Level::Allow | Level::Expect(_) | Level::Warn | Level::ForceWarn => false,
+            Level::Allow | Level::Expect(_) | Level::Warn | Level::ForceWarn(_) => false,
             Level::Deny | Level::Forbid => true,
+        }
+    }
+
+    pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
+        match self {
+            Level::Expect(id) | Level::ForceWarn(Some(id)) => Some(*id),
+            _ => None,
         }
     }
 }
@@ -449,6 +494,19 @@ pub enum BuiltinLintDiagnostics {
         /// If true, the lifetime will be fully elided.
         use_span: Option<(Span, bool)>,
     },
+    NamedArgumentUsedPositionally {
+        /// Span where the named argument is used by position and will be replaced with the named
+        /// argument name
+        position_sp_to_replace: Option<Span>,
+        /// Span where the named argument is used by position and is used for lint messages
+        position_sp_for_msg: Option<Span>,
+        /// Span where the named argument's name is (so we know where to put the warning message)
+        named_arg_sp: Span,
+        /// String containing the named arguments name
+        named_arg_name: String,
+        /// Indicates if the named argument is used as a width/precision for formatting
+        is_formatting_arg: bool,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the
@@ -458,7 +516,7 @@ pub struct BufferedEarlyLint {
     pub span: MultiSpan,
 
     /// The lint message.
-    pub msg: String,
+    pub msg: DiagnosticMessage,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -487,11 +545,11 @@ impl LintBuffer {
         lint: &'static Lint,
         node_id: NodeId,
         span: MultiSpan,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         let lint_id = LintId::of(lint);
-        let msg = msg.to_string();
+        let msg = msg.into();
         self.add_early_lint(BufferedEarlyLint { lint_id, node_id, span, msg, diagnostic });
     }
 
@@ -504,7 +562,7 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) {
         self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
     }
@@ -514,7 +572,7 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         self.add_lint(lint, id, sp.into(), msg, diagnostic)
@@ -624,18 +682,21 @@ macro_rules! declare_lint {
 macro_rules! declare_tool_lint {
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr
+        $(, @feature_gate = $gate:expr;)?
     ) => (
-        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false}
+        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         report_in_external_macro: $rep:expr
+        $(, @feature_gate = $gate:expr;)?
     ) => (
-         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep}
+         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         $external:expr
+        $(, @feature_gate = $gate:expr;)?
     ) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
@@ -646,8 +707,9 @@ macro_rules! declare_tool_lint {
             report_in_external_macro: $external,
             future_incompatible: None,
             is_plugin: true,
-            feature_gate: None,
+            $(feature_gate: Some($gate),)?
             crate_level_only: false,
+            ..$crate::Lint::default_fields_for_macro()
         };
     );
 }

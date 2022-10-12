@@ -4,8 +4,8 @@ error: octal-looking escape in string literal
 LL |     let _bad1 = "/033[0m";
    |                 ^^^^^^^^^
    |
-   = note: `-D clippy::octal-escapes` implied by `-D warnings`
    = help: octal escapes are not supported, `/0` is always a null character
+   = note: `-D clippy::octal-escapes` implied by `-D warnings`
 help: if an octal escape was intended, use the hexadecimal representation instead
    |
 LL |     let _bad1 = "/x1b[0m";

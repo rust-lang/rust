@@ -1,0 +1,14 @@
+error: unexpected `==`
+  --> $DIR/issue-101477-enum.rs:6:7
+   |
+LL |     B == 2
+   |       ^^ help: try using `=` instead
+
+error: expected item, found `==`
+  --> $DIR/issue-101477-enum.rs:6:7
+   |
+LL |     B == 2
+   |       ^^ expected item
+
+error: aborting due to 2 previous errors
+

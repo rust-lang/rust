@@ -7,7 +7,7 @@
 // @has 'foo/builders/struct.ActionRowBuilder.html'
 // @has - '//*[@id="synthetic-implementations"]' 'Auto Trait Implementations'
 
-// And that the link in the module is targetting it.
+// And that the link in the module is targeting it.
 // @has 'foo/builders/index.html'
 // @has - '//a[@href="struct.ActionRowBuilder.html"]' 'ActionRowBuilder'
 

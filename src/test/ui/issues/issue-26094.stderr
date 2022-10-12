@@ -2,7 +2,7 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/issue-26094.rs:10:17
    |
 LL |         $other(None)
-   |                ---- argument unexpected
+   |                ---- argument of type `Option<_>` unexpected
 ...
 LL |     some_macro!(some_function);
    |                 ^^^^^^^^^^^^^

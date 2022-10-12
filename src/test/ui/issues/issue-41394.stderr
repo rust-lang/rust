@@ -6,6 +6,13 @@ LL |     A = "" + 1
    |         |
    |         &str
 
-error: aborting due to previous error
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-41394.rs:7:9
+   |
+LL |     A = Foo::A as isize
+   |         ^^^^^^^^^^^^^^^ referenced constant has errors
 
-For more information about this error, try `rustc --explain E0369`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0369.
+For more information about an error, try `rustc --explain E0080`.

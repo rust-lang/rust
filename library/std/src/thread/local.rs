@@ -95,6 +95,7 @@ use crate::fmt;
 /// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
 /// [`JoinHandle::join`]: crate::thread::JoinHandle::join
 /// [`with`]: LocalKey::with
+#[cfg_attr(not(test), rustc_diagnostic_item = "LocalKey")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LocalKey<T: 'static> {
     // This outer `LocalKey<T>` type is what's going to be stored in statics,
@@ -966,6 +967,7 @@ pub mod fast {
 }
 
 #[doc(hidden)]
+#[cfg(not(target_thread_local))]
 pub mod os {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
@@ -974,6 +976,8 @@ pub mod os {
     use crate::ptr;
     use crate::sys_common::thread_local_key::StaticKey as OsStaticKey;
 
+    /// Use a regular global static to store this key; the state provided will then be
+    /// thread-local.
     pub struct Key<T> {
         // OS-TLS key that we'll use to key off.
         os: OsStaticKey,

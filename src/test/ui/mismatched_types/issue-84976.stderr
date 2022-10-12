@@ -3,6 +3,11 @@ error[E0308]: mismatched types
    |
 LL |     length = { foo(&length) };
    |                ^^^^^^^^^^^^ expected `u32`, found `i32`
+   |
+help: you can convert an `i32` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |     length = { foo(&length).try_into().unwrap() };
+   |                            ++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/issue-84976.rs:17:14

@@ -1,10 +1,15 @@
-error[E0015]: cannot call non-const fn `Vec::<u32>::len` in constant functions
-  --> $DIR/issue-94675.rs:9:27
+error[E0277]: the trait bound `Vec<usize>: ~const Index<_>` is not satisfied
+  --> $DIR/issue-94675.rs:9:9
    |
 LL |         self.bar[0] = baz.len();
-   |                           ^^^^^
+   |         ^^^^^^^^^^^ vector indices are of type `usize` or ranges of `usize`
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: the trait `~const Index<_>` is not implemented for `Vec<usize>`
+note: the trait `Index<_>` is implemented for `Vec<usize>`, but that implementation is not `const`
+  --> $DIR/issue-94675.rs:9:9
+   |
+LL |         self.bar[0] = baz.len();
+   |         ^^^^^^^^^^^
 
 error[E0277]: the trait bound `Vec<usize>: ~const IndexMut<usize>` is not satisfied
   --> $DIR/issue-94675.rs:9:9
@@ -18,21 +23,11 @@ note: the trait `IndexMut<usize>` is implemented for `Vec<usize>`, but that impl
    |
 LL |         self.bar[0] = baz.len();
    |         ^^^^^^^^^^^
-
-error[E0015]: cannot call non-const operator in constant functions
-  --> $DIR/issue-94675.rs:9:9
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
-LL |         self.bar[0] = baz.len();
-   |         ^^^^^^^^^^^
-   |
-note: impl defined here, but it is not `const`
-  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-   |
-LL | impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+LL | impl<'a> Foo<'a> where Vec<usize>: ~const IndexMut<usize> {
+   |                  ++++++++++++++++++++++++++++++++++++++++
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0015, E0277.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0277`.

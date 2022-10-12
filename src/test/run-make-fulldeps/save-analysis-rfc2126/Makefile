@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: extern_absolute_paths.rs krate2
 	$(RUSTC) extern_absolute_paths.rs -Zsave-analysis --edition=2018 --extern krate2

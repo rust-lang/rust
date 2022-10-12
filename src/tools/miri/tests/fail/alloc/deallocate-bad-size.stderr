@@ -1,0 +1,20 @@
+error: Undefined Behavior: incorrect layout on deallocation: ALLOC has size 1 and alignment ALIGN, but gave size 2 and alignment ALIGN
+  --> RUSTLIB/alloc/src/alloc.rs:LL:CC
+   |
+LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect layout on deallocation: ALLOC has size 1 and alignment ALIGN, but gave size 2 and alignment ALIGN
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+note: inside `main` at $DIR/deallocate-bad-size.rs:LL:CC
+  --> $DIR/deallocate-bad-size.rs:LL:CC
+   |
+LL |         dealloc(x, Layout::from_size_align_unchecked(2, 1));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

@@ -1,5 +1,5 @@
 // run-rustfix
-#![allow(dead_code, clippy::double_parens)]
+#![allow(dead_code, clippy::double_parens, clippy::unnecessary_cast)]
 #![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
 
 const TWO: f32 = 2.0;
@@ -12,6 +12,7 @@ fn check_log_base() {
     let _ = x.ln();
     let _ = x.log2();
     let _ = x.ln();
+    let _ = (x as f32).log2();
 
     let x = 1f64;
     let _ = x.log2();

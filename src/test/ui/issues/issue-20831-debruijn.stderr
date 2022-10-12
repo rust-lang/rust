@@ -1,8 +1,14 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/issue-20831-debruijn.rs:28:8
+  --> $DIR/issue-20831-debruijn.rs:28:5
    |
-LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
-   |        ^^^^^^^^^
+LL | /     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+LL | |         // Not obvious, but there is an implicit lifetime here -------^
+LL | |
+LL | |         //
+...  |
+LL | |         self.sub = t;
+LL | |     }
+   | |_____^
    |
 note: first, the lifetime cannot outlive the anonymous lifetime defined here...
   --> $DIR/issue-20831-debruijn.rs:28:58
@@ -15,10 +21,16 @@ note: ...but the lifetime must also be valid for the lifetime `'a` as defined he
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {
    |      ^^
 note: ...so that the types are compatible
-  --> $DIR/issue-20831-debruijn.rs:28:8
+  --> $DIR/issue-20831-debruijn.rs:28:5
    |
-LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
-   |        ^^^^^^^^^
+LL | /     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+LL | |         // Not obvious, but there is an implicit lifetime here -------^
+LL | |
+LL | |         //
+...  |
+LL | |         self.sub = t;
+LL | |     }
+   | |_____^
    = note: expected `<MyStruct<'a> as Publisher<'_>>`
               found `<MyStruct<'_> as Publisher<'_>>`
 

@@ -453,7 +453,9 @@ impl Command {
                     // successfully launch the program, but erroneously return
                     // ENOENT when used with posix_spawn_file_actions_addchdir_np
                     // which was introduced in macOS 10.15.
-                    return Ok(None);
+                    if self.get_program_kind() == ProgramKind::Relative {
+                        return Ok(None);
+                    }
                 }
                 match posix_spawn_file_actions_addchdir_np.get() {
                     Some(f) => Some((f, cwd)),
@@ -695,18 +697,95 @@ impl From<c_int> for ExitStatus {
     }
 }
 
+/// Convert a signal number to a readable, searchable name.
+///
+/// This string should be displayed right after the signal number.
+/// If a signal is unrecognized, it returns the empty string, so that
+/// you just get the number like "0". If it is recognized, you'll get
+/// something like "9 (SIGKILL)".
+fn signal_string(signal: i32) -> &'static str {
+    match signal {
+        libc::SIGHUP => " (SIGHUP)",
+        libc::SIGINT => " (SIGINT)",
+        libc::SIGQUIT => " (SIGQUIT)",
+        libc::SIGILL => " (SIGILL)",
+        libc::SIGTRAP => " (SIGTRAP)",
+        libc::SIGABRT => " (SIGABRT)",
+        libc::SIGBUS => " (SIGBUS)",
+        libc::SIGFPE => " (SIGFPE)",
+        libc::SIGKILL => " (SIGKILL)",
+        libc::SIGUSR1 => " (SIGUSR1)",
+        libc::SIGSEGV => " (SIGSEGV)",
+        libc::SIGUSR2 => " (SIGUSR2)",
+        libc::SIGPIPE => " (SIGPIPE)",
+        libc::SIGALRM => " (SIGALRM)",
+        libc::SIGTERM => " (SIGTERM)",
+        libc::SIGCHLD => " (SIGCHLD)",
+        libc::SIGCONT => " (SIGCONT)",
+        libc::SIGSTOP => " (SIGSTOP)",
+        libc::SIGTSTP => " (SIGTSTP)",
+        libc::SIGTTIN => " (SIGTTIN)",
+        libc::SIGTTOU => " (SIGTTOU)",
+        libc::SIGURG => " (SIGURG)",
+        libc::SIGXCPU => " (SIGXCPU)",
+        libc::SIGXFSZ => " (SIGXFSZ)",
+        libc::SIGVTALRM => " (SIGVTALRM)",
+        libc::SIGPROF => " (SIGPROF)",
+        libc::SIGWINCH => " (SIGWINCH)",
+        #[cfg(not(target_os = "haiku"))]
+        libc::SIGIO => " (SIGIO)",
+        libc::SIGSYS => " (SIGSYS)",
+        // For information on Linux signals, run `man 7 signal`
+        #[cfg(all(
+            target_os = "linux",
+            any(
+                target_arch = "x86_64",
+                target_arch = "x86",
+                target_arch = "arm",
+                target_arch = "aarch64"
+            )
+        ))]
+        libc::SIGSTKFLT => " (SIGSTKFLT)",
+        #[cfg(target_os = "linux")]
+        libc::SIGPWR => " (SIGPWR)",
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd",
+            target_os = "dragonfly"
+        ))]
+        libc::SIGEMT => " (SIGEMT)",
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd",
+            target_os = "dragonfly"
+        ))]
+        libc::SIGINFO => " (SIGINFO)",
+        _ => "",
+    }
+}
+
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
             write!(f, "exit status: {code}")
         } else if let Some(signal) = self.signal() {
+            let signal_string = signal_string(signal);
             if self.core_dumped() {
-                write!(f, "signal: {signal} (core dumped)")
+                write!(f, "signal: {signal}{signal_string} (core dumped)")
             } else {
-                write!(f, "signal: {signal}")
+                write!(f, "signal: {signal}{signal_string}")
             }
         } else if let Some(signal) = self.stopped_signal() {
-            write!(f, "stopped (not terminated) by signal: {signal}")
+            let signal_string = signal_string(signal);
+            write!(f, "stopped (not terminated) by signal: {signal}{signal_string}")
         } else if self.continued() {
             write!(f, "continued (WIFCONTINUED)")
         } else {
@@ -743,14 +822,14 @@ impl crate::os::linux::process::ChildExt for crate::process::Child {
         self.handle
             .pidfd
             .as_ref()
-            .ok_or_else(|| Error::new(ErrorKind::Other, "No pidfd was created."))
+            .ok_or_else(|| Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
     }
 
     fn take_pidfd(&mut self) -> io::Result<PidFd> {
         self.handle
             .pidfd
             .take()
-            .ok_or_else(|| Error::new(ErrorKind::Other, "No pidfd was created."))
+            .ok_or_else(|| Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
     }
 }
 

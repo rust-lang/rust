@@ -1,12 +1,13 @@
 use crate::cell::UnsafeCell;
-use crate::mem::MaybeUninit;
+use crate::mem::{forget, MaybeUninit};
 use crate::sys::cvt_nz;
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 pub struct Mutex {
     inner: UnsafeCell<libc::pthread_mutex_t>,
 }
 
-pub type MovableMutex = Box<Mutex>;
+pub(crate) type MovableMutex = LazyBox<Mutex>;
 
 #[inline]
 pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
@@ -15,6 +16,32 @@ pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
 
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
+
+impl LazyInit for Mutex {
+    fn init() -> Box<Self> {
+        let mut mutex = Box::new(Self::new());
+        unsafe { mutex.init() };
+        mutex
+    }
+
+    fn destroy(mutex: Box<Self>) {
+        // We're not allowed to pthread_mutex_destroy a locked mutex,
+        // so check first if it's unlocked.
+        if unsafe { mutex.try_lock() } {
+            unsafe { mutex.unlock() };
+            drop(mutex);
+        } else {
+            // The mutex is locked. This happens if a MutexGuard is leaked.
+            // In this case, we just leak the Mutex too.
+            forget(mutex);
+        }
+    }
+
+    fn cancel_init(_: Box<Self>) {
+        // In this case, we can just drop it without any checks,
+        // since it cannot have been locked yet.
+    }
+}
 
 impl Mutex {
     pub const fn new() -> Mutex {
@@ -25,7 +52,7 @@ impl Mutex {
         Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
     }
     #[inline]
-    pub unsafe fn init(&mut self) {
+    unsafe fn init(&mut self) {
         // Issue #33770
         //
         // A pthread mutex initialized with PTHREAD_MUTEX_INITIALIZER will have
@@ -73,19 +100,26 @@ impl Mutex {
     }
     #[inline]
     #[cfg(not(target_os = "dragonfly"))]
-    pub unsafe fn destroy(&self) {
+    unsafe fn destroy(&mut self) {
         let r = libc::pthread_mutex_destroy(self.inner.get());
         debug_assert_eq!(r, 0);
     }
     #[inline]
     #[cfg(target_os = "dragonfly")]
-    pub unsafe fn destroy(&self) {
+    unsafe fn destroy(&mut self) {
         let r = libc::pthread_mutex_destroy(self.inner.get());
         // On DragonFly pthread_mutex_destroy() returns EINVAL if called on a
         // mutex that was just initialized with libc::PTHREAD_MUTEX_INITIALIZER.
         // Once it is used (locked/unlocked) or pthread_mutex_init() is called,
         // this behaviour no longer occurs.
         debug_assert!(r == 0 || r == libc::EINVAL);
+    }
+}
+
+impl Drop for Mutex {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { self.destroy() };
     }
 }
 

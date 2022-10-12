@@ -5,7 +5,7 @@
 #[lang="sized"]
 trait Sized { }
 
-// Test that `nounwind` atributes are correctly applied to exported `stdcall` and `stdcall-unwind`
+// Test that `nounwind` attributes are correctly applied to exported `stdcall` and `stdcall-unwind`
 // extern functions. `stdcall-unwind` functions MUST NOT have this attribute. We disable
 // optimizations above to prevent LLVM from inferring the attribute.
 

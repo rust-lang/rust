@@ -1,0 +1,15 @@
+### What it does
+Checks for calls to `std::mem::forget` with a reference
+instead of an owned value.
+
+### Why is this bad?
+Calling `forget` on a reference will only forget the
+reference itself, which is a no-op. It will not forget the underlying
+referenced
+value, which is likely what was intended.
+
+### Example
+```
+let x = Box::new(1);
+std::mem::forget(&x) // Should have been forget(x), x will still be dropped
+```

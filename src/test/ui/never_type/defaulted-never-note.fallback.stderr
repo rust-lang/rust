@@ -1,8 +1,10 @@
 error[E0277]: the trait bound `!: ImplementedForUnitButNotNever` is not satisfied
-  --> $DIR/defaulted-never-note.rs:30:5
+  --> $DIR/defaulted-never-note.rs:30:9
    |
 LL |     foo(_x);
-   |     ^^^ the trait `ImplementedForUnitButNotNever` is not implemented for `!`
+   |     --- ^^ the trait `ImplementedForUnitButNotNever` is not implemented for `!`
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `ImplementedForUnitButNotNever` is implemented for `()`
    = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #48950 <https://github.com/rust-lang/rust/issues/48950> for more information)

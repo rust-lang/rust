@@ -7,6 +7,7 @@
 //! during any comparison or mapping. (Please take care of this, it's not fun to spend time on such
 //! a simple mistake)
 
+use crate::renamed_lints::RENAMED_LINTS;
 use crate::utils::internal_lints::{extract_clippy_version_value, is_lint_ref_type};
 
 use clippy_utils::diagnostics::span_lint;
@@ -16,7 +17,7 @@ use if_chain::if_chain;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
-    self as hir, def::DefKind, intravisit, intravisit::Visitor, ExprKind, Item, ItemKind, Mutability, QPath,
+    self as hir, def::DefKind, intravisit, intravisit::Visitor, Closure, ExprKind, Item, ItemKind, Mutability, QPath,
 };
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
 use rustc_middle::hir::nested_filter;
@@ -26,9 +27,12 @@ use rustc_span::{sym, Loc, Span, Symbol};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::collections::BinaryHeap;
 use std::fmt;
+use std::fmt::Write as _;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
+use std::path::PathBuf;
+use std::process::Command;
 
 /// This is the output file of the lint collector.
 const OUTPUT_FILE: &str = "../util/gh-pages/lints.json";
@@ -60,32 +64,7 @@ const DEFAULT_LINT_LEVELS: &[(&str, &str)] = &[
 /// This prefix is in front of the lint groups in the lint store. The prefix will be trimmed
 /// to only keep the actual lint group in the output.
 const CLIPPY_LINT_GROUP_PREFIX: &str = "clippy::";
-
-/// This template will be used to format the configuration section in the lint documentation.
-/// The `configurations` parameter will be replaced with one or multiple formatted
-/// `ClippyConfiguration` instances. See `CONFIGURATION_VALUE_TEMPLATE` for further customizations
-macro_rules! CONFIGURATION_SECTION_TEMPLATE {
-    () => {
-        r#"
-### Configuration
-This lint has the following configuration variables:
-
-{configurations}
-"#
-    };
-}
-/// This template will be used to format an individual `ClippyConfiguration` instance in the
-/// lint documentation.
-///
-/// The format function will provide strings for the following parameters: `name`, `ty`, `doc` and
-/// `default`
-macro_rules! CONFIGURATION_VALUE_TEMPLATE {
-    () => {
-        "* `{name}`: `{ty}`: {doc} (defaults to `{default}`)\n"
-    };
-}
-
-const LINT_EMISSION_FUNCTIONS: [&[&str]; 8] = [
+const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint"],
     &["clippy_utils", "diagnostics", "span_lint_and_help"],
     &["clippy_utils", "diagnostics", "span_lint_and_note"],
@@ -93,7 +72,6 @@ const LINT_EMISSION_FUNCTIONS: [&[&str]; 8] = [
     &["clippy_utils", "diagnostics", "span_lint_and_sugg"],
     &["clippy_utils", "diagnostics", "span_lint_and_then"],
     &["clippy_utils", "diagnostics", "span_lint_hir_and_then"],
-    &["clippy_utils", "diagnostics", "span_lint_and_sugg_for_edges"],
 ];
 const SUGGESTION_DIAGNOSTIC_BUILDER_METHODS: [(&str, bool); 9] = [
     ("span_suggestion", false),
@@ -163,6 +141,7 @@ pub struct MetadataCollector {
     lints: BinaryHeap<LintMetadata>,
     applicability_info: FxHashMap<String, ApplicabilityInfo>,
     config: Vec<ClippyConfiguration>,
+    clippy_project_root: PathBuf,
 }
 
 impl MetadataCollector {
@@ -171,6 +150,12 @@ impl MetadataCollector {
             lints: BinaryHeap::<LintMetadata>::default(),
             applicability_info: FxHashMap::<String, ApplicabilityInfo>::default(),
             config: collect_configs(),
+            clippy_project_root: std::env::current_dir()
+                .expect("failed to get current dir")
+                .ancestors()
+                .nth(1)
+                .expect("failed to get project root")
+                .to_path_buf(),
         }
     }
 
@@ -180,7 +165,16 @@ impl MetadataCollector {
             .filter(|config| config.lints.iter().any(|lint| lint == lint_name))
             .map(ToString::to_string)
             .reduce(|acc, x| acc + &x)
-            .map(|configurations| format!(CONFIGURATION_SECTION_TEMPLATE!(), configurations = configurations))
+            .map(|configurations| {
+                format!(
+                    r#"
+### Configuration
+This lint has the following configuration variables:
+
+{configurations}
+"#
+                )
+            })
     }
 }
 
@@ -198,9 +192,12 @@ impl Drop for MetadataCollector {
 
         // Mapping the final data
         let mut lints = std::mem::take(&mut self.lints).into_sorted_vec();
-        lints
-            .iter_mut()
-            .for_each(|x| x.applicability = Some(applicability_info.remove(&x.id).unwrap_or_default()));
+        for x in &mut lints {
+            x.applicability = Some(applicability_info.remove(&x.id).unwrap_or_default());
+            replace_produces(&x.id, &mut x.docs, &self.clippy_project_root);
+        }
+
+        collect_renames(&mut lints);
 
         // Outputting
         if Path::new(OUTPUT_FILE).exists() {
@@ -245,14 +242,188 @@ impl LintMetadata {
     }
 }
 
+fn replace_produces(lint_name: &str, docs: &mut String, clippy_project_root: &Path) {
+    let mut doc_lines = docs.lines().map(ToString::to_string).collect::<Vec<_>>();
+    let mut lines = doc_lines.iter_mut();
+
+    'outer: loop {
+        // Find the start of the example
+
+        // ```rust
+        loop {
+            match lines.next() {
+                Some(line) if line.trim_start().starts_with("```rust") => {
+                    if line.contains("ignore") || line.contains("no_run") {
+                        // A {{produces}} marker may have been put on a ignored code block by mistake,
+                        // just seek to the end of the code block and continue checking.
+                        if lines.any(|line| line.trim_start().starts_with("```")) {
+                            continue;
+                        }
+
+                        panic!("lint `{lint_name}` has an unterminated code block")
+                    }
+
+                    break;
+                },
+                Some(line) if line.trim_start() == "{{produces}}" => {
+                    panic!("lint `{lint_name}` has marker {{{{produces}}}} with an ignored or missing code block")
+                },
+                Some(line) => {
+                    let line = line.trim();
+                    // These are the two most common markers of the corrections section
+                    if line.eq_ignore_ascii_case("Use instead:") || line.eq_ignore_ascii_case("Could be written as:") {
+                        break 'outer;
+                    }
+                },
+                None => break 'outer,
+            }
+        }
+
+        // Collect the example
+        let mut example = Vec::new();
+        loop {
+            match lines.next() {
+                Some(line) if line.trim_start() == "```" => break,
+                Some(line) => example.push(line),
+                None => panic!("lint `{lint_name}` has an unterminated code block"),
+            }
+        }
+
+        // Find the {{produces}} and attempt to generate the output
+        loop {
+            match lines.next() {
+                Some(line) if line.is_empty() => {},
+                Some(line) if line.trim() == "{{produces}}" => {
+                    let output = get_lint_output(lint_name, &example, clippy_project_root);
+                    line.replace_range(
+                        ..,
+                        &format!(
+                            "<details>\
+                            <summary>Produces</summary>\n\
+                            \n\
+                            ```text\n\
+                            {output}\n\
+                            ```\n\
+                        </details>"
+                        ),
+                    );
+
+                    break;
+                },
+                // No {{produces}}, we can move on to the next example
+                Some(_) => break,
+                None => break 'outer,
+            }
+        }
+    }
+
+    *docs = cleanup_docs(&doc_lines);
+}
+
+fn get_lint_output(lint_name: &str, example: &[&mut String], clippy_project_root: &Path) -> String {
+    let dir = tempfile::tempdir().unwrap_or_else(|e| panic!("failed to create temp dir: {e}"));
+    let file = dir.path().join("lint_example.rs");
+
+    let mut source = String::new();
+    let unhidden = example
+        .iter()
+        .map(|line| line.trim_start().strip_prefix("# ").unwrap_or(line));
+
+    // Get any attributes
+    let mut lines = unhidden.peekable();
+    while let Some(line) = lines.peek() {
+        if line.starts_with("#!") {
+            source.push_str(line);
+            source.push('\n');
+            lines.next();
+        } else {
+            break;
+        }
+    }
+
+    let needs_main = !example.iter().any(|line| line.contains("fn main"));
+    if needs_main {
+        source.push_str("fn main() {\n");
+    }
+
+    for line in lines {
+        source.push_str(line);
+        source.push('\n');
+    }
+
+    if needs_main {
+        source.push_str("}\n");
+    }
+
+    if let Err(e) = fs::write(&file, &source) {
+        panic!("failed to write to `{}`: {e}", file.as_path().to_string_lossy());
+    }
+
+    let prefixed_name = format!("{CLIPPY_LINT_GROUP_PREFIX}{lint_name}");
+
+    let mut cmd = Command::new("cargo");
+
+    cmd.current_dir(clippy_project_root)
+        .env("CARGO_INCREMENTAL", "0")
+        .env("CLIPPY_ARGS", "")
+        .env("CLIPPY_DISABLE_DOCS_LINKS", "1")
+        // We need to disable this to enable all lints
+        .env("ENABLE_METADATA_COLLECTION", "0")
+        .args(["run", "--bin", "clippy-driver"])
+        .args(["--target-dir", "./clippy_lints/target"])
+        .args(["--", "--error-format=json"])
+        .args(["--edition", "2021"])
+        .arg("-Cdebuginfo=0")
+        .args(["-A", "clippy::all"])
+        .args(["-W", &prefixed_name])
+        .args(["-L", "./target/debug"])
+        .args(["-Z", "no-codegen"]);
+
+    let output = cmd
+        .arg(file.as_path())
+        .output()
+        .unwrap_or_else(|e| panic!("failed to run `{cmd:?}`: {e}"));
+
+    let tmp_file_path = file.to_string_lossy();
+    let stderr = std::str::from_utf8(&output.stderr).unwrap();
+    let msgs = stderr
+        .lines()
+        .filter(|line| line.starts_with('{'))
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect::<Vec<serde_json::Value>>();
+
+    let mut rendered = String::new();
+    let iter = msgs
+        .iter()
+        .filter(|msg| matches!(&msg["code"]["code"], serde_json::Value::String(s) if s == &prefixed_name));
+
+    for message in iter {
+        let rendered_part = message["rendered"].as_str().expect("rendered field should exist");
+        rendered.push_str(rendered_part);
+    }
+
+    if rendered.is_empty() {
+        let rendered: Vec<&str> = msgs.iter().filter_map(|msg| msg["rendered"].as_str()).collect();
+        let non_json: Vec<&str> = stderr.lines().filter(|line| !line.starts_with('{')).collect();
+        panic!(
+            "did not find lint `{lint_name}` in output of example, got:\n{}\n{}",
+            non_json.join("\n"),
+            rendered.join("\n")
+        );
+    }
+
+    // The reader doesn't need to see `/tmp/.tmpfiy2Qd/lint_example.rs` :)
+    rendered.trim_end().replace(&*tmp_file_path, "lint_example.rs")
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 struct SerializableSpan {
     path: String,
     line: usize,
 }
 
-impl std::fmt::Display for SerializableSpan {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for SerializableSpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.path.rsplit('/').next().unwrap_or_default(), self.line)
     }
 }
@@ -381,13 +552,10 @@ fn to_kebab(config_name: &str) -> String {
 
 impl fmt::Display for ClippyConfiguration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
-        write!(
+        writeln!(
             f,
-            CONFIGURATION_VALUE_TEMPLATE!(),
-            name = self.name,
-            ty = self.config_type,
-            doc = self.doc,
-            default = self.default
+            "* `{}`: `{}`: {} (defaults to `{}`)",
+            self.name, self.config_type, self.doc, self.default
         )
     }
 }
@@ -412,15 +580,15 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
             if_chain! {
                 // item validation
                 if is_lint_ref_type(cx, ty);
-                // blacklist check
+                // disallow check
                 let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
                 if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // metadata extraction
                 if let Some((group, level)) = get_lint_group_and_level_or_lint(cx, &lint_name, item);
-                if let Some(mut docs) = extract_attr_docs_or_lint(cx, item);
+                if let Some(mut raw_docs) = extract_attr_docs_or_lint(cx, item);
                 then {
                     if let Some(configuration_section) = self.get_lint_configs(&lint_name) {
-                        docs.push_str(&configuration_section);
+                        raw_docs.push_str(&configuration_section);
                     }
                     let version = get_lint_version(cx, item);
 
@@ -430,18 +598,18 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                         group,
                         level,
                         version,
-                        docs,
+                        raw_docs,
                     ));
                 }
             }
 
             if_chain! {
                 if is_deprecated_lint(cx, ty);
-                // blacklist check
+                // disallow check
                 let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
                 if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // Metadata the little we can get from a deprecated lint
-                if let Some(docs) = extract_attr_docs_or_lint(cx, item);
+                if let Some(raw_docs) = extract_attr_docs_or_lint(cx, item);
                 then {
                     let version = get_lint_version(cx, item);
 
@@ -451,7 +619,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                         DEPRECATED_LINT_GROUP_STR.to_string(),
                         DEPRECATED_LINT_LEVEL,
                         version,
-                        docs,
+                        raw_docs,
                     ));
                 }
             }
@@ -517,23 +685,28 @@ fn extract_attr_docs_or_lint(cx: &LateContext<'_>, item: &Item<'_>) -> Option<St
 /// ```
 ///
 /// Would result in `Hello world!\n=^.^=\n`
-///
-/// ---
-///
+fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
+    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let mut lines = attrs.iter().filter_map(ast::Attribute::doc_str);
+
+    if let Some(line) = lines.next() {
+        let raw_docs = lines.fold(String::from(line.as_str()) + "\n", |s, line| s + line.as_str() + "\n");
+        return Some(raw_docs);
+    }
+
+    None
+}
+
 /// This function may modify the doc comment to ensure that the string can be displayed using a
 /// markdown viewer in Clippy's lint list. The following modifications could be applied:
 /// * Removal of leading space after a new line. (Important to display tables)
 /// * Ensures that code blocks only contain language information
-fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
-    let attrs = cx.tcx.hir().attrs(item.hir_id());
-    let mut lines = attrs.iter().filter_map(ast::Attribute::doc_str);
-    let mut docs = String::from(&*lines.next()?.as_str());
+fn cleanup_docs(docs_collection: &Vec<String>) -> String {
     let mut in_code_block = false;
     let mut is_code_block_rust = false;
-    for line in lines {
-        let line = line.as_str();
-        let line = &*line;
 
+    let mut docs = String::new();
+    for line in docs_collection {
         // Rustdoc hides code lines starting with `# ` and this removes them from Clippy's lint list :)
         if is_code_block_rust && line.trim_start().starts_with("# ") {
             continue;
@@ -566,7 +739,8 @@ fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
             docs.push_str(line);
         }
     }
-    Some(docs)
+
+    docs
 }
 
 fn get_lint_version(cx: &LateContext<'_>, item: &Item<'_>) -> String {
@@ -584,7 +758,7 @@ fn get_lint_group_and_level_or_lint(
     let result = cx.lint_store.check_lint_name(
         lint_name,
         Some(sym::clippy),
-        &[Ident::with_dummy_span(sym::clippy)].into_iter().collect(),
+        &std::iter::once(Ident::with_dummy_span(sym::clippy)).collect(),
     );
     if let CheckLintNameResult::Tool(Ok(lint_lst)) = result {
         if let Some(group) = get_lint_group(cx, lint_lst[0]) {
@@ -598,7 +772,7 @@ fn get_lint_group_and_level_or_lint(
                 lint_collection_error_item(
                     cx,
                     item,
-                    &format!("Unable to determine lint level for found group `{}`", group),
+                    &format!("Unable to determine lint level for found group `{group}`"),
                 );
                 None
             }
@@ -630,10 +804,10 @@ fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
 fn get_lint_level_from_group(lint_group: &str) -> Option<&'static str> {
     DEFAULT_LINT_LEVELS
         .iter()
-        .find_map(|(group_name, group_level)| (*group_name == lint_group).then(|| *group_level))
+        .find_map(|(group_name, group_level)| (*group_name == lint_group).then_some(*group_level))
 }
 
-fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
+pub(super) fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     if let hir::TyKind::Path(ref path) = ty.kind {
         if let hir::def::Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, ty.hir_id) {
             return match_def_path(cx, def_id, &DEPRECATED_LINT_TYPE);
@@ -641,6 +815,45 @@ fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     }
 
     false
+}
+
+fn collect_renames(lints: &mut Vec<LintMetadata>) {
+    for lint in lints {
+        let mut collected = String::new();
+        let mut names = vec![lint.id.clone()];
+
+        loop {
+            if let Some(lint_name) = names.pop() {
+                for (k, v) in RENAMED_LINTS {
+                    if_chain! {
+                        if let Some(name) = v.strip_prefix(CLIPPY_LINT_GROUP_PREFIX);
+                        if name == lint_name;
+                        if let Some(past_name) = k.strip_prefix(CLIPPY_LINT_GROUP_PREFIX);
+                        then {
+                            writeln!(collected, "* `{past_name}`").unwrap();
+                            names.push(past_name.to_string());
+                        }
+                    }
+                }
+
+                continue;
+            }
+
+            break;
+        }
+
+        if !collected.is_empty() {
+            write!(
+                &mut lint.docs,
+                r#"
+### Past names
+
+{collected}
+"#
+            )
+            .unwrap();
+        }
+    }
 }
 
 // ==================================================================
@@ -651,7 +864,7 @@ fn lint_collection_error_item(cx: &LateContext<'_>, item: &Item<'_>, message: &s
         cx,
         INTERNAL_METADATA_COLLECTOR,
         item.ident.span,
-        &format!("metadata collection error for `{}`: {}", item.ident.name, message),
+        &format!("metadata collection error for `{}`: {message}", item.ident.name),
     );
 }
 
@@ -714,9 +927,9 @@ fn resolve_applicability<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hi
 }
 
 fn check_is_multi_part<'hir>(cx: &LateContext<'hir>, closure_expr: &'hir hir::Expr<'hir>) -> bool {
-    if let ExprKind::Closure(_, _, body_id, _, _) = closure_expr.kind {
+    if let ExprKind::Closure(&Closure { body, .. }) = closure_expr.kind {
         let mut scanner = IsMultiSpanScanner::new(cx);
-        intravisit::walk_body(&mut scanner, cx.tcx.hir().body(body_id));
+        intravisit::walk_body(&mut scanner, cx.tcx.hir().body(body));
         return scanner.is_multi_part();
     } else if let Some(local) = get_parent_local(cx, closure_expr) {
         if let Some(local_init) = local.init {
@@ -774,7 +987,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
 /// This visitor finds the highest applicability value in the visited expressions
 struct ApplicabilityResolver<'a, 'hir> {
     cx: &'a LateContext<'hir>,
-    /// This is the index of hightest `Applicability` for `paths::APPLICABILITY_VALUES`
+    /// This is the index of highest `Applicability` for `paths::APPLICABILITY_VALUES`
     applicability_index: Option<usize>,
 }
 
@@ -901,8 +1114,8 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
                     self.add_single_span_suggestion();
                 }
             },
-            ExprKind::MethodCall(path, arg, _arg_span) => {
-                let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(&arg[0]));
+            ExprKind::MethodCall(path, recv, _, _arg_span) => {
+                let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(recv));
                 if match_type(self.cx, self_ty, &paths::DIAGNOSTIC_BUILDER) {
                     let called_method = path.ident.name.as_str().to_string();
                     for (method_name, is_multi_part) in &SUGGESTION_DIAGNOSTIC_BUILDER_METHODS {

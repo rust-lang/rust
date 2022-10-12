@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 mod error1 {
   trait X {
       type Y<'a>;

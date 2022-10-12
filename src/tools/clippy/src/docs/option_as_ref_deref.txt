@@ -1,0 +1,15 @@
+### What it does
+Checks for usage of `_.as_ref().map(Deref::deref)` or it's aliases (such as String::as_str).
+
+### Why is this bad?
+Readability, this can be written more concisely as
+`_.as_deref()`.
+
+### Example
+```
+opt.as_ref().map(String::as_str)
+```
+Can be written as
+```
+opt.as_deref()
+```

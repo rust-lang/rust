@@ -13,7 +13,7 @@ help: remove these parentheses
    |
 LL -     for _ in (1..loop { break 2 }) {}
 LL +     for _ in 1..loop { break 2 } {}
-   | 
+   |
 
 error: unnecessary parentheses around `for` iterator expression
   --> $DIR/issue-90807-unused-paren-error.rs:8:14
@@ -25,7 +25,7 @@ help: remove these parentheses
    |
 LL -     for _ in (1..match () { () => 2 }) {}
 LL +     for _ in 1..match () { () => 2 } {}
-   | 
+   |
 
 error: aborting due to 2 previous errors
 

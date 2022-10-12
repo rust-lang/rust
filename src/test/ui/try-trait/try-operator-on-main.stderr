@@ -1,15 +1,11 @@
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-operator-on-main.rs:7:31
    |
-LL | / fn main() {
-LL | |     // error for a `Try` type on a non-`Try` fn
-LL | |     std::fs::File::open("foo")?;
-   | |                               ^ cannot use the `?` operator in a function that returns `()`
-LL | |
-...  |
-LL | |     try_trait_generic::<()>();
-LL | | }
-   | |_- this function should return `Result` or `Option` to accept `?`
+LL | fn main() {
+   | --------- this function should return `Result` or `Option` to accept `?`
+LL |     // error for a `Try` type on a non-`Try` fn
+LL |     std::fs::File::open("foo")?;
+   |                               ^ cannot use the `?` operator in a function that returns `()`
    |
    = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
 
@@ -24,17 +20,11 @@ LL |     ()?;
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-operator-on-main.rs:10:7
    |
-LL | / fn main() {
-LL | |     // error for a `Try` type on a non-`Try` fn
-LL | |     std::fs::File::open("foo")?;
-LL | |
-LL | |     // a non-`Try` type on a non-`Try` fn
-LL | |     ()?;
-   | |       ^ cannot use the `?` operator in a function that returns `()`
-...  |
-LL | |     try_trait_generic::<()>();
-LL | | }
-   | |_- this function should return `Result` or `Option` to accept `?`
+LL | fn main() {
+   | --------- this function should return `Result` or `Option` to accept `?`
+...
+LL |     ()?;
+   |       ^ cannot use the `?` operator in a function that returns `()`
    |
    = help: the trait `FromResidual<_>` is not implemented for `()`
 

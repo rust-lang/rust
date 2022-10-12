@@ -20,7 +20,7 @@ fn foo<'a: 'b, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
         let _: &'b i32 = *u.0;
     }
     u.0
-    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
+    //~^ ERROR hidden type for `E<'b, 'c>` captures lifetime that does not appear in bounds
 }
 
 fn main() {}

@@ -1,0 +1,16 @@
+### What it does
+Detects `format!` within the arguments of another macro that does
+formatting such as `format!` itself, `write!` or `println!`. Suggests
+inlining the `format!` call.
+
+### Why is this bad?
+The recommended code is both shorter and avoids a temporary allocation.
+
+### Example
+```
+println!("error: {}", format!("something failed at {}", Location::caller()));
+```
+Use instead:
+```
+println!("error: something failed at {}", Location::caller());
+```

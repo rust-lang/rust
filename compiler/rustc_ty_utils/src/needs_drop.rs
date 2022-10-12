@@ -2,12 +2,13 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::{sym, DUMMY_SP};
+
+use crate::errors::NeedsDropOverflow;
 
 type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
 
@@ -90,10 +91,7 @@ where
             if !self.recursion_limit.value_within_limit(level) {
                 // Not having a `Span` isn't great. But there's hopefully some other
                 // recursion limit error as well.
-                tcx.sess.span_err(
-                    DUMMY_SP,
-                    &format!("overflow while checking whether `{}` requires drop", self.query_ty),
-                );
+                tcx.sess.emit_err(NeedsDropOverflow { query_ty: self.query_ty });
                 return Some(Err(AlwaysRequiresDrop));
             }
 

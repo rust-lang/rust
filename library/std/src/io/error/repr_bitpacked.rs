@@ -132,6 +132,15 @@ unsafe impl Send for Repr {}
 unsafe impl Sync for Repr {}
 
 impl Repr {
+    pub(super) fn new(dat: ErrorData<Box<Custom>>) -> Self {
+        match dat {
+            ErrorData::Os(code) => Self::new_os(code),
+            ErrorData::Simple(kind) => Self::new_simple(kind),
+            ErrorData::SimpleMessage(simple_message) => Self::new_simple_message(simple_message),
+            ErrorData::Custom(b) => Self::new_custom(b),
+        }
+    }
+
     pub(super) fn new_custom(b: Box<Custom>) -> Self {
         let p = Box::into_raw(b).cast::<u8>();
         // Should only be possible if an allocator handed out a pointer with
@@ -260,10 +269,10 @@ where
         }
         TAG_SIMPLE_MESSAGE => ErrorData::SimpleMessage(&*ptr.cast::<SimpleMessage>().as_ptr()),
         TAG_CUSTOM => {
-            // It would be correct for us to use `ptr::sub` here (see the
+            // It would be correct for us to use `ptr::byte_sub` here (see the
             // comment above the `wrapping_add` call in `new_custom` for why),
             // but it isn't clear that it makes a difference, so we don't.
-            let custom = ptr.as_ptr().cast::<u8>().wrapping_sub(TAG_CUSTOM).cast::<Custom>();
+            let custom = ptr.as_ptr().wrapping_byte_sub(TAG_CUSTOM).cast::<Custom>();
             ErrorData::Custom(make_custom(custom))
         }
         _ => {

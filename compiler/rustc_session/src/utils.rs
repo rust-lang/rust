@@ -34,6 +34,9 @@ pub enum NativeLibKind {
         /// Whether the framework will be linked only if it satisfies some undefined symbols
         as_needed: Option<bool>,
     },
+    /// Argument which is passed to linker, relative order with libraries and other arguments
+    /// is preserved
+    LinkArg,
     /// The library kind wasn't specified, `Dylib` is currently used as a default.
     Unspecified,
 }
@@ -47,7 +50,7 @@ impl NativeLibKind {
             NativeLibKind::Dylib { as_needed } | NativeLibKind::Framework { as_needed } => {
                 as_needed.is_some()
             }
-            NativeLibKind::RawDylib | NativeLibKind::Unspecified => false,
+            NativeLibKind::RawDylib | NativeLibKind::Unspecified | NativeLibKind::LinkArg => false,
         }
     }
 }

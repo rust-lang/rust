@@ -29,7 +29,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         }
     }
 
-    #[instrument(level = "debug")]
+    #[instrument(level = "debug", ret)]
     pub fn take_opaque_types(&mut self) -> OpaqueTypeMap<'tcx> {
         std::mem::take(&mut self.opaque_types)
     }

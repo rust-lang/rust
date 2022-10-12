@@ -281,7 +281,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
     let span = DUMMY_SP.with_def_site_ctxt(expn_id.to_expn_id());
 
     let proc_macro = Ident::new(sym::proc_macro, span);
-    let krate = cx.item(span, proc_macro, Vec::new(), ast::ItemKind::ExternCrate(None));
+    let krate = cx.item(span, proc_macro, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None));
 
     let bridge = Ident::new(sym::bridge, span);
     let client = Ident::new(sym::client, span);
@@ -317,7 +317,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                         proc_macro_ty_method_path(cx, custom_derive),
                         vec![
                             cx.expr_str(span, cd.trait_name),
-                            cx.expr_vec_slice(
+                            cx.expr_array_ref(
                                 span,
                                 cd.attrs.iter().map(|&s| cx.expr_str(span, s)).collect::<Vec<_>>(),
                             ),
@@ -362,7 +362,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                 ast::Mutability::Not,
             ),
             ast::Mutability::Not,
-            cx.expr_vec_slice(span, decls),
+            cx.expr_array_ref(span, decls),
         )
         .map(|mut i| {
             let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);

@@ -6,7 +6,7 @@ use crate::num::dec2flt::table::{
     LARGEST_POWER_OF_FIVE, POWER_OF_FIVE_128, SMALLEST_POWER_OF_FIVE,
 };
 
-/// Compute a float using an extended-precision representation.
+/// Compute w * 10^q using an extended-precision float representation.
 ///
 /// Fast conversion of a the significant digits and decimal exponent
 /// a float to an extended representation with a binary float. This

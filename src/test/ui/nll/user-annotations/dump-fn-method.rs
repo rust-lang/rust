@@ -3,7 +3,6 @@
 
 // compile-flags:-Zverbose
 
-#![feature(nll)]
 #![feature(rustc_attrs)]
 
 // Note: we reference the names T and U in the comments below.

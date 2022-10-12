@@ -1,7 +1,7 @@
-// min-llvm-version: 13.0.0
 // only-x86_64
 // run-pass
 // needs-asm-support
+// needs-unwind
 
 #![feature(asm_sym, asm_unwind)]
 

@@ -15,7 +15,7 @@ impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // find basic blocks with no statement and a return terminator
-        let mut bbs_simple_returns = BitSet::new_empty(body.basic_blocks().len());
+        let mut bbs_simple_returns = BitSet::new_empty(body.basic_blocks.len());
         let def_id = body.source.def_id();
         let bbs = body.basic_blocks_mut();
         for idx in bbs.indices() {

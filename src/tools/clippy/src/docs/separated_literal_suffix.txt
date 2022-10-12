@@ -1,0 +1,17 @@
+### What it does
+Warns if literal suffixes are separated by an underscore.
+To enforce separated literal suffix style,
+see the `unseparated_literal_suffix` lint.
+
+### Why is this bad?
+Suffix style should be consistent.
+
+### Example
+```
+123832_i32
+```
+
+Use instead:
+```
+123832i32
+```

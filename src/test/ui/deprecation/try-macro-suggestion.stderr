@@ -21,7 +21,7 @@ help: you can use the `?` operator instead
    |
 LL -     Ok(try!(Ok(())))
 LL +     Ok(Ok(())?)
-   | 
+   |
 help: alternatively, you can still access the deprecated `try!()` macro using the "raw identifier" syntax
    |
 LL |     Ok(r#try!(Ok(())))

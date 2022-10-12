@@ -1,0 +1,14 @@
+error: multiple `unix_sigpipe` attributes
+  --> $DIR/unix_sigpipe-duplicates.rs:4:1
+   |
+LL | #[unix_sigpipe = "inherit"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unix_sigpipe-duplicates.rs:3:1
+   |
+LL | #[unix_sigpipe = "sig_ign"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

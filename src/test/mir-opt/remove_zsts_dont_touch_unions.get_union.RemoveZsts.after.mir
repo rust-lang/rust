@@ -1,15 +1,15 @@
 // MIR for `get_union` after RemoveZsts
 
 fn get_union() -> Foo {
-    let mut _0: Foo;                     // return place in scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:12:19: 12:22
-    let mut _1: ();                      // in scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:13:14: 13:16
+    let mut _0: Foo;                     // return place in scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+0:19: +0:22
+    let mut _1: ();                      // in scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:14: +1:16
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:13:14: 13:16
-        nop;                             // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:13:14: 13:16
-        Deinit(_0);                      // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:13:5: 13:18
-        (_0.0: ()) = move _1;            // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:13:5: 13:18
-        StorageDead(_1);                 // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:13:17: 13:18
-        return;                          // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:14:2: 14:2
+        StorageLive(_1);                 // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:14: +1:16
+        nop;                             // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:14: +1:16
+        Deinit(_0);                      // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:5: +1:18
+        (_0.0: ()) = move _1;            // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:5: +1:18
+        StorageDead(_1);                 // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:17: +1:18
+        return;                          // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+2:2: +2:2
     }
 }

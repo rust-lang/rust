@@ -46,7 +46,7 @@
 // CHECK: !DIDerivedType(tag: DW_TAG_member, name: "align", scope: ![[VTABLE_TY2]], {{.*}}, baseType: ![[USIZE]], size: {{64|32}}, align: {{64|32}}, offset: {{128|64}})
 
 // NONMSVC: !DIGlobalVariable(name: "<debug_vtable::bar::{closure_env#0} as core::ops::function::FnOnce<(core::option::Option<&dyn core::ops::function::Fn<(), Output=()>>)>>::{vtable}"
-// MSVC: !DIGlobalVariable(name: "impl$<debug_vtable::bar::closure_env$0, core::ops::function::FnOnce<tuple$<enum$<core::option::Option<ref$<dyn$<core::ops::function::Fn<tuple$<>,assoc$<Output,tuple$<> > > > > >, {{.*}}, {{.*}}, Some> > > >::vtable$"
+// MSVC: !DIGlobalVariable(name: "impl$<debug_vtable::bar::closure_env$0, core::ops::function::FnOnce<tuple$<enum2$<core::option::Option<ref$<dyn$<core::ops::function::Fn<tuple$<>,assoc$<Output,tuple$<> > > > > > > > > >::vtable$"
 
 // NONMSVC: !DIGlobalVariable(name: "<debug_vtable::generic_closure::{closure_env#0}<bool> as core::ops::function::FnOnce<()>>::{vtable}"
 // MSVC: !DIGlobalVariable(name: "impl$<debug_vtable::generic_closure::closure_env$0<bool>, core::ops::function::FnOnce<tuple$<> > >::vtable$

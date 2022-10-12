@@ -1,0 +1,33 @@
+error: Undefined Behavior: trying to retag from <TAG> for SharedReadWrite permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+  --> $DIR/box-cell-alias.rs:LL:CC
+   |
+LL |     unsafe { (*ptr).set(20) };
+   |              ^^^^^^^^^^^^^^
+   |              |
+   |              trying to retag from <TAG> for SharedReadWrite permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+   |              this error occurs as part of retag at ALLOC[0x0..0x1]
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x1]
+  --> $DIR/box-cell-alias.rs:LL:CC
+   |
+LL |     let ptr: *const Cell<u8> = &*val;
+   |                                ^^^^^
+help: <TAG> was later invalidated at offsets [0x0..0x1] by a Unique retag
+  --> $DIR/box-cell-alias.rs:LL:CC
+   |
+LL |     let res = helper(val, ptr);
+   |                      ^^^
+   = note: BACKTRACE:
+   = note: inside `helper` at $DIR/box-cell-alias.rs:LL:CC
+note: inside `main` at $DIR/box-cell-alias.rs:LL:CC
+  --> $DIR/box-cell-alias.rs:LL:CC
+   |
+LL |     let res = helper(val, ptr);
+   |               ^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

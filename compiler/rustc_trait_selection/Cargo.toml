@@ -4,7 +4,6 @@ version = "0.0.0"
 edition = "2021"
 
 [lib]
-doctest = false
 
 [dependencies]
 rustc_parse_format = { path = "../rustc_parse_format" }
@@ -23,4 +22,5 @@ rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+rustc_transmute = { path = "../rustc_transmute", features = ["rustc"] }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

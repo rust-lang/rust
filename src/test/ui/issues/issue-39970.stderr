@@ -9,7 +9,7 @@ note: expected this to be `()`
    |
 LL |     type Element = &'a ();
    |                    ^^^^^^
-note: required because of the requirements on the impl of `Visit` for `()`
+note: required for `()` to implement `Visit`
   --> $DIR/issue-39970.rs:13:6
    |
 LL | impl Visit for () where

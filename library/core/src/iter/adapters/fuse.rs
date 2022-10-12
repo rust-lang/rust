@@ -29,33 +29,6 @@ impl<I> Fuse<I> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Fuse<I> where I: Iterator {}
 
-/// Fuse the iterator if the expression is `None`.
-macro_rules! fuse {
-    ($self:ident . iter . $($call:tt)+) => {
-        match $self.iter {
-            Some(ref mut iter) => match iter.$($call)+ {
-                None => {
-                    $self.iter = None;
-                    None
-                }
-                item => item,
-            },
-            None => None,
-        }
-    };
-}
-
-/// Specialized macro that doesn't check if the expression is `None`.
-/// (We trust that a `FusedIterator` will fuse itself.)
-macro_rules! spec {
-    ($self:ident . iter . $($call:tt)+) => {
-        match $self.iter {
-            Some(ref mut iter) => iter.$($call)+,
-            None => None,
-        }
-    };
-}
-
 // Any specialized implementation here is made internal
 // to avoid exposing default fns outside this trait.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -281,12 +254,12 @@ where
 
     #[inline]
     default fn next(&mut self) -> Option<<I as Iterator>::Item> {
-        fuse!(self.iter.next())
+        and_then_or_clear(&mut self.iter, Iterator::next)
     }
 
     #[inline]
     default fn nth(&mut self, n: usize) -> Option<I::Item> {
-        fuse!(self.iter.nth(n))
+        and_then_or_clear(&mut self.iter, |iter| iter.nth(n))
     }
 
     #[inline]
@@ -308,7 +281,7 @@ where
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        fuse!(self.iter.find(predicate))
+        and_then_or_clear(&mut self.iter, |iter| iter.find(predicate))
     }
 
     #[inline]
@@ -316,7 +289,7 @@ where
     where
         I: DoubleEndedIterator,
     {
-        fuse!(self.iter.next_back())
+        and_then_or_clear(&mut self.iter, |iter| iter.next_back())
     }
 
     #[inline]
@@ -324,7 +297,7 @@ where
     where
         I: DoubleEndedIterator,
     {
-        fuse!(self.iter.nth_back(n))
+        and_then_or_clear(&mut self.iter, |iter| iter.nth_back(n))
     }
 
     #[inline]
@@ -348,7 +321,7 @@ where
         P: FnMut(&Self::Item) -> bool,
         I: DoubleEndedIterator,
     {
-        fuse!(self.iter.rfind(predicate))
+        and_then_or_clear(&mut self.iter, |iter| iter.rfind(predicate))
     }
 }
 
@@ -361,12 +334,12 @@ where
 {
     #[inline]
     fn next(&mut self) -> Option<<I as Iterator>::Item> {
-        spec!(self.iter.next())
+        self.iter.as_mut()?.next()
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
-        spec!(self.iter.nth(n))
+        self.iter.as_mut()?.nth(n)
     }
 
     #[inline]
@@ -387,7 +360,7 @@ where
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        spec!(self.iter.find(predicate))
+        self.iter.as_mut()?.find(predicate)
     }
 
     #[inline]
@@ -395,7 +368,7 @@ where
     where
         I: DoubleEndedIterator,
     {
-        spec!(self.iter.next_back())
+        self.iter.as_mut()?.next_back()
     }
 
     #[inline]
@@ -403,7 +376,7 @@ where
     where
         I: DoubleEndedIterator,
     {
-        spec!(self.iter.nth_back(n))
+        self.iter.as_mut()?.nth_back(n)
     }
 
     #[inline]
@@ -426,6 +399,15 @@ where
         P: FnMut(&Self::Item) -> bool,
         I: DoubleEndedIterator,
     {
-        spec!(self.iter.rfind(predicate))
+        self.iter.as_mut()?.rfind(predicate)
     }
+}
+
+#[inline]
+fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option<U>) -> Option<U> {
+    let x = f(opt.as_mut()?);
+    if x.is_none() {
+        *opt = None;
+    }
+    x
 }

@@ -1,5 +1,5 @@
 error: unconstrained opaque type
-  --> $DIR/issue-87258_a.rs:18:26
+  --> $DIR/issue-87258_a.rs:17:26
    |
 LL |     type FooFuture<'a> = impl Trait1;
    |                          ^^^^^^^^^^^

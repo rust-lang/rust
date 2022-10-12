@@ -1,5 +1,5 @@
 error[E0107]: this function takes 1 generic argument but 2 generic arguments were supplied
-  --> $DIR/explicit-generic-args-for-impl.rs:6:5
+  --> $DIR/explicit-generic-args-for-impl.rs:4:5
    |
 LL |     foo::<str, String>("".to_string());
    |     ^^^        ------ help: remove this generic argument
@@ -7,7 +7,7 @@ LL |     foo::<str, String>("".to_string());
    |     expected 1 generic argument
    |
 note: function defined here, with 1 generic parameter: `T`
-  --> $DIR/explicit-generic-args-for-impl.rs:3:4
+  --> $DIR/explicit-generic-args-for-impl.rs:1:4
    |
 LL | fn foo<T: ?Sized>(_f: impl AsRef<T>) {}
    |    ^^^ -

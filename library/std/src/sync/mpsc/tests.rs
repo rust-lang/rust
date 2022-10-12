@@ -120,13 +120,14 @@ fn chan_gone_concurrent() {
 
 #[test]
 fn stress() {
+    let count = if cfg!(miri) { 100 } else { 10000 };
     let (tx, rx) = channel::<i32>();
     let t = thread::spawn(move || {
-        for _ in 0..10000 {
+        for _ in 0..count {
             tx.send(1).unwrap();
         }
     });
-    for _ in 0..10000 {
+    for _ in 0..count {
         assert_eq!(rx.recv().unwrap(), 1);
     }
     t.join().ok().expect("thread panicked");
@@ -134,7 +135,7 @@ fn stress() {
 
 #[test]
 fn stress_shared() {
-    const AMT: u32 = 10000;
+    const AMT: u32 = if cfg!(miri) { 100 } else { 10000 };
     const NTHREADS: u32 = 8;
     let (tx, rx) = channel::<i32>();
 
@@ -504,12 +505,13 @@ fn very_long_recv_timeout_wont_panic() {
 
 #[test]
 fn recv_a_lot() {
+    let count = if cfg!(miri) { 1000 } else { 10000 };
     // Regression test that we don't run out of stack in scheduler context
     let (tx, rx) = channel();
-    for _ in 0..10000 {
+    for _ in 0..count {
         tx.send(()).unwrap();
     }
-    for _ in 0..10000 {
+    for _ in 0..count {
         rx.recv().unwrap();
     }
 }

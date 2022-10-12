@@ -4,8 +4,8 @@ error: literal out of range for `u16`
 LL |     for n in 100_000.. {
    |              ^^^^^^^
    |
-   = note: `#[deny(overflowing_literals)]` on by default
    = note: the literal `100_000` does not fit into the type `u16` whose range is `0..=65535`
+   = note: `#[deny(overflowing_literals)]` on by default
 
 error: aborting due to previous error
 

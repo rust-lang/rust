@@ -9,6 +9,7 @@ mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
 mod transmute_undefined_repr;
 mod transmutes_expressible_as_ptr_casts;
+mod transmuting_null;
 mod unsound_collection_transmute;
 mod useless_transmute;
 mod utils;
@@ -16,9 +17,10 @@ mod wrong_transmute;
 
 use clippy_utils::in_constant;
 use if_chain::if_chain;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
@@ -59,7 +61,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub USELESS_TRANSMUTE,
-    nursery,
+    complexity,
     "transmutes that have the same to and from types or could be a cast/coercion"
 }
 
@@ -385,7 +387,32 @@ declare_clippy_lint! {
     "transmute to or from a type with an undefined representation"
 }
 
-declare_lint_pass!(Transmute => [
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for transmute calls which would receive a null pointer.
+    ///
+    /// ### Why is this bad?
+    /// Transmuting a null pointer is undefined behavior.
+    ///
+    /// ### Known problems
+    /// Not all cases can be detected at the moment of this writing.
+    /// For example, variables which hold a null pointer and are then fed to a `transmute`
+    /// call, aren't detectable yet.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let null_ref: &u64 = unsafe { std::mem::transmute(0 as *const u64) };
+    /// ```
+    #[clippy::version = "1.35.0"]
+    pub TRANSMUTING_NULL,
+    correctness,
+    "transmutes from a null pointer to a reference, which is undefined behavior"
+}
+
+pub struct Transmute {
+    msrv: Option<RustcVersion>,
+}
+impl_lint_pass!(Transmute => [
     CROSSPOINTER_TRANSMUTE,
     TRANSMUTE_PTR_TO_REF,
     TRANSMUTE_PTR_TO_PTR,
@@ -400,14 +427,20 @@ declare_lint_pass!(Transmute => [
     UNSOUND_COLLECTION_TRANSMUTE,
     TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
     TRANSMUTE_UNDEFINED_REPR,
+    TRANSMUTING_NULL,
 ]);
-
+impl Transmute {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
 impl<'tcx> LateLintPass<'tcx> for Transmute {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Call(path_expr, [arg]) = e.kind;
-            if let ExprKind::Path(ref qpath) = path_expr.kind;
-            if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
+            if let ExprKind::Path(QPath::Resolved(None, path)) = path_expr.kind;
+            if let Some(def_id) = path.res.opt_def_id();
             if cx.tcx.is_diagnostic_item(sym::transmute, def_id);
             then {
                 // Avoid suggesting non-const operations in const contexts:
@@ -427,7 +460,8 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
 
                 let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
                     | crosspointer_transmute::check(cx, e, from_ty, to_ty)
-                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, qpath)
+                    | transmuting_null::check(cx, e, arg, to_ty)
+                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, self.msrv)
                     | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)
@@ -446,4 +480,6 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }

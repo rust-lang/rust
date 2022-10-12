@@ -1,10 +1,8 @@
 error: rustc_outlives
   --> $DIR/projection.rs:4:1
    |
-LL | / struct Foo<'a, T: Iterator> {
-LL | |     bar: &'a T::Item
-LL | | }
-   | |_^
+LL | struct Foo<'a, T: Iterator> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: <T as Iterator>::Item: 'a
 

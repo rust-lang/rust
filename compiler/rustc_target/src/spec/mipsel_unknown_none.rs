@@ -2,8 +2,7 @@
 //!
 //! Can be used for MIPS M4K core (e.g. on PIC32MX devices)
 
-use crate::spec::{LinkerFlavor, LldFlavor, RelocModel};
-use crate::spec::{PanicStrategy, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,11 +12,10 @@ pub fn target() -> Target {
         arch: "mips".into(),
 
         options: TargetOptions {
-            linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+            linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             cpu: "mips32r2".into(),
             features: "+mips32r2,+soft-float,+noabicalls".into(),
             max_atomic_width: Some(32),
-            executables: true,
             linker: Some("rust-lld".into()),
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,

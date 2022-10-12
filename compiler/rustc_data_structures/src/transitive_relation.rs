@@ -1,42 +1,54 @@
+use crate::frozen::Frozen;
 use crate::fx::FxIndexSet;
-use crate::sync::Lock;
 use rustc_index::bit_set::BitMatrix;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
+use std::ops::Deref;
 
 #[cfg(test)]
 mod tests;
 
 #[derive(Clone, Debug)]
-pub struct TransitiveRelation<T> {
+pub struct TransitiveRelationBuilder<T> {
     // List of elements. This is used to map from a T to a usize.
     elements: FxIndexSet<T>,
 
     // List of base edges in the graph. Require to compute transitive
     // closure.
     edges: Vec<Edge>,
+}
 
-    // This is a cached transitive closure derived from the edges.
-    // Currently, we build it lazily and just throw out any existing
-    // copy whenever a new edge is added. (The Lock is to permit
-    // the lazy computation.) This is kind of silly, except for the
-    // fact its size is tied to `self.elements.len()`, so I wanted to
-    // wait before building it up to avoid reallocating as new edges
-    // are added with new elements. Perhaps better would be to ask the
-    // user for a batch of edges to minimize this effect, but I
-    // already wrote the code this way. :P -nmatsakis
-    closure: Lock<Option<BitMatrix<usize, usize>>>,
+#[derive(Debug)]
+pub struct TransitiveRelation<T> {
+    // Frozen transitive relation elements and edges.
+    builder: Frozen<TransitiveRelationBuilder<T>>,
+
+    // Cached transitive closure derived from the edges.
+    closure: Frozen<BitMatrix<usize, usize>>,
+}
+
+impl<T> Deref for TransitiveRelation<T> {
+    type Target = Frozen<TransitiveRelationBuilder<T>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.builder
+    }
+}
+
+impl<T: Clone> Clone for TransitiveRelation<T> {
+    fn clone(&self) -> Self {
+        TransitiveRelation {
+            builder: Frozen::freeze(self.builder.deref().clone()),
+            closure: Frozen::freeze(self.closure.deref().clone()),
+        }
+    }
 }
 
 // HACK(eddyb) manual impl avoids `Default` bound on `T`.
-impl<T: Eq + Hash> Default for TransitiveRelation<T> {
+impl<T: Eq + Hash> Default for TransitiveRelationBuilder<T> {
     fn default() -> Self {
-        TransitiveRelation {
-            elements: Default::default(),
-            edges: Default::default(),
-            closure: Default::default(),
-        }
+        TransitiveRelationBuilder { elements: Default::default(), edges: Default::default() }
     }
 }
 
@@ -49,7 +61,7 @@ struct Edge {
     target: Index,
 }
 
-impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
+impl<T: Eq + Hash + Copy> TransitiveRelationBuilder<T> {
     pub fn is_empty(&self) -> bool {
         self.edges.is_empty()
     }
@@ -63,23 +75,19 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
     }
 
     fn add_index(&mut self, a: T) -> Index {
-        let (index, added) = self.elements.insert_full(a);
-        if added {
-            // if we changed the dimensions, clear the cache
-            *self.closure.get_mut() = None;
-        }
+        let (index, _added) = self.elements.insert_full(a);
         Index(index)
     }
 
     /// Applies the (partial) function to each edge and returns a new
-    /// relation. If `f` returns `None` for any end-point, returns
-    /// `None`.
-    pub fn maybe_map<F, U>(&self, mut f: F) -> Option<TransitiveRelation<U>>
+    /// relation builder. If `f` returns `None` for any end-point,
+    /// returns `None`.
+    pub fn maybe_map<F, U>(&self, mut f: F) -> Option<TransitiveRelationBuilder<U>>
     where
         F: FnMut(T) -> Option<U>,
         U: Clone + Debug + Eq + Hash + Copy,
     {
-        let mut result = TransitiveRelation::default();
+        let mut result = TransitiveRelationBuilder::default();
         for edge in &self.edges {
             result.add(f(self.elements[edge.source.0])?, f(self.elements[edge.target.0])?);
         }
@@ -93,10 +101,38 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
         let edge = Edge { source: a, target: b };
         if !self.edges.contains(&edge) {
             self.edges.push(edge);
-
-            // added an edge, clear the cache
-            *self.closure.get_mut() = None;
         }
+    }
+
+    /// Compute the transitive closure derived from the edges, and converted to
+    /// the final result. After this, all elements will be immutable to maintain
+    /// the correctness of the result.
+    pub fn freeze(self) -> TransitiveRelation<T> {
+        let mut matrix = BitMatrix::new(self.elements.len(), self.elements.len());
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for edge in &self.edges {
+                // add an edge from S -> T
+                changed |= matrix.insert(edge.source.0, edge.target.0);
+
+                // add all outgoing edges from T into S
+                changed |= matrix.union_rows(edge.target.0, edge.source.0);
+            }
+        }
+        TransitiveRelation { builder: Frozen::freeze(self), closure: Frozen::freeze(matrix) }
+    }
+}
+
+impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
+    /// Applies the (partial) function to each edge and returns a new
+    /// relation including transitive closures.
+    pub fn maybe_map<F, U>(&self, f: F) -> Option<TransitiveRelation<U>>
+    where
+        F: FnMut(T) -> Option<U>,
+        U: Clone + Debug + Eq + Hash + Copy,
+    {
+        Some(self.builder.maybe_map(f)?.freeze())
     }
 
     /// Checks whether `a < target` (transitively)
@@ -322,30 +358,7 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
     where
         OP: FnOnce(&BitMatrix<usize, usize>) -> R,
     {
-        let mut closure_cell = self.closure.borrow_mut();
-        let mut closure = closure_cell.take();
-        if closure.is_none() {
-            closure = Some(self.compute_closure());
-        }
-        let result = op(closure.as_ref().unwrap());
-        *closure_cell = closure;
-        result
-    }
-
-    fn compute_closure(&self) -> BitMatrix<usize, usize> {
-        let mut matrix = BitMatrix::new(self.elements.len(), self.elements.len());
-        let mut changed = true;
-        while changed {
-            changed = false;
-            for edge in &self.edges {
-                // add an edge from S -> T
-                changed |= matrix.insert(edge.source.0, edge.target.0);
-
-                // add all outgoing edges from T into S
-                changed |= matrix.union_rows(edge.target.0, edge.source.0);
-            }
-        }
-        matrix
+        op(&self.closure)
     }
 
     /// Lists all the base edges in the graph: the initial _non-transitive_ set of element

@@ -1,4 +1,5 @@
 // build-fail
+// compile-flags: -Zinline-mir=no
 // error-pattern: overflow evaluating the requirement `(): Sized`
 // error-pattern: function cannot return without recursing
 

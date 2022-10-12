@@ -4,10 +4,10 @@ warning: unknown lint: `fuzzy_provenance_casts`
 LL | #![deny(fuzzy_provenance_casts)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_lints)]` on by default
    = note: the `fuzzy_provenance_casts` lint is unstable
    = note: see issue #95228 <https://github.com/rust-lang/rust/issues/95228> for more information
    = help: add `#![feature(strict_provenance)]` to the crate attributes to enable
+   = note: `#[warn(unknown_lints)]` on by default
 
 warning: unknown lint: `lossy_provenance_casts`
   --> $DIR/feature-gate-strict_provenance.rs:7:1

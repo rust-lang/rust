@@ -1,6 +1,4 @@
 PRINT-BANG INPUT (DISPLAY): 0 + 1 + 2 + 3
-PRINT-BANG RE-COLLECTED (DISPLAY): /*«*/ 0 + 1 + 2 /*»*/ + 3
-PRINT-BANG DEEP-RE-COLLECTED (DISPLAY): /*«*/ /*«*/ /*«*/ 0 /*»*/ + 1 /*»*/ + 2 /*»*/ + 3
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,

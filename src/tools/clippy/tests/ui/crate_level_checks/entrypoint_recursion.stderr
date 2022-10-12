@@ -1,11 +1,11 @@
 error: recursing into entrypoint `a`
-  --> $DIR/entrypoint_recursion.rs:11:5
+  --> $DIR/entrypoint_recursion.rs:10:5
    |
 LL |     a();
    |     ^
    |
-   = note: `-D clippy::main-recursion` implied by `-D warnings`
    = help: consider using another function for this recursion
+   = note: `-D clippy::main-recursion` implied by `-D warnings`
 
 error: aborting due to previous error
 

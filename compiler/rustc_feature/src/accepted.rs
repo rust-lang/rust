@@ -142,6 +142,8 @@ declare_features! (
     (accepted, dyn_trait, "1.27.0", Some(44662), None),
     /// Allows integer match exhaustiveness checking (RFC 2591).
     (accepted, exhaustive_integer_patterns, "1.33.0", Some(50907), None),
+    /// Allows explicit generic arguments specification with `impl Trait` present.
+    (accepted, explicit_generic_args_with_impl_trait, "1.63.0", Some(83701), None),
     /// Allows arbitrary expressions in key-value attributes at parse time.
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835), None),
     /// Allows resolving absolute paths as paths from other crates.
@@ -159,12 +161,16 @@ declare_features! (
     (accepted, fn_must_use, "1.27.0", Some(43302), None),
     /// Allows capturing variables in scope using format_args!
     (accepted, format_args_capture, "1.58.0", Some(67984), None),
+    /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
+    (accepted, generic_associated_types, "1.65.0", Some(44265), None),
     /// Allows attributes on lifetime/type formal parameters in generics (RFC 1327).
     (accepted, generic_param_attrs, "1.27.0", Some(48848), None),
     /// Allows the `#[global_allocator]` attribute.
     (accepted, global_allocator, "1.28.0", Some(27389), None),
     // FIXME: explain `globs`.
     (accepted, globs, "1.0.0", None, None),
+    /// Allows using `..=X` as a pattern.
+    (accepted, half_open_range_patterns, "CURRENT_RUSTC_VERSION", Some(67264), None),
     /// Allows using the `u128` and `i128` types.
     (accepted, i128_type, "1.26.0", Some(35118), None),
     /// Allows the use of `if let` expressions.
@@ -184,6 +190,10 @@ declare_features! (
     /// Allows some increased flexibility in the name resolution rules,
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
+    /// Allows `'a: { break 'a; }`.
+    (accepted, label_break_value, "1.65.0", Some(48594), None),
+    /// Allows `let...else` statements.
+    (accepted, let_else, "1.65.0", Some(87335), None),
     /// Allows `break {expr}` with a value inside `loop`s.
     (accepted, loop_break_value, "1.19.0", Some(37339), None),
     /// Allows use of `?` as the Kleene "at most one" operator in macros.
@@ -219,8 +229,12 @@ declare_features! (
     (accepted, move_ref_pattern, "1.49.0", Some(68354), None),
     /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
     (accepted, native_link_modifiers, "1.61.0", Some(81490), None),
+    /// Allows specifying the bundle link modifier
+    (accepted, native_link_modifiers_bundle, "1.63.0", Some(81490), None),
     /// Allows specifying the whole-archive link modifier
     (accepted, native_link_modifiers_whole_archive, "1.61.0", Some(81490), None),
+    /// Allows using non lexical lifetimes (RFC 2094).
+    (accepted, nll, "1.63.0", Some(43234), None),
     /// Allows using `#![no_std]`.
     (accepted, no_std, "1.6.0", None, None),
     /// Allows defining identifiers beyond ASCII.

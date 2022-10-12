@@ -43,7 +43,7 @@ pub fn check_for_loop_iter(
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             let snippet = if_chain! {
-                if let ExprKind::MethodCall(maybe_iter_method_name, [collection], _) = receiver.kind;
+                if let ExprKind::MethodCall(maybe_iter_method_name, collection, [], _) = receiver.kind;
                 if maybe_iter_method_name.ident.name == sym::iter;
 
                 if let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
@@ -68,7 +68,7 @@ pub fn check_for_loop_iter(
                 cx,
                 UNNECESSARY_TO_OWNED,
                 expr.span,
-                &format!("unnecessary use of `{}`", method_name),
+                &format!("unnecessary use of `{method_name}`"),
                 |diag| {
                     // If `check_into_iter_call_arg` called `check_for_loop_iter` because a call to
                     // a `to_owned`-like function was removed, then the next suggestion may be
@@ -85,7 +85,7 @@ pub fn check_for_loop_iter(
                         match addr_of_expr.kind {
                             ExprKind::AddrOf(_, _, referent) => {
                                 let span = addr_of_expr.span.with_hi(referent.span.lo());
-                                diag.span_suggestion(span, "remove this `&`", String::new(), applicability);
+                                diag.span_suggestion(span, "remove this `&`", "", applicability);
                             }
                             _ => unreachable!(),
                         }

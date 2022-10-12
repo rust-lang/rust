@@ -1,0 +1,23 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "F"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    UNSAFE_KW "unsafe"
+  WHITESPACE " "
+  ERROR
+    L_PAREN "("
+  ERROR
+    R_PAREN ")"
+  ERROR
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 15: expected `fn`
+error 15: expected SEMICOLON
+error 16: expected an item
+error 17: expected an item
+error 18: expected an item

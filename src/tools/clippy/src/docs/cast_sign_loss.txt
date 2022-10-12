@@ -1,0 +1,15 @@
+### What it does
+Checks for casts from a signed to an unsigned numerical
+type. In this case, negative values wrap around to large positive values,
+which can be quite surprising in practice. However, as the cast works as
+defined, this lint is `Allow` by default.
+
+### Why is this bad?
+Possibly surprising results. You can activate this lint
+as a one-time check to see where numerical wrapping can arise.
+
+### Example
+```
+let y: i8 = -1;
+y as u128; // will return 18446744073709551615
+```

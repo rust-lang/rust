@@ -1,8 +1,8 @@
-error[E0005]: refutable pattern in local binding: `Bar` and `Baz` not covered
+error[E0005]: refutable pattern in local binding: `Thing::Bar` and `Thing::Baz` not covered
   --> $DIR/issue-31561.rs:8:9
    |
 LL |     let Thing::Foo(y) = Thing::Foo(1);
-   |         ^^^^^^^^^^^^^ patterns `Bar` and `Baz` not covered
+   |         ^^^^^^^^^^^^^ patterns `Thing::Bar` and `Thing::Baz` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
@@ -21,7 +21,7 @@ help: you might want to use `if let` to ignore the variants that aren't matched
    |
 LL |     let y = if let Thing::Foo(y) = Thing::Foo(1) { y } else { todo!() };
    |     ++++++++++                                   ++++++++++++++++++++++
-help: alternatively, on nightly, you might want to use `#![feature(let_else)]` to handle the variants that aren't matched
+help: alternatively, you might want to use let else to handle the variants that aren't matched
    |
 LL |     let Thing::Foo(y) = Thing::Foo(1) else { todo!() };
    |                                       ++++++++++++++++

@@ -15,16 +15,16 @@ pub fn placeholder(
     id: ast::NodeId,
     vis: Option<ast::Visibility>,
 ) -> AstFragment {
-    fn mac_placeholder() -> ast::MacCall {
-        ast::MacCall {
+    fn mac_placeholder() -> P<ast::MacCall> {
+        P(ast::MacCall {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new(), tokens: None },
             args: P(ast::MacArgs::Empty),
             prior_type_ascription: None,
-        }
+        })
     }
 
     let ident = Ident::empty();
-    let attrs = Vec::new();
+    let attrs = ast::AttrVec::new();
     let vis = vis.unwrap_or(ast::Visibility {
         span: DUMMY_SP,
         kind: ast::VisibilityKind::Inherited,

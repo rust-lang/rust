@@ -89,7 +89,7 @@ impl EarlyLintPass for UnusedUnit {
         }
     }
 
-    fn check_poly_trait_ref(&mut self, cx: &EarlyContext<'_>, poly: &ast::PolyTraitRef, _: &ast::TraitBoundModifier) {
+    fn check_poly_trait_ref(&mut self, cx: &EarlyContext<'_>, poly: &ast::PolyTraitRef) {
         let segments = &poly.trait_ref.path.segments;
 
         if_chain! {

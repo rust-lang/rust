@@ -85,9 +85,9 @@ LL | #[B]
 LL | #[derive(B)]
    |          - the attribute is introduced here
    |
-   = note: `#[warn(legacy_derive_helpers)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+   = note: `#[warn(legacy_derive_helpers)]` on by default
 
 warning: derive helper attribute is used before it is introduced
   --> $DIR/proc-macro-attributes.rs:10:3

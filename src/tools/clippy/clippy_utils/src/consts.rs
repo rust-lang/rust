@@ -7,8 +7,9 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, FloatTy, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
@@ -44,7 +45,7 @@ pub enum Constant {
     /// A reference
     Ref(Box<Constant>),
     /// A literal with syntax error.
-    Err(Symbol),
+    Err,
 }
 
 impl PartialEq for Constant {
@@ -117,9 +118,7 @@ impl Hash for Constant {
             Self::Ref(ref r) => {
                 r.hash(state);
             },
-            Self::Err(ref s) => {
-                s.hash(state);
-            },
+            Self::Err => {},
         }
     }
 }
@@ -193,7 +192,7 @@ pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
             _ => bug!(),
         },
         LitKind::Bool(b) => Constant::Bool(b),
-        LitKind::Err(s) => Constant::Err(s),
+        LitKind::Err => Constant::Err,
     }
 }
 
@@ -425,12 +424,12 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     .tcx
                     .const_eval_resolve(
                         self.param_env,
-                        ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs),
+                        mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs),
                         None,
                     )
                     .ok()
-                    .map(|val| rustc_middle::ty::Const::from_value(self.lcx.tcx, val, ty))?;
-                let result = miri_to_const(result);
+                    .map(|val| rustc_middle::mir::ConstantKind::from_value(val, ty))?;
+                let result = miri_to_const(self.lcx.tcx, result);
                 if result.is_some() {
                     self.needed_resolution = true;
                 }
@@ -478,7 +477,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     fn ifthenelse(&mut self, cond: &Expr<'_>, then: &Expr<'_>, otherwise: Option<&Expr<'_>>) -> Option<Constant> {
         if let Some(Constant::Bool(b)) = self.expr(cond) {
             if b {
-                self.expr(&*then)
+                self.expr(then)
             } else {
                 otherwise.as_ref().and_then(|expr| self.expr(expr))
             }
@@ -502,8 +501,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                         BinOpKind::Mul => l.checked_mul(r).map(zext),
                         BinOpKind::Div if r != 0 => l.checked_div(r).map(zext),
                         BinOpKind::Rem if r != 0 => l.checked_rem(r).map(zext),
-                        BinOpKind::Shr => l.checked_shr(r.try_into().expect("invalid shift")).map(zext),
-                        BinOpKind::Shl => l.checked_shl(r.try_into().expect("invalid shift")).map(zext),
+                        BinOpKind::Shr => l.checked_shr(r.try_into().ok()?).map(zext),
+                        BinOpKind::Shl => l.checked_shl(r.try_into().ok()?).map(zext),
                         BinOpKind::BitXor => Some(zext(l ^ r)),
                         BinOpKind::BitOr => Some(zext(l | r)),
                         BinOpKind::BitAnd => Some(zext(l & r)),
@@ -522,8 +521,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     BinOpKind::Mul => l.checked_mul(r).map(Constant::Int),
                     BinOpKind::Div => l.checked_div(r).map(Constant::Int),
                     BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
-                    BinOpKind::Shr => l.checked_shr(r.try_into().expect("shift too large")).map(Constant::Int),
-                    BinOpKind::Shl => l.checked_shl(r.try_into().expect("shift too large")).map(Constant::Int),
+                    BinOpKind::Shr => l.checked_shr(r.try_into().ok()?).map(Constant::Int),
+                    BinOpKind::Shl => l.checked_shl(r.try_into().ok()?).map(Constant::Int),
                     BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
                     BinOpKind::BitOr => Some(Constant::Int(l | r)),
                     BinOpKind::BitAnd => Some(Constant::Int(l & r)),
@@ -580,10 +579,10 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     }
 }
 
-pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
+pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -> Option<Constant> {
     use rustc_middle::mir::interpret::ConstValue;
-    match result.val() {
-        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int(int))) => {
+    match result {
+        mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(int)), _) => {
             match result.ty().kind() {
                 ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
                 ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.assert_bits(int.size()))),
@@ -603,7 +602,7 @@ pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
                 _ => None,
             }
         },
-        ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => match result.ty().kind() {
+        mir::ConstantKind::Val(ConstValue::Slice { data, start, end }, _) => match result.ty().kind() {
             ty::Ref(_, tam, _) => match tam.kind() {
                 ty::Str => String::from_utf8(
                     data.inner()
@@ -616,34 +615,26 @@ pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
             },
             _ => None,
         },
-        ty::ConstKind::Value(ConstValue::ByRef { alloc, offset: _ }) => match result.ty().kind() {
+        mir::ConstantKind::Val(ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
             ty::Array(sub_type, len) => match sub_type.kind() {
-                ty::Float(FloatTy::F32) => match miri_to_const(*len) {
-                    Some(Constant::Int(len)) => alloc
+                ty::Float(FloatTy::F32) => match len.kind().try_to_machine_usize(tcx) {
+                    Some(len) => alloc
                         .inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * len as usize))
+                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * usize::try_from(len).unwrap()))
                         .to_owned()
-                        .chunks(4)
-                        .map(|chunk| {
-                            Some(Constant::F32(f32::from_le_bytes(
-                                chunk.try_into().expect("this shouldn't happen"),
-                            )))
-                        })
+                        .array_chunks::<4>()
+                        .map(|&chunk| Some(Constant::F32(f32::from_le_bytes(chunk))))
                         .collect::<Option<Vec<Constant>>>()
                         .map(Constant::Vec),
                     _ => None,
                 },
-                ty::Float(FloatTy::F64) => match miri_to_const(*len) {
-                    Some(Constant::Int(len)) => alloc
+                ty::Float(FloatTy::F64) => match len.kind().try_to_machine_usize(tcx) {
+                    Some(len) => alloc
                         .inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * len as usize))
+                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * usize::try_from(len).unwrap()))
                         .to_owned()
-                        .chunks(8)
-                        .map(|chunk| {
-                            Some(Constant::F64(f64::from_le_bytes(
-                                chunk.try_into().expect("this shouldn't happen"),
-                            )))
-                        })
+                        .array_chunks::<8>()
+                        .map(|&chunk| Some(Constant::F64(f64::from_le_bytes(chunk))))
                         .collect::<Option<Vec<Constant>>>()
                         .map(Constant::Vec),
                     _ => None,

@@ -22,7 +22,6 @@ LL | fn bar<F: Fn(&u8, &u8) -> &u8>(f: &F) {}
    |              ---  ---     ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | fn bar<F: for<'a> Fn(&'a u8, &'a u8) -> &'a u8>(f: &F) {}

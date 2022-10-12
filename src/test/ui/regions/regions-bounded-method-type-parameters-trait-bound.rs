@@ -2,10 +2,6 @@
 // nominal types (but not on other types) and that they are type
 // checked.
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 struct Inv<'a> { // invariant w/r/t 'a
     x: &'a mut &'a isize
 }
@@ -22,8 +18,7 @@ fn caller1<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
 fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
     // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
     f.method(b);
-    //[base]~^ ERROR lifetime mismatch [E0623]
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn caller3<'a,'b:'a,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {

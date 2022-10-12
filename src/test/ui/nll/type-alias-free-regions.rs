@@ -1,10 +1,6 @@
 // Test that we don't assume that type aliases have the same type parameters
 // as the type they alias and then panic when we see this.
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 type A<'a> = &'a isize;
 type B<'a> = Box<A<'a>>;
 

@@ -1,0 +1,27 @@
+### What it does
+Checks for wildcard enum matches for a single variant.
+
+### Why is this bad?
+New enum variants added by library updates can be missed.
+
+### Known problems
+Suggested replacements may not use correct path to enum
+if it's not present in the current scope.
+
+### Example
+```
+match x {
+    Foo::A => {},
+    Foo::B => {},
+    _ => {},
+}
+```
+
+Use instead:
+```
+match x {
+    Foo::A => {},
+    Foo::B => {},
+    Foo::C => {},
+}
+```

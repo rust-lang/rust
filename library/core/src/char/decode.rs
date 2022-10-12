@@ -1,5 +1,6 @@
 //! UTF-8 and UTF-16 decoding iterators
 
+use crate::error::Error;
 use crate::fmt;
 
 use super::from_u32_unchecked;
@@ -119,5 +120,13 @@ impl DecodeUtf16Error {
 impl fmt::Display for DecodeUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "unpaired surrogate found: {:x}", self.code)
+    }
+}
+
+#[stable(feature = "decode_utf16", since = "1.9.0")]
+impl Error for DecodeUtf16Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "unpaired surrogate found"
     }
 }

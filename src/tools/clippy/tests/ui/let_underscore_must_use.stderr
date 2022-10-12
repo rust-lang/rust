@@ -4,8 +4,8 @@ error: non-binding let on a result of a `#[must_use]` function
 LL |     let _ = f();
    |     ^^^^^^^^^^^^
    |
-   = note: `-D clippy::let-underscore-must-use` implied by `-D warnings`
    = help: consider explicitly using function result
+   = note: `-D clippy::let-underscore-must-use` implied by `-D warnings`
 
 error: non-binding let on an expression with `#[must_use]` type
   --> $DIR/let_underscore_must_use.rs:68:5

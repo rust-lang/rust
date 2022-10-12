@@ -19,11 +19,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let v: f32 = 0.123_456_789_9;
     /// println!("{}", v); //  0.123_456_789
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let v: f64 = 0.123_456_789_9;
     /// println!("{}", v); //  0.123_456_789_9
     /// ```
@@ -44,10 +45,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let _: f32 = 16_777_217.0; // 16_777_216.0
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let _: f32 = 16_777_216.0;
     /// let _: f64 = 16_777_217.0;
     /// ```
@@ -171,9 +173,9 @@ impl FloatFormat {
         T: fmt::UpperExp + fmt::LowerExp + fmt::Display,
     {
         match self {
-            Self::LowerExp => format!("{:e}", f),
-            Self::UpperExp => format!("{:E}", f),
-            Self::Normal => format!("{}", f),
+            Self::LowerExp => format!("{f:e}"),
+            Self::UpperExp => format!("{f:E}"),
+            Self::Normal => format!("{f}"),
         }
     }
 }

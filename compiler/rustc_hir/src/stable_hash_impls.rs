@@ -1,8 +1,7 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 
 use crate::hir::{
-    AttributeMap, BodyId, Crate, Expr, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
-    Ty,
+    AttributeMap, BodyId, Crate, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
 };
 use crate::hir_id::{HirId, ItemLocalId};
 use rustc_span::def_id::DefPathHash;
@@ -14,8 +13,6 @@ pub trait HashStableContext:
     rustc_ast::HashStableContext + rustc_target::HashStableContext
 {
     fn hash_body_id(&mut self, _: BodyId, hasher: &mut StableHasher);
-    fn hash_hir_expr(&mut self, _: &Expr<'_>, hasher: &mut StableHasher);
-    fn hash_hir_ty(&mut self, _: &Ty<'_>, hasher: &mut StableHasher);
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
@@ -23,7 +20,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
-        let def_path_hash = self.owner.to_stable_hash_key(hcx);
+        let def_path_hash = self.owner.def_id.to_stable_hash_key(hcx);
         (def_path_hash, self.local_id)
     }
 }
@@ -52,7 +49,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ItemId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.to_stable_hash_key(hcx)
+        self.def_id.def_id.to_stable_hash_key(hcx)
     }
 }
 
@@ -61,7 +58,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for TraitItemId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.to_stable_hash_key(hcx)
+        self.def_id.def_id.to_stable_hash_key(hcx)
     }
 }
 
@@ -70,7 +67,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ImplItemId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.to_stable_hash_key(hcx)
+        self.def_id.def_id.to_stable_hash_key(hcx)
     }
 }
 
@@ -79,7 +76,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ForeignItemId
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.to_stable_hash_key(hcx)
+        self.def_id.def_id.to_stable_hash_key(hcx)
     }
 }
 
@@ -95,18 +92,6 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for BodyId {
 // are used when another item in the HIR is *referenced* and we certainly
 // want to pick up on a reference changing its target, so we hash the NodeIds
 // in "DefPath Mode".
-
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Expr<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_hir_expr(self, hasher)
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Ty<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_hir_ty(self, hasher)
-    }
-}
 
 impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'tcx> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {

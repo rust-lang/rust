@@ -1,0 +1,20 @@
+### What it does
+Detects type names that are prefixed or suffixed by the
+containing module's name.
+
+### Why is this bad?
+It requires the user to type the module name twice.
+
+### Example
+```
+mod cake {
+    struct BlackForestCake;
+}
+```
+
+Use instead:
+```
+mod cake {
+    struct BlackForest;
+}
+```

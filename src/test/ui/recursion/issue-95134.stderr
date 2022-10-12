@@ -1,0 +1,7 @@
+error[E0275]: overflow evaluating the requirement `<EmptyWriter as ExampleWriter>::Error`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_95134`)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.

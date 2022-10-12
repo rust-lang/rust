@@ -1,9 +1,7 @@
 // check-fail
-// known-bug
+// known-bug: #87755
 
 // This should pass.
-
-#![feature(generic_associated_types)]
 
 use std::fmt::Debug;
 

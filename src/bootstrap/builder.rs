@@ -13,7 +13,6 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use crate::cache::{Cache, Interned, INTERNER};
-use crate::compile;
 use crate::config::{SplitDebuginfo, TargetSelection};
 use crate::dist;
 use crate::doc;
@@ -26,6 +25,7 @@ use crate::tool::{self, SourceType};
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
 use crate::EXTRA_CHECK_CFGS;
 use crate::{check, Config};
+use crate::{compile, Crate};
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -91,7 +91,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 pub struct RunConfig<'a> {
     pub builder: &'a Builder<'a>,
     pub target: TargetSelection,
-    pub path: PathBuf,
+    pub paths: Vec<PathSet>,
 }
 
 impl RunConfig<'_> {
@@ -150,11 +150,16 @@ impl Debug for TaskPath {
 /// Collection of paths used to match a task rule.
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub enum PathSet {
-    /// A collection of individual paths.
+    /// A collection of individual paths or aliases.
     ///
     /// These are generally matched as a path suffix. For example, a
-    /// command-line value of `libstd` will match if `src/libstd` is in the
+    /// command-line value of `std` will match if `library/std` is in the
     /// set.
+    ///
+    /// NOTE: the paths within a set should always be aliases of one another.
+    /// For example, `src/librustdoc` and `src/tools/rustdoc` should be in the same set,
+    /// but `library/core` and `library/std` generally should not, unless there's no way (for that Step)
+    /// to build them separately.
     Set(BTreeSet<TaskPath>),
     /// A "suite" of paths.
     ///
@@ -177,26 +182,65 @@ impl PathSet {
     }
 
     fn has(&self, needle: &Path, module: Option<Kind>) -> bool {
-        let check = |p: &TaskPath| {
-            if let (Some(p_kind), Some(kind)) = (&p.kind, module) {
-                p.path.ends_with(needle) && *p_kind == kind
-            } else {
-                p.path.ends_with(needle)
-            }
-        };
-
         match self {
-            PathSet::Set(set) => set.iter().any(check),
-            PathSet::Suite(suite) => check(suite),
+            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module)),
+            PathSet::Suite(suite) => Self::check(suite, needle, module),
         }
     }
 
-    fn path(&self, builder: &Builder<'_>) -> PathBuf {
+    // internal use only
+    fn check(p: &TaskPath, needle: &Path, module: Option<Kind>) -> bool {
+        if let (Some(p_kind), Some(kind)) = (&p.kind, module) {
+            p.path.ends_with(needle) && *p_kind == kind
+        } else {
+            p.path.ends_with(needle)
+        }
+    }
+
+    /// Return all `TaskPath`s in `Self` that contain any of the `needles`, removing the
+    /// matched needles.
+    ///
+    /// This is used for `StepDescription::krate`, which passes all matching crates at once to
+    /// `Step::make_run`, rather than calling it many times with a single crate.
+    /// See `tests.rs` for examples.
+    fn intersection_removing_matches(
+        &self,
+        needles: &mut Vec<&Path>,
+        module: Option<Kind>,
+    ) -> PathSet {
+        let mut check = |p| {
+            for (i, n) in needles.iter().enumerate() {
+                let matched = Self::check(p, n, module);
+                if matched {
+                    needles.remove(i);
+                    return true;
+                }
+            }
+            false
+        };
+        match self {
+            PathSet::Set(set) => PathSet::Set(set.iter().filter(|&p| check(p)).cloned().collect()),
+            PathSet::Suite(suite) => {
+                if check(suite) {
+                    self.clone()
+                } else {
+                    PathSet::empty()
+                }
+            }
+        }
+    }
+
+    /// A convenience wrapper for Steps which know they have no aliases and all their sets contain only a single path.
+    ///
+    /// This can be used with [`ShouldRun::krate`], [`ShouldRun::path`], or [`ShouldRun::alias`].
+    #[track_caller]
+    pub fn assert_single_path(&self) -> &TaskPath {
         match self {
             PathSet::Set(set) => {
-                set.iter().next().map(|p| &p.path).unwrap_or(&builder.build.src).clone()
+                assert_eq!(set.len(), 1, "called assert_single_path on multiple paths");
+                set.iter().next().unwrap()
             }
-            PathSet::Suite(path) => path.path.clone(),
+            PathSet::Suite(_) => unreachable!("called assert_single_path on a Suite path"),
         }
     }
 }
@@ -213,8 +257,8 @@ impl StepDescription {
         }
     }
 
-    fn maybe_run(&self, builder: &Builder<'_>, pathset: &PathSet) {
-        if self.is_excluded(builder, pathset) {
+    fn maybe_run(&self, builder: &Builder<'_>, pathsets: Vec<PathSet>) {
+        if pathsets.iter().any(|set| self.is_excluded(builder, set)) {
             return;
         }
 
@@ -222,7 +266,7 @@ impl StepDescription {
         let targets = if self.only_hosts { &builder.hosts } else { &builder.targets };
 
         for target in targets {
-            let run = RunConfig { builder, path: pathset.path(builder), target: *target };
+            let run = RunConfig { builder, paths: pathsets.clone(), target: *target };
             (self.make_run)(run);
         }
     }
@@ -260,46 +304,49 @@ impl StepDescription {
         if paths.is_empty() || builder.config.include_default_paths {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if desc.default && should_run.is_really_default() {
-                    for pathset in &should_run.paths {
-                        desc.maybe_run(builder, pathset);
-                    }
+                    desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
                 }
             }
         }
 
-        for path in paths {
-            // strip CurDir prefix if present
-            let path = match path.strip_prefix(".") {
-                Ok(p) => p,
-                Err(_) => path,
-            };
+        // strip CurDir prefix if present
+        let mut paths: Vec<_> =
+            paths.into_iter().map(|p| p.strip_prefix(".").unwrap_or(p)).collect();
 
-            let mut attempted_run = false;
+        // Handle all test suite paths.
+        // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
+        paths.retain(|path| {
             for (desc, should_run) in v.iter().zip(&should_runs) {
-                if let Some(suite) = should_run.is_suite_path(path) {
-                    attempted_run = true;
-                    desc.maybe_run(builder, suite);
-                } else if let Some(pathset) = should_run.pathset_for_path(path, desc.kind) {
-                    attempted_run = true;
-                    desc.maybe_run(builder, pathset);
+                if let Some(suite) = should_run.is_suite_path(&path) {
+                    desc.maybe_run(builder, vec![suite.clone()]);
+                    return false;
                 }
             }
+            true
+        });
 
-            if !attempted_run {
-                eprintln!(
-                    "error: no `{}` rules matched '{}'",
-                    builder.kind.as_str(),
-                    path.display()
-                );
-                eprintln!(
-                    "help: run `x.py {} --help --verbose` to show a list of available paths",
-                    builder.kind.as_str()
-                );
-                eprintln!(
-                    "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
-                );
-                std::process::exit(1);
+        if paths.is_empty() {
+            return;
+        }
+
+        // Handle all PathSets.
+        for (desc, should_run) in v.iter().zip(&should_runs) {
+            let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+            if !pathsets.is_empty() {
+                desc.maybe_run(builder, pathsets);
             }
+        }
+
+        if !paths.is_empty() {
+            eprintln!("error: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
+            eprintln!(
+                "help: run `x.py {} --help --verbose` to show a list of available paths",
+                builder.kind.as_str()
+            );
+            eprintln!(
+                "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
+            );
+            crate::detail_exit(1);
         }
     }
 }
@@ -370,9 +417,17 @@ impl<'a> ShouldRun<'a> {
     /// Indicates it should run if the command-line selects the given crate or
     /// any of its (local) dependencies.
     ///
-    /// `make_run` will be called separately for each matching command-line path.
-    pub fn krate(mut self, name: &str) -> Self {
-        for krate in self.builder.in_tree_crates(name, None) {
+    /// `make_run` will be called a single time with all matching command-line paths.
+    pub fn crate_or_deps(self, name: &str) -> Self {
+        let crates = self.builder.in_tree_crates(name, None);
+        self.crates(crates)
+    }
+
+    /// Indicates it should run if the command-line selects any of the given crates.
+    ///
+    /// `make_run` will be called a single time with all matching command-line paths.
+    pub(crate) fn crates(mut self, crates: Vec<&Crate>) -> Self {
+        for krate in crates {
             let path = krate.local_path(self.builder);
             self.paths.insert(PathSet::one(path, self.kind));
         }
@@ -417,9 +472,10 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    pub fn is_suite_path(&self, path: &Path) -> Option<&PathSet> {
+    /// Handles individual files (not directories) within a test suite.
+    fn is_suite_path(&self, requested_path: &Path) -> Option<&PathSet> {
         self.paths.iter().find(|pathset| match pathset {
-            PathSet::Suite(p) => path.starts_with(&p.path),
+            PathSet::Suite(suite) => requested_path.starts_with(&suite.path),
             PathSet::Set(_) => false,
         })
     }
@@ -435,8 +491,28 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    fn pathset_for_path(&self, path: &Path, kind: Kind) -> Option<&PathSet> {
-        self.paths.iter().find(|pathset| pathset.has(path, Some(kind)))
+    /// Given a set of requested paths, return the subset which match the Step for this `ShouldRun`,
+    /// removing the matches from `paths`.
+    ///
+    /// NOTE: this returns multiple PathSets to allow for the possibility of multiple units of work
+    /// within the same step. For example, `test::Crate` allows testing multiple crates in the same
+    /// cargo invocation, which are put into separate sets because they aren't aliases.
+    ///
+    /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same thing
+    /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
+    fn pathset_for_paths_removing_matches(
+        &self,
+        paths: &mut Vec<&Path>,
+        kind: Kind,
+    ) -> Vec<PathSet> {
+        let mut sets = vec![];
+        for pathset in &self.paths {
+            let subset = pathset.intersection_removing_matches(paths, Some(kind));
+            if subset != PathSet::empty() {
+                sets.push(subset);
+            }
+        }
+        sets
     }
 }
 
@@ -507,6 +583,7 @@ impl<'a> Builder<'a> {
         match kind {
             Kind::Build => describe!(
                 compile::Std,
+                compile::Rustc,
                 compile::Assemble,
                 compile::CodegenBackend,
                 compile::StartupObjects,
@@ -524,6 +601,7 @@ impl<'a> Builder<'a> {
                 tool::Cargo,
                 tool::Rls,
                 tool::RustAnalyzer,
+                tool::RustAnalyzerProcMacroSrv,
                 tool::RustDemangler,
                 tool::Rustdoc,
                 tool::Clippy,
@@ -544,6 +622,7 @@ impl<'a> Builder<'a> {
                 check::Clippy,
                 check::Miri,
                 check::Rls,
+                check::RustAnalyzer,
                 check::Rustfmt,
                 check::Bootstrap
             ),
@@ -568,9 +647,10 @@ impl<'a> Builder<'a> {
                 test::CrateRustdocJsonTypes,
                 test::Linkcheck,
                 test::TierCheck,
+                test::ReplacePlaceholderTest,
                 test::Cargotest,
                 test::Cargo,
-                test::Rls,
+                test::RustAnalyzer,
                 test::ErrorIndex,
                 test::Distcheck,
                 test::RunMakeFullDeps,
@@ -620,12 +700,15 @@ impl<'a> Builder<'a> {
                 doc::RustcBook,
                 doc::CargoBook,
                 doc::Clippy,
+                doc::ClippyBook,
+                doc::Miri,
                 doc::EmbeddedBook,
                 doc::EditionGuide,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
                 dist::RustcDocs,
+                dist::JsonDocs,
                 dist::Mingw,
                 dist::Rustc,
                 dist::Std,
@@ -641,6 +724,7 @@ impl<'a> Builder<'a> {
                 dist::Miri,
                 dist::LlvmTools,
                 dist::RustDev,
+                dist::Bootstrap,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
                 // perceive their dependencies (see #93033) which would invalidate fingerprints
@@ -654,7 +738,6 @@ impl<'a> Builder<'a> {
                 install::Docs,
                 install::Std,
                 install::Cargo,
-                install::Rls,
                 install::RustAnalyzer,
                 install::Rustfmt,
                 install::RustDemangler,
@@ -664,7 +747,12 @@ impl<'a> Builder<'a> {
                 install::Src,
                 install::Rustc
             ),
-            Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest, run::BumpStage0),
+            Kind::Run => describe!(
+                run::ExpandYamlAnchors,
+                run::BuildManifest,
+                run::BumpStage0,
+                run::ReplaceVersionPlaceholder,
+            ),
             // These commands either don't use paths, or they're special-cased in Build::build()
             Kind::Clean | Kind::Format | Kind::Setup => vec![],
         }
@@ -728,7 +816,8 @@ impl<'a> Builder<'a> {
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
-            Subcommand::Format { .. } | Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
+            Subcommand::Format { .. } => (Kind::Format, &[][..]),
+            Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
                 panic!()
             }
         };
@@ -859,7 +948,7 @@ impl<'a> Builder<'a> {
         };
         patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
         if !fname.extension().map_or(false, |ext| ext == "so") {
-            // Finally, set the corret .interp for binaries
+            // Finally, set the correct .interp for binaries
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
             // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...
             let dynamic_linker = t!(String::from_utf8(t!(fs::read(dynamic_linker_path))));
@@ -869,21 +958,24 @@ impl<'a> Builder<'a> {
         self.try_run(patchelf.arg(fname));
     }
 
-    pub(crate) fn download_component(
-        &self,
-        base: &str,
-        url: &str,
-        dest_path: &Path,
-        help_on_error: &str,
-    ) {
+    pub(crate) fn download_component(&self, url: &str, dest_path: &Path, help_on_error: &str) {
+        self.verbose(&format!("download {url}"));
         // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
-        // FIXME: support `do_verify` (only really needed for nightly rustfmt)
-        self.download_with_retries(&tempfile, &format!("{}/{}", base, url), help_on_error);
+        // While bootstrap itself only supports http and https downloads, downstream forks might
+        // need to download components from other protocols. The match allows them adding more
+        // protocols without worrying about merge conflicts if we change the HTTP implementation.
+        match url.split_once("://").map(|(proto, _)| proto) {
+            Some("http") | Some("https") => {
+                self.download_http_with_retries(&tempfile, url, help_on_error)
+            }
+            Some(other) => panic!("unsupported protocol {other} in {url}"),
+            None => panic!("no protocol in {url}"),
+        }
         t!(std::fs::rename(&tempfile, dest_path));
     }
 
-    fn download_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
+    fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
         println!("downloading {}", url);
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = Command::new("curl");
@@ -923,7 +1015,7 @@ impl<'a> Builder<'a> {
             if !help_on_error.is_empty() {
                 eprintln!("{}", help_on_error);
             }
-            std::process::exit(1);
+            crate::detail_exit(1);
         }
     }
 
@@ -968,6 +1060,28 @@ impl<'a> Builder<'a> {
             t!(fs::rename(src_path, dst_path));
         }
         t!(fs::remove_dir_all(dst.join(directory_prefix)));
+    }
+
+    /// Returns whether the SHA256 checksum of `path` matches `expected`.
+    pub(crate) fn verify(&self, path: &Path, expected: &str) -> bool {
+        use sha2::Digest;
+
+        self.verbose(&format!("verifying {}", path.display()));
+        let mut hasher = sha2::Sha256::new();
+        // FIXME: this is ok for rustfmt (4.1 MB large at time of writing), but it seems memory-intensive for rustc and larger components.
+        // Consider using streaming IO instead?
+        let contents = if self.config.dry_run { vec![] } else { t!(fs::read(path)) };
+        hasher.update(&contents);
+        let found = hex::encode(hasher.finalize().as_slice());
+        let verified = found == expected;
+        if !verified && !self.config.dry_run {
+            println!(
+                "invalid checksum: \n\
+                found:    {found}\n\
+                expected: {expected}",
+            );
+        }
+        return verified;
     }
 
     /// Obtain a compiler at a given stage and for a given host. Explicitly does
@@ -1192,6 +1306,10 @@ impl<'a> Builder<'a> {
         Config::download_rustc(self)
     }
 
+    pub(crate) fn initial_rustfmt(&self) -> Option<PathBuf> {
+        Config::initial_rustfmt(self)
+    }
+
     /// Prepares an invocation of `cargo` to be run.
     ///
     /// This will create a `Command` that represents a pending execution of
@@ -1209,6 +1327,9 @@ impl<'a> Builder<'a> {
     ) -> Cargo {
         let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
+        // Run cargo from the source root so it can find .cargo/config.
+        // This matters when using vendoring and the working directory is outside the repository.
+        cargo.current_dir(&self.src);
 
         // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
         // so we need to explicitly clear out if they've been updated.
@@ -1326,7 +1447,7 @@ impl<'a> Builder<'a> {
                         "error: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
                     );
                     eprintln!("help: try `rustup component add clippy`");
-                    std::process::exit(1);
+                    crate::detail_exit(1);
                 });
                 if !t!(std::str::from_utf8(&output.stdout)).contains("nightly") {
                     rustflags.arg("--cfg=bootstrap");
@@ -1359,48 +1480,39 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
-        // FIXME(Urgau): This a hack as it shouldn't be gated on stage 0 but until `rustc_llvm`
-        // is made to work with `--check-cfg` which is currently not easly possible until cargo
-        // get some support for setting `--check-cfg` within build script, it's the least invasive
-        // hack that still let's us have cfg checking for the vast majority of the codebase.
-        if stage != 0 {
-            // Enable cfg checking of cargo features for everything but std.
-            //
-            // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
-            // backtrace, core_simd, std_float, ...), those dependencies have their own features
-            // but cargo isn't involved in the #[path] and so cannot pass the complete list of
-            // features, so for that reason we don't enable checking of features for std.
-            //
-            // FIXME: Re-enable this after the beta bump as apperently rustc-perf doesn't use the
-            // beta cargo. See https://github.com/rust-lang/rust/pull/96984#issuecomment-1126678773
-            // #[cfg(not(bootstrap))]
-            // if mode != Mode::Std {
-            //     cargo.arg("-Zcheck-cfg-features"); // -Zcheck-cfg=features after bump
-            // }
+        // Enable cfg checking of cargo features for everything but std and also enable cfg
+        // checking of names and values.
+        //
+        // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
+        // backtrace, core_simd, std_float, ...), those dependencies have their own
+        // features but cargo isn't involved in the #[path] process and so cannot pass the
+        // complete list of features, so for that reason we don't enable checking of
+        // features for std crates.
+        cargo.arg(if mode != Mode::Std {
+            "-Zcheck-cfg=names,values,output,features"
+        } else {
+            "-Zcheck-cfg=names,values,output"
+        });
 
-            // Enable cfg checking of well known names/values
-            rustflags
-                .arg("-Zunstable-options")
-                // Enable checking of well known names
-                .arg("--check-cfg=names()")
-                // Enable checking of well known values
-                .arg("--check-cfg=values()");
-
-            // Add extra cfg not defined in rustc
-            for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
-                if *restricted_mode == None || *restricted_mode == Some(mode) {
-                    // Creating a string of the values by concatenating each value:
-                    // ',"tvos","watchos"' or '' (nothing) when there are no values
-                    let values = match values {
-                        Some(values) => values
-                            .iter()
-                            .map(|val| [",", "\"", val, "\""])
-                            .flatten()
-                            .collect::<String>(),
-                        None => String::new(),
-                    };
-                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
-                }
+        // Add extra cfg not defined in/by rustc
+        //
+        // Note: Altrough it would seems that "-Zunstable-options" to `rustflags` is useless as
+        // cargo would implicitly add it, it was discover that sometimes bootstrap only use
+        // `rustflags` without `cargo` making it required.
+        rustflags.arg("-Zunstable-options");
+        for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
+            if *restricted_mode == None || *restricted_mode == Some(mode) {
+                // Creating a string of the values by concatenating each value:
+                // ',"tvos","watchos"' or '' (nothing) when there are no values
+                let values = match values {
+                    Some(values) => values
+                        .iter()
+                        .map(|val| [",", "\"", val, "\""])
+                        .flatten()
+                        .collect::<String>(),
+                    None => String::new(),
+                };
+                rustflags.arg(&format!("--check-cfg=values({name}{values})"));
             }
         }
 
@@ -1445,13 +1557,12 @@ impl<'a> Builder<'a> {
         match mode {
             Mode::ToolBootstrap => {
                 // Restrict the allowed features to those passed by rustbuild, so we don't depend on nightly accidentally.
-                // HACK: because anyhow does feature detection in build.rs, we need to allow the backtrace feature too.
-                rustflags.arg("-Zallow-features=binary-dep-depinfo,backtrace");
+                rustflags.arg("-Zallow-features=binary-dep-depinfo");
             }
             Mode::ToolStd => {
                 // Right now this is just compiletest and a few other tools that build on stable.
                 // Allow them to use `feature(test)`, but nothing else.
-                rustflags.arg("-Zallow-features=binary-dep-depinfo,test,backtrace");
+                rustflags.arg("-Zallow-features=binary-dep-depinfo,test,proc_macro_internals,proc_macro_diagnostic,proc_macro_span");
             }
             Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {}
         }
@@ -1656,21 +1767,21 @@ impl<'a> Builder<'a> {
             },
         );
 
-        if !target.contains("windows") {
-            let needs_unstable_opts = target.contains("linux")
-                || target.contains("windows")
-                || target.contains("bsd")
-                || target.contains("dragonfly");
+        let split_debuginfo_is_stable = target.contains("linux")
+            || target.contains("apple")
+            || (target.contains("msvc")
+                && self.config.rust_split_debuginfo == SplitDebuginfo::Packed)
+            || (target.contains("windows")
+                && self.config.rust_split_debuginfo == SplitDebuginfo::Off);
 
-            if needs_unstable_opts {
-                rustflags.arg("-Zunstable-options");
-            }
-            match self.config.rust_split_debuginfo {
-                SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
-                SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
-                SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
-            };
+        if !split_debuginfo_is_stable {
+            rustflags.arg("-Zunstable-options");
         }
+        match self.config.rust_split_debuginfo {
+            SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
+            SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
+            SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
+        };
 
         if self.config.cmd.bless() {
             // Bless `expect!` tests.
@@ -1745,7 +1856,7 @@ impl<'a> Builder<'a> {
         // so we can't use it by default in general, but we can use it for tools
         // and our own internal libraries.
         if !mode.must_support_dlopen() && !target.triple.starts_with("powerpc-") {
-            rustflags.arg("-Ztls-model=initial-exec");
+            cargo.env("RUSTC_TLS_MODEL_INITIAL_EXEC", "1");
         }
 
         if self.config.incremental {
@@ -1833,25 +1944,26 @@ impl<'a> Builder<'a> {
                     _ => s.display().to_string(),
                 }
             };
+            let triple_underscored = target.triple.replace("-", "_");
             let cc = ccacheify(&self.cc(target));
-            cargo.env(format!("CC_{}", target.triple), &cc);
+            cargo.env(format!("CC_{}", triple_underscored), &cc);
 
             let cflags = self.cflags(target, GitRepo::Rustc, CLang::C).join(" ");
-            cargo.env(format!("CFLAGS_{}", target.triple), &cflags);
+            cargo.env(format!("CFLAGS_{}", triple_underscored), &cflags);
 
             if let Some(ar) = self.ar(target) {
                 let ranlib = format!("{} s", ar.display());
                 cargo
-                    .env(format!("AR_{}", target.triple), ar)
-                    .env(format!("RANLIB_{}", target.triple), ranlib);
+                    .env(format!("AR_{}", triple_underscored), ar)
+                    .env(format!("RANLIB_{}", triple_underscored), ranlib);
             }
 
             if let Ok(cxx) = self.cxx(target) {
                 let cxx = ccacheify(&cxx);
                 let cxxflags = self.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
                 cargo
-                    .env(format!("CXX_{}", target.triple), &cxx)
-                    .env(format!("CXXFLAGS_{}", target.triple), cxxflags);
+                    .env(format!("CXX_{}", triple_underscored), &cxx)
+                    .env(format!("CXXFLAGS_{}", triple_underscored), cxxflags);
             }
         }
 
@@ -2013,6 +2125,9 @@ impl<'a> Builder<'a> {
             stack.push(Box::new(step.clone()));
         }
 
+        #[cfg(feature = "build-metrics")]
+        self.metrics.enter_step(&step);
+
         let (out, dur) = {
             let start = Instant::now();
             let zero = Duration::new(0, 0);
@@ -2035,6 +2150,9 @@ impl<'a> Builder<'a> {
                 dur.subsec_millis()
             );
         }
+
+        #[cfg(feature = "build-metrics")]
+        self.metrics.exit_step();
 
         {
             let mut stack = self.stack.borrow_mut();

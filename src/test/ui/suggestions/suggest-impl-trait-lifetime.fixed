@@ -1,8 +1,3 @@
-// FIXME(nll): On NLL stabilization, this should be replaced by
-// `suggest-impl-trait-lifetime-nll.rs`. Compiletest has
-// problems with rustfix and revisions.
-// ignore-compare-mode-nll
-
 // run-rustfix
 
 use std::fmt::Debug;
@@ -14,7 +9,7 @@ fn foo(d: impl Debug + 'static) {
 //~| NOTE ...so that the type `impl Debug` will meet its required lifetime bounds
 }
 
-fn bar(d: impl Debug + 'static) { //~ NOTE ...that is required by this bound
+fn bar(d: impl Debug + 'static) {
     println!("{:?}", d)
 }
 

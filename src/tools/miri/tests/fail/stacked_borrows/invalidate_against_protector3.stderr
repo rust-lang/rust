@@ -1,0 +1,30 @@
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [SharedReadOnly for <TAG>] which is protected because it is an argument of call ID
+  --> $DIR/invalidate_against_protector3.rs:LL:CC
+   |
+LL |     unsafe { *x = 0 };
+   |              ^^^^^^ not granting access to tag <TAG> because that would remove [SharedReadOnly for <TAG>] which is protected because it is an argument of call ID
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created here, as the base tag for ALLOC
+  --> $DIR/invalidate_against_protector3.rs:LL:CC
+   |
+LL |         let ptr = alloc(Layout::for_value(&0i32)) as *mut i32;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: <TAG> is this argument
+  --> $DIR/invalidate_against_protector3.rs:LL:CC
+   |
+LL | fn inner(x: *mut i32, _y: &i32) {
+   |                       ^^
+   = note: BACKTRACE:
+   = note: inside `inner` at $DIR/invalidate_against_protector3.rs:LL:CC
+note: inside `main` at $DIR/invalidate_against_protector3.rs:LL:CC
+  --> $DIR/invalidate_against_protector3.rs:LL:CC
+   |
+LL |         inner(ptr, &*ptr);
+   |         ^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

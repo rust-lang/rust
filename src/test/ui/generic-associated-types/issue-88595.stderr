@@ -1,11 +1,11 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/issue-88595.rs:21:35
+  --> $DIR/issue-88595.rs:20:35
    |
 LL |     fn a(&'a self) -> Self::B<'a> {}
    |                                   ^^
    |
 note: lifetime used multiple times
-  --> $DIR/issue-88595.rs:18:6
+  --> $DIR/issue-88595.rs:17:6
    |
 LL | impl<'a> A<'a> for C {
    |      ^^

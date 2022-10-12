@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Check that cross-crate inlined items are inlined in all compilation units
 # that refer to them, and not in any other compilation units.

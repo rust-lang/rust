@@ -1,3 +1,14 @@
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
+  --> $DIR/negative-reasoning.rs:19:1
+   |
+LL | impl<T: std::fmt::Debug> AnotherTrait for T {}
+   | ------------------------------------------- first implementation here
+...
+LL | impl AnotherTrait for D<OpaqueType> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<OpaqueType>`
+   |
+   = note: upstream crates may add a new impl of trait `std::fmt::Debug` for type `OpaqueType` in future versions
+
 error: cannot implement trait on type alias impl trait
   --> $DIR/negative-reasoning.rs:19:25
    |
@@ -9,17 +20,6 @@ note: type alias impl trait defined here
    |
 LL | type OpaqueType = impl OpaqueTrait;
    |                   ^^^^^^^^^^^^^^^^
-
-error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
-  --> $DIR/negative-reasoning.rs:19:1
-   |
-LL | impl<T: std::fmt::Debug> AnotherTrait for T {}
-   | ------------------------------------------- first implementation here
-...
-LL | impl AnotherTrait for D<OpaqueType> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<OpaqueType>`
-   |
-   = note: upstream crates may add a new impl of trait `std::fmt::Debug` for type `OpaqueType` in future versions
 
 error: aborting due to 2 previous errors
 

@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Test that separate compilation actually puts code into separate compilation
 # units.  `foo.rs` defines `magic_fn` in three different modules, which should

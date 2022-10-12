@@ -21,7 +21,7 @@ fn main() {
     match l { L::A => (), L::B => () };
     // (except if the match is already non-exhaustive)
     match l { L::A => () };
-    //~^ ERROR: non-exhaustive patterns: `B` not covered [E0004]
+    //~^ ERROR: non-exhaustive patterns: `L::B` not covered [E0004]
 
     // E1 is not visibly uninhabited from here
     let (e1, e2) = bar();

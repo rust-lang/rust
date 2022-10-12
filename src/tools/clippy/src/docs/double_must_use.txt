@@ -1,0 +1,17 @@
+### What it does
+Checks for a `#[must_use]` attribute without
+further information on functions and methods that return a type already
+marked as `#[must_use]`.
+
+### Why is this bad?
+The attribute isn't needed. Not using the result
+will already be reported. Alternatively, one can add some text to the
+attribute to improve the lint message.
+
+### Examples
+```
+#[must_use]
+fn double_must_use() -> Result<(), ()> {
+    unimplemented!();
+}
+```

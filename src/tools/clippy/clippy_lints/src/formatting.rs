@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note};
+use clippy_utils::is_span_if;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
@@ -36,12 +37,18 @@ declare_clippy_lint! {
     /// This is either a typo in the binary operator or confusing.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// if foo <- 30 { // this should be `foo < -30` but looks like a different operator
-    /// }
+    /// ```rust
+    /// # let foo = true;
+    /// # let bar = false;
+    /// // &&! looks like a different operator
+    /// if foo &&! bar {}
+    /// ```
     ///
-    /// if foo &&! bar { // this should be `foo && !bar` but looks like a different operator
-    /// }
+    /// Use instead:
+    /// ```rust
+    /// # let foo = true;
+    /// # let bar = false;
+    /// if foo && !bar {}
     /// ```
     #[clippy::version = "1.40.0"]
     pub SUSPICIOUS_UNARY_OP_FORMATTING,
@@ -147,11 +154,10 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
                             eqop_span,
                             &format!(
                                 "this looks like you are trying to use `.. {op}= ..`, but you \
-                                 really are doing `.. = ({op} ..)`",
-                                op = op
+                                 really are doing `.. = ({op} ..)`"
                             ),
                             None,
-                            &format!("to remove this lint, use either `{op}=` or `= {op}`", op = op),
+                            &format!("to remove this lint, use either `{op}=` or `= {op}`"),
                         );
                     }
                 }
@@ -184,16 +190,12 @@ fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
                 SUSPICIOUS_UNARY_OP_FORMATTING,
                 eqop_span,
                 &format!(
-                    "by not having a space between `{binop}` and `{unop}` it looks like \
-                     `{binop}{unop}` is a single operator",
-                    binop = binop_str,
-                    unop = unop_str
+                    "by not having a space between `{binop_str}` and `{unop_str}` it looks like \
+                     `{binop_str}{unop_str}` is a single operator"
                 ),
                 None,
                 &format!(
-                    "put a space between `{binop}` and `{unop}` and remove the space after `{unop}`",
-                    binop = binop_str,
-                    unop = unop_str
+                    "put a space between `{binop_str}` and `{unop_str}` and remove the space after `{unop_str}`"
                 ),
             );
         }
@@ -239,12 +241,11 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
                 cx,
                 SUSPICIOUS_ELSE_FORMATTING,
                 else_span,
-                &format!("this is an `else {}` but the formatting might hide it", else_desc),
+                &format!("this is an `else {else_desc}` but the formatting might hide it"),
                 None,
                 &format!(
                     "to remove this lint, remove the `else` or remove the new line between \
-                     `else` and `{}`",
-                    else_desc,
+                     `else` and `{else_desc}`",
                 ),
             );
         }
@@ -291,12 +292,11 @@ fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
 fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
     if_chain! {
         if !first.span.from_expansion() && !second.span.from_expansion();
-        if let ExprKind::If(cond_expr, ..) = &first.kind;
+        if matches!(first.kind, ExprKind::If(..));
         if is_block(second) || is_if(second);
 
         // Proc-macros can give weird spans. Make sure this is actually an `if`.
-        if let Some(if_snip) = snippet_opt(cx, first.span.until(cond_expr.span));
-        if if_snip.starts_with("if");
+        if is_span_if(cx, first.span);
 
         // If there is a line break between the two expressions, don't lint.
         // If there is a non-whitespace character, this span came from a proc-macro.
@@ -314,11 +314,10 @@ fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
                 cx,
                 SUSPICIOUS_ELSE_FORMATTING,
                 else_span,
-                &format!("this looks like {} but the `else` is missing", looks_like),
+                &format!("this looks like {looks_like} but the `else` is missing"),
                 None,
                 &format!(
-                    "to remove this lint, add the missing `else` or add a new line before {}",
-                    next_thing,
+                    "to remove this lint, add the missing `else` or add a new line before {next_thing}",
                 ),
             );
         }

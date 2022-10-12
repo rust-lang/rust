@@ -1,0 +1,8 @@
+error: cannot specialize on trait `Default`
+  --> $DIR/specializing-constness.rs:20:9
+   |
+LL | impl<T: Default + Sup> A for T {
+   |         ^^^^^^^
+
+error: aborting due to previous error
+

@@ -19,7 +19,7 @@ LL |     x.lock().unwrap() += 1;
    |     |
    |     cannot use `+=` on type `MutexGuard<'_, usize>`
    |
-help: `+=` can be used on `usize`, you can dereference `x.lock().unwrap()`
+help: `+=` can be used on `usize` if you dereference the left-hand side
    |
 LL |     *x.lock().unwrap() += 1;
    |     +
@@ -47,7 +47,7 @@ LL |     y += 1;
    |     |
    |     cannot use `+=` on type `MutexGuard<'_, usize>`
    |
-help: `+=` can be used on `usize`, you can dereference `y`
+help: `+=` can be used on `usize` if you dereference the left-hand side
    |
 LL |     *y += 1;
    |     +

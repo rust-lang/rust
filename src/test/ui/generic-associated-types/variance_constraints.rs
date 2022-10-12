@@ -1,6 +1,5 @@
 // check-pass
 // issue #69184
-#![feature(generic_associated_types)]
 
 trait A {
     type B<'a> where Self: 'a;

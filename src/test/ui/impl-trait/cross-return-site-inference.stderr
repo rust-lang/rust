@@ -1,20 +1,35 @@
 error[E0282]: type annotations needed
-  --> $DIR/cross-return-site-inference.rs:31:24
+  --> $DIR/cross-return-site-inference.rs:33:5
    |
-LL | fn muh() -> Result<(), impl std::fmt::Debug> {
-   |                        ^^^^^^^^^^^^^^^^^^^^ cannot infer type
+LL |     Ok(())
+   |     ^^ cannot infer type of the type parameter `E` declared on the enum `Result`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     Ok::<(), E>(())
+   |       +++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/cross-return-site-inference.rs:36:25
+  --> $DIR/cross-return-site-inference.rs:37:12
    |
-LL | fn muh2() -> Result<(), impl std::fmt::Debug> {
-   |                         ^^^^^^^^^^^^^^^^^^^^ cannot infer type
+LL |     return Err(From::from("foo"));
+   |            ^^^ cannot infer type of the type parameter `E` declared on the enum `Result`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     return Err::<(), E>(From::from("foo"));
+   |               +++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/cross-return-site-inference.rs:41:25
+  --> $DIR/cross-return-site-inference.rs:42:5
    |
-LL | fn muh3() -> Result<(), impl std::fmt::Debug> {
-   |                         ^^^^^^^^^^^^^^^^^^^^ cannot infer type
+LL |     Err(From::from("foo"))
+   |     ^^^ cannot infer type of the type parameter `E` declared on the enum `Result`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     Err::<(), E>(From::from("foo"))
+   |        +++++++++
 
 error: aborting due to 3 previous errors
 

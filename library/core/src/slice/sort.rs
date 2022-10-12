@@ -7,7 +7,7 @@
 //! stable sorting implementation.
 
 use crate::cmp;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::ptr;
 
 /// When dropped, copies from `src` into `dest`.
@@ -188,22 +188,25 @@ where
     // This binary heap respects the invariant `parent >= child`.
     let mut sift_down = |v: &mut [T], mut node| {
         loop {
-            // Children of `node`:
-            let left = 2 * node + 1;
-            let right = 2 * node + 2;
+            // Children of `node`.
+            let mut child = 2 * node + 1;
+            if child >= v.len() {
+                break;
+            }
 
             // Choose the greater child.
-            let greater =
-                if right < v.len() && is_less(&v[left], &v[right]) { right } else { left };
+            if child + 1 < v.len() && is_less(&v[child], &v[child + 1]) {
+                child += 1;
+            }
 
             // Stop if the invariant holds at `node`.
-            if greater >= v.len() || !is_less(&v[node], &v[greater]) {
+            if !is_less(&v[node], &v[child]) {
                 break;
             }
 
             // Swap `node` with the greater child, move one step down, and continue sifting.
-            v.swap(node, greater);
-            node = greater;
+            v.swap(node, child);
+            node = child;
         }
     };
 
@@ -323,8 +326,8 @@ where
                 unsafe {
                     // Branchless comparison.
                     *end_l = i as u8;
-                    end_l = end_l.offset(!is_less(&*elem, pivot) as isize);
-                    elem = elem.offset(1);
+                    end_l = end_l.add(!is_less(&*elem, pivot) as usize);
+                    elem = elem.add(1);
                 }
             }
         }
@@ -349,9 +352,9 @@ where
                 //        Plus, `block_r` was asserted to be less than `BLOCK` and `elem` will therefore at most be pointing to the beginning of the slice.
                 unsafe {
                     // Branchless comparison.
-                    elem = elem.offset(-1);
+                    elem = elem.sub(1);
                     *end_r = i as u8;
-                    end_r = end_r.offset(is_less(&*elem, pivot) as isize);
+                    end_r = end_r.add(is_less(&*elem, pivot) as usize);
                 }
             }
         }
@@ -362,12 +365,12 @@ where
         if count > 0 {
             macro_rules! left {
                 () => {
-                    l.offset(*start_l as isize)
+                    l.add(usize::from(*start_l))
                 };
             }
             macro_rules! right {
                 () => {
-                    r.offset(-(*start_r as isize) - 1)
+                    r.sub(usize::from(*start_r) + 1)
                 };
             }
 
@@ -395,16 +398,16 @@ where
                 ptr::copy_nonoverlapping(right!(), left!(), 1);
 
                 for _ in 1..count {
-                    start_l = start_l.offset(1);
+                    start_l = start_l.add(1);
                     ptr::copy_nonoverlapping(left!(), right!(), 1);
-                    start_r = start_r.offset(1);
+                    start_r = start_r.add(1);
                     ptr::copy_nonoverlapping(right!(), left!(), 1);
                 }
 
                 ptr::copy_nonoverlapping(&tmp, right!(), 1);
                 mem::forget(tmp);
-                start_l = start_l.offset(1);
-                start_r = start_r.offset(1);
+                start_l = start_l.add(1);
+                start_r = start_r.add(1);
             }
         }
 
@@ -417,7 +420,7 @@ where
             // safe. Otherwise, the debug assertions in the `is_done` case guarantee that
             // `width(l, r) == block_l + block_r`, namely, that the block sizes have been adjusted to account
             // for the smaller number of remaining elements.
-            l = unsafe { l.offset(block_l as isize) };
+            l = unsafe { l.add(block_l) };
         }
 
         if start_r == end_r {
@@ -425,7 +428,7 @@ where
 
             // SAFETY: Same argument as [block-width-guarantee]. Either this is a full block `2*BLOCK`-wide,
             // or `block_r` has been adjusted for the last handful of elements.
-            r = unsafe { r.offset(-(block_r as isize)) };
+            r = unsafe { r.sub(block_r) };
         }
 
         if is_done {
@@ -454,9 +457,9 @@ where
             //  - `offsets_l` contains valid offsets into `v` collected during the partitioning of
             //    the last block, so the `l.offset` calls are valid.
             unsafe {
-                end_l = end_l.offset(-1);
-                ptr::swap(l.offset(*end_l as isize), r.offset(-1));
-                r = r.offset(-1);
+                end_l = end_l.sub(1);
+                ptr::swap(l.add(usize::from(*end_l)), r.sub(1));
+                r = r.sub(1);
             }
         }
         width(v.as_mut_ptr(), r)
@@ -467,9 +470,9 @@ where
         while start_r < end_r {
             // SAFETY: See the reasoning in [remaining-elements-safety].
             unsafe {
-                end_r = end_r.offset(-1);
-                ptr::swap(l, r.offset(-(*end_r as isize) - 1));
-                l = l.offset(1);
+                end_r = end_r.sub(1);
+                ptr::swap(l, r.sub(usize::from(*end_r) + 1));
+                l = l.add(1);
             }
         }
         width(v.as_mut_ptr(), l)
@@ -810,7 +813,7 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     // Sorting has no meaningful behavior on zero-sized types.
-    if mem::size_of::<T>() == 0 {
+    if T::IS_ZST {
         return;
     }
 
@@ -895,7 +898,7 @@ where
         panic!("partition_at_index index {} greater than length of slice {}", index, v.len());
     }
 
-    if mem::size_of::<T>() == 0 {
+    if T::IS_ZST {
         // Sorting has no meaningful behavior on zero-sized types. Do nothing.
     } else if index == v.len() - 1 {
         // Find max element and place it in the last position of the array. We're free to use

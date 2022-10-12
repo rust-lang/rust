@@ -1,5 +1,6 @@
+// run-rustfix
 #![warn(clippy::suspicious_operation_groupings)]
-#![allow(clippy::eq_op)]
+#![allow(dead_code, unused_parens, clippy::eq_op)]
 
 struct Vec3 {
     x: f64,

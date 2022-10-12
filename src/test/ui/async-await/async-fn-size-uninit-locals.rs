@@ -5,6 +5,7 @@
 // being reflected in the size.
 
 // ignore-emscripten (sizes don't match)
+// needs-unwind Size of Futures change on panic=abort
 // run-pass
 
 // edition:2018
@@ -16,7 +17,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 const BIG_FUT_SIZE: usize = 1024;
-struct Big([u8; BIG_FUT_SIZE]);
+struct Big(#[allow(unused_tuple_struct_fields)] [u8; BIG_FUT_SIZE]);
 
 impl Big {
     fn new() -> Self {
@@ -67,9 +68,7 @@ async fn joined() {
     let c = Big::new();
 
     fut().await;
-    noop();
     joiner = Joiner { a: Some(a), b: Some(b), c: Some(c) };
-    noop();
 }
 
 async fn joined_with_noop() {
@@ -97,7 +96,7 @@ async fn join_retval() -> Joiner {
 fn main() {
     assert_eq!(2, std::mem::size_of_val(&single()));
     assert_eq!(3, std::mem::size_of_val(&single_with_noop()));
-    assert_eq!(3078, std::mem::size_of_val(&joined()));
+    assert_eq!(3074, std::mem::size_of_val(&joined()));
     assert_eq!(3078, std::mem::size_of_val(&joined_with_noop()));
     assert_eq!(3074, std::mem::size_of_val(&join_retval()));
 }

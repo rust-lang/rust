@@ -1,7 +1,7 @@
 // run-rustfix
 #![warn(clippy::all)]
 #![allow(clippy::boxed_local, clippy::needless_pass_by_value)]
-#![allow(clippy::blacklisted_name, unused_variables, dead_code)]
+#![allow(clippy::disallowed_names, unused_variables, dead_code)]
 #![allow(unused_imports)]
 
 pub struct MyStruct;

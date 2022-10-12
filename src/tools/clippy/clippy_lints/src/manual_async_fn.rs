@@ -6,8 +6,8 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    AsyncGeneratorKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound, HirId,
-    IsAsync, ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
+    AsyncGeneratorKind, Block, Body, Closure, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound,
+    HirId, IsAsync, ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -74,11 +74,11 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                             if let Some(ret_pos) = position_before_rarrow(&header_snip);
                             if let Some((ret_sugg, ret_snip)) = suggested_ret(cx, output);
                             then {
-                                let help = format!("make the function `async` and {}", ret_sugg);
+                                let help = format!("make the function `async` and {ret_sugg}");
                                 diag.span_suggestion(
                                     header_span,
                                     &help,
-                                    format!("async {}{}", &header_snip[..ret_pos], ret_snip),
+                                    format!("async {}{ret_snip}", &header_snip[..ret_pos]),
                                     Applicability::MachineApplicable
                                 );
 
@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                                 diag.span_suggestion(
                                     block.span,
                                     "move the body of the async block to the enclosing function",
-                                    body_snip.to_string(),
+                                    body_snip,
                                     Applicability::MachineApplicable
                                 );
                             }
@@ -103,7 +103,7 @@ fn future_trait_ref<'tcx>(
     ty: &'tcx Ty<'tcx>,
 ) -> Option<(&'tcx TraitRef<'tcx>, Vec<LifetimeName>)> {
     if_chain! {
-        if let TyKind::OpaqueDef(item_id, bounds) = ty.kind;
+        if let TyKind::OpaqueDef(item_id, bounds, false) = ty.kind;
         let item = cx.tcx.hir().item(item_id);
         if let ItemKind::OpaqueTy(opaque) = &item.kind;
         if let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
@@ -166,7 +166,7 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
     // - There's only one output lifetime bound using `+ '_`
     // - All input lifetimes are explicitly bound to the output
     input_lifetimes.is_empty()
-        || (output_lifetimes.len() == 1 && matches!(output_lifetimes[0], LifetimeName::Underscore))
+        || (output_lifetimes.len() == 1 && matches!(output_lifetimes[0], LifetimeName::Infer))
         || input_lifetimes
             .iter()
             .all(|in_lt| output_lifetimes.iter().any(|out_lt| in_lt == out_lt))
@@ -177,8 +177,8 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
         if let Some(block_expr) = block.expr;
         if let Some(args) = match_function_call(cx, block_expr, &FUTURE_FROM_GENERATOR);
         if args.len() == 1;
-        if let Expr{kind: ExprKind::Closure(_, _, body_id, ..), ..} = args[0];
-        let closure_body = cx.tcx.hir().body(body_id);
+        if let Expr{kind: ExprKind::Closure(&Closure { body, .. }), ..} = args[0];
+        let closure_body = cx.tcx.hir().body(body);
         if closure_body.generator_kind == Some(GeneratorKind::Async(AsyncGeneratorKind::Block));
         then {
             return Some(closure_body);
@@ -192,11 +192,11 @@ fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str,
     match output.kind {
         TyKind::Tup(tys) if tys.is_empty() => {
             let sugg = "remove the return type";
-            Some((sugg, "".into()))
+            Some((sugg, String::new()))
         },
         _ => {
             let sugg = "return the output of the future directly";
-            snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {}", snip)))
+            snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {snip}")))
         },
     }
 }

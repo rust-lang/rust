@@ -4,8 +4,8 @@ error: attempted to include a large file
 LL | const TOO_BIG_INCLUDE_BYTES: &[u8; 654] = include_bytes!("too_big.txt");
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::large-include-file` implied by `-D warnings`
    = note: the configuration allows a maximum size of 600 bytes
+   = note: `-D clippy::large-include-file` implied by `-D warnings`
    = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: attempted to include a large file

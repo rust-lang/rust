@@ -14,7 +14,7 @@ use rustc_middle::mir::{
     visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
     Mutability,
 };
-use rustc_middle::ty::{self, fold::TypeVisitor, Ty};
+use rustc_middle::ty::{self, visit::TypeVisitor, Ty};
 use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             vis.into_map(cx, maybe_storage_live_result)
         };
 
-        for (bb, bbdata) in mir.basic_blocks().iter_enumerated() {
+        for (bb, bbdata) in mir.basic_blocks.iter_enumerated() {
             let terminator = bbdata.terminator();
 
             if terminator.source_info.span.from_expansion() {
@@ -161,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 // `arg` is a reference as it is `.deref()`ed in the previous block.
                 // Look into the predecessor block and find out the source of deref.
 
-                let ps = &mir.predecessors()[bb];
+                let ps = &mir.basic_blocks.predecessors()[bb];
                 if ps.len() != 1 {
                     continue;
                 }
@@ -186,7 +186,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     unwrap_or_continue!(find_stmt_assigns_to(cx, mir, pred_arg, true, ps[0]));
                 let loc = mir::Location {
                     block: bb,
-                    statement_index: mir.basic_blocks()[bb].statements.len(),
+                    statement_index: mir.basic_blocks[bb].statements.len(),
                 };
 
                 // This can be turned into `res = move local` if `arg` and `cloned` are not borrowed
@@ -255,7 +255,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                         diag.span_suggestion(
                             sugg_span,
                             "remove this",
-                            String::new(),
+                            "",
                             app,
                         );
                         if clone_usage.cloned_used {
@@ -288,8 +288,8 @@ fn is_call_with_ref_arg<'tcx>(
         if let mir::TerminatorKind::Call { func, args, destination, .. } = kind;
         if args.len() == 1;
         if let mir::Operand::Move(mir::Place { local, .. }) = &args[0];
-        if let ty::FnDef(def_id, _) = *func.ty(&*mir, cx.tcx).kind();
-        if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
+        if let ty::FnDef(def_id, _) = *func.ty(mir, cx.tcx).kind();
+        if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(mir, cx.tcx));
         if !is_copy(cx, inner_ty);
         then {
             Some((def_id, *local, inner_ty, destination.as_local()?))
@@ -310,7 +310,7 @@ fn find_stmt_assigns_to<'tcx>(
     by_ref: bool,
     bb: mir::BasicBlock,
 ) -> Option<(mir::Local, CannotMoveOut)> {
-    let rvalue = mir.basic_blocks()[bb].statements.iter().rev().find_map(|stmt| {
+    let rvalue = mir.basic_blocks[bb].statements.iter().rev().find_map(|stmt| {
         if let mir::StatementKind::Assign(box (mir::Place { local, .. }, v)) = &stmt.kind {
             return if *local == to_local { Some(v) } else { None };
         }
@@ -318,7 +318,7 @@ fn find_stmt_assigns_to<'tcx>(
         None
     })?;
 
-    match (by_ref, &*rvalue) {
+    match (by_ref, rvalue) {
         (true, mir::Rvalue::Ref(_, _, place)) | (false, mir::Rvalue::Use(mir::Operand::Copy(place))) => {
             Some(base_local_and_movability(cx, mir, *place))
         },

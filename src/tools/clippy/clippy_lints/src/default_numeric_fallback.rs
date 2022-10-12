@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::numeric_literal;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
@@ -76,7 +76,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
     }
 
     /// Check whether a passed literal has potential to cause fallback or not.
-    fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>) {
+    fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>, emit_hir_id: HirId) {
         if_chain! {
                 if !in_external_macro(self.cx.sess(), lit.span);
                 if let Some(ty_bound) = self.ty_bounds.last();
@@ -95,20 +95,21 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
                         src
                     } else {
                         match lit.node {
-                            LitKind::Int(src, _) => format!("{}", src),
-                            LitKind::Float(src, _) => format!("{}", src),
+                            LitKind::Int(src, _) => format!("{src}"),
+                            LitKind::Float(src, _) => format!("{src}"),
                             _ => return,
                         }
                     };
                     let sugg = numeric_literal::format(&src, Some(suffix), is_float);
-                    span_lint_and_sugg(
+                    span_lint_hir_and_then(
                         self.cx,
                         DEFAULT_NUMERIC_FALLBACK,
+                        emit_hir_id,
                         lit.span,
                         "default numeric fallback might occur",
-                        "consider adding suffix",
-                        sugg,
-                        Applicability::MaybeIncorrect,
+                        |diag| {
+                            diag.span_suggestion(lit.span, "consider adding suffix", sugg, Applicability::MaybeIncorrect);
+                        }
                     );
                 }
         }
@@ -130,10 +131,10 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 }
             },
 
-            ExprKind::MethodCall(_, args, _) => {
+            ExprKind::MethodCall(_, receiver, args, _) => {
                 if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                     let fn_sig = self.cx.tcx.fn_sig(def_id).skip_binder();
-                    for (expr, bound) in iter::zip(*args, fn_sig.inputs()) {
+                    for (expr, bound) in iter::zip(std::iter::once(*receiver).chain(args.iter()), fn_sig.inputs()) {
                         self.ty_bounds.push(TyBound::Ty(*bound));
                         self.visit_expr(expr);
                         self.ty_bounds.pop();
@@ -179,7 +180,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
 
             ExprKind::Lit(lit) => {
                 let ty = self.cx.typeck_results().expr_ty(expr);
-                self.check_lit(lit, ty);
+                self.check_lit(lit, ty, expr.hir_id);
                 return;
             },
 

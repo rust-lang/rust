@@ -1,0 +1,43 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "F"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "Start"
+            COLON2 "::"
+            PARAM_LIST
+              L_PAREN "("
+              PARAM
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Middle"
+              R_PAREN ")"
+            WHITESPACE " "
+            RET_TYPE
+              THIN_ARROW "->"
+              WHITESPACE " "
+              PAREN_TYPE
+                L_PAREN "("
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Middle"
+                R_PAREN ")"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "End"
+    SEMICOLON ";"
+  WHITESPACE "\n"

@@ -1,0 +1,22 @@
+### What it does
+Checks for methods that should live in a trait
+implementation of a `std` trait (see [llogiq's blog
+post](http://llogiq.github.io/2015/07/30/traits.html) for further
+information) instead of an inherent implementation.
+
+### Why is this bad?
+Implementing the traits improve ergonomics for users of
+the code, often with very little cost. Also people seeing a `mul(...)`
+method
+may expect `*` to work equally, so you should have good reason to disappoint
+them.
+
+### Example
+```
+struct X;
+impl X {
+    fn add(&self, other: &X) -> X {
+        // ..
+    }
+}
+```

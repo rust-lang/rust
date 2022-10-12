@@ -15,7 +15,7 @@ help: elide the single-use lifetime
    |
 LL - impl<'f> Foo<'f> {
 LL + impl Foo<'_> {
-   | 
+   |
 
 error: aborting due to previous error
 

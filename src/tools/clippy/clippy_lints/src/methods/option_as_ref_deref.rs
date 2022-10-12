@@ -51,18 +51,17 @@ pub(super) fn check<'tcx>(
             .map_or(false, |fun_def_id| {
                 deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
             }),
-        hir::ExprKind::Closure(_, _, body_id, _, _) => {
-            let closure_body = cx.tcx.hir().body(body_id);
-            let closure_expr = peel_blocks(&closure_body.value);
+        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
+            let closure_body = cx.tcx.hir().body(body);
+            let closure_expr = peel_blocks(closure_body.value);
 
             match &closure_expr.kind {
-                hir::ExprKind::MethodCall(_, args, _) => {
+                hir::ExprKind::MethodCall(_, receiver, [], _) => {
                     if_chain! {
-                        if args.len() == 1;
-                        if path_to_local_id(&args[0], closure_body.params[0].pat.hir_id);
+                        if path_to_local_id(receiver, closure_body.params[0].pat.hir_id);
                         let adj = cx
                             .typeck_results()
-                            .expr_adjustments(&args[0])
+                            .expr_adjustments(receiver)
                             .iter()
                             .map(|x| &x.kind)
                             .collect::<Box<[_]>>();
@@ -99,13 +98,12 @@ pub(super) fn check<'tcx>(
             format!(".as_ref().map({})", snippet(cx, map_arg.span, ".."))
         };
         let method_hint = if is_mut { "as_deref_mut" } else { "as_deref" };
-        let hint = format!("{}.{}()", snippet(cx, as_ref_recv.span, ".."), method_hint);
-        let suggestion = format!("try using {} instead", method_hint);
+        let hint = format!("{}.{method_hint}()", snippet(cx, as_ref_recv.span, ".."));
+        let suggestion = format!("try using {method_hint} instead");
 
         let msg = format!(
-            "called `{0}` on an Option value. This can be done more directly \
-            by calling `{1}` instead",
-            current_method, hint
+            "called `{current_method}` on an Option value. This can be done more directly \
+            by calling `{hint}` instead"
         );
         span_lint_and_sugg(
             cx,

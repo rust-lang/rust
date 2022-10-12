@@ -1,9 +1,0 @@
-error[E0477]: the type `&'a i32` does not fulfill the required lifetime
-  --> $DIR/issue-26217.rs:8:5
-   |
-LL |     foo::<&'a i32>();
-   |     ^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0477`.

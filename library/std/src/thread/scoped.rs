@@ -9,16 +9,15 @@ use crate::sync::Arc;
 /// A scope to spawn scoped threads in.
 ///
 /// See [`scope`] for details.
+#[stable(feature = "scoped_threads", since = "1.63.0")]
 pub struct Scope<'scope, 'env: 'scope> {
-    data: ScopeData,
+    data: Arc<ScopeData>,
     /// Invariance over 'scope, to make sure 'scope cannot shrink,
     /// which is necessary for soundness.
     ///
     /// Without invariance, this would compile fine but be unsound:
     ///
     /// ```compile_fail,E0373
-    /// #![feature(scoped_threads)]
-    ///
     /// std::thread::scope(|s| {
     ///     s.spawn(|| {
     ///         let a = String::from("abcd");
@@ -33,6 +32,7 @@ pub struct Scope<'scope, 'env: 'scope> {
 /// An owned permission to join on a scoped thread (block on its termination).
 ///
 /// See [`Scope::spawn`] for details.
+#[stable(feature = "scoped_threads", since = "1.63.0")]
 pub struct ScopedJoinHandle<'scope, T>(JoinInner<'scope, T>);
 
 pub(crate) struct ScopeData {
@@ -82,7 +82,6 @@ impl ScopeData {
 /// # Example
 ///
 /// ```
-/// #![feature(scoped_threads)]
 /// use std::thread;
 ///
 /// let mut a = vec![1, 2, 3];
@@ -126,16 +125,19 @@ impl ScopeData {
 ///
 /// The `'env: 'scope` bound is part of the definition of the `Scope` type.
 #[track_caller]
+#[stable(feature = "scoped_threads", since = "1.63.0")]
 pub fn scope<'env, F, T>(f: F) -> T
 where
     F: for<'scope> FnOnce(&'scope Scope<'scope, 'env>) -> T,
 {
+    // We put the `ScopeData` into an `Arc` so that other threads can finish their
+    // `decrement_num_running_threads` even after this function returns.
     let scope = Scope {
-        data: ScopeData {
+        data: Arc::new(ScopeData {
             num_running_threads: AtomicUsize::new(0),
             main_thread: current(),
             a_thread_panicked: AtomicBool::new(false),
-        },
+        }),
         env: PhantomData,
         scope: PhantomData,
     };
@@ -183,6 +185,7 @@ impl<'scope, 'env> Scope<'scope, 'env> {
     /// to recover from such errors.
     ///
     /// [`join`]: ScopedJoinHandle::join
+    #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn spawn<F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
     where
         F: FnOnce() -> T + Send + 'scope,
@@ -207,7 +210,6 @@ impl Builder {
     /// # Example
     ///
     /// ```
-    /// #![feature(scoped_threads)]
     /// use std::thread;
     ///
     /// let mut a = vec![1, 2, 3];
@@ -240,6 +242,7 @@ impl Builder {
     /// a.push(4);
     /// assert_eq!(x, a.len());
     /// ```
+    #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn spawn_scoped<'scope, 'env, F, T>(
         self,
         scope: &'scope Scope<'scope, 'env>,
@@ -249,7 +252,7 @@ impl Builder {
         F: FnOnce() -> T + Send + 'scope,
         T: Send + 'scope,
     {
-        Ok(ScopedJoinHandle(unsafe { self.spawn_unchecked_(f, Some(&scope.data)) }?))
+        Ok(ScopedJoinHandle(unsafe { self.spawn_unchecked_(f, Some(scope.data.clone())) }?))
     }
 }
 
@@ -259,8 +262,6 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(scoped_threads)]
-    ///
     /// use std::thread;
     ///
     /// thread::scope(|s| {
@@ -271,6 +272,7 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     /// });
     /// ```
     #[must_use]
+    #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn thread(&self) -> &Thread {
         &self.0.thread
     }
@@ -292,8 +294,6 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(scoped_threads)]
-    ///
     /// use std::thread;
     ///
     /// thread::scope(|s| {
@@ -303,24 +303,28 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     ///     assert!(t.join().is_err());
     /// });
     /// ```
+    #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn join(self) -> Result<T> {
         self.0.join()
     }
 
     /// Checks if the associated thread has finished running its main function.
     ///
+    /// `is_finished` supports implementing a non-blocking join operation, by checking
+    /// `is_finished`, and calling `join` if it returns `false`. This function does not block. To
+    /// block while waiting on the thread to finish, use [`join`][Self::join].
+    ///
     /// This might return `true` for a brief moment after the thread's main
     /// function has returned, but before the thread itself has stopped running.
     /// However, once this returns `true`, [`join`][Self::join] can be expected
     /// to return quickly, without blocking for any significant amount of time.
-    ///
-    /// This function does not block. To block while waiting on the thread to finish,
-    /// use [`join`][Self::join].
+    #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn is_finished(&self) -> bool {
         Arc::strong_count(&self.0.packet) == 1
     }
 }
 
+#[stable(feature = "scoped_threads", since = "1.63.0")]
 impl fmt::Debug for Scope<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Scope")
@@ -331,6 +335,7 @@ impl fmt::Debug for Scope<'_, '_> {
     }
 }
 
+#[stable(feature = "scoped_threads", since = "1.63.0")]
 impl<'scope, T> fmt::Debug for ScopedJoinHandle<'scope, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ScopedJoinHandle").finish_non_exhaustive()

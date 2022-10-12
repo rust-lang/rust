@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `Node<i32, RcFamily>: Sized`
-  --> $DIR/issue-87750.rs:20:16
+  --> $DIR/issue-87750.rs:18:16
    |
 LL |     let _list: <RcFamily as PointerFamily>::Pointer<Node<i32, RcFamily>>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 
 /// `RvalueScopes` is a mapping from sub-expressions to _extended_ lifetime as determined by
-/// rules laid out in `rustc_typeck::check::rvalue_scopes`.
+/// rules laid out in `rustc_hir_analysis::check::rvalue_scopes`.
 #[derive(TyEncodable, TyDecodable, Clone, Debug, Default, Eq, PartialEq, HashStable)]
 pub struct RvalueScopes {
     map: FxHashMap<hir::ItemLocalId, Option<Scope>>,

@@ -1,7 +1,5 @@
 // Test the simplest of outlives suggestions.
 
-#![feature(nll)]
-
 fn foo1<'a, 'b>(x: &'a usize) -> &'b usize {
     x //~ERROR lifetime may not live long enough
 }

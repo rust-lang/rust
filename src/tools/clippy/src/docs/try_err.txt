@@ -1,0 +1,28 @@
+### What it does
+Checks for usages of `Err(x)?`.
+
+### Why is this bad?
+The `?` operator is designed to allow calls that
+can fail to be easily chained. For example, `foo()?.bar()` or
+`foo(bar()?)`. Because `Err(x)?` can't be used that way (it will
+always return), it is more clear to write `return Err(x)`.
+
+### Example
+```
+fn foo(fail: bool) -> Result<i32, String> {
+    if fail {
+      Err("failed")?;
+    }
+    Ok(0)
+}
+```
+Could be written:
+
+```
+fn foo(fail: bool) -> Result<i32, String> {
+    if fail {
+      return Err("failed".into());
+    }
+    Ok(0)
+}
+```

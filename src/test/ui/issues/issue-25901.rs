@@ -2,7 +2,7 @@ struct A;
 struct B;
 
 static S: &'static B = &A;
-//~^ ERROR cannot perform deref coercion on `A` in statics
+//~^ ERROR the trait bound
 
 use std::ops::Deref;
 

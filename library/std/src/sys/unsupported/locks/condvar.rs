@@ -6,12 +6,11 @@ pub struct Condvar {}
 pub type MovableCondvar = Condvar;
 
 impl Condvar {
+    #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Condvar {
         Condvar {}
     }
-
-    #[inline]
-    pub unsafe fn init(&mut self) {}
 
     #[inline]
     pub unsafe fn notify_one(&self) {}
@@ -26,7 +25,4 @@ impl Condvar {
     pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
         panic!("condvar wait not supported");
     }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {}
 }

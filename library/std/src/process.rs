@@ -169,15 +169,15 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 pub struct Child {
     pub(crate) handle: imp::Process,
 
-    /// The handle for writing to the child's standard input (stdin), if it has
-    /// been captured. To avoid partially moving
-    /// the `child` and thus blocking yourself from calling
-    /// functions on `child` while using `stdin`,
-    /// you might find it helpful:
+    /// The handle for writing to the child's standard input (stdin), if it
+    /// has been captured. You might find it helpful to do
     ///
     /// ```compile_fail,E0425
     /// let stdin = child.stdin.take().unwrap();
     /// ```
+    ///
+    /// to avoid partially moving the `child` and thus blocking yourself from calling
+    /// functions on `child` while using `stdin`.
     #[stable(feature = "process", since = "1.0.0")]
     pub stdin: Option<ChildStdin>,
 
@@ -1273,6 +1273,22 @@ impl Stdio {
     pub fn null() -> Stdio {
         Stdio(imp::Stdio::Null)
     }
+
+    /// Returns `true` if this requires [`Command`] to create a new pipe.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(stdio_makes_pipe)]
+    /// use std::process::Stdio;
+    ///
+    /// let io = Stdio::piped();
+    /// assert_eq!(io.makes_pipe(), true);
+    /// ```
+    #[unstable(feature = "stdio_makes_pipe", issue = "98288")]
+    pub fn makes_pipe(&self) -> bool {
+        matches!(self.0, imp::Stdio::MakePipe)
+    }
 }
 
 impl FromInner<imp::Stdio> for Stdio {
@@ -1417,13 +1433,13 @@ impl From<fs::File> for Stdio {
 /// For proper error reporting of failed processes, print the value of `ExitStatus` or
 /// `ExitStatusError` using their implementations of [`Display`](crate::fmt::Display).
 ///
-/// # Differences from `ExitStatus`
+/// # Differences from `ExitCode`
 ///
-/// `ExitCode` is intended for terminating the currently running process, via
-/// the `Termination` trait, in contrast to [`ExitStatus`], which represents the
+/// [`ExitCode`] is intended for terminating the currently running process, via
+/// the `Termination` trait, in contrast to `ExitStatus`, which represents the
 /// termination of a child process. These APIs are separate due to platform
 /// compatibility differences and their expected usage; it is not generally
-/// possible to exactly reproduce an ExitStatus from a child for the current
+/// possible to exactly reproduce an `ExitStatus` from a child for the current
 /// process after the fact.
 ///
 /// [`status`]: Command::status
@@ -1684,7 +1700,7 @@ impl crate::error::Error for ExitStatusError {}
 /// the `Termination` trait, in contrast to [`ExitStatus`], which represents the
 /// termination of a child process. These APIs are separate due to platform
 /// compatibility differences and their expected usage; it is not generally
-/// possible to exactly reproduce an ExitStatus from a child for the current
+/// possible to exactly reproduce an `ExitStatus` from a child for the current
 /// process after the fact.
 ///
 /// # Examples
@@ -1707,6 +1723,10 @@ impl crate::error::Error for ExitStatusError {}
 #[derive(Clone, Copy, Debug)]
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 pub struct ExitCode(imp::ExitCode);
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for ExitCode {}
 
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 impl ExitCode {
@@ -1795,6 +1815,18 @@ impl From<u8> for ExitCode {
     /// Construct an `ExitCode` from an arbitrary u8 value.
     fn from(code: u8) -> Self {
         ExitCode(imp::ExitCode::from(code))
+    }
+}
+
+impl AsInner<imp::ExitCode> for ExitCode {
+    fn as_inner(&self) -> &imp::ExitCode {
+        &self.0
+    }
+}
+
+impl FromInner<imp::ExitCode> for ExitCode {
+    fn from_inner(s: imp::ExitCode) -> ExitCode {
+        ExitCode(s)
     }
 }
 
@@ -2141,16 +2173,6 @@ impl Termination for () {
 }
 
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
-impl<E: fmt::Debug> Termination for Result<(), E> {
-    fn report(self) -> ExitCode {
-        match self {
-            Ok(()) => ().report(),
-            Err(err) => Err::<!, _>(err).report(),
-        }
-    }
-}
-
-#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl Termination for ! {
     fn report(self) -> ExitCode {
         self
@@ -2158,19 +2180,9 @@ impl Termination for ! {
 }
 
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
-impl<E: fmt::Debug> Termination for Result<!, E> {
+impl Termination for Infallible {
     fn report(self) -> ExitCode {
-        let Err(err) = self;
-        eprintln!("Error: {err:?}");
-        ExitCode::FAILURE
-    }
-}
-
-#[stable(feature = "termination_trait_lib", since = "1.61.0")]
-impl<E: fmt::Debug> Termination for Result<Infallible, E> {
-    fn report(self) -> ExitCode {
-        let Err(err) = self;
-        Err::<!, _>(err).report()
+        match self {}
     }
 }
 
@@ -2179,5 +2191,18 @@ impl Termination for ExitCode {
     #[inline]
     fn report(self) -> ExitCode {
         self
+    }
+}
+
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
+impl<T: Termination, E: fmt::Debug> Termination for Result<T, E> {
+    fn report(self) -> ExitCode {
+        match self {
+            Ok(val) => val.report(),
+            Err(err) => {
+                io::attempt_print_to_stderr(format_args_nl!("Error: {err:?}"));
+                ExitCode::FAILURE
+            }
+        }
     }
 }

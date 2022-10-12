@@ -1,51 +1,44 @@
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-diagnostics.rs:7:6
    |
-LL | / fn a_function() -> u32 {
-LL | |     let x: Option<u32> = None;
-LL | |     x?;
-   | |      ^ cannot use the `?` operator in a function that returns `u32`
-LL | |     22
-LL | | }
-   | |_- this function should return `Result` or `Option` to accept `?`
+LL | fn a_function() -> u32 {
+   | ---------------------- this function should return `Result` or `Option` to accept `?`
+LL |     let x: Option<u32> = None;
+LL |     x?;
+   |      ^ cannot use the `?` operator in a function that returns `u32`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
 
 error[E0277]: the `?` operator can only be used in a closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-diagnostics.rs:14:10
    |
-LL |       let a_closure = || {
-   |  _____________________-
-LL | |         let x: Option<u32> = None;
-LL | |         x?;
-   | |          ^ cannot use the `?` operator in a closure that returns `{integer}`
-LL | |         22
-LL | |     };
-   | |_____- this function should return `Result` or `Option` to accept `?`
+LL |     let a_closure = || {
+   |                     -- this function should return `Result` or `Option` to accept `?`
+LL |         let x: Option<u32> = None;
+LL |         x?;
+   |          ^ cannot use the `?` operator in a closure that returns `{integer}`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `{integer}`
 
 error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-diagnostics.rs:26:14
    |
-LL | /         fn a_method() {
-LL | |             let x: Option<u32> = None;
-LL | |             x?;
-   | |              ^ cannot use the `?` operator in a method that returns `()`
-LL | |         }
-   | |_________- this function should return `Result` or `Option` to accept `?`
+LL |         fn a_method() {
+   |         ------------- this function should return `Result` or `Option` to accept `?`
+LL |             let x: Option<u32> = None;
+LL |             x?;
+   |              ^ cannot use the `?` operator in a method that returns `()`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `()`
 
 error[E0277]: the `?` operator can only be used in a trait method that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-diagnostics.rs:39:14
    |
-LL | /         fn a_trait_method() {
-LL | |             let x: Option<u32> = None;
-LL | |             x?;
-   | |              ^ cannot use the `?` operator in a trait method that returns `()`
-LL | |         }
-   | |_________- this function should return `Result` or `Option` to accept `?`
+LL |         fn a_trait_method() {
+   |         ------------------- this function should return `Result` or `Option` to accept `?`
+LL |             let x: Option<u32> = None;
+LL |             x?;
+   |              ^ cannot use the `?` operator in a trait method that returns `()`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `()`
 

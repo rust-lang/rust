@@ -1,8 +1,6 @@
 // check-pass
 // compile-flags: -Z parse-only
 
-#![feature(generic_associated_types)]
-
 use std::ops::Deref;
 use std::fmt::Debug;
 

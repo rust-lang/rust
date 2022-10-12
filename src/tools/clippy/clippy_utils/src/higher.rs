@@ -35,7 +35,7 @@ impl<'tcx> ForLoop<'tcx> {
             if let hir::ExprKind::Match(iterexpr, [arm], hir::MatchSource::ForLoopDesugar) = e.kind;
             if let hir::ExprKind::Call(_, [arg]) = iterexpr.kind;
             if let hir::ExprKind::Loop(block, ..) = arm.body.kind;
-            if let [stmt] = &*block.stmts;
+            if let [stmt] = block.stmts;
             if let hir::StmtKind::Expr(e) = stmt.kind;
             if let hir::ExprKind::Match(_, [_, some_arm], _) = e.kind;
             if let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind;

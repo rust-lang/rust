@@ -1,10 +1,11 @@
-// Detecting lib features (i.e., features that are not lang features).
-//
-// These are declared using stability attributes (e.g., `#[stable (..)]`
-// and `#[unstable (..)]`), but are not declared in one single location
-// (unlike lang features), which means we need to collect them instead.
+//! Detecting lib features (i.e., features that are not lang features).
+//!
+//! These are declared using stability attributes (e.g., `#[stable (..)]` and `#[unstable (..)]`),
+//! but are not declared in one single location (unlike lang features), which means we need to
+//! collect them instead.
 
 use rustc_ast::{Attribute, MetaItemKind};
+use rustc_attr::{rust_version_symbol, VERSION_PLACEHOLDER};
 use rustc_errors::struct_span_err;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
@@ -29,11 +30,16 @@ impl<'tcx> LibFeatureCollector<'tcx> {
     }
 
     fn extract(&self, attr: &Attribute) -> Option<(Symbol, Option<Symbol>, Span)> {
-        let stab_attrs =
-            [sym::stable, sym::unstable, sym::rustc_const_stable, sym::rustc_const_unstable];
+        let stab_attrs = [
+            sym::stable,
+            sym::unstable,
+            sym::rustc_const_stable,
+            sym::rustc_const_unstable,
+            sym::rustc_default_body_unstable,
+        ];
 
         // Find a stability attribute: one of #[stable(…)], #[unstable(…)],
-        // #[rustc_const_stable(…)], or #[rustc_const_unstable(…)].
+        // #[rustc_const_stable(…)], #[rustc_const_unstable(…)] or #[rustc_default_body_unstable].
         if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| attr.has_name(**stab_attr)) {
             let meta_kind = attr.meta_kind();
             if let Some(MetaItemKind::List(ref metas)) = meta_kind {
@@ -49,12 +55,21 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                         }
                     }
                 }
+
+                if let Some(s) = since && s.as_str() == VERSION_PLACEHOLDER {
+                    since = Some(rust_version_symbol());
+                }
+
                 if let Some(feature) = feature {
                     // This additional check for stability is to make sure we
                     // don't emit additional, irrelevant errors for malformed
                     // attributes.
-                    let is_unstable =
-                        matches!(*stab_attr, sym::unstable | sym::rustc_const_unstable);
+                    let is_unstable = matches!(
+                        *stab_attr,
+                        sym::unstable
+                            | sym::rustc_const_unstable
+                            | sym::rustc_default_body_unstable
+                    );
                     if since.is_some() || is_unstable {
                         return Some((feature, since, attr.span));
                     }
@@ -71,11 +86,11 @@ impl<'tcx> LibFeatureCollector<'tcx> {
 
     fn collect_feature(&mut self, feature: Symbol, since: Option<Symbol>, span: Span) {
         let already_in_stable = self.lib_features.stable.contains_key(&feature);
-        let already_in_unstable = self.lib_features.unstable.contains(&feature);
+        let already_in_unstable = self.lib_features.unstable.contains_key(&feature);
 
         match (since, already_in_stable, already_in_unstable) {
             (Some(since), _, false) => {
-                if let Some(prev_since) = self.lib_features.stable.get(&feature) {
+                if let Some((prev_since, _)) = self.lib_features.stable.get(&feature) {
                     if *prev_since != since {
                         self.span_feature_error(
                             span,
@@ -89,10 +104,10 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                     }
                 }
 
-                self.lib_features.stable.insert(feature, since);
+                self.lib_features.stable.insert(feature, (since, span));
             }
             (None, false, _) => {
-                self.lib_features.unstable.insert(feature);
+                self.lib_features.unstable.insert(feature, span);
             }
             (Some(_), _, true) | (None, true, _) => {
                 self.span_feature_error(
@@ -120,7 +135,7 @@ impl<'tcx> Visitor<'tcx> for LibFeatureCollector<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_attribute(&mut self, _: rustc_hir::HirId, attr: &'tcx Attribute) {
+    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
         if let Some((feature, stable, span)) = self.extract(attr) {
             self.collect_feature(feature, stable, span);
         }

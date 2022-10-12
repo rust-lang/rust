@@ -30,7 +30,7 @@ error[E0599]: the method `foo` exists for reference `&Fin<T>`, but its trait bou
   --> $DIR/missing-trait-bounds-for-method-call.rs:27:14
    |
 LL | struct Fin<T> where T: Bar {
-   | -------------------------- doesn't satisfy `Fin<T>: Bar`
+   | ------------- doesn't satisfy `Fin<T>: Bar`
 ...
 LL |         self.foo();
    |              ^^^ method cannot be called on `&Fin<T>` due to unsatisfied trait bounds

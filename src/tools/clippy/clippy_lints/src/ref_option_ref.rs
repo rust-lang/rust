@@ -43,8 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
             if mut_ty.mutbl == Mutability::Not;
             if let TyKind::Path(ref qpath) = &mut_ty.ty.kind;
             let last = last_path_segment(qpath);
-            if let Some(res) = last.res;
-            if let Some(def_id) = res.opt_def_id();
+            if let Some(def_id) = last.res.opt_def_id();
 
             if cx.tcx.is_diagnostic_item(sym::Option, def_id);
             if let Some(params) = last_path_segment(qpath).args ;

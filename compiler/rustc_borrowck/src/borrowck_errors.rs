@@ -1,4 +1,6 @@
-use rustc_errors::{struct_span_err, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    struct_span_err, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
+};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
@@ -29,22 +31,6 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_desc));
         err.span_label(span, format!("use of borrowed {}", borrow_desc));
         err
-    }
-
-    pub(crate) fn cannot_act_on_uninitialized_variable(
-        &self,
-        span: Span,
-        verb: &str,
-        desc: &str,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(
-            self,
-            span,
-            E0381,
-            "{} of possibly-uninitialized variable: `{}`",
-            verb,
-            desc,
-        )
     }
 
     pub(crate) fn cannot_mutably_borrow_multiply(
@@ -173,8 +159,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             new_loan_span,
             E0501,
-            "cannot borrow {}{} as {} because previous closure \
-             requires unique access",
+            "cannot borrow {}{} as {} because previous closure requires unique access",
             desc_new,
             opt_via,
             kind_new,
@@ -451,9 +436,8 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             closure_span,
             E0373,
-            "{} may outlive the current function, \
-             but it borrows {}, \
-             which is owned by the current function",
+            "{} may outlive the current function, but it borrows {}, which is owned by the current \
+             function",
             closure_kind,
             borrowed_path,
         );
@@ -476,10 +460,11 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         struct_span_err!(self, span, E0716, "temporary value dropped while borrowed",)
     }
 
-    fn struct_span_err_with_code<S: Into<MultiSpan>>(
+    #[rustc_lint_diagnostics]
+    pub(crate) fn struct_span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         self.infcx.tcx.sess.struct_span_err_with_code(sp, msg, code)

@@ -6,17 +6,17 @@ for packages installed from a git repo
 ## Usage
 
 Add a `build.rs` file to your repo and list it in `Cargo.toml`
-````
+````toml
 build = "build.rs"
 ````
 
 List rustc_tools_util as regular AND build dependency.
-````
+````toml
 [dependencies]
-rustc_tools_util = "0.1"
+rustc_tools_util = "0.2.1"
 
 [build-dependencies]
-rustc_tools_util = "0.1"
+rustc_tools_util = "0.2.1"
 ````
 
 In `build.rs`, generate the data in your `main()`

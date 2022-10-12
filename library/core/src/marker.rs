@@ -81,6 +81,7 @@ impl<T: ?Sized> !Send for *mut T {}
 /// ```
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
+#[doc(alias = "?", alias = "?Sized")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
 #[rustc_on_unimplemented(
@@ -343,7 +344,7 @@ pub trait StructuralEq {
 /// If you try to implement `Copy` on a struct or enum containing non-`Copy` data, you will get
 /// the error [E0204].
 ///
-/// [E0204]: ../../error-index.html#E0204
+/// [E0204]: ../../error_codes/E0204.html
 ///
 /// ## When *should* my type be `Copy`?
 ///
@@ -359,7 +360,6 @@ pub trait StructuralEq {
 ///
 /// * Function item types (i.e., the distinct types defined for each function)
 /// * Function pointer types (e.g., `fn() -> i32`)
-/// * Tuple types, if each component also implements `Copy` (e.g., `()`, `(i32, bool)`)
 /// * Closure types, if they capture no value from the environment
 ///   or if all such captured values implement `Copy` themselves.
 ///   Note that variables captured by shared reference always implement `Copy`
@@ -799,7 +799,17 @@ impl<T: ?Sized> Unpin for *mut T {}
 #[unstable(feature = "const_trait_impl", issue = "67792")]
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[const_trait]
 pub trait Destruct {}
+
+/// A marker for tuple types.
+///
+/// The implementation of this trait is built-in and cannot be implemented
+/// for any user type.
+#[unstable(feature = "tuple_trait", issue = "none")]
+#[lang = "tuple_trait"]
+#[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
+pub trait Tuple {}
 
 /// Implementations of `Copy` for primitive types.
 ///

@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 TO_LINK := $(call DYLIB,bar)
 ifdef IS_MSVC

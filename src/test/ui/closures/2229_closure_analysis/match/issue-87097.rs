@@ -3,7 +3,7 @@
 
 enum Variant {
     A,
-    B, //~ WARNING: variant is never constructed: `B`
+    B, //~ WARNING: variant `B` is never constructed
 }
 
 struct A {

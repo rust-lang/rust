@@ -1,0 +1,25 @@
+### What it does
+Checks for fully capitalized names and optionally names containing a capitalized acronym.
+
+### Why is this bad?
+In CamelCase, acronyms count as one word.
+See [naming conventions](https://rust-lang.github.io/api-guidelines/naming.html#casing-conforms-to-rfc-430-c-case)
+for more.
+
+By default, the lint only triggers on fully-capitalized names.
+You can use the `upper-case-acronyms-aggressive: true` config option to enable linting
+on all camel case names
+
+### Known problems
+When two acronyms are contiguous, the lint can't tell where
+the first acronym ends and the second starts, so it suggests to lowercase all of
+the letters in the second acronym.
+
+### Example
+```
+struct HTTPResponse;
+```
+Use instead:
+```
+struct HttpResponse;
+```

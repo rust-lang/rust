@@ -6,9 +6,9 @@
 enum Eu64 {
     //~^ ERROR discriminant value `0` assigned more than once
     Au64 = 0,
-    //~^NOTE first assignment of `0`
+    //~^NOTE `0` assigned here
     Bu64 = 0x8000_0000_0000_0000
-    //~^NOTE second assignment of `0` (overflowed from `9223372036854775808`)
+    //~^NOTE `0` (overflowed from `9223372036854775808`) assigned here
 }
 
 fn main() {}

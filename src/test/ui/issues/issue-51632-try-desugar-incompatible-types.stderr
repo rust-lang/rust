@@ -11,7 +11,7 @@ help: try removing this `?`
    |
 LL -     missing_discourses()?
 LL +     missing_discourses()
-   | 
+   |
 help: try wrapping the expression in `Ok`
    |
 LL |     Ok(missing_discourses()?)

@@ -6,11 +6,11 @@ LL |     let z = f(1_usize, 2);
    |             |
    |             arguments to this function are incorrect
    |
-note: closure defined here
-  --> $DIR/unboxed-closures-type-mismatch.rs:4:17
+note: closure parameter defined here
+  --> $DIR/unboxed-closures-type-mismatch.rs:4:18
    |
 LL |     let mut f = |x: isize, y: isize| -> isize { x + y };
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^^^^^^
 help: change the type of the numeric literal from `usize` to `isize`
    |
 LL |     let z = f(1_isize, 2);

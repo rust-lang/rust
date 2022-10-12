@@ -60,7 +60,7 @@ pub trait ToOwned {
 
     /// Uses borrowed data to replace owned data, usually by cloning.
     ///
-    /// This is borrow-generalized version of `Clone::clone_from`.
+    /// This is borrow-generalized version of [`Clone::clone_from`].
     ///
     /// # Examples
     ///

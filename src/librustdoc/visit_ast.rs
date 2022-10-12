@@ -141,7 +141,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     })
                     .collect::<Vec<_>>()
             })
-            .chain([Cfg::Cfg(sym::test, None)].into_iter())
+            .chain(
+                [Cfg::Cfg(sym::test, None), Cfg::Cfg(sym::doc, None), Cfg::Cfg(sym::doctest, None)]
+                    .into_iter(),
+            )
             .collect();
 
         self.cx.cache.exact_paths = self.exact_paths;
@@ -161,7 +164,19 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.inside_public_path &= self.cx.tcx.visibility(def_id).is_public();
         for &i in m.item_ids {
             let item = self.cx.tcx.hir().item(i);
+            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+                continue;
+            }
             self.visit_item(item, None, &mut om);
+        }
+        for &i in m.item_ids {
+            let item = self.cx.tcx.hir().item(i);
+            // To match the way import precedence works, visit glob imports last.
+            // Later passes in rustdoc will de-duplicate by name and kind, so if glob-
+            // imported items appear last, then they'll be the ones that get discarded.
+            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+                self.visit_item(item, None, &mut om);
+            }
         }
         self.inside_public_path = orig_inside_public_path;
         om
@@ -187,6 +202,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     ) -> bool {
         debug!("maybe_inline_local res: {:?}", res);
 
+        if self.cx.output_format.is_json() {
+            return false;
+        }
+
         let tcx = self.cx.tcx;
         let Some(res_did) = res.opt_def_id() else {
             return false;
@@ -211,7 +230,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     } else {
                         // All items need to be handled here in case someone wishes to link
                         // to them with intra-doc links
-                        self.cx.cache.access_levels.map.insert(did, AccessLevel::Public);
+                        self.cx.cache.access_levels.set_access_level(did, AccessLevel::Public);
                     }
                 }
             }
@@ -286,8 +305,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     self.visit_foreign_item(item, None, om);
                 }
             }
-            // If we're inlining, skip private items.
-            _ if self.inlining && !is_pub => {}
+            // If we're inlining, skip private items or item reexported as "_".
+            _ if self.inlining && (!is_pub || renamed == Some(kw::Underscore)) => {}
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
             hir::ItemKind::Use(path, kind) => {

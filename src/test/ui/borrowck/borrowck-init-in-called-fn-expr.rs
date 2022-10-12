@@ -1,7 +1,7 @@
 fn main() {
     let j = || -> isize {
         let i: isize;
-        i //~ ERROR use of possibly-uninitialized variable: `i`
+        i //~ ERROR E0381
     };
     j();
 }

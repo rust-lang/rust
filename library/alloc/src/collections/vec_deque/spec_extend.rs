@@ -1,5 +1,6 @@
 use crate::alloc::Allocator;
 use crate::vec;
+use core::iter::{ByRefSized, TrustedLen};
 use core::slice;
 
 use super::VecDeque;
@@ -30,6 +31,64 @@ where
             unsafe {
                 self.buffer_write(head, element);
             }
+        }
+    }
+}
+
+impl<T, I, A: Allocator> SpecExtend<T, I> for VecDeque<T, A>
+where
+    I: TrustedLen<Item = T>,
+{
+    default fn spec_extend(&mut self, mut iter: I) {
+        // This is the case for a TrustedLen iterator.
+        let (low, high) = iter.size_hint();
+        if let Some(additional) = high {
+            debug_assert_eq!(
+                low,
+                additional,
+                "TrustedLen iterator's size hint is not exact: {:?}",
+                (low, high)
+            );
+            self.reserve(additional);
+
+            struct WrapAddOnDrop<'a, T, A: Allocator> {
+                vec_deque: &'a mut VecDeque<T, A>,
+                written: usize,
+            }
+
+            impl<'a, T, A: Allocator> Drop for WrapAddOnDrop<'a, T, A> {
+                fn drop(&mut self) {
+                    self.vec_deque.head =
+                        self.vec_deque.wrap_add(self.vec_deque.head, self.written);
+                }
+            }
+
+            let mut wrapper = WrapAddOnDrop { vec_deque: self, written: 0 };
+
+            let head_room = wrapper.vec_deque.cap() - wrapper.vec_deque.head;
+            unsafe {
+                wrapper.vec_deque.write_iter(
+                    wrapper.vec_deque.head,
+                    ByRefSized(&mut iter).take(head_room),
+                    &mut wrapper.written,
+                );
+
+                if additional > head_room {
+                    wrapper.vec_deque.write_iter(0, iter, &mut wrapper.written);
+                }
+            }
+
+            debug_assert_eq!(
+                additional, wrapper.written,
+                "The number of items written to VecDeque doesn't match the TrustedLen size hint"
+            );
+        } else {
+            // Per TrustedLen contract a `None` upper bound means that the iterator length
+            // truly exceeds usize::MAX, which would eventually lead to a capacity overflow anyway.
+            // Since the other branch already panics eagerly (via `reserve()`) we do the same here.
+            // This avoids additional codegen for a fallback code path which would eventually
+            // panic anyway.
+            panic!("capacity overflow");
         }
     }
 }

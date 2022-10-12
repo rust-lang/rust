@@ -18,12 +18,9 @@ error[E0072]: recursive type `Foo` has infinite size
   --> $DIR/keyword-self-as-type-param.rs:3:1
    |
 LL | struct Foo<Self>(Self);
-   | ^^^^^^^^^^^^^^^^^----^^
-   | |                |
-   | |                recursive without indirection
-   | recursive type has infinite size
+   | ^^^^^^^^^^^^^^^^ ---- recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL | struct Foo<Self>(Box<Self>);
    |                  ++++    +

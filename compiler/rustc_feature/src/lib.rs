@@ -12,6 +12,8 @@
 //! symbol to the `accepted` or `removed` modules respectively.
 
 #![feature(once_cell)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 mod accepted;
 mod active;
@@ -149,7 +151,7 @@ pub use active::{Features, ACTIVE_FEATURES, INCOMPATIBLE_FEATURES};
 pub use builtin_attrs::AttributeDuplicates;
 pub use builtin_attrs::{
     deprecated_attributes, find_gated_cfg, is_builtin_attr_name, is_builtin_only_local,
-    AttributeGate, AttributeTemplate, AttributeType, BuiltinAttribute, GatedCfg,
-    BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
+    is_valid_for_get_attr, AttributeGate, AttributeTemplate, AttributeType, BuiltinAttribute,
+    GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
 };
 pub use removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};

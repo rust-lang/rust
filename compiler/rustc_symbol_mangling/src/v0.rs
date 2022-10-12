@@ -5,15 +5,13 @@ use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeFoldable, UintTy,
+    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, UintTy,
 };
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::kw;
-use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 
@@ -43,7 +41,7 @@ pub(super) fn mangle<'tcx>(
 
     // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
     let shim_kind = match instance.def {
-        ty::InstanceDef::VtableShim(_) => Some("vtable"),
+        ty::InstanceDef::VTableShim(_) => Some("vtable"),
         ty::InstanceDef::ReifyShim(_) => Some("reify"),
 
         _ => None,
@@ -60,39 +58,22 @@ pub(super) fn mangle<'tcx>(
     std::mem::take(&mut cx.out)
 }
 
-pub(super) fn mangle_typeid_for_fnabi<'tcx>(
-    _tcx: TyCtxt<'tcx>,
-    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
 ) -> String {
-    // LLVM uses type metadata to allow IR modules to aggregate pointers by their types.[1] This
-    // type metadata is used by LLVM Control Flow Integrity to test whether a given pointer is
-    // associated with a type identifier (i.e., test type membership).
-    //
-    // Clang uses the Itanium C++ ABI's[2] virtual tables and RTTI typeinfo structure name[3] as
-    // type metadata identifiers for function pointers. The typeinfo name encoding is a
-    // two-character code (i.e., “TS”) prefixed to the type encoding for the function.
-    //
-    // For cross-language LLVM CFI support, a compatible encoding must be used by either
-    //
-    //  a. Using a superset of types that encompasses types used by Clang (i.e., Itanium C++ ABI's
-    //     type encodings[4]), or at least types used at the FFI boundary.
-    //  b. Reducing the types to the least common denominator between types used by Clang (or at
-    //     least types used at the FFI boundary) and Rust compilers (if even possible).
-    //  c. Creating a new ABI for cross-language CFI and using it for Clang and Rust compilers (and
-    //     possibly other compilers).
-    //
-    // Option (b) may weaken the protection for Rust-compiled only code, so it should be provided
-    // as an alternative to a Rust-specific encoding for when mixing Rust and C and C++ -compiled
-    // code. Option (c) would require changes to Clang to use the new ABI.
-    //
-    // [1] https://llvm.org/docs/TypeMetadata.html
-    // [2] https://itanium-cxx-abi.github.io/cxx-abi/abi.html
-    // [3] https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-special-vtables
-    // [4] https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-type
-    //
-    // FIXME(rcvalle): See comment above.
-    let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
-    format!("typeid{}", arg_count)
+    // FIXME(flip1995): See comment in `mangle_typeid_for_fnabi`.
+    let mut cx = &mut SymbolMangler {
+        tcx,
+        start_offset: 0,
+        paths: FxHashMap::default(),
+        types: FxHashMap::default(),
+        consts: FxHashMap::default(),
+        binders: vec![],
+        out: String::new(),
+    };
+    cx = cx.print_def_path(trait_ref.def_id(), &[]).unwrap();
+    std::mem::take(&mut cx.out)
 }
 
 struct BinderLevel {
@@ -223,7 +204,7 @@ impl<'tcx> SymbolMangler<'tcx> {
         print_value: impl FnOnce(&'a mut Self, &T) -> Result<&'a mut Self, !>,
     ) -> Result<&'a mut Self, !>
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeVisitable<'tcx>,
     {
         let regions = if value.has_late_bound_regions() {
             self.tcx.collect_referenced_late_bound_regions(value)
@@ -320,7 +301,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         // Encode impl generic params if the substitutions contain parameters (implying
         // polymorphization is enabled) and this isn't an inherent impl.
-        if impl_trait_ref.is_some() && substs.iter().any(|a| a.has_param_types_or_consts()) {
+        if impl_trait_ref.is_some() && substs.iter().any(|a| a.has_non_region_param()) {
             self = self.path_generic_args(
                 |this| {
                     this.path_append_ns(
@@ -498,8 +479,12 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 })?;
             }
 
-            ty::Dynamic(predicates, r) => {
-                self.push("D");
+            ty::Dynamic(predicates, r, kind) => {
+                self.push(match kind {
+                    ty::Dyn => "D",
+                    // FIXME(dyn-star): need to update v0 mangling docs
+                    ty::DynStar => "D*",
+                });
                 self = self.print_dyn_existential(predicates)?;
                 self = r.print(self)?;
             }
@@ -562,9 +547,9 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                         let name = cx.tcx.associated_item(projection.item_def_id).name;
                         cx.push("p");
                         cx.push_ident(name.as_str());
-                        cx = match projection.term {
-                            ty::Term::Ty(ty) => ty.print(cx),
-                            ty::Term::Const(c) => c.print(cx),
+                        cx = match projection.term.unpack() {
+                            ty::TermKind::Ty(ty) => ty.print(cx),
+                            ty::TermKind::Const(c) => c.print(cx),
                         }?;
                     }
                     ty::ExistentialPredicate::AutoTrait(def_id) => {
@@ -582,7 +567,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     fn print_const(mut self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         // We only mangle a typed value if the const can be evaluated.
         let ct = ct.eval(self.tcx, ty::ParamEnv::reveal_all());
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Value(_) => {}
 
             // Placeholders (should be demangled as `_`).
@@ -604,16 +589,18 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         if let Some(&i) = self.consts.get(&ct) {
             return self.print_backref(i);
         }
+
         let start = self.out.len();
+        let ty = ct.ty();
 
-        match ct.ty().kind() {
+        match ty.kind() {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
-                self = ct.ty().print(self)?;
+                self = ty.print(self)?;
 
-                let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ct.ty());
+                let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ty);
 
                 // Negative integer values are mangled using `n` as a "sign prefix".
-                if let ty::Int(ity) = ct.ty().kind() {
+                if let ty::Int(ity) = ty.kind() {
                     let val =
                         Integer::from_int_ty(&self.tcx, *ity).size().sign_extend(bits) as i128;
                     if val < 0 {
@@ -625,46 +612,57 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 let _ = write!(self.out, "{:x}_", bits);
             }
 
-            // HACK(eddyb) because `ty::Const` only supports sized values (for now),
-            // we can't use `deref_const` + supporting `str`, we have to specially
-            // handle `&str` and include both `&` ("R") and `str` ("e") prefixes.
-            ty::Ref(_, ty, hir::Mutability::Not) if *ty == self.tcx.types.str_ => {
-                self.push("R");
-                match ct.val() {
-                    ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
-                        // NOTE(eddyb) the following comment was kept from `ty::print::pretty`:
-                        // The `inspect` here is okay since we checked the bounds, and there are no
-                        // relocations (we have an active `str` reference here). We don't use this
-                        // result to affect interpreter execution.
-                        let slice = data
-                            .inner()
-                            .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                        let s = std::str::from_utf8(slice).expect("non utf8 str from miri");
-
-                        self.push("e");
-                        // FIXME(eddyb) use a specialized hex-encoding loop.
-                        for byte in s.bytes() {
-                            let _ = write!(self.out, "{:02x}", byte);
-                        }
-                        self.push("_");
-                    }
-
-                    _ => {
-                        bug!("symbol_names: unsupported `&str` constant: {:?}", ct);
-                    }
-                }
-            }
-
-            ty::Ref(_, _, mutbl) => {
+            // FIXME(valtrees): Remove the special case for `str`
+            // here and fully support unsized constants.
+            ty::Ref(_, inner_ty, mutbl) => {
                 self.push(match mutbl {
                     hir::Mutability::Not => "R",
                     hir::Mutability::Mut => "Q",
                 });
-                self = self.tcx.deref_const(ty::ParamEnv::reveal_all().and(ct)).print(self)?;
+
+                match inner_ty.kind() {
+                    ty::Str if *mutbl == hir::Mutability::Not => {
+                        match ct.kind() {
+                            ty::ConstKind::Value(valtree) => {
+                                let slice =
+                                    valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
+                                        bug!(
+                                        "expected to get raw bytes from valtree {:?} for type {:}",
+                                        valtree, ty
+                                    )
+                                    });
+                                let s = std::str::from_utf8(slice).expect("non utf8 str from miri");
+
+                                self.push("e");
+
+                                // FIXME(eddyb) use a specialized hex-encoding loop.
+                                for byte in s.bytes() {
+                                    let _ = write!(self.out, "{:02x}", byte);
+                                }
+
+                                self.push("_");
+                            }
+
+                            _ => {
+                                bug!("symbol_names: unsupported `&str` constant: {:?}", ct);
+                            }
+                        }
+                    }
+                    _ => {
+                        let pointee_ty = ct
+                            .ty()
+                            .builtin_deref(true)
+                            .expect("tried to dereference on non-ptr type")
+                            .ty;
+                        let dereferenced_const =
+                            self.tcx.mk_const(ty::ConstS { kind: ct.kind(), ty: pointee_ty });
+                        self = dereferenced_const.print(self)?;
+                    }
+                }
             }
 
-            ty::Array(..) | ty::Tuple(..) | ty::Adt(..) => {
-                let contents = self.tcx.destructure_const(ty::ParamEnv::reveal_all().and(ct));
+            ty::Array(..) | ty::Tuple(..) | ty::Adt(..) | ty::Slice(_) => {
+                let contents = self.tcx.destructure_const(ct);
                 let fields = contents.fields.iter().copied();
 
                 let print_field_list = |mut this: Self| {
@@ -676,7 +674,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 };
 
                 match *ct.ty().kind() {
-                    ty::Array(..) => {
+                    ty::Array(..) | ty::Slice(_) => {
                         self.push("A");
                         self = print_field_list(self)?;
                     }
@@ -723,7 +721,6 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     _ => unreachable!(),
                 }
             }
-
             _ => {
                 bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty(), ct);
             }

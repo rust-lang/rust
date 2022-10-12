@@ -84,25 +84,19 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // can't be implemented for unsafe new
                             return;
                         }
-                        if cx.tcx.is_doc_hidden(impl_item.def_id) {
+                        if cx.tcx.is_doc_hidden(impl_item.def_id.def_id) {
                             // shouldn't be implemented when it is hidden in docs
                             return;
                         }
-                        if impl_item
-                            .generics
-                            .params
-                            .iter()
-                            .any(|gen| matches!(gen.kind, hir::GenericParamKind::Type { .. }))
-                        {
-                            // when the result of `new()` depends on a type parameter we should not require
-                            // an
-                            // impl of `Default`
+                        if !impl_item.generics.params.is_empty() {
+                            // when the result of `new()` depends on a parameter we should not require
+                            // an impl of `Default`
                             return;
                         }
                         if_chain! {
                             if sig.decl.inputs.is_empty();
                             if name == sym::new;
-                            if cx.access_levels.is_reachable(impl_item.def_id);
+                            if cx.access_levels.is_reachable(impl_item.def_id.def_id);
                             let self_def_id = cx.tcx.hir().get_parent_item(id);
                             let self_ty = cx.tcx.type_of(self_def_id);
                             if self_ty == return_ty(cx, id);
@@ -142,8 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                     id,
                                     impl_item.span,
                                     &format!(
-                                        "you should consider adding a `Default` implementation for `{}`",
-                                        self_type_snip
+                                        "you should consider adding a `Default` implementation for `{self_type_snip}`"
                                     ),
                                     |diag| {
                                         diag.suggest_prepend_item(
@@ -167,9 +160,9 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
 fn create_new_without_default_suggest_msg(self_type_snip: &str, generics_sugg: &str) -> String {
     #[rustfmt::skip]
     format!(
-"impl{} Default for {} {{
+"impl{generics_sugg} Default for {self_type_snip} {{
     fn default() -> Self {{
         Self::new()
     }}
-}}", generics_sugg, self_type_snip)
+}}")
 }

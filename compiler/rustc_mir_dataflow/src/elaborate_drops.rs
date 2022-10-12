@@ -410,7 +410,18 @@ where
     fn open_drop_for_box(&mut self, adt: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> BasicBlock {
         debug!("open_drop_for_box({:?}, {:?}, {:?})", self, adt, substs);
 
-        let interior = self.tcx().mk_place_deref(self.place);
+        // drop glue is sent straight to codegen
+        // box cannot be directly dereferenced
+        let unique_ty = adt.non_enum_variant().fields[0].ty(self.tcx(), substs);
+        let nonnull_ty =
+            unique_ty.ty_adt_def().unwrap().non_enum_variant().fields[0].ty(self.tcx(), substs);
+        let ptr_ty = self.tcx().mk_imm_ptr(substs[0].expect_ty());
+
+        let unique_place = self.tcx().mk_place_field(self.place, Field::new(0), unique_ty);
+        let nonnull_place = self.tcx().mk_place_field(unique_place, Field::new(0), nonnull_ty);
+        let ptr_place = self.tcx().mk_place_field(nonnull_place, Field::new(0), ptr_ty);
+        let interior = self.tcx().mk_place_deref(ptr_place);
+
         let interior_path = self.elaborator.deref_subpath(self.path);
 
         let succ = self.box_free_block(adt, substs, self.succ, self.unwind);
@@ -812,9 +823,10 @@ where
             // tmp = &raw mut P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
+            let mir_cast_kind = ty::cast::mir_cast_kind(iter_ty, tmp_ty);
             vec![
                 self.assign(tmp, Rvalue::AddressOf(Mutability::Mut, self.place)),
-                self.assign(cur, Rvalue::Cast(CastKind::Misc, Operand::Move(tmp), iter_ty)),
+                self.assign(cur, Rvalue::Cast(mir_cast_kind, Operand::Move(tmp), iter_ty)),
                 self.assign(
                     length_or_end,
                     Rvalue::BinaryOp(
@@ -882,7 +894,7 @@ where
             }
             ty::Slice(ety) => self.open_drop_for_array(*ety, None),
 
-            _ => bug!("open drop from non-ADT `{:?}`", ty),
+            _ => span_bug!(self.source_info.span, "open drop from non-ADT `{:?}`", ty),
         }
     }
 
@@ -1032,7 +1044,7 @@ where
         Operand::Constant(Box::new(Constant {
             span: self.source_info.span,
             user_ty: None,
-            literal: ty::Const::from_usize(self.tcx(), val.into()).into(),
+            literal: ConstantKind::from_usize(self.tcx(), val.into()),
         }))
     }
 

@@ -1,0 +1,17 @@
+### What it does
+Detects closures called in the same expression where they
+are defined.
+
+### Why is this bad?
+It is unnecessarily adding to the expression's
+complexity.
+
+### Example
+```
+let a = (|| 42)();
+```
+
+Use instead:
+```
+let a = 42;
+```

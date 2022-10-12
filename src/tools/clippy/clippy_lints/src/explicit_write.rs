@@ -22,8 +22,16 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::io::Write;
     /// # let bar = "furchtbar";
-    /// // this would be clearer as `eprintln!("foo: {:?}", bar);`
     /// writeln!(&mut std::io::stderr(), "foo: {:?}", bar).unwrap();
+    /// writeln!(&mut std::io::stdout(), "foo: {:?}", bar).unwrap();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # use std::io::Write;
+    /// # let bar = "furchtbar";
+    /// eprintln!("foo: {:?}", bar);
+    /// println!("foo: {:?}", bar);
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub EXPLICIT_WRITE,
@@ -37,10 +45,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // match call to unwrap
-            if let ExprKind::MethodCall(unwrap_fun, [write_call], _) = expr.kind;
+            if let ExprKind::MethodCall(unwrap_fun, write_call, [], _) = expr.kind;
             if unwrap_fun.ident.name == sym::unwrap;
             // match call to write_fmt
-            if let ExprKind::MethodCall(write_fun, [write_recv, write_arg], _) = look_in_block(cx, &write_call.kind);
+            if let ExprKind::MethodCall(write_fun, write_recv, [write_arg], _) = look_in_block(cx, &write_call.kind);
             if write_fun.ident.name == sym!(write_fmt);
             // match calls to std::io::stdout() / std::io::stderr ()
             if let Some(dest_name) = if match_function_call(cx, write_recv, &paths::STDOUT).is_some() {
@@ -72,12 +80,12 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                 // used.
                 let (used, sugg_mac) = if let Some(macro_name) = calling_macro {
                     (
-                        format!("{}!({}(), ...)", macro_name, dest_name),
+                        format!("{macro_name}!({dest_name}(), ...)"),
                         macro_name.replace("write", "print"),
                     )
                 } else {
                     (
-                        format!("{}().write_fmt(...)", dest_name),
+                        format!("{dest_name}().write_fmt(...)"),
                         "print".into(),
                     )
                 };
@@ -92,9 +100,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                     cx,
                     EXPLICIT_WRITE,
                     expr.span,
-                    &format!("use of `{}.unwrap()`", used),
+                    &format!("use of `{used}.unwrap()`"),
                     "try this",
-                    format!("{}{}!({})", prefix, sugg_mac, inputs_snippet),
+                    format!("{prefix}{sugg_mac}!({inputs_snippet})"),
                     applicability,
                 )
             }
@@ -117,10 +125,10 @@ fn look_in_block<'tcx, 'hir>(cx: &LateContext<'tcx>, kind: &'tcx ExprKind<'hir>)
         // Find id of the local that expr_end_of_block resolves to
         if let ExprKind::Path(QPath::Resolved(None, expr_path)) = expr_end_of_block.kind;
         if let Res::Local(expr_res) = expr_path.res;
-        if let Some(Node::Binding(res_pat)) = cx.tcx.hir().find(expr_res);
+        if let Some(Node::Pat(res_pat)) = cx.tcx.hir().find(expr_res);
 
         // Find id of the local we found in the block
-        if let PatKind::Binding(BindingAnnotation::Unannotated, local_hir_id, _ident, None) = local.pat.kind;
+        if let PatKind::Binding(BindingAnnotation::NONE, local_hir_id, _ident, None) = local.pat.kind;
 
         // If those two are the same hir id
         if res_pat.hir_id == local_hir_id;

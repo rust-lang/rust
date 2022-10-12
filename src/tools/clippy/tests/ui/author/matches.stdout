@@ -21,7 +21,7 @@ if_chain! {
     if let Some(init1) = local1.init;
     if let ExprKind::Lit(ref lit4) = init1.kind;
     if let LitKind::Int(3, LitIntType::Unsuffixed) = lit4.node;
-    if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = local1.pat.kind;
+    if let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = local1.pat.kind;
     if name.as_str() == "x";
     if let Some(trailing_expr) = block.expr;
     if let ExprKind::Path(ref qpath) = trailing_expr.kind;
@@ -30,7 +30,7 @@ if_chain! {
     if arms[2].guard.is_none();
     if let ExprKind::Lit(ref lit5) = arms[2].body.kind;
     if let LitKind::Int(1, LitIntType::Unsuffixed) = lit5.node;
-    if let PatKind::Binding(BindingAnnotation::Unannotated, _, name1, None) = local.pat.kind;
+    if let PatKind::Binding(BindingAnnotation::NONE, _, name1, None) = local.pat.kind;
     if name1.as_str() == "a";
     then {
         // report your lint here

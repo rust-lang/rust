@@ -14,7 +14,7 @@ help: consider borrowing the value
    |
 LL -     v as &u8;
 LL +     &*v;
-   | 
+   |
 
 error: aborting due to 2 previous errors
 

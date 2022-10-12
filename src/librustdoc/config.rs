@@ -6,12 +6,13 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_driver::print_flag_list;
 use rustc_session::config::{
     self, parse_crate_types_from_list, parse_externs, parse_target_triple, CrateType,
 };
 use rustc_session::config::{get_cmd_lint_options, nightly_options};
 use rustc_session::config::{
-    CodegenOptions, DebuggingOptions, ErrorOutputType, Externs, JsonUnusedExterns,
+    CodegenOptions, ErrorOutputType, Externs, JsonUnusedExterns, UnstableOptions,
 };
 use rustc_session::getopts;
 use rustc_session::lint::Level;
@@ -72,6 +73,8 @@ pub(crate) struct Options {
     pub(crate) proc_macro_crate: bool,
     /// How to format errors and warnings.
     pub(crate) error_format: ErrorOutputType,
+    /// Width of output buffer to truncate errors appropriately.
+    pub(crate) diagnostic_width: Option<usize>,
     /// Library search paths to hand to the compiler.
     pub(crate) libs: Vec<SearchPath>,
     /// Library search paths strings to hand to the compiler.
@@ -88,10 +91,10 @@ pub(crate) struct Options {
     pub(crate) codegen_options: CodegenOptions,
     /// Codegen options strings to hand to the compiler.
     pub(crate) codegen_options_strs: Vec<String>,
-    /// Debugging (`-Z`) options to pass to the compiler.
-    pub(crate) debugging_opts: DebuggingOptions,
-    /// Debugging (`-Z`) options strings to pass to the compiler.
-    pub(crate) debugging_opts_strs: Vec<String>,
+    /// Unstable (`-Z`) options to pass to the compiler.
+    pub(crate) unstable_opts: UnstableOptions,
+    /// Unstable (`-Z`) options strings to pass to the compiler.
+    pub(crate) unstable_opts_strs: Vec<String>,
     /// The target used to compile the crate against.
     pub(crate) target: TargetTriple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
@@ -178,7 +181,7 @@ impl fmt::Debug for Options {
             .field("cfgs", &self.cfgs)
             .field("check-cfgs", &self.check_cfgs)
             .field("codegen_options", &"...")
-            .field("debugging_options", &"...")
+            .field("unstable_options", &"...")
             .field("target", &self.target)
             .field("edition", &self.edition)
             .field("maybe_sysroot", &self.maybe_sysroot)
@@ -217,12 +220,9 @@ pub(crate) struct RenderOptions {
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
     pub(crate) playground_url: Option<String>,
-    /// Whether to sort modules alphabetically on a module page instead of using declaration order.
-    /// `true` by default.
-    //
-    // FIXME(misdreavus): the flag name is `--sort-modules-by-appearance` but the meaning is
-    // inverted once read.
-    pub(crate) sort_modules_alphabetically: bool,
+    /// What sorting mode to use for module pages.
+    /// `ModuleSorting::Alphabetical` by default.
+    pub(crate) module_sorting: ModuleSorting,
     /// List of themes to extend the docs with. Original argument name is included to assist in
     /// displaying errors if it fails a theme check.
     pub(crate) themes: Vec<StylePath>,
@@ -239,9 +239,6 @@ pub(crate) struct RenderOptions {
     pub(crate) resource_suffix: String,
     /// Whether to run the static CSS/JavaScript through a minifier when outputting them. `true` by
     /// default.
-    //
-    // FIXME(misdreavus): the flag name is `--disable-minification` but the meaning is inverted
-    // once read.
     pub(crate) enable_minification: bool,
     /// Whether to create an index page in the root of the output directory. If this is true but
     /// `enable_index_page` is None, generate a static listing of crates instead.
@@ -281,6 +278,12 @@ pub(crate) struct RenderOptions {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ModuleSorting {
+    DeclarationOrder,
+    Alphabetical,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum EmitType {
     Unversioned,
     Toolchain,
@@ -310,11 +313,15 @@ impl RenderOptions {
 impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
-    pub(crate) fn from_matches(matches: &getopts::Matches) -> Result<Options, i32> {
+    pub(crate) fn from_matches(
+        matches: &getopts::Matches,
+        args: Vec<String>,
+    ) -> Result<Options, i32> {
+        let args = &args[1..];
         // Check for unstable options.
         nightly_options::check_nightly_options(matches, &opts());
 
-        if matches.opt_present("h") || matches.opt_present("help") {
+        if args.is_empty() || matches.opt_present("h") || matches.opt_present("help") {
             crate::usage("rustdoc");
             return Err(0);
         } else if matches.opt_present("version") {
@@ -322,15 +329,27 @@ impl Options {
             return Err(0);
         }
 
+        let z_flags = matches.opt_strs("Z");
+        if z_flags.iter().any(|x| *x == "help") {
+            print_flag_list("-Z", config::Z_OPTIONS);
+            return Err(0);
+        }
+        let c_flags = matches.opt_strs("C");
+        if c_flags.iter().any(|x| *x == "help") {
+            print_flag_list("-C", config::CG_OPTIONS);
+            return Err(0);
+        }
+
         let color = config::parse_color(matches);
         let config::JsonConfig { json_rendered, json_unused_externs, .. } =
             config::parse_json(matches);
         let error_format = config::parse_error_format(matches, color, json_rendered);
+        let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
         let codegen_options = CodegenOptions::build(matches, error_format);
-        let debugging_opts = DebuggingOptions::build(matches, error_format);
+        let unstable_opts = UnstableOptions::build(matches, error_format);
 
-        let diag = new_handler(error_format, None, &debugging_opts);
+        let diag = new_handler(error_format, None, diagnostic_width, &unstable_opts);
 
         // check for deprecated options
         check_deprecated_options(matches, &diag);
@@ -393,7 +412,13 @@ impl Options {
 
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
-            let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
+            let paths = match theme::load_css_paths(static_files::themes::LIGHT) {
+                Ok(p) => p,
+                Err(e) => {
+                    diag.struct_err(&e.to_string()).emit();
+                    return Err(1);
+                }
+            };
             let mut errors = 0;
 
             println!("rustdoc: [check-theme] Starting tests! (Ignoring all other arguments)");
@@ -416,22 +441,26 @@ impl Options {
             return Err(0);
         }
 
-        if matches.free.is_empty() {
+        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
+
+        let input = PathBuf::from(if describe_lints {
+            "" // dummy, this won't be used
+        } else if matches.free.is_empty() {
             diag.struct_err("missing file operand").emit();
             return Err(1);
-        }
-        if matches.free.len() > 1 {
+        } else if matches.free.len() > 1 {
             diag.struct_err("too many file operands").emit();
             return Err(1);
-        }
-        let input = PathBuf::from(&matches.free[0]);
+        } else {
+            &matches.free[0]
+        });
 
         let libs = matches
             .opt_strs("L")
             .iter()
             .map(|s| SearchPath::from_cli_opt(s, error_format))
             .collect();
-        let externs = parse_externs(matches, &debugging_opts, error_format);
+        let externs = parse_externs(matches, &unstable_opts, error_format);
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
             Ok(ex) => ex,
             Err(err) => {
@@ -524,7 +553,13 @@ impl Options {
 
         let mut themes = Vec::new();
         if matches.opt_present("theme") {
-            let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
+            let paths = match theme::load_css_paths(static_files::themes::LIGHT) {
+                Ok(p) => p,
+                Err(e) => {
+                    diag.struct_err(&e.to_string()).emit();
+                    return Err(1);
+                }
+            };
 
             for (theme_file, theme_s) in
                 matches.opt_strs("theme").iter().map(|s| (PathBuf::from(&s), s.to_owned()))
@@ -630,7 +665,11 @@ impl Options {
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
         let playground_url = matches.opt_str("playground-url");
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
-        let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
+        let module_sorting = if matches.opt_present("sort-modules-by-appearance") {
+            ModuleSorting::DeclarationOrder
+        } else {
+            ModuleSorting::Alphabetical
+        };
         let resource_suffix = matches.opt_str("resource-suffix").unwrap_or_default();
         let enable_minification = !matches.opt_present("disable-minification");
         let markdown_no_toc = matches.opt_present("markdown-no-toc");
@@ -643,7 +682,7 @@ impl Options {
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let codegen_options_strs = matches.opt_strs("C");
-        let debugging_opts_strs = matches.opt_strs("Z");
+        let unstable_opts_strs = matches.opt_strs("Z");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
         let runtool = matches.opt_str("runtool");
@@ -671,12 +710,11 @@ impl Options {
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
 
-        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
-
         Ok(Options {
             input,
             proc_macro_crate,
             error_format,
+            diagnostic_width,
             libs,
             lib_strs,
             externs,
@@ -685,8 +723,8 @@ impl Options {
             check_cfgs,
             codegen_options,
             codegen_options_strs,
-            debugging_opts,
-            debugging_opts_strs,
+            unstable_opts,
+            unstable_opts_strs,
             target,
             edition,
             maybe_sysroot,
@@ -711,7 +749,7 @@ impl Options {
                 external_html,
                 id_map,
                 playground_url,
-                sort_modules_alphabetically,
+                module_sorting,
                 themes,
                 extension_css,
                 extern_html_root_urls,

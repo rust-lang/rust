@@ -4,7 +4,8 @@ error[E0581]: return type references an anonymous lifetime, which is not constra
 LL | fn f(_: X) -> X {
    |               ^
    |
-   = note: lifetimes appearing in an associated type are not considered constrained
+   = note: lifetimes appearing in an associated or opaque type are not considered constrained
+   = note: consider introducing a named lifetime parameter
 
 error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
   --> $DIR/issue-47511.rs:12:23

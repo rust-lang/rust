@@ -1,7 +1,6 @@
 use crate::back::write::create_informational_target_machine;
-use crate::{llvm, llvm_util};
+use crate::llvm;
 use libc::c_int;
-use libloading::Library;
 use rustc_codegen_ssa::target_features::{
     supported_target_features, tied_target_features, RUSTC_SPECIFIC_FEATURES,
 };
@@ -15,9 +14,7 @@ use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use smallvec::{smallvec, SmallVec};
 use std::ffi::{CStr, CString};
-use tracing::debug;
 
-use std::mem;
 use std::path::Path;
 use std::ptr;
 use std::slice;
@@ -87,22 +84,12 @@ unsafe fn configure_llvm(sess: &Session) {
             add("-debug-pass=Structure", false);
         }
         if sess.target.generate_arange_section
-            && !sess.opts.debugging_opts.no_generate_arange_section
+            && !sess.opts.unstable_opts.no_generate_arange_section
         {
             add("-generate-arange-section", false);
         }
 
-        // Disable the machine outliner by default in LLVM versions 11 and LLVM
-        // version 12, where it leads to miscompilation.
-        //
-        // Ref:
-        // - https://github.com/rust-lang/rust/issues/85351
-        // - https://reviews.llvm.org/D103167
-        if llvm_util::get_version() < (13, 0, 0) {
-            add("-enable-machine-outliner=never", false);
-        }
-
-        match sess.opts.debugging_opts.merge_functions.unwrap_or(sess.target.merge_functions) {
+        match sess.opts.unstable_opts.merge_functions.unwrap_or(sess.target.merge_functions) {
             MergeFunctions::Disabled | MergeFunctions::Trampolines => {}
             MergeFunctions::Aliases => {
                 add("-mergefunc-use-aliases", false);
@@ -125,27 +112,11 @@ unsafe fn configure_llvm(sess: &Session) {
         }
     }
 
-    if sess.opts.debugging_opts.llvm_time_trace {
+    if sess.opts.unstable_opts.llvm_time_trace {
         llvm::LLVMTimeTraceProfilerInitialize();
     }
 
     llvm::LLVMInitializePasses();
-
-    // Use the legacy plugin registration if we don't use the new pass manager
-    if !should_use_new_llvm_pass_manager(
-        &sess.opts.debugging_opts.new_llvm_pass_manager,
-        &sess.target.arch,
-    ) {
-        // Register LLVM plugins by loading them into the compiler process.
-        for plugin in &sess.opts.debugging_opts.llvm_plugins {
-            let lib = Library::new(plugin).unwrap_or_else(|e| bug!("couldn't load plugin: {}", e));
-            debug!("LLVM plugin loaded successfully {:?} ({})", lib, plugin);
-
-            // Intentionally leak the dynamic library. We can't ever unload it
-            // since the library can make things that will live arbitrarily long.
-            mem::forget(lib);
-        }
-    }
 
     rustc_llvm::initialize_available_targets();
 
@@ -165,6 +136,10 @@ pub fn time_trace_profiler_finish(file_name: &Path) {
 //
 // To find a list of LLVM's names, check llvm-project/llvm/include/llvm/Support/*TargetParser.def
 // where the * matches the architecture's name
+//
+// For targets not present in the above location, see llvm-project/llvm/lib/Target/{ARCH}/*.td
+// where `{ARCH}` is the architecture name. Look for instances of `SubtargetFeature`.
+//
 // Beware to not use the llvm github project for this, but check the git submodule
 // found in src/llvm-project
 // Though note that Rust can also be build with an external precompiled version of LLVM
@@ -218,39 +193,44 @@ pub fn check_tied_features(
     sess: &Session,
     features: &FxHashMap<&str, bool>,
 ) -> Option<&'static [&'static str]> {
-    for tied in tied_target_features(sess) {
-        // Tied features must be set to the same value, or not set at all
-        let mut tied_iter = tied.iter();
-        let enabled = features.get(tied_iter.next().unwrap());
-        if tied_iter.any(|f| enabled != features.get(f)) {
-            return Some(tied);
+    if !features.is_empty() {
+        for tied in tied_target_features(sess) {
+            // Tied features must be set to the same value, or not set at all
+            let mut tied_iter = tied.iter();
+            let enabled = features.get(tied_iter.next().unwrap());
+            if tied_iter.any(|f| enabled != features.get(f)) {
+                return Some(tied);
+            }
         }
     }
-    None
+    return None;
 }
 
 // Used to generate cfg variables and apply features
 // Must express features in the way Rust understands them
-pub fn target_features(sess: &Session) -> Vec<Symbol> {
+pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let target_machine = create_informational_target_machine(sess);
-    let mut features: Vec<Symbol> =
-        supported_target_features(sess)
-            .iter()
-            .filter_map(|&(feature, gate)| {
-                if sess.is_nightly_build() || gate.is_none() { Some(feature) } else { None }
-            })
-            .filter(|feature| {
-                // check that all features in a given smallvec are enabled
-                for llvm_feature in to_llvm_features(sess, feature) {
-                    let cstr = SmallCStr::new(llvm_feature);
-                    if !unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
-                        return false;
-                    }
+    let mut features: Vec<Symbol> = supported_target_features(sess)
+        .iter()
+        .filter_map(|&(feature, gate)| {
+            if sess.is_nightly_build() || allow_unstable || gate.is_none() {
+                Some(feature)
+            } else {
+                None
+            }
+        })
+        .filter(|feature| {
+            // check that all features in a given smallvec are enabled
+            for llvm_feature in to_llvm_features(sess, feature) {
+                let cstr = SmallCStr::new(llvm_feature);
+                if !unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
+                    return false;
                 }
-                true
-            })
-            .map(|feature| Symbol::intern(feature))
-            .collect();
+            }
+            true
+        })
+        .map(|feature| Symbol::intern(feature))
+        .collect();
 
     // LLVM 14 changed the ABI for i128 arguments to __float/__fix builtins on Win64
     // (see https://reviews.llvm.org/D110413). This unstable target feature is intended for use
@@ -435,11 +415,14 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
             .features
             .split(',')
             .filter(|v| !v.is_empty() && backend_feature_name(v).is_some())
+            // Drop +atomics-32 feature introduced in LLVM 15.
+            .filter(|v| *v != "+atomics-32" || get_version() >= (15, 0, 0))
             .map(String::from),
     );
 
     // -Ctarget-features
     let supported_features = supported_target_features(sess);
+    let mut featsmap = FxHashMap::default();
     let feats = sess
         .opts
         .cg
@@ -485,35 +468,36 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 }
                 diag.emit();
             }
-            Some((enable_disable, feature))
-        })
-        .collect::<SmallVec<[(char, &str); 8]>>();
 
-    if diagnostics {
-        // FIXME(nagisa): figure out how to not allocate a full hashset here.
-        let featmap = feats.iter().map(|&(flag, feat)| (feat, flag == '+')).collect();
-        if let Some(f) = check_tied_features(sess, &featmap) {
-            sess.err(&format!(
-                "target features {} must all be enabled or disabled together",
-                f.join(", ")
-            ));
-        }
+            if diagnostics {
+                // FIXME(nagisa): figure out how to not allocate a full hashset here.
+                featsmap.insert(feature, enable_disable == '+');
+            }
+
+            // rustc-specific features do not get passed down to LLVM…
+            if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
+                return None;
+            }
+            // ... otherwise though we run through `to_llvm_features` when
+            // passing requests down to LLVM. This means that all in-language
+            // features also work on the command line instead of having two
+            // different names when the LLVM name and the Rust name differ.
+            Some(
+                to_llvm_features(sess, feature)
+                    .into_iter()
+                    .map(move |f| format!("{}{}", enable_disable, f)),
+            )
+        })
+        .flatten();
+    features.extend(feats);
+
+    if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
+        sess.err(&format!(
+            "target features {} must all be enabled or disabled together",
+            f.join(", ")
+        ));
     }
 
-    features.extend(feats.into_iter().flat_map(|(enable_disable, feature)| {
-        // rustc-specific features do not get passed down to LLVM…
-        if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
-            return SmallVec::<[_; 2]>::new();
-        }
-        // ... otherwise though we run through `to_llvm_features` when
-        // passing requests down to LLVM. This means that all in-language
-        // features also work on the command line instead of having two
-        // different names when the LLVM name and the Rust name differ.
-        to_llvm_features(sess, feature)
-            .into_iter()
-            .map(|f| format!("{}{}", enable_disable, f))
-            .collect()
-    }));
     features
 }
 
@@ -534,22 +518,6 @@ fn backend_feature_name(s: &str) -> Option<&str> {
 }
 
 pub fn tune_cpu(sess: &Session) -> Option<&str> {
-    let name = sess.opts.debugging_opts.tune_cpu.as_ref()?;
+    let name = sess.opts.unstable_opts.tune_cpu.as_ref()?;
     Some(handle_native(name))
-}
-
-pub(crate) fn should_use_new_llvm_pass_manager(user_opt: &Option<bool>, target_arch: &str) -> bool {
-    // The new pass manager is enabled by default for LLVM >= 13.
-    // This matches Clang, which also enables it since Clang 13.
-
-    // Since LLVM 15, the legacy pass manager is no longer supported.
-    if llvm_util::get_version() >= (15, 0, 0) {
-        return true;
-    }
-
-    // There are some perf issues with the new pass manager when targeting
-    // s390x with LLVM 13, so enable the new pass manager only with LLVM 14.
-    // See https://github.com/rust-lang/rust/issues/89609.
-    let min_version = if target_arch == "s390x" { 14 } else { 13 };
-    user_opt.unwrap_or_else(|| llvm_util::get_version() >= (min_version, 0, 0))
 }

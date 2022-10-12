@@ -1,4 +1,4 @@
-error[E0507]: cannot move out of `s.0` which is behind a shared reference
+error[E0507]: cannot move out of `s` which is behind a shared reference
   --> $DIR/access-mode-in-closures.rs:8:15
    |
 LL |         match *s { S(v) => v }

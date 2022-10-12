@@ -1,10 +1,7 @@
-// FIXME(nll): this is experimental anyways, don't really care about the output
-// ignore-compare-mode-nll
 // revisions: base extended
 //[base] check-fail
 //[extended] check-pass
 
-#![feature(generic_associated_types)]
 #![cfg_attr(extended, feature(generic_associated_types_extended))]
 #![cfg_attr(extended, allow(incomplete_features))]
 
@@ -35,7 +32,6 @@ pub trait LendingIterator {
         Self: for<'q> LendingIterator<Item<'q> = A>,
     {
         <B as FromLendingIterator<A>>::from_iter(self)
-        //[base]~^ the parameter type
     }
 }
 

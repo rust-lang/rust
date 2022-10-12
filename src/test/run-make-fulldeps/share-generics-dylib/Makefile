@@ -9,7 +9,7 @@
 #
 # This is regression test for https://github.com/rust-lang/rust/issues/67276.
 
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 COMMON_ARGS=-Cprefer-dynamic -Zshare-generics=yes -Ccodegen-units=1 -Csymbol-mangling-version=v0
 

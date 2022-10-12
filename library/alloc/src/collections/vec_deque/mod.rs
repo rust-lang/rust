@@ -12,10 +12,16 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{repeat_with, FromIterator};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice;
+
+// This is used in a bunch of intra-doc links.
+// FIXME: For some reason, `#[cfg(doc)]` wasn't sufficient, resulting in
+// failures in linkchecker even though rustdoc built the docs just fine.
+#[allow(unused_imports)]
+use core::mem;
 
 use crate::alloc::{Allocator, Global};
 use crate::collections::TryReserveError;
@@ -177,7 +183,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Marginally more convenient
     #[inline]
     fn cap(&self) -> usize {
-        if mem::size_of::<T>() == 0 {
+        if T::IS_ZST {
             // For zero sized types, we are always at maximum capacity
             MAXIMUM_ZST_CAPACITY
         } else {
@@ -453,6 +459,25 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
+    /// Writes all values from `iter` to `dst`.
+    ///
+    /// # Safety
+    ///
+    /// Assumes no wrapping around happens.
+    /// Assumes capacity is sufficient.
+    #[inline]
+    unsafe fn write_iter(
+        &mut self,
+        dst: usize,
+        iter: impl Iterator<Item = T>,
+        written: &mut usize,
+    ) {
+        iter.enumerate().for_each(|(i, element)| unsafe {
+            self.buffer_write(dst + i, element);
+            *written += 1;
+        });
+    }
+
     /// Frobs the head and tail sections around to handle the fact that we
     /// just reallocated. Unsafe because it trusts old_capacity.
     #[inline]
@@ -669,7 +694,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.cap() - 1
     }
 
-    /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
+    /// Reserves the minimum capacity for at least `additional` more elements to be inserted in the
     /// given deque. Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it requests. Therefore
@@ -697,7 +722,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
-    /// deque. The collection may reserve more space to avoid frequent reallocations.
+    /// deque. The collection may reserve more space to speculatively avoid frequent reallocations.
     ///
     /// # Panics
     ///
@@ -729,10 +754,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Tries to reserve the minimum capacity for exactly `additional` more elements to
+    /// Tries to reserve the minimum capacity for at least `additional` more elements to
     /// be inserted in the given deque. After calling `try_reserve_exact`,
-    /// capacity will be greater than or equal to `self.len() + additional`.
-    /// Does nothing if the capacity is already sufficient.
+    /// capacity will be greater than or equal to `self.len() + additional` if
+    /// it returns `Ok(())`. Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore, capacity can not be relied upon to be precisely
@@ -772,10 +797,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given deque. The collection may reserve more space to avoid
+    /// in the given deque. The collection may reserve more space to speculatively avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
-    /// greater than or equal to `self.len() + additional`. Does nothing if
-    /// capacity is already sufficient.
+    /// greater than or equal to `self.len() + additional` if it returns
+    /// `Ok(())`. Does nothing if capacity is already sufficient. This method
+    /// preserves the contents even if an error occurs.
     ///
     /// # Errors
     ///
@@ -1314,9 +1340,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
             // it.  We do not write to `self` nor reborrow to a mutable reference.
             // Hence the raw pointer we created above, for `deque`, remains valid.
             let ring = self.buffer_as_slice();
-            let iter = Iter::new(ring, drain_tail, drain_head);
 
-            Drain::new(drain_head, head, iter, deque)
+            Drain::new(drain_head, head, ring, drain_tail, drain_head, deque)
         }
     }
 
@@ -2428,8 +2453,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
                     let mut right_offset = 0;
                     for i in left_edge..right_edge {
                         right_offset = (i - left_edge) % (cap - right_edge);
-                        let src: isize = (right_edge + right_offset) as isize;
-                        ptr::swap(buf.add(i), buf.offset(src));
+                        let src = right_edge + right_offset;
+                        ptr::swap(buf.add(i), buf.add(src));
                     }
                     let n_ops = right_edge - left_edge;
                     left_edge += n_ops;
@@ -3019,7 +3044,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
     fn from(mut other: Vec<T, A>) -> Self {
         let len = other.len();
-        if mem::size_of::<T>() == 0 {
+        if T::IS_ZST {
             // There's no actual allocation for ZSTs to worry about capacity,
             // but `VecDeque` can't handle as much length as `Vec`.
             assert!(len < MAXIMUM_ZST_CAPACITY, "capacity overflow");
@@ -3105,7 +3130,7 @@ impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
     fn from(arr: [T; N]) -> Self {
         let mut deq = VecDeque::with_capacity(N);
         let arr = ManuallyDrop::new(arr);
-        if mem::size_of::<T>() != 0 {
+        if !<T>::IS_ZST {
             // SAFETY: VecDeque::with_capacity ensures that there is enough capacity.
             unsafe {
                 ptr::copy_nonoverlapping(arr.as_ptr(), deq.ptr(), N);

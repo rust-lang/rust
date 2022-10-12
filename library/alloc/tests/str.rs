@@ -1010,11 +1010,11 @@ fn test_as_bytes_fail() {
 fn test_as_ptr() {
     let buf = "hello".as_ptr();
     unsafe {
-        assert_eq!(*buf.offset(0), b'h');
-        assert_eq!(*buf.offset(1), b'e');
-        assert_eq!(*buf.offset(2), b'l');
-        assert_eq!(*buf.offset(3), b'l');
-        assert_eq!(*buf.offset(4), b'o');
+        assert_eq!(*buf.add(0), b'h');
+        assert_eq!(*buf.add(1), b'e');
+        assert_eq!(*buf.add(2), b'l');
+        assert_eq!(*buf.add(3), b'l');
+        assert_eq!(*buf.add(4), b'o');
     }
 }
 

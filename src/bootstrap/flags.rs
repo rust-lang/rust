@@ -4,7 +4,6 @@
 //! has various flags to configure how it's run.
 
 use std::path::PathBuf;
-use std::process;
 
 use getopts::Options;
 
@@ -51,6 +50,7 @@ pub struct Flags {
     pub host: Option<Vec<TargetSelection>>,
     pub target: Option<Vec<TargetSelection>>,
     pub config: Option<PathBuf>,
+    pub build_dir: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
@@ -78,8 +78,11 @@ pub struct Flags {
     //
     // llvm_out/build/profiles/ is the location this writes to.
     pub llvm_profile_generate: bool,
+    pub llvm_bolt_profile_generate: bool,
+    pub llvm_bolt_profile_use: Option<String>,
 }
 
+#[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub enum Subcommand {
     Build {
@@ -91,6 +94,10 @@ pub enum Subcommand {
     Clippy {
         fix: bool,
         paths: Vec<PathBuf>,
+        clippy_lint_allow: Vec<String>,
+        clippy_lint_deny: Vec<String>,
+        clippy_lint_warn: Vec<String>,
+        clippy_lint_forbid: Vec<String>,
     },
     Fix {
         paths: Vec<PathBuf>,
@@ -102,6 +109,7 @@ pub enum Subcommand {
     Doc {
         paths: Vec<PathBuf>,
         open: bool,
+        json: bool,
     },
     Test {
         paths: Vec<PathBuf>,
@@ -111,7 +119,6 @@ pub enum Subcommand {
         compare_mode: Option<String>,
         pass: Option<String>,
         run: Option<String>,
-        skip: Vec<String>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
@@ -174,6 +181,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         opts.optflagmulti("v", "verbose", "use verbose output (-vv for very verbose)");
         opts.optflag("i", "incremental", "use incremental compilation");
         opts.optopt("", "config", "TOML configuration file for build", "FILE");
+        opts.optopt(
+            "",
+            "build-dir",
+            "Build directory, overrides `build.build-dir` in `config.toml`",
+            "DIR",
+        );
         opts.optopt("", "build", "build target of the stage0 compiler", "BUILD");
         opts.optmulti("", "host", "host targets to build", "HOST");
         opts.optmulti("", "target", "target targets to build", "TARGET");
@@ -240,6 +253,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         opts.optopt("", "rust-profile-use", "use PGO profile for rustc build", "PROFILE");
         opts.optflag("", "llvm-profile-generate", "generate PGO profile with llvm built for rustc");
         opts.optopt("", "llvm-profile-use", "use PGO profile for llvm build", "PROFILE");
+        opts.optmulti("A", "", "allow certain clippy lints", "OPT");
+        opts.optmulti("D", "", "deny certain clippy lints", "OPT");
+        opts.optmulti("W", "", "warn about certain clippy lints", "OPT");
+        opts.optmulti("F", "", "forbid certain clippy lints", "OPT");
+        opts.optflag("", "llvm-bolt-profile-generate", "generate BOLT profile for LLVM build");
+        opts.optopt("", "llvm-bolt-profile-use", "use BOLT profile for LLVM build", "PROFILE");
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
@@ -254,7 +273,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 // subcommand.
                 println!("{}\n", subcommand_help);
                 let exit_code = if args.is_empty() { 0 } else { 1 };
-                process::exit(exit_code);
+                crate::detail_exit(exit_code);
             }
         };
 
@@ -311,6 +330,11 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             }
             Kind::Doc => {
                 opts.optflag("", "open", "open the docs in a browser");
+                opts.optflag(
+                    "",
+                    "json",
+                    "render the documentation in JSON format in addition to the usual HTML format",
+                );
             }
             Kind::Clean => {
                 opts.optflag("", "all", "clean all build artifacts");
@@ -340,7 +364,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             } else if verbose {
                 panic!("No paths available for subcommand `{}`", subcommand.as_str());
             }
-            process::exit(exit_code);
+            crate::detail_exit(exit_code);
         };
 
         // Done specifying what options are possible, so do the getopts parsing
@@ -372,7 +396,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 "Sorry, I couldn't figure out which subcommand you were trying to specify.\n\
                  You may need to move some options to after the subcommand.\n"
             );
-            process::exit(1);
+            crate::detail_exit(1);
         }
         // Extra help text for some commands
         match subcommand {
@@ -452,7 +476,7 @@ Arguments:
         ./x.py test library/std --test-args hash_map
         ./x.py test library/std --stage 0 --no-doc
         ./x.py test src/test/ui --bless
-        ./x.py test src/test/ui --compare-mode nll
+        ./x.py test src/test/ui --compare-mode chalk
 
     Note that `test src/test/* --stage N` does NOT depend on `build compiler/rustc --stage N`;
     just like `build library/std --stage N` it tests the compiler produced by the previous
@@ -479,6 +503,7 @@ Arguments:
         ./x.py doc src/doc/book
         ./x.py doc src/doc/nomicon
         ./x.py doc src/doc/book library/std
+        ./x.py doc library/std --json
         ./x.py doc library/std --open
 
     If no arguments are passed then everything is documented:
@@ -538,7 +563,14 @@ Arguments:
                 }
                 Subcommand::Check { paths }
             }
-            Kind::Clippy => Subcommand::Clippy { paths, fix: matches.opt_present("fix") },
+            Kind::Clippy => Subcommand::Clippy {
+                paths,
+                fix: matches.opt_present("fix"),
+                clippy_lint_allow: matches.opt_strs("A"),
+                clippy_lint_warn: matches.opt_strs("W"),
+                clippy_lint_deny: matches.opt_strs("D"),
+                clippy_lint_forbid: matches.opt_strs("F"),
+            },
             Kind::Fix => Subcommand::Fix { paths },
             Kind::Test => Subcommand::Test {
                 paths,
@@ -547,7 +579,6 @@ Arguments:
                 compare_mode: matches.opt_str("compare-mode"),
                 pass: matches.opt_str("pass"),
                 run: matches.opt_str("run"),
-                skip: matches.opt_strs("skip"),
                 test_args: matches.opt_strs("test-args"),
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
@@ -561,7 +592,11 @@ Arguments:
                 },
             },
             Kind::Bench => Subcommand::Bench { paths, test_args: matches.opt_strs("test-args") },
-            Kind::Doc => Subcommand::Doc { paths, open: matches.opt_present("open") },
+            Kind::Doc => Subcommand::Doc {
+                paths,
+                open: matches.opt_present("open"),
+                json: matches.opt_present("json"),
+            },
             Kind::Clean => {
                 if !paths.is_empty() {
                     println!("\nclean does not take a path argument\n");
@@ -593,7 +628,7 @@ Arguments:
                         eprintln!("error: {}", err);
                         eprintln!("help: the available profiles are:");
                         eprint!("{}", Profile::all_for_help("- "));
-                        std::process::exit(1);
+                        crate::detail_exit(1);
                     })
                 } else {
                     t!(crate::setup::interactive_path())
@@ -601,15 +636,6 @@ Arguments:
                 Subcommand::Setup { profile }
             }
         };
-
-        if let Subcommand::Check { .. } = &cmd {
-            if matches.opt_str("keep-stage").is_some()
-                || matches.opt_str("keep-stage-std").is_some()
-            {
-                eprintln!("--keep-stage not yet supported for x.py check");
-                process::exit(1);
-            }
-        }
 
         Flags {
             verbose: matches.opt_count("verbose"),
@@ -649,6 +675,7 @@ Arguments:
                 None
             },
             config: matches.opt_str("config").map(PathBuf::from),
+            build_dir: matches.opt_str("build-dir").map(PathBuf::from),
             jobs: matches.opt_str("jobs").map(|j| j.parse().expect("`jobs` should be a number")),
             cmd,
             incremental: matches.opt_present("incremental"),
@@ -668,6 +695,8 @@ Arguments:
             rust_profile_generate: matches.opt_str("rust-profile-generate"),
             llvm_profile_use: matches.opt_str("llvm-profile-use"),
             llvm_profile_generate: matches.opt_present("llvm-profile-generate"),
+            llvm_bolt_profile_generate: matches.opt_present("llvm-bolt-profile-generate"),
+            llvm_bolt_profile_use: matches.opt_str("llvm-bolt-profile-use"),
         }
     }
 }
@@ -693,16 +722,6 @@ impl Subcommand {
 
     pub fn test_args(&self) -> Vec<&str> {
         let mut args = vec![];
-
-        match *self {
-            Subcommand::Test { ref skip, .. } => {
-                for s in skip {
-                    args.push("--skip");
-                    args.push(s.as_str());
-                }
-            }
-            _ => (),
-        };
 
         match *self {
             Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
@@ -785,6 +804,13 @@ impl Subcommand {
             _ => false,
         }
     }
+
+    pub fn json(&self) -> bool {
+        match *self {
+            Subcommand::Doc { json, .. } => json,
+            _ => false,
+        }
+    }
 }
 
 fn split(s: &[String]) -> Vec<String> {
@@ -797,7 +823,7 @@ fn parse_deny_warnings(matches: &getopts::Matches) -> Option<bool> {
         Some("warn") => Some(false),
         Some(value) => {
             eprintln!(r#"invalid value for --warnings: {:?}, expected "warn" or "deny""#, value,);
-            process::exit(1);
+            crate::detail_exit(1);
         }
         None => None,
     }

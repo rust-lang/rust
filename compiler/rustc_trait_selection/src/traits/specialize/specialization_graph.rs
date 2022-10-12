@@ -4,7 +4,7 @@ use crate::traits;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 
 pub use rustc_middle::traits::specialization_graph::*;
 

@@ -32,10 +32,16 @@ RUN add-apt-repository -y 'deb https://apt.dilos.org/dilos dilos2 main'
 ENV \
     AR_x86_64_fuchsia=x86_64-fuchsia-ar \
     CC_x86_64_fuchsia=x86_64-fuchsia-clang \
+    CFLAGS_x86_64_fuchsia="--target=x86_64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
     CXX_x86_64_fuchsia=x86_64-fuchsia-clang++ \
+    CXXFLAGS_x86_64_fuchsia="--target=x86_64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
+    LDFLAGS_x86_64_fuchsia="--target=x86_64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib" \
     AR_aarch64_fuchsia=aarch64-fuchsia-ar \
     CC_aarch64_fuchsia=aarch64-fuchsia-clang \
+    CFLAGS_aarch64_fuchsia="--target=aarch64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
     CXX_aarch64_fuchsia=aarch64-fuchsia-clang++ \
+    CXXFLAGS_aarch64_fuchsia="--target=aarch64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
+    LDFLAGS_aarch64_fuchsia="--target=aarch64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/lib" \
     AR_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-ar \
     CC_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-gcc \
     CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-g++ \
@@ -52,9 +58,9 @@ ENV \
     CFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
     CXX_x86_64_fortanix_unknown_sgx=clang++-11 \
     CXXFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
-    AR_i686_unknown_freebsd=i686-unknown-freebsd11-ar \
-    CC_i686_unknown_freebsd=i686-unknown-freebsd11-clang \
-    CXX_i686_unknown_freebsd=i686-unknown-freebsd11-clang++ \
+    AR_i686_unknown_freebsd=i686-unknown-freebsd12-ar \
+    CC_i686_unknown_freebsd=i686-unknown-freebsd12-clang \
+    CXX_i686_unknown_freebsd=i686-unknown-freebsd12-clang++ \
     CC=gcc-8 \
     CXX=g++-8
 
@@ -89,14 +95,14 @@ RUN sh /scripts/sccache.sh
 
 ENV CARGO_TARGET_X86_64_FUCHSIA_AR /usr/local/bin/llvm-ar
 ENV CARGO_TARGET_X86_64_FUCHSIA_RUSTFLAGS \
--C link-arg=--sysroot=/usr/local/x86_64-fuchsia \
--C link-arg=-L/usr/local/x86_64-fuchsia/lib \
--C link-arg=-L/usr/local/lib/x86_64-fuchsia/lib
+-C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot \
+-Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot/lib \
+-Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib
 ENV CARGO_TARGET_AARCH64_FUCHSIA_AR /usr/local/bin/llvm-ar
 ENV CARGO_TARGET_AARCH64_FUCHSIA_RUSTFLAGS \
--C link-arg=--sysroot=/usr/local/aarch64-fuchsia \
--C link-arg=-L/usr/local/aarch64-fuchsia/lib \
--C link-arg=-L/usr/local/lib/aarch64-fuchsia/lib
+-C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot \
+-Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot/lib \
+-Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/lib
 
 ENV TARGETS=x86_64-fuchsia
 ENV TARGETS=$TARGETS,aarch64-fuchsia
@@ -124,5 +130,7 @@ RUN ln -s /usr/include/asm-generic /usr/local/include/asm
 ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
   --set target.wasm32-wasi.wasi-root=/wasm32-wasi \
   --musl-root-armv7=/musl-armv7
+
+ENV EXTERNAL_LLVM 1
 
 ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS

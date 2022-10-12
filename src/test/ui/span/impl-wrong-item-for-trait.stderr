@@ -38,7 +38,7 @@ error[E0046]: not all trait items implemented, missing: `MY_CONST`
   --> $DIR/impl-wrong-item-for-trait.rs:19:1
    |
 LL |     const MY_CONST: u32;
-   |     -------------------- `MY_CONST` from trait
+   |     ------------------- `MY_CONST` from trait
 ...
 LL | impl Foo for FooMethodForConst {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `MY_CONST` in implementation

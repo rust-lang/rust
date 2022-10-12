@@ -1,0 +1,22 @@
+### What it does
+Checks for `.or(…).unwrap()` calls to Options and Results.
+
+### Why is this bad?
+You should use `.unwrap_or(…)` instead for clarity.
+
+### Example
+```
+// Result
+let value = result.or::<Error>(Ok(fallback)).unwrap();
+
+// Option
+let value = option.or(Some(fallback)).unwrap();
+```
+Use instead:
+```
+// Result
+let value = result.unwrap_or(fallback);
+
+// Option
+let value = option.unwrap_or(fallback);
+```

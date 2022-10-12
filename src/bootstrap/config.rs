@@ -3,7 +3,7 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -11,7 +11,7 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{exit, Command};
+use std::process::Command;
 use std::str::FromStr;
 
 use crate::builder::{Builder, TaskPath};
@@ -72,6 +72,9 @@ pub struct Config {
     pub test_compare_mode: bool,
     pub color: Color,
     pub patch_binaries_for_nix: bool,
+    pub stage0_metadata: Stage0Metadata,
+    /// Whether to use the `c` feature of the `compiler_builtins` crate.
+    pub optimized_compiler_builtins: bool,
 
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -158,6 +161,8 @@ pub struct Config {
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
+    pub llvm_bolt_profile_generate: bool,
+    pub llvm_bolt_profile_use: Option<String>,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -204,8 +209,48 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
-    pub initial_rustfmt: Option<PathBuf>,
+    #[cfg(not(test))]
+    initial_rustfmt: RefCell<RustfmtState>,
+    #[cfg(test)]
+    pub initial_rustfmt: RefCell<RustfmtState>,
     pub out: PathBuf,
+}
+
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct Stage0Metadata {
+    pub config: Stage0Config,
+    pub checksums_sha256: HashMap<String, String>,
+    pub rustfmt: Option<RustfmtMetadata>,
+}
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct Stage0Config {
+    pub dist_server: String,
+    pub artifacts_server: String,
+    pub artifacts_with_llvm_assertions_server: String,
+    pub git_merge_commit_email: String,
+    pub nightly_branch: String,
+}
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct RustfmtMetadata {
+    pub date: String,
+    pub version: String,
+}
+
+#[derive(Clone, Debug)]
+pub enum RustfmtState {
+    SystemToolchain(PathBuf),
+    Downloaded(PathBuf),
+    Unavailable,
+    LazyEvaluated,
+}
+
+impl Default for RustfmtState {
+    fn default() -> Self {
+        RustfmtState::LazyEvaluated
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -347,6 +392,7 @@ impl PartialEq<&str> for TargetSelection {
 pub struct Target {
     /// Some(path to llvm-config) if using an external LLVM.
     pub llvm_config: Option<PathBuf>,
+    pub llvm_has_rust_patches: Option<bool>,
     /// Some(path to FileCheck) if one was specified.
     pub llvm_filecheck: Option<PathBuf>,
     pub llvm_libunwind: Option<LlvmLibunwind>,
@@ -370,7 +416,11 @@ pub struct Target {
 impl Target {
     pub fn from_triple(triple: &str) -> Self {
         let mut target: Self = Default::default();
-        if triple.contains("-none") || triple.contains("nvptx") {
+        if triple.contains("-none")
+            || triple.contains("nvptx")
+            || triple.contains("switch")
+            || triple.contains("-uefi")
+        {
             target.no_std = true;
         }
         target
@@ -550,6 +600,8 @@ define_config! {
         dist_stage: Option<u32> = "dist-stage",
         bench_stage: Option<u32> = "bench-stage",
         patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
+        metrics: Option<bool> = "metrics",
+        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
     }
 }
 
@@ -687,6 +739,7 @@ define_config! {
         default_linker: Option<PathBuf> = "default-linker",
         linker: Option<String> = "linker",
         llvm_config: Option<String> = "llvm-config",
+        llvm_has_rust_patches: Option<bool> = "llvm-has-rust-patches",
         llvm_filecheck: Option<String> = "llvm-filecheck",
         llvm_libunwind: Option<String> = "llvm-libunwind",
         android_ndk: Option<String> = "android-ndk",
@@ -724,21 +777,20 @@ impl Config {
 
         // set by build.rs
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
+
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         // Undo `src/bootstrap`
         config.src = manifest_dir.parent().unwrap().parent().unwrap().to_owned();
         config.out = PathBuf::from("build");
-
-        config.initial_cargo = PathBuf::from(env!("CARGO"));
-        config.initial_rustc = PathBuf::from(env!("RUSTC"));
 
         config
     }
 
     pub fn parse(args: &[String]) -> Config {
         let flags = Flags::parse(&args);
-
         let mut config = Config::default_opts();
+
+        // Set flags.
         config.exclude = flags.exclude.into_iter().map(|path| TaskPath::parse(path)).collect();
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
@@ -756,13 +808,74 @@ impl Config {
         }
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
+        config.llvm_bolt_profile_generate = flags.llvm_bolt_profile_generate;
+        config.llvm_bolt_profile_use = flags.llvm_bolt_profile_use;
+
+        if config.llvm_bolt_profile_generate && config.llvm_bolt_profile_use.is_some() {
+            eprintln!(
+                "Cannot use both `llvm_bolt_profile_generate` and `llvm_bolt_profile_use` at the same time"
+            );
+            crate::detail_exit(1);
+        }
+
+        // Infer the rest of the configuration.
+
+        // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
+        // running on a completely machine from where it was compiled.
+        let mut cmd = Command::new("git");
+        // NOTE: we cannot support running from outside the repository because the only path we have available
+        // is set at compile time, which can be wrong if bootstrap was downloaded from source.
+        // We still support running outside the repository if we find we aren't in a git directory.
+        cmd.arg("rev-parse").arg("--show-toplevel");
+        // Discard stderr because we expect this to fail when building from a tarball.
+        let output = cmd
+            .stderr(std::process::Stdio::null())
+            .output()
+            .ok()
+            .and_then(|output| if output.status.success() { Some(output) } else { None });
+        if let Some(output) = output {
+            let git_root = String::from_utf8(output.stdout).unwrap();
+            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes.
+            let git_root = PathBuf::from(git_root.trim()).canonicalize().unwrap();
+            let s = git_root.to_str().unwrap();
+
+            // Bootstrap is quite bad at handling /? in front of paths
+            let src = match s.strip_prefix("\\\\?\\") {
+                Some(p) => PathBuf::from(p),
+                None => PathBuf::from(git_root),
+            };
+            // If this doesn't have at least `stage0.json`, we guessed wrong. This can happen when,
+            // for example, the build directory is inside of another unrelated git directory.
+            // In that case keep the original `CARGO_MANIFEST_DIR` handling.
+            //
+            // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
+            // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
+            if src.join("src").join("stage0.json").exists() {
+                config.src = src;
+            }
+        } else {
+            // We're building from a tarball, not git sources.
+            // We don't support pre-downloaded bootstrap in this case.
+        }
+
+        if cfg!(test) {
+            // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
+            config.out = Path::new(
+                &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
+            )
+            .parent()
+            .unwrap()
+            .to_path_buf();
+        }
+
+        let stage0_json = t!(std::fs::read(&config.src.join("src").join("stage0.json")));
+
+        config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
 
         #[cfg(test)]
         let get_toml = |_| TomlConfig::default();
         #[cfg(not(test))]
         let get_toml = |file: &Path| {
-            use std::process;
-
             let contents =
                 t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
             // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
@@ -773,7 +886,7 @@ impl Config {
                 Ok(table) => table,
                 Err(err) => {
                     eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
-                    process::exit(2);
+                    crate::detail_exit(2);
                 }
             }
         };
@@ -812,8 +925,7 @@ impl Config {
 
         let build = toml.build.unwrap_or_default();
 
-        set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
-        set(&mut config.out, build.build_dir.map(PathBuf::from));
+        set(&mut config.out, flags.build_dir.or_else(|| build.build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
         if !config.out.is_absolute() {
@@ -821,6 +933,16 @@ impl Config {
             config.out = crate::util::absolute(&config.out);
         }
 
+        config.initial_rustc = build
+            .rustc
+            .map(PathBuf::from)
+            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/rustc"));
+        config.initial_cargo = build
+            .cargo
+            .map(PathBuf::from)
+            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/cargo"));
+
+        // NOTE: it's important this comes *after* we set `initial_rustc` just above.
         if config.dry_run {
             let dir = config.out.join("tmp-dry-run");
             t!(fs::create_dir_all(&dir));
@@ -858,9 +980,6 @@ impl Config {
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
         config.tools = build.tools;
-        if build.rustfmt.is_some() {
-            config.initial_rustfmt = build.rustfmt;
-        }
         set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.profiler, build.profiler);
@@ -870,6 +989,7 @@ impl Config {
         set(&mut config.print_step_timings, build.print_step_timings);
         set(&mut config.print_step_rusage, build.print_step_rusage);
         set(&mut config.patch_binaries_for_nix, build.patch_binaries_for_nix);
+        set(&mut config.optimized_compiler_builtins, build.optimized_compiler_builtins);
 
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
@@ -946,42 +1066,7 @@ impl Config {
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
-                    // This is currently all tier 1 targets and tier 2 targets with host tools
-                    // (since others may not have CI artifacts)
-                    // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
-                    // FIXME: this is duplicated in bootstrap.py
-                    let supported_platforms = [
-                        // tier 1
-                        "aarch64-unknown-linux-gnu",
-                        "i686-pc-windows-gnu",
-                        "i686-pc-windows-msvc",
-                        "i686-unknown-linux-gnu",
-                        "x86_64-unknown-linux-gnu",
-                        "x86_64-apple-darwin",
-                        "x86_64-pc-windows-gnu",
-                        "x86_64-pc-windows-msvc",
-                        // tier 2 with host tools
-                        "aarch64-apple-darwin",
-                        "aarch64-pc-windows-msvc",
-                        "aarch64-unknown-linux-musl",
-                        "arm-unknown-linux-gnueabi",
-                        "arm-unknown-linux-gnueabihf",
-                        "armv7-unknown-linux-gnueabihf",
-                        "mips-unknown-linux-gnu",
-                        "mips64-unknown-linux-gnuabi64",
-                        "mips64el-unknown-linux-gnuabi64",
-                        "mipsel-unknown-linux-gnu",
-                        "powerpc-unknown-linux-gnu",
-                        "powerpc64-unknown-linux-gnu",
-                        "powerpc64le-unknown-linux-gnu",
-                        "riscv64gc-unknown-linux-gnu",
-                        "s390x-unknown-linux-gnu",
-                        "x86_64-unknown-freebsd",
-                        "x86_64-unknown-illumos",
-                        "x86_64-unknown-linux-musl",
-                        "x86_64-unknown-netbsd",
-                    ];
-                    supported_platforms.contains(&&*config.build.triple)
+                    crate::native::is_ci_llvm_available(&config, llvm_assertions.unwrap_or(false))
                 }
                 Some(StringOrBool::Bool(b)) => b,
                 None => false,
@@ -1087,8 +1172,7 @@ impl Config {
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
-            config.download_rustc_commit =
-                download_ci_rustc_commit(rust.download_rustc, config.verbose > 0);
+            config.download_rustc_commit = download_ci_rustc_commit(&config, rust.download_rustc);
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
@@ -1101,6 +1185,7 @@ impl Config {
                 if let Some(ref s) = cfg.llvm_config {
                     target.llvm_config = Some(config.src.join(s));
                 }
+                target.llvm_has_rust_patches = cfg.llvm_has_rust_patches;
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }
@@ -1133,6 +1218,7 @@ impl Config {
 
         if config.llvm_from_ci {
             let triple = &config.build.triple;
+            let ci_llvm_bin = config.ci_llvm_root().join("bin");
             let mut build_target = config
                 .target_config
                 .entry(config.build)
@@ -1140,7 +1226,6 @@ impl Config {
 
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
-            let ci_llvm_bin = config.out.join(&*config.build.triple).join("ci-llvm/bin");
             build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", config.build)));
             build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", config.build)));
         }
@@ -1153,18 +1238,22 @@ impl Config {
             set(&mut config.missing_tools, t.missing_tools);
         }
 
-        config.initial_rustfmt = config.initial_rustfmt.or_else({
-            let build = config.build;
-            let initial_rustc = &config.initial_rustc;
-
-            move || {
-                // Cargo does not provide a RUSTFMT environment variable, so we
-                // synthesize it manually.
-                let rustfmt = initial_rustc.with_file_name(exe("rustfmt", build));
-
-                if rustfmt.exists() { Some(rustfmt) } else { None }
+        if let Some(r) = build.rustfmt {
+            *config.initial_rustfmt.borrow_mut() = if r.exists() {
+                RustfmtState::SystemToolchain(r)
+            } else {
+                RustfmtState::Unavailable
+            };
+        } else {
+            // If using a system toolchain for bootstrapping, see if that has rustfmt available.
+            let host = config.build;
+            let rustfmt_path = config.initial_rustc.with_file_name(exe("rustfmt", host));
+            let bin_root = config.out.join(host.triple).join("stage0");
+            if !rustfmt_path.starts_with(&bin_root) {
+                // Using a system-provided toolchain; we shouldn't download rustfmt.
+                *config.initial_rustfmt.borrow_mut() = RustfmtState::SystemToolchain(rustfmt_path);
             }
-        });
+        }
 
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
@@ -1256,6 +1345,33 @@ impl Config {
         config
     }
 
+    /// A git invocation which runs inside the source directory.
+    ///
+    /// Use this rather than `Command::new("git")` in order to support out-of-tree builds.
+    pub(crate) fn git(&self) -> Command {
+        let mut git = Command::new("git");
+        git.current_dir(&self.src);
+        git
+    }
+
+    pub(crate) fn artifact_channel(&self, builder: &Builder<'_>, commit: &str) -> String {
+        if builder.rust_info.is_managed_git_subrepository() {
+            let mut channel = self.git();
+            channel.arg("show").arg(format!("{}:src/ci/channel", commit));
+            let channel = output(&mut channel);
+            channel.trim().to_owned()
+        } else if let Ok(channel) = fs::read_to_string(builder.src.join("src/ci/channel")) {
+            channel.trim().to_owned()
+        } else {
+            let src = builder.src.display();
+            eprintln!("error: failed to determine artifact channel");
+            eprintln!(
+                "help: either use git or ensure that {src}/src/ci/channel contains the name of the channel to use"
+            );
+            panic!();
+        }
+    }
+
     /// Try to find the relative path of `bindir`, otherwise return it in full.
     pub fn bindir_relative(&self) -> &Path {
         let bindir = &self.bindir;
@@ -1334,6 +1450,25 @@ impl Config {
         })
     }
 
+    pub(crate) fn initial_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
+        match &mut *builder.config.initial_rustfmt.borrow_mut() {
+            RustfmtState::SystemToolchain(p) | RustfmtState::Downloaded(p) => Some(p.clone()),
+            RustfmtState::Unavailable => None,
+            r @ RustfmtState::LazyEvaluated => {
+                if builder.config.dry_run {
+                    return Some(PathBuf::new());
+                }
+                let path = maybe_download_rustfmt(builder);
+                *r = if let Some(p) = &path {
+                    RustfmtState::Downloaded(p.clone())
+                } else {
+                    RustfmtState::Unavailable
+                };
+                path
+            }
+        }
+    }
+
     pub fn verbose(&self) -> bool {
         self.verbose > 0
     }
@@ -1363,11 +1498,15 @@ impl Config {
             .get(&target)
             .and_then(|t| t.llvm_libunwind)
             .or(self.llvm_libunwind_default)
-            .unwrap_or(LlvmLibunwind::No)
+            .unwrap_or(if target.contains("fuchsia") {
+                LlvmLibunwind::InTree
+            } else {
+                LlvmLibunwind::No
+            })
     }
 
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
-        self.submodules.unwrap_or(rust_info.is_git())
+        self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
     }
 }
 
@@ -1385,7 +1524,10 @@ fn threads_from_config(v: u32) -> u32 {
 }
 
 /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
-fn download_ci_rustc_commit(download_rustc: Option<StringOrBool>, verbose: bool) -> Option<String> {
+fn download_ci_rustc_commit(
+    config: &Config,
+    download_rustc: Option<StringOrBool>,
+) -> Option<String> {
     // If `download-rustc` is not set, default to rebuilding.
     let if_unchanged = match download_rustc {
         None | Some(StringOrBool::Bool(false)) => return None,
@@ -1397,37 +1539,38 @@ fn download_ci_rustc_commit(download_rustc: Option<StringOrBool>, verbose: bool)
     };
 
     // Handle running from a directory other than the top level
-    let top_level = output(Command::new("git").args(&["rev-parse", "--show-toplevel"]));
+    let top_level = output(config.git().args(&["rev-parse", "--show-toplevel"]));
     let top_level = top_level.trim_end();
     let compiler = format!("{top_level}/compiler/");
     let library = format!("{top_level}/library/");
 
     // Look for a version to compare to based on the current commit.
     // Only commits merged by bors will have CI artifacts.
-    let merge_base = output(Command::new("git").args(&[
-        "rev-list",
-        "--author=bors@rust-lang.org",
-        "-n1",
-        "--first-parent",
-        "HEAD",
-    ]));
+    let merge_base = output(
+        config
+            .git()
+            .arg("rev-list")
+            .arg(format!("--author={}", config.stage0_metadata.config.git_merge_commit_email))
+            .args(&["-n1", "--first-parent", "HEAD"]),
+    );
     let commit = merge_base.trim_end();
     if commit.is_empty() {
         println!("error: could not find commit hash for downloading rustc");
         println!("help: maybe your repository history is too shallow?");
         println!("help: consider disabling `download-rustc`");
         println!("help: or fetch enough history to include one upstream commit");
-        exit(1);
+        crate::detail_exit(1);
     }
 
     // Warn if there were changes to the compiler or standard library since the ancestor commit.
-    let has_changes = !t!(Command::new("git")
+    let has_changes = !t!(config
+        .git()
         .args(&["diff-index", "--quiet", &commit, "--", &compiler, &library])
         .status())
     .success();
     if has_changes {
         if if_unchanged {
-            if verbose {
+            if config.verbose > 0 {
                 println!(
                     "warning: saw changes to compiler/ or library/ since {commit}; \
                           ignoring `download-rustc`"
@@ -1444,10 +1587,31 @@ fn download_ci_rustc_commit(download_rustc: Option<StringOrBool>, verbose: bool)
     Some(commit.to_string())
 }
 
+fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
+    let RustfmtMetadata { date, version } = builder.config.stage0_metadata.rustfmt.as_ref()?;
+    let channel = format!("{version}-{date}");
+
+    let host = builder.config.build;
+    let rustfmt_path = builder.config.initial_rustc.with_file_name(exe("rustfmt", host));
+    let bin_root = builder.config.out.join(host.triple).join("stage0");
+    let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
+    if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
+        return Some(rustfmt_path);
+    }
+
+    let filename = format!("rustfmt-{version}-{build}.tar.xz", build = host.triple);
+    download_component(builder, DownloadSource::Dist, filename, "rustfmt-preview", &date, "stage0");
+
+    builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
+    builder.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
+
+    builder.create(&rustfmt_stamp, &channel);
+    Some(rustfmt_path)
+}
+
 fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     builder.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
-    // FIXME: support downloading artifacts from the beta channel
-    const CHANNEL: &str = "nightly";
+    let channel = builder.config.artifact_channel(builder, commit);
     let host = builder.config.build.triple;
     let bin_root = builder.out.join(host).join("ci-rustc");
     let rustc_stamp = bin_root.join(".rustc-stamp");
@@ -1456,19 +1620,19 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
         if bin_root.exists() {
             t!(fs::remove_dir_all(&bin_root));
         }
-        let filename = format!("rust-std-{CHANNEL}-{host}.tar.xz");
+        let filename = format!("rust-std-{channel}-{host}.tar.xz");
         let pattern = format!("rust-std-{host}");
-        download_component(builder, filename, &pattern, commit);
-        let filename = format!("rustc-{CHANNEL}-{host}.tar.xz");
-        download_component(builder, filename, "rustc", commit);
+        download_ci_component(builder, filename, &pattern, commit);
+        let filename = format!("rustc-{channel}-{host}.tar.xz");
+        download_ci_component(builder, filename, "rustc", commit);
         // download-rustc doesn't need its own cargo, it can just use beta's.
-        let filename = format!("rustc-dev-{CHANNEL}-{host}.tar.xz");
-        download_component(builder, filename, "rustc-dev", commit);
+        let filename = format!("rustc-dev-{channel}-{host}.tar.xz");
+        download_ci_component(builder, filename, "rustc-dev", commit);
 
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
         let lib_dir = bin_root.join("lib");
-        for lib in t!(fs::read_dir(lib_dir)) {
+        for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
             let lib = t!(lib);
             if lib.path().extension() == Some(OsStr::new("so")) {
                 builder.fix_bin_or_dylib(&lib.path());
@@ -1478,21 +1642,84 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     }
 }
 
+pub(crate) enum DownloadSource {
+    CI,
+    Dist,
+}
+
 /// Download a single component of a CI-built toolchain (not necessarily a published nightly).
 // NOTE: intentionally takes an owned string to avoid downloading multiple times by accident
-fn download_component(builder: &Builder<'_>, filename: String, prefix: &str, commit: &str) {
+fn download_ci_component(builder: &Builder<'_>, filename: String, prefix: &str, commit: &str) {
+    download_component(builder, DownloadSource::CI, filename, prefix, commit, "ci-rustc")
+}
+
+fn download_component(
+    builder: &Builder<'_>,
+    mode: DownloadSource,
+    filename: String,
+    prefix: &str,
+    key: &str,
+    destination: &str,
+) {
     let cache_dst = builder.out.join("cache");
-    let rustc_cache = cache_dst.join(commit);
-    if !rustc_cache.exists() {
-        t!(fs::create_dir_all(&rustc_cache));
+    let cache_dir = cache_dst.join(key);
+    if !cache_dir.exists() {
+        t!(fs::create_dir_all(&cache_dir));
     }
 
-    let base = "https://ci-artifacts.rust-lang.org";
-    let url = format!("rustc-builds/{commit}");
-    let tarball = rustc_cache.join(&filename);
-    if !tarball.exists() {
-        builder.download_component(base, &format!("{url}/{filename}"), &tarball, "");
+    let bin_root = builder.out.join(builder.config.build.triple).join(destination);
+    let tarball = cache_dir.join(&filename);
+    let (base_url, url, should_verify) = match mode {
+        DownloadSource::CI => (
+            builder.config.stage0_metadata.config.artifacts_server.clone(),
+            format!("{key}/{filename}"),
+            false,
+        ),
+        DownloadSource::Dist => {
+            let dist_server = env::var("RUSTUP_DIST_SERVER")
+                .unwrap_or(builder.config.stage0_metadata.config.dist_server.to_string());
+            // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
+            (dist_server, format!("dist/{key}/{filename}"), true)
+        }
+    };
+
+    // For the beta compiler, put special effort into ensuring the checksums are valid.
+    // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
+    // this on each and every nightly ...
+    let checksum = if should_verify {
+        let error = format!(
+            "src/stage0.json doesn't contain a checksum for {url}. \
+            Pre-built artifacts might not be available for this \
+            target at this time, see https://doc.rust-lang.org/nightly\
+            /rustc/platform-support.html for more information."
+        );
+        let sha256 = builder.config.stage0_metadata.checksums_sha256.get(&url).expect(&error);
+        if tarball.exists() {
+            if builder.verify(&tarball, sha256) {
+                builder.unpack(&tarball, &bin_root, prefix);
+                return;
+            } else {
+                builder.verbose(&format!(
+                    "ignoring cached file {} due to failed verification",
+                    tarball.display()
+                ));
+                builder.remove(&tarball);
+            }
+        }
+        Some(sha256)
+    } else if tarball.exists() {
+        builder.unpack(&tarball, &bin_root, prefix);
+        return;
+    } else {
+        None
+    };
+
+    builder.download_component(&format!("{base_url}/{url}"), &tarball, "");
+    if let Some(sha256) = checksum {
+        if !builder.verify(&tarball, sha256) {
+            panic!("failed to verify {}", tarball.display());
+        }
     }
-    let bin_root = builder.out.join(builder.config.build.triple).join("ci-rustc");
-    builder.unpack(&tarball, &bin_root, prefix)
+
+    builder.unpack(&tarball, &bin_root, prefix);
 }

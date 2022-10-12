@@ -1,0 +1,23 @@
+### What it does
+Checks for boolean expressions that can be written more
+concisely.
+
+### Why is this bad?
+Readability of boolean expressions suffers from
+unnecessary duplication.
+
+### Known problems
+Ignores short circuiting behavior of `||` and
+`&&`. Ignores `|`, `&` and `^`.
+
+### Example
+```
+if a && true {}
+if !(a == b) {}
+```
+
+Use instead:
+```
+if a {}
+if a != b {}
+```

@@ -1,6 +1,7 @@
 // run-pass
 
 #![feature(const_eval_select)]
+#![feature(core_intrinsics)]
 
 use std::intrinsics::const_eval_select;
 

@@ -50,13 +50,13 @@ error: arguments should be non-negative integers
 LL | #[rustc_legacy_const_generics(1, a, 2, b)]
    |                                  ^     ^
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:18:1
    |
 LL | #[rustc_legacy_const_generics(0)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL | struct S;
-   | --------- not a function
+   | --------- not a function definition
 
 error: #[rustc_legacy_const_generics] functions must only have const generics
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:29:1
@@ -66,21 +66,21 @@ LL | #[rustc_legacy_const_generics(0)]
 LL | fn foo8<X>() {}
    |         - non-const generic parameter
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:33:5
    |
 LL |     #[rustc_legacy_const_generics(0)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     fn foo9<const X: usize>() {}
-   |     ---------------------------- not a function
+   |     ---------------------------- not a function definition
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:25:5
    |
 LL |     #[rustc_legacy_const_generics(1)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     fn foo7<const X: usize>();
-   |     -------------------------- not a function
+   |     -------------------------- not a function definition
 
 error[E0044]: foreign items may not have const parameters
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:26:5

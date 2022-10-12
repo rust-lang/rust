@@ -5,6 +5,7 @@ use crate::vec::Vec;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
+use std::ops::Bound::{Excluded, Included};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 #[test]
@@ -830,4 +831,26 @@ fn from_array() {
     let set = BTreeSet::from([1, 2, 3, 4]);
     let unordered_duplicates = BTreeSet::from([4, 1, 4, 3, 2]);
     assert_eq!(set, unordered_duplicates);
+}
+
+#[should_panic(expected = "range start is greater than range end in BTreeSet")]
+#[test]
+fn test_range_panic_1() {
+    let mut set = BTreeSet::new();
+    set.insert(3);
+    set.insert(5);
+    set.insert(8);
+
+    let _invalid_range = set.range((Included(&8), Included(&3)));
+}
+
+#[should_panic(expected = "range start and end are equal and excluded in BTreeSet")]
+#[test]
+fn test_range_panic_2() {
+    let mut set = BTreeSet::new();
+    set.insert(3);
+    set.insert(5);
+    set.insert(8);
+
+    let _invalid_range = set.range((Excluded(&5), Excluded(&5)));
 }

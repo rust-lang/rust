@@ -1,0 +1,23 @@
+### What it does
+Checks for use of `Box<T>` where T is a collection such as Vec anywhere in the code.
+Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
+
+### Why is this bad?
+Collections already keeps their contents in a separate area on
+the heap. So if you `Box` them, you just add another level of indirection
+without any benefit whatsoever.
+
+### Example
+```
+struct X {
+    values: Box<Vec<Foo>>,
+}
+```
+
+Better:
+
+```
+struct X {
+    values: Vec<Foo>,
+}
+```

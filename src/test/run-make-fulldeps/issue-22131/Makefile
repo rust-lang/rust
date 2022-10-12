@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: foo.rs
 	$(RUSTC) --cfg 'feature="bar"' --crate-type lib foo.rs

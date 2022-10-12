@@ -60,6 +60,12 @@ declare_clippy_lint! {
     /// let x = "Hello".to_owned();
     /// x + ", World";
     /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let mut x = "Hello".to_owned();
+    /// x.push_str(", World");
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub STRING_ADD,
     restriction,
@@ -99,11 +105,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let bs = "a byte string".as_bytes();
+    /// let bstr = "a byte string".as_bytes();
+    /// ```
     ///
-    /// // Good
-    /// let bs = b"a byte string";
+    /// Use instead:
+    /// ```rust
+    /// let bstr = b"a byte string";
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub STRING_LIT_AS_BYTES,
@@ -223,11 +230,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// let _ = std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
+    /// std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
     /// ```
-    /// could be written as
+    ///
+    /// Use instead:
     /// ```rust
-    /// let _ = &"Hello World!"[6..11];
+    /// &"Hello World!"[6..11];
     /// ```
     #[clippy::version = "1.50.0"]
     pub STRING_FROM_UTF8_AS_BYTES,
@@ -254,7 +262,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             let (method_names, expressions, _) = method_calls(left, 1);
             if method_names.len() == 1;
             if expressions.len() == 1;
-            if expressions[0].len() == 1;
+            if expressions[0].1.is_empty();
             if method_names[0] == sym!(as_bytes);
 
             // Check for slicer
@@ -262,7 +270,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
-                let string_expression = &expressions[0][0];
+                let string_expression = &expressions[0].0;
 
                 let snippet_app = snippet_with_applicability(
                     cx,
@@ -276,19 +284,19 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                     e.span,
                     "calling a slice of `as_bytes()` with `from_utf8` should be not necessary",
                     "try",
-                    format!("Some(&{}[{}])", snippet_app, snippet(cx, right.span, "..")),
+                    format!("Some(&{snippet_app}[{}])", snippet(cx, right.span, "..")),
                     applicability
                 )
             }
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(path, args, _) = &e.kind;
+            if let ExprKind::MethodCall(path, receiver, ..) = &e.kind;
             if path.ident.name == sym!(as_bytes);
-            if let ExprKind::Lit(lit) = &args[0].kind;
+            if let ExprKind::Lit(lit) = &receiver.kind;
             if let LitKind::Str(lit_content, _) = &lit.node;
             then {
-                let callsite = snippet(cx, args[0].span.source_callsite(), r#""foo""#);
+                let callsite = snippet(cx, receiver.span.source_callsite(), r#""foo""#);
                 let mut applicability = Applicability::MachineApplicable;
                 if callsite.starts_with("include_str!") {
                     span_lint_and_sugg(
@@ -297,7 +305,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                         e.span,
                         "calling `as_bytes()` on `include_str!(..)`",
                         "consider using `include_bytes!(..)` instead",
-                        snippet_with_applicability(cx, args[0].span, r#""foo""#, &mut applicability).replacen(
+                        snippet_with_applicability(cx, receiver.span, r#""foo""#, &mut applicability).replacen(
                             "include_str",
                             "include_bytes",
                             1,
@@ -306,7 +314,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                     );
                 } else if lit_content.as_str().is_ascii()
                     && lit_content.as_str().len() <= MAX_LENGTH_BYTE_STRING_LIT
-                    && !args[0].span.from_expansion()
+                    && !receiver.span.from_expansion()
                 {
                     span_lint_and_sugg(
                         cx,
@@ -316,7 +324,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                         "consider using a byte string literal instead",
                         format!(
                             "b{}",
-                            snippet_with_applicability(cx, args[0].span, r#""foo""#, &mut applicability)
+                            snippet_with_applicability(cx, receiver.span, r#""foo""#, &mut applicability)
                         ),
                         applicability,
                     );
@@ -325,9 +333,9 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(path, [recv], _) = &e.kind;
+            if let ExprKind::MethodCall(path, recv, [], _) = &e.kind;
             if path.ident.name == sym!(into_bytes);
-            if let ExprKind::MethodCall(path, [recv], _) = &recv.kind;
+            if let ExprKind::MethodCall(path, recv, [], _) = &recv.kind;
             if matches!(path.ident.name.as_str(), "to_owned" | "to_string");
             if let ExprKind::Lit(lit) = &recv.kind;
             if let LitKind::Str(lit_content, _) = &lit.node;
@@ -385,8 +393,8 @@ declare_lint_pass!(StrToString => [STR_TO_STRING]);
 impl<'tcx> LateLintPass<'tcx> for StrToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
-            if path.ident.name == sym!(to_string);
+            if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind;
+            if path.ident.name == sym::to_string;
             let ty = cx.typeck_results().expr_ty(self_arg);
             if let ty::Ref(_, ty, ..) = ty.kind();
             if *ty.kind() == ty::Str;
@@ -435,8 +443,8 @@ declare_lint_pass!(StringToString => [STRING_TO_STRING]);
 impl<'tcx> LateLintPass<'tcx> for StringToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
-            if path.ident.name == sym!(to_string);
+            if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind;
+            if path.ident.name == sym::to_string;
             let ty = cx.typeck_results().expr_ty(self_arg);
             if is_type_diagnostic_item(cx, ty, sym::String);
             then {
@@ -479,11 +487,11 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         let tyckres = cx.typeck_results();
         if_chain! {
-            if let ExprKind::MethodCall(path, [split_recv], split_ws_span) = expr.kind;
+            if let ExprKind::MethodCall(path, split_recv, [], split_ws_span) = expr.kind;
             if path.ident.name == sym!(split_whitespace);
             if let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id);
             if cx.tcx.is_diagnostic_item(sym::str_split_whitespace, split_ws_def_id);
-            if let ExprKind::MethodCall(path, [_trim_recv], trim_span) = split_recv.kind;
+            if let ExprKind::MethodCall(path, _trim_recv, [], trim_span) = split_recv.kind;
             if let trim_fn_name @ ("trim" | "trim_start" | "trim_end") = path.ident.name.as_str();
             if let Some(trim_def_id) = tyckres.type_dependent_def_id(split_recv.hir_id);
             if is_one_of_trim_diagnostic_items(cx, trim_def_id);
@@ -492,8 +500,8 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
                     cx,
                     TRIM_SPLIT_WHITESPACE,
                     trim_span.with_hi(split_ws_span.lo()),
-                    &format!("found call to `str::{}` before `str::split_whitespace`", trim_fn_name),
-                    &format!("remove `{}()`", trim_fn_name),
+                    &format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
+                    &format!("remove `{trim_fn_name}()`"),
                     String::new(),
                     Applicability::MachineApplicable,
                 );

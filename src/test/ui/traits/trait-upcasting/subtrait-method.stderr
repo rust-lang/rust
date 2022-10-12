@@ -2,7 +2,7 @@ error[E0599]: no method named `c` found for reference `&dyn Bar` in the current 
   --> $DIR/subtrait-method.rs:56:9
    |
 LL |     bar.c();
-   |         ^ help: there is an associated function with a similar name: `a`
+   |         ^ help: there is a method with a similar name: `a`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Baz` defines an item `c`, perhaps you need to implement it
@@ -15,7 +15,7 @@ error[E0599]: no method named `b` found for reference `&dyn Foo` in the current 
   --> $DIR/subtrait-method.rs:60:9
    |
 LL |     foo.b();
-   |         ^ help: there is an associated function with a similar name: `a`
+   |         ^ help: there is a method with a similar name: `a`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Bar` defines an item `b`, perhaps you need to implement it
@@ -28,7 +28,7 @@ error[E0599]: no method named `c` found for reference `&dyn Foo` in the current 
   --> $DIR/subtrait-method.rs:62:9
    |
 LL |     foo.c();
-   |         ^ help: there is an associated function with a similar name: `a`
+   |         ^ help: there is a method with a similar name: `a`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Baz` defines an item `c`, perhaps you need to implement it
@@ -41,7 +41,7 @@ error[E0599]: no method named `b` found for reference `&dyn Foo` in the current 
   --> $DIR/subtrait-method.rs:66:9
    |
 LL |     foo.b();
-   |         ^ help: there is an associated function with a similar name: `a`
+   |         ^ help: there is a method with a similar name: `a`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Bar` defines an item `b`, perhaps you need to implement it
@@ -54,7 +54,7 @@ error[E0599]: no method named `c` found for reference `&dyn Foo` in the current 
   --> $DIR/subtrait-method.rs:68:9
    |
 LL |     foo.c();
-   |         ^ help: there is an associated function with a similar name: `a`
+   |         ^ help: there is a method with a similar name: `a`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Baz` defines an item `c`, perhaps you need to implement it

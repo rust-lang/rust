@@ -1,5 +1,3 @@
-#![feature(explicit_generic_args_with_impl_trait)]
-
 fn f<T: ?Sized, U: ?Sized>(_: impl AsRef<T>, _: impl AsRef<U>) {}
 
 fn main() {

@@ -31,7 +31,7 @@ use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
 
 pub struct At<'a, 'tcx> {
-    pub infcx: &'a InferCtxt<'a, 'tcx>,
+    pub infcx: &'a InferCtxt<'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     /// Whether we should define opaque types
@@ -48,9 +48,9 @@ pub struct Trace<'a, 'tcx> {
     trace: TypeTrace<'tcx>,
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     #[inline]
-    pub fn at(
+    pub fn at<'a>(
         &'a self,
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -65,7 +65,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         Self {
             tcx: self.tcx,
             defining_use_anchor: self.defining_use_anchor,
-            in_progress_typeck_results: self.in_progress_typeck_results,
+            considering_regions: self.considering_regions,
             inner: self.inner.clone(),
             skip_leak_check: self.skip_leak_check.clone(),
             lexical_region_resolutions: self.lexical_region_resolutions.clone(),
@@ -73,10 +73,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             evaluation_cache: self.evaluation_cache.clone(),
             reported_trait_errors: self.reported_trait_errors.clone(),
             reported_closure_mismatch: self.reported_closure_mismatch.clone(),
-            tainted_by_errors_flag: self.tainted_by_errors_flag.clone(),
+            tainted_by_errors: self.tainted_by_errors.clone(),
             err_count_on_creation: self.err_count_on_creation,
             in_snapshot: self.in_snapshot.clone(),
             universe: self.universe.clone(),
+            normalize_fn_sig_for_diagnostic: self
+                .normalize_fn_sig_for_diagnostic
+                .as_ref()
+                .map(|f| f.clone()),
         }
     }
 }
@@ -111,6 +115,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `a <: b`, where `a` may or may not be expected.
+    ///
+    /// See [`At::trace_exp`] and [`Trace::sub`] for a version of
+    /// this method that only requires `T: Relate<'tcx>`
     pub fn sub_exp<T>(self, a_is_expected: bool, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
@@ -122,6 +129,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// call like `foo(x)`, where `foo: fn(i32)`, you might have
     /// `sup(i32, x)`, since the "expected" type is the type that
     /// appears in the signature.
+    ///
+    /// See [`At::trace`] and [`Trace::sub`] for a version of
+    /// this method that only requires `T: Relate<'tcx>`
     pub fn sup<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
@@ -130,6 +140,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `expected <: actual`.
+    ///
+    /// See [`At::trace`] and [`Trace::sub`] for a version of
+    /// this method that only requires `T: Relate<'tcx>`
     pub fn sub<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
@@ -138,6 +151,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `expected <: actual`.
+    ///
+    /// See [`At::trace_exp`] and [`Trace::eq`] for a version of
+    /// this method that only requires `T: Relate<'tcx>`
     pub fn eq_exp<T>(self, a_is_expected: bool, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
@@ -146,6 +162,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `expected <: actual`.
+    ///
+    /// See [`At::trace`] and [`Trace::eq`] for a version of
+    /// this method that only requires `T: Relate<'tcx>`
     pub fn eq<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
@@ -176,6 +195,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// this can result in an error (e.g., if asked to compute LUB of
     /// u32 and i32), it is meaningful to call one of them the
     /// "expected type".
+    ///
+    /// See [`At::trace`] and [`Trace::lub`] for a version of
+    /// this method that only requires `T: Relate<'tcx>`
     pub fn lub<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
@@ -186,6 +208,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// Computes the greatest-lower-bound, or mutual subtype, of two
     /// values. As with `lub` order doesn't matter, except for error
     /// cases.
+    ///
+    /// See [`At::trace`] and [`Trace::glb`] for a version of
+    /// this method that only requires `T: Relate<'tcx>`
     pub fn glb<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,

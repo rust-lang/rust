@@ -4,15 +4,16 @@ use super::SubregionOrigin;
 use crate::infer::combine::ConstEquateRelation;
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::traits::Obligation;
-use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
-pub struct Sub<'combine, 'infcx, 'tcx> {
-    fields: &'combine mut CombineFields<'infcx, 'tcx>,
+pub struct Sub<'combine, 'a, 'tcx> {
+    fields: &'combine mut CombineFields<'a, 'tcx>,
     a_is_expected: bool,
 }
 
@@ -141,17 +142,45 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                     Ok(infcx.tcx.mk_ty_var(var))
                 };
                 let (a, b) = if self.a_is_expected { (a, b) } else { (b, a) };
-                let (a, b) = match (a.kind(), b.kind()) {
+                let (ga, gb) = match (a.kind(), b.kind()) {
                     (&ty::Opaque(..), _) => (a, generalize(b, true)?),
                     (_, &ty::Opaque(..)) => (generalize(a, false)?, b),
                     _ => unreachable!(),
                 };
                 self.fields.obligations.extend(
                     infcx
-                        .handle_opaque_type(a, b, true, &self.fields.trace.cause, self.param_env())?
+                        .handle_opaque_type(ga, gb, true, &self.fields.trace.cause, self.param_env())
+                        // Don't leak any generalized type variables out of this
+                        // subtyping relation in the case of a type error.
+                        .map_err(|err| {
+                            let (ga, gb) = self.fields.infcx.resolve_vars_if_possible((ga, gb));
+                            if let TypeError::Sorts(sorts) = err && sorts.expected == ga && sorts.found == gb {
+                                TypeError::Sorts(ExpectedFound { expected: a, found: b })
+                            } else {
+                                err
+                            }
+                        })?
                         .obligations,
                 );
-                Ok(a)
+                Ok(ga)
+            }
+            // Optimization of GeneratorWitness relation since we know that all
+            // free regions are replaced with bound regions during construction.
+            // This greatly speeds up subtyping of GeneratorWitness.
+            (&ty::GeneratorWitness(a_types), &ty::GeneratorWitness(b_types)) => {
+                let a_types = infcx.tcx.anonymize_bound_vars(a_types);
+                let b_types = infcx.tcx.anonymize_bound_vars(b_types);
+                if a_types.bound_vars() == b_types.bound_vars() {
+                    let (a_types, b_types) = infcx.replace_bound_vars_with_placeholders(
+                        a_types.map_bound(|a_types| (a_types, b_types.skip_binder())),
+                    );
+                    for (a, b) in std::iter::zip(a_types, b_types) {
+                        self.relate(a, b)?;
+                    }
+                    Ok(a)
+                } else {
+                    Err(ty::error::TypeError::Sorts(ty::relate::expected_found(self, a, b)))
+                }
             }
 
             _ => {
@@ -198,7 +227,8 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        self.fields.higher_ranked_sub(a, b, self.a_is_expected)
+        self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
+        Ok(a)
     }
 }
 

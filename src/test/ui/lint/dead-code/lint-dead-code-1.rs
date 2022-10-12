@@ -9,7 +9,7 @@
 pub use foo2::Bar2;
 
 mod foo {
-    pub struct Bar; //~ ERROR: struct is never constructed
+    pub struct Bar; //~ ERROR: struct `Bar` is never constructed
 }
 
 mod foo2 {
@@ -17,14 +17,14 @@ mod foo2 {
 }
 
 pub static pub_static: isize = 0;
-static priv_static: isize = 0; //~ ERROR: static is never used
+static priv_static: isize = 0; //~ ERROR: static `priv_static` is never used
 const used_static: isize = 0;
 pub static used_static2: isize = used_static;
 const USED_STATIC: isize = 0;
 const STATIC_USED_IN_ENUM_DISCRIMINANT: isize = 10;
 
 pub const pub_const: isize = 0;
-const priv_const: isize = 0; //~ ERROR: constant is never used
+const priv_const: isize = 0; //~ ERROR: constant `priv_const` is never used
 const used_const: isize = 0;
 pub const used_const2: isize = used_const;
 const USED_CONST: isize = 1;
@@ -32,7 +32,7 @@ const CONST_USED_IN_ENUM_DISCRIMINANT: isize = 11;
 
 pub type typ = *const UsedStruct4;
 pub struct PubStruct;
-struct PrivStruct; //~ ERROR: struct is never constructed
+struct PrivStruct; //~ ERROR: struct `PrivStruct` is never constructed
 struct UsedStruct1 {
     #[allow(dead_code)]
     x: isize
@@ -61,10 +61,10 @@ pub enum pub_enum3 {
     Bar = CONST_USED_IN_ENUM_DISCRIMINANT,
 }
 
-enum priv_enum { foo2, bar2 } //~ ERROR: enum is never used
+enum priv_enum { foo2, bar2 } //~ ERROR: enum `priv_enum` is never used
 enum used_enum {
     foo3,
-    bar3 //~ ERROR variant is never constructed
+    bar3 //~ ERROR variant `bar3` is never constructed
 }
 
 fn f<T>() {}
@@ -85,21 +85,21 @@ pub fn pub_fn() {
     }
     f::<StructUsedInGeneric>();
 }
-fn priv_fn() { //~ ERROR: function is never used
+fn priv_fn() { //~ ERROR: function `priv_fn` is never used
     let unused_struct = PrivStruct;
 }
 fn used_fn() {}
 
-fn foo() { //~ ERROR: function is never used
+fn foo() { //~ ERROR: function `foo` is never used
     bar();
     let unused_enum = priv_enum::foo2;
 }
 
-fn bar() { //~ ERROR: function is never used
+fn bar() { //~ ERROR: function `bar` is never used
     foo();
 }
 
-fn baz() -> impl Copy { //~ ERROR: function is never used
+fn baz() -> impl Copy { //~ ERROR: function `baz` is never used
     "I'm unused, too"
 }
 

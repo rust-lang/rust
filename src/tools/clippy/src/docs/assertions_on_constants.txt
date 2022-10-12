@@ -1,0 +1,14 @@
+### What it does
+Checks for `assert!(true)` and `assert!(false)` calls.
+
+### Why is this bad?
+Will be optimized out by the compiler or should probably be replaced by a
+`panic!()` or `unreachable!()`
+
+### Example
+```
+assert!(false)
+assert!(true)
+const B: bool = false;
+assert!(B)
+```

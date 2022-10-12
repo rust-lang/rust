@@ -143,7 +143,7 @@ fn mod_resolution_error_relative_module_not_found() {
     let args = ["tests/mod-resolver/module-not-found/relative_module/lib.rs"];
     let (_stdout, stderr) = rustfmt(&args);
     // The file `./a.rs` and directory `./a` both exist.
-    // Module resolution fails becuase we're unable to find `./a/b.rs`
+    // Module resolution fails because we're unable to find `./a/b.rs`
     #[cfg(not(windows))]
     assert!(stderr.contains("a/b.rs does not exist"));
     #[cfg(windows)]

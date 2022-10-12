@@ -49,7 +49,7 @@ pub fn compute_abi_info<Ty>(fty: &mut FnAbi<'_, Ty>) {
         classify_ret_ty(&mut fty.ret);
     }
 
-    for arg in &mut fty.args {
+    for arg in fty.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }

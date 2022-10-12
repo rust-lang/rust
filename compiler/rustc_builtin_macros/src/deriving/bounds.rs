@@ -15,11 +15,10 @@ pub fn expand_deriving_copy(
 ) {
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: path_std!(marker::Copy),
+        skip_path_as_bound: false,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: true,
         methods: Vec::new(),
         associated_types: Vec::new(),

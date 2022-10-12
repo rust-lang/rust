@@ -1,7 +1,7 @@
 // Test where we fail to approximate due to demanding a postdom
 // relationship between our upper bounds.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![feature(rustc_attrs)]
 

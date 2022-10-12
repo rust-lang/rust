@@ -1,0 +1,36 @@
+### What it does
+Checks for private functions that only return `Ok` or `Some`.
+
+### Why is this bad?
+It is not meaningful to wrap values when no `None` or `Err` is returned.
+
+### Known problems
+There can be false positives if the function signature is designed to
+fit some external requirement.
+
+### Example
+```
+fn get_cool_number(a: bool, b: bool) -> Option<i32> {
+    if a && b {
+        return Some(50);
+    }
+    if a {
+        Some(0)
+    } else {
+        Some(10)
+    }
+}
+```
+Use instead:
+```
+fn get_cool_number(a: bool, b: bool) -> i32 {
+    if a && b {
+        return 50;
+    }
+    if a {
+        0
+    } else {
+        10
+    }
+}
+```

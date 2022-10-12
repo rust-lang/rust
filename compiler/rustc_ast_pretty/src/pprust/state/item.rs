@@ -114,7 +114,10 @@ impl<'a> State<'a> {
         self.word_space("type");
         self.print_ident(ident);
         self.print_generic_params(&generics.params);
-        self.print_type_bounds(":", bounds);
+        if !bounds.is_empty() {
+            self.word_nbsp(":");
+            self.print_type_bounds(bounds);
+        }
         self.print_where_clause_parts(where_clauses.0.0, before_predicates);
         if let Some(ty) = ty {
             self.space();
@@ -215,6 +218,8 @@ impl<'a> State<'a> {
             ast::ItemKind::GlobalAsm(ref asm) => {
                 self.head(visibility_qualified(&item.vis, "global_asm!"));
                 self.print_inline_asm(asm);
+                self.word(";");
+                self.end();
                 self.end();
             }
             ast::ItemKind::TyAlias(box ast::TyAlias {
@@ -320,7 +325,10 @@ impl<'a> State<'a> {
                         real_bounds.push(b.clone());
                     }
                 }
-                self.print_type_bounds(":", &real_bounds);
+                if !real_bounds.is_empty() {
+                    self.word_nbsp(":");
+                    self.print_type_bounds(&real_bounds);
+                }
                 self.print_where_clause(&generics.where_clause);
                 self.word(" ");
                 self.bopen();
@@ -347,7 +355,10 @@ impl<'a> State<'a> {
                     }
                 }
                 self.nbsp();
-                self.print_type_bounds("=", &real_bounds);
+                if !real_bounds.is_empty() {
+                    self.word_nbsp("=");
+                    self.print_type_bounds(&real_bounds);
+                }
                 self.print_where_clause(&generics.where_clause);
                 self.word(";");
                 self.end(); // end inner head-block
@@ -403,9 +414,9 @@ impl<'a> State<'a> {
     pub(crate) fn print_visibility(&mut self, vis: &ast::Visibility) {
         match vis.kind {
             ast::VisibilityKind::Public => self.word_nbsp("pub"),
-            ast::VisibilityKind::Restricted { ref path, .. } => {
+            ast::VisibilityKind::Restricted { ref path, id: _, shorthand } => {
                 let path = Self::to_string(|s| s.print_path(path, false, 0));
-                if path == "crate" || path == "self" || path == "super" {
+                if shorthand && (path == "crate" || path == "self" || path == "super") {
                     self.word_nbsp(format!("pub({})", path))
                 } else {
                     self.word_nbsp(format!("pub(in {})", path))
@@ -505,7 +516,7 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Const(def, ty, body) => {
                 self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
             }
-            ast::AssocItemKind::TyAlias(box ast::TyAlias {
+            ast::AssocItemKind::Type(box ast::TyAlias {
                 defaultness,
                 generics,
                 where_clauses,
@@ -618,14 +629,23 @@ impl<'a> State<'a> {
             }) => {
                 self.print_formal_generic_params(bound_generic_params);
                 self.print_type(bounded_ty);
-                self.print_type_bounds(":", bounds);
+                self.word(":");
+                if !bounds.is_empty() {
+                    self.nbsp();
+                    self.print_type_bounds(bounds);
+                }
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 lifetime,
                 bounds,
                 ..
             }) => {
-                self.print_lifetime_bounds(*lifetime, bounds);
+                self.print_lifetime(*lifetime);
+                self.word(":");
+                if !bounds.is_empty() {
+                    self.nbsp();
+                    self.print_lifetime_bounds(bounds);
+                }
             }
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { lhs_ty, rhs_ty, .. }) => {
                 self.print_type(lhs_ty);

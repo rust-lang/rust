@@ -1,4 +1,4 @@
-#![feature(box_syntax)]
-#![feature(box_syntax)] //~ ERROR
+#![feature(rustdoc_internals)]
+#![feature(rustdoc_internals)] //~ ERROR
 
 pub fn foo() {}

@@ -195,7 +195,7 @@ impl CoverageSpan {
             .expn_span
             .parent_callsite()
             .unwrap_or_else(|| bug!("macro must have a parent"))
-            .ctxt() == body_span.ctxt()
+            .eq_ctxt(body_span)
         {
             return Some(current_macro);
         }
@@ -321,7 +321,8 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 
     fn mir_to_initial_sorted_coverage_spans(&self) -> Vec<CoverageSpan> {
-        let mut initial_spans = Vec::<CoverageSpan>::with_capacity(self.mir_body.num_nodes() * 2);
+        let mut initial_spans =
+            Vec::<CoverageSpan>::with_capacity(self.mir_body.basic_blocks.len() * 2);
         for (bcb, bcb_data) in self.basic_coverage_blocks.iter_enumerated() {
             initial_spans.extend(self.bcb_to_initial_coverage_spans(bcb, bcb_data));
         }
@@ -824,7 +825,7 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
 
         // Retain spans from all other statements
         StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`
-        | StatementKind::CopyNonOverlapping(..)
+        | StatementKind::Intrinsic(..)
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::Deinit(..)

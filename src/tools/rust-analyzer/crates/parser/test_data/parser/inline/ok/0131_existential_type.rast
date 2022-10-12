@@ -1,0 +1,31 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    EXISTENTIAL_KW "existential"
+    WHITESPACE " "
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    COLON ":"
+    WHITESPACE " "
+    TYPE_BOUND_LIST
+      TYPE_BOUND
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "Fn"
+              PARAM_LIST
+                L_PAREN "("
+                R_PAREN ")"
+              WHITESPACE " "
+              RET_TYPE
+                THIN_ARROW "->"
+                WHITESPACE " "
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "usize"
+    SEMICOLON ";"
+  WHITESPACE "\n"

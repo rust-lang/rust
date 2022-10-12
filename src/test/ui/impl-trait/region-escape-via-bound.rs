@@ -15,7 +15,7 @@ fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y>
 where 'x: 'y
 {
     x
-    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds [E0700]
+    //~^ ERROR hidden type for `impl Trait<'y>` captures lifetime that does not appear in bounds [E0700]
 }
 
 fn main() { }

@@ -1,0 +1,10 @@
+### What it does
+Checks for usage of `unreachable!`.
+
+### Why is this bad?
+This macro can cause code to panic
+
+### Example
+```
+unreachable!();
+```

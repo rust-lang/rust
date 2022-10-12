@@ -1,6 +1,6 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::expr_sig;
 use clippy_utils::visitors::contains_unsafe_block;
@@ -48,10 +48,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// // Bad
     /// fn foo(&Vec<u32>) { .. }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```ignore
     /// fn foo(&[u32]) { .. }
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -70,15 +71,18 @@ declare_clippy_lint! {
     /// method instead
     ///
     /// ### Example
-    /// ```ignore
-    /// // Bad
-    /// if x == ptr::null {
-    ///     ..
-    /// }
+    /// ```rust,ignore
+    /// use std::ptr;
     ///
-    /// // Good
+    /// if x == ptr::null {
+    ///     // ..
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
     /// if x.is_null() {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -129,12 +133,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// // Bad. Undefined behavior
+    /// // Undefined behavior
     /// unsafe { std::slice::from_raw_parts(ptr::null(), 0); }
     /// ```
     ///
+    /// Use instead:
     /// ```ignore
-    /// // Good
     /// unsafe { std::slice::from_raw_parts(NonNull::dangling().as_ptr(), 0); }
     /// ```
     #[clippy::version = "1.53.0"]
@@ -162,15 +166,14 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             )
             .filter(|arg| arg.mutability() == Mutability::Not)
             {
-                span_lint_and_sugg(
-                    cx,
-                    PTR_ARG,
-                    arg.span,
-                    &arg.build_msg(),
-                    "change this to",
-                    format!("{}{}", arg.ref_prefix, arg.deref_ty.display(cx)),
-                    Applicability::Unspecified,
-                );
+                span_lint_hir_and_then(cx, PTR_ARG, arg.emission_id, arg.span, &arg.build_msg(), |diag| {
+                    diag.span_suggestion(
+                        arg.span,
+                        "change this to",
+                        format!("{}{}", arg.ref_prefix, arg.deref_ty.display(cx)),
+                        Applicability::Unspecified,
+                    );
+                });
             }
         }
     }
@@ -217,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         let results = check_ptr_arg_usage(cx, body, &lint_args);
 
         for (result, args) in results.iter().zip(lint_args.iter()).filter(|(r, _)| !r.skip) {
-            span_lint_and_then(cx, PTR_ARG, args.span, &args.build_msg(), |diag| {
+            span_lint_hir_and_then(cx, PTR_ARG, args.emission_id, args.span, &args.build_msg(), |diag| {
                 diag.multipart_suggestion(
                     "change this to",
                     iter::once((args.span, format!("{}{}", args.ref_prefix, args.deref_ty.display(cx))))
@@ -311,6 +314,7 @@ struct PtrArgReplacement {
 
 struct PtrArg<'tcx> {
     idx: usize,
+    emission_id: hir::HirId,
     span: Span,
     ty_did: DefId,
     ty_name: Symbol,
@@ -343,11 +347,11 @@ impl fmt::Display for RefPrefix {
         use fmt::Write;
         f.write_char('&')?;
         match self.lt {
-            LifetimeName::Param(ParamName::Plain(name)) => {
+            LifetimeName::Param(_, ParamName::Plain(name)) => {
                 name.fmt(f)?;
                 f.write_char(' ')?;
             },
-            LifetimeName::Underscore => f.write_str("'_ ")?,
+            LifetimeName::Infer => f.write_str("'_ ")?,
             LifetimeName::Static => f.write_str("'static ")?,
             _ => (),
         }
@@ -415,10 +419,8 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                 if let [.., name] = path.segments;
                 if cx.tcx.item_name(adt.did()) == name.ident.name;
 
-                if !is_lint_allowed(cx, PTR_ARG, hir_ty.hir_id);
-                if params.get(i).map_or(true, |p| !is_lint_allowed(cx, PTR_ARG, p.hir_id));
-
                 then {
+                    let emission_id = params.get(i).map_or(hir_ty.hir_id, |param| param.hir_id);
                     let (method_renames, deref_ty) = match cx.tcx.get_diagnostic_name(adt.did()) {
                         Some(sym::Vec) => (
                             [("clone", ".to_owned()")].as_slice(),
@@ -451,14 +453,20 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                 })
                                 .and_then(|arg| snippet_opt(cx, arg.span))
                                 .unwrap_or_else(|| substs.type_at(1).to_string());
-                            span_lint_and_sugg(
+                            span_lint_hir_and_then(
                                 cx,
                                 PTR_ARG,
+                                emission_id,
                                 hir_ty.span,
                                 "using a reference to `Cow` is not recommended",
-                                "change this to",
-                                format!("&{}{}", mutability.prefix_str(), ty_name),
-                                Applicability::Unspecified,
+                                |diag| {
+                                    diag.span_suggestion(
+                                        hir_ty.span,
+                                        "change this to",
+                                        format!("&{}{ty_name}", mutability.prefix_str()),
+                                        Applicability::Unspecified,
+                                    );
+                                }
                             );
                             return None;
                         },
@@ -466,6 +474,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                     };
                     return Some(PtrArg {
                         idx: i,
+                        emission_id,
                         span: hir_ty.span,
                         ty_did: adt.did(),
                         ty_name: name.ident.name,
@@ -486,18 +495,19 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
     if let FnRetTy::Return(ty) = sig.decl.output
         && let Some((out, Mutability::Mut, _)) = get_rptr_lm(ty)
     {
+        let out_region = cx.tcx.named_region(out.hir_id);
         let args: Option<Vec<_>> = sig
             .decl
             .inputs
             .iter()
             .filter_map(get_rptr_lm)
-            .filter(|&(lt, _, _)| lt.name == out.name)
-            .map(|(_, mutability, span)| (mutability == Mutability::Not).then(|| span))
+            .filter(|&(lt, _, _)| cx.tcx.named_region(lt.hir_id) == out_region)
+            .map(|(_, mutability, span)| (mutability == Mutability::Not).then_some(span))
             .collect();
         if let Some(args) = args
             && !args.is_empty()
             && body.map_or(true, |body| {
-                sig.header.unsafety == Unsafety::Unsafe || contains_unsafe_block(cx, &body.value)
+                sig.header.unsafety == Unsafety::Unsafe || contains_unsafe_block(cx, body.value)
             })
         {
             span_lint_and_then(
@@ -561,7 +571,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                 Some((Node::Stmt(_), _)) => (),
                 Some((Node::Local(l), _)) => {
                     // Only trace simple bindings. e.g `let x = y;`
-                    if let PatKind::Binding(BindingAnnotation::Unannotated, id, _, None) = l.pat.kind {
+                    if let PatKind::Binding(BindingAnnotation::NONE, id, _, None) = l.pat.kind {
                         self.bindings.insert(id, args_idx);
                     } else {
                         set_skip_flag();
@@ -570,20 +580,22 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                 Some((Node::Expr(e), child_id)) => match e.kind {
                     ExprKind::Call(f, expr_args) => {
                         let i = expr_args.iter().position(|arg| arg.hir_id == child_id).unwrap_or(0);
-                        if expr_sig(self.cx, f)
-                            .map(|sig| sig.input(i).skip_binder().peel_refs())
-                            .map_or(true, |ty| match *ty.kind() {
+                        if expr_sig(self.cx, f).and_then(|sig| sig.input(i)).map_or(true, |ty| {
+                            match *ty.skip_binder().peel_refs().kind() {
                                 ty::Param(_) => true,
                                 ty::Adt(def, _) => def.did() == args.ty_did,
                                 _ => false,
-                            })
-                        {
+                            }
+                        }) {
                             // Passed to a function taking the non-dereferenced type.
                             set_skip_flag();
                         }
                     },
-                    ExprKind::MethodCall(name, expr_args @ [self_arg, ..], _) => {
-                        let i = expr_args.iter().position(|arg| arg.hir_id == child_id).unwrap_or(0);
+                    ExprKind::MethodCall(name, self_arg, expr_args, _) => {
+                        let i = std::iter::once(self_arg)
+                            .chain(expr_args.iter())
+                            .position(|arg| arg.hir_id == child_id)
+                            .unwrap_or(0);
                         if i == 0 {
                             // Check if the method can be renamed.
                             let name = name.ident.as_str();
@@ -635,7 +647,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
             .filter_map(|(i, arg)| {
                 let param = &body.params[arg.idx];
                 match param.pat.kind {
-                    PatKind::Binding(BindingAnnotation::Unannotated, id, _, None)
+                    PatKind::Binding(BindingAnnotation::NONE, id, _, None)
                         if !is_lint_allowed(cx, PTR_ARG, param.hir_id) =>
                     {
                         Some((id, i))
@@ -652,12 +664,12 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
         results,
         skip_count,
     };
-    v.visit_expr(&body.value);
+    v.visit_expr(body.value);
     v.results
 }
 
 fn get_rptr_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {
-    if let TyKind::Rptr(ref lt, ref m) = ty.kind {
+    if let TyKind::Rptr(lt, ref m) = ty.kind {
         Some((lt, m.mutbl, ty.span))
     } else {
         None

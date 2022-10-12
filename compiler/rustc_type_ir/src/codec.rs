@@ -1,6 +1,6 @@
 use crate::Interner;
 
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::{Decoder, Encoder};
 
 /// The shorthand encoding uses an enum's variant index `usize`
@@ -31,10 +31,7 @@ pub trait TyEncoder: Encoder {
     fn predicate_shorthands(
         &mut self,
     ) -> &mut FxHashMap<<Self::I as Interner>::PredicateKind, usize>;
-    fn encode_alloc_id(
-        &mut self,
-        alloc_id: &<Self::I as Interner>::AllocId,
-    ) -> Result<(), Self::Error>;
+    fn encode_alloc_id(&mut self, alloc_id: &<Self::I as Interner>::AllocId);
 }
 
 pub trait TyDecoder: Decoder {

@@ -22,9 +22,9 @@ use crate::slice::{self, SliceIndex};
 
 pub mod pattern;
 
-#[unstable(feature = "str_internals", issue = "none")]
-#[allow(missing_docs)]
-pub mod lossy;
+mod lossy;
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+pub use lossy::{Utf8Chunk, Utf8Chunks};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use converts::{from_utf8, from_utf8_unchecked};
@@ -91,10 +91,12 @@ const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     }
 }
 
+#[track_caller]
 const fn slice_error_fail_ct(_: &str, _: usize, _: usize) -> ! {
     panic!("failed to slice string");
 }
 
+#[track_caller]
 fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     const MAX_DISPLAY_LENGTH: usize = 256;
     let trunc_len = s.floor_char_boundary(MAX_DISPLAY_LENGTH);
@@ -1632,6 +1634,7 @@ impl str {
     ///
     /// ```
     /// assert_eq!("cfg".split_once('='), None);
+    /// assert_eq!("cfg=".split_once('='), Some(("cfg", "")));
     /// assert_eq!("cfg=foo".split_once('='), Some(("cfg", "foo")));
     /// assert_eq!("cfg=foo=bar".split_once('='), Some(("cfg", "foo=bar")));
     /// ```
@@ -2352,7 +2355,7 @@ impl str {
     #[inline]
     pub fn is_ascii(&self) -> bool {
         // We can treat each byte as character here: all multibyte characters
-        // start with a byte that is not in the ascii range, so we will stop
+        // start with a byte that is not in the ASCII range, so we will stop
         // there already.
         self.as_bytes().is_ascii()
     }
@@ -2637,3 +2640,6 @@ impl_fn_for_zst! {
         unsafe { from_utf8_unchecked(bytes) }
     };
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !crate::error::Error for &str {}

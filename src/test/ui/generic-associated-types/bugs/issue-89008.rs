@@ -1,11 +1,10 @@
 // check-fail
 // edition:2021
-// known-bug
+// known-bug: #88908
 
 // This should pass, but seems to run into a TAIT bug.
 
 #![feature(type_alias_impl_trait)]
-#![feature(generic_associated_types)]
 
 use std::future::Future;
 

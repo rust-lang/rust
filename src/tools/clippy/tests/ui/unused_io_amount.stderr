@@ -4,8 +4,8 @@ error: written amount is not handled
 LL |     s.write(b"test")?;
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unused-io-amount` implied by `-D warnings`
    = help: use `Write::write_all` instead, or handle partial writes
+   = note: `-D clippy::unused-io-amount` implied by `-D warnings`
 
 error: read amount is not handled
   --> $DIR/unused_io_amount.rs:11:5

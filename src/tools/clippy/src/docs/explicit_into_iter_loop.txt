@@ -1,0 +1,20 @@
+### What it does
+Checks for loops on `y.into_iter()` where `y` will do, and
+suggests the latter.
+
+### Why is this bad?
+Readability.
+
+### Example
+```
+// with `y` a `Vec` or slice:
+for x in y.into_iter() {
+    // ..
+}
+```
+can be rewritten to
+```
+for x in y {
+    // ..
+}
+```

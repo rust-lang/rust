@@ -1,10 +1,13 @@
 // edition:2018
+// revisions: no_drop_tracking drop_tracking
+// [drop_tracking] compile-flags: -Zdrop-tracking=yes
+// [no_drop_tracking] compile-flags: -Zdrop-tracking=no
 
 use std::{
-    future::Future,
     cell::RefCell,
-    sync::Arc,
+    future::Future,
     pin::Pin,
+    sync::Arc,
     task::{Context, Poll},
 };
 
@@ -44,7 +47,9 @@ fn test1_no_let() {
     //~^ ERROR future cannot be sent between threads
 }
 
-async fn ready2<T>(t: T) -> T { t }
+async fn ready2<T>(t: T) -> T {
+    t
+}
 fn make_non_send_future2() -> impl Future<Output = Arc<RefCell<i32>>> {
     ready2(Arc::new(RefCell::new(0)))
 }

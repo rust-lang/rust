@@ -1,9 +1,17 @@
-#!/bin/bash --verbose
+#!/usr/bin/env bash
 set -e
+set -v
 
 source prepare_build.sh
 
 cargo install hyperfine || echo "Skipping hyperfine install"
+
+git clone https://github.com/rust-random/rand.git || echo "rust-random/rand has already been cloned"
+pushd rand
+git checkout -- .
+git checkout 0f933f9c7176e53b2a3c7952ded484e1783f0bf1
+git am ../crate_patches/*-rand-*.patch
+popd
 
 git clone https://github.com/rust-lang/regex.git || echo "rust-lang/regex has already been cloned"
 pushd regex

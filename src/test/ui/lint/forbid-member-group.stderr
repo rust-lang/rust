@@ -3,7 +3,7 @@ error[E0453]: allow(unused) incompatible with previous forbid
    |
 LL | #![forbid(unused_variables)]
    |           ---------------- `forbid` level set here
-LL | 
+LL |
 LL | #[allow(unused)]
    |         ^^^^^^ overruled by previous forbid
 
@@ -12,7 +12,7 @@ error[E0453]: allow(unused) incompatible with previous forbid
    |
 LL | #![forbid(unused_variables)]
    |           ---------------- `forbid` level set here
-LL | 
+LL |
 LL | #[allow(unused)]
    |         ^^^^^^ overruled by previous forbid
 

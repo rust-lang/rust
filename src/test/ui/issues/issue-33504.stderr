@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-33504.rs:7:13
    |
 LL | struct Test;
-   | ------------ unit struct defined here
+   | ----------- unit struct defined here
 ...
 LL |         let Test = 1;
    |             ^^^^   - this expression has type `{integer}`

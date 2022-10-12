@@ -1,16 +1,20 @@
-error: using `writeln!(v, "")`
+error: empty string literal in `writeln!`
   --> $DIR/writeln_empty_string.rs:11:5
    |
 LL |     writeln!(v, "");
-   |     ^^^^^^^^^^^^^^^ help: replace it with: `writeln!(v)`
+   |     ^^^^^^^^^^----^
+   |               |
+   |               help: remove the empty string
    |
    = note: `-D clippy::writeln-empty-string` implied by `-D warnings`
 
-error: using `writeln!(suggestion, "")`
+error: empty string literal in `writeln!`
   --> $DIR/writeln_empty_string.rs:14:5
    |
 LL |     writeln!(suggestion, "");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(suggestion)`
+   |     ^^^^^^^^^^^^^^^^^^^----^
+   |                        |
+   |                        help: remove the empty string
 
 error: aborting due to 2 previous errors
 

@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 fn with_closure_expecting_fn_with_free_region<F>(_: F)
 where
     F: for<'a> FnOnce(fn(&'a u32), &i32),
@@ -18,10 +14,8 @@ fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {
     // Here, the type given for `'x` "obscures" a region from the
     // expected signature that is bound at closure level.
     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
-    //[base]~^ ERROR mismatched types
-    //[base]~| ERROR mismatched types
-    //[nll]~^^^ ERROR lifetime may not live long enough
-    //[nll]~| ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR lifetime may not live long enough
 }
 
 fn expect_free_supply_free_from_closure() {

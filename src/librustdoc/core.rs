@@ -10,7 +10,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path, TraitCandidate};
 use rustc_interface::interface;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
@@ -21,18 +20,18 @@ use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span, Symbol};
 
 use std::cell::RefCell;
-use std::lazy::SyncLazy;
 use std::mem;
 use std::rc::Rc;
+use std::sync::LazyLock;
 
 use crate::clean::inline::build_external_trait;
-use crate::clean::{self, ItemId, TraitWithExtraInfo};
+use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
 use crate::passes::{self, Condition::*};
 
-pub(crate) use rustc_session::config::{DebuggingOptions, Input, Options};
+pub(crate) use rustc_session::config::{Input, Options, UnstableOptions};
 
 pub(crate) struct ResolverCaches {
     pub(crate) markdown_links: Option<FxHashMap<String, Vec<PreprocessedMarkdownLink>>>,
@@ -59,7 +58,7 @@ pub(crate) struct DocContext<'tcx> {
     /// Most of this logic is copied from rustc_lint::late.
     pub(crate) param_env: ParamEnv<'tcx>,
     /// Later on moved through `clean::Crate` into `cache`
-    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, clean::TraitWithExtraInfo>>>,
+    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     pub(crate) active_extern_traits: FxHashSet<DefId>,
@@ -81,6 +80,8 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) inlined: FxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
     pub(crate) output_format: OutputFormat,
+    /// Used by `strip_private`.
+    pub(crate) show_coverage: bool,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -154,7 +155,8 @@ impl<'tcx> DocContext<'tcx> {
 pub(crate) fn new_handler(
     error_format: ErrorOutputType,
     source_map: Option<Lrc<source_map::SourceMap>>,
-    debugging_opts: &DebuggingOptions,
+    diagnostic_width: Option<usize>,
+    unstable_opts: &UnstableOptions,
 ) -> rustc_errors::Handler {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
@@ -168,11 +170,11 @@ pub(crate) fn new_handler(
                     None,
                     fallback_bundle,
                     short,
-                    debugging_opts.teach,
-                    debugging_opts.terminal_width,
+                    unstable_opts.teach,
+                    diagnostic_width,
                     false,
                 )
-                .ui_testing(debugging_opts.ui_testing),
+                .ui_testing(unstable_opts.ui_testing),
             )
         }
         ErrorOutputType::Json { pretty, json_rendered } => {
@@ -187,17 +189,17 @@ pub(crate) fn new_handler(
                     fallback_bundle,
                     pretty,
                     json_rendered,
-                    debugging_opts.terminal_width,
+                    diagnostic_width,
                     false,
                 )
-                .ui_testing(debugging_opts.ui_testing),
+                .ui_testing(unstable_opts.ui_testing),
             )
         }
     };
 
     rustc_errors::Handler::with_emitter_and_flags(
         emitter,
-        debugging_opts.diagnostic_handler_flags(true),
+        unstable_opts.diagnostic_handler_flags(true),
     )
 }
 
@@ -208,12 +210,13 @@ pub(crate) fn create_config(
         crate_name,
         proc_macro_crate,
         error_format,
+        diagnostic_width,
         libs,
         externs,
         mut cfgs,
         check_cfgs,
         codegen_options,
-        debugging_opts,
+        unstable_opts,
         target,
         edition,
         maybe_sysroot,
@@ -264,8 +267,9 @@ pub(crate) fn create_config(
         target_triple: target,
         unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         actually_rustdoc: true,
-        debugging_opts,
+        unstable_opts,
         error_format,
+        diagnostic_width,
         edition,
         describe_lints,
         crate_name,
@@ -285,16 +289,16 @@ pub(crate) fn create_config(
         diagnostic_output: DiagnosticOutput::Default,
         lint_caps,
         parse_sess_created: None,
-        register_lints: Some(box crate::lint::register_lints),
+        register_lints: Some(Box::new(crate::lint::register_lints)),
         override_queries: Some(|_sess, providers, _external_providers| {
             // Most lints will require typechecking, so just don't run them.
             providers.lint_mod = |_, _| {};
-            // Prevent `rustc_typeck::check_crate` from calling `typeck` on all bodies.
+            // Prevent `rustc_hir_analysis::check_crate` from calling `typeck` on all bodies.
             providers.typeck_item_bodies = |_, _| {};
             // hack so that `used_trait_imports` won't try to call typeck
             providers.used_trait_imports = |_, _| {
-                static EMPTY_SET: SyncLazy<FxHashSet<LocalDefId>> =
-                    SyncLazy::new(FxHashSet::default);
+                static EMPTY_SET: LazyLock<FxHashSet<LocalDefId>> =
+                    LazyLock::new(FxHashSet::default);
                 &EMPTY_SET
             };
             // In case typeck does end up being called, don't ICE in case there were name resolution errors
@@ -308,7 +312,7 @@ pub(crate) fn create_config(
                 }
 
                 let hir = tcx.hir();
-                let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(def_id)));
+                let body = hir.body(hir.body_owned_by(def_id));
                 debug!("visiting body for {:?}", def_id);
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
@@ -359,9 +363,7 @@ pub(crate) fn run_global_ctxt(
         .copied()
         .filter(|&trait_def_id| tcx.trait_is_auto(trait_def_id))
         .collect();
-    let access_levels = AccessLevels {
-        map: tcx.privacy_access_levels(()).map.iter().map(|(k, v)| (k.to_def_id(), *v)).collect(),
-    };
+    let access_levels = tcx.privacy_access_levels(()).map_id(Into::into);
 
     let mut ctxt = DocContext {
         tcx,
@@ -378,17 +380,15 @@ pub(crate) fn run_global_ctxt(
         inlined: FxHashSet::default(),
         output_format,
         render_options,
+        show_coverage,
     };
 
     // Small hack to force the Sized trait to be present.
     //
     // Note that in case of `#![no_core]`, the trait is not available.
     if let Some(sized_trait_did) = ctxt.tcx.lang_items().sized_trait() {
-        let mut sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
-        sized_trait.is_auto = true;
-        ctxt.external_traits
-            .borrow_mut()
-            .insert(sized_trait_did, TraitWithExtraInfo { trait_: sized_trait, is_notable: false });
+        let sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
+        ctxt.external_traits.borrow_mut().insert(sized_trait_did, sized_trait);
     }
 
     debug!("crate: {:?}", tcx.hir().krate());
@@ -404,12 +404,8 @@ pub(crate) fn run_global_ctxt(
         tcx.struct_lint_node(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
-            |lint| {
-                let mut diag =
-                    lint.build("no documentation found for this crate's top-level module");
-                diag.help(&help);
-                diag.emit();
-            },
+            "no documentation found for this crate's top-level module",
+            |lint| lint.help(help),
         );
     }
 

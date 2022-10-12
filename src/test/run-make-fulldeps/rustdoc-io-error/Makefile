@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # This test verifies that rustdoc doesn't ICE when it encounters an IO error
 # while generating files. Ideally this would be a rustdoc-ui test, so we could

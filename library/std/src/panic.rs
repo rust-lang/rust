@@ -11,7 +11,7 @@ use crate::thread::Result;
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(libstd_sys_internals, const_format_args, core_panic)]
+#[allow_internal_unstable(libstd_sys_internals, const_format_args, core_panic, rt)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
@@ -295,23 +295,22 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         return Some(style);
     }
 
-    // Setting environment variables for Fuchsia components isn't a standard
-    // or easily supported workflow. For now, display backtraces by default.
-    let format = if cfg!(target_os = "fuchsia") {
-        BacktraceStyle::Full
-    } else {
-        crate::env::var_os("RUST_BACKTRACE")
-            .map(|x| {
-                if &x == "0" {
-                    BacktraceStyle::Off
-                } else if &x == "full" {
-                    BacktraceStyle::Full
-                } else {
-                    BacktraceStyle::Short
-                }
-            })
-            .unwrap_or(BacktraceStyle::Off)
-    };
+    let format = crate::env::var_os("RUST_BACKTRACE")
+        .map(|x| {
+            if &x == "0" {
+                BacktraceStyle::Off
+            } else if &x == "full" {
+                BacktraceStyle::Full
+            } else {
+                BacktraceStyle::Short
+            }
+        })
+        .unwrap_or(if cfg!(target_os = "fuchsia") {
+            // Fuchsia components default to full backtrace.
+            BacktraceStyle::Full
+        } else {
+            BacktraceStyle::Off
+        });
     set_backtrace_style(format);
     Some(format)
 }

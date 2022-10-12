@@ -1,0 +1,28 @@
+### What it does
+Checks for uses of `contains_key` + `insert` on `HashMap`
+or `BTreeMap`.
+
+### Why is this bad?
+Using `entry` is more efficient.
+
+### Known problems
+The suggestion may have type inference errors in some cases. e.g.
+```
+let mut map = std::collections::HashMap::new();
+let _ = if !map.contains_key(&0) {
+    map.insert(0, 0)
+} else {
+    None
+};
+```
+
+### Example
+```
+if !map.contains_key(&k) {
+    map.insert(k, v);
+}
+```
+Use instead:
+```
+map.entry(k).or_insert(v);
+```

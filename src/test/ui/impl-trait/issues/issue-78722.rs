@@ -7,11 +7,12 @@ type F = impl core::future::Future<Output = u8>;
 struct Bug {
     V1: [(); {
         fn concrete_use() -> F {
-            async {} //~ ERROR type mismatch
+            //~^ ERROR expected `impl Future<Output = ()>` to be a future that resolves to `u8`, but it resolves to `()`
+            async {}
         }
         let f: F = async { 1 };
         //~^ ERROR `async` blocks are not allowed in constants
-        //~| ERROR destructors cannot be evaluated at compile-time
+        //~| ERROR destructor of
         1
     }],
 }

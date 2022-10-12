@@ -3,15 +3,10 @@
 //
 // cc #48468
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
     Box::new(items.iter())
-    //[base]~^ ERROR E0759
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn b<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {

@@ -9,6 +9,7 @@ use libc::{getegid, geteuid, getpid};
     target_os = "freebsd",
     target_os = "ios",
     target_os = "macos",
+    target_os = "watchos",
     target_os = "openbsd"
 ))]
 fn test_socket_pair() {
@@ -25,7 +26,7 @@ fn test_socket_pair() {
 }
 
 #[test]
-#[cfg(any(target_os = "linux", target_os = "ios", target_os = "macos",))]
+#[cfg(any(target_os = "linux", target_os = "ios", target_os = "macos", target_os = "watchos"))]
 fn test_socket_pair_pids(arg: Type) -> RetType {
     // Create two connected sockets and get their peer credentials.
     let (sock_a, sock_b) = UnixStream::pair().unwrap();

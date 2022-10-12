@@ -17,7 +17,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{
-    opaque::{Decoder, FileEncoder},
+    opaque::{FileEncoder, MemDecoder},
     Decodable, Encodable,
 };
 use rustc_session::getopts;
@@ -143,15 +143,14 @@ where
         // then we need to exit before calling typeck (which will panic). See
         // test/run-make/rustdoc-scrape-examples-invalid-expr for an example.
         let hir = tcx.hir();
-        let owner = hir.local_def_id_to_hir_id(ex.hir_id.owner);
-        if hir.maybe_body_owned_by(owner).is_none() {
+        if hir.maybe_body_owned_by(ex.hir_id.owner.def_id).is_none() {
             return;
         }
 
         // Get type of function if expression is a function call
         let (ty, call_span, ident_span) = match ex.kind {
             hir::ExprKind::Call(f, _) => {
-                let types = tcx.typeck(ex.hir_id.owner);
+                let types = tcx.typeck(ex.hir_id.owner.def_id);
 
                 if let Some(ty) = types.node_type_opt(f.hir_id) {
                     (ty, ex.span, f.span)
@@ -160,8 +159,8 @@ where
                     return;
                 }
             }
-            hir::ExprKind::MethodCall(path, _, call_span) => {
-                let types = tcx.typeck(ex.hir_id.owner);
+            hir::ExprKind::MethodCall(path, _, _, call_span) => {
+                let types = tcx.typeck(ex.hir_id.owner.def_id);
                 let Some(def_id) = types.type_dependent_def_id(ex.hir_id) else {
                     trace!("type_dependent_def_id({}) = None", ex.hir_id);
                     return;
@@ -184,9 +183,8 @@ where
 
         // If the enclosing item has a span coming from a proc macro, then we also don't want to include
         // the example.
-        let enclosing_item_span = tcx
-            .hir()
-            .span_with_body(tcx.hir().local_def_id_to_hir_id(tcx.hir().get_parent_item(ex.hir_id)));
+        let enclosing_item_span =
+            tcx.hir().span_with_body(tcx.hir().get_parent_item(ex.hir_id).into());
         if enclosing_item_span.from_expansion() {
             trace!("Rejecting expr ({call_span:?}) from macro item: {enclosing_item_span:?}");
             return;
@@ -303,7 +301,13 @@ pub(crate) fn run(
         // Run call-finder on all items
         let mut calls = FxHashMap::default();
         let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates };
-        tcx.hir().deep_visit_all_item_likes(&mut finder);
+        tcx.hir().visit_all_item_likes_in_crate(&mut finder);
+
+        // The visitor might have found a type error, which we need to
+        // promote to a fatal error
+        if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+            return Err(String::from("Compilation failed, aborting rustdoc"));
+        }
 
         // Sort call locations within a given file in document order
         for fn_calls in calls.values_mut() {
@@ -314,8 +318,8 @@ pub(crate) fn run(
 
         // Save output to provided path
         let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;
-        calls.encode(&mut encoder).map_err(|e| e.to_string())?;
-        encoder.flush().map_err(|e| e.to_string())?;
+        calls.encode(&mut encoder);
+        encoder.finish().map_err(|e| e.to_string())?;
 
         Ok(())
     };
@@ -336,7 +340,7 @@ pub(crate) fn load_call_locations(
         let mut all_calls: AllCallLocations = FxHashMap::default();
         for path in with_examples {
             let bytes = fs::read(&path).map_err(|e| format!("{} (for path {})", e, path))?;
-            let mut decoder = Decoder::new(&bytes, 0);
+            let mut decoder = MemDecoder::new(&bytes, 0);
             let calls = AllCallLocations::decode(&mut decoder);
 
             for (function, fn_calls) in calls.into_iter() {

@@ -111,14 +111,9 @@ pub(crate) struct MarkdownWithToc<'a>(
     pub(crate) Edition,
     pub(crate) &'a Option<Playground>,
 );
-/// A tuple struct like `Markdown` that renders the markdown escaping HTML tags.
-pub(crate) struct MarkdownHtml<'a>(
-    pub(crate) &'a str,
-    pub(crate) &'a mut IdMap,
-    pub(crate) ErrorCodes,
-    pub(crate) Edition,
-    pub(crate) &'a Option<Playground>,
-);
+/// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
+/// and includes no paragraph tags.
+pub(crate) struct MarkdownItemInfo<'a>(pub(crate) &'a str, pub(crate) &'a mut IdMap);
 /// A tuple struct like `Markdown` that renders only the first paragraph.
 pub(crate) struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
@@ -330,34 +325,27 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         });
 
         let tooltip = if ignore != Ignore::None {
-            Some((None, "ignore"))
+            highlight::Tooltip::Ignore
         } else if compile_fail {
-            Some((None, "compile_fail"))
+            highlight::Tooltip::CompileFail
         } else if should_panic {
-            Some((None, "should_panic"))
+            highlight::Tooltip::ShouldPanic
         } else if explicit_edition {
-            Some((Some(edition), "edition"))
+            highlight::Tooltip::Edition(edition)
         } else {
-            None
+            highlight::Tooltip::None
         };
 
         // insert newline to clearly separate it from the
         // previous block so we can shorten the html output
         let mut s = Buffer::new();
         s.push_str("\n");
-        highlight::render_with_highlighting(
+
+        highlight::render_example_with_highlighting(
             &text,
             &mut s,
-            Some(&format!(
-                "rust-example-rendered{}",
-                if let Some((_, class)) = tooltip { format!(" {}", class) } else { String::new() }
-            )),
-            playground_button.as_deref(),
             tooltip,
-            edition,
-            None,
-            None,
-            None,
+            playground_button.as_deref(),
         );
         Some(Event::Html(s.into_inner().into()))
     }
@@ -825,11 +813,8 @@ impl<'tcx> ExtraInfo<'tcx> {
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             hir_id,
             self.sp,
-            |lint| {
-                let mut diag = lint.build(msg);
-                diag.help(help);
-                diag.emit();
-            },
+            msg,
+            |lint| lint.help(help),
         );
     }
 }
@@ -1079,9 +1064,9 @@ impl MarkdownWithToc<'_> {
     }
 }
 
-impl MarkdownHtml<'_> {
+impl MarkdownItemInfo<'_> {
     pub(crate) fn into_string(self) -> String {
-        let MarkdownHtml(md, ids, codes, edition, playground) = self;
+        let MarkdownItemInfo(md, ids) = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1100,7 +1085,9 @@ impl MarkdownHtml<'_> {
         let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
         let p = Footnotes::new(p);
         let p = TableWrapper::new(p.map(|(ev, _)| ev));
-        let p = CodeBlocks::new(p, codes, edition, playground);
+        let p = p.filter(|event| {
+            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(Tag::Paragraph))
+        });
         html::push_html(&mut s, p);
 
         s
@@ -1126,7 +1113,11 @@ impl MarkdownSummaryLine<'_> {
 
         let mut s = String::new();
 
-        html::push_html(&mut s, LinkReplacer::new(SummaryLine::new(p), links));
+        let without_paragraphs = LinkReplacer::new(SummaryLine::new(p), links).filter(|event| {
+            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(Tag::Paragraph))
+        });
+
+        html::push_html(&mut s, without_paragraphs);
 
         s
     }
@@ -1442,11 +1433,12 @@ static DEFAULT_ID_MAP: Lazy<FxHashMap<Cow<'static, str>, usize>> = Lazy::new(|| 
 fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     let mut map = FxHashMap::default();
     // This is the list of IDs used in Javascript.
-    map.insert("help".into(), 1);
     map.insert("settings".into(), 1);
     map.insert("not-displayed".into(), 1);
     map.insert("alternative-display".into(), 1);
     map.insert("search".into(), 1);
+    map.insert("crate-search".into(), 1);
+    map.insert("crate-search-div".into(), 1);
     // This is the list of IDs used in HTML generated in Rust (including the ones
     // used in tera template files).
     map.insert("mainThemeStyle".into(), 1);
@@ -1454,8 +1446,6 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("settings-menu".into(), 1);
     map.insert("help-button".into(), 1);
     map.insert("main-content".into(), 1);
-    map.insert("crate-search".into(), 1);
-    map.insert("render-detail".into(), 1);
     map.insert("toggle-all-docs".into(), 1);
     map.insert("all-types".into(), 1);
     map.insert("default-settings".into(), 1);
@@ -1487,6 +1477,7 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("synthetic-implementations-list".into(), 1);
     map.insert("blanket-implementations-list".into(), 1);
     map.insert("deref-methods".into(), 1);
+    map.insert("layout".into(), 1);
     map
 }
 

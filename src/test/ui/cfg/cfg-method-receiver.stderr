@@ -1,0 +1,34 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/cfg-method-receiver.rs:9:17
+   |
+LL |     cbor_map! { #[cfg(test)] 4};
+   |                 ^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-method-receiver.rs:9:17
+   |
+LL |     cbor_map! { #[cfg(test)] 4};
+   |                 ^^^^^^^^^^^^
+
+error[E0689]: can't call method `signum` on ambiguous numeric type `{integer}`
+  --> $DIR/cfg-method-receiver.rs:3:14
+   |
+LL |         $key.signum();
+   |              ^^^^^^
+...
+LL |     cbor_map! { #[cfg(test)] 4};
+   |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `cbor_map` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you must specify a concrete type for this numeric value, like `i32`
+   |
+LL |     cbor_map! { #[cfg(test)] 4_i32};
+   |                              ~~~~~
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0658, E0689.
+For more information about an error, try `rustc --explain E0658`.

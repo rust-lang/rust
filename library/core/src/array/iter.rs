@@ -1,10 +1,10 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
 use crate::{
-    cmp, fmt,
+    fmt,
     iter::{self, ExactSizeIterator, FusedIterator, TrustedLen},
     mem::{self, MaybeUninit},
-    ops::Range,
+    ops::{IndexRange, Range},
     ptr,
 };
 
@@ -29,9 +29,10 @@ pub struct IntoIter<T, const N: usize> {
     /// The elements in `data` that have not been yielded yet.
     ///
     /// Invariants:
-    /// - `alive.start <= alive.end`
     /// - `alive.end <= N`
-    alive: Range<usize>,
+    ///
+    /// (And the `IndexRange` type requires `alive.start <= alive.end`.)
+    alive: IndexRange,
 }
 
 // Note: the `#[rustc_skip_array_during_method_dispatch]` on `trait IntoIterator`
@@ -69,7 +70,7 @@ impl<T, const N: usize> IntoIterator for [T; N] {
         // Until then, we can use `mem::transmute_copy` to create a bitwise copy
         // as a different type, then forget `array` so that it is not dropped.
         unsafe {
-            let iter = IntoIter { data: mem::transmute_copy(&self), alive: 0..N };
+            let iter = IntoIter { data: mem::transmute_copy(&self), alive: IndexRange::zero_to(N) };
             mem::forget(self);
             iter
         }
@@ -147,7 +148,9 @@ impl<T, const N: usize> IntoIter<T, N> {
         buffer: [MaybeUninit<T>; N],
         initialized: Range<usize>,
     ) -> Self {
-        Self { data: buffer, alive: initialized }
+        // SAFETY: one of our safety conditions is that the range is canonical.
+        let alive = unsafe { IndexRange::new_unchecked(initialized.start, initialized.end) };
+        Self { data: buffer, alive }
     }
 
     /// Creates an iterator over `T` which returns no elements.
@@ -283,16 +286,11 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
     }
 
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let len = self.len();
+        let original_len = self.len();
 
-        // The number of elements to drop.  Always in-bounds by construction.
-        let delta = cmp::min(n, len);
-
-        let range_to_drop = self.alive.start..(self.alive.start + delta);
-
-        // Moving the start marks them as conceptually "dropped", so if anything
-        // goes bad then our drop impl won't double-free them.
-        self.alive.start += delta;
+        // This also moves the start, which marks them as conceptually "dropped",
+        // so if anything goes bad then our drop impl won't double-free them.
+        let range_to_drop = self.alive.take_prefix(n);
 
         // SAFETY: These elements are currently initialized, so it's fine to drop them.
         unsafe {
@@ -300,7 +298,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
             ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
         }
 
-        if n > len { Err(len) } else { Ok(()) }
+        if n > original_len { Err(original_len) } else { Ok(()) }
     }
 }
 
@@ -338,16 +336,11 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
     }
 
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        let len = self.len();
+        let original_len = self.len();
 
-        // The number of elements to drop.  Always in-bounds by construction.
-        let delta = cmp::min(n, len);
-
-        let range_to_drop = (self.alive.end - delta)..self.alive.end;
-
-        // Moving the end marks them as conceptually "dropped", so if anything
-        // goes bad then our drop impl won't double-free them.
-        self.alive.end -= delta;
+        // This also moves the end, which marks them as conceptually "dropped",
+        // so if anything goes bad then our drop impl won't double-free them.
+        let range_to_drop = self.alive.take_suffix(n);
 
         // SAFETY: These elements are currently initialized, so it's fine to drop them.
         unsafe {
@@ -355,7 +348,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
             ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
         }
 
-        if n > len { Err(len) } else { Ok(()) }
+        if n > original_len { Err(original_len) } else { Ok(()) }
     }
 }
 
@@ -372,9 +365,7 @@ impl<T, const N: usize> Drop for IntoIter<T, N> {
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> ExactSizeIterator for IntoIter<T, N> {
     fn len(&self) -> usize {
-        // Will never underflow due to the invariant `alive.start <=
-        // alive.end`.
-        self.alive.end - self.alive.start
+        self.alive.len()
     }
     fn is_empty(&self) -> bool {
         self.alive.is_empty()
@@ -396,14 +387,15 @@ impl<T: Clone, const N: usize> Clone for IntoIter<T, N> {
     fn clone(&self) -> Self {
         // Note, we don't really need to match the exact same alive range, so
         // we can just clone into offset 0 regardless of where `self` is.
-        let mut new = Self { data: MaybeUninit::uninit_array(), alive: 0..0 };
+        let mut new = Self { data: MaybeUninit::uninit_array(), alive: IndexRange::zero_to(0) };
 
         // Clone all alive elements.
         for (src, dst) in iter::zip(self.as_slice(), &mut new.data) {
             // Write a clone into the new array, then update its alive range.
             // If cloning panics, we'll correctly drop the previous items.
             dst.write(src.clone());
-            new.alive.end += 1;
+            // This addition cannot overflow as we're iterating a slice
+            new.alive = IndexRange::zero_to(new.alive.end() + 1);
         }
 
         new

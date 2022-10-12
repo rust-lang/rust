@@ -41,7 +41,6 @@ use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::hash::Hash;
-use tracing::*;
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -108,7 +107,7 @@ fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str)
         // which will cause us to require that this method always be called with `Span` hashing
         // enabled.
         HashingControls { hash_spans }
-            if hash_spans == !ctx.debug_opts_incremental_ignore_spans() => {}
+            if hash_spans == !ctx.unstable_opts_incremental_ignore_spans() => {}
         other => panic!("Attempted hashing of {msg} with non-default HashingControls: {:?}", other),
     }
 }
@@ -629,8 +628,7 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
         if verbose {
             format!("{:#?}", data)
         } else {
-            let mut s = String::from("");
-            s.push_str("Expansions:");
+            let mut s = String::from("Expansions:");
             let mut debug_expn_data = |(id, expn_data): (&ExpnId, &ExpnData)| {
                 s.push_str(&format!(
                     "\n{:?}: parent: {:?}, call_site_ctxt: {:?}, def_site_ctxt: {:?}, kind: {:?}",
@@ -645,7 +643,10 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
                 let expn_data = expn_data.as_ref().expect("no expansion data for an expansion ID");
                 debug_expn_data((&id.to_expn_id(), expn_data))
             });
+
             // Sort the hash map for more reproducible output.
+            // Because of this, it is fine to rely on the unstable iteration order of the map.
+            #[allow(rustc::potential_query_instability)]
             let mut foreign_expn_data: Vec<_> = data.foreign_expn_data.iter().collect();
             foreign_expn_data.sort_by_key(|(id, _)| (id.krate, id.local_id));
             foreign_expn_data.into_iter().for_each(debug_expn_data);
@@ -943,12 +944,6 @@ pub struct ExpnData {
     /// internally without forcing the whole crate to opt-in
     /// to them.
     pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
-    /// Whether the macro is allowed to use `unsafe` internally
-    /// even if the user crate has `#![forbid(unsafe_code)]`.
-    pub allow_internal_unsafe: bool,
-    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`)
-    /// for a given macro.
-    pub local_inner_macros: bool,
     /// Edition of the crate in which the macro is defined.
     pub edition: Edition,
     /// The `DefId` of the macro being invoked,
@@ -956,6 +951,13 @@ pub struct ExpnData {
     pub macro_def_id: Option<DefId>,
     /// The normal module (`mod`) in which the expanded macro was defined.
     pub parent_module: Option<DefId>,
+    /// Suppresses the `unsafe_code` lint for code produced by this macro.
+    pub allow_internal_unsafe: bool,
+    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
+    pub local_inner_macros: bool,
+    /// Should debuginfo for the macro be collapsed to the outermost expansion site (in other
+    /// words, was the macro definition annotated with `#[collapse_debuginfo]`)?
+    pub collapse_debuginfo: bool,
 }
 
 impl !PartialEq for ExpnData {}
@@ -968,11 +970,12 @@ impl ExpnData {
         call_site: Span,
         def_site: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
-        allow_internal_unsafe: bool,
-        local_inner_macros: bool,
         edition: Edition,
         macro_def_id: Option<DefId>,
         parent_module: Option<DefId>,
+        allow_internal_unsafe: bool,
+        local_inner_macros: bool,
+        collapse_debuginfo: bool,
     ) -> ExpnData {
         ExpnData {
             kind,
@@ -980,12 +983,13 @@ impl ExpnData {
             call_site,
             def_site,
             allow_internal_unstable,
-            allow_internal_unsafe,
-            local_inner_macros,
             edition,
             macro_def_id,
             parent_module,
             disambiguator: 0,
+            allow_internal_unsafe,
+            local_inner_macros,
+            collapse_debuginfo,
         }
     }
 
@@ -1003,12 +1007,13 @@ impl ExpnData {
             call_site,
             def_site: DUMMY_SP,
             allow_internal_unstable: None,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
             edition,
             macro_def_id,
             parent_module,
             disambiguator: 0,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            collapse_debuginfo: false,
         }
     }
 
@@ -1142,7 +1147,6 @@ pub enum DesugaringKind {
     Async,
     Await,
     ForLoop,
-    LetElse,
     WhileLoop,
 }
 
@@ -1158,7 +1162,6 @@ impl DesugaringKind {
             DesugaringKind::YeetExpr => "`do yeet` expression",
             DesugaringKind::OpaqueTy => "`impl Trait`",
             DesugaringKind::ForLoop => "`for` loop",
-            DesugaringKind::LetElse => "`let...else`",
             DesugaringKind::WhileLoop => "`while` loop",
         }
     }
@@ -1189,12 +1192,12 @@ impl HygieneEncodeContext {
         }
     }
 
-    pub fn encode<T, R>(
+    pub fn encode<T>(
         &self,
         encoder: &mut T,
-        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextData) -> Result<(), R>,
-        mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash) -> Result<(), R>,
-    ) -> Result<(), R> {
+        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextData),
+        mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash),
+    ) {
         // When we serialize a `SyntaxContextData`, we may end up serializing
         // a `SyntaxContext` that we haven't seen before
         while !self.latest_ctxts.lock().is_empty() || !self.latest_expns.lock().is_empty() {
@@ -1211,24 +1214,24 @@ impl HygieneEncodeContext {
             // It's fine to iterate over a HashMap, because the serialization
             // of the table that we insert data into doesn't depend on insertion
             // order
+            #[allow(rustc::potential_query_instability)]
             for_all_ctxts_in(latest_ctxts.into_iter(), |index, ctxt, data| {
                 if self.serialized_ctxts.lock().insert(ctxt) {
-                    encode_ctxt(encoder, index, data)?;
+                    encode_ctxt(encoder, index, data);
                 }
-                Ok(())
-            })?;
+            });
 
             let latest_expns = { std::mem::take(&mut *self.latest_expns.lock()) };
 
+            // Same as above, this is fine as we are inserting into a order-independent hashset
+            #[allow(rustc::potential_query_instability)]
             for_all_expns_in(latest_expns.into_iter(), |expn, data, hash| {
                 if self.serialized_expns.lock().insert(expn) {
-                    encode_expn(encoder, expn, data, hash)?;
+                    encode_expn(encoder, expn, data, hash);
                 }
-                Ok(())
-            })?;
+            });
         }
         debug!("encode_hygiene: Done serializing SyntaxContextData");
-        Ok(())
     }
 }
 
@@ -1378,40 +1381,38 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
     new_ctxt
 }
 
-fn for_all_ctxts_in<E, F: FnMut(u32, SyntaxContext, &SyntaxContextData) -> Result<(), E>>(
+fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextData)>(
     ctxts: impl Iterator<Item = SyntaxContext>,
     mut f: F,
-) -> Result<(), E> {
+) {
     let all_data: Vec<_> = HygieneData::with(|data| {
         ctxts.map(|ctxt| (ctxt, data.syntax_context_data[ctxt.0 as usize].clone())).collect()
     });
     for (ctxt, data) in all_data.into_iter() {
-        f(ctxt.0, ctxt, &data)?;
+        f(ctxt.0, ctxt, &data);
     }
-    Ok(())
 }
 
-fn for_all_expns_in<E>(
+fn for_all_expns_in(
     expns: impl Iterator<Item = ExpnId>,
-    mut f: impl FnMut(ExpnId, &ExpnData, ExpnHash) -> Result<(), E>,
-) -> Result<(), E> {
+    mut f: impl FnMut(ExpnId, &ExpnData, ExpnHash),
+) {
     let all_data: Vec<_> = HygieneData::with(|data| {
         expns.map(|expn| (expn, data.expn_data(expn).clone(), data.expn_hash(expn))).collect()
     });
     for (expn, data, hash) in all_data.into_iter() {
-        f(expn, &data, hash)?;
+        f(expn, &data, hash);
     }
-    Ok(())
 }
 
 impl<E: Encoder> Encodable<E> for LocalExpnId {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        self.to_expn_id().encode(e)
+    fn encode(&self, e: &mut E) {
+        self.to_expn_id().encode(e);
     }
 }
 
 impl<E: Encoder> Encodable<E> for ExpnId {
-    default fn encode(&self, _: &mut E) -> Result<(), E::Error> {
+    default fn encode(&self, _: &mut E) {
         panic!("cannot encode `ExpnId` with `{}`", std::any::type_name::<E>());
     }
 }
@@ -1432,15 +1433,15 @@ pub fn raw_encode_syntax_context<E: Encoder>(
     ctxt: SyntaxContext,
     context: &HygieneEncodeContext,
     e: &mut E,
-) -> Result<(), E::Error> {
+) {
     if !context.serialized_ctxts.lock().contains(&ctxt) {
         context.latest_ctxts.lock().insert(ctxt);
     }
-    ctxt.0.encode(e)
+    ctxt.0.encode(e);
 }
 
 impl<E: Encoder> Encodable<E> for SyntaxContext {
-    default fn encode(&self, _: &mut E) -> Result<(), E::Error> {
+    default fn encode(&self, _: &mut E) {
         panic!("cannot encode `SyntaxContext` with `{}`", std::any::type_name::<E>());
     }
 }

@@ -1,0 +1,21 @@
+### What it does
+Checks for `ref` bindings which create a reference to a reference.
+
+### Why is this bad?
+The address-of operator at the use site is clearer about the need for a reference.
+
+### Example
+```
+let x = Some("");
+if let Some(ref x) = x {
+    // use `x` here
+}
+```
+
+Use instead:
+```
+let x = Some("");
+if let Some(x) = x {
+    // use `&x` here
+}
+```

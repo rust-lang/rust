@@ -56,11 +56,11 @@ impl<
         writeln!(w, "{} {}{} {{", kind, cluster, self.graphviz_name)?;
 
         // Global graph properties
-        let font = format!(r#"fontname="{}""#, tcx.sess.opts.debugging_opts.graphviz_font);
+        let font = format!(r#"fontname="{}""#, tcx.sess.opts.unstable_opts.graphviz_font);
         let mut graph_attrs = vec![&font[..]];
         let mut content_attrs = vec![&font[..]];
 
-        let dark_mode = tcx.sess.opts.debugging_opts.graphviz_dark_mode;
+        let dark_mode = tcx.sess.opts.unstable_opts.graphviz_dark_mode;
         if dark_mode {
             graph_attrs.push(r#"bgcolor="black""#);
             graph_attrs.push(r#"fontcolor="white""#);

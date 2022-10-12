@@ -1,4 +1,3 @@
-#![feature(generic_associated_types)]
 #![feature(associated_type_defaults)]
 
 trait Foo {

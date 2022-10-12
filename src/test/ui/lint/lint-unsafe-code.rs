@@ -48,6 +48,9 @@ impl AssocFnTrait for AssocFnFoo {
 #[export_name = "bar"] fn bar() {} //~ ERROR: declaration of a function with `export_name`
 #[export_name = "BAR"] static BAR: u32 = 5; //~ ERROR: declaration of a static with `export_name`
 
+#[link_section = ".example_section"] fn uwu() {} //~ ERROR: declaration of a function with `link_section`
+#[link_section = ".example_section"] static UWU: u32 = 5; //~ ERROR: declaration of a static with `link_section`
+
 struct AssocFnBar;
 
 impl AssocFnBar {

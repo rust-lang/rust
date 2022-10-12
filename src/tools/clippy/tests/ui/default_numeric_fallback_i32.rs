@@ -1,6 +1,7 @@
 // run-rustfix
 // aux-build:macro_rules.rs
 
+#![feature(lint_reasons)]
 #![warn(clippy::default_numeric_fallback)]
 #![allow(
     unused,
@@ -171,6 +172,11 @@ mod in_macro {
     fn external() {
         default_numeric_fallback!();
     }
+}
+
+fn check_expect_suppression() {
+    #[expect(clippy::default_numeric_fallback)]
+    let x = 21;
 }
 
 fn main() {}

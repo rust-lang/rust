@@ -6,6 +6,7 @@
 
 fn a() {
     let mut closure0 = None;
+    //~^ ERROR type annotations needed
     let vec = vec![1, 2, 3];
 
     loop {
@@ -14,7 +15,6 @@ fn a() {
                 match closure0.take() {
                     Some(c) => {
                         return c();
-                        //~^ ERROR type annotations needed
                     }
                     None => { }
                 }

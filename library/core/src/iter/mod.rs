@@ -352,6 +352,29 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+// This needs to be up here in order to be usable in the child modules
+macro_rules! impl_fold_via_try_fold {
+    (fold -> try_fold) => {
+        impl_fold_via_try_fold! { @internal fold -> try_fold }
+    };
+    (rfold -> try_rfold) => {
+        impl_fold_via_try_fold! { @internal rfold -> try_rfold }
+    };
+    (@internal $fold:ident -> $try_fold:ident) => {
+        #[inline]
+        fn $fold<AAA, FFF>(mut self, init: AAA, mut fold: FFF) -> AAA
+        where
+            FFF: FnMut(AAA, Self::Item) -> AAA,
+        {
+            use crate::const_closure::ConstFnMutClosure;
+            use crate::ops::NeverShortCircuit;
+
+            let fold = ConstFnMutClosure::new(&mut fold, NeverShortCircuit::wrap_mut_2_imp);
+            self.$try_fold(init, fold).0
+        }
+    };
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;
 
@@ -398,6 +421,10 @@ pub use self::traits::{
 
 #[stable(feature = "iter_zip", since = "1.59.0")]
 pub use self::adapters::zip;
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+pub use self::adapters::ArrayChunks;
+#[unstable(feature = "std_internals", issue = "none")]
+pub use self::adapters::ByRefSized;
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::adapters::Cloned;
 #[stable(feature = "iter_copied", since = "1.36.0")]
@@ -422,7 +449,7 @@ pub use self::adapters::{
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 pub use self::adapters::{Intersperse, IntersperseWith};
 
-pub(crate) use self::adapters::{try_process, ByRefSized};
+pub(crate) use self::adapters::try_process;
 
 mod adapters;
 mod range;

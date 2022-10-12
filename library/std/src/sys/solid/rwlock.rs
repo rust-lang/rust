@@ -23,6 +23,7 @@ fn new_rwl() -> Result<abi::ID, ItronError> {
 }
 
 impl RwLock {
+    #[inline]
     pub const fn new() -> RwLock {
         RwLock { rwl: SpinIdOnceCell::new() }
     }
@@ -82,9 +83,11 @@ impl RwLock {
         let rwl = self.raw();
         expect_success_aborting(unsafe { abi::rwl_unl_rwl(rwl) }, &"rwl_unl_rwl");
     }
+}
 
+impl Drop for RwLock {
     #[inline]
-    pub unsafe fn destroy(&self) {
+    fn drop(&mut self) {
         if let Some(rwl) = self.rwl.get().map(|x| x.0) {
             expect_success_aborting(unsafe { abi::rwl_del_rwl(rwl) }, &"rwl_del_rwl");
         }

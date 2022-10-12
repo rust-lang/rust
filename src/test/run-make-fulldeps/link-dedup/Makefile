@@ -1,6 +1,6 @@
 # ignore-msvc
 
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) depa.rs

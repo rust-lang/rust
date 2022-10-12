@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 // FIXME: the following cases need to suggest more things to make users reach a working end state.
 
 mod bav {
@@ -67,7 +63,7 @@ mod bay {
     impl Bar for i32 {}
 
     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32> + 'a>) -> &'a () {
-        val.use_self() //[base]~ ERROR E0772
+        val.use_self()
     }
 }
 

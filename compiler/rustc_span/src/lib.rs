@@ -15,13 +15,12 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
-#![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(negative_impls)]
-#![feature(nll)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
-#![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -75,8 +74,6 @@ use md5::Digest;
 use md5::Md5;
 use sha1::Sha1;
 use sha2::Sha256;
-
-use tracing::debug;
 
 #[cfg(test)]
 mod tests;
@@ -195,25 +192,21 @@ impl Hash for RealFileName {
 // This is functionally identical to #[derive(Encodable)], with the exception of
 // an added assert statement
 impl<S: Encoder> Encodable<S> for RealFileName {
-    fn encode(&self, encoder: &mut S) -> Result<(), S::Error> {
-        encoder.emit_enum(|encoder| match *self {
-            RealFileName::LocalPath(ref local_path) => {
-                encoder.emit_enum_variant("LocalPath", 0, 1, |encoder| {
-                    encoder.emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
-                    Ok(())
-                })
-            }
+    fn encode(&self, encoder: &mut S) {
+        match *self {
+            RealFileName::LocalPath(ref local_path) => encoder.emit_enum_variant(0, |encoder| {
+                local_path.encode(encoder);
+            }),
 
             RealFileName::Remapped { ref local_path, ref virtual_name } => encoder
-                .emit_enum_variant("Remapped", 1, 2, |encoder| {
+                .emit_enum_variant(1, |encoder| {
                     // For privacy and build reproducibility, we must not embed host-dependant path in artifacts
                     // if they have been remapped by --remap-path-prefix
                     assert!(local_path.is_none());
-                    encoder.emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
-                    encoder.emit_enum_variant_arg(false, |encoder| virtual_name.encode(encoder))?;
-                    Ok(())
+                    local_path.encode(encoder);
+                    virtual_name.encode(encoder);
                 }),
-        })
+        }
     }
 }
 
@@ -305,7 +298,11 @@ impl From<PathBuf> for FileName {
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub enum FileNameDisplayPreference {
+    /// Display the path after the application of rewrite rules provided via `--remap-path-prefix`.
+    /// This is appropriate for paths that get embedded into files produced by the compiler.
     Remapped,
+    /// Display the path before the application of rewrite rules provided via `--remap-path-prefix`.
+    /// This is appropriate for use in user-facing output (such as diagnostics).
     Local,
 }
 
@@ -338,7 +335,7 @@ impl<'a> FileNameDisplay<'a> {
     pub fn to_string_lossy(&self) -> Cow<'a, str> {
         match self.inner {
             FileName::Real(ref inner) => inner.to_string_lossy(self.display_pref),
-            _ => Cow::from(format!("{}", self)),
+            _ => Cow::from(self.to_string()),
         }
     }
 }
@@ -539,8 +536,8 @@ impl Span {
         self.data().with_hi(hi)
     }
     #[inline]
-    pub fn ctxt(self) -> SyntaxContext {
-        self.data_untracked().ctxt
+    pub fn eq_ctxt(self, other: Span) -> bool {
+        self.data_untracked().ctxt == other.data_untracked().ctxt
     }
     #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
@@ -565,6 +562,13 @@ impl Span {
     #[inline]
     pub fn from_expansion(self) -> bool {
         self.ctxt() != SyntaxContext::root()
+    }
+
+    /// Returns `true` if `span` originates in a macro's expansion where debuginfo should be
+    /// collapsed.
+    pub fn in_macro_expansion_with_collapse_debuginfo(self) -> bool {
+        let outer_expn = self.ctxt().outer_expn_data();
+        matches!(outer_expn.kind, ExpnKind::Macro(..)) && outer_expn.collapse_debuginfo
     }
 
     /// Returns `true` if `span` originates in a derive-macro's expansion.
@@ -660,6 +664,16 @@ impl Span {
     /// Walk down the expansion ancestors to find a span that's contained within `outer`.
     pub fn find_ancestor_inside(mut self, outer: Span) -> Option<Span> {
         while !outer.contains(self) {
+            self = self.parent_callsite()?;
+        }
+        Some(self)
+    }
+
+    /// Like `find_ancestor_inside`, but specifically for when spans might not
+    /// overlaps. Take care when using this, and prefer `find_ancestor_inside`
+    /// when you know that the spans are nested (modulo macro expansion).
+    pub fn find_ancestor_in_same_ctxt(mut self, other: Span) -> Option<Span> {
+        while !Span::eq_ctxt(self, other) {
             self = self.parent_callsite()?;
         }
         Some(self)
@@ -948,12 +962,10 @@ impl Default for Span {
 }
 
 impl<E: Encoder> Encodable<E> for Span {
-    default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+    default fn encode(&self, s: &mut E) {
         let span = self.data();
-        s.emit_struct(false, |s| {
-            s.emit_struct_field("lo", true, |s| span.lo.encode(s))?;
-            s.emit_struct_field("hi", false, |s| span.hi.encode(s))
-        })
+        span.lo.encode(s);
+        span.hi.encode(s);
     }
 }
 impl<D: Decoder> Decodable<D> for Span {
@@ -1099,10 +1111,8 @@ pub enum ExternalSource {
     Unneeded,
     Foreign {
         kind: ExternalSourceKind,
-        /// This SourceFile's byte-offset within the source_map of its original crate.
-        original_start_pos: BytePos,
-        /// The end of this SourceFile within the source_map of its original crate.
-        original_end_pos: BytePos,
+        /// Index of the file inside metadata.
+        metadata_index: u32,
     },
 }
 
@@ -1222,6 +1232,52 @@ impl DebuggerVisualizerFile {
     }
 }
 
+#[derive(Clone)]
+pub enum SourceFileLines {
+    /// The source file lines, in decoded (random-access) form.
+    Lines(Vec<BytePos>),
+
+    /// The source file lines, in undecoded difference list form.
+    Diffs(SourceFileDiffs),
+}
+
+impl SourceFileLines {
+    pub fn is_lines(&self) -> bool {
+        matches!(self, SourceFileLines::Lines(_))
+    }
+}
+
+/// The source file lines in difference list form. This matches the form
+/// used within metadata, which saves space by exploiting the fact that the
+/// lines list is sorted and individual lines are usually not that long.
+///
+/// We read it directly from metadata and only decode it into `Lines` form
+/// when necessary. This is a significant performance win, especially for
+/// small crates where very little of `std`'s metadata is used.
+#[derive(Clone)]
+pub struct SourceFileDiffs {
+    /// Position of the first line. Note that this is always encoded as a
+    /// `BytePos` because it is often much larger than any of the
+    /// differences.
+    line_start: BytePos,
+
+    /// Always 1, 2, or 4. Always as small as possible, while being big
+    /// enough to hold the length of the longest line in the source file.
+    /// The 1 case is by far the most common.
+    bytes_per_diff: usize,
+
+    /// The number of diffs encoded in `raw_diffs`. Always one less than
+    /// the number of lines in the source file.
+    num_diffs: usize,
+
+    /// The diffs in "raw" form. Each segment of `bytes_per_diff` length
+    /// encodes one little-endian diff. Note that they aren't LEB128
+    /// encoded. This makes for much faster decoding. Besides, the
+    /// bytes_per_diff==1 case is by far the most common, and LEB128
+    /// encoding has no effect on that case.
+    raw_diffs: Vec<u8>,
+}
+
 /// A single source in the [`SourceMap`].
 #[derive(Clone)]
 pub struct SourceFile {
@@ -1241,7 +1297,7 @@ pub struct SourceFile {
     /// The end position of this source in the `SourceMap`.
     pub end_pos: BytePos,
     /// Locations of lines beginnings in the source code.
-    pub lines: Vec<BytePos>,
+    pub lines: Lock<SourceFileLines>,
     /// Locations of multi-byte characters in the source code.
     pub multibyte_chars: Vec<MultiByteChar>,
     /// Width of characters that are not narrow in the source code.
@@ -1255,78 +1311,77 @@ pub struct SourceFile {
 }
 
 impl<S: Encoder> Encodable<S> for SourceFile {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct(false, |s| {
-            s.emit_struct_field("name", true, |s| self.name.encode(s))?;
-            s.emit_struct_field("src_hash", false, |s| self.src_hash.encode(s))?;
-            s.emit_struct_field("start_pos", false, |s| self.start_pos.encode(s))?;
-            s.emit_struct_field("end_pos", false, |s| self.end_pos.encode(s))?;
-            s.emit_struct_field("lines", false, |s| {
-                let lines = &self.lines[..];
-                // Store the length.
-                s.emit_u32(lines.len() as u32)?;
+    fn encode(&self, s: &mut S) {
+        self.name.encode(s);
+        self.src_hash.encode(s);
+        self.start_pos.encode(s);
+        self.end_pos.encode(s);
 
-                if !lines.is_empty() {
-                    // In order to preserve some space, we exploit the fact that
-                    // the lines list is sorted and individual lines are
-                    // probably not that long. Because of that we can store lines
-                    // as a difference list, using as little space as possible
-                    // for the differences. But note that the first line is
-                    // always encoded as a `BytePos` because its position is
-                    // often much larger than any of the differences.
-                    let max_line_length = if lines.len() == 1 {
-                        0
-                    } else {
-                        lines
-                            .array_windows()
-                            .map(|&[fst, snd]| snd - fst)
-                            .map(|bp| bp.to_usize())
-                            .max()
-                            .unwrap()
-                    };
+        // We are always in `Lines` form by the time we reach here.
+        assert!(self.lines.borrow().is_lines());
+        self.lines(|lines| {
+            // Store the length.
+            s.emit_u32(lines.len() as u32);
 
-                    let bytes_per_diff: u8 = match max_line_length {
-                        0..=0xFF => 1,
-                        0x100..=0xFFFF => 2,
-                        _ => 4,
-                    };
+            // Compute and store the difference list.
+            if lines.len() != 0 {
+                let max_line_length = if lines.len() == 1 {
+                    0
+                } else {
+                    lines
+                        .array_windows()
+                        .map(|&[fst, snd]| snd - fst)
+                        .map(|bp| bp.to_usize())
+                        .max()
+                        .unwrap()
+                };
 
-                    // Encode the number of bytes used per diff.
-                    bytes_per_diff.encode(s)?;
+                let bytes_per_diff: usize = match max_line_length {
+                    0..=0xFF => 1,
+                    0x100..=0xFFFF => 2,
+                    _ => 4,
+                };
 
-                    // Encode the first element.
-                    lines[0].encode(s)?;
+                // Encode the number of bytes used per diff.
+                s.emit_u8(bytes_per_diff as u8);
 
-                    let diff_iter = lines.array_windows().map(|&[fst, snd]| snd - fst);
+                // Encode the first element.
+                lines[0].encode(s);
 
-                    match bytes_per_diff {
-                        1 => {
-                            for diff in diff_iter {
-                                (diff.0 as u8).encode(s)?
-                            }
+                // Encode the difference list.
+                let diff_iter = lines.array_windows().map(|&[fst, snd]| snd - fst);
+                let num_diffs = lines.len() - 1;
+                let mut raw_diffs;
+                match bytes_per_diff {
+                    1 => {
+                        raw_diffs = Vec::with_capacity(num_diffs);
+                        for diff in diff_iter {
+                            raw_diffs.push(diff.0 as u8);
                         }
-                        2 => {
-                            for diff in diff_iter {
-                                (diff.0 as u16).encode(s)?
-                            }
-                        }
-                        4 => {
-                            for diff in diff_iter {
-                                diff.0.encode(s)?
-                            }
-                        }
-                        _ => unreachable!(),
                     }
+                    2 => {
+                        raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
+                        for diff in diff_iter {
+                            raw_diffs.extend_from_slice(&(diff.0 as u16).to_le_bytes());
+                        }
+                    }
+                    4 => {
+                        raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
+                        for diff in diff_iter {
+                            raw_diffs.extend_from_slice(&(diff.0 as u32).to_le_bytes());
+                        }
+                    }
+                    _ => unreachable!(),
                 }
+                s.emit_raw_bytes(&raw_diffs);
+            }
+        });
 
-                Ok(())
-            })?;
-            s.emit_struct_field("multibyte_chars", false, |s| self.multibyte_chars.encode(s))?;
-            s.emit_struct_field("non_narrow_chars", false, |s| self.non_narrow_chars.encode(s))?;
-            s.emit_struct_field("name_hash", false, |s| self.name_hash.encode(s))?;
-            s.emit_struct_field("normalized_pos", false, |s| self.normalized_pos.encode(s))?;
-            s.emit_struct_field("cnum", false, |s| self.cnum.encode(s))
-        })
+        self.multibyte_chars.encode(s);
+        self.non_narrow_chars.encode(s);
+        self.name_hash.encode(s);
+        self.normalized_pos.encode(s);
+        self.cnum.encode(s);
     }
 }
 
@@ -1336,36 +1391,27 @@ impl<D: Decoder> Decodable<D> for SourceFile {
         let src_hash: SourceFileHash = Decodable::decode(d);
         let start_pos: BytePos = Decodable::decode(d);
         let end_pos: BytePos = Decodable::decode(d);
-        let lines: Vec<BytePos> = {
+        let lines = {
             let num_lines: u32 = Decodable::decode(d);
-            let mut lines = Vec::with_capacity(num_lines as usize);
-
             if num_lines > 0 {
                 // Read the number of bytes used per diff.
-                let bytes_per_diff: u8 = Decodable::decode(d);
+                let bytes_per_diff = d.read_u8() as usize;
 
                 // Read the first element.
-                let mut line_start: BytePos = Decodable::decode(d);
-                lines.push(line_start);
+                let line_start: BytePos = Decodable::decode(d);
 
-                match bytes_per_diff {
-                    1 => lines.extend((1..num_lines).map(|_| {
-                        line_start = line_start + BytePos(d.read_u8() as u32);
-                        line_start
-                    })),
-                    2 => lines.extend((1..num_lines).map(|_| {
-                        line_start = line_start + BytePos(d.read_u16() as u32);
-                        line_start
-                    })),
-                    4 => lines.extend((1..num_lines).map(|_| {
-                        line_start = line_start + BytePos(d.read_u32());
-                        line_start
-                    })),
-                    _ => unreachable!(),
-                }
+                // Read the difference list.
+                let num_diffs = num_lines as usize - 1;
+                let raw_diffs = d.read_raw_bytes(bytes_per_diff * num_diffs).to_vec();
+                SourceFileLines::Diffs(SourceFileDiffs {
+                    line_start,
+                    bytes_per_diff,
+                    num_diffs,
+                    raw_diffs,
+                })
+            } else {
+                SourceFileLines::Lines(vec![])
             }
-
-            lines
         };
         let multibyte_chars: Vec<MultiByteChar> = Decodable::decode(d);
         let non_narrow_chars: Vec<NonNarrowChar> = Decodable::decode(d);
@@ -1381,7 +1427,7 @@ impl<D: Decoder> Decodable<D> for SourceFile {
             // Unused - the metadata decoder will construct
             // a new SourceFile, filling in `external_src` properly
             external_src: Lock::new(ExternalSource::Unneeded),
-            lines,
+            lines: Lock::new(lines),
             multibyte_chars,
             non_narrow_chars,
             normalized_pos,
@@ -1426,7 +1472,7 @@ impl SourceFile {
             external_src: Lock::new(ExternalSource::Unneeded),
             start_pos,
             end_pos: Pos::from_usize(end_pos),
-            lines,
+            lines: Lock::new(SourceFileLines::Lines(lines)),
             multibyte_chars,
             non_narrow_chars,
             normalized_pos,
@@ -1435,10 +1481,68 @@ impl SourceFile {
         }
     }
 
+    pub fn lines<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&[BytePos]) -> R,
+    {
+        let mut guard = self.lines.borrow_mut();
+        match &*guard {
+            SourceFileLines::Lines(lines) => f(lines),
+            SourceFileLines::Diffs(SourceFileDiffs {
+                mut line_start,
+                bytes_per_diff,
+                num_diffs,
+                raw_diffs,
+            }) => {
+                // Convert from "diffs" form to "lines" form.
+                let num_lines = num_diffs + 1;
+                let mut lines = Vec::with_capacity(num_lines);
+                lines.push(line_start);
+
+                assert_eq!(*num_diffs, raw_diffs.len() / bytes_per_diff);
+                match bytes_per_diff {
+                    1 => {
+                        lines.extend(raw_diffs.into_iter().map(|&diff| {
+                            line_start = line_start + BytePos(diff as u32);
+                            line_start
+                        }));
+                    }
+                    2 => {
+                        lines.extend((0..*num_diffs).map(|i| {
+                            let pos = bytes_per_diff * i;
+                            let bytes = [raw_diffs[pos], raw_diffs[pos + 1]];
+                            let diff = u16::from_le_bytes(bytes);
+                            line_start = line_start + BytePos(diff as u32);
+                            line_start
+                        }));
+                    }
+                    4 => {
+                        lines.extend((0..*num_diffs).map(|i| {
+                            let pos = bytes_per_diff * i;
+                            let bytes = [
+                                raw_diffs[pos],
+                                raw_diffs[pos + 1],
+                                raw_diffs[pos + 2],
+                                raw_diffs[pos + 3],
+                            ];
+                            let diff = u32::from_le_bytes(bytes);
+                            line_start = line_start + BytePos(diff);
+                            line_start
+                        }));
+                    }
+                    _ => unreachable!(),
+                }
+                let res = f(&lines);
+                *guard = SourceFileLines::Lines(lines);
+                res
+            }
+        }
+    }
+
     /// Returns the `BytePos` of the beginning of the current line.
     pub fn line_begin_pos(&self, pos: BytePos) -> BytePos {
         let line_index = self.lookup_line(pos).unwrap();
-        self.lines[line_index]
+        self.lines(|lines| lines[line_index])
     }
 
     /// Add externally loaded source.
@@ -1495,8 +1599,8 @@ impl SourceFile {
         }
 
         let begin = {
-            let line = self.lines.get(line_number)?;
-            let begin: BytePos = *line - self.start_pos;
+            let line = self.lines(|lines| lines.get(line_number).copied())?;
+            let begin: BytePos = line - self.start_pos;
             begin.to_usize()
         };
 
@@ -1513,12 +1617,13 @@ impl SourceFile {
         self.name.is_real()
     }
 
+    #[inline]
     pub fn is_imported(&self) -> bool {
         self.src.is_none()
     }
 
     pub fn count_lines(&self) -> usize {
-        self.lines.len()
+        self.lines(|lines| lines.len())
     }
 
     /// Finds the line containing the given position. The return value is the
@@ -1526,11 +1631,10 @@ impl SourceFile {
     /// number. If the source_file is empty or the position is located before the
     /// first line, `None` is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
-        match self.lines.binary_search(&pos) {
-            Ok(idx) => Some(idx),
-            Err(0) => None,
-            Err(idx) => Some(idx - 1),
-        }
+        self.lines(|lines| match lines.partition_point(|x| x <= &pos) {
+            0 => None,
+            i => Some(i - 1),
+        })
     }
 
     pub fn line_bounds(&self, line_index: usize) -> Range<BytePos> {
@@ -1538,12 +1642,14 @@ impl SourceFile {
             return self.start_pos..self.end_pos;
         }
 
-        assert!(line_index < self.lines.len());
-        if line_index == (self.lines.len() - 1) {
-            self.lines[line_index]..self.end_pos
-        } else {
-            self.lines[line_index]..self.lines[line_index + 1]
-        }
+        self.lines(|lines| {
+            assert!(line_index < lines.len());
+            if line_index == (lines.len() - 1) {
+                lines[line_index]..self.end_pos
+            } else {
+                lines[line_index]..lines[line_index + 1]
+            }
+        })
     }
 
     /// Returns whether or not the file contains the given `SourceMap` byte
@@ -1605,7 +1711,7 @@ impl SourceFile {
         match self.lookup_line(pos) {
             Some(a) => {
                 let line = a + 1; // Line numbers start at 1
-                let linebpos = self.lines[a];
+                let linebpos = self.lines(|lines| lines[a]);
                 let linechpos = self.bytepos_to_file_charpos(linebpos);
                 let col = chpos - linechpos;
                 debug!("byte pos {:?} is on the line at byte pos {:?}", pos, linebpos);
@@ -1624,7 +1730,7 @@ impl SourceFile {
         let (line, col_or_chpos) = self.lookup_file_pos(pos);
         if line > 0 {
             let col = col_or_chpos;
-            let linebpos = self.lines[line - 1];
+            let linebpos = self.lines(|lines| lines[line - 1]);
             let col_display = {
                 let start_width_idx = self
                     .non_narrow_chars
@@ -1822,13 +1928,13 @@ impl_pos! {
     pub struct CharPos(pub usize);
 }
 
-impl<S: rustc_serialize::Encoder> Encodable<S> for BytePos {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(self.0)
+impl<S: Encoder> Encodable<S> for BytePos {
+    fn encode(&self, s: &mut S) {
+        s.emit_u32(self.0);
     }
 }
 
-impl<D: rustc_serialize::Decoder> Decodable<D> for BytePos {
+impl<D: Decoder> Decodable<D> for BytePos {
     fn decode(d: &mut D) -> BytePos {
         BytePos(d.read_u32())
     }
@@ -1936,9 +2042,9 @@ impl InnerSpan {
 pub trait HashStableContext {
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
     fn hash_spans(&self) -> bool;
-    /// Accesses `sess.opts.debugging_opts.incremental_ignore_spans` since
+    /// Accesses `sess.opts.unstable_opts.incremental_ignore_spans` since
     /// we don't have easy access to a `Session`
-    fn debug_opts_incremental_ignore_spans(&self) -> bool;
+    fn unstable_opts_incremental_ignore_spans(&self) -> bool;
     fn def_span(&self, def_id: LocalDefId) -> Span;
     fn span_data_to_lines_and_cols(
         &mut self,

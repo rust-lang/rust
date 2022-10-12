@@ -2,7 +2,10 @@ error: expected `:`, found `}`
   --> $DIR/derive-bad.rs:6:10
    |
 LL | #[derive(A)]
-   |          ^ expected `:`
+   |          ^
+   |          |
+   |          expected `:`
+   |          while parsing this struct
    |
    = note: this error originates in the derive macro `A` (in Nightly builds, run with -Z macro-backtrace for more info)
 

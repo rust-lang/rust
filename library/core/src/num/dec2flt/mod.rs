@@ -126,7 +126,6 @@ macro_rules! from_str_float_impl {
             /// ```txt
             /// Float  ::= Sign? ( 'inf' | 'infinity' | 'nan' | Number )
             /// Number ::= ( Digit+ |
-            ///              '.' Digit* |
             ///              Digit+ '.' Digit* |
             ///              Digit* '.' Digit+ ) Exp?
             /// Exp    ::= 'e' Sign? Digit+

@@ -6,13 +6,15 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, Attribute, HasAttrs, Item, NodeId, PatKind};
+use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult};
+use rustc_errors::{
+    Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, MultiSpan, PResult,
+};
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::BuiltinLintDiagnostics;
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
@@ -71,7 +73,7 @@ impl Annotatable {
         }
     }
 
-    pub fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+    pub fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
         match self {
             Annotatable::Item(item) => item.visit_attrs(f),
             Annotatable::TraitItem(trait_item) => trait_item.visit_attrs(f),
@@ -693,10 +695,6 @@ pub struct SyntaxExtension {
     pub span: Span,
     /// List of unstable features that are treated as stable inside this macro.
     pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
-    /// Suppresses the `unsafe_code` lint for code produced by this macro.
-    pub allow_internal_unsafe: bool,
-    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
-    pub local_inner_macros: bool,
     /// The macro's stability info.
     pub stability: Option<Stability>,
     /// The macro's deprecation info.
@@ -708,6 +706,13 @@ pub struct SyntaxExtension {
     /// Built-in macros have a couple of special properties like availability
     /// in `#[no_implicit_prelude]` modules, so we have to keep this flag.
     pub builtin_name: Option<Symbol>,
+    /// Suppresses the `unsafe_code` lint for code produced by this macro.
+    pub allow_internal_unsafe: bool,
+    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
+    pub local_inner_macros: bool,
+    /// Should debuginfo for the macro be collapsed to the outermost expansion site (in other
+    /// words, was the macro definition annotated with `#[collapse_debuginfo]`)?
+    pub collapse_debuginfo: bool,
 }
 
 impl SyntaxExtension {
@@ -729,14 +734,15 @@ impl SyntaxExtension {
         SyntaxExtension {
             span: DUMMY_SP,
             allow_internal_unstable: None,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
             stability: None,
             deprecation: None,
             helper_attrs: Vec::new(),
             edition,
             builtin_name: None,
             kind,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            collapse_debuginfo: false,
         }
     }
 
@@ -754,12 +760,13 @@ impl SyntaxExtension {
         let allow_internal_unstable =
             attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>();
 
-        let mut local_inner_macros = false;
-        if let Some(macro_export) = sess.find_by_name(attrs, sym::macro_export) {
-            if let Some(l) = macro_export.meta_item_list() {
-                local_inner_macros = attr::list_contains_name(&l, sym::local_inner_macros);
-            }
-        }
+        let allow_internal_unsafe = sess.contains_name(attrs, sym::allow_internal_unsafe);
+        let local_inner_macros = sess
+            .find_by_name(attrs, sym::macro_export)
+            .and_then(|macro_export| macro_export.meta_item_list())
+            .map_or(false, |l| attr::list_contains_name(&l, sym::local_inner_macros));
+        let collapse_debuginfo = sess.contains_name(attrs, sym::collapse_debuginfo);
+        tracing::debug!(?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
         let (builtin_name, helper_attrs) = sess
             .find_by_name(attrs, sym::rustc_builtin_macro)
@@ -772,7 +779,7 @@ impl SyntaxExtension {
                 )
             })
             .unwrap_or_else(|| (None, helper_attrs));
-        let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
+        let (stability, const_stability, body_stability) = attr::find_stability(&sess, attrs, span);
         if let Some((_, sp)) = const_stability {
             sess.parse_sess
                 .span_diagnostic
@@ -784,19 +791,31 @@ impl SyntaxExtension {
                 )
                 .emit();
         }
+        if let Some((_, sp)) = body_stability {
+            sess.parse_sess
+                .span_diagnostic
+                .struct_span_err(sp, "macros cannot have body stability attributes")
+                .span_label(sp, "invalid body stability attribute")
+                .span_label(
+                    sess.source_map().guess_head_span(span),
+                    "body stability attribute affects this macro",
+                )
+                .emit();
+        }
 
         SyntaxExtension {
             kind,
             span,
             allow_internal_unstable: (!allow_internal_unstable.is_empty())
                 .then(|| allow_internal_unstable.into()),
-            allow_internal_unsafe: sess.contains_name(attrs, sym::allow_internal_unsafe),
-            local_inner_macros,
             stability: stability.map(|(s, _)| s),
             deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
             helper_attrs,
             edition,
             builtin_name,
+            allow_internal_unsafe,
+            local_inner_macros,
+            collapse_debuginfo,
         }
     }
 
@@ -841,11 +860,12 @@ impl SyntaxExtension {
             call_site,
             self.span,
             self.allow_internal_unstable.clone(),
-            self.allow_internal_unsafe,
-            self.local_inner_macros,
             self.edition,
             macro_def_id,
             parent_module,
+            self.allow_internal_unsafe,
+            self.local_inner_macros,
+            self.collapse_debuginfo,
         )
     }
 }
@@ -985,9 +1005,11 @@ pub struct ExtCtxt<'a> {
     /// Error recovery mode entered when expansion is stuck
     /// (or during eager expansion, but that's a hack).
     pub force_mode: bool,
-    pub expansions: FxHashMap<Span, Vec<String>>,
+    pub expansions: FxIndexMap<Span, Vec<String>>,
     /// Used for running pre-expansion lints on freshly loaded modules.
     pub(super) lint_store: LintStoreExpandDyn<'a>,
+    /// Used for storing lints generated during expansion, like `NAMED_ARGUMENTS_USED_POSITIONALLY`
+    pub buffered_early_lint: Vec<BufferedEarlyLint>,
     /// When we 'expand' an inert attribute, we leave it
     /// in the AST, but insert it here so that we know
     /// not to expand it again.
@@ -1018,8 +1040,9 @@ impl<'a> ExtCtxt<'a> {
                 is_trailing_mac: false,
             },
             force_mode: false,
-            expansions: FxHashMap::default(),
+            expansions: FxIndexMap::default(),
             expanded_inert_attrs: MarkedAttrs::new(),
+            buffered_early_lint: vec![],
         }
     }
 
@@ -1077,6 +1100,7 @@ impl<'a> ExtCtxt<'a> {
         self.current_expansion.id.expansion_cause()
     }
 
+    #[rustc_lint_diagnostics]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -1085,14 +1109,27 @@ impl<'a> ExtCtxt<'a> {
         self.sess.parse_sess.span_diagnostic.struct_span_err(sp, msg)
     }
 
+    pub fn create_err(
+        &self,
+        err: impl IntoDiagnostic<'a>,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        self.sess.create_err(err)
+    }
+
+    pub fn emit_err(&self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
+        self.sess.emit_err(err)
+    }
+
     /// Emit `msg` attached to `sp`, without immediately stopping
     /// compilation.
     ///
     /// Compilation will be stopped in the near future (at the end of
     /// the macro expansion phase).
+    #[rustc_lint_diagnostics]
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.sess.parse_sess.span_diagnostic.span_err(sp, msg);
     }
+    #[rustc_lint_diagnostics]
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.sess.parse_sess.span_diagnostic.span_warn(sp, msg);
     }
@@ -1194,12 +1231,12 @@ pub fn expr_to_spanned_string<'a>(
                 err.span_suggestion(
                     expr.span.shrink_to_lo(),
                     "consider removing the leading `b`",
-                    String::new(),
+                    "",
                     Applicability::MaybeIncorrect,
                 );
                 Some((err, true))
             }
-            ast::LitKind::Err(_) => None,
+            ast::LitKind::Err => None,
             _ => Some((cx.struct_span_err(l.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,

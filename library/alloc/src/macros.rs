@@ -38,7 +38,7 @@
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "vec_macro"]
-#[allow_internal_unstable(box_syntax, liballoc_internals)]
+#[allow_internal_unstable(rustc_attrs, liballoc_internals)]
 macro_rules! vec {
     () => (
         $crate::__rust_force_expr!($crate::vec::Vec::new())
@@ -47,7 +47,10 @@ macro_rules! vec {
         $crate::__rust_force_expr!($crate::vec::from_elem($elem, $n))
     );
     ($($x:expr),+ $(,)?) => (
-        $crate::__rust_force_expr!(<[_]>::into_vec(box [$($x),+]))
+        $crate::__rust_force_expr!(<[_]>::into_vec(
+            #[rustc_box]
+            $crate::boxed::Box::new([$($x),+])
+        ))
     );
 }
 
@@ -65,7 +68,7 @@ macro_rules! vec {
         $crate::vec::from_elem($elem, $n)
     );
     ($($x:expr),*) => (
-        $crate::slice::into_vec(box [$($x),*])
+        $crate::slice::into_vec($crate::boxed::Box::new([$($x),*]))
     );
     ($($x:expr,)*) => (vec![$($x),*])
 }
@@ -104,6 +107,8 @@ macro_rules! vec {
 /// format!("test");
 /// format!("hello {}", "world!");
 /// format!("x = {}, y = {y}", 10, y = 30);
+/// let (x, y) = (1, 2);
+/// format!("{x} + {y} = 3");
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]

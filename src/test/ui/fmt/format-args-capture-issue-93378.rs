@@ -3,9 +3,9 @@ fn main() {
     let b = "b";
 
     println!("{a} {b} {} {} {c} {}", c = "c");
-    //~^ ERROR: invalid reference to positional arguments 1 and 2 (there is 1 argument)
+    //~^ ERROR: 3 positional arguments in format string, but there is 1 argument
 
     let n = 1;
     println!("{a:.n$} {b:.*}");
-    //~^ ERROR: invalid reference to positional argument 0 (no arguments were given)
+    //~^ ERROR: 1 positional argument in format string, but no arguments were given
 }

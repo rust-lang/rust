@@ -1,4 +1,4 @@
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 // Tests closures that propagate an outlives relationship to their
 // creator where the subject is a projection with no regions (`<T as

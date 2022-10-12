@@ -9,6 +9,29 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{cmp, env, fmt, fs, io, iter};
 
+#[rustfmt::skip]
+const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
+    "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
+    "DirectX",
+    "ECMAScript",
+    "GPLv2", "GPLv3",
+    "GitHub", "GitLab",
+    "IPv4", "IPv6",
+    "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
+    "NaN", "NaNs",
+    "OAuth", "GraphQL",
+    "OCaml",
+    "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS",
+    "WebGL",
+    "TensorFlow",
+    "TrueType",
+    "iOS", "macOS", "FreeBSD",
+    "TeX", "LaTeX", "BibTeX", "BibLaTeX",
+    "MinGW",
+    "CamelCase",
+];
+const DEFAULT_DISALLOWED_NAMES: &[&str] = &["foo", "baz", "quux"];
+
 /// Holds information used by `MISSING_ENFORCED_IMPORT_RENAMES` lint.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Rename {
@@ -16,28 +39,28 @@ pub struct Rename {
     pub rename: String,
 }
 
-/// A single disallowed method, used by the `DISALLOWED_METHODS` lint.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
-pub enum DisallowedMethod {
+pub enum DisallowedPath {
     Simple(String),
     WithReason { path: String, reason: Option<String> },
 }
 
-impl DisallowedMethod {
+impl DisallowedPath {
     pub fn path(&self) -> &str {
         let (Self::Simple(path) | Self::WithReason { path, .. }) = self;
 
         path
     }
-}
 
-/// A single disallowed type, used by the `DISALLOWED_TYPES` lint.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(untagged)]
-pub enum DisallowedType {
-    Simple(String),
-    WithReason { path: String, reason: Option<String> },
+    pub fn reason(&self) -> Option<&str> {
+        match self {
+            Self::WithReason {
+                reason: Some(reason), ..
+            } => Some(reason),
+            _ => None,
+        }
+    }
 }
 
 /// Conf with parse errors
@@ -45,6 +68,7 @@ pub enum DisallowedType {
 pub struct TryConf {
     pub conf: Conf,
     pub errors: Vec<Box<dyn Error>>,
+    pub warnings: Vec<Box<dyn Error>>,
 }
 
 impl TryConf {
@@ -52,6 +76,7 @@ impl TryConf {
         Self {
             conf: Conf::default(),
             errors: vec![Box::new(error)],
+            warnings: vec![],
         }
     }
 }
@@ -67,14 +92,14 @@ impl fmt::Display for ConfError {
 
 impl Error for ConfError {}
 
-fn conf_error(s: String) -> Box<dyn Error> {
-    Box::new(ConfError(s))
+fn conf_error(s: impl Into<String>) -> Box<dyn Error> {
+    Box::new(ConfError(s.into()))
 }
 
 macro_rules! define_Conf {
     ($(
         $(#[doc = $doc:literal])+
-        $(#[conf_deprecated($dep:literal)])?
+        $(#[conf_deprecated($dep:literal, $new_conf:ident)])?
         ($name:ident: $ty:ty = $default:expr),
     )*) => {
         /// Clippy lint configuration
@@ -114,17 +139,29 @@ macro_rules! define_Conf {
 
             fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error> where V: MapAccess<'de> {
                 let mut errors = Vec::new();
+                let mut warnings = Vec::new();
                 $(let mut $name = None;)*
                 // could get `Field` here directly, but get `str` first for diagnostics
                 while let Some(name) = map.next_key::<&str>()? {
                     match Field::deserialize(name.into_deserializer())? {
                         $(Field::$name => {
-                            $(errors.push(conf_error(format!("deprecated field `{}`. {}", name, $dep)));)?
+                            $(warnings.push(conf_error(format!("deprecated field `{}`. {}", name, $dep)));)?
                             match map.next_value() {
                                 Err(e) => errors.push(conf_error(e.to_string())),
                                 Ok(value) => match $name {
                                     Some(_) => errors.push(conf_error(format!("duplicate field `{}`", name))),
-                                    None => $name = Some(value),
+                                    None => {
+                                        $name = Some(value);
+                                        // $new_conf is the same as one of the defined `$name`s, so
+                                        // this variable is defined in line 2 of this function.
+                                        $(match $new_conf {
+                                            Some(_) => errors.push(conf_error(concat!(
+                                                "duplicate field `", stringify!($new_conf),
+                                                "` (provided as `", stringify!($name), "`)"
+                                            ))),
+                                            None => $new_conf = $name.clone(),
+                                        })?
+                                    },
                                 }
                             }
                         })*
@@ -133,7 +170,7 @@ macro_rules! define_Conf {
                     }
                 }
                 let conf = Conf { $($name: $name.unwrap_or_else(defaults::$name),)* };
-                Ok(TryConf { conf, errors })
+                Ok(TryConf { conf, errors, warnings })
             }
         }
 
@@ -168,18 +205,23 @@ macro_rules! define_Conf {
 }
 
 define_Conf! {
-    /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX.
+    /// Lint: Arithmetic.
+    ///
+    /// Suppress checking of the passed type names.
+    (arithmetic_side_effects_allowed: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
+    /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX.
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP.
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
-    /// Lint: BLACKLISTED_NAME.
+    /// DEPRECATED LINT: BLACKLISTED_NAME.
     ///
-    /// The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses
-    (blacklisted_names: Vec<String> = ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
+    /// Use the Disallowed Names lint instead
+    #[conf_deprecated("Please use `disallowed-names` instead", disallowed_names)]
+    (blacklisted_names: Vec<String> = Vec::new()),
     /// Lint: COGNITIVE_COMPLEXITY.
     ///
     /// The maximum cognitive complexity a function can have
@@ -187,31 +229,24 @@ define_Conf! {
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.
-    #[conf_deprecated("Please use `cognitive-complexity-threshold` instead")]
-    (cyclomatic_complexity_threshold: Option<u64> = None),
+    #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
+    (cyclomatic_complexity_threshold: u64 = 25),
+    /// Lint: DISALLOWED_NAMES.
+    ///
+    /// The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
+    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
+    /// default configuration of Clippy. By default any configuration will replace the default value.
+    (disallowed_names: Vec<String> = super::DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect()),
     /// Lint: DOC_MARKDOWN.
     ///
-    /// The list of words this lint should not consider as identifiers needing ticks
-    (doc_valid_idents: Vec<String> = [
-        "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
-        "DirectX",
-        "ECMAScript",
-        "GPLv2", "GPLv3",
-        "GitHub", "GitLab",
-        "IPv4", "IPv6",
-        "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
-        "NaN", "NaNs",
-        "OAuth", "GraphQL",
-        "OCaml",
-        "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS",
-        "WebGL",
-        "TensorFlow",
-        "TrueType",
-        "iOS", "macOS", "FreeBSD",
-        "TeX", "LaTeX", "BibTeX", "BibLaTeX",
-        "MinGW",
-        "CamelCase",
-    ].iter().map(ToString::to_string).collect()),
+    /// The list of words this lint should not consider as identifiers needing ticks. The value
+    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
+    /// default configuration of Clippy. By default any configuraction will replace the default value. For example:
+    /// * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
+    /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
+    ///
+    /// Default list:
+    (doc_valid_idents: Vec<String> = super::DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect()),
     /// Lint: TOO_MANY_ARGUMENTS.
     ///
     /// The maximum number of argument a function or method can have
@@ -280,14 +315,18 @@ define_Conf! {
     ///
     /// Whether to allow certain wildcard imports (prelude, super in tests).
     (warn_on_all_wildcard_imports: bool = false),
+    /// Lint: DISALLOWED_MACROS.
+    ///
+    /// The list of disallowed macros, written as fully qualified paths.
+    (disallowed_macros: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
     /// Lint: DISALLOWED_METHODS.
     ///
     /// The list of disallowed methods, written as fully qualified paths.
-    (disallowed_methods: Vec<crate::utils::conf::DisallowedMethod> = Vec::new()),
+    (disallowed_methods: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
     /// Lint: DISALLOWED_TYPES.
     ///
     /// The list of disallowed types, written as fully qualified paths.
-    (disallowed_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),
+    (disallowed_types: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
     /// Lint: UNREADABLE_LITERAL.
     ///
     /// Should the fraction of a decimal be linted to include separators.
@@ -315,7 +354,7 @@ define_Conf! {
     /// Lint: DISALLOWED_SCRIPT_IDENTS.
     ///
     /// The list of unicode scripts allowed to be used in the scope.
-    (allowed_scripts: Vec<String> = ["Latin"].iter().map(ToString::to_string).collect()),
+    (allowed_scripts: Vec<String> = vec!["Latin".to_string()]),
     /// Lint: NON_SEND_FIELDS_IN_SEND_TY.
     ///
     /// Whether to apply the raw pointer heuristic to determine if a type is `Send`.
@@ -327,7 +366,7 @@ define_Conf! {
     /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
     (max_suggested_slice_pattern_length: u64 = 3),
     /// Lint: AWAIT_HOLDING_INVALID_TYPE
-    (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),
+    (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
     /// Lint: LARGE_INCLUDE_FILE.
     ///
     /// The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes
@@ -340,6 +379,14 @@ define_Conf! {
     ///
     /// Whether `unwrap` should be allowed in test functions
     (allow_unwrap_in_tests: bool = false),
+    /// Lint: DBG_MACRO.
+    ///
+    /// Whether `dbg!` should be allowed in test functions
+    (allow_dbg_in_tests: bool = false),
+    /// Lint: RESULT_LARGE_ERR
+    ///
+    /// The maximum size of the `Err`-variant in a `Result` returned from a function
+    (large_error_threshold: u64 = 128),
 }
 
 /// Search for the configuration file.
@@ -397,7 +444,21 @@ pub fn read(path: &Path) -> TryConf {
         Err(e) => return TryConf::from_error(e),
         Ok(content) => content,
     };
-    toml::from_str(&content).unwrap_or_else(TryConf::from_error)
+    match toml::from_str::<TryConf>(&content) {
+        Ok(mut conf) => {
+            extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
+            extend_vec_if_indicator_present(&mut conf.conf.disallowed_names, DEFAULT_DISALLOWED_NAMES);
+
+            conf
+        },
+        Err(e) => TryConf::from_error(e),
+    }
+}
+
+fn extend_vec_if_indicator_present(vec: &mut Vec<String>, default: &[&str]) {
+    if vec.contains(&"..".to_string()) {
+        vec.extend(default.iter().map(ToString::to_string));
+    }
 }
 
 const SEPARATOR_WIDTH: usize = 4;
@@ -419,22 +480,19 @@ pub fn format_error(error: Box<dyn Error>) -> String {
 
             let mut msg = String::from(prefix);
             for row in 0..rows {
-                write!(msg, "\n").unwrap();
+                writeln!(msg).unwrap();
                 for (column, column_width) in column_widths.iter().copied().enumerate() {
                     let index = column * rows + row;
                     let field = fields.get(index).copied().unwrap_or_default();
                     write!(
                         msg,
-                        "{:separator_width$}{:field_width$}",
-                        " ",
-                        field,
-                        separator_width = SEPARATOR_WIDTH,
-                        field_width = column_width
+                        "{:SEPARATOR_WIDTH$}{field:column_width$}",
+                        " "
                     )
                     .unwrap();
                 }
             }
-            write!(msg, "\n{}", suffix).unwrap();
+            write!(msg, "\n{suffix}").unwrap();
             msg
         } else {
             s

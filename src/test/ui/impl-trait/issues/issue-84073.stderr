@@ -2,7 +2,12 @@ error[E0282]: type annotations needed for `RaceBuilder<T, Never<T>>`
   --> $DIR/issue-84073.rs:32:16
    |
 LL |     Race::new(|race| race.when());
-   |                ^^^^ consider giving this closure parameter the explicit type `RaceBuilder<T, Never<T>>`, where the type parameter `T` is specified
+   |                ^^^^
+   |
+help: consider giving this closure parameter an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     Race::new(|race: RaceBuilder<T, Never<T>>| race.when());
+   |                    ++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

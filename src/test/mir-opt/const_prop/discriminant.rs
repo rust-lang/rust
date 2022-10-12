@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 // compile-flags: -O
 
 // FIXME(wesleywiser): Ideally, we could const-prop away all of this and just be left with

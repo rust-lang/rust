@@ -1,5 +1,3 @@
-// compile-flags: -Z borrowck=mir
-
 #![allow(dead_code)]
 
 use std::cell::Cell;

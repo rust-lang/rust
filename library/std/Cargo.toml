@@ -11,13 +11,14 @@ crate-type = ["dylib", "rlib"]
 
 [dependencies]
 alloc = { path = "../alloc" }
-cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
+cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core" }
+# FIXME: use target specific dependency
 #libc = { version = "0.2.126", default-features = false, features = ['rustc-dep-of-std'] }
 libc = { git = "https://github.com/john-sharratt/libc.git", default-features = false, features = ['rustc-dep-of-std'] }
-compiler_builtins = { version = "0.1.71" }
+compiler_builtins = { version = "0.1.73" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.12", default-features = false, features = ['rustc-dep-of-std'] }
@@ -43,10 +44,10 @@ libc = { git = "https://github.com/john-sharratt/libc.git", default-features = f
 dlmalloc = { version = "0.2.3", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
-fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
+fortanix-sgx-abi = { version = "0.5.0", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(target_os = "hermit")'.dependencies]
-hermit-abi = { version = "0.2.0", features = ['rustc-dep-of-std'] }
+hermit-abi = { version = "0.2.6", features = ['rustc-dep-of-std'] }
 
 [target.wasm32-unknown-wasi.dependencies]
 wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features = false }

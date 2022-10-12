@@ -27,8 +27,8 @@ use crate::infer::{ConstVarValue, ConstVariableValue};
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use rustc_span::Span;
 use std::fmt::Debug;
@@ -44,7 +44,7 @@ pub struct TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
 
     /// Callback to use when we deduce an outlives relationship.
     delegate: D,
@@ -149,11 +149,7 @@ impl<'me, 'tcx, D> TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    pub fn new(
-        infcx: &'me InferCtxt<'me, 'tcx>,
-        delegate: D,
-        ambient_variance: ty::Variance,
-    ) -> Self {
+    pub fn new(infcx: &'me InferCtxt<'tcx>, delegate: D, ambient_variance: ty::Variance) -> Self {
         Self {
             infcx,
             delegate,
@@ -357,7 +353,7 @@ where
             // In NLL, we don't have type inference variables
             // floating around, so we can do this rather imprecise
             // variant of the occurs-check.
-            assert!(!generalized_ty.has_infer_types_or_consts());
+            assert!(!generalized_ty.has_non_region_infer());
         }
 
         self.infcx.inner.borrow_mut().type_variables().instantiate(vid, generalized_ty);
@@ -395,6 +391,32 @@ where
         };
 
         generalizer.relate(value, value)
+    }
+
+    fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
+        let mut generalize = |ty, ty_is_expected| {
+            let var = self.infcx.next_ty_var_id_in_universe(
+                TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: self.delegate.span(),
+                },
+                ty::UniverseIndex::ROOT,
+            );
+            if ty_is_expected {
+                self.relate_ty_var((ty, var))
+            } else {
+                self.relate_ty_var((var, ty))
+            }
+        };
+        let (a, b) = match (a.kind(), b.kind()) {
+            (&ty::Opaque(..), _) => (a, generalize(b, false)?),
+            (_, &ty::Opaque(..)) => (generalize(a, true)?, b),
+            _ => unreachable!(),
+        };
+        self.delegate.register_opaque_type(a, b, true)?;
+        trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
+        Ok(a)
     }
 }
 
@@ -516,7 +538,7 @@ where
         true
     }
 
-    #[instrument(skip(self, info), level = "trace")]
+    #[instrument(skip(self, info), level = "trace", ret)]
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
@@ -533,8 +555,6 @@ where
         let r = self.relate(a, b)?;
 
         self.ambient_variance = old_ambient_variance;
-
-        debug!(?r);
 
         Ok(r)
     }
@@ -572,32 +592,16 @@ where
             (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
 
             (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
-                self.infcx.super_combine_tys(self, a, b)
+                infcx.commit_if_ok(|_| infcx.super_combine_tys(self, a, b)).or_else(|err| {
+                    self.tcx().sess.delay_span_bug(
+                        self.delegate.span(),
+                        "failure to relate an opaque to itself should result in an error later on",
+                    );
+                    if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
+                })
             }
             (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..)) if did.is_local() => {
-                let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
-                let mut generalize = |ty, ty_is_expected| {
-                    let var = infcx.next_ty_var_id_in_universe(
-                        TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::MiscVariable,
-                            span: self.delegate.span(),
-                        },
-                        ty::UniverseIndex::ROOT,
-                    );
-                    if ty_is_expected {
-                        self.relate_ty_var((ty, var))
-                    } else {
-                        self.relate_ty_var((var, ty))
-                    }
-                };
-                let (a, b) = match (a.kind(), b.kind()) {
-                    (&ty::Opaque(..), _) => (a, generalize(b, false)?),
-                    (_, &ty::Opaque(..)) => (generalize(a, true)?, b),
-                    _ => unreachable!(),
-                };
-                self.delegate.register_opaque_type(a, b, true)?;
-                trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
-                Ok(a)
+                self.relate_opaques(a, b)
             }
 
             (&ty::Projection(projection_ty), _)
@@ -659,10 +663,14 @@ where
             b = self.infcx.shallow_resolve(b);
         }
 
-        match b.val() {
+        match b.kind() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
-                bug!("unexpected inference var {:?}", b)
+                self.infcx.tcx.sess.delay_span_bug(
+                    self.delegate.span(),
+                    format!("unexpected inference var {:?}", b,),
+                );
+                Ok(a)
             }
             // FIXME(invariance): see the related FIXME above.
             _ => self.infcx.super_combine_consts(self, a, b),
@@ -806,7 +814,7 @@ struct ScopeInstantiator<'me, 'tcx> {
 }
 
 impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
-    fn visit_binder<T: TypeFoldable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -855,7 +863,7 @@ struct TypeGeneralizer<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
 
     delegate: &'me mut D,
 
@@ -1034,7 +1042,7 @@ where
         a: ty::Const<'tcx>,
         _: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        match a.val() {
+        match a.kind() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }

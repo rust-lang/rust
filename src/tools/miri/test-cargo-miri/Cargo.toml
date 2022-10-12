@@ -1,0 +1,32 @@
+[workspace]
+members = ["subcrate", "issue-1567", "exported-symbol-dep"]
+
+[package]
+name = "cargo-miri-test"
+version = "0.1.0"
+authors = ["Miri Team"]
+edition = "2018"
+
+[dependencies]
+byteorder = "1.0"
+cdylib = { path = "cdylib" }
+exported_symbol = { path = "exported-symbol" }
+issue_1567 = { path = "issue-1567" }
+issue_1691 = { path = "issue-1691" }
+issue_1705 = { path = "issue-1705" }
+issue_1760 = { path = "issue-1760" }
+issue_rust_86261 = { path = "issue-rust-86261" }
+
+[dev-dependencies]
+byteorder_2 = { package = "byteorder", version = "0.5" } # to test dev-dependencies behave as expected, with renaming
+serde_derive = "1.0" # not actually used, but exercises some unique code path (`--extern` .so file)
+
+[build-dependencies]
+autocfg = "1"
+
+[lib]
+test = false # test that this is respected (will show in the output)
+
+[[test]]
+name = "main"
+harness = false

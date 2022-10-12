@@ -19,7 +19,7 @@ LL |     XEmpty3 {},
    |     ------- `XE::XEmpty3` defined here
 LL |     XEmpty4,
 LL |     XEmpty5(),
-   |     --------- similarly named tuple variant `XEmpty5` defined here
+   |     ------- similarly named tuple variant `XEmpty5` defined here
    |
 help: use struct pattern syntax instead
    |
@@ -51,7 +51,7 @@ LL |     XEmpty3 {},
    |     ------- `XE::XEmpty3` defined here
 LL |     XEmpty4,
 LL |     XEmpty5(),
-   |     --------- similarly named tuple variant `XEmpty5` defined here
+   |     ------- similarly named tuple variant `XEmpty5` defined here
    |
 help: use struct pattern syntax instead
    |

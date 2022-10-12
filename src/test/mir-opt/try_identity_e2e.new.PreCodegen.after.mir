@@ -1,0 +1,96 @@
+// MIR for `new` after PreCodegen
+
+fn new(_1: Result<T, E>) -> Result<T, E> {
+    debug x => _1;                       // in scope 0 at $DIR/try_identity_e2e.rs:+0:14: +0:15
+    let mut _0: std::result::Result<T, E>; // return place in scope 0 at $DIR/try_identity_e2e.rs:+0:34: +0:46
+    let mut _2: T;                       // in scope 0 at $DIR/try_identity_e2e.rs:+2:9: +10:10
+    let mut _3: std::ops::ControlFlow<E, T>; // in scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
+    let mut _4: isize;                   // in scope 0 at $DIR/try_identity_e2e.rs:+4:17: +4:22
+    let _5: T;                           // in scope 0 at $DIR/try_identity_e2e.rs:+4:20: +4:21
+    let mut _6: T;                       // in scope 0 at $DIR/try_identity_e2e.rs:+4:48: +4:49
+    let _7: E;                           // in scope 0 at $DIR/try_identity_e2e.rs:+5:21: +5:22
+    let mut _8: E;                       // in scope 0 at $DIR/try_identity_e2e.rs:+5:46: +5:47
+    let mut _9: isize;                   // in scope 0 at $DIR/try_identity_e2e.rs:+8:13: +8:37
+    let _10: T;                          // in scope 0 at $DIR/try_identity_e2e.rs:+8:35: +8:36
+    let _11: E;                          // in scope 0 at $DIR/try_identity_e2e.rs:+9:32: +9:33
+    let mut _12: E;                      // in scope 0 at $DIR/try_identity_e2e.rs:+9:49: +9:50
+    scope 1 {
+        debug v => _5;                   // in scope 1 at $DIR/try_identity_e2e.rs:+4:20: +4:21
+    }
+    scope 2 {
+        debug e => _7;                   // in scope 2 at $DIR/try_identity_e2e.rs:+5:21: +5:22
+    }
+    scope 3 {
+        debug v => _10;                  // in scope 3 at $DIR/try_identity_e2e.rs:+8:35: +8:36
+    }
+    scope 4 {
+        debug e => _11;                  // in scope 4 at $DIR/try_identity_e2e.rs:+9:32: +9:33
+    }
+
+    bb0: {
+        StorageLive(_2);                 // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +10:10
+        StorageLive(_3);                 // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
+        _4 = discriminant(_1);           // scope 0 at $DIR/try_identity_e2e.rs:+3:19: +3:20
+        switchInt(move _4) -> [0_isize: bb2, 1_isize: bb1, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+3:13: +3:20
+    }
+
+    bb1: {
+        StorageLive(_7);                 // scope 0 at $DIR/try_identity_e2e.rs:+5:21: +5:22
+        _7 = move ((_1 as Err).0: E);    // scope 0 at $DIR/try_identity_e2e.rs:+5:21: +5:22
+        StorageLive(_8);                 // scope 2 at $DIR/try_identity_e2e.rs:+5:46: +5:47
+        _8 = move _7;                    // scope 2 at $DIR/try_identity_e2e.rs:+5:46: +5:47
+        Deinit(_3);                      // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
+        ((_3 as Break).0: E) = move _8;  // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
+        discriminant(_3) = 1;            // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
+        StorageDead(_8);                 // scope 2 at $DIR/try_identity_e2e.rs:+5:47: +5:48
+        StorageDead(_7);                 // scope 0 at $DIR/try_identity_e2e.rs:+5:47: +5:48
+        _9 = discriminant(_3);           // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
+        switchInt(move _9) -> [0_isize: bb5, 1_isize: bb3, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +7:10
+    }
+
+    bb2: {
+        StorageLive(_5);                 // scope 0 at $DIR/try_identity_e2e.rs:+4:20: +4:21
+        _5 = move ((_1 as Ok).0: T);     // scope 0 at $DIR/try_identity_e2e.rs:+4:20: +4:21
+        StorageLive(_6);                 // scope 1 at $DIR/try_identity_e2e.rs:+4:48: +4:49
+        _6 = move _5;                    // scope 1 at $DIR/try_identity_e2e.rs:+4:48: +4:49
+        Deinit(_3);                      // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
+        ((_3 as Continue).0: T) = move _6; // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
+        discriminant(_3) = 0;            // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
+        StorageDead(_6);                 // scope 1 at $DIR/try_identity_e2e.rs:+4:49: +4:50
+        StorageDead(_5);                 // scope 0 at $DIR/try_identity_e2e.rs:+4:49: +4:50
+        _9 = discriminant(_3);           // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
+        switchInt(move _9) -> [0_isize: bb5, 1_isize: bb3, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +7:10
+    }
+
+    bb3: {
+        StorageLive(_11);                // scope 0 at $DIR/try_identity_e2e.rs:+9:32: +9:33
+        _11 = move ((_3 as Break).0: E); // scope 0 at $DIR/try_identity_e2e.rs:+9:32: +9:33
+        StorageLive(_12);                // scope 4 at $DIR/try_identity_e2e.rs:+9:49: +9:50
+        _12 = move _11;                  // scope 4 at $DIR/try_identity_e2e.rs:+9:49: +9:50
+        Deinit(_0);                      // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
+        ((_0 as Err).0: E) = move _12;   // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
+        discriminant(_0) = 1;            // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
+        StorageDead(_12);                // scope 4 at $DIR/try_identity_e2e.rs:+9:50: +9:51
+        StorageDead(_11);                // scope 0 at $DIR/try_identity_e2e.rs:+9:50: +9:51
+        StorageDead(_2);                 // scope 0 at $DIR/try_identity_e2e.rs:+11:5: +11:6
+        StorageDead(_3);                 // scope 0 at $DIR/try_identity_e2e.rs:+12:1: +12:2
+        return;                          // scope 0 at $DIR/try_identity_e2e.rs:+12:1: +12:2
+    }
+
+    bb4: {
+        unreachable;                     // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
+    }
+
+    bb5: {
+        StorageLive(_10);                // scope 0 at $DIR/try_identity_e2e.rs:+8:35: +8:36
+        _10 = move ((_3 as Continue).0: T); // scope 0 at $DIR/try_identity_e2e.rs:+8:35: +8:36
+        _2 = move _10;                   // scope 3 at $DIR/try_identity_e2e.rs:+8:41: +8:42
+        StorageDead(_10);                // scope 0 at $DIR/try_identity_e2e.rs:+8:41: +8:42
+        Deinit(_0);                      // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6
+        ((_0 as Ok).0: T) = move _2;     // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6
+        discriminant(_0) = 0;            // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6
+        StorageDead(_2);                 // scope 0 at $DIR/try_identity_e2e.rs:+11:5: +11:6
+        StorageDead(_3);                 // scope 0 at $DIR/try_identity_e2e.rs:+12:1: +12:2
+        return;                          // scope 0 at $DIR/try_identity_e2e.rs:+12:1: +12:2
+    }
+}

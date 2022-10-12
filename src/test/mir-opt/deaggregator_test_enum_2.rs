@@ -1,3 +1,4 @@
+// unit-test: Deaggregator
 // Test that deaggregate fires in more than one basic block
 
 enum Foo {

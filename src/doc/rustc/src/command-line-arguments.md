@@ -84,6 +84,26 @@ The default for this modifier is `-whole-archive`. \
 NOTE: The default may currently be different in some cases for backward compatibility,
 but it is not guaranteed. If you need whole archive semantics use `+whole-archive` explicitly.
 
+### Linking modifiers: `bundle`
+
+This modifier is only compatible with the `static` linking kind.
+Using any other kind will result in a compiler error.
+
+When building a rlib or staticlib `+bundle` means that the native static library
+will be packed into the rlib or staticlib archive, and then retrieved from there
+during linking of the final binary.
+
+When building a rlib `-bundle` means that the native static library is registered as a dependency
+of that rlib "by name", and object files from it are included only during linking of the final
+binary, the file search by that name is also performed during final linking. \
+When building a staticlib `-bundle` means that the native static library is simply not included
+into the archive and some higher level build system will need to add it later during linking of
+the final binary.
+
+This modifier has no effect when building other targets like executables or dynamic libraries.
+
+The default for this modifier is `+bundle`.
+
 <a id="option-crate-type"></a>
 ## `--crate-type`: a list of types of crates for the compiler to emit
 
@@ -250,6 +270,11 @@ This flag will set which lints should be set to the [warn level](lints/levels.md
 
 _Note:_ The order of these lint level arguments is taken into account, see [lint level via compiler flag](lints/levels.md#via-compiler-flag) for more information.
 
+<a id="option-force-warn"></a>
+## `--force-warn`: force a lint to warn
+
+This flag sets the given lint to the [forced warn level](lints/levels.md#force-warn) and the level cannot be overridden, even ignoring the [lint caps](lints/levels.md#capping-lints).
+
 <a id="option-a-allow"></a>
 ## `-A`: set lint allowed
 
@@ -275,7 +300,7 @@ _Note:_ The order of these lint level arguments is taken into account, see [lint
 ## `-Z`: set unstable options
 
 This flag will allow you to set unstable options of rustc. In order to set multiple options,
-the -Z flag can be used multiple times. For example: `rustc -Z verbose -Z time`.
+the -Z flag can be used multiple times. For example: `rustc -Z verbose -Z time-passes`.
 Specifying options with -Z is only available on nightly. To view all available options
 run: `rustc -Z help`.
 
@@ -360,6 +385,12 @@ are:
 - `auto` — Use colors if output goes to a tty. This is the default.
 - `always` — Always use colors.
 - `never` — Never colorize output.
+
+<a id="option-diagnostic-width"></a>
+## `--diagnostic-width`: specify the terminal width for diagnostics
+
+This flag takes a number that specifies the width of the terminal in characters.
+Formatting of diagnostics will take the width into consideration to make them better fit on the screen.
 
 <a id="option-remap-path-prefix"></a>
 ## `--remap-path-prefix`: remap source names in output

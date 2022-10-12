@@ -20,19 +20,6 @@ pub enum OptimizationDiagnosticKind {
     OptimizationRemarkOther,
 }
 
-impl OptimizationDiagnosticKind {
-    pub fn describe(self) -> &'static str {
-        match self {
-            OptimizationRemark | OptimizationRemarkOther => "remark",
-            OptimizationMissed => "missed",
-            OptimizationAnalysis => "analysis",
-            OptimizationAnalysisFPCommute => "floating-point",
-            OptimizationAnalysisAliasing => "aliasing",
-            OptimizationFailure => "failure",
-        }
-    }
-}
-
 pub struct OptimizationDiagnostic<'ll> {
     pub kind: OptimizationDiagnosticKind,
     pub pass_name: String,

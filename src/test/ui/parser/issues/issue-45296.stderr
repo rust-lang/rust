@@ -11,7 +11,7 @@ help: to annotate the function, change the attribute from inner to outer style
    |
 LL -     #![allow(unused_variables)]
 LL +     #[allow(unused_variables)]
-   | 
+   |
 
 error: aborting due to previous error
 

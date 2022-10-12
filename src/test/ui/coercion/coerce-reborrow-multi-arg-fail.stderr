@@ -12,7 +12,7 @@ note: function defined here
   --> $DIR/coerce-reborrow-multi-arg-fail.rs:1:4
    |
 LL | fn test<T>(_a: T, _b: T) {}
-   |    ^^^^    -----  -----
+   |    ^^^^           -----
 
 error: aborting due to previous error
 

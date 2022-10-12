@@ -9,12 +9,6 @@
 //[ok] check-pass
 //[oneuse] check-pass
 
-// ignore-compare-mode-nll
-// FIXME(nll): When stabilizing, this test should be replaced with
-// `project-fn-ret-contravariant-nll.rs` The two would normally be just
-// revisions, but this test uses revisions heavily, so splitting into
-// a separate test is just easier.
-
 #![allow(dead_code, unused_variables)]
 
 fn foo<'a>() -> &'a u32 { loop { } }
@@ -42,15 +36,15 @@ fn baz<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
 
 #[cfg(transmute)] // one instantiations: BAD
 fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
-   bar(foo, x) //[transmute]~ ERROR E0759
+   bar(foo, x) //[transmute]~ ERROR lifetime may not live long enough
 }
 
 #[cfg(krisskross)] // two instantiations, mixing and matching: BAD
 fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    let a = bar(foo, y);
    let b = bar(foo, x);
-   (a, b) //[krisskross]~ ERROR lifetime mismatch [E0623]
-   //[krisskross]~^ ERROR lifetime mismatch [E0623]
+   (a, b) //[krisskross]~ ERROR lifetime may not live long enough
+   //[krisskross]~^ ERROR lifetime may not live long enough
 }
 
 fn main() { }

@@ -5,7 +5,7 @@
 
 union Foo {
     x: usize,
-    b: bool, //~ ERROR: field is never read
+    b: bool, //~ ERROR: field `b` is never read
     _unused: u16,
 }
 

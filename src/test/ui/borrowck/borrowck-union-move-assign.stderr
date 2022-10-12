@@ -1,7 +1,7 @@
 error[E0382]: use of moved value: `u`
   --> $DIR/borrowck-union-move-assign.rs:17:21
    |
-LL |             let mut u = U { a: A };
+LL |             let mut u = U { a: ManuallyDrop::new(A) };
    |                 ----- move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |             let a = u.a;
    |                     --- value moved here

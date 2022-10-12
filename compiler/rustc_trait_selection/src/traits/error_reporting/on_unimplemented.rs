@@ -1,17 +1,17 @@
 use super::{
     ObligationCauseCode, OnUnimplementedDirective, OnUnimplementedNote, PredicateObligation,
 };
-use crate::infer::InferCtxt;
+use crate::infer::error_reporting::TypeErrCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, GenericParamDefKind};
 use rustc_span::symbol::sym;
 use std::iter;
 
 use super::InferCtxtPrivExt;
 
-pub trait InferCtxtExt<'tcx> {
+pub trait TypeErrCtxtExt<'tcx> {
     /*private*/
     fn impl_similar_to(
         &self,
@@ -29,7 +29,7 @@ pub trait InferCtxtExt<'tcx> {
     ) -> OnUnimplementedNote;
 }
 
-impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
+impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn impl_similar_to(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
@@ -103,10 +103,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 })
             }),
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(_is_move, _, body_id, _, gen_movability),
+                kind: hir::ExprKind::Closure(hir::Closure { body, movability, .. }),
                 ..
-            }) => self.describe_generator(*body_id).or_else(|| {
-                Some(if gen_movability.is_some() { "an async closure" } else { "a closure" })
+            }) => self.describe_generator(*body).or_else(|| {
+                Some(if movability.is_some() { "an async closure" } else { "a closure" })
             }),
             hir::Node::Expr(hir::Expr { .. }) => {
                 let parent_hid = hir.get_parent_node(hir_id);
@@ -143,7 +143,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         if let ObligationCauseCode::ItemObligation(item)
-        | ObligationCauseCode::BindingObligation(item, _) = *obligation.cause.code()
+        | ObligationCauseCode::BindingObligation(item, _)
+        | ObligationCauseCode::ExprItemObligation(item, ..)
+        | ObligationCauseCode::ExprBindingObligation(item, ..) = *obligation.cause.code()
         {
             // FIXME: maybe also have some way of handling methods
             // from other traits? That would require name resolution,
@@ -223,8 +225,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the slice's type's original
                     // signature with no type arguments resolved
-                    let type_string = self.tcx.type_of(def.did()).to_string();
-                    flags.push((sym::_Self, Some(format!("[{type_string}]"))));
+                    flags.push((sym::_Self, Some(format!("[{}]", self.tcx.type_of(def.did())))));
                 }
                 if aty.is_integral() {
                     flags.push((sym::_Self, Some("[{integral}]".to_string())));
@@ -234,7 +235,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // Arrays give us `[]`, `[{ty}; _]` and `[{ty}; N]`
             if let ty::Array(aty, len) = self_ty.kind() {
                 flags.push((sym::_Self, Some("[]".to_string())));
-                let len = len.val().try_to_value().and_then(|v| v.try_to_machine_usize(self.tcx));
+                let len = len.kind().try_to_value().and_then(|v| v.try_to_machine_usize(self.tcx));
                 flags.push((sym::_Self, Some(format!("[{}; _]", aty))));
                 if let Some(n) = len {
                     flags.push((sym::_Self, Some(format!("[{}; {}]", aty, n))));
@@ -242,10 +243,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
-                    let type_string = self.tcx.type_of(def.did()).to_string();
-                    flags.push((sym::_Self, Some(format!("[{type_string}; _]"))));
+                    let def_ty = self.tcx.type_of(def.did());
+                    flags.push((sym::_Self, Some(format!("[{def_ty}; _]"))));
                     if let Some(n) = len {
-                        flags.push((sym::_Self, Some(format!("[{type_string}; {n}]"))));
+                        flags.push((sym::_Self, Some(format!("[{def_ty}; {n}]"))));
                     }
                 }
                 if aty.is_integral() {
@@ -255,7 +256,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
             }
-            if let ty::Dynamic(traits, _) = self_ty.kind() {
+            if let ty::Dynamic(traits, _, _) = self_ty.kind() {
                 for t in traits.iter() {
                     if let ty::ExistentialPredicate::Trait(trait_ref) = t.skip_binder() {
                         flags.push((sym::_Self, Some(self.tcx.def_path_str(trait_ref.def_id))))

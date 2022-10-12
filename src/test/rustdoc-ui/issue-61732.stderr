@@ -3,6 +3,8 @@ error[E0433]: failed to resolve: maybe a missing crate `r#mod`?
    |
 LL | pub(in crate::r#mod) fn main() {}
    |               ^^^^^ maybe a missing crate `r#mod`?
+   |
+   = help: consider adding `extern crate r#mod` to use the `r#mod` crate
 
 error: Compilation failed, aborting rustdoc
 

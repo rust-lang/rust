@@ -4,7 +4,7 @@ error[E0585]: found a documentation comment that doesn't document anything
 LL |     /// hi
    |     ^^^^^^
    |
-   = help: doc comments must come before what they document, maybe a comment was intended with `//`?
+   = help: doc comments must come before what they document, if a comment was intended use `//`
 
 error: aborting due to previous error
 

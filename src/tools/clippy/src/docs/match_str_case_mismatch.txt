@@ -1,0 +1,22 @@
+### What it does
+Checks for `match` expressions modifying the case of a string with non-compliant arms
+
+### Why is this bad?
+The arm is unreachable, which is likely a mistake
+
+### Example
+```
+match &*text.to_ascii_lowercase() {
+    "foo" => {},
+    "Bar" => {},
+    _ => {},
+}
+```
+Use instead:
+```
+match &*text.to_ascii_lowercase() {
+    "foo" => {},
+    "bar" => {},
+    _ => {},
+}
+```

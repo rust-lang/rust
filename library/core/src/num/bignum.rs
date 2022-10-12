@@ -137,7 +137,7 @@ macro_rules! define_bignum {
                 // Find the most significant non-zero digit.
                 let msd = digits.iter().rposition(|&x| x != 0);
                 match msd {
-                    Some(msd) => msd * digitbits + digits[msd].log2() as usize + 1,
+                    Some(msd) => msd * digitbits + digits[msd].ilog2() as usize + 1,
                     // There are no non-zero digits, i.e., the number is zero.
                     _ => 0,
                 }

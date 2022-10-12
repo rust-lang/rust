@@ -1,7 +1,5 @@
 // build-fail
 
-#![allow(const_err)]
-
 // a test demonstrating that const qualification cannot prevent monomorphization time errors
 
 trait Foo {
@@ -9,7 +7,7 @@ trait Foo {
 }
 
 trait Bar<U: Foo> {
-    const F: u32 = 100 / U::X;
+    const F: u32 = 100 / U::X; //~ ERROR evaluation of `<std::string::String as Bar<std::string::String>>::F` failed
 }
 
 impl Foo for () {

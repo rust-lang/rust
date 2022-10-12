@@ -16,7 +16,12 @@ error[E0282]: type annotations needed
   --> $DIR/issue-86719.rs:9:10
    |
 LL |         |_| true
-   |          ^ consider giving this closure parameter a type
+   |          ^
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |         |_: _| true
+   |           +++
 
 error: aborting due to 3 previous errors
 

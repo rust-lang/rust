@@ -1,8 +1,8 @@
 error[E0277]: a value of type `i32` cannot be built from an iterator over elements of type `i32`
-  --> $DIR/type-check-defaults.rs:6:19
+  --> $DIR/type-check-defaults.rs:6:23
    |
 LL | struct WellFormed<Z = Foo<i32, i32>>(Z);
-   |                   ^^^^^^^^^^^^^^^^^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
+   |                       ^^^^^^^^^^^^^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
    |
    = help: the trait `FromIterator<i32>` is not implemented for `i32`
 note: required by a bound in `Foo`
@@ -12,10 +12,10 @@ LL | struct Foo<T, U: FromIterator<T>>(T, U);
    |                  ^^^^^^^^^^^^^^^ required by this bound in `Foo`
 
 error[E0277]: a value of type `i32` cannot be built from an iterator over elements of type `i32`
-  --> $DIR/type-check-defaults.rs:8:27
+  --> $DIR/type-check-defaults.rs:8:38
    |
 LL | struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
+   |                                      ^^^^^^^^^^^^^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
    |
    = help: the trait `FromIterator<i32>` is not implemented for `i32`
 note: required by a bound in `Foo`

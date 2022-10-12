@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 // run-pass
 
 trait Iterable {

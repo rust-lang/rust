@@ -1,4 +1,4 @@
-//! Helper functions and types for fixed-length arrays.
+//! Utilities for the array primitive type.
 //!
 //! *[See also the array primitive type](array).*
 
@@ -7,6 +7,7 @@
 use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
+use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::iter::TrustedLen;
@@ -92,7 +93,7 @@ where
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
 #[stable(feature = "array_from_ref", since = "1.53.0")]
-#[rustc_const_unstable(feature = "const_array_from_ref", issue = "90206")]
+#[rustc_const_stable(feature = "const_array_from_ref_shared", since = "1.63.0")]
 pub const fn from_ref<T>(s: &T) -> &[T; 1] {
     // SAFETY: Converting `&T` to `&[T; 1]` is sound.
     unsafe { &*(s as *const T).cast::<[T; 1]>() }
@@ -116,6 +117,14 @@ impl fmt::Display for TryFromSliceError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.__description(), f)
+    }
+}
+
+#[stable(feature = "try_from", since = "1.34.0")]
+impl Error for TryFromSliceError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
     }
 }
 
@@ -173,6 +182,18 @@ impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
     }
 }
 
+/// Tries to create an array `[T; N]` by copying from a slice `&[T]`. Succeeds if
+/// `slice.len() == N`.
+///
+/// ```
+/// let bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: [u8; 2] = <[u8; 2]>::try_from(&bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(bytes_head));
+///
+/// let bytes_tail: [u8; 2] = bytes[1..3].try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(bytes_tail));
+/// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 impl<T, const N: usize> TryFrom<&[T]> for [T; N]
 where
@@ -185,6 +206,18 @@ where
     }
 }
 
+/// Tries to create an array `[T; N]` by copying from a mutable slice `&mut [T]`.
+/// Succeeds if `slice.len() == N`.
+///
+/// ```
+/// let mut bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: [u8; 2] = <[u8; 2]>::try_from(&mut bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(bytes_head));
+///
+/// let bytes_tail: [u8; 2] = (&mut bytes[1..3]).try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(bytes_tail));
+/// ```
 #[stable(feature = "try_from_mut_slice_to_array", since = "1.59.0")]
 impl<T, const N: usize> TryFrom<&mut [T]> for [T; N]
 where
@@ -197,6 +230,18 @@ where
     }
 }
 
+/// Tries to create an array ref `&[T; N]` from a slice ref `&[T]`. Succeeds if
+/// `slice.len() == N`.
+///
+/// ```
+/// let bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: &[u8; 2] = <&[u8; 2]>::try_from(&bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(*bytes_head));
+///
+/// let bytes_tail: &[u8; 2] = bytes[1..3].try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(*bytes_tail));
+/// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     type Error = TryFromSliceError;
@@ -212,6 +257,18 @@ impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     }
 }
 
+/// Tries to create a mutable array ref `&mut [T; N]` from a mutable slice ref
+/// `&mut [T]`. Succeeds if `slice.len() == N`.
+///
+/// ```
+/// let mut bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: &mut [u8; 2] = <&mut [u8; 2]>::try_from(&mut bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(*bytes_head));
+///
+/// let bytes_tail: &mut [u8; 2] = (&mut bytes[1..3]).try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(*bytes_tail));
+/// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
     type Error = TryFromSliceError;
@@ -375,7 +432,8 @@ impl<T: Copy> SpecArrayClone for T {
 macro_rules! array_impl_default {
     {$n:expr, $t:ident $($ts:ident)*} => {
         #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] where T: Default {
+        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+        impl<T> const Default for [T; $n] where T: ~const Default {
             fn default() -> [T; $n] {
                 [$t::default(), $($ts::default()),*]
             }
@@ -780,8 +838,8 @@ where
 }
 
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
-/// yields fewer than `N` items, `None` is returned and all already yielded
-/// items are dropped.
+/// yields fewer than `N` items, `Err` is returned containing an iterator over
+/// the already yielded items.
 ///
 /// Since the iterator is passed as a mutable reference and this function calls
 /// `next` at most `N` times, the iterator can still be used afterwards to
@@ -789,7 +847,10 @@ where
 ///
 /// If `iter.next()` panicks, all items already yielded by the iterator are
 /// dropped.
-fn try_collect_into_array<I, T, R, const N: usize>(iter: &mut I) -> Option<R::TryType>
+#[inline]
+fn try_collect_into_array<I, T, R, const N: usize>(
+    iter: &mut I,
+) -> Result<R::TryType, IntoIter<T, N>>
 where
     I: Iterator,
     I::Item: Try<Output = T, Residual = R>,
@@ -797,7 +858,7 @@ where
 {
     if N == 0 {
         // SAFETY: An empty array is always inhabited and has no validity invariants.
-        return unsafe { Some(Try::from_output(mem::zeroed())) };
+        return Ok(Try::from_output(unsafe { mem::zeroed() }));
     }
 
     struct Guard<'a, T, const N: usize> {
@@ -821,35 +882,49 @@ where
     let mut array = MaybeUninit::uninit_array::<N>();
     let mut guard = Guard { array_mut: &mut array, initialized: 0 };
 
-    while let Some(item_rslt) = iter.next() {
-        let item = match item_rslt.branch() {
-            ControlFlow::Break(r) => {
-                return Some(FromResidual::from_residual(r));
+    for _ in 0..N {
+        match iter.next() {
+            Some(item_rslt) => {
+                let item = match item_rslt.branch() {
+                    ControlFlow::Break(r) => {
+                        return Ok(FromResidual::from_residual(r));
+                    }
+                    ControlFlow::Continue(elem) => elem,
+                };
+
+                // SAFETY: `guard.initialized` starts at 0, is increased by one in the
+                // loop and the loop is aborted once it reaches N (which is
+                // `array.len()`).
+                unsafe {
+                    guard.array_mut.get_unchecked_mut(guard.initialized).write(item);
+                }
+                guard.initialized += 1;
             }
-            ControlFlow::Continue(elem) => elem,
-        };
-
-        // SAFETY: `guard.initialized` starts at 0, is increased by one in the
-        // loop and the loop is aborted once it reaches N (which is
-        // `array.len()`).
-        unsafe {
-            guard.array_mut.get_unchecked_mut(guard.initialized).write(item);
-        }
-        guard.initialized += 1;
-
-        // Check if the whole array was initialized.
-        if guard.initialized == N {
-            mem::forget(guard);
-
-            // SAFETY: the condition above asserts that all elements are
-            // initialized.
-            let out = unsafe { MaybeUninit::array_assume_init(array) };
-            return Some(Try::from_output(out));
+            None => {
+                let alive = 0..guard.initialized;
+                mem::forget(guard);
+                // SAFETY: `array` was initialized with exactly `initialized`
+                // number of elements.
+                return Err(unsafe { IntoIter::new_unchecked(array, alive) });
+            }
         }
     }
 
-    // This is only reached if the iterator is exhausted before
-    // `guard.initialized` reaches `N`. Also note that `guard` is dropped here,
-    // dropping all already initialized elements.
-    None
+    mem::forget(guard);
+    // SAFETY: All elements of the array were populated in the loop above.
+    let output = unsafe { MaybeUninit::array_assume_init(array) };
+    Ok(Try::from_output(output))
+}
+
+/// Returns the next chunk of `N` items from the iterator or errors with an
+/// iterator over the remainder. Used for `Iterator::next_chunk`.
+#[inline]
+pub(crate) fn iter_next_chunk<I, const N: usize>(
+    iter: &mut I,
+) -> Result<[I::Item; N], IntoIter<I::Item, N>>
+where
+    I: Iterator,
+{
+    let mut map = iter.map(NeverShortCircuit);
+    try_collect_into_array(&mut map).map(|NeverShortCircuit(arr)| arr)
 }

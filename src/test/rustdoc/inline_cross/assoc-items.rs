@@ -7,10 +7,10 @@
 extern crate assoc_items;
 
 // @has foo/struct.MyStruct.html
-// @!has - 'PrivateConst'
+// @!hasraw - 'PrivateConst'
 // @has - '//*[@id="associatedconstant.PublicConst"]' 'pub const PublicConst: u8'
 // @has - '//*[@class="docblock"]' 'docs for PublicConst'
-// @!has - 'private_method'
+// @!hasraw - 'private_method'
 // @has - '//*[@id="method.public_method"]' 'pub fn public_method()'
 // @has - '//*[@class="docblock"]' 'docs for public_method'
 // @has - '//*[@id="associatedconstant.ConstNoDefault"]' 'const ConstNoDefault: i16'

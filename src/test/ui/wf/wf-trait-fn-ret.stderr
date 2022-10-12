@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `Self: Eq` is not satisfied
-  --> $DIR/wf-trait-fn-ret.rs:10:22
+  --> $DIR/wf-trait-fn-ret.rs:10:23
    |
 LL |     fn bar(&self) -> &Bar<Self>;
-   |                      ^^^^^^^^^^ the trait `Eq` is not implemented for `Self`
+   |                       ^^^^^^^^^ the trait `Eq` is not implemented for `Self`
    |
 note: required by a bound in `Bar`
   --> $DIR/wf-trait-fn-ret.rs:7:14

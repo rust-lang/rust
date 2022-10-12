@@ -1,5 +1,5 @@
 error[E0658]: `?` is not allowed in a `const fn`
-  --> $DIR/hir-const-check.rs:11:9
+  --> $DIR/hir-const-check.rs:12:9
    |
 LL |         Some(())?;
    |         ^^^^^^^^^

@@ -1,0 +1,17 @@
+error: malformed `rustc_lint_diagnostics` attribute input
+  --> $DIR/diagnostics_incorrect.rs:10:5
+   |
+LL |     #[rustc_lint_diagnostics(a)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_lint_diagnostics]`
+
+error: attribute should be applied to a function definition
+  --> $DIR/diagnostics_incorrect.rs:5:1
+   |
+LL | #[rustc_lint_diagnostics]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Foo;
+   | ----------- not a function definition
+
+error: aborting due to 2 previous errors
+

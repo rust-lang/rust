@@ -1,4 +1,4 @@
-//! A pointer type for heap allocation.
+//! The `Box<T>` type for heap allocation.
 //!
 //! [`Box<T>`], casually referred to as a 'box', provides the simplest form of
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
@@ -151,6 +151,7 @@ use core::async_iter::AsyncIterator;
 use core::borrow;
 use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
+use core::error::Error;
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
@@ -174,6 +175,8 @@ use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;
+#[cfg(not(no_global_oom_handling))]
+use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
@@ -206,12 +209,13 @@ impl<T> Box<T> {
     /// ```
     /// let five = Box::new(5);
     /// ```
-    #[cfg(not(no_global_oom_handling))]
+    #[cfg(all(not(no_global_oom_handling)))]
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub fn new(x: T) -> Self {
-        box x
+        #[rustc_box]
+        Box::new(x)
     }
 
     /// Constructs a new box with uninitialized contents.
@@ -266,14 +270,21 @@ impl<T> Box<T> {
         Self::new_zeroed_in(Global)
     }
 
-    /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
+    /// Constructs a new `Pin<Box<T>>`. If `T` does not implement [`Unpin`], then
     /// `x` will be pinned in memory and unable to be moved.
+    ///
+    /// Constructing and pinning of the `Box` can also be done in two steps: `Box::pin(x)`
+    /// does the same as <code>[Box::into_pin]\([Box::new]\(x))</code>. Consider using
+    /// [`into_pin`](Box::into_pin) if you already have a `Box<T>`, or if you want to
+    /// construct a (pinned) `Box` in a different way than with [`Box::new`].
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
     #[must_use]
     #[inline(always)]
     pub fn pin(x: T) -> Pin<Box<T>> {
-        (box x).into()
+        (#[rustc_box]
+        Box::new(x))
+        .into()
     }
 
     /// Allocates memory on the heap then places `x` into it,
@@ -553,8 +564,13 @@ impl<T, A: Allocator> Box<T, A> {
         unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
     }
 
-    /// Constructs a new `Pin<Box<T, A>>`. If `T` does not implement `Unpin`, then
+    /// Constructs a new `Pin<Box<T, A>>`. If `T` does not implement [`Unpin`], then
     /// `x` will be pinned in memory and unable to be moved.
+    ///
+    /// Constructing and pinning of the `Box` can also be done in two steps: `Box::pin_in(x, alloc)`
+    /// does the same as <code>[Box::into_pin]\([Box::new_in]\(x, alloc))</code>. Consider using
+    /// [`into_pin`](Box::into_pin) if you already have a `Box<T, A>`, or if you want to
+    /// construct a (pinned) `Box` in a different way than with [`Box::new_in`].
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
@@ -936,6 +952,7 @@ impl<T: ?Sized> Box<T> {
     /// [`Layout`]: crate::Layout
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
+    #[must_use = "call `drop(from_raw(ptr))` if you intend to drop the `Box`"]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
         unsafe { Self::from_raw_in(raw, Global) }
     }
@@ -1170,19 +1187,44 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         unsafe { &mut *mem::ManuallyDrop::new(b).0.as_ptr() }
     }
 
-    /// Converts a `Box<T>` into a `Pin<Box<T>>`
+    /// Converts a `Box<T>` into a `Pin<Box<T>>`. If `T` does not implement [`Unpin`], then
+    /// `*boxed` will be pinned in memory and unable to be moved.
     ///
     /// This conversion does not allocate on the heap and happens in place.
     ///
     /// This is also available via [`From`].
-    #[unstable(feature = "box_into_pin", issue = "62370")]
+    ///
+    /// Constructing and pinning a `Box` with <code>Box::into_pin([Box::new]\(x))</code>
+    /// can also be written more concisely using <code>[Box::pin]\(x)</code>.
+    /// This `into_pin` method is useful if you already have a `Box<T>`, or you are
+    /// constructing a (pinned) `Box` in a different way than with [`Box::new`].
+    ///
+    /// # Notes
+    ///
+    /// It's not recommended that crates add an impl like `From<Box<T>> for Pin<T>`,
+    /// as it'll introduce an ambiguity when calling `Pin::from`.
+    /// A demonstration of such a poor impl is shown below.
+    ///
+    /// ```compile_fail
+    /// # use std::pin::Pin;
+    /// struct Foo; // A type defined in this crate.
+    /// impl From<Box<()>> for Pin<Foo> {
+    ///     fn from(_: Box<()>) -> Pin<Foo> {
+    ///         Pin::new(Foo)
+    ///     }
+    /// }
+    ///
+    /// let foo = Box::new(());
+    /// let bar = Pin::from(foo);
+    /// ```
+    #[stable(feature = "box_into_pin", since = "1.63.0")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     pub const fn into_pin(boxed: Self) -> Pin<Self>
     where
         A: 'static,
     {
         // It's not possible to move or replace the insides of a `Pin<Box<T>>`
-        // when `T: !Unpin`,  so it's safe to pin it directly without any
+        // when `T: !Unpin`, so it's safe to pin it directly without any
         // additional requirements.
         unsafe { Pin::new_unchecked(boxed) }
     }
@@ -1200,7 +1242,8 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
 impl<T: Default> Default for Box<T> {
     /// Creates a `Box<T>`, with the `Default` value for T.
     fn default() -> Self {
-        box T::default()
+        #[rustc_box]
+        Box::new(T::default())
     }
 }
 
@@ -1418,9 +1461,17 @@ impl<T: ?Sized, A: Allocator> const From<Box<T, A>> for Pin<Box<T, A>>
 where
     A: 'static,
 {
-    /// Converts a `Box<T>` into a `Pin<Box<T>>`
+    /// Converts a `Box<T>` into a `Pin<Box<T>>`. If `T` does not implement [`Unpin`], then
+    /// `*boxed` will be pinned in memory and unable to be moved.
     ///
     /// This conversion does not allocate on the heap and happens in place.
+    ///
+    /// This is also available via [`Box::into_pin`].
+    ///
+    /// Constructing and pinning a `Box` with <code><Pin<Box\<T>>>::from([Box::new]\(x))</code>
+    /// can also be written more concisely using <code>[Box::pin]\(x)</code>.
+    /// This `From` implementation is useful if you already have a `Box<T>`, or you are
+    /// constructing a (pinned) `Box` in a different way than with [`Box::new`].
     fn from(boxed: Box<T, A>) -> Self {
         Box::into_pin(boxed)
     }
@@ -1432,7 +1483,7 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     /// Converts a `&[T]` into a `Box<[T]>`
     ///
     /// This conversion allocates on the heap
-    /// and performs a copy of `slice`.
+    /// and performs a copy of `slice` and its contents.
     ///
     /// # Examples
     /// ```rust
@@ -1564,7 +1615,8 @@ impl<T, const N: usize> From<[T; N]> for Box<[T]> {
     /// println!("{boxed:?}");
     /// ```
     fn from(array: [T; N]) -> Box<[T]> {
-        box array
+        #[rustc_box]
+        Box::new(array)
     }
 }
 
@@ -1983,8 +2035,7 @@ impl<T: ?Sized, A: Allocator> AsMut<T> for Box<T, A> {
  *  could have a method to project a Pin<T> from it.
  */
 #[stable(feature = "pin", since = "1.33.0")]
-#[rustc_const_unstable(feature = "const_box", issue = "92521")]
-impl<T: ?Sized, A: Allocator> const Unpin for Box<T, A> where A: 'static {}
+impl<T: ?Sized, A: Allocator> Unpin for Box<T, A> where A: 'static {}
 
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator<R> + Unpin, R, A: Allocator> Generator<R> for Box<G, A>
@@ -2034,5 +2085,294 @@ impl<S: ?Sized + AsyncIterator + Unpin> AsyncIterator for Box<S> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
+    }
+}
+
+impl dyn Error {
+    #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[rustc_allow_incoherent_impl]
+    /// Attempts to downcast the box to a concrete type.
+    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
+        if self.is::<T>() {
+            unsafe {
+                let raw: *mut dyn Error = Box::into_raw(self);
+                Ok(Box::from_raw(raw as *mut T))
+            }
+        } else {
+            Err(self)
+        }
+    }
+}
+
+impl dyn Error + Send {
+    #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[rustc_allow_incoherent_impl]
+    /// Attempts to downcast the box to a concrete type.
+    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
+        let err: Box<dyn Error> = self;
+        <dyn Error>::downcast(err).map_err(|s| unsafe {
+            // Reapply the `Send` marker.
+            mem::transmute::<Box<dyn Error>, Box<dyn Error + Send>>(s)
+        })
+    }
+}
+
+impl dyn Error + Send + Sync {
+    #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[rustc_allow_incoherent_impl]
+    /// Attempts to downcast the box to a concrete type.
+    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<Self>> {
+        let err: Box<dyn Error> = self;
+        <dyn Error>::downcast(err).map_err(|s| unsafe {
+            // Reapply the `Send + Sync` marker.
+            mem::transmute::<Box<dyn Error>, Box<dyn Error + Send + Sync>>(s)
+        })
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
+    /// Converts a type of [`Error`] into a box of dyn [`Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::fmt;
+    /// use std::mem;
+    ///
+    /// #[derive(Debug)]
+    /// struct AnError;
+    ///
+    /// impl fmt::Display for AnError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "An error")
+    ///     }
+    /// }
+    ///
+    /// impl Error for AnError {}
+    ///
+    /// let an_error = AnError;
+    /// assert!(0 == mem::size_of_val(&an_error));
+    /// let a_boxed_error = Box::<dyn Error>::from(an_error);
+    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: E) -> Box<dyn Error + 'a> {
+        Box::new(err)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
+    /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of
+    /// dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::fmt;
+    /// use std::mem;
+    ///
+    /// #[derive(Debug)]
+    /// struct AnError;
+    ///
+    /// impl fmt::Display for AnError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "An error")
+    ///     }
+    /// }
+    ///
+    /// impl Error for AnError {}
+    ///
+    /// unsafe impl Send for AnError {}
+    ///
+    /// unsafe impl Sync for AnError {}
+    ///
+    /// let an_error = AnError;
+    /// assert!(0 == mem::size_of_val(&an_error));
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(an_error);
+    /// assert!(
+    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: E) -> Box<dyn Error + Send + Sync + 'a> {
+        Box::new(err)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<String> for Box<dyn Error + Send + Sync> {
+    /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    ///
+    /// let a_string_error = "a string error".to_string();
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_string_error);
+    /// assert!(
+    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    #[inline]
+    fn from(err: String) -> Box<dyn Error + Send + Sync> {
+        struct StringError(String);
+
+        impl Error for StringError {
+            #[allow(deprecated)]
+            fn description(&self) -> &str {
+                &self.0
+            }
+        }
+
+        impl fmt::Display for StringError {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(&self.0, f)
+            }
+        }
+
+        // Purposefully skip printing "StringError(..)"
+        impl fmt::Debug for StringError {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Debug::fmt(&self.0, f)
+            }
+        }
+
+        Box::new(StringError(err))
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "string_box_error", since = "1.6.0")]
+impl From<String> for Box<dyn Error> {
+    /// Converts a [`String`] into a box of dyn [`Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    ///
+    /// let a_string_error = "a string error".to_string();
+    /// let a_boxed_error = Box::<dyn Error>::from(a_string_error);
+    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(str_err: String) -> Box<dyn Error> {
+        let err1: Box<dyn Error + Send + Sync> = From::from(str_err);
+        let err2: Box<dyn Error> = err1;
+        err2
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
+    /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// [`str`]: prim@str
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    ///
+    /// let a_str_error = "a str error";
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_str_error);
+    /// assert!(
+    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    #[inline]
+    fn from(err: &str) -> Box<dyn Error + Send + Sync + 'a> {
+        From::from(String::from(err))
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "string_box_error", since = "1.6.0")]
+impl From<&str> for Box<dyn Error> {
+    /// Converts a [`str`] into a box of dyn [`Error`].
+    ///
+    /// [`str`]: prim@str
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    ///
+    /// let a_str_error = "a str error";
+    /// let a_boxed_error = Box::<dyn Error>::from(a_str_error);
+    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: &str) -> Box<dyn Error> {
+        From::from(String::from(err))
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "cow_box_error", since = "1.22.0")]
+impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
+    /// Converts a [`Cow`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    /// use std::borrow::Cow;
+    ///
+    /// let a_cow_str_error = Cow::from("a str error");
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_cow_str_error);
+    /// assert!(
+    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: Cow<'b, str>) -> Box<dyn Error + Send + Sync + 'a> {
+        From::from(String::from(err))
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "cow_box_error", since = "1.22.0")]
+impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
+    /// Converts a [`Cow`] into a box of dyn [`Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::mem;
+    /// use std::borrow::Cow;
+    ///
+    /// let a_cow_str_error = Cow::from("a str error");
+    /// let a_boxed_error = Box::<dyn Error>::from(a_cow_str_error);
+    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: Cow<'a, str>) -> Box<dyn Error> {
+        From::from(String::from(err))
+    }
+}
+
+#[stable(feature = "box_error", since = "1.8.0")]
+impl<T: core::error::Error> core::error::Error for Box<T> {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        core::error::Error::description(&**self)
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn core::error::Error> {
+        core::error::Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        core::error::Error::source(&**self)
     }
 }

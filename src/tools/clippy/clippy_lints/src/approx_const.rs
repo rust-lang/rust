@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// let x = 3.14;
     /// let y = 1_f64 / x;
     /// ```
-    /// Use predefined constants instead:
+    /// Use instead:
     /// ```rust
     /// let x = std::f32::consts::PI;
     /// let y = std::f64::consts::FRAC_1_PI;
@@ -92,7 +92,7 @@ impl ApproxConstant {
                         cx,
                         APPROX_CONSTANT,
                         e.span,
-                        &format!("approximate value of `{}::consts::{}` found", module, &name),
+                        &format!("approximate value of `{module}::consts::{}` found", &name),
                         None,
                         "consider using the constant directly",
                     );
@@ -126,7 +126,7 @@ fn is_approx_const(constant: f64, value: &str, min_digits: usize) -> bool {
         // The value is a truncated constant
         true
     } else {
-        let round_const = format!("{:.*}", value.len() - 2, constant);
+        let round_const = format!("{constant:.*}", value.len() - 2);
         value == round_const
     }
 }

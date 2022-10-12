@@ -5,7 +5,7 @@
 //
 // See discussion on rust-lang/rust#62307 and rust-lang/rust#62339
 
-struct NoDerive(i32);
+struct NoDerive(#[allow(unused_tuple_struct_fields)] i32);
 
 // This impl makes NoDerive irreflexive.
 impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }

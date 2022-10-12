@@ -838,6 +838,31 @@ impl UnixDatagram {
         self.0.passcred()
     }
 
+    /// Set the id of the socket for network filtering purpose
+    ///
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd")),
+        doc = "```ignore"
+    )]
+    /// #![feature(unix_set_mark)]
+    /// use std::os::unix::net::UnixDatagram;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.set_mark(32)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(doc, target_os = "linux", target_os = "freebsd", target_os = "openbsd",))]
+    #[unstable(feature = "unix_set_mark", issue = "96467")]
+    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
+        self.0.set_mark(mark)
+    }
+
     /// Returns the value of the `SO_ERROR` option.
     ///
     /// # Examples
@@ -962,7 +987,7 @@ impl IntoRawFd for UnixDatagram {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for UnixDatagram {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -970,7 +995,7 @@ impl AsFd for UnixDatagram {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixDatagram> for OwnedFd {
     #[inline]
     fn from(unix_datagram: UnixDatagram) -> OwnedFd {
@@ -978,7 +1003,7 @@ impl From<UnixDatagram> for OwnedFd {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for UnixDatagram {
     #[inline]
     fn from(owned: OwnedFd) -> Self {

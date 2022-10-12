@@ -44,11 +44,12 @@
 
 #[cfg(not(no_global_oom_handling))]
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use core::error::Error;
 use core::fmt;
 use core::hash;
+use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
-use core::iter::FromIterator;
-use core::iter::{from_fn, FusedIterator};
+use core::iter::{from_fn, FromIterator};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Add;
 #[cfg(not(no_global_oom_handling))]
@@ -58,9 +59,9 @@ use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr;
 use core::slice;
-#[cfg(not(no_global_oom_handling))]
-use core::str::lossy;
 use core::str::pattern::Pattern;
+#[cfg(not(no_global_oom_handling))]
+use core::str::Utf8Chunks;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
@@ -317,11 +318,11 @@ use crate::vec::Vec;
 ///
 /// ```text
 /// 0
-/// 5
-/// 10
-/// 20
-/// 20
-/// 40
+/// 8
+/// 16
+/// 16
+/// 32
+/// 32
 /// ```
 ///
 /// At first, we have no memory allocated at all, but as we append to the
@@ -455,13 +456,13 @@ impl String {
         String { vec: Vec::new() }
     }
 
-    /// Creates a new empty `String` with a particular capacity.
+    /// Creates a new empty `String` with at least the specified capacity.
     ///
     /// `String`s have an internal buffer to hold their data. The capacity is
     /// the length of that buffer, and can be queried with the [`capacity`]
     /// method. This method creates an empty `String`, but one with an initial
-    /// buffer that can hold `capacity` bytes. This is useful when you may be
-    /// appending a bunch of data to the `String`, reducing the number of
+    /// buffer that can hold at least `capacity` bytes. This is useful when you
+    /// may be appending a bunch of data to the `String`, reducing the number of
     /// reallocations it needs to do.
     ///
     /// [`capacity`]: String::capacity
@@ -628,11 +629,11 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {
-        let mut iter = lossy::Utf8Lossy::from_bytes(v).chunks();
+        let mut iter = Utf8Chunks::new(v);
 
         let first_valid = if let Some(chunk) = iter.next() {
-            let lossy::Utf8LossyChunk { valid, broken } = chunk;
-            if broken.is_empty() {
+            let valid = chunk.valid();
+            if chunk.invalid().is_empty() {
                 debug_assert_eq!(valid.len(), v.len());
                 return Cow::Borrowed(valid);
             }
@@ -647,9 +648,9 @@ impl String {
         res.push_str(first_valid);
         res.push_str(REPLACEMENT);
 
-        for lossy::Utf8LossyChunk { valid, broken } in iter {
-            res.push_str(valid);
-            if !broken.is_empty() {
+        for chunk in iter {
+            res.push_str(chunk.valid());
+            if !chunk.invalid().is_empty() {
                 res.push_str(REPLACEMENT);
             }
         }
@@ -979,20 +980,15 @@ impl String {
         self.vec.capacity()
     }
 
-    /// Ensures that this `String`'s capacity is at least `additional` bytes
-    /// larger than its length.
-    ///
-    /// The capacity may be increased by more than `additional` bytes if it
-    /// chooses, to prevent frequent reallocations.
-    ///
-    /// If you do not want this "at least" behavior, see the [`reserve_exact`]
-    /// method.
+    /// Reserves capacity for at least `additional` bytes more than the
+    /// current length. The allocator may reserve more space to speculatively
+    /// avoid frequent allocations. After calling `reserve`,
+    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Does nothing if capacity is already sufficient.
     ///
     /// # Panics
     ///
     /// Panics if the new capacity overflows [`usize`].
-    ///
-    /// [`reserve_exact`]: String::reserve_exact
     ///
     /// # Examples
     ///
@@ -1013,15 +1009,16 @@ impl String {
     /// s.push('a');
     /// s.push('b');
     ///
-    /// // s now has a length of 2 and a capacity of 10
+    /// // s now has a length of 2 and a capacity of at least 10
+    /// let capacity = s.capacity();
     /// assert_eq!(2, s.len());
-    /// assert_eq!(10, s.capacity());
+    /// assert!(capacity >= 10);
     ///
-    /// // Since we already have an extra 8 capacity, calling this...
+    /// // Since we already have at least an extra 8 capacity, calling this...
     /// s.reserve(8);
     ///
     /// // ... doesn't actually increase.
-    /// assert_eq!(10, s.capacity());
+    /// assert_eq!(capacity, s.capacity());
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
@@ -1030,17 +1027,18 @@ impl String {
         self.vec.reserve(additional)
     }
 
-    /// Ensures that this `String`'s capacity is `additional` bytes
-    /// larger than its length.
-    ///
-    /// Consider using the [`reserve`] method unless you absolutely know
-    /// better than the allocator.
+    /// Reserves the minimum capacity for at least `additional` bytes more than
+    /// the current length. Unlike [`reserve`], this will not
+    /// deliberately over-allocate to speculatively avoid frequent allocations.
+    /// After calling `reserve_exact`, capacity will be greater than or equal to
+    /// `self.len() + additional`. Does nothing if the capacity is already
+    /// sufficient.
     ///
     /// [`reserve`]: String::reserve
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `usize`.
+    /// Panics if the new capacity overflows [`usize`].
     ///
     /// # Examples
     ///
@@ -1061,15 +1059,16 @@ impl String {
     /// s.push('a');
     /// s.push('b');
     ///
-    /// // s now has a length of 2 and a capacity of 10
+    /// // s now has a length of 2 and a capacity of at least 10
+    /// let capacity = s.capacity();
     /// assert_eq!(2, s.len());
-    /// assert_eq!(10, s.capacity());
+    /// assert!(capacity >= 10);
     ///
-    /// // Since we already have an extra 8 capacity, calling this...
+    /// // Since we already have at least an extra 8 capacity, calling this...
     /// s.reserve_exact(8);
     ///
     /// // ... doesn't actually increase.
-    /// assert_eq!(10, s.capacity());
+    /// assert_eq!(capacity, s.capacity());
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
@@ -1078,11 +1077,12 @@ impl String {
         self.vec.reserve_exact(additional)
     }
 
-    /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `String`. The collection may reserve more space to avoid
-    /// frequent reallocations. After calling `reserve`, capacity will be
-    /// greater than or equal to `self.len() + additional`. Does nothing if
-    /// capacity is already sufficient.
+    /// Tries to reserve capacity for at least `additional` bytes more than the
+    /// current length. The allocator may reserve more space to speculatively
+    /// avoid frequent allocations. After calling `try_reserve`, capacity will be
+    /// greater than or equal to `self.len() + additional` if it returns
+    /// `Ok(())`. Does nothing if capacity is already sufficient. This method
+    /// preserves the contents even if an error occurs.
     ///
     /// # Errors
     ///
@@ -1112,9 +1112,11 @@ impl String {
         self.vec.try_reserve(additional)
     }
 
-    /// Tries to reserve the minimum capacity for exactly `additional` more elements to
-    /// be inserted in the given `String`. After calling `try_reserve_exact`,
-    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Tries to reserve the minimum capacity for at least `additional` bytes
+    /// more than the current length. Unlike [`try_reserve`], this will not
+    /// deliberately over-allocate to speculatively avoid frequent allocations.
+    /// After calling `try_reserve_exact`, capacity will be greater than or
+    /// equal to `self.len() + additional` if it returns `Ok(())`.
     /// Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it
@@ -1935,6 +1937,22 @@ impl fmt::Display for FromUtf8Error {
 impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf8Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-8"
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf16Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-16"
     }
 }
 

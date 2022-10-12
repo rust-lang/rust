@@ -5,32 +5,27 @@
 
 // @has 'foo/macro.todo.html'
 // @has - '//span[@class="macro"]' 'macro_rules!'
-// @has - '//span[@class="ident"]' 'todo'
-// Note: the only op is the `+`
-// @count - '//pre[@class="rust macro"]//span[@class="op"]' 1
+// @hasraw - ' todo {'
 
-// @has - '{ () =&gt; { ... }; ($('
+// @hasraw - '{ () =&gt; { ... }; ($('
 // @has - '//span[@class="macro-nonterminal"]' '$'
 // @has - '//span[@class="macro-nonterminal"]' 'arg'
-// @has - ':'
-// @has - '//span[@class="ident"]' 'tt'
-// @has - '),'
-// @has - '//span[@class="op"]' '+'
-// @has - ') =&gt; { ... }; }'
+// @hasraw - ':tt)+'
+// @hasraw - ') =&gt; { ... }; }'
 pub use std::todo;
 
 mod mod1 {
     // @has 'foo/macro.macro1.html'
-    // @has - 'macro_rules!'
-    // @has - 'macro1'
-    // @has - '{ () =&gt; { ... }; ($('
+    // @hasraw - 'macro_rules!'
+    // @hasraw - 'macro1'
+    // @hasraw - '{ () =&gt; { ... }; ($('
     // @has - '//span[@class="macro-nonterminal"]' '$'
     // @has - '//span[@class="macro-nonterminal"]' 'arg'
-    // @has - ':'
-    // @has - 'expr'
-    // @has - '),'
-    // @has - '+'
-    // @has - ') =&gt; { ... }; }'
+    // @hasraw - ':'
+    // @hasraw - 'expr'
+    // @hasraw - '),'
+    // @hasraw - '+'
+    // @hasraw - ') =&gt; { ... }; }'
     #[macro_export]
     macro_rules! macro1 {
         () => {};

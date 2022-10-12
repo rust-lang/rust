@@ -1,0 +1,55 @@
+error[E0277]: `T` is not a tuple
+  --> $DIR/builtin-fail.rs:8:23
+   |
+LL |     assert_is_tuple::<T>();
+   |                       ^ the trait `Tuple` is not implemented for `T`
+   |
+note: required by a bound in `assert_is_tuple`
+  --> $DIR/builtin-fail.rs:3:23
+   |
+LL | fn assert_is_tuple<T: std::marker::Tuple + ?Sized>() {}
+   |                       ^^^^^^^^^^^^^^^^^^ required by this bound in `assert_is_tuple`
+help: consider restricting type parameter `T`
+   |
+LL | fn from_param_env<T: std::marker::Tuple>() {
+   |                    ++++++++++++++++++++
+
+error[E0277]: `i32` is not a tuple
+  --> $DIR/builtin-fail.rs:13:23
+   |
+LL |     assert_is_tuple::<i32>();
+   |                       ^^^ the trait `Tuple` is not implemented for `i32`
+   |
+note: required by a bound in `assert_is_tuple`
+  --> $DIR/builtin-fail.rs:3:23
+   |
+LL | fn assert_is_tuple<T: std::marker::Tuple + ?Sized>() {}
+   |                       ^^^^^^^^^^^^^^^^^^ required by this bound in `assert_is_tuple`
+
+error[E0277]: `i32` is not a tuple
+  --> $DIR/builtin-fail.rs:15:24
+   |
+LL |     assert_is_tuple::<(i32)>();
+   |                        ^^^ the trait `Tuple` is not implemented for `i32`
+   |
+note: required by a bound in `assert_is_tuple`
+  --> $DIR/builtin-fail.rs:3:23
+   |
+LL | fn assert_is_tuple<T: std::marker::Tuple + ?Sized>() {}
+   |                       ^^^^^^^^^^^^^^^^^^ required by this bound in `assert_is_tuple`
+
+error[E0277]: `TupleStruct` is not a tuple
+  --> $DIR/builtin-fail.rs:17:23
+   |
+LL |     assert_is_tuple::<TupleStruct>();
+   |                       ^^^^^^^^^^^ the trait `Tuple` is not implemented for `TupleStruct`
+   |
+note: required by a bound in `assert_is_tuple`
+  --> $DIR/builtin-fail.rs:3:23
+   |
+LL | fn assert_is_tuple<T: std::marker::Tuple + ?Sized>() {}
+   |                       ^^^^^^^^^^^^^^^^^^ required by this bound in `assert_is_tuple`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

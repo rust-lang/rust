@@ -47,6 +47,10 @@ impl SystemTime {
         SystemTime(Duration::from_nanos(ts))
     }
 
+    pub fn to_wasi_timestamp(&self) -> Option<wasi::Timestamp> {
+        self.0.as_nanos().try_into().ok()
+    }
+
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
     }

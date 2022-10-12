@@ -1,5 +1,6 @@
 // build-fail
-//~^ ERROR overflow evaluating the requirement
+// compile-flags: -Copt-level=0
+//~^^ ERROR overflow evaluating the requirement
 
 fn main() {
     let mut iter = 0u8..1;

@@ -3,7 +3,7 @@
 # This test makes sure that cross-language inlining actually works by checking
 # the generated machine code.
 
--include ../tools.mk
+include ../tools.mk
 
 all: cpp-executable rust-executable
 

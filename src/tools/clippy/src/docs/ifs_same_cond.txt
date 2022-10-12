@@ -1,0 +1,25 @@
+### What it does
+Checks for consecutive `if`s with the same condition.
+
+### Why is this bad?
+This is probably a copy & paste error.
+
+### Example
+```
+if a == b {
+    …
+} else if a == b {
+    …
+}
+```
+
+Note that this lint ignores all conditions with a function call as it could
+have side effects:
+
+```
+if foo() {
+    …
+} else if foo() { // not linted
+    …
+}
+```

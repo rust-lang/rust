@@ -1,3 +1,4 @@
+use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -31,13 +32,14 @@ impl<'tcx> Cx<'tcx> {
         exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect()
     }
 
+    #[instrument(level = "trace", skip(self, hir_expr))]
     pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         let temp_lifetime =
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, hir_expr.hir_id.local_id);
         let expr_scope =
             region::Scope { id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
 
-        debug!("Expr::make_mirror(): id={}, span={:?}", hir_expr.hir_id, hir_expr.span);
+        trace!(?hir_expr.hir_id, ?hir_expr.span);
 
         let mut expr = self.make_mirror_unadjusted(hir_expr);
 
@@ -46,13 +48,17 @@ impl<'tcx> Cx<'tcx> {
             _ => None,
         };
 
+        trace!(?expr.ty);
+
         // Now apply adjustments, if any.
         for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
-            debug!("make_mirror: expr={:?} applying adjustment={:?}", expr, adjustment);
+            trace!(?expr, ?adjustment);
             let span = expr.span;
             expr =
                 self.apply_adjustment(hir_expr, expr, adjustment, adjustment_span.unwrap_or(span));
         }
+
+        trace!(?expr.ty, "after adjustments");
 
         // Next, wrap this up in the expr's scope.
         expr = Expr {
@@ -106,8 +112,8 @@ impl<'tcx> Cx<'tcx> {
         //   // ^ error message points at this expression.
         // }
         let mut adjust_span = |expr: &mut Expr<'tcx>| {
-            if let ExprKind::Block { body } = &expr.kind {
-                if let Some(last_expr) = body.expr {
+            if let ExprKind::Block { block } = expr.kind {
+                if let Some(last_expr) = self.thir[block].expr {
                     span = self.thir[last_expr].span;
                     expr.span = span;
                 }
@@ -158,6 +164,98 @@ impl<'tcx> Cx<'tcx> {
         Expr { temp_lifetime, ty: adjustment.target, span, kind }
     }
 
+    /// Lowers a cast expression.
+    ///
+    /// Dealing with user type annotations is left to the caller.
+    fn mirror_expr_cast(
+        &mut self,
+        source: &'tcx hir::Expr<'tcx>,
+        temp_lifetime: Option<Scope>,
+        span: Span,
+    ) -> ExprKind<'tcx> {
+        let tcx = self.tcx;
+
+        // Check to see if this cast is a "coercion cast", where the cast is actually done
+        // using a coercion (or is a no-op).
+        if self.typeck_results().is_coercion_cast(source.hir_id) {
+            // Convert the lexpr to a vexpr.
+            ExprKind::Use { source: self.mirror_expr(source) }
+        } else if self.typeck_results().expr_ty(source).is_region_ptr() {
+            // Special cased so that we can type check that the element
+            // type of the source matches the pointed to type of the
+            // destination.
+            ExprKind::Pointer {
+                source: self.mirror_expr(source),
+                cast: PointerCast::ArrayToPointer,
+            }
+        } else {
+            // check whether this is casting an enum variant discriminant
+            // to prevent cycles, we refer to the discriminant initializer
+            // which is always an integer and thus doesn't need to know the
+            // enum's layout (or its tag type) to compute it during const eval
+            // Example:
+            // enum Foo {
+            //     A,
+            //     B = A as isize + 4,
+            // }
+            // The correct solution would be to add symbolic computations to miri,
+            // so we wouldn't have to compute and store the actual value
+
+            let hir::ExprKind::Path(ref qpath) = source.kind else {
+                return ExprKind::Cast { source: self.mirror_expr(source)};
+            };
+
+            let res = self.typeck_results().qpath_res(qpath, source.hir_id);
+            let ty = self.typeck_results().node_type(source.hir_id);
+            let ty::Adt(adt_def, substs) = ty.kind() else {
+                return ExprKind::Cast { source: self.mirror_expr(source)};
+            };
+
+            let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), variant_ctor_id) = res else {
+                return ExprKind::Cast { source: self.mirror_expr(source)};
+            };
+
+            let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
+            let (discr_did, discr_offset) = adt_def.discriminant_def_for_variant(idx);
+
+            use rustc_middle::ty::util::IntTypeExt;
+            let ty = adt_def.repr().discr_type();
+            let discr_ty = ty.to_ty(tcx);
+
+            let param_env_ty = self.param_env.and(discr_ty);
+            let size = tcx
+                .layout_of(param_env_ty)
+                .unwrap_or_else(|e| {
+                    panic!("could not compute layout for {:?}: {:?}", param_env_ty, e)
+                })
+                .size;
+
+            let lit = ScalarInt::try_from_uint(discr_offset as u128, size).unwrap();
+            let kind = ExprKind::NonHirLiteral { lit, user_ty: None };
+            let offset = self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
+
+            let source = match discr_did {
+                // in case we are offsetting from a computed discriminant
+                // and not the beginning of discriminants (which is always `0`)
+                Some(did) => {
+                    let kind = ExprKind::NamedConst { def_id: did, substs, user_ty: None };
+                    let lhs =
+                        self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
+                    let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
+                    self.thir.exprs.push(Expr {
+                        temp_lifetime,
+                        ty: discr_ty,
+                        span: span,
+                        kind: bin,
+                    })
+                }
+                None => offset,
+            };
+
+            ExprKind::Cast { source }
+        }
+    }
+
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
         let tcx = self.tcx;
         let expr_ty = self.typeck_results().expr_ty(expr);
@@ -167,15 +265,19 @@ impl<'tcx> Cx<'tcx> {
 
         let kind = match expr.kind {
             // Here comes the interesting stuff:
-            hir::ExprKind::MethodCall(segment, ref args, fn_span) => {
+            hir::ExprKind::MethodCall(segment, receiver, ref args, fn_span) => {
                 // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
                 let expr = self.method_callee(expr, segment.ident.span, None);
                 // When we apply adjustments to the receiver, use the span of
                 // the overall method call for better diagnostics. args[0]
                 // is guaranteed to exist, since a method call always has a receiver.
-                let old_adjustment_span = self.adjustment_span.replace((args[0].hir_id, expr_span));
-                tracing::info!("Using method span: {:?}", expr.span);
-                let args = self.mirror_exprs(args);
+                let old_adjustment_span =
+                    self.adjustment_span.replace((receiver.hir_id, expr_span));
+                info!("Using method span: {:?}", expr.span);
+                let args = std::iter::once(receiver)
+                    .chain(args.iter())
+                    .map(|expr| self.mirror_expr(expr))
+                    .collect();
                 self.adjustment_span = old_adjustment_span;
                 ExprKind::Call {
                     ty: expr.ty,
@@ -235,7 +337,7 @@ impl<'tcx> Cx<'tcx> {
                                 if let UserType::TypeOf(ref mut did, _) = &mut u_ty.value {
                                     *did = adt_def.did();
                                 }
-                                u_ty
+                                Box::new(u_ty)
                             });
                         debug!("make_mirror_unadjusted: (call) user_ty={:?}", user_ty);
 
@@ -247,7 +349,7 @@ impl<'tcx> Cx<'tcx> {
                                 expr: self.mirror_expr(e),
                             })
                             .collect();
-                        ExprKind::Adt(Box::new(Adt {
+                        ExprKind::Adt(Box::new(AdtExpr {
                             adt_def,
                             substs,
                             variant_index: index,
@@ -275,7 +377,7 @@ impl<'tcx> Cx<'tcx> {
                 ExprKind::AddressOf { mutability, arg: self.mirror_expr(arg) }
             }
 
-            hir::ExprKind::Block(ref blk, _) => ExprKind::Block { body: self.mirror_block(blk) },
+            hir::ExprKind::Block(ref blk, _) => ExprKind::Block { block: self.mirror_block(blk) },
 
             hir::ExprKind::Assign(ref lhs, ref rhs, _) => {
                 ExprKind::Assign { lhs: self.mirror_expr(lhs), rhs: self.mirror_expr(rhs) }
@@ -370,9 +472,9 @@ impl<'tcx> Cx<'tcx> {
                 ty::Adt(adt, substs) => match adt.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
                         let user_provided_types = self.typeck_results().user_provided_types();
-                        let user_ty = user_provided_types.get(expr.hir_id).copied();
+                        let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
                         debug!("make_mirror_unadjusted: (struct/union) user_ty={:?}", user_ty);
-                        ExprKind::Adt(Box::new(Adt {
+                        ExprKind::Adt(Box::new(AdtExpr {
                             adt_def: *adt,
                             variant_index: VariantIdx::new(0),
                             substs,
@@ -396,9 +498,10 @@ impl<'tcx> Cx<'tcx> {
                                 let index = adt.variant_index_with_id(variant_id);
                                 let user_provided_types =
                                     self.typeck_results().user_provided_types();
-                                let user_ty = user_provided_types.get(expr.hir_id).copied();
+                                let user_ty =
+                                    user_provided_types.get(expr.hir_id).copied().map(Box::new);
                                 debug!("make_mirror_unadjusted: (variant) user_ty={:?}", user_ty);
-                                ExprKind::Adt(Box::new(Adt {
+                                ExprKind::Adt(Box::new(AdtExpr {
                                     adt_def: *adt,
                                     variant_index: index,
                                     substs,
@@ -418,7 +521,7 @@ impl<'tcx> Cx<'tcx> {
                 }
             },
 
-            hir::ExprKind::Closure(..) => {
+            hir::ExprKind::Closure { .. } => {
                 let closure_ty = self.typeck_results().expr_ty(expr);
                 let (def_id, substs, movability) = match *closure_ty.kind() {
                     ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
@@ -429,6 +532,7 @@ impl<'tcx> Cx<'tcx> {
                         span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                     }
                 };
+                let def_id = def_id.expect_local();
 
                 let upvars = self
                     .typeck_results
@@ -452,7 +556,13 @@ impl<'tcx> Cx<'tcx> {
                     None => Vec::new(),
                 };
 
-                ExprKind::Closure { closure_id: def_id, substs, upvars, movability, fake_reads }
+                ExprKind::Closure(Box::new(ClosureExpr {
+                    closure_id: def_id,
+                    substs,
+                    upvars,
+                    movability,
+                    fake_reads,
+                }))
             }
 
             hir::ExprKind::Path(ref qpath) => {
@@ -460,7 +570,7 @@ impl<'tcx> Cx<'tcx> {
                 self.convert_path_expr(expr, res)
             }
 
-            hir::ExprKind::InlineAsm(ref asm) => ExprKind::InlineAsm {
+            hir::ExprKind::InlineAsm(ref asm) => ExprKind::InlineAsm(Box::new(InlineAsmExpr {
                 template: asm.template,
                 operands: asm
                     .operands
@@ -519,7 +629,7 @@ impl<'tcx> Cx<'tcx> {
                     .collect(),
                 options: asm.options,
                 line_spans: asm.line_spans,
-            },
+            })),
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let ty = self.typeck_results().node_type(anon_const.hir_id);
@@ -584,13 +694,14 @@ impl<'tcx> Cx<'tcx> {
                 let body = self.thir.exprs.push(Expr {
                     ty: block_ty,
                     temp_lifetime,
-                    span: block.span,
-                    kind: ExprKind::Block { body: block },
+                    span: self.thir[block].span,
+                    kind: ExprKind::Block { block },
                 });
                 ExprKind::Loop { body }
             }
             hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
                 lhs: self.mirror_expr(source),
+                variant_index: VariantIdx::new(0),
                 name: Field::new(tcx.field_index(expr.hir_id, self.typeck_results)),
             },
             hir::ExprKind::Cast(ref source, ref cast_ty) => {
@@ -603,98 +714,7 @@ impl<'tcx> Cx<'tcx> {
                     expr, cast_ty.hir_id, user_ty,
                 );
 
-                // Check to see if this cast is a "coercion cast", where the cast is actually done
-                // using a coercion (or is a no-op).
-                let cast = if self.typeck_results().is_coercion_cast(source.hir_id) {
-                    // Convert the lexpr to a vexpr.
-                    ExprKind::Use { source: self.mirror_expr(source) }
-                } else if self.typeck_results().expr_ty(source).is_region_ptr() {
-                    // Special cased so that we can type check that the element
-                    // type of the source matches the pointed to type of the
-                    // destination.
-                    ExprKind::Pointer {
-                        source: self.mirror_expr(source),
-                        cast: PointerCast::ArrayToPointer,
-                    }
-                } else {
-                    // check whether this is casting an enum variant discriminant
-                    // to prevent cycles, we refer to the discriminant initializer
-                    // which is always an integer and thus doesn't need to know the
-                    // enum's layout (or its tag type) to compute it during const eval
-                    // Example:
-                    // enum Foo {
-                    //     A,
-                    //     B = A as isize + 4,
-                    // }
-                    // The correct solution would be to add symbolic computations to miri,
-                    // so we wouldn't have to compute and store the actual value
-                    let var = if let hir::ExprKind::Path(ref qpath) = source.kind {
-                        let res = self.typeck_results().qpath_res(qpath, source.hir_id);
-                        self.typeck_results().node_type(source.hir_id).ty_adt_def().and_then(
-                            |adt_def| match res {
-                                Res::Def(
-                                    DefKind::Ctor(CtorOf::Variant, CtorKind::Const),
-                                    variant_ctor_id,
-                                ) => {
-                                    let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
-                                    let (d, o) = adt_def.discriminant_def_for_variant(idx);
-                                    use rustc_middle::ty::util::IntTypeExt;
-                                    let ty = adt_def.repr().discr_type();
-                                    let ty = ty.to_ty(tcx);
-                                    Some((d, o, ty))
-                                }
-                                _ => None,
-                            },
-                        )
-                    } else {
-                        None
-                    };
-
-                    let source = if let Some((did, offset, var_ty)) = var {
-                        let param_env_ty = self.param_env.and(var_ty);
-                        let size = tcx
-                            .layout_of(param_env_ty)
-                            .unwrap_or_else(|e| {
-                                panic!("could not compute layout for {:?}: {:?}", param_env_ty, e)
-                            })
-                            .size;
-                        let lit = ScalarInt::try_from_uint(offset as u128, size).unwrap();
-                        let kind = ExprKind::NonHirLiteral { lit, user_ty: None };
-                        let offset = self.thir.exprs.push(Expr {
-                            temp_lifetime,
-                            ty: var_ty,
-                            span: expr.span,
-                            kind,
-                        });
-                        match did {
-                            Some(did) => {
-                                // in case we are offsetting from a computed discriminant
-                                // and not the beginning of discriminants (which is always `0`)
-                                let substs = InternalSubsts::identity_for_item(tcx, did);
-                                let kind =
-                                    ExprKind::NamedConst { def_id: did, substs, user_ty: None };
-                                let lhs = self.thir.exprs.push(Expr {
-                                    temp_lifetime,
-                                    ty: var_ty,
-                                    span: expr.span,
-                                    kind,
-                                });
-                                let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
-                                self.thir.exprs.push(Expr {
-                                    temp_lifetime,
-                                    ty: var_ty,
-                                    span: expr.span,
-                                    kind: bin,
-                                })
-                            }
-                            None => offset,
-                        }
-                    } else {
-                        self.mirror_expr(source)
-                    };
-
-                    ExprKind::Cast { source: source }
-                };
+                let cast = self.mirror_expr_cast(*source, temp_lifetime, expr.span);
 
                 if let Some(user_ty) = user_ty {
                     // NOTE: Creating a new Expr and wrapping a Cast inside of it may be
@@ -707,14 +727,17 @@ impl<'tcx> Cx<'tcx> {
                     });
                     debug!("make_mirror_unadjusted: (cast) user_ty={:?}", user_ty);
 
-                    ExprKind::ValueTypeAscription { source: cast_expr, user_ty: Some(*user_ty) }
+                    ExprKind::ValueTypeAscription {
+                        source: cast_expr,
+                        user_ty: Some(Box::new(*user_ty)),
+                    }
                 } else {
                     cast
                 }
             }
             hir::ExprKind::Type(ref source, ref ty) => {
                 let user_provided_types = self.typeck_results.user_provided_types();
-                let user_ty = user_provided_types.get(ty.hir_id).copied();
+                let user_ty = user_provided_types.get(ty.hir_id).copied().map(Box::new);
                 debug!("make_mirror_unadjusted: (type) user_ty={:?}", user_ty);
                 let mirrored = self.mirror_expr(source);
                 if source.is_syntactic_place_expr() {
@@ -743,7 +766,7 @@ impl<'tcx> Cx<'tcx> {
         &mut self,
         hir_id: hir::HirId,
         res: Res,
-    ) -> Option<ty::CanonicalUserType<'tcx>> {
+    ) -> Option<Box<ty::CanonicalUserType<'tcx>>> {
         debug!("user_substs_applied_to_res: res={:?}", res);
         let user_provided_type = match res {
             // A reference to something callable -- e.g., a fn, method, or
@@ -754,7 +777,7 @@ impl<'tcx> Cx<'tcx> {
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
             | Res::Def(DefKind::Const, _)
             | Res::Def(DefKind::AssocConst, _) => {
-                self.typeck_results().user_provided_types().get(hir_id).copied()
+                self.typeck_results().user_provided_types().get(hir_id).copied().map(Box::new)
             }
 
             // A unit struct/variant which is used as a value (e.g.,
@@ -762,11 +785,11 @@ impl<'tcx> Cx<'tcx> {
             // this variant -- but with the substitutions given by the
             // user.
             Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => {
-                self.user_substs_applied_to_ty_of_hir_id(hir_id)
+                self.user_substs_applied_to_ty_of_hir_id(hir_id).map(Box::new)
             }
 
             // `Self` is used in expression as a tuple struct constructor or a unit struct constructor
-            Res::SelfCtor(_) => self.user_substs_applied_to_ty_of_hir_id(hir_id),
+            Res::SelfCtor(_) => self.user_substs_applied_to_ty_of_hir_id(hir_id).map(Box::new),
 
             _ => bug!("user_substs_applied_to_res: unexpected res {:?} at {:?}", res, hir_id),
         };
@@ -795,7 +818,7 @@ impl<'tcx> Cx<'tcx> {
             }
         };
         let ty = self.tcx().mk_fn_def(def_id, substs);
-        Expr { temp_lifetime, ty, span, kind: ExprKind::zero_sized_literal(user_ty) }
+        Expr { temp_lifetime, ty, span, kind: ExprKind::ZstLiteral { user_ty } }
     }
 
     fn convert_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ArmId {
@@ -824,7 +847,7 @@ impl<'tcx> Cx<'tcx> {
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
             | Res::SelfCtor(_) => {
                 let user_ty = self.user_substs_applied_to_res(expr.hir_id, res);
-                ExprKind::zero_sized_literal(user_ty)
+                ExprKind::ZstLiteral { user_ty }
             }
 
             Res::Def(DefKind::ConstParam, def_id) => {
@@ -841,22 +864,22 @@ impl<'tcx> Cx<'tcx> {
 
             Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let user_ty = self.user_substs_applied_to_res(expr.hir_id, res);
-                ExprKind::NamedConst { def_id, substs, user_ty: user_ty }
+                ExprKind::NamedConst { def_id, substs, user_ty }
             }
 
             Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id) => {
                 let user_provided_types = self.typeck_results.user_provided_types();
-                let user_provided_type = user_provided_types.get(expr.hir_id).copied();
-                debug!("convert_path_expr: user_provided_type={:?}", user_provided_type);
+                let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
+                debug!("convert_path_expr: user_ty={:?}", user_ty);
                 let ty = self.typeck_results().node_type(expr.hir_id);
                 match ty.kind() {
                     // A unit struct/variant which is used as a value.
                     // We return a completely different ExprKind here to account for this special case.
-                    ty::Adt(adt_def, substs) => ExprKind::Adt(Box::new(Adt {
+                    ty::Adt(adt_def, substs) => ExprKind::Adt(Box::new(AdtExpr {
                         adt_def: *adt_def,
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
                         substs,
-                        user_ty: user_provided_type,
+                        user_ty,
                         fields: Box::new([]),
                         base: None,
                     })),
@@ -902,9 +925,12 @@ impl<'tcx> Cx<'tcx> {
         );
 
         if is_upvar {
-            ExprKind::UpvarRef { closure_def_id: self.body_owner, var_hir_id }
+            ExprKind::UpvarRef {
+                closure_def_id: self.body_owner,
+                var_hir_id: LocalVarId(var_hir_id),
+            }
         } else {
-            ExprKind::VarRef { id: var_hir_id }
+            ExprKind::VarRef { id: LocalVarId(var_hir_id) }
         }
     }
 
@@ -972,7 +998,7 @@ impl<'tcx> Cx<'tcx> {
             .temporary_scope(self.region_scope_tree, closure_expr.hir_id.local_id);
         let var_ty = place.base_ty;
 
-        // The result of capture analysis in `rustc_typeck/check/upvar.rs`represents a captured path
+        // The result of capture analysis in `rustc_hir_analysis/check/upvar.rs`represents a captured path
         // as it's seen for use within the closure and not at the time of closure creation.
         //
         // That is we see expect to see it start from a captured upvar and not something that is local
@@ -994,14 +1020,11 @@ impl<'tcx> Cx<'tcx> {
                 HirProjectionKind::Deref => {
                     ExprKind::Deref { arg: self.thir.exprs.push(captured_place_expr) }
                 }
-                HirProjectionKind::Field(field, ..) => {
-                    // Variant index will always be 0, because for multi-variant
-                    // enums, we capture the enum entirely.
-                    ExprKind::Field {
-                        lhs: self.thir.exprs.push(captured_place_expr),
-                        name: Field::new(field as usize),
-                    }
-                }
+                HirProjectionKind::Field(field, variant_index) => ExprKind::Field {
+                    lhs: self.thir.exprs.push(captured_place_expr),
+                    variant_index,
+                    name: Field::new(field as usize),
+                },
                 HirProjectionKind::Index | HirProjectionKind::Subslice => {
                     // We don't capture these projections, so we can ignore them here
                     continue;

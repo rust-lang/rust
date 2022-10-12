@@ -7,9 +7,9 @@ trait T {
 }
 
 type Foo = impl T;
-//~^ ERROR unconstrained opaque type
 
 fn a() -> Foo {
+    //~^ ERROR the trait bound `(): T` is not satisfied
     // This is not a defining use, it doesn't actually constrain the opaque type.
     panic!()
 }

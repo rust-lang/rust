@@ -1,3 +1,4 @@
+// unit-test
 // compile-flags: -C overflow-checks=on
 
 struct Point {

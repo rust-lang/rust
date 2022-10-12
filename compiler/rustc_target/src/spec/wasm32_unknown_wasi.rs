@@ -72,22 +72,16 @@
 //! best we can with this target. Don't start relying on too much here unless
 //! you know what you're getting in to!
 
-use super::wasm_base;
-use super::{crt_objects, LinkerFlavor, LldFlavor, Target};
+use super::{crt_objects, wasm_base, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
 
     options.os = "wasi".into();
-    options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
-    options
-        .pre_link_args
-        .entry(LinkerFlavor::Gcc)
-        .or_insert(Vec::new())
-        .push("--target=wasm32-wasi".into());
+    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["--target=wasm32-wasi"]);
 
-    options.pre_link_objects_fallback = crt_objects::pre_wasi_fallback();
-    options.post_link_objects_fallback = crt_objects::post_wasi_fallback();
+    options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
+    options.post_link_objects_self_contained = crt_objects::post_wasi_self_contained();
 
     // Right now this is a bit of a workaround but we're currently saying that
     // the target by default has a static crt which we're taking as a signal

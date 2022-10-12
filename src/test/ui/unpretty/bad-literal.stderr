@@ -1,0 +1,10 @@
+error: invalid suffix `u` for number literal
+  --> $DIR/bad-literal.rs:6:5
+   |
+LL |     1u;
+   |     ^^ invalid suffix `u`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: aborting due to previous error
+

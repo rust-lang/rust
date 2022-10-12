@@ -17,12 +17,12 @@ use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
-    collect_spans_and_sources, print_sidebar, scrape_examples_help, AllTypes, LinkFromSrc, NameDoc,
-    StylePath, BASIC_KEYWORDS,
+    collect_spans_and_sources, print_sidebar, scrape_examples_help, sidebar_module_like, AllTypes,
+    LinkFromSrc, NameDoc, StylePath, BASIC_KEYWORDS,
 };
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
-use crate::config::RenderOptions;
+use crate::config::{ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -31,6 +31,7 @@ use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
 use crate::html::format::{join_with_double_colon, Buffer};
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
+use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
@@ -71,7 +72,7 @@ pub(crate) struct Context<'tcx> {
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(not(windows), target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Context<'_>, 128);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
@@ -95,7 +96,7 @@ pub(crate) struct SharedContext<'tcx> {
     created_dirs: RefCell<FxHashSet<PathBuf>>,
     /// This flag indicates whether listings of modules (in the side bar and documentation itself)
     /// should be ordered alphabetically or in order of appearance (in the source code).
-    pub(super) sort_modules_alphabetically: bool,
+    pub(super) module_sorting: ModuleSorting,
     /// Additional CSS files to be added to the generated docs.
     pub(crate) style_files: Vec<StylePath>,
     /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
@@ -211,8 +212,6 @@ impl<'tcx> Context<'tcx> {
                 description: &desc,
                 keywords: &keywords,
                 resource_suffix: &clone_shared.resource_suffix,
-                extra_scripts: &[],
-                static_extra_scripts: &[],
             };
             let mut page_buffer = Buffer::html();
             print_item(self, it, &mut page_buffer, &page);
@@ -282,10 +281,13 @@ impl<'tcx> Context<'tcx> {
             }
         }
 
-        if self.shared.sort_modules_alphabetically {
-            for items in map.values_mut() {
-                items.sort();
+        match self.shared.module_sorting {
+            ModuleSorting::Alphabetical => {
+                for items in map.values_mut() {
+                    items.sort();
+                }
             }
+            ModuleSorting::DeclarationOrder => {}
         }
         map
     }
@@ -300,13 +302,10 @@ impl<'tcx> Context<'tcx> {
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
     pub(super) fn src_href(&self, item: &clean::Item) -> Option<String> {
-        self.href_from_span(item.span(self.tcx()), true)
+        self.href_from_span(item.span(self.tcx())?, true)
     }
 
     pub(crate) fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
-        if span.is_dummy() {
-            return None;
-        }
         let mut root = self.root_path();
         let mut path = String::new();
         let cnum = span.cnum(self.sess());
@@ -372,6 +371,35 @@ impl<'tcx> Context<'tcx> {
             anchor = anchor
         ))
     }
+
+    pub(crate) fn href_from_span_relative(
+        &self,
+        span: clean::Span,
+        relative_to: &str,
+    ) -> Option<String> {
+        self.href_from_span(span, false).map(|s| {
+            let mut url = UrlPartsBuilder::new();
+            let mut dest_href_parts = s.split('/');
+            let mut cur_href_parts = relative_to.split('/');
+            for (cur_href_part, dest_href_part) in (&mut cur_href_parts).zip(&mut dest_href_parts) {
+                if cur_href_part != dest_href_part {
+                    url.push(dest_href_part);
+                    break;
+                }
+            }
+            for dest_href_part in dest_href_parts {
+                url.push(dest_href_part);
+            }
+            let loline = span.lo(self.sess()).line;
+            let hiline = span.hi(self.sess()).line;
+            format!(
+                "{}{}#{}",
+                "../".repeat(cur_href_parts.count()),
+                url.finish(),
+                if loline == hiline { loline.to_string() } else { format!("{loline}-{hiline}") }
+            )
+        })
+    }
 }
 
 /// Generates the documentation for `crate` into the directory `dst`
@@ -396,7 +424,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             external_html,
             id_map,
             playground_url,
-            sort_modules_alphabetically,
+            module_sorting,
             themes: style_files,
             default_settings,
             extension_css,
@@ -478,7 +506,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             issue_tracker_base_url,
             layout,
             created_dirs: Default::default(),
-            sort_modules_alphabetically,
+            module_sorting,
             style_files,
             resource_suffix,
             static_root_path,
@@ -568,19 +596,25 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             description: "List of all items in this crate",
             keywords: BASIC_KEYWORDS,
             resource_suffix: &shared.resource_suffix,
-            extra_scripts: &[],
-            static_extra_scripts: &[],
-        };
-        let sidebar = if shared.cache.crate_version.is_some() {
-            format!("<h2 class=\"location\">Crate {}</h2>", crate_name)
-        } else {
-            String::new()
         };
         let all = shared.all.replace(AllTypes::new());
+        let mut sidebar = Buffer::html();
+        if shared.cache.crate_version.is_some() {
+            write!(sidebar, "<h2 class=\"location\">Crate {}</h2>", crate_name)
+        };
+
+        let mut items = Buffer::html();
+        sidebar_module_like(&mut items, all.item_sections());
+        if !items.is_empty() {
+            sidebar.push_str("<div class=\"sidebar-elems\">");
+            sidebar.push_buffer(items);
+            sidebar.push_str("</div>");
+        }
+
         let v = layout::render(
             &shared.layout,
             &page,
-            sidebar,
+            sidebar.into_inner(),
             |buf: &mut Buffer| all.print(buf),
             &shared.style_files,
         );
@@ -600,9 +634,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 write!(
                     buf,
                     "<div class=\"main-heading\">\
-                     <h1 class=\"fqn\">\
-                         <span class=\"in-band\">Rustdoc settings</span>\
-                     </h1>\
+                     <h1 class=\"fqn\">Rustdoc settings</h1>\
                      <span class=\"out-of-band\">\
                          <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
                             Back\
@@ -693,7 +725,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             else { unreachable!() };
             let items = self.build_sidebar_items(module);
             let js_dst = self.dst.join(&format!("sidebar-items{}.js", self.shared.resource_suffix));
-            let v = format!("initSidebarItems({});", serde_json::to_string(&items).unwrap());
+            let v = format!("window.SIDEBAR_ITEMS = {};", serde_json::to_string(&items).unwrap());
             self.shared.fs.write(js_dst, v)?;
         }
         Ok(())

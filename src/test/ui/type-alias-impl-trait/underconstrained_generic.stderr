@@ -4,7 +4,7 @@ error[E0277]: the trait bound `T: Trait` is not satisfied
 LL |     ()
    |     ^^ the trait `Trait` is not implemented for `T`
    |
-note: required because of the requirements on the impl of `ProofForConversion<T>` for `()`
+note: required for `()` to implement `ProofForConversion<T>`
   --> $DIR/underconstrained_generic.rs:13:16
    |
 LL | impl<X: Trait> ProofForConversion<X> for () {

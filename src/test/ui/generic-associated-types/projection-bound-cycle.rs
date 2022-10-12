@@ -2,7 +2,6 @@
 // Make sure that we make sure that we don't allow arbitrary bounds to be
 // proven when a bound and a where clause of an associated type are the same.
 
-#![feature(generic_associated_types)]
 #![feature(trivial_bounds)]
 
 trait Print {

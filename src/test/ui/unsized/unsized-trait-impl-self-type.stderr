@@ -22,7 +22,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<X: ?Sized> T3<X> for S5<X> {
 LL + impl<X> T3<X> for S5<X> {
-   | 
+   |
 
 error: aborting due to previous error
 

@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     TRANSMUTE_BYTES_TO_STR,
                     e.span,
-                    &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
+                    &format!("transmute from a `{from_ty}` to a `{to_ty}`"),
                     "consider using",
                     if const_context {
                         format!("std::str::from_utf8_unchecked{postfix}({snippet})")
@@ -73,7 +73,7 @@ pub(super) fn check<'tcx>(
                             diag.span_suggestion(
                                 e.span,
                                 "try",
-                                sugg.to_string(),
+                                sugg,
                                 Applicability::Unspecified,
                             );
                         },

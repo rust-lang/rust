@@ -23,7 +23,6 @@ use std::{convert::TryFrom, unreachable};
 
 use std::fs;
 use std::io;
-use tracing::debug;
 
 #[cfg(test)]
 mod tests;
@@ -331,12 +330,12 @@ impl SourceMap {
         name_hash: u128,
         source_len: usize,
         cnum: CrateNum,
-        mut file_local_lines: Vec<BytePos>,
+        file_local_lines: Lock<SourceFileLines>,
         mut file_local_multibyte_chars: Vec<MultiByteChar>,
         mut file_local_non_narrow_chars: Vec<NonNarrowChar>,
         mut file_local_normalized_pos: Vec<NormalizedPos>,
         original_start_pos: BytePos,
-        original_end_pos: BytePos,
+        metadata_index: u32,
     ) -> Lrc<SourceFile> {
         let start_pos = self
             .allocate_address_space(source_len)
@@ -355,8 +354,15 @@ impl SourceMap {
         // form rather than pre-computing the offset into a local variable. The
         // compiler backend can optimize away the repeated computations in a
         // way that won't trigger overflow checks.
-        for pos in &mut file_local_lines {
-            *pos = (*pos - original_start_pos) + start_pos;
+        match &mut *file_local_lines.borrow_mut() {
+            SourceFileLines::Lines(lines) => {
+                for pos in lines {
+                    *pos = (*pos - original_start_pos) + start_pos;
+                }
+            }
+            SourceFileLines::Diffs(SourceFileDiffs { line_start, .. }) => {
+                *line_start = (*line_start - original_start_pos) + start_pos;
+            }
         }
         for mbc in &mut file_local_multibyte_chars {
             mbc.pos = (mbc.pos - original_start_pos) + start_pos;
@@ -374,8 +380,7 @@ impl SourceMap {
             src_hash,
             external_src: Lock::new(ExternalSource::Foreign {
                 kind: ExternalSourceKind::AbsentOk,
-                original_start_pos,
-                original_end_pos,
+                metadata_index,
             }),
             start_pos,
             end_pos,
@@ -454,6 +459,33 @@ impl SourceMap {
     /// Format the span location suitable for embedding in build artifacts
     pub fn span_to_embeddable_string(&self, sp: Span) -> String {
         self.span_to_string(sp, FileNameDisplayPreference::Remapped)
+    }
+
+    /// Format the span location suitable for pretty printing anotations with relative line numbers
+    pub fn span_to_relative_line_string(&self, sp: Span, relative_to: Span) -> String {
+        if self.files.borrow().source_files.is_empty() || sp.is_dummy() || relative_to.is_dummy() {
+            return "no-location".to_string();
+        }
+
+        let lo = self.lookup_char_pos(sp.lo());
+        let hi = self.lookup_char_pos(sp.hi());
+        let offset = self.lookup_char_pos(relative_to.lo());
+
+        if lo.file.name != offset.file.name || !relative_to.contains(sp) {
+            return self.span_to_embeddable_string(sp);
+        }
+
+        let lo_line = lo.line.saturating_sub(offset.line);
+        let hi_line = hi.line.saturating_sub(offset.line);
+
+        format!(
+            "{}:+{}:{}: +{}:{}",
+            lo.file.name.display(FileNameDisplayPreference::Remapped),
+            lo_line,
+            lo.col.to_usize() + 1,
+            hi_line,
+            hi.col.to_usize() + 1,
+        )
     }
 
     /// Format the span location to be printed in diagnostics. Must not be emitted
@@ -579,15 +611,11 @@ impl SourceMap {
         }
     }
 
-    /// Returns whether or not this span points into a file
-    /// in the current crate. This may be `false` for spans
-    /// produced by a macro expansion, or for spans associated
-    /// with the definition of an item in a foreign crate
-    pub fn is_local_span(&self, sp: Span) -> bool {
-        let local_begin = self.lookup_byte_offset(sp.lo());
-        let local_end = self.lookup_byte_offset(sp.hi());
-        // This might be a weird span that covers multiple files
-        local_begin.sf.src.is_some() && local_end.sf.src.is_some()
+    pub fn is_span_accessible(&self, sp: Span) -> bool {
+        self.span_to_source(sp, |src, start_index, end_index| {
+            Ok(src.get(start_index..end_index).is_some())
+        })
+        .map_or(false, |is_accessible| is_accessible)
     }
 
     /// Returns the source snippet as `String` corresponding to the given `Span`.
@@ -692,7 +720,7 @@ impl SourceMap {
         })
     }
 
-    /// Extends the given `Span` to just after the next occurrence of `c`.
+    /// Extends the given `Span` to just before the next occurrence of `c`.
     pub fn span_extend_to_next_char(&self, sp: Span, c: char, accept_newlines: bool) -> Span {
         if let Ok(next_source) = self.span_to_next_source(sp) {
             let next_source = next_source.split(c).next().unwrap_or("");
@@ -702,6 +730,11 @@ impl SourceMap {
         }
 
         sp
+    }
+
+    /// Extends the given `Span` to contain the entire line it is on.
+    pub fn span_extend_to_line(&self, sp: Span) -> Span {
+        self.span_extend_to_prev_char(self.span_extend_to_next_char(sp, '\n', true), '\n', true)
     }
 
     /// Given a `Span`, tries to get a shorter span ending before the first occurrence of `char`
@@ -948,93 +981,6 @@ impl SourceMap {
         self.files().iter().fold(0, |a, f| a + f.count_lines())
     }
 
-    pub fn generate_fn_name_span(&self, span: Span) -> Option<Span> {
-        let prev_span = self.span_extend_to_prev_str(span, "fn", true, true).unwrap_or(span);
-        if let Ok(snippet) = self.span_to_snippet(prev_span) {
-            debug!(
-                "generate_fn_name_span: span={:?}, prev_span={:?}, snippet={:?}",
-                span, prev_span, snippet
-            );
-
-            if snippet.is_empty() {
-                return None;
-            };
-
-            let len = snippet
-                .find(|c: char| !c.is_alphanumeric() && c != '_')
-                .expect("no label after fn");
-            Some(prev_span.with_hi(BytePos(prev_span.lo().0 + len as u32)))
-        } else {
-            None
-        }
-    }
-
-    /// Takes the span of a type parameter in a function signature and try to generate a span for
-    /// the function name (with generics) and a new snippet for this span with the pointed type
-    /// parameter as a new local type parameter.
-    ///
-    /// For instance:
-    /// ```rust,ignore (pseudo-Rust)
-    /// // Given span
-    /// fn my_function(param: T)
-    /// //                    ^ Original span
-    ///
-    /// // Result
-    /// fn my_function(param: T)
-    /// // ^^^^^^^^^^^ Generated span with snippet `my_function<T>`
-    /// ```
-    ///
-    /// Attention: The method used is very fragile since it essentially duplicates the work of the
-    /// parser. If you need to use this function or something similar, please consider updating the
-    /// `SourceMap` functions and this function to something more robust.
-    pub fn generate_local_type_param_snippet(&self, span: Span) -> Option<(Span, String)> {
-        // Try to extend the span to the previous "fn" keyword to retrieve the function
-        // signature.
-        if let Some(sugg_span) = self.span_extend_to_prev_str(span, "fn", false, true) {
-            if let Ok(snippet) = self.span_to_snippet(sugg_span) {
-                // Consume the function name.
-                let mut offset = snippet
-                    .find(|c: char| !c.is_alphanumeric() && c != '_')
-                    .expect("no label after fn");
-
-                // Consume the generics part of the function signature.
-                let mut bracket_counter = 0;
-                let mut last_char = None;
-                for c in snippet[offset..].chars() {
-                    match c {
-                        '<' => bracket_counter += 1,
-                        '>' => bracket_counter -= 1,
-                        '(' => {
-                            if bracket_counter == 0 {
-                                break;
-                            }
-                        }
-                        _ => {}
-                    }
-                    offset += c.len_utf8();
-                    last_char = Some(c);
-                }
-
-                // Adjust the suggestion span to encompass the function name with its generics.
-                let sugg_span = sugg_span.with_hi(BytePos(sugg_span.lo().0 + offset as u32));
-
-                // Prepare the new suggested snippet to append the type parameter that triggered
-                // the error in the generics of the function signature.
-                let mut new_snippet = if last_char == Some('>') {
-                    format!("{}, ", &snippet[..(offset - '>'.len_utf8())])
-                } else {
-                    format!("{}<", &snippet[..offset])
-                };
-                new_snippet
-                    .push_str(&self.span_to_snippet(span).unwrap_or_else(|_| "T".to_string()));
-                new_snippet.push('>');
-
-                return Some((sugg_span, new_snippet));
-            }
-        }
-
-        None
-    }
     pub fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
         source_file.add_external_src(|| {
             match source_file.name {
@@ -1113,13 +1059,13 @@ impl FilePathMapping {
 
         return remap_path_prefix(&self.mapping, path);
 
-        #[instrument(level = "debug", skip(mapping))]
+        #[instrument(level = "debug", skip(mapping), ret)]
         fn remap_path_prefix(mapping: &[(PathBuf, PathBuf)], path: PathBuf) -> (PathBuf, bool) {
             // NOTE: We are iterating over the mapping entries from last to first
             //       because entries specified later on the command line should
             //       take precedence.
             for &(ref from, ref to) in mapping.iter().rev() {
-                debug!("Trying to apply {:?} => {:?}", from, to);
+                debug!("Trying to apply {from:?} => {to:?}");
 
                 if let Ok(rest) = path.strip_prefix(from) {
                     let remapped = if rest.as_os_str().is_empty() {
@@ -1133,15 +1079,15 @@ impl FilePathMapping {
                     } else {
                         to.join(rest)
                     };
-                    debug!("Match - remapped {:?} => {:?}", path, remapped);
+                    debug!("Match - remapped");
 
                     return (remapped, true);
                 } else {
-                    debug!("No match - prefix {:?} does not match {:?}", from, path);
+                    debug!("No match - prefix {from:?} does not match");
                 }
             }
 
-            debug!("Path {:?} was not remapped", path);
+            debug!("not remapped");
             (path, false)
         }
     }

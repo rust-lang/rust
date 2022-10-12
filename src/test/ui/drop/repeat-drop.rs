@@ -1,7 +1,5 @@
 // run-pass
-// ignore-wasm32-bare no unwinding panic
-// ignore-avr no unwinding panic
-// ignore-nvptx64 no unwinding panic
+// needs-unwind
 
 static mut CHECK: usize = 0;
 

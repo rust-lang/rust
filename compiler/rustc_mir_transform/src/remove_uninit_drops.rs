@@ -21,7 +21,7 @@ pub struct RemoveUninitDrops;
 impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
-        let Ok(move_data) = MoveData::gather_moves(body, tcx, param_env) else {
+        let Ok((_,move_data)) = MoveData::gather_moves(body, tcx, param_env) else {
             // We could continue if there are move errors, but there's not much point since our
             // init data isn't complete.
             return;
@@ -35,7 +35,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
             .into_results_cursor(body);
 
         let mut to_remove = vec![];
-        for (bb, block) in body.basic_blocks().iter_enumerated() {
+        for (bb, block) in body.basic_blocks.iter_enumerated() {
             let terminator = block.terminator();
             let (TerminatorKind::Drop { place, .. } | TerminatorKind::DropAndReplace { place, .. })
                 = &terminator.kind
@@ -102,7 +102,7 @@ fn is_needs_drop_and_init<'tcx>(
     let field_needs_drop_and_init = |(f, f_ty, mpi)| {
         let child = move_path_children_matching(move_data, mpi, |x| x.is_field_to(f));
         let Some(mpi) = child else {
-            return f_ty.needs_drop(tcx, param_env);
+            return Ty::needs_drop(f_ty, tcx, param_env);
         };
 
         is_needs_drop_and_init(tcx, param_env, maybe_inits, move_data, f_ty, mpi)

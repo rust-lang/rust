@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::ty::{self, Region, RegionVid, TypeFoldable};
+use rustc_middle::ty::{self, Region, RegionVid, TypeFoldable, TypeSuperFoldable};
 use rustc_trait_selection::traits::auto_trait::{self, AutoTraitResult};
 
 use std::fmt::Debug;
@@ -24,7 +24,10 @@ pub(crate) struct AutoTraitFinder<'a, 'tcx> {
     pub(crate) cx: &'a mut core::DocContext<'tcx>,
 }
 
-impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
+impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx>
+where
+    'tcx: 'a, // should be an implied bound; rustc bug #98852.
+{
     pub(crate) fn new(cx: &'a mut core::DocContext<'tcx>) -> Self {
         AutoTraitFinder { cx }
     }
@@ -117,15 +120,15 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             attrs: Default::default(),
             visibility: Inherited,
             item_id: ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
-            kind: box ImplItem(Impl {
+            kind: Box::new(ImplItem(Box::new(Impl {
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
-                trait_: Some(trait_ref.clean(self.cx)),
-                for_: ty.clean(self.cx),
+                trait_: Some(clean_trait_ref_with_bindings(self.cx, trait_ref, ThinVec::new())),
+                for_: clean_middle_ty(ty, self.cx, None),
                 items: Vec::new(),
                 polarity,
                 kind: ImplKind::Auto,
-            }),
+            }))),
             cfg: None,
         })
     }
@@ -345,15 +348,13 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     fn make_final_bounds(
         &self,
         ty_to_bounds: FxHashMap<Type, FxHashSet<GenericBound>>,
-        ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)>,
+        ty_to_fn: FxHashMap<Type, (PolyTrait, Option<Type>)>,
         lifetime_to_bounds: FxHashMap<Lifetime, FxHashSet<GenericBound>>,
     ) -> Vec<WherePredicate> {
         ty_to_bounds
             .into_iter()
             .flat_map(|(ty, mut bounds)| {
-                if let Some(data) = ty_to_fn.get(&ty) {
-                    let (poly_trait, output) =
-                        (data.0.as_ref().unwrap().clone(), data.1.as_ref().cloned().map(Box::new));
+                if let Some((ref poly_trait, ref output)) = ty_to_fn.get(&ty) {
                     let mut new_path = poly_trait.trait_.clone();
                     let last_segment = new_path.segments.pop().expect("segments were empty");
 
@@ -371,8 +372,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         GenericArgs::Parenthesized { inputs, output } => (inputs, output),
                     };
 
+                    let output = output.as_ref().cloned().map(Box::new);
                     if old_output.is_some() && old_output != output {
-                        panic!("Output mismatch for {:?} {:?} {:?}", ty, old_output, data.1);
+                        panic!("Output mismatch for {:?} {:?} {:?}", ty, old_output, output);
                     }
 
                     let new_params = GenericArgs::Parenthesized { inputs: old_input, output };
@@ -382,7 +384,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         .push(PathSegment { name: last_segment.name, args: new_params });
 
                     bounds.insert(GenericBound::TraitBound(
-                        PolyTrait { trait_: new_path, generic_params: poly_trait.generic_params },
+                        PolyTrait {
+                            trait_: new_path,
+                            generic_params: poly_trait.generic_params.clone(),
+                        },
                         hir::TraitBoundModifier::None,
                     ));
                 }
@@ -468,10 +473,16 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let mut lifetime_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();
         let mut ty_to_traits: FxHashMap<Type, FxHashSet<Path>> = Default::default();
 
-        let mut ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)> = Default::default();
+        let mut ty_to_fn: FxHashMap<Type, (PolyTrait, Option<Type>)> = Default::default();
 
+        // FIXME: This code shares much of the logic found in `clean_ty_generics` and
+        //        `simplify::where_clause`. Consider deduplicating it to avoid diverging
+        //        implementations.
+        //        Further, the code below does not merge (partially re-sugared) bounds like
+        //        `Tr<A = T>` & `Tr<B = U>` and it does not render higher-ranked parameters
+        //        originating from equality predicates.
         for p in clean_where_predicates {
-            let (orig_p, p) = (p, p.clean(self.cx));
+            let (orig_p, p) = (p, clean_predicate(p, self.cx));
             if p.is_none() {
                 continue;
             }
@@ -520,8 +531,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             GenericBound::TraitBound(ref mut p, _) => {
                                 // Insert regions into the for_generics hash map first, to ensure
                                 // that we don't end up with duplicate bounds (e.g., for<'b, 'b>)
-                                for_generics.extend(p.generic_params.clone());
-                                p.generic_params = for_generics.into_iter().collect();
+                                for_generics.extend(p.generic_params.drain(..));
+                                p.generic_params.extend(for_generics);
                                 self.is_fn_trait(&p.trait_)
                             }
                             _ => false,
@@ -532,8 +543,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         if is_fn {
                             ty_to_fn
                                 .entry(ty.clone())
-                                .and_modify(|e| *e = (Some(poly_trait.clone()), e.1.clone()))
-                                .or_insert(((Some(poly_trait.clone())), None));
+                                .and_modify(|e| *e = (poly_trait.clone(), e.1.clone()))
+                                .or_insert(((poly_trait.clone()), None));
 
                             ty_to_bounds.entry(ty.clone()).or_default();
                         } else {
@@ -544,19 +555,27 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 WherePredicate::RegionPredicate { lifetime, bounds } => {
                     lifetime_to_bounds.entry(lifetime).or_default().extend(bounds);
                 }
-                WherePredicate::EqPredicate { lhs, rhs } => {
-                    match lhs {
-                        Type::QPath { ref assoc, ref self_type, ref trait_, .. } => {
+                WherePredicate::EqPredicate { lhs, rhs, bound_params } => {
+                    match *lhs {
+                        Type::QPath(box QPathData {
+                            ref assoc, ref self_type, ref trait_, ..
+                        }) => {
                             let ty = &*self_type;
                             let mut new_trait = trait_.clone();
 
                             if self.is_fn_trait(trait_) && assoc.name == sym::Output {
                                 ty_to_fn
-                                    .entry(*ty.clone())
+                                    .entry(ty.clone())
                                     .and_modify(|e| {
                                         *e = (e.0.clone(), Some(rhs.ty().unwrap().clone()))
                                     })
-                                    .or_insert((None, Some(rhs.ty().unwrap().clone())));
+                                    .or_insert((
+                                        PolyTrait {
+                                            trait_: trait_.clone(),
+                                            generic_params: Vec::new(),
+                                        },
+                                        Some(rhs.ty().unwrap().clone()),
+                                    ));
                                 continue;
                             }
 
@@ -571,21 +590,22 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 // to 'T: Iterator<Item=u8>'
                                 GenericArgs::AngleBracketed { ref mut bindings, .. } => {
                                     bindings.push(TypeBinding {
-                                        assoc: *assoc.clone(),
-                                        kind: TypeBindingKind::Equality { term: rhs },
+                                        assoc: assoc.clone(),
+                                        kind: TypeBindingKind::Equality { term: *rhs },
                                     });
                                 }
                                 GenericArgs::Parenthesized { .. } => {
                                     existing_predicates.push(WherePredicate::EqPredicate {
                                         lhs: lhs.clone(),
                                         rhs,
+                                        bound_params,
                                     });
                                     continue; // If something other than a Fn ends up
                                     // with parentheses, leave it alone
                                 }
                             }
 
-                            let bounds = ty_to_bounds.entry(*ty.clone()).or_default();
+                            let bounds = ty_to_bounds.entry(ty.clone()).or_default();
 
                             bounds.insert(GenericBound::TraitBound(
                                 PolyTrait { trait_: new_trait, generic_params: Vec::new() },
@@ -602,7 +622,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             ));
                             // Avoid creating any new duplicate bounds later in the outer
                             // loop
-                            ty_to_traits.entry(*ty.clone()).or_default().insert(trait_.clone());
+                            ty_to_traits.entry(ty.clone()).or_default().insert(trait_.clone());
                         }
                         _ => panic!("Unexpected LHS {:?} for {:?}", lhs, item_def_id),
                     }

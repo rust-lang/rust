@@ -1,0 +1,29 @@
+### What it does
+Checks for `let _ = <expr>`
+where expr has a type that implements `Drop`
+
+### Why is this bad?
+This statement immediately drops the initializer
+expression instead of extending its lifetime to the end of the scope, which
+is often not intended. To extend the expression's lifetime to the end of the
+scope, use an underscore-prefixed name instead (i.e. _var). If you want to
+explicitly drop the expression, `std::mem::drop` conveys your intention
+better and is less error-prone.
+
+### Example
+```
+{
+    let _ = DroppableItem;
+    //                   ^ dropped here
+    /* more code */
+}
+```
+
+Use instead:
+```
+{
+    let _droppable = DroppableItem;
+    /* more code */
+    // dropped at end of scope
+}
+```

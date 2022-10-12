@@ -56,7 +56,7 @@ macro_rules! err_machine_stop {
 // In the `throw_*` macros, avoid `return` to make them work with `try {}`.
 #[macro_export]
 macro_rules! throw_unsup {
-    ($($tt:tt)*) => { Err::<!, _>(err_unsup!($($tt)*))? };
+    ($($tt:tt)*) => { do yeet err_unsup!($($tt)*) };
 }
 
 #[macro_export]
@@ -66,12 +66,12 @@ macro_rules! throw_unsup_format {
 
 #[macro_export]
 macro_rules! throw_inval {
-    ($($tt:tt)*) => { Err::<!, _>(err_inval!($($tt)*))? };
+    ($($tt:tt)*) => { do yeet err_inval!($($tt)*) };
 }
 
 #[macro_export]
 macro_rules! throw_ub {
-    ($($tt:tt)*) => { Err::<!, _>(err_ub!($($tt)*))? };
+    ($($tt:tt)*) => { do yeet err_ub!($($tt)*) };
 }
 
 #[macro_export]
@@ -81,12 +81,12 @@ macro_rules! throw_ub_format {
 
 #[macro_export]
 macro_rules! throw_exhaust {
-    ($($tt:tt)*) => { Err::<!, _>(err_exhaust!($($tt)*))? };
+    ($($tt:tt)*) => { do yeet err_exhaust!($($tt)*) };
 }
 
 #[macro_export]
 macro_rules! throw_machine_stop {
-    ($($tt:tt)*) => { Err::<!, _>(err_machine_stop!($($tt)*))? };
+    ($($tt:tt)*) => { do yeet err_machine_stop!($($tt)*) };
 }
 
 mod allocation;
@@ -124,11 +124,11 @@ pub use self::error::{
     UninitBytesAccess, UnsupportedOpInfo,
 };
 
-pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar, ScalarMaybeUninit};
+pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar};
 
 pub use self::allocation::{
     alloc_range, AllocRange, Allocation, ConstAllocation, InitChunk, InitChunkIter, InitMask,
-    Relocations,
+    ProvenanceMap,
 };
 
 pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
@@ -137,7 +137,7 @@ pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
 /// - A constant
 /// - A static
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, Lift)]
+#[derive(HashStable, Lift, TypeFoldable, TypeVisitable)]
 pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
     /// For a promoted global, the `Instance` of the function they belong to.
@@ -190,16 +190,13 @@ impl fmt::Debug for AllocId {
     }
 }
 
-impl fmt::Display for AllocId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
-}
+// No "Display" since AllocIds are not usually user-visible.
 
 #[derive(TyDecodable, TyEncodable)]
 enum AllocDiscriminant {
     Alloc,
     Fn,
+    VTable,
     Static,
 }
 
@@ -207,27 +204,32 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>>(
     encoder: &mut E,
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
-) -> Result<(), E::Error> {
+) {
     match tcx.global_alloc(alloc_id) {
         GlobalAlloc::Memory(alloc) => {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
-            AllocDiscriminant::Alloc.encode(encoder)?;
-            alloc.encode(encoder)?;
+            AllocDiscriminant::Alloc.encode(encoder);
+            alloc.encode(encoder);
         }
         GlobalAlloc::Function(fn_instance) => {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
-            AllocDiscriminant::Fn.encode(encoder)?;
-            fn_instance.encode(encoder)?;
+            AllocDiscriminant::Fn.encode(encoder);
+            fn_instance.encode(encoder);
+        }
+        GlobalAlloc::VTable(ty, poly_trait_ref) => {
+            trace!("encoding {:?} with {ty:#?}, {poly_trait_ref:#?}", alloc_id);
+            AllocDiscriminant::VTable.encode(encoder);
+            ty.encode(encoder);
+            poly_trait_ref.encode(encoder);
         }
         GlobalAlloc::Static(did) => {
             assert!(!tcx.is_thread_local_static(did));
             // References to statics doesn't need to know about their allocations,
             // just about its `DefId`.
-            AllocDiscriminant::Static.encode(encoder)?;
-            did.encode(encoder)?;
+            AllocDiscriminant::Static.encode(encoder);
+            did.encode(encoder);
         }
     }
-    Ok(())
 }
 
 // Used to avoid infinite recursion when decoding cyclic allocations.
@@ -310,7 +312,9 @@ impl<'s> AllocDecodingSession<'s> {
                                 State::InProgress(TinyList::new_single(self.session_id), alloc_id);
                             Some(alloc_id)
                         }
-                        AllocDiscriminant::Fn | AllocDiscriminant::Static => {
+                        AllocDiscriminant::Fn
+                        | AllocDiscriminant::Static
+                        | AllocDiscriminant::VTable => {
                             // Fns and statics cannot be cyclic, and their `AllocId`
                             // is determined later by interning.
                             *entry =
@@ -360,6 +364,16 @@ impl<'s> AllocDecodingSession<'s> {
                     let alloc_id = decoder.interner().create_fn_alloc(instance);
                     alloc_id
                 }
+                AllocDiscriminant::VTable => {
+                    assert!(alloc_id.is_none());
+                    trace!("creating vtable alloc ID");
+                    let ty = <Ty<'_> as Decodable<D>>::decode(decoder);
+                    let poly_trait_ref =
+                        <Option<ty::PolyExistentialTraitRef<'_>> as Decodable<D>>::decode(decoder);
+                    trace!("decoded vtable alloc instance: {ty:?}, {poly_trait_ref:?}");
+                    let alloc_id = decoder.interner().create_vtable_alloc(ty, poly_trait_ref);
+                    alloc_id
+                }
                 AllocDiscriminant::Static => {
                     assert!(alloc_id.is_none());
                     trace!("creating extern static alloc ID");
@@ -385,6 +399,8 @@ impl<'s> AllocDecodingSession<'s> {
 pub enum GlobalAlloc<'tcx> {
     /// The alloc ID is used as a function pointer.
     Function(Instance<'tcx>),
+    /// This alloc ID points to a symbolic (not-reified) vtable.
+    VTable(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
     /// The alloc ID points to a "lazy" static variable that did not get computed (yet).
     /// This is also used to break the cycle in recursive statics.
     Static(DefId),
@@ -410,6 +426,16 @@ impl<'tcx> GlobalAlloc<'tcx> {
         match *self {
             GlobalAlloc::Function(instance) => instance,
             _ => bug!("expected function, got {:?}", self),
+        }
+    }
+
+    /// Panics if the `GlobalAlloc` is not `GlobalAlloc::VTable`
+    #[track_caller]
+    #[inline]
+    pub fn unwrap_vtable(&self) -> (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>) {
+        match *self {
+            GlobalAlloc::VTable(ty, poly_trait_ref) => (ty, poly_trait_ref),
+            _ => bug!("expected vtable, got {:?}", self),
         }
     }
 }
@@ -459,19 +485,19 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Reserves a new ID *if* this allocation has not been dedup-reserved before.
-    /// Should only be used for function pointers and statics, we don't want
-    /// to dedup IDs for "real" memory!
+    /// Should only be used for "symbolic" allocations (function pointers, vtables, statics), we
+    /// don't want to dedup IDs for "real" memory!
     fn reserve_and_set_dedup(self, alloc: GlobalAlloc<'tcx>) -> AllocId {
         let mut alloc_map = self.alloc_map.lock();
         match alloc {
-            GlobalAlloc::Function(..) | GlobalAlloc::Static(..) => {}
+            GlobalAlloc::Function(..) | GlobalAlloc::Static(..) | GlobalAlloc::VTable(..) => {}
             GlobalAlloc::Memory(..) => bug!("Trying to dedup-reserve memory with real data!"),
         }
         if let Some(&alloc_id) = alloc_map.dedup.get(&alloc) {
             return alloc_id;
         }
         let id = alloc_map.reserve();
-        debug!("creating alloc {:?} with id {}", alloc, id);
+        debug!("creating alloc {alloc:?} with id {id:?}");
         alloc_map.alloc_map.insert(id, alloc.clone());
         alloc_map.dedup.insert(alloc, id);
         id
@@ -509,6 +535,15 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Generates an `AllocId` for a (symbolic, not-reified) vtable.  Will get deduplicated.
+    pub fn create_vtable_alloc(
+        self,
+        ty: Ty<'tcx>,
+        poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    ) -> AllocId {
+        self.reserve_and_set_dedup(GlobalAlloc::VTable(ty, poly_trait_ref))
+    }
+
     /// Interns the `Allocation` and return a new `AllocId`, even if there's already an identical
     /// `Allocation` with a different `AllocId`.
     /// Statics with identical content will still point to the same `Allocation`, i.e.,
@@ -526,7 +561,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This function exists to allow const eval to detect the difference between evaluation-
     /// local dangling pointers and allocations in constants/statics.
     #[inline]
-    pub fn get_global_alloc(self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
+    pub fn try_get_global_alloc(self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
         self.alloc_map.lock().alloc_map.get(&id).cloned()
     }
 
@@ -537,9 +572,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// ids), this function is frequently used throughout rustc, but should not be used within
     /// the miri engine.
     pub fn global_alloc(self, id: AllocId) -> GlobalAlloc<'tcx> {
-        match self.get_global_alloc(id) {
+        match self.try_get_global_alloc(id) {
             Some(alloc) => alloc,
-            None => bug!("could not find allocation for {}", id),
+            None => bug!("could not find allocation for {id:?}"),
         }
     }
 
@@ -547,7 +582,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
     pub fn set_alloc_id_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
         if let Some(old) = self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Memory(mem)) {
-            bug!("tried to set allocation ID {}, but it was already existing as {:#?}", id, old);
+            bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
         }
     }
 
