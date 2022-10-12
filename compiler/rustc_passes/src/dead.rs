@@ -4,7 +4,7 @@
 
 use itertools::Itertools;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, Applicability, DelayDm, MultiSpan};
+use rustc_errors::{pluralize, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -17,6 +17,8 @@ use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
 use std::mem;
+
+use crate::errors::UselessAssignment;
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live Node::Item that is a
@@ -180,19 +182,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 && !assign.span.from_expansion()
         {
                 let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
-                self.tcx.struct_span_lint_hir(
+                self.tcx.emit_spanned_lint(
                     lint::builtin::DEAD_CODE,
                     assign.hir_id,
                     assign.span,
-                    DelayDm(|| format!(
-                            "useless assignment of {} of type `{}` to itself",
-                            if is_field_assign { "field" } else { "variable" },
-                            self.typeck_results().expr_ty(lhs),
-                        )),
-                    |lint| {
-                        lint
-
-                    },
+                    UselessAssignment { is_field_assign, ty: self.typeck_results().expr_ty(lhs) }
                 )
         }
     }

@@ -14,7 +14,9 @@ use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{kw::Empty, sym, Symbol};
+
+use crate::errors::{DuplicateDiagnosticItem, DuplicateDiagnosticItemInCrate};
 
 fn observe_item<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -33,25 +35,22 @@ fn collect_item(tcx: TyCtxt<'_>, items: &mut DiagnosticItems, name: Symbol, item
     items.id_to_name.insert(item_def_id, name);
     if let Some(original_def_id) = items.name_to_id.insert(name, item_def_id) {
         if original_def_id != item_def_id {
-            let mut err = match tcx.hir().span_if_local(item_def_id) {
-                Some(span) => tcx
-                    .sess
-                    .struct_span_err(span, &format!("duplicate diagnostic item found: `{name}`.")),
-                None => tcx.sess.struct_err(&format!(
-                    "duplicate diagnostic item in crate `{}`: `{}`.",
-                    tcx.crate_name(item_def_id.krate),
-                    name
-                )),
-            };
-            if let Some(span) = tcx.hir().span_if_local(original_def_id) {
-                err.span_note(span, "the diagnostic item is first defined here");
+            let orig_span = tcx.hir().span_if_local(original_def_id);
+            let orig_crate_name = if orig_span.is_some() {
+                None
             } else {
-                err.note(&format!(
-                    "the diagnostic item is first defined in crate `{}`.",
-                    tcx.crate_name(original_def_id.krate)
-                ));
-            }
-            err.emit();
+                Some(tcx.crate_name(original_def_id.krate))
+            };
+            match tcx.hir().span_if_local(item_def_id) {
+                Some(span) => tcx.sess.emit_err(DuplicateDiagnosticItem { span, name }),
+                None => tcx.sess.emit_err(DuplicateDiagnosticItemInCrate {
+                    span: orig_span,
+                    orig_crate_name: orig_crate_name.unwrap_or(Empty),
+                    have_orig_crate_name: orig_crate_name.map(|_| ()),
+                    crate_name: tcx.crate_name(item_def_id.krate),
+                    name,
+                }),
+            };
         }
     }
 }

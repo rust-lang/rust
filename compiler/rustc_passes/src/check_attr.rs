@@ -4,10 +4,13 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::errors;
+use crate::errors::{
+    self, AttrApplication, DebugVisualizerUnreadable, InvalidAttrAtCrateLevel, ObjectLifetimeErr,
+    OnlyHasEffectOn, TransparentIncompatible, UnrecognizedReprHint,
+};
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{fluent, struct_span_err, Applicability, MultiSpan};
+use rustc_errors::{fluent, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
@@ -164,17 +167,17 @@ impl CheckAttrVisitor<'_> {
                 sym::no_mangle => self.check_no_mangle(hir_id, attr, span, target),
                 sym::deprecated => self.check_deprecated(hir_id, attr, span, target),
                 sym::macro_use | sym::macro_escape => self.check_macro_use(hir_id, attr, target),
-                sym::path => self.check_generic_attr(hir_id, attr, target, &[Target::Mod]),
+                sym::path => self.check_generic_attr(hir_id, attr, target, Target::Mod),
                 sym::plugin_registrar => self.check_plugin_registrar(hir_id, attr, target),
                 sym::macro_export => self.check_macro_export(hir_id, attr, target),
                 sym::ignore | sym::should_panic | sym::proc_macro_derive => {
-                    self.check_generic_attr(hir_id, attr, target, &[Target::Fn])
+                    self.check_generic_attr(hir_id, attr, target, Target::Fn)
                 }
                 sym::automatically_derived => {
-                    self.check_generic_attr(hir_id, attr, target, &[Target::Impl])
+                    self.check_generic_attr(hir_id, attr, target, Target::Impl)
                 }
                 sym::no_implicit_prelude => {
-                    self.check_generic_attr(hir_id, attr, target, &[Target::Mod])
+                    self.check_generic_attr(hir_id, attr, target, Target::Mod)
                 }
                 sym::rustc_object_lifetime_default => self.check_object_lifetime_default(hir_id),
                 _ => {}
@@ -351,31 +354,17 @@ impl CheckAttrVisitor<'_> {
         hir_id: HirId,
         attr: &Attribute,
         target: Target,
-        allowed_targets: &[Target],
+        allowed_target: Target,
     ) {
-        if !allowed_targets.iter().any(|t| t == &target) {
-            let name = attr.name_or_empty();
-            let mut i = allowed_targets.iter();
-            // Pluralize
-            let b = i.next().map_or_else(String::new, |t| t.to_string() + "s");
-            let supported_names = i.enumerate().fold(b, |mut b, (i, allowed_target)| {
-                if allowed_targets.len() > 2 && i == allowed_targets.len() - 2 {
-                    b.push_str(", and ");
-                } else if allowed_targets.len() == 2 && i == allowed_targets.len() - 2 {
-                    b.push_str(" and ");
-                } else {
-                    b.push_str(", ");
-                }
-                // Pluralize
-                b.push_str(&(allowed_target.to_string() + "s"));
-                b
-            });
-            self.tcx.struct_span_lint_hir(
+        if target != allowed_target {
+            self.tcx.emit_spanned_lint(
                 UNUSED_ATTRIBUTES,
                 hir_id,
                 attr.span,
-                &format!("`#[{name}]` only has an effect on {}", supported_names),
-                |lint| lint,
+                OnlyHasEffectOn {
+                    attr_name: attr.name_or_empty(),
+                    target_name: allowed_target.name().replace(" ", "_"),
+                },
             );
         }
     }
@@ -432,7 +421,7 @@ impl CheckAttrVisitor<'_> {
                     ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
                     ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
                 };
-                tcx.sess.span_err(p.span, &repr);
+                tcx.sess.emit_err(ObjectLifetimeErr { span: p.span, repr });
             }
         }
     }
@@ -1605,12 +1594,17 @@ impl CheckAttrVisitor<'_> {
                 continue;
             }
 
-            let (article, allowed_targets) = match hint.name_or_empty() {
+            match hint.name_or_empty() {
                 sym::C => {
                     is_c = true;
                     match target {
                         Target::Struct | Target::Union | Target::Enum => continue,
-                        _ => ("a", "struct, enum, or union"),
+                        _ => {
+                            self.tcx.sess.emit_err(AttrApplication::StructEnumUnion {
+                                hint_span: hint.span(),
+                                span,
+                            });
+                        }
                     }
                 }
                 sym::align => {
@@ -1626,12 +1620,20 @@ impl CheckAttrVisitor<'_> {
 
                     match target {
                         Target::Struct | Target::Union | Target::Enum | Target::Fn => continue,
-                        _ => ("a", "struct, enum, function, or union"),
+                        _ => {
+                            self.tcx.sess.emit_err(AttrApplication::StructEnumFunctionUnion {
+                                hint_span: hint.span(),
+                                span,
+                            });
+                        }
                     }
                 }
                 sym::packed => {
                     if target != Target::Struct && target != Target::Union {
-                        ("a", "struct or union")
+                        self.tcx.sess.emit_err(AttrApplication::StructUnion {
+                            hint_span: hint.span(),
+                            span,
+                        });
                     } else {
                         continue;
                     }
@@ -1639,7 +1641,9 @@ impl CheckAttrVisitor<'_> {
                 sym::simd => {
                     is_simd = true;
                     if target != Target::Struct {
-                        ("a", "struct")
+                        self.tcx
+                            .sess
+                            .emit_err(AttrApplication::Struct { hint_span: hint.span(), span });
                     } else {
                         continue;
                     }
@@ -1648,7 +1652,12 @@ impl CheckAttrVisitor<'_> {
                     is_transparent = true;
                     match target {
                         Target::Struct | Target::Union | Target::Enum => continue,
-                        _ => ("a", "struct, enum, or union"),
+                        _ => {
+                            self.tcx.sess.emit_err(AttrApplication::StructEnumUnion {
+                                hint_span: hint.span(),
+                                span,
+                            });
+                        }
                     }
                 }
                 sym::i8
@@ -1665,35 +1674,18 @@ impl CheckAttrVisitor<'_> {
                 | sym::usize => {
                     int_reprs += 1;
                     if target != Target::Enum {
-                        ("an", "enum")
+                        self.tcx
+                            .sess
+                            .emit_err(AttrApplication::Enum { hint_span: hint.span(), span });
                     } else {
                         continue;
                     }
                 }
                 _ => {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        hint.span(),
-                        E0552,
-                        "unrecognized representation hint"
-                    )
-                    .help("valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, \
-                          `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`")
-                    .emit();
-
+                    self.tcx.sess.emit_err(UnrecognizedReprHint { span: hint.span() });
                     continue;
                 }
             };
-
-            struct_span_err!(
-                self.tcx.sess,
-                hint.span(),
-                E0517,
-                "{}",
-                &format!("attribute should be applied to {article} {allowed_targets}")
-            )
-            .span_label(span, &format!("not {article} {allowed_targets}"))
-            .emit();
         }
 
         // Just point at all repr hints if there are any incompatibilities.
@@ -1703,14 +1695,9 @@ impl CheckAttrVisitor<'_> {
         // Error on repr(transparent, <anything else>).
         if is_transparent && hints.len() > 1 {
             let hint_spans: Vec<_> = hint_spans.clone().collect();
-            struct_span_err!(
-                self.tcx.sess,
-                hint_spans,
-                E0692,
-                "transparent {} cannot have other repr hints",
-                target
-            )
-            .emit();
+            self.tcx
+                .sess
+                .emit_err(TransparentIncompatible { hint_spans, target: target.to_string() });
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
@@ -1862,14 +1849,12 @@ impl CheckAttrVisitor<'_> {
 
         match std::fs::File::open(&file) {
             Ok(_) => true,
-            Err(err) => {
-                self.tcx
-                    .sess
-                    .struct_span_err(
-                        meta_item.span,
-                        &format!("couldn't read {}: {}", file.display(), err),
-                    )
-                    .emit();
+            Err(error) => {
+                self.tcx.sess.emit_err(DebugVisualizerUnreadable {
+                    span: meta_item.span,
+                    file: &file,
+                    error,
+                });
                 false
             }
         }
@@ -2180,25 +2165,11 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         if attr.style == AttrStyle::Inner {
             for attr_to_check in ATTRS_TO_CHECK {
                 if attr.has_name(*attr_to_check) {
-                    let mut err = tcx.sess.struct_span_err(
-                        attr.span,
-                        &format!(
-                            "`{}` attribute cannot be used at crate level",
-                            attr_to_check.to_ident_string()
-                        ),
-                    );
-                    // Only emit an error with a suggestion if we can create a
-                    // string out of the attribute span
-                    if let Ok(src) = tcx.sess.source_map().span_to_snippet(attr.span) {
-                        let replacement = src.replace("#!", "#");
-                        err.span_suggestion_verbose(
-                            attr.span,
-                            "perhaps you meant to use an outer attribute",
-                            replacement,
-                            rustc_errors::Applicability::MachineApplicable,
-                        );
-                    }
-                    err.emit();
+                    tcx.sess.emit_err(InvalidAttrAtCrateLevel {
+                        span: attr.span,
+                        snippet: tcx.sess.source_map().span_to_snippet(attr.span).ok(),
+                        name: *attr_to_check,
+                    });
                 }
             }
         }
