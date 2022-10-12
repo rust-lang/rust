@@ -137,7 +137,7 @@ export class Config {
         if (!item) return item;
         const fixRecord = (r: Record<string, any>) => {
             for (const key in r) {
-                if (typeof r[key] !== 'string') {
+                if (typeof r[key] !== "string") {
                     r[key] = String(r[key]);
                 }
             }
