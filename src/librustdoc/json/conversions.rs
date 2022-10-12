@@ -284,7 +284,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
             ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {
-            generics: (*g).into_tcx(tcx),
+            generics: g.into_tcx(tcx),
             bounds: b.into_tcx(tcx),
             default: None,
         },

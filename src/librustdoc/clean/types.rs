@@ -795,7 +795,7 @@ pub(crate) enum ItemKind {
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
-    TyAssocTypeItem(Box<Generics>, Vec<GenericBound>),
+    TyAssocTypeItem(Generics, Vec<GenericBound>),
     /// An associated type in a trait impl or a provided one in a trait declaration.
     AssocTypeItem(Box<Typedef>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
