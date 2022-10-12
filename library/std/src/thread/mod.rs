@@ -206,19 +206,24 @@ pub use self::local::{AccessError, LocalKey};
 #[doc(hidden)]
 pub use self::local::fast::Key as __FastLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(target_thread_local)]
+#[cfg(all(target_thread_local, not(target_vendor = "wasmer")))]
 #[cfg(test)] // when building for tests, use real std's key
 pub use realstd::thread::__FastLocalKeyInner;
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(target_thread_local)]
+#[cfg(all(target_thread_local, not(target_vendor = "wasmer")))]
 #[cfg(test)]
 pub use self::local::fast::Key as __FastLocalKeyInnerUnused; // we import this anyway to silence 'unused' warnings
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[doc(hidden)]
-#[cfg(not(target_thread_local))]
+#[cfg(any(not(target_thread_local), target_vendor = "wasmer"))]
 pub use self::local::os::Key as __OsLocalKeyInner;
+
+#[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
+#[doc(hidden)]
+pub use self::local::statik::Key as __StaticLocalKeyInner;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder

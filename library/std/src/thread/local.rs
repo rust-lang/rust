@@ -967,7 +967,7 @@ pub mod fast {
 }
 
 #[doc(hidden)]
-#[cfg(not(target_thread_local))]
+#[cfg(any(not(target_thread_local), target_vendor = "wasmer"))]
 pub mod os {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;

@@ -55,7 +55,7 @@ pub extern "C" fn _start_thread(entry_low: i32, entry_high: i32) {
 
 // The reactor will execute any callbacks registered to it when its invoked
 // by a calling thread
-static REACTOR: SyncLazy<Mutex<Vec<ReactorCallback>>> = SyncLazy::new(|| Default::default());
+static REACTOR: LazyLock<Mutex<Vec<ReactorCallback>>> = LazyLock::new(|| Default::default());
 
 // Callback when reactor work needs to be processed
 // (making sure the function is never inlined means its use of the stack before
@@ -148,9 +148,9 @@ pub struct ReactorCallback
 
 use crate::sync::Mutex;
 use crate::collections::VecDeque;
-use crate::lazy::SyncLazy;
+use crate::sync::LazyLock;
 
-static STACK_POOL: SyncLazy<Mutex<VecDeque<ThreadStack>>> = SyncLazy::new(|| Default::default());
+static STACK_POOL: LazyLock<Mutex<VecDeque<ThreadStack>>> = LazyLock::new(|| Default::default());
 
 // Takes (or creates) a thread stack from the shared pool
 fn stack_pool_pop(stack_size: usize) -> ThreadStack {
