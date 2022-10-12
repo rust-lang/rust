@@ -287,6 +287,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             };
                         let vtable = get_vtable(bx.cx(), source.ty(self.mir, bx.tcx()), trait_ref);
                         let vtable = bx.pointercast(vtable, bx.cx().type_ptr_to(bx.cx().type_isize()));
+                        // FIXME(dyn-star): this is probably not the best way to check if this is
+                        // a pointer, and really we should ensure that the value is a suitable
+                        // pointer earlier in the compilation process.
                         let data = match operand.layout.pointee_info_at(bx.cx(), Size::ZERO) {
                             Some(_) => bx.ptrtoint(data, bx.cx().type_isize()),
                             None => data,
