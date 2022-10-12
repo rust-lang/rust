@@ -239,3 +239,9 @@ fn false_negative_5707() {
     let _z = x.clone(); // pr 7346 can't lint on `x`
     drop(y);
 }
+
+#[allow(unused, clippy::manual_retain)]
+fn possible_borrower_improvements() {
+    let mut s = String::from("foobar");
+    s = s.chars().filter(|&c| c != 'o').to_owned().collect();
+}
