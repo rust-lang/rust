@@ -1059,6 +1059,43 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
+fn should_encode_constness(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Trait
+        | DefKind::AssocTy
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::Static(..)
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
+        | DefKind::Impl
+        | DefKind::Closure
+        | DefKind::Generator
+        | DefKind::TyAlias => true,
+        DefKind::Variant
+        | DefKind::TraitAlias
+        | DefKind::ForeignTy
+        | DefKind::Field
+        | DefKind::TyParam
+        | DefKind::Mod
+        | DefKind::ForeignMod
+        | DefKind::ConstParam
+        | DefKind::Macro(..)
+        | DefKind::Use
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::ExternCrate => false,
+    }
+}
+
 fn should_encode_trait_impl_trait_tys<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     if tcx.def_kind(def_id) != DefKind::AssocFn {
         return false;
@@ -1165,6 +1202,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             {
                 record!(self.tables.trait_impl_trait_tys[def_id] <- table);
             }
+            if should_encode_constness(def_kind) {
+                self.tables.constness.set(def_id.index, tcx.constness(def_id));
+            }
         }
         let inherent_impls = tcx.crate_inherent_impls(());
         for (def_id, implementations) in inherent_impls.inherent_impls.iter() {
@@ -1192,7 +1232,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.variant_data[def_id] <- data);
-        self.tables.constness.set(def_id.index, hir::Constness::Const);
         record_array!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
             assert!(f.did.is_local());
             f.did.index
@@ -1220,7 +1259,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.variant_data[def_id] <- data);
-        self.tables.constness.set(def_id.index, hir::Constness::Const);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
@@ -1284,7 +1322,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         record!(self.tables.repr_options[def_id] <- adt_def.repr());
         record!(self.tables.variant_data[def_id] <- data);
-        self.tables.constness.set(def_id.index, hir::Constness::Const);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
@@ -1320,7 +1357,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 };
                 self.tables.asyncness.set(def_id.index, m_sig.header.asyncness);
-                self.tables.constness.set(def_id.index, hir::Constness::NotConst);
             }
             ty::AssocKind::Type => {
                 self.encode_explicit_item_bounds(def_id);
@@ -1345,13 +1381,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind else { bug!() };
                 self.tables.asyncness.set(def_id.index, sig.header.asyncness);
                 record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
-                // Can be inside `impl const Trait`, so using sig.header.constness is not reliable
-                let constness = if self.tcx.is_const_fn_raw(def_id) {
-                    hir::Constness::Const
-                } else {
-                    hir::Constness::NotConst
-                };
-                self.tables.constness.set(def_id.index, constness);
             }
             ty::AssocKind::Const | ty::AssocKind::Type => {}
         }
@@ -1474,7 +1503,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Fn(ref sig, .., body) => {
                 self.tables.asyncness.set(def_id.index, sig.header.asyncness);
                 record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
-                self.tables.constness.set(def_id.index, sig.header.constness);
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
                 if macro_def.macro_rules {
@@ -1495,7 +1523,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let adt_def = self.tcx.adt_def(def_id);
                 record!(self.tables.repr_options[def_id] <- adt_def.repr());
-                self.tables.constness.set(def_id.index, hir::Constness::Const);
 
                 // Encode def_ids for each field and method
                 // for methods, write all the stuff get_trait_method
@@ -1524,9 +1551,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     is_non_exhaustive: variant.is_field_list_non_exhaustive(),
                 });
             }
-            hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
+            hir::ItemKind::Impl(hir::Impl { defaultness, .. }) => {
                 self.tables.impl_defaultness.set(def_id.index, *defaultness);
-                self.tables.constness.set(def_id.index, *constness);
 
                 let trait_ref = self.tcx.impl_trait_ref(def_id);
                 if let Some(trait_ref) = trait_ref {
