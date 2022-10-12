@@ -205,6 +205,14 @@ public:
     SmallVector<OperandBundleDef, 2> OrigDefs;
     orig->getOperandBundlesAsDefs(OrigDefs);
     SmallVector<OperandBundleDef, 2> Defs;
+    bool anyPrimal = false;
+    bool anyShadow = false;
+    for (auto ty : types) {
+      if (ty == ValueType::Primal || ty == ValueType::Both)
+        anyPrimal = true;
+      if (ty == ValueType::Shadow || ty == ValueType::Both)
+        anyShadow = true;
+    }
     for (auto bund : OrigDefs) {
       // Only handle jl_roots tag (for now).
       if (bund.getTag() != "jl_roots") {
@@ -219,11 +227,13 @@ public:
       // primals and shadows
       // assert(bund.inputs().size() == types.size());
       for (auto inp : bund.inputs()) {
-        Value *newv = getNewFromOriginal(inp);
-        if (lookup)
-          newv = lookupM(newv, Builder2, available);
-        bunds.push_back(newv);
-        if (!isConstantValue(inp)) {
+        if (anyPrimal) {
+          Value *newv = getNewFromOriginal(inp);
+          if (lookup)
+            newv = lookupM(newv, Builder2, available);
+          bunds.push_back(newv);
+        }
+        if (anyShadow && !isConstantValue(inp)) {
           Value *shadow = invertPointerM(inp, Builder2);
           if (lookup)
             shadow = lookupM(shadow, Builder2);
