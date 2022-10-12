@@ -532,9 +532,12 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         match (*a, *b) {
-            (ReLateBound(..), _) | (_, ReLateBound(..)) | (ReErased, _) | (_, ReErased) => {
+            (ReLateBound(..), _) | (_, ReLateBound(..)) => {
                 bug!("cannot relate region: LUB({:?}, {:?})", a, b);
             }
+
+            (_, ReErased) => a,
+            (ReErased, _) => b,
 
             (ReVar(v_id), _) | (_, ReVar(v_id)) => {
                 span_bug!(
