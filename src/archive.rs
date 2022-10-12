@@ -47,6 +47,7 @@ impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
         _lib_name: &str,
         _dll_imports: &[DllImport],
         _tmpdir: &Path,
+        _is_direct_dependency: bool,
     ) -> PathBuf {
         unimplemented!();
     }
