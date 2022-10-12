@@ -95,8 +95,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
 }
 
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
-    let sz = mem::size_of_val(&data);
-    let exception = __cxa_allocate_exception(sz) as *mut Exception;
+    let exception = __cxa_allocate_exception(mem::size_of::<Exception>()) as *mut Exception;
     if exception.is_null() {
         return uw::_URC_FATAL_PHASE1_ERROR as u32;
     }
