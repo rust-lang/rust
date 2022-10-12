@@ -1020,12 +1020,15 @@ static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
     for (auto U : V->users()) {
       if (auto I = dyn_cast<Instruction>(U)) {
         for (auto pair : rematerializableAllocations) {
-          if (Intermediates.count(pair.first) && pair.second.stores.count(I))
-            G[Node(V, true)].insert(Node(pair.first, false));
+          if (Intermediates.count(pair.first) && pair.second.stores.count(I)) {
+            if (V != pair.first)
+              G[Node(V, true)].insert(Node(pair.first, false));
+          }
         }
       }
       if (Intermediates.count(U)) {
-        G[Node(V, true)].insert(Node(U, false));
+        if (V != U)
+          G[Node(V, true)].insert(Node(U, false));
       }
     }
   }
@@ -1033,12 +1036,14 @@ static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
     if (Intermediates.count(pair.first)) {
       for (LoadInst *L : pair.second.loads) {
         if (Intermediates.count(L)) {
-          G[Node(pair.first, true)].insert(Node(L, false));
+          if (L != pair.first)
+            G[Node(pair.first, true)].insert(Node(L, false));
         }
       }
       for (auto L : pair.second.loadLikeCalls) {
         if (Intermediates.count(L.loadCall)) {
-          G[Node(pair.first, true)].insert(Node(L.loadCall, false));
+          if (L.loadCall != pair.first)
+            G[Node(pair.first, true)].insert(Node(L.loadCall, false));
         }
       }
     }
