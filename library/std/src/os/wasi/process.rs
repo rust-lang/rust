@@ -16,7 +16,7 @@ impl FromRawFd for process::Stdio {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for process::Stdio {
     #[inline]
     fn from(fd: OwnedFd) -> process::Stdio {
@@ -72,7 +72,7 @@ impl IntoRawFd for process::ChildStderr {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStdin {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -80,7 +80,7 @@ impl AsFd for crate::process::ChildStdin {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStdin> for OwnedFd {
     #[inline]
     fn from(child_stdin: crate::process::ChildStdin) -> OwnedFd {
@@ -88,7 +88,7 @@ impl From<crate::process::ChildStdin> for OwnedFd {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStdout {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -96,7 +96,7 @@ impl AsFd for crate::process::ChildStdout {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStdout> for OwnedFd {
     #[inline]
     fn from(child_stdout: crate::process::ChildStdout) -> OwnedFd {
@@ -104,7 +104,7 @@ impl From<crate::process::ChildStdout> for OwnedFd {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStderr {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -112,7 +112,7 @@ impl AsFd for crate::process::ChildStderr {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStderr> for OwnedFd {
     #[inline]
     fn from(child_stderr: crate::process::ChildStderr) -> OwnedFd {
