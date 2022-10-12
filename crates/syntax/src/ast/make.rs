@@ -89,7 +89,7 @@ pub mod ext {
     }
 
     pub fn ty_name(name: ast::Name) -> ast::Type {
-        ty_path(ident_path(&format!("{name}")))
+        ty_path(ident_path(&name.to_string()))
     }
     pub fn ty_bool() -> ast::Type {
         ty_path(ident_path("bool"))
