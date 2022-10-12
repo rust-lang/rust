@@ -25,7 +25,7 @@ bool provideDefinitions(Module &M) {
     if (!F.empty())
       continue;
     int index = 0;
-    for (auto postfix : {"", "_", "_64_"}) {
+    for (auto postfix : {"", "_", "_64_", "64_"}) {
       std::string str;
       if (strlen(postfix) == 0)
         str = F.getName().str();
