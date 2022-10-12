@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::FormatParamKind::{Implicit, Named, Numbered, Starred};
-use clippy_utils::macros::{is_format_macro, FormatArgsExpn, FormatParam, FormatParamUsage};
+use clippy_utils::macros::{is_format_macro, is_panic, FormatArgsExpn, FormatParam, FormatParamUsage};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_diag_trait_item, meets_msrv, msrvs};
@@ -13,6 +13,8 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::Ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::DefId;
+use rustc_span::edition::Edition::Edition2021;
 use rustc_span::{sym, ExpnData, ExpnKind, Span, Symbol};
 
 declare_clippy_lint! {
@@ -149,7 +151,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
                     check_to_string_in_format_args(cx, name, arg.param.value);
                 }
                 if meets_msrv(self.msrv, msrvs::FORMAT_ARGS_CAPTURE) {
-                    check_uninlined_args(cx, &format_args, outermost_expn_data.call_site);
+                    check_uninlined_args(cx, &format_args, outermost_expn_data.call_site, macro_def_id);
                 }
             }
         }
@@ -158,8 +160,12 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
     extract_msrv_attr!(LateContext);
 }
 
-fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_site: Span) {
+fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_site: Span, def_id: DefId) {
     if args.format_string.span.from_expansion() {
+        return;
+    }
+    if call_site.edition() < Edition2021 && is_panic(cx, def_id) {
+        // panic! before 2021 edition considers a single string argument as non-format
         return;
     }
 
