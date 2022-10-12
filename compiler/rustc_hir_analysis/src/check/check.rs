@@ -522,23 +522,33 @@ fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
 
 /// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
 /// projections that would result in "inheriting lifetimes".
-pub(super) fn check_opaque<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-    substs: SubstsRef<'tcx>,
-    origin: &hir::OpaqueTyOrigin,
-) {
-    let span = tcx.def_span(def_id);
-    check_opaque_for_inheriting_lifetimes(tcx, def_id, span);
-    if tcx.type_of(def_id).references_error() {
+fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
+    let item = tcx.hir().item(id);
+    let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item.kind else {
+        tcx.sess.delay_span_bug(tcx.hir().span(id.hir_id()), "expected opaque item");
         return;
-    }
-    if check_opaque_for_cycles(tcx, def_id, substs, span, origin).is_err() {
-        return;
-    }
-    check_opaque_meets_bounds(tcx, def_id, substs, span, origin);
-}
+    };
 
+    // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
+    // `async-std` (and `pub async fn` in general).
+    // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
+    // See https://github.com/rust-lang/rust/issues/75100
+    if tcx.sess.opts.actually_rustdoc {
+        return;
+    }
+
+    let substs = InternalSubsts::identity_for_item(tcx, item.def_id.to_def_id());
+    let span = tcx.def_span(item.def_id.def_id);
+
+    check_opaque_for_inheriting_lifetimes(tcx, item.def_id.def_id, span);
+    if tcx.type_of(item.def_id.def_id).references_error() {
+        return;
+    }
+    if check_opaque_for_cycles(tcx, item.def_id.def_id, substs, span, &origin).is_err() {
+        return;
+    }
+    check_opaque_meets_bounds(tcx, item.def_id.def_id, substs, span, &origin);
+}
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
 /// in "inheriting lifetimes".
 #[instrument(level = "debug", skip(tcx, span))]
@@ -857,17 +867,17 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             check_union(tcx, id.def_id.def_id);
         }
         DefKind::OpaqueTy => {
-            let item = tcx.hir().item(id);
-            let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item.kind else {
-                return;
-            };
-            // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
-            // `async-std` (and `pub async fn` in general).
-            // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
-            // See https://github.com/rust-lang/rust/issues/75100
-            if !tcx.sess.opts.actually_rustdoc {
-                let substs = InternalSubsts::identity_for_item(tcx, item.def_id.to_def_id());
-                check_opaque(tcx, item.def_id.def_id, substs, &origin);
+            check_opaque(tcx, id);
+        }
+        DefKind::ImplTraitPlaceholder => {
+            let parent = tcx.impl_trait_in_trait_parent(id.def_id.to_def_id());
+            // Only check the validity of this opaque type if the function has a default body
+            if let hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
+                ..
+            }) = tcx.hir().get_by_def_id(parent.expect_local())
+            {
+                check_opaque(tcx, id);
             }
         }
         DefKind::TyAlias => {
