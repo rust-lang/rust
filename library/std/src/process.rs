@@ -110,7 +110,7 @@ use crate::convert::Infallible;
 use crate::ffi::OsStr;
 use crate::fmt;
 use crate::fs;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedSliceCursor, IoSlice, IoSliceMut};
 use crate::num::NonZeroI32;
 use crate::path::Path;
 use crate::str;
@@ -358,6 +358,10 @@ impl Read for ChildStdout {
         self.inner.read_vectored(bufs)
     }
 
+    fn read_buf_vectored(&mut self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf_vectored(cursor)
+    }
+
     #[inline]
     fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
@@ -417,6 +421,10 @@ impl Read for ChildStderr {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
+    }
+
+    fn read_buf_vectored(&mut self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf_vectored(cursor)
     }
 
     #[inline]

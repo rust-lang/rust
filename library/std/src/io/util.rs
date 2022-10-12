@@ -5,7 +5,8 @@ mod tests;
 
 use crate::fmt;
 use crate::io::{
-    self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write,
+    self, BorrowedCursor, BorrowedSliceCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom,
+    SizeHint, Write,
 };
 
 /// A reader which is always at EOF.
@@ -153,6 +154,26 @@ impl Read for Repeat {
             nwritten += self.read(buf)?;
         }
         Ok(nwritten)
+    }
+
+    #[inline]
+    fn read_buf_vectored(&mut self, mut cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        unsafe {
+            while let Some(buf) = cursor.next_mut() {
+                for slot in buf {
+                    slot.write(self.byte);
+                }
+            }
+        }
+
+        let remaining = cursor.capacity();
+
+        // SAFETY: the entire unfilled portion of cursor has been initialized
+        unsafe {
+            cursor.advance(remaining);
+        }
+
+        Ok(())
     }
 
     #[inline]

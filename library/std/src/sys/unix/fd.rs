@@ -4,7 +4,7 @@
 mod tests;
 
 use crate::cmp;
-use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
+use crate::io::{self, BorrowedCursor, BorrowedSliceCursor, IoSlice, IoSliceMut, Read};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -145,6 +145,30 @@ impl FileDesc {
             cursor.advance(ret as usize);
         }
         Ok(())
+    }
+
+    #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+    pub fn read_buf_vectored(&self, mut cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        let ret = unsafe {
+            let bufs = cursor.as_mut();
+            cvt(libc::readv(
+                self.as_raw_fd(),
+                bufs.as_ptr() as *const libc::iovec,
+                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+            ))?
+        };
+
+        // SAFETY: we've just read `ret` bytes into the cursor.
+        unsafe {
+            cursor.advance(ret as usize);
+        }
+
+        Ok(())
+    }
+
+    #[cfg(any(target_os = "espidf", target_os = "horizon"))]
+    pub fn read_buf_vectored(&self, bufs: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        crate::io::default_read_buf_vectored(|b| self.read(b), bufs)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {

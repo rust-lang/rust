@@ -7,7 +7,7 @@ use crate::io::prelude::*;
 
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
-use crate::io::{self, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
+use crate::io::{self, BorrowedSliceCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock};
 use crate::sys::stdio;
@@ -99,6 +99,10 @@ impl Read for StdinRaw {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         handle_ebadf(self.0.read_vectored(bufs), 0)
+    }
+
+    fn read_buf_vectored(&mut self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        handle_ebadf(self.0.read_buf_vectored(cursor), ())
     }
 
     #[inline]
@@ -421,6 +425,9 @@ impl Read for Stdin {
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.lock().read_vectored(bufs)
     }
+    fn read_buf_vectored(&mut self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf_vectored(cursor)
+    }
     #[inline]
     fn is_read_vectored(&self) -> bool {
         self.lock().is_read_vectored()
@@ -452,6 +459,10 @@ impl Read for StdinLock<'_> {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
+    }
+
+    fn read_buf_vectored(&mut self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf_vectored(cursor)
     }
 
     #[inline]

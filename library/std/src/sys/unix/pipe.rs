@@ -1,4 +1,4 @@
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedSliceCursor, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
@@ -64,6 +64,10 @@ impl AnonPipe {
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    pub fn read_buf_vectored(&self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        self.0.read_buf_vectored(cursor)
     }
 
     #[inline]

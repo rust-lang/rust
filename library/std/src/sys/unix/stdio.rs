@@ -1,4 +1,4 @@
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedSliceCursor, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
 use crate::os::unix::io::{AsFd, BorrowedFd, FromRawFd};
 use crate::sys::fd::FileDesc;
@@ -20,6 +20,12 @@ impl io::Read for Stdin {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         unsafe { ManuallyDrop::new(FileDesc::from_raw_fd(libc::STDIN_FILENO)).read_vectored(bufs) }
+    }
+
+    fn read_buf_vectored(&mut self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        unsafe {
+            ManuallyDrop::new(FileDesc::from_raw_fd(libc::STDIN_FILENO)).read_buf_vectored(cursor)
+        }
     }
 
     #[inline]

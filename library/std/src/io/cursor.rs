@@ -5,7 +5,10 @@ use crate::io::prelude::*;
 
 use crate::alloc::Allocator;
 use crate::cmp;
-use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
+use crate::io::{
+    self, BorrowedBuf, BorrowedCursor, BorrowedSliceCursor, ErrorKind, IoSlice, IoSliceMut,
+    SeekFrom,
+};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
@@ -343,6 +346,29 @@ where
             }
         }
         Ok(nread)
+    }
+
+    fn read_buf_vectored(&mut self, mut cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        let mut nread = 0;
+        while let Some(slice) = unsafe { cursor.next_mut() } {
+            let mut buf: BorrowedBuf<'_> = slice.into();
+            let mut cursor = buf.unfilled();
+            Read::read_buf(&mut self.fill_buf()?, cursor.reborrow())?;
+
+            let n = cursor.written();
+            self.pos += n as u64;
+            nread += n;
+
+            if n < slice.len() {
+                break;
+            }
+        }
+
+        unsafe {
+            cursor.advance(nread);
+        }
+
+        Ok(())
     }
 
     fn is_read_vectored(&self) -> bool {
