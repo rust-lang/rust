@@ -56,7 +56,7 @@ input:focus + .slider {
 h1, h2, h3, h4 {
 	color: white;
 }
-h1.fqn  a {
+h1 a {
 	color: #fff;
 }
 h4 {
