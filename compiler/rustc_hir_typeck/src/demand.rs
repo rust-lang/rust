@@ -714,7 +714,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
-    ) -> Option<(Span, String, String, Applicability, bool /* verbose */)> {
+    ) -> Option<(
+        Span,
+        String,
+        String,
+        Applicability,
+        bool, /* verbose */
+        bool, /* suggest `&` or `&mut` type annotation */
+    )> {
         let sess = self.sess();
         let sp = expr.span;
 
@@ -746,6 +753,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     String::new(),
                                     Applicability::MachineApplicable,
                                     true,
+                                    false,
                                 ));
                             }
                         }
@@ -760,6 +768,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     "b".to_string(),
                                     Applicability::MachineApplicable,
                                     true,
+                                    false,
                                 ));
                     }
                 }
@@ -817,6 +826,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 sugg.2,
                                 Applicability::MachineApplicable,
                                 false,
+                                false,
                             ));
                         }
 
@@ -844,12 +854,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 format!("{prefix}&mut {sugg_expr}"),
                                 Applicability::MachineApplicable,
                                 false,
+                                false,
                             ),
                             hir::Mutability::Not => (
                                 sp,
                                 "consider borrowing here".to_string(),
                                 format!("{prefix}&{sugg_expr}"),
                                 Applicability::MachineApplicable,
+                                false,
                                 false,
                             ),
                         });
@@ -880,6 +892,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             String::new(),
                             Applicability::MachineApplicable,
                             true,
+                            true
                         ));
                     }
                     return None;
@@ -892,6 +905,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "consider removing the borrow".to_string(),
                         String::new(),
                         Applicability::MachineApplicable,
+                        true,
                         true,
                     ));
                 }
@@ -959,6 +973,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             src,
                             applicability,
                             true,
+                            false,
                         ));
                     }
                 }
@@ -999,6 +1014,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Applicability::MachineApplicable
                             },
                             true,
+                            false,
                         ));
                     }
 
@@ -1050,6 +1066,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             suggestion,
                             Applicability::MachineApplicable,
                             true,
+                            false,
                         ));
                     }
                 }
