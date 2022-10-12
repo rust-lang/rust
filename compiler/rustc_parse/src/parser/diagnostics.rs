@@ -1320,16 +1320,15 @@ impl<'a> Parser<'a> {
             IsStandalone::Maybe => {
                 let Ok(base_src) = self.span_to_snippet(base.span)
                     else { return help_base_case(err, base) };
-                let sugg1 = match kind.fixity {
+                let sugg = match kind.fixity {
                     UnaryFixity::Pre => self.prefix_inc_dec_suggest(base_src, kind, spans),
                     UnaryFixity::Post => self.postfix_inc_dec_suggest(base_src, kind, spans),
                 };
-                let sugg2 = self.inc_dec_standalone_suggest(kind, spans);
                 MultiSugg::emit_many(
                     &mut err,
                     "use `+= 1` instead",
                     Applicability::Unspecified,
-                    [sugg1, sugg2].into_iter(),
+                    [sugg].into_iter(),
                 )
             }
         }
