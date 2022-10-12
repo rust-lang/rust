@@ -145,6 +145,9 @@ passes_doc_test_takes_list =
 passes_doc_primitive =
     `doc(primitive)` should never have been stable
 
+passes_doc_cfg_hide_takes_list =
+    `#[doc(cfg_hide(...)]` takes a list of attributes
+
 passes_doc_test_unknown_any =
     unknown `doc` attribute `{$path}`
 
