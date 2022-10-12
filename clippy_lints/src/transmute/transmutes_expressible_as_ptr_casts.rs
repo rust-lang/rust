@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(
             &format!("transmute from `{from_ty}` to `{to_ty}` which could be expressed as a pointer cast instead"),
             |diag| {
                 if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
-                    let sugg = arg.as_ty(&to_ty.to_string()).to_string();
+                    let sugg = arg.as_ty(to_ty.to_string()).to_string();
                     diag.span_suggestion(e.span, "try", sugg, Applicability::MachineApplicable);
                 }
             },

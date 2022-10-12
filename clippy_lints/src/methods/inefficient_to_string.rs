@@ -36,7 +36,7 @@ pub fn check(
                 expr.span,
                 &format!("calling `to_string` on `{arg_ty}`"),
                 |diag| {
-                    diag.help(&format!(
+                    diag.help(format!(
                         "`{self_ty}` implements `ToString` through a slower blanket impl, but `{deref_self_ty}` has a fast specialization of `ToString`"
                     ));
                     let mut applicability = Applicability::MachineApplicable;

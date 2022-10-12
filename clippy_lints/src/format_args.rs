@@ -377,7 +377,7 @@ fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symb
         call_site,
         &format!("`format!` in `{name}!` args"),
         |diag| {
-            diag.help(&format!(
+            diag.help(format!(
                 "combine the `format!(..)` arguments with the outer `{name}!(..)` call"
             ));
             diag.help("or consider changing `format!` to `format_args!`");
