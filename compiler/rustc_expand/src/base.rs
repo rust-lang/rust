@@ -1229,7 +1229,7 @@ pub fn expr_to_spanned_string<'a>(
             ast::LitKind::ByteStr(_) => {
                 let mut err = cx.struct_span_err(l.span, err_msg);
                 err.span_suggestion(
-                    expr.span.shrink_to_lo(),
+                    expr.span,
                     "consider removing the leading `b`",
                     "",
                     Applicability::MaybeIncorrect,
