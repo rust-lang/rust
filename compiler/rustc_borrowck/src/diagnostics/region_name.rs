@@ -781,22 +781,34 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         if let hir::ItemKind::OpaqueTy(hir::OpaqueTy {
             bounds:
                 [
-                    hir::GenericBound::LangItemTrait(
-                        hir::LangItem::Future,
-                        _,
-                        _,
-                        hir::GenericArgs {
-                            bindings:
-                                [
-                                    hir::TypeBinding {
-                                        ident: Ident { name: sym::Output, .. },
-                                        kind:
-                                            hir::TypeBindingKind::Equality { term: hir::Term::Ty(ty) },
-                                        ..
-                                    },
-                                ],
+                    hir::GenericBound::Trait(
+                        hir::PolyTraitRef {
+                            trait_ref: hir::TraitRef {
+                                path: hir::Path {
+                                    segments: [
+                                        ..,
+                                        hir::PathSegment {
+                                            args: Some(hir::GenericArgs {
+                                                args: [],
+                                                bindings: [hir::TypeBinding {
+                                                    ident: Ident { name: sym::Output, .. },
+                                                    kind: hir::TypeBindingKind::Equality {
+                                                        term: hir::Term::Ty(ty)
+                                                    },
+                                                    ..
+                                                }],
+                                                ..
+                                           }),
+                                            ..
+                                        }
+                                    ],
+                                    ..
+                                },
+                                ..
+                            },
                             ..
                         },
+                        _,
                     ),
                 ],
             ..

@@ -2,7 +2,6 @@ use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::DefId;
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, OwnerId};
 use crate::intravisit::FnKind;
-use crate::LangItem;
 
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
@@ -427,8 +426,6 @@ pub enum TraitBoundModifier {
 #[derive(Clone, Debug, HashStable_Generic)]
 pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
-    // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
-    LangItemTrait(LangItem, Span, HirId, &'hir GenericArgs<'hir>),
     Outlives(&'hir Lifetime),
 }
 
@@ -443,7 +440,6 @@ impl GenericBound<'_> {
     pub fn span(&self) -> Span {
         match self {
             GenericBound::Trait(t, ..) => t.span,
-            GenericBound::LangItemTrait(_, span, ..) => *span,
             GenericBound::Outlives(l) => l.span,
         }
     }

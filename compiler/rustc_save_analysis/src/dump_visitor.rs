@@ -673,9 +673,6 @@ impl<'tcx> DumpVisitor<'tcx> {
                     self.lookup_def_id(trait_ref.trait_ref.hir_ref_id),
                     trait_ref.trait_ref.path.segments.last().unwrap().ident.span,
                 ),
-                hir::GenericBound::LangItemTrait(lang_item, span, _, _) => {
-                    (Some(self.tcx.require_lang_item(lang_item, Some(span))), span)
-                }
                 hir::GenericBound::Outlives(..) => continue,
             };
 

@@ -3213,14 +3213,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             {
                                 true
                             }
-                            (
-                                hir::GenericBound::LangItemTrait(langl, _, _, argsl),
-                                hir::GenericBound::LangItemTrait(langr, _, _, argsr),
-                            ) if langl == langr => {
-                                // FIXME: consider the bounds!
-                                debug!("{:?} {:?}", argsl, argsr);
-                                true
-                            }
                             _ => false,
                         }
                     }) =>

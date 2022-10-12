@@ -814,10 +814,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             &sig.decl.output,
                         );
 
-                        this.record_lifetime_params_for_async(
-                            fn_id,
-                            sig.header.asyncness.opt_return_id(),
-                        );
+                        this.record_lifetime_params_for_async(fn_id, sig.header.asyncness);
                     },
                 );
                 return;
@@ -859,7 +856,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             },
                         );
 
-                        this.record_lifetime_params_for_async(fn_id, async_node_id);
+                        this.record_lifetime_params_for_async(fn_id, sig.header.asyncness);
 
                         if let Some(body) = body {
                             // Ignore errors in function bodies if this is rustdoc
@@ -4008,12 +4005,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     /// We include all lifetime parameters, either named or "Fresh".
     /// The order of those parameters does not matter, as long as it is
     /// deterministic.
-    fn record_lifetime_params_for_async(
-        &mut self,
-        fn_id: NodeId,
-        async_node_id: Option<(NodeId, Span)>,
-    ) {
-        if let Some((async_node_id, span)) = async_node_id {
+    fn record_lifetime_params_for_async(&mut self, fn_id: NodeId, asyncness: Async) {
+        if let Async::Yes { return_impl_trait_id, span, .. } = asyncness {
             let mut extra_lifetime_params =
                 self.r.extra_lifetime_params_map.get(&fn_id).cloned().unwrap_or_default();
             for rib in self.lifetime_ribs.iter().rev() {
@@ -4035,7 +4028,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     }
                 }
             }
-            self.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
+            self.r.extra_lifetime_params_map.insert(return_impl_trait_id, extra_lifetime_params);
         }
     }
 }

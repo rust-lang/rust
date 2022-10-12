@@ -800,8 +800,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_ident(&self, ident: Ident) -> Ident {
         Ident::new(ident.name, self.lower_span(ident.span))
     }
-
-    fn lang_item_qpath(&mut self, lang_item: hir::LangItem, span: Span) -> hir::QPath<'hir> {
+    fn lang_item_path(
+        &mut self,
+        lang_item: hir::LangItem,
+        args: Option<&'hir hir::GenericArgs<'hir>>,
+        span: Span,
+    ) -> &'hir hir::Path<'hir> {
         let def_id = self.tcx.require_lang_item(lang_item, Some(span));
         let res = Res::Def(lang_item.target().to_def_kind(), def_id);
         let name = self.tcx.item_name(def_id);
@@ -812,10 +816,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // associated items require a self segment - this works well enough
                     hir::PathSegment::new(Ident::empty(), self.next_id(), Res::Err)
                 });
-        let segment = hir::PathSegment::new(Ident::new(name, span), self.next_id(), res);
+        let segment = hir::PathSegment {
+            ident: Ident::new(name, span),
+            hir_id: self.next_id(),
+            res,
+            infer_args: args.is_none(),
+            args,
+        };
         let segments =
             self.arena.alloc_from_iter(self_segment.into_iter().chain(iter::once(segment)));
-        let path = self.arena.alloc(hir::Path { span, res, segments });
+        self.arena.alloc(hir::Path { span, res, segments })
+    }
+
+    fn lang_item_qpath(&mut self, lang_item: hir::LangItem, span: Span) -> hir::QPath<'hir> {
+        let path = self.lang_item_path(lang_item, None, span);
         hir::QPath::Resolved(None, path)
     }
 
@@ -2088,7 +2102,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             FnRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };
-
+        let span = self.lower_span(span);
         // "<Output = T>"
         let future_args = self.arena.alloc(hir::GenericArgs {
             args: &[],
@@ -2096,13 +2110,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             parenthesized: false,
             span_ext: DUMMY_SP,
         });
-
-        hir::GenericBound::LangItemTrait(
-            // ::std::future::Future<future_params>
-            hir::LangItem::Future,
-            self.lower_span(span),
-            self.next_id(),
-            future_args,
+        let path = self.lang_item_path(hir::LangItem::Future, Some(future_args), span);
+        hir::GenericBound::Trait(
+            hir::PolyTraitRef {
+                bound_generic_params: &[],
+                trait_ref: hir::TraitRef { path, hir_ref_id: self.next_id() },
+                span,
+            },
+            hir::TraitBoundModifier::None,
         )
     }
 
