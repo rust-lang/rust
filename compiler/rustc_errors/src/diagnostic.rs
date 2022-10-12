@@ -568,7 +568,7 @@ impl Diagnostic {
     ) -> &mut Self {
         assert!(!suggestion.is_empty());
         debug_assert!(
-            !(suggestion.iter().any(|(sp, text)| sp.lo() == sp.hi() && text.is_empty())),
+            !(suggestion.iter().any(|(sp, text)| sp.is_empty() && text.is_empty())),
             "Span must not be empty and have no suggestion"
         );
 
@@ -650,7 +650,7 @@ impl Diagnostic {
         style: SuggestionStyle,
     ) -> &mut Self {
         debug_assert!(
-            !(sp.lo() == sp.hi() && suggestion.to_string().is_empty()),
+            !(sp.is_empty() && suggestion.to_string().is_empty()),
             "Span must not be empty and have no suggestion"
         );
         self.push_suggestion(CodeSuggestion {
@@ -695,7 +695,7 @@ impl Diagnostic {
         suggestions.sort();
 
         debug_assert!(
-            !(sp.lo() == sp.hi() && suggestions.iter().any(|suggestion| suggestion.is_empty())),
+            !(sp.is_empty() && suggestions.iter().any(|suggestion| suggestion.is_empty())),
             "Span must not be empty and have no suggestion"
         );
 
@@ -725,7 +725,7 @@ impl Diagnostic {
             !(suggestions
                 .iter()
                 .flat_map(|suggs| suggs)
-                .any(|(sp, suggestion)| sp.lo() == sp.hi() && suggestion.is_empty())),
+                .any(|(sp, suggestion)| sp.is_empty() && suggestion.is_empty())),
             "Span must not be empty and have no suggestion"
         );
 
