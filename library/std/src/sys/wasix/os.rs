@@ -1,6 +1,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use crate::sync::{Mutex, MutexGuard};
+use crate::sync::{Mutex, MutexGuard, LazyLock};
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
@@ -12,13 +12,12 @@ use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sys::memchr;
 use crate::vec;
-use crate::lazy::SyncLazy;
 
 use super::err2io;
 
 const PATH_SEPARATOR: u8 = b':';
 
-static ENV_LOCK: SyncLazy<Mutex<()>> = SyncLazy::new(|| Mutex::new(()));
+static ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 pub fn env_lock<'a>() -> MutexGuard<'a, ()> {
     ENV_LOCK.lock().unwrap()
