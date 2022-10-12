@@ -340,6 +340,8 @@ mod spec_extend;
 /// * It would penalize the general case, incurring an additional branch
 ///   on every access.
 ///
+/// If this behavior is desired, the [`smallvec`] crate can be used.
+///
 /// `Vec` will never automatically shrink itself, even if completely empty. This
 /// ensures no unnecessary allocations or deallocations occur. Emptying a `Vec`
 /// and then filling it back up to the same [`len`] should incur no calls to
@@ -382,6 +384,7 @@ mod spec_extend;
 /// [`get_mut`]: ../../std/vec/struct.Vec.html#method.get_mut
 /// [`String`]: crate::string::String
 /// [`&str`]: type@str
+/// [`smallvec`]: https://crates.io/crates/smallvec
 /// [`shrink_to_fit`]: Vec::shrink_to_fit
 /// [`shrink_to`]: Vec::shrink_to
 /// [capacity]: Vec::capacity
