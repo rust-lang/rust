@@ -1005,6 +1005,7 @@ public:
           IRBuilder<> Builder2(&I);
           getReverseBuilder(Builder2);
           Value *ip = gutils->invertPointerM(I.getPointerOperand(), Builder2);
+          ip = lookup(ip, Builder2);
           auto order = I.getOrdering();
           if (order == AtomicOrdering::Release)
             order = AtomicOrdering::Monotonic;
