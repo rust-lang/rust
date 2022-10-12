@@ -38,6 +38,7 @@ macro_rules! tidy_error {
     });
 }
 
+pub mod alphabetical;
 pub mod bins;
 pub mod debug_artifacts;
 pub mod deps;

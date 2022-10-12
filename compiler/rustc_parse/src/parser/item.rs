@@ -1789,20 +1789,25 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 let mut err = self.expected_ident_found();
-                if let Some((ident, _)) = self.token.ident() && ident.as_str() == "let" {
-                    self.bump(); // `let`
-                    let span = self.prev_token.span.until(self.token.span);
+                if self.eat_keyword_noexpect(kw::Let)
+                    && let removal_span = self.prev_token.span.until(self.token.span)
+                    && let Ok(ident) = self.parse_ident_common(false)
+                        // Cancel this error, we don't need it.
+                        .map_err(|err| err.cancel())
+                    && self.token.kind == TokenKind::Colon
+                {
                     err.span_suggestion(
-                        span,
-                        "remove the let, the `let` keyword is not allowed in struct field definitions",
+                        removal_span,
+                        "remove this `let` keyword",
                         String::new(),
                         Applicability::MachineApplicable,
                     );
                     err.note("the `let` keyword is not allowed in `struct` fields");
                     err.note("see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information");
                     err.emit();
-                    self.bump();
                     return Ok(ident);
+                } else {
+                    self.restore_snapshot(snapshot);
                 }
                 err
             };

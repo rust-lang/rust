@@ -563,8 +563,6 @@ h2.location a {
 .rustdoc .example-wrap {
 	display: flex;
 	position: relative;
-}
-.rustdoc .example-wrap {
 	margin-bottom: 10px;
 }
 /* For the last child of a div, the margin will be taken care of
@@ -718,7 +716,6 @@ nav.sub {
 .source nav.sub {
 	margin-left: 32px;
 }
-nav.sum { text-align: right; }
 nav.sub form { display: inline; }
 
 a {

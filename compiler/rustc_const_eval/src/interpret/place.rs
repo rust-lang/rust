@@ -892,10 +892,11 @@ where
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(MemPlaceMeta, 24);
+    // tidy-alphabetical-start
     static_assert_size!(MemPlace, 40);
+    static_assert_size!(MemPlaceMeta, 24);
     static_assert_size!(MPlaceTy<'_>, 64);
     static_assert_size!(Place, 40);
     static_assert_size!(PlaceTy<'_>, 64);
+    // tidy-alphabetical-end
 }

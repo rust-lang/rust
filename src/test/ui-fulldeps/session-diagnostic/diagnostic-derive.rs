@@ -678,3 +678,74 @@ enum ExampleEnum {
 struct RawIdentDiagnosticArg {
     pub r#type: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticBad {
+    #[subdiagnostic(bad)]
+//~^ ERROR `#[subdiagnostic(bad)]` is not a valid attribute
+    note: Note,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticBadStr {
+    #[subdiagnostic = "bad"]
+//~^ ERROR `#[subdiagnostic = ...]` is not a valid attribute
+    note: Note,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticBadTwice {
+    #[subdiagnostic(bad, bad)]
+//~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    note: Note,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticBadLitStr {
+    #[subdiagnostic("bad")]
+//~^ ERROR `#[subdiagnostic("...")]` is not a valid attribute
+    note: Note,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticEagerLint {
+    #[subdiagnostic(eager)]
+//~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    note: Note,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticEagerCorrect {
+    #[subdiagnostic(eager)]
+    note: Note,
+}
+
+// Check that formatting of `correct` in suggestion doesn't move the binding for that field, making
+// the `set_arg` call a compile error; and that isn't worked around by moving the `set_arg` call
+// after the `span_suggestion` call - which breaks eager translation.
+
+#[derive(Subdiagnostic)]
+#[suggestion_short(
+    parser::use_instead,
+    applicability = "machine-applicable",
+    code = "{correct}"
+)]
+pub(crate) struct SubdiagnosticWithSuggestion {
+    #[primary_span]
+    span: Span,
+    invalid: String,
+    correct: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SubdiagnosticEagerSuggestion {
+    #[subdiagnostic(eager)]
+    sub: SubdiagnosticWithSuggestion,
+}

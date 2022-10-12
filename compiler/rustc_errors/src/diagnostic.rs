@@ -27,7 +27,11 @@ pub struct SuggestionsDisabled;
 /// Simplified version of `FluentArg` that can implement `Encodable` and `Decodable`. Collection of
 /// `DiagnosticArg` are converted to `FluentArgs` (consuming the collection) at the start of
 /// diagnostic emission.
-pub type DiagnosticArg<'source> = (Cow<'source, str>, DiagnosticArgValue<'source>);
+pub type DiagnosticArg<'iter, 'source> =
+    (&'iter DiagnosticArgName<'source>, &'iter DiagnosticArgValue<'source>);
+
+/// Name of a diagnostic argument.
+pub type DiagnosticArgName<'source> = Cow<'source, str>;
 
 /// Simplified version of `FluentValue` that can implement `Encodable` and `Decodable`. Converted
 /// to a `FluentValue` by the emitter to be used in diagnostic translation.
@@ -199,9 +203,20 @@ impl IntoDiagnosticArg for ast::token::TokenKind {
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
 #[cfg_attr(bootstrap, rustc_diagnostic_item = "AddSubdiagnostic")]
 #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "AddToDiagnostic")]
-pub trait AddToDiagnostic {
+pub trait AddToDiagnostic
+where
+    Self: Sized,
+{
     /// Add a subdiagnostic to an existing diagnostic.
-    fn add_to_diagnostic(self, diag: &mut Diagnostic);
+    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
+        self.add_to_diagnostic_with(diag, |_, m| m);
+    }
+
+    /// Add a subdiagnostic to an existing diagnostic where `f` is invoked on every message used
+    /// (to optionally perform eager translation).
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, f: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage;
 }
 
 /// Trait implemented by lint types. This should not be implemented manually. Instead, use
@@ -229,7 +244,7 @@ pub struct Diagnostic {
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-    args: Vec<DiagnosticArg<'static>>,
+    args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue<'static>>,
 
     /// This is not used for highlighting or rendering any error message.  Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics.  By default, it is the primary span of
@@ -321,7 +336,7 @@ impl Diagnostic {
             span: MultiSpan::new(),
             children: vec![],
             suggestions: Ok(vec![]),
-            args: vec![],
+            args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: false,
         }
@@ -917,10 +932,27 @@ impl Diagnostic {
         self
     }
 
-    /// Add a subdiagnostic from a type that implements `Subdiagnostic` - see
-    /// [rustc_macros::Subdiagnostic].
+    /// Add a subdiagnostic from a type that implements `Subdiagnostic` (see
+    /// [rustc_macros::Subdiagnostic]).
     pub fn subdiagnostic(&mut self, subdiagnostic: impl AddToDiagnostic) -> &mut Self {
         subdiagnostic.add_to_diagnostic(self);
+        self
+    }
+
+    /// Add a subdiagnostic from a type that implements `Subdiagnostic` (see
+    /// [rustc_macros::Subdiagnostic]). Performs eager translation of any translatable messages
+    /// used in the subdiagnostic, so suitable for use with repeated messages (i.e. re-use of
+    /// interpolated variables).
+    pub fn eager_subdiagnostic(
+        &mut self,
+        handler: &crate::Handler,
+        subdiagnostic: impl AddToDiagnostic,
+    ) -> &mut Self {
+        subdiagnostic.add_to_diagnostic_with(self, |diag, msg| {
+            let args = diag.args();
+            let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
+            handler.eagerly_translate(msg, args)
+        });
         self
     }
 
@@ -956,8 +988,11 @@ impl Diagnostic {
         self
     }
 
-    pub fn args(&self) -> &[DiagnosticArg<'static>] {
-        &self.args
+    // Exact iteration order of diagnostic arguments shouldn't make a difference to output because
+    // they're only used in interpolation.
+    #[allow(rustc::potential_query_instability)]
+    pub fn args<'a>(&'a self) -> impl Iterator<Item = DiagnosticArg<'a, 'static>> {
+        self.args.iter()
     }
 
     pub fn set_arg(
@@ -965,7 +1000,7 @@ impl Diagnostic {
         name: impl Into<Cow<'static, str>>,
         arg: impl IntoDiagnosticArg,
     ) -> &mut Self {
-        self.args.push((name.into(), arg.into_diagnostic_arg()));
+        self.args.insert(name.into(), arg.into_diagnostic_arg());
         self
     }
 
@@ -976,7 +1011,7 @@ impl Diagnostic {
     /// Helper function that takes a `SubdiagnosticMessage` and returns a `DiagnosticMessage` by
     /// combining it with the primary message of the diagnostic (if translatable, otherwise it just
     /// passes the user's string along).
-    fn subdiagnostic_message_to_diagnostic_message(
+    pub(crate) fn subdiagnostic_message_to_diagnostic_message(
         &self,
         attr: impl Into<SubdiagnosticMessage>,
     ) -> DiagnosticMessage {
