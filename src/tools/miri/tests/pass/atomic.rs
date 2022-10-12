@@ -164,9 +164,9 @@ fn atomic_ptr() {
     );
     ptr.store(x, Relaxed);
 
-    assert_eq!(ptr.fetch_ptr_add(13, AcqRel).addr(), x.addr());
+    assert_eq!(ptr.fetch_add(13, AcqRel).addr(), x.addr());
     unsafe { assert_eq!(*ptr.load(SeqCst), 13) }; // points to index 13 now
-    assert_eq!(ptr.fetch_ptr_sub(4, AcqRel).addr(), x.addr() + 13 * 4);
+    assert_eq!(ptr.fetch_sub(4, AcqRel).addr(), x.addr() + 13 * 4);
     unsafe { assert_eq!(*ptr.load(SeqCst), 9) };
     assert_eq!(ptr.fetch_or(3, AcqRel).addr(), x.addr() + 9 * 4); // ptr is 4-aligned, so set the last 2 bits
     assert_eq!(ptr.fetch_and(!3, AcqRel).addr(), (x.addr() + 9 * 4) | 3); // and unset them again

@@ -1477,7 +1477,7 @@ impl<T> AtomicPtr<T> {
     /// work with a deliberately misaligned pointer. In such cases, you may use
     /// the [`fetch_byte_add`](Self::fetch_byte_add) method instead.
     ///
-    /// `fetch_ptr_add` takes an [`Ordering`] argument which describes the
+    /// `fetch_add` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
     /// that using [`Acquire`] makes the store part of this operation
     /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
@@ -1494,7 +1494,7 @@ impl<T> AtomicPtr<T> {
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
-    /// assert_eq!(atom.fetch_ptr_add(1, Ordering::Relaxed).addr(), 0);
+    /// assert_eq!(atom.fetch_add(1, Ordering::Relaxed).addr(), 0);
     /// // Note: units of `size_of::<i64>()`.
     /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 8);
     /// ```
@@ -1502,7 +1502,7 @@ impl<T> AtomicPtr<T> {
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub fn fetch_ptr_add(&self, val: usize, order: Ordering) -> *mut T {
+    pub fn fetch_add(&self, val: usize, order: Ordering) -> *mut T {
         self.fetch_byte_add(val.wrapping_mul(core::mem::size_of::<T>()), order)
     }
 
@@ -1518,7 +1518,7 @@ impl<T> AtomicPtr<T> {
     /// work with a deliberately misaligned pointer. In such cases, you may use
     /// the [`fetch_byte_sub`](Self::fetch_byte_sub) method instead.
     ///
-    /// `fetch_ptr_sub` takes an [`Ordering`] argument which describes the memory
+    /// `fetch_sub` takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. All ordering modes are possible. Note that
     /// using [`Acquire`] makes the store part of this operation [`Relaxed`],
     /// and using [`Release`] makes the load part [`Relaxed`].
@@ -1538,7 +1538,7 @@ impl<T> AtomicPtr<T> {
     /// let atom = AtomicPtr::new(array.as_ptr().wrapping_add(1) as *mut _);
     ///
     /// assert!(core::ptr::eq(
-    ///     atom.fetch_ptr_sub(1, Ordering::Relaxed),
+    ///     atom.fetch_sub(1, Ordering::Relaxed),
     ///     &array[1],
     /// ));
     /// assert!(core::ptr::eq(atom.load(Ordering::Relaxed), &array[0]));
@@ -1547,7 +1547,7 @@ impl<T> AtomicPtr<T> {
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub fn fetch_ptr_sub(&self, val: usize, order: Ordering) -> *mut T {
+    pub fn fetch_sub(&self, val: usize, order: Ordering) -> *mut T {
         self.fetch_byte_sub(val.wrapping_mul(core::mem::size_of::<T>()), order)
     }
 
