@@ -45,6 +45,10 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
 
+      - name: Bump opt-level
+        if: matrix.os == 'ubuntu-latest'
+        run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
+
       - name: Compile
         run: cargo test --no-run --locked
 
