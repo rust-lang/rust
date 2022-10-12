@@ -17,19 +17,31 @@ where
     default fn spec_extend(&mut self, mut iter: I) {
         // This function should be the moral equivalent of:
         //
-        //      for item in iter {
-        //          self.push_back(item);
-        //      }
-        while let Some(element) = iter.next() {
-            if self.len() == self.capacity() {
-                let (lower, _) = iter.size_hint();
-                self.reserve(lower.saturating_add(1));
+        // for item in iter {
+        //     self.push_back(item);
+        // }
+        loop {
+            let lower_bound = iter.size_hint().0;
+            if lower_bound != 0 {
+                self.reserve(lower_bound);
             }
 
-            let head = self.head;
-            self.head = self.wrap_add(self.head, 1);
+            match iter.next() {
+                Some(val) => self.push_back(val),
+                None => break,
+            }
+
+            let room = self.capacity() - self.len;
             unsafe {
-                self.buffer_write(head, element);
+                // Safety:
+                // The iter is at most `room` items long,
+                // and `room == self.capacity() - self.len`
+                //   => `self.len + room <= self.capacity()`
+                self.write_iter_wrapping(
+                    self.wrap_idx(self.len),
+                    ByRefSized(&mut iter).take(room),
+                    room,
+                );
             }
         }
     }
@@ -39,7 +51,7 @@ impl<T, I, A: Allocator> SpecExtend<T, I> for VecDeque<T, A>
 where
     I: TrustedLen<Item = T>,
 {
-    default fn spec_extend(&mut self, mut iter: I) {
+    default fn spec_extend(&mut self, iter: I) {
         // This is the case for a TrustedLen iterator.
         let (low, high) = iter.size_hint();
         if let Some(additional) = high {
@@ -51,35 +63,11 @@ where
             );
             self.reserve(additional);
 
-            struct WrapAddOnDrop<'a, T, A: Allocator> {
-                vec_deque: &'a mut VecDeque<T, A>,
-                written: usize,
-            }
-
-            impl<'a, T, A: Allocator> Drop for WrapAddOnDrop<'a, T, A> {
-                fn drop(&mut self) {
-                    self.vec_deque.head =
-                        self.vec_deque.wrap_add(self.vec_deque.head, self.written);
-                }
-            }
-
-            let mut wrapper = WrapAddOnDrop { vec_deque: self, written: 0 };
-
-            let head_room = wrapper.vec_deque.cap() - wrapper.vec_deque.head;
-            unsafe {
-                wrapper.vec_deque.write_iter(
-                    wrapper.vec_deque.head,
-                    ByRefSized(&mut iter).take(head_room),
-                    &mut wrapper.written,
-                );
-
-                if additional > head_room {
-                    wrapper.vec_deque.write_iter(0, iter, &mut wrapper.written);
-                }
-            }
+            let written =
+                unsafe { self.write_iter_wrapping(self.wrap_idx(self.len), iter, additional) };
 
             debug_assert_eq!(
-                additional, wrapper.written,
+                additional, written,
                 "The number of items written to VecDeque doesn't match the TrustedLen size hint"
             );
         } else {
@@ -99,8 +87,8 @@ impl<T, A: Allocator> SpecExtend<T, vec::IntoIter<T>> for VecDeque<T, A> {
         self.reserve(slice.len());
 
         unsafe {
-            self.copy_slice(self.head, slice);
-            self.head = self.wrap_add(self.head, slice.len());
+            self.copy_slice(self.wrap_idx(self.len), slice);
+            self.len += slice.len();
         }
         iterator.forget_remaining_elements();
     }
@@ -125,8 +113,8 @@ where
         self.reserve(slice.len());
 
         unsafe {
-            self.copy_slice(self.head, slice);
-            self.head = self.wrap_add(self.head, slice.len());
+            self.copy_slice(self.wrap_idx(self.len), slice);
+            self.len += slice.len();
         }
     }
 }

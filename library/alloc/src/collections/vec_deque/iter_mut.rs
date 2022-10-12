@@ -1,8 +1,6 @@
-use core::fmt;
 use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
-use core::marker::PhantomData;
-
-use super::{count, wrap_index, RingSlices};
+use core::ops::Try;
+use core::{fmt, mem, slice};
 
 /// A mutable iterator over the elements of a `VecDeque`.
 ///
@@ -12,39 +10,20 @@ use super::{count, wrap_index, RingSlices};
 /// [`iter_mut`]: super::VecDeque::iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
-    // Internal safety invariant: the entire slice is dereferenceable.
-    ring: *mut [T],
-    tail: usize,
-    head: usize,
-    phantom: PhantomData<&'a mut [T]>,
+    i1: slice::IterMut<'a, T>,
+    i2: slice::IterMut<'a, T>,
 }
 
 impl<'a, T> IterMut<'a, T> {
-    pub(super) unsafe fn new(
-        ring: *mut [T],
-        tail: usize,
-        head: usize,
-        phantom: PhantomData<&'a mut [T]>,
-    ) -> Self {
-        IterMut { ring, tail, head, phantom }
+    pub(super) fn new(i1: slice::IterMut<'a, T>, i2: slice::IterMut<'a, T>) -> Self {
+        Self { i1, i2 }
     }
 }
-
-// SAFETY: we do nothing thread-local and there is no interior mutability,
-// so the usual structural `Send`/`Sync` apply.
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Send> Send for IterMut<'_, T> {}
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
-        // The `IterMut` invariant also ensures everything is dereferenceable.
-        let (front, back) = unsafe { (&*front, &*back) };
-        f.debug_tuple("IterMut").field(&front).field(&back).finish()
+        f.debug_tuple("IterMut").field(&self.i1.as_slice()).field(&self.i2.as_slice()).finish()
     }
 }
 
@@ -54,44 +33,51 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
-        if self.tail == self.head {
-            return None;
+        match self.i1.next() {
+            Some(val) => Some(val),
+            None => {
+                // most of the time, the iterator will either always
+                // call next(), or always call next_back(). By swapping
+                // the iterators once the first one is empty, we ensure
+                // that the first branch is taken as often as possible,
+                // without sacrificing correctness, as i1 is empty anyways
+                mem::swap(&mut self.i1, &mut self.i2);
+                self.i1.next()
+            }
         }
-        let tail = self.tail;
-        self.tail = wrap_index(self.tail.wrapping_add(1), self.ring.len());
+    }
 
-        unsafe {
-            let elem = self.ring.get_unchecked_mut(tail);
-            Some(&mut *elem)
-        }
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let m = match self.i1.advance_by(n) {
+            Ok(_) => return Ok(()),
+            Err(m) => m,
+        };
+        mem::swap(&mut self.i1, &mut self.i2);
+        self.i1.advance_by(n - m).map_err(|o| o + m)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = count(self.tail, self.head, self.ring.len());
+        let len = self.len();
         (len, Some(len))
     }
 
-    fn fold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
+    fn fold<Acc, F>(self, accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
-        // The `IterMut` invariant also ensures everything is dereferenceable.
-        let (front, back) = unsafe { (&mut *front, &mut *back) };
-        accum = front.iter_mut().fold(accum, &mut f);
-        back.iter_mut().fold(accum, &mut f)
+        let accum = self.i1.fold(accum, &mut f);
+        self.i2.fold(accum, f)
     }
 
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if n >= count(self.tail, self.head, self.ring.len()) {
-            self.tail = self.head;
-            None
-        } else {
-            self.tail = wrap_index(self.tail.wrapping_add(n), self.ring.len());
-            self.next()
-        }
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        let acc = self.i1.try_fold(init, &mut f)?;
+        self.i2.try_fold(acc, f)
     }
 
     #[inline]
@@ -104,8 +90,12 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         // Safety: The TrustedRandomAccess contract requires that callers only pass an index
         // that is in bounds.
         unsafe {
-            let idx = wrap_index(self.tail.wrapping_add(idx), self.ring.len());
-            &mut *self.ring.get_unchecked_mut(idx)
+            let i1_len = self.i1.len();
+            if idx < i1_len {
+                self.i1.__iterator_get_unchecked(idx)
+            } else {
+                self.i2.__iterator_get_unchecked(idx - i1_len)
+            }
         }
     }
 }
@@ -114,34 +104,57 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
-        if self.tail == self.head {
-            return None;
-        }
-        self.head = wrap_index(self.head.wrapping_sub(1), self.ring.len());
-
-        unsafe {
-            let elem = self.ring.get_unchecked_mut(self.head);
-            Some(&mut *elem)
+        match self.i2.next_back() {
+            Some(val) => Some(val),
+            None => {
+                // most of the time, the iterator will either always
+                // call next(), or always call next_back(). By swapping
+                // the iterators once the first one is empty, we ensure
+                // that the first branch is taken as often as possible,
+                // without sacrificing correctness, as i2 is empty anyways
+                mem::swap(&mut self.i1, &mut self.i2);
+                self.i2.next_back()
+            }
         }
     }
 
-    fn rfold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let m = match self.i2.advance_back_by(n) {
+            Ok(_) => return Ok(()),
+            Err(m) => m,
+        };
+
+        mem::swap(&mut self.i1, &mut self.i2);
+        self.i2.advance_back_by(n - m).map_err(|o| m + o)
+    }
+
+    fn rfold<Acc, F>(self, accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
-        // The `IterMut` invariant also ensures everything is dereferenceable.
-        let (front, back) = unsafe { (&mut *front, &mut *back) };
-        accum = back.iter_mut().rfold(accum, &mut f);
-        front.iter_mut().rfold(accum, &mut f)
+        let accum = self.i2.rfold(accum, &mut f);
+        self.i1.rfold(accum, f)
+    }
+
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        let acc = self.i2.try_rfold(init, &mut f)?;
+        self.i1.try_rfold(acc, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IterMut<'_, T> {
+    fn len(&self) -> usize {
+        self.i1.len() + self.i2.len()
+    }
+
     fn is_empty(&self) -> bool {
-        self.head == self.tail
+        self.i1.is_empty() && self.i2.is_empty()
     }
 }
 

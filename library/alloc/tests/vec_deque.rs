@@ -465,7 +465,6 @@ fn test_drain() {
         for i in 6..9 {
             d.push_front(i);
         }
-
         assert_eq!(d.drain(..).collect::<Vec<_>>(), [8, 7, 6, 0, 1, 2, 3, 4]);
         assert!(d.is_empty());
     }
@@ -1142,7 +1141,7 @@ fn test_reserve_exact_2() {
     v.push_back(16);
 
     v.reserve_exact(16);
-    assert!(v.capacity() >= 48)
+    assert!(v.capacity() >= 33)
 }
 
 #[test]
@@ -1157,7 +1156,7 @@ fn test_try_reserve() {
     // * overflow may trigger when adding `len` to `cap` (in number of elements)
     // * overflow may trigger when multiplying `new_cap` by size_of::<T> (to get bytes)
 
-    const MAX_CAP: usize = (isize::MAX as usize + 1) / 2 - 1;
+    const MAX_CAP: usize = isize::MAX as usize;
     const MAX_USIZE: usize = usize::MAX;
 
     {
@@ -1248,7 +1247,7 @@ fn test_try_reserve_exact() {
     // This is exactly the same as test_try_reserve with the method changed.
     // See that test for comments.
 
-    const MAX_CAP: usize = (isize::MAX as usize + 1) / 2 - 1;
+    const MAX_CAP: usize = isize::MAX as usize;
     const MAX_USIZE: usize = usize::MAX;
 
     {
@@ -1391,7 +1390,8 @@ fn test_rotate_nop() {
 
 #[test]
 fn test_rotate_left_parts() {
-    let mut v: VecDeque<_> = (1..=7).collect();
+    let mut v: VecDeque<_> = VecDeque::with_capacity(8);
+    v.extend(1..=7);
     v.rotate_left(2);
     assert_eq!(v.as_slices(), (&[3, 4, 5, 6, 7, 1][..], &[2][..]));
     v.rotate_left(2);
@@ -1410,7 +1410,8 @@ fn test_rotate_left_parts() {
 
 #[test]
 fn test_rotate_right_parts() {
-    let mut v: VecDeque<_> = (1..=7).collect();
+    let mut v: VecDeque<_> = VecDeque::with_capacity(8);
+    v.extend(1..=7);
     v.rotate_right(2);
     assert_eq!(v.as_slices(), (&[6, 7][..], &[1, 2, 3, 4, 5][..]));
     v.rotate_right(2);
