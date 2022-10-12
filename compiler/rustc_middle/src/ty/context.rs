@@ -2824,6 +2824,11 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
+    /// Emit a lint at the appropriate level for a hir node, with an associated span.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     pub fn struct_span_lint_hir(
         self,
         lint: &'static Lint,
@@ -2849,6 +2854,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.struct_lint_node(lint, id, decorator.msg(), |diag| decorator.decorate_lint(diag))
     }
 
+    /// Emit a lint at the appropriate level for a hir node.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     pub fn struct_lint_node(
         self,
         lint: &'static Lint,
