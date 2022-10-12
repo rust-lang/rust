@@ -135,6 +135,52 @@ where
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
     unsafe { panicking::r#try(f) }
+        // So, there is a footgun with `catch_unwind()`'s API:
+        //
+        // 1. when running "untrusted" / arbitrary code, it may panic and unwind.
+        // 2. this, in turn, could lead to an impromptu interruption of your own code.
+        // 3. thence `panic::catch_unwind()`, to act as an unwinding boundary and
+        //    ensure the unwinding can be stopped.
+        // 4. but the so obtained `Result::<R, Box<dyn Any…>>::Err` variant contains,
+        //    in that case, an arbitrary payload (_e.g._, a boxed `42` in case of
+        //    `panic!(42)`), with arbitrary drop glue, such as a `PanicOnDrop` bomb.
+        // 5. this means that if the `Err` variant is just dismissed or discarded, when
+        //    it gets dropped, it can still cause an unwind which goes against the
+        //    caller's intent to block them.
+        //
+        // See #86027 for more context.
+        //
+        // In order to tackle this, the idea behind this `.map_err()`, and the
+        // `DropNoUnwindSameAnyTypeId` type from `::core`, is to do something similar
+        // to what was suggested over
+        // https://github.com/rust-lang/rust/issues/86027#issuecomment-858083087:
+        // To cheat a little bit and tweak/amend the obtained `Box<dyn Any…>`:
+        //   - keep the `.type_id()` the same to avoid breakage with downcasting;
+        //   - but make it so the virtual `.drop_in_place()` is somehow overridden with
+        //     a shim around the real drop glue that prevents unwinding (_e.g._, by
+        //     aborting when that happens).
+        //
+        // This is achieved through the `DropNoUnwindSameAnyTypeId<T>`, wrapper:
+        //   - with the very same layout as the `T` it wraps;
+        //   - with an overridden/fake `.type_id()` so as to impersonate its inner `T`;
+        //   - with a manual `impl Drop` which uses an abort bomb to ensure no
+        //     unwinding can happen.
+        //
+        // That way, the `Box<DropNoUnwindSameAnyTypeId<T>>`, when box-erased to a
+        // `Box<dyn Any…>`, becomes, both layout-wise, and `type_id`-wise,
+        // undistinguishable from a `Box<T>`, thence avoiding any breakage.
+        //
+        // And yet, when that `Box<dyn Any…>` is implicitly dropped with
+        // `catch_unwind`s, no further unwinding can happen.
+        .map_err(|any| {
+            // *Project* the `Box<M>` to a `Box<DropNoUnwindSameAnyTypeId<M>>`.
+            // Safety: if `M : Send`, then `DropNoUnwindSameAnyTypeId<M> : Send`.
+            unsafe {
+                let drop_nounwind: *mut dyn Any = Box::into_raw(any).__dyn_into_drop_no_unwind();
+                let drop_nounwind_send: *mut (dyn Any + Send) = drop_nounwind as _;
+                Box::from_raw(drop_nounwind_send)
+            }
+        })
 }
 
 /// Triggers a panic without invoking the panic hook.

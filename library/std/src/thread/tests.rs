@@ -218,13 +218,13 @@ fn test_try_panic_any_message_owned_str() {
 
 #[test]
 fn test_try_panic_any_message_any() {
+    type T = Box<dyn Any + Send>;
     match thread::spawn(move || {
-        panic_any(Box::new(413u16) as Box<dyn Any + Send>);
+        panic_any(Box::new(413u16) as T);
     })
     .join()
     {
         Err(e) => {
-            type T = Box<dyn Any + Send>;
             assert!(e.is::<T>());
             let any = e.downcast::<T>().unwrap();
             assert!(any.is::<u16>());
@@ -242,6 +242,32 @@ fn test_try_panic_any_message_unit_struct() {
         Err(ref e) if e.is::<Juju>() => {}
         Err(_) | Ok(()) => panic!(),
     }
+}
+
+#[test]
+fn test_try_panic_any_message_drop_glue_does_happen() {
+    let count = Arc::new(());
+    let weak = Arc::downgrade(&count);
+
+    match thread::spawn(|| panic_any(count)).join() {
+        Ok(()) => panic!("thread did not panic"),
+        Err(e) if e.is::<Arc<()>>() => {}
+        Err(_) => panic!("thread did not panic with the expected payload"),
+    }
+    assert!(weak.upgrade().is_none());
+}
+
+#[test]
+fn test_try_panic_resume_unwind_drop_glue_does_happen() {
+    let count = Arc::new(());
+    let weak = Arc::downgrade(&count);
+
+    match thread::spawn(|| crate::panic::resume_unwind(Box::new(count))).join() {
+        Ok(()) => panic!("thread did not panic"),
+        Err(e) if e.is::<Arc<()>>() => {}
+        Err(_) => panic!("thread did not panic with the expected payload"),
+    }
+    assert!(weak.upgrade().is_none());
 }
 
 #[test]
