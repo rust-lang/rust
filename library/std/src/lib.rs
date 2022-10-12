@@ -314,6 +314,7 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_waker)]
+#![feature(cstr_macro)]
 //
 // Library features (alloc):
 #![feature(alloc_layout_extra)]

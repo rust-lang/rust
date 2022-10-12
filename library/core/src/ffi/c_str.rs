@@ -177,7 +177,7 @@ impl fmt::Debug for CStr {
     }
 }
 
-/// Converts a string or byte literal to a `&'static Cstr`.
+/// Converts a `const` string or byte slice to a `&'static Cstr`.
 ///
 /// # Examples
 ///
@@ -208,7 +208,7 @@ macro_rules! __cstr_macro_impl {
     () => {
         __cstr_macro_impl!("")
     };
-    ($s:literal) => {{
+    ($s:expr) => {{
         const BYTES: &[u8] = $crate::ffi::__cstr_macro_impl_as_bytes($s);
         const BYTES_WITH_NUL: [u8; { BYTES.len() + 1 }] =
             $crate::ffi::__cstr_macro_impl_to_bytes_with_nul(BYTES);

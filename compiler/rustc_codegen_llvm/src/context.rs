@@ -8,7 +8,6 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::value::Value;
 
-use cstr::cstr;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
@@ -33,7 +32,7 @@ use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 use smallvec::SmallVec;
 
 use std::cell::{Cell, RefCell};
-use std::ffi::CStr;
+use std::ffi::{cstr, CStr};
 use std::str;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM

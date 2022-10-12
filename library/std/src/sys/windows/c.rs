@@ -4,7 +4,7 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
 
-use crate::ffi::CStr;
+use crate::ffi::{cstr, CStr};
 use crate::mem;
 use crate::os::raw::{c_char, c_int, c_long, c_longlong, c_uint, c_ulong, c_ushort};
 use crate::os::windows::io::{BorrowedHandle, HandleOrInvalid, HandleOrNull};
@@ -1245,7 +1245,7 @@ extern "system" {
 // Functions that aren't available on every version of Windows that we support,
 // but we still use them and just provide some form of a fallback implementation.
 compat_fn_with_fallback! {
-    pub static KERNEL32: &CStr = ansi_str!("kernel32");
+    pub static KERNEL32: &CStr = cstr!("kernel32");
 
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
@@ -1280,7 +1280,7 @@ compat_fn_optional! {
 }
 
 compat_fn_with_fallback! {
-    pub static NTDLL: &CStr = ansi_str!("ntdll");
+    pub static NTDLL: &CStr = cstr!("ntdll");
 
     pub fn NtCreateFile(
         FileHandle: *mut HANDLE,

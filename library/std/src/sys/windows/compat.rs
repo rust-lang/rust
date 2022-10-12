@@ -19,7 +19,7 @@
 //! function is called. In the worst case, multiple threads may all end up
 //! importing the same function unnecessarily.
 
-use crate::ffi::{c_void, CStr};
+use crate::ffi::{c_void, cstr, CStr};
 use crate::ptr::NonNull;
 use crate::sync::atomic::Ordering;
 use crate::sys::c;
@@ -65,38 +65,6 @@ unsafe extern "C" fn init() {
 
     // Attempt to preload the synch functions.
     load_synch_functions();
-}
-
-/// Helper macro for creating CStrs from literals and symbol names.
-macro_rules! ansi_str {
-    (sym $ident:ident) => {{
-        #[allow(unused_unsafe)]
-        crate::sys::compat::const_cstr_from_bytes(concat!(stringify!($ident), "\0").as_bytes())
-    }};
-    ($lit:literal) => {{ crate::sys::compat::const_cstr_from_bytes(concat!($lit, "\0").as_bytes()) }};
-}
-
-/// Creates a C string wrapper from a byte slice, in a constant context.
-///
-/// This is a utility function used by the [`ansi_str`] macro.
-///
-/// # Panics
-///
-/// Panics if the slice is not null terminated or contains nulls, except as the last item
-pub(crate) const fn const_cstr_from_bytes(bytes: &'static [u8]) -> &'static CStr {
-    if !matches!(bytes.last(), Some(&0)) {
-        panic!("A CStr must be null terminated");
-    }
-    let mut i = 0;
-    // At this point `len()` is at least 1.
-    while i < bytes.len() - 1 {
-        if bytes[i] == 0 {
-            panic!("A CStr must not have interior nulls")
-        }
-        i += 1;
-    }
-    // SAFETY: The safety is ensured by the above checks.
-    unsafe { crate::ffi::CStr::from_bytes_with_nul_unchecked(bytes) }
 }
 
 /// Represents a loaded module.
@@ -161,7 +129,7 @@ macro_rules! compat_fn_with_fallback {
 
             fn load_from_module(module: Option<Module>) -> F {
                 unsafe {
-                    static SYMBOL_NAME: &CStr = ansi_str!(sym $symbol);
+                    static SYMBOL_NAME: &CStr = cstr!(stringify!($symbol));
                     if let Some(f) = module.and_then(|m| m.proc_address(SYMBOL_NAME)) {
                         PTR.store(f.as_ptr(), Ordering::Relaxed);
                         mem::transmute(f)
@@ -224,9 +192,9 @@ macro_rules! compat_fn_optional {
 /// Load all needed functions from "api-ms-win-core-synch-l1-2-0".
 pub(super) fn load_synch_functions() {
     fn try_load() -> Option<()> {
-        const MODULE_NAME: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
-        const WAIT_ON_ADDRESS: &CStr = ansi_str!("WaitOnAddress");
-        const WAKE_BY_ADDRESS_SINGLE: &CStr = ansi_str!("WakeByAddressSingle");
+        const MODULE_NAME: &CStr = cstr!("api-ms-win-core-synch-l1-2-0");
+        const WAIT_ON_ADDRESS: &CStr = cstr!("WaitOnAddress");
+        const WAKE_BY_ADDRESS_SINGLE: &CStr = cstr!("WakeByAddressSingle");
 
         // Try loading the library and all the required functions.
         // If any step fails, then they all fail.

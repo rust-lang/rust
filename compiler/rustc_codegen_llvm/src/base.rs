@@ -19,8 +19,6 @@ use crate::context::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
 
-use cstr::cstr;
-
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
@@ -34,6 +32,7 @@ use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::SanitizerSet;
 
+use std::ffi::cstr;
 use std::time::Instant;
 
 pub struct ValueIter<'ll> {

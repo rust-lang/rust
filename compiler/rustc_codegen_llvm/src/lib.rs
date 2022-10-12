@@ -9,6 +9,7 @@
 #![feature(let_chains)]
 #![feature(extern_types)]
 #![feature(once_cell)]
+#![feature(cstr_macro)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]

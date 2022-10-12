@@ -20,7 +20,6 @@ use crate::llvm::debuginfo::{
 };
 use crate::value::Value;
 
-use cstr::cstr;
 use rustc_codegen_ssa::debuginfo::type_names::cpp_like_debuginfo;
 use rustc_codegen_ssa::debuginfo::type_names::VTableNameKind;
 use rustc_codegen_ssa::traits::*;
@@ -45,6 +44,7 @@ use smallvec::smallvec;
 
 use libc::{c_char, c_longlong, c_uint};
 use std::borrow::Cow;
+use std::ffi::cstr;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::iter;
