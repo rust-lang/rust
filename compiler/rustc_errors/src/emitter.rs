@@ -14,7 +14,7 @@ use rustc_span::{FileLines, SourceFile, Span};
 
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
-use crate::translation::Translate;
+use crate::translation::{to_fluent_args, Translate};
 use crate::{
     CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, FluentBundle, Handler,
     LazyFallbackBundle, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight, SuggestionStyle,
@@ -535,7 +535,7 @@ impl Emitter for EmitterWriter {
     }
 
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
-        let fluent_args = self.to_fluent_args(diag.args());
+        let fluent_args = to_fluent_args(diag.args());
 
         let mut children = diag.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&diag, &fluent_args);
