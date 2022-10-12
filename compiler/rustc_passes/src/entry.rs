@@ -1,5 +1,5 @@
 use rustc_ast::entry::EntryPointType;
-use rustc_errors::struct_span_err;
+use rustc_errors::error_code;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{ItemId, Node, CRATE_HIR_ID};
@@ -8,7 +8,12 @@ use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_session::config::{sigpipe, CrateType, EntryFnType};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{Span, Symbol};
+
+use crate::errors::{
+    AttrOnlyInFunctions, AttrOnlyOnMain, AttrOnlyOnRootMain, ExternMain, MultipleRustcMain,
+    MultipleStartFunctions, NoMainErr, UnixSigpipeValues,
+};
 
 struct EntryContext<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -71,14 +76,9 @@ fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> Entry
     }
 }
 
-fn err_if_attr_found(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol, details: &str) {
+fn attr_span_by_symbol(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol) -> Option<Span> {
     let attrs = ctxt.tcx.hir().attrs(id.hir_id());
-    if let Some(attr) = ctxt.tcx.sess.find_by_name(attrs, sym) {
-        ctxt.tcx
-            .sess
-            .struct_span_err(attr.span, &format!("`{}` attribute {}", sym, details))
-            .emit();
-    }
+    ctxt.tcx.sess.find_by_name(attrs, sym).map(|attr| attr.span)
 }
 
 fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
@@ -86,49 +86,47 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
 
     match entry_point_type(ctxt, id, at_root) {
         EntryPointType::None => {
-            err_if_attr_found(ctxt, id, sym::unix_sigpipe, "can only be used on `fn main()`");
+            if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
+                ctxt.tcx.sess.emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });
+            }
         }
         _ if !matches!(ctxt.tcx.def_kind(id.def_id), DefKind::Fn) => {
-            err_if_attr_found(ctxt, id, sym::start, "can only be used on functions");
-            err_if_attr_found(ctxt, id, sym::rustc_main, "can only be used on functions");
+            for attr in [sym::start, sym::rustc_main] {
+                if let Some(span) = attr_span_by_symbol(ctxt, id, attr) {
+                    ctxt.tcx.sess.emit_err(AttrOnlyInFunctions { span, attr });
+                }
+            }
         }
         EntryPointType::MainNamed => (),
         EntryPointType::OtherMain => {
-            err_if_attr_found(ctxt, id, sym::unix_sigpipe, "can only be used on root `fn main()`");
+            if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
+                ctxt.tcx.sess.emit_err(AttrOnlyOnRootMain { span, attr: sym::unix_sigpipe });
+            }
             ctxt.non_main_fns.push(ctxt.tcx.def_span(id.def_id));
         }
         EntryPointType::RustcMainAttr => {
             if ctxt.attr_main_fn.is_none() {
                 ctxt.attr_main_fn = Some((id.def_id.def_id, ctxt.tcx.def_span(id.def_id)));
             } else {
-                struct_span_err!(
-                    ctxt.tcx.sess,
-                    ctxt.tcx.def_span(id.def_id.to_def_id()),
-                    E0137,
-                    "multiple functions with a `#[rustc_main]` attribute"
-                )
-                .span_label(
-                    ctxt.tcx.def_span(id.def_id.to_def_id()),
-                    "additional `#[rustc_main]` function",
-                )
-                .span_label(ctxt.attr_main_fn.unwrap().1, "first `#[rustc_main]` function")
-                .emit();
+                ctxt.tcx.sess.emit_err(MultipleRustcMain {
+                    span: ctxt.tcx.def_span(id.def_id.to_def_id()),
+                    first: ctxt.attr_main_fn.unwrap().1,
+                    additional: ctxt.tcx.def_span(id.def_id.to_def_id()),
+                });
             }
         }
         EntryPointType::Start => {
-            err_if_attr_found(ctxt, id, sym::unix_sigpipe, "can only be used on `fn main()`");
+            if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
+                ctxt.tcx.sess.emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });
+            }
             if ctxt.start_fn.is_none() {
                 ctxt.start_fn = Some((id.def_id.def_id, ctxt.tcx.def_span(id.def_id)));
             } else {
-                struct_span_err!(
-                    ctxt.tcx.sess,
-                    ctxt.tcx.def_span(id.def_id),
-                    E0138,
-                    "multiple `start` functions"
-                )
-                .span_label(ctxt.start_fn.unwrap().1, "previous `#[start]` function here")
-                .span_label(ctxt.tcx.def_span(id.def_id.to_def_id()), "multiple `start` functions")
-                .emit();
+                ctxt.tcx.sess.emit_err(MultipleStartFunctions {
+                    span: ctxt.tcx.def_span(id.def_id),
+                    labeled: ctxt.tcx.def_span(id.def_id.to_def_id()),
+                    previous: ctxt.start_fn.unwrap().1,
+                });
             }
         }
     }
@@ -144,12 +142,7 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId,
         if let Some(main_def) = tcx.resolutions(()).main_def && let Some(def_id) = main_def.opt_fn_def_id() {
             // non-local main imports are handled below
             if let Some(def_id) = def_id.as_local() && matches!(tcx.hir().find_by_def_id(def_id), Some(Node::ForeignItem(_))) {
-                tcx.sess
-                    .struct_span_err(
-                        tcx.def_span(def_id),
-                        "the `main` function cannot be declared in an `extern` block",
-                    )
-                    .emit();
+                tcx.sess.emit_err(ExternMain { span: tcx.def_span(def_id) });
                 return None;
             }
 
@@ -182,12 +175,7 @@ fn sigpipe(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
                 sigpipe::DEFAULT
             }
             _ => {
-                tcx.sess
-                    .struct_span_err(
-                        attr.span,
-                        "valid values for `#[unix_sigpipe = \"...\"]` are `inherit`, `sig_ign`, or `sig_dfl`",
-                    )
-                    .emit();
+                tcx.sess.emit_err(UnixSigpipeValues { span: attr.span });
                 sigpipe::DEFAULT
             }
         }
@@ -206,52 +194,29 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
     }
 
     // There is no main function.
-    let mut err = struct_span_err!(
-        tcx.sess,
-        DUMMY_SP,
-        E0601,
-        "`main` function not found in crate `{}`",
-        tcx.crate_name(LOCAL_CRATE)
-    );
-    let filename = &tcx.sess.local_crate_source_file;
-    let note = if !visitor.non_main_fns.is_empty() {
-        for &span in &visitor.non_main_fns {
-            err.span_note(span, "here is a function named `main`");
-        }
-        err.note("you have one or more functions named `main` not defined at the crate level");
-        err.help("consider moving the `main` function definitions");
-        // There were some functions named `main` though. Try to give the user a hint.
-        format!(
-            "the main function must be defined at the crate level{}",
-            filename.as_ref().map(|f| format!(" (in `{}`)", f.display())).unwrap_or_default()
-        )
-    } else if let Some(filename) = filename {
-        format!("consider adding a `main` function to `{}`", filename.display())
-    } else {
-        String::from("consider adding a `main` function at the crate level")
-    };
+    let mut has_filename = true;
+    let filename = tcx.sess.local_crate_source_file.clone().unwrap_or_else(|| {
+        has_filename = false;
+        Default::default()
+    });
+    let main_def_opt = tcx.resolutions(()).main_def;
+    let diagnostic_id = error_code!(E0601);
+    let add_teach_note = tcx.sess.teach(&diagnostic_id);
     // The file may be empty, which leads to the diagnostic machinery not emitting this
     // note. This is a relatively simple way to detect that case and emit a span-less
     // note instead.
-    if tcx.sess.source_map().lookup_line(sp.hi()).is_ok() {
-        err.set_span(sp.shrink_to_hi());
-        err.span_label(sp.shrink_to_hi(), &note);
-    } else {
-        err.note(&note);
-    }
+    let file_empty = !tcx.sess.source_map().lookup_line(sp.hi()).is_ok();
 
-    if let Some(main_def) = tcx.resolutions(()).main_def && main_def.opt_fn_def_id().is_none(){
-        // There is something at `crate::main`, but it is not a function definition.
-        err.span_label(main_def.span, "non-function item at `crate::main` is found");
-    }
-
-    if tcx.sess.teach(&err.get_code().unwrap()) {
-        err.note(
-            "If you don't know the basics of Rust, you can go look to the Rust Book \
-                  to get started: https://doc.rust-lang.org/book/",
-        );
-    }
-    err.emit();
+    tcx.sess.emit_err(NoMainErr {
+        sp,
+        crate_name: tcx.crate_name(LOCAL_CRATE),
+        has_filename,
+        filename,
+        file_empty,
+        non_main_fns: visitor.non_main_fns.clone(),
+        main_def_opt,
+        add_teach_note,
+    });
 }
 
 pub fn provide(providers: &mut Providers) {

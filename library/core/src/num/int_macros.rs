@@ -2279,9 +2279,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// When the number is negative, zero, or if the base is not at least 2; it
-        /// panics in debug mode and the return value is 0 in release
-        /// mode.
+        /// This function will panic if `self` is less than or equal to zero,
+        /// or if `base` is less then 2.
         ///
         /// # Examples
         ///
@@ -2294,27 +2293,16 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
         pub const fn ilog(self, base: Self) -> u32 {
-            match self.checked_ilog(base) {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
-            }
+            assert!(base >= 2, "base of integer logarithm must be at least 2");
+            self.checked_ilog(base).expect("argument of integer logarithm must be positive")
         }
 
         /// Returns the base 2 logarithm of the number, rounded down.
         ///
         /// # Panics
         ///
-        /// When the number is negative or zero it panics in debug mode and the return value
-        /// is 0 in release mode.
+        /// This function will panic if `self` is less than or equal to zero.
         ///
         /// # Examples
         ///
@@ -2327,27 +2315,15 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
         pub const fn ilog2(self) -> u32 {
-            match self.checked_ilog2() {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
-            }
+            self.checked_ilog2().expect("argument of integer logarithm must be positive")
         }
 
         /// Returns the base 10 logarithm of the number, rounded down.
         ///
         /// # Panics
         ///
-        /// When the number is negative or zero it panics in debug mode and the return value
-        /// is 0 in release mode.
+        /// This function will panic if `self` is less than or equal to zero.
         ///
         /// # Example
         ///
@@ -2360,19 +2336,8 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
         pub const fn ilog10(self) -> u32 {
-            match self.checked_ilog10() {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
-            }
+            self.checked_ilog10().expect("argument of integer logarithm must be positive")
         }
 
         /// Returns the logarithm of the number with respect to an arbitrary base,

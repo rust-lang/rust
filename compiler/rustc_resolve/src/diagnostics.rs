@@ -139,8 +139,7 @@ impl<'a> Resolver<'a> {
                     &candidates,
                     if instead { Instead::Yes } else { Instead::No },
                     found_use,
-                    IsPattern::No,
-                    IsImport::No,
+                    DiagnosticMode::Normal,
                     path,
                 );
                 err.emit();
@@ -699,8 +698,7 @@ impl<'a> Resolver<'a> {
                         &import_suggestions,
                         Instead::No,
                         FoundUse::Yes,
-                        IsPattern::Yes,
-                        IsImport::No,
+                        DiagnosticMode::Pattern,
                         vec![],
                     );
                 }
@@ -1496,8 +1494,7 @@ impl<'a> Resolver<'a> {
             &import_suggestions,
             Instead::No,
             FoundUse::Yes,
-            IsPattern::No,
-            IsImport::No,
+            DiagnosticMode::Normal,
             vec![],
         );
 
@@ -2458,18 +2455,13 @@ enum FoundUse {
     No,
 }
 
-/// Whether a binding is part of a pattern or an expression. Used for diagnostics.
-enum IsPattern {
+/// Whether a binding is part of a pattern or a use statement. Used for diagnostics.
+enum DiagnosticMode {
+    Normal,
     /// The binding is part of a pattern
-    Yes,
-    /// The binding is part of an expression
-    No,
-}
-
-/// Whether a binding is part of a use statement. Used for diagnostics.
-enum IsImport {
-    Yes,
-    No,
+    Pattern,
+    /// The binding is part of a use statement
+    Import,
 }
 
 pub(crate) fn import_candidates(
@@ -2488,8 +2480,7 @@ pub(crate) fn import_candidates(
         candidates,
         Instead::Yes,
         FoundUse::Yes,
-        IsPattern::No,
-        IsImport::Yes,
+        DiagnosticMode::Import,
         vec![],
     );
 }
@@ -2506,8 +2497,7 @@ fn show_candidates(
     candidates: &[ImportSuggestion],
     instead: Instead,
     found_use: FoundUse,
-    is_pattern: IsPattern,
-    is_import: IsImport,
+    mode: DiagnosticMode,
     path: Vec<Segment>,
 ) {
     if candidates.is_empty() {
@@ -2542,7 +2532,7 @@ fn show_candidates(
         };
 
         let instead = if let Instead::Yes = instead { " instead" } else { "" };
-        let mut msg = if let IsPattern::Yes = is_pattern {
+        let mut msg = if let DiagnosticMode::Pattern = mode {
             format!(
                 "if you meant to match on {}{}{}, use the full path in the pattern",
                 kind, instead, name
@@ -2555,19 +2545,24 @@ fn show_candidates(
             err.note(note);
         }
 
-        if let (IsPattern::Yes, Some(span)) = (is_pattern, use_placement_span) {
-            err.span_suggestions(
-                span,
-                &msg,
-                accessible_path_strings.into_iter().map(|a| a.0),
-                Applicability::MaybeIncorrect,
-            );
-        } else if let Some(span) = use_placement_span {
+        if let Some(span) = use_placement_span {
+            let add_use = match mode {
+                DiagnosticMode::Pattern => {
+                    err.span_suggestions(
+                        span,
+                        &msg,
+                        accessible_path_strings.into_iter().map(|a| a.0),
+                        Applicability::MaybeIncorrect,
+                    );
+                    return;
+                }
+                DiagnosticMode::Import => "",
+                DiagnosticMode::Normal => "use ",
+            };
             for candidate in &mut accessible_path_strings {
                 // produce an additional newline to separate the new use statement
                 // from the directly following item.
                 let additional_newline = if let FoundUse::Yes = found_use { "" } else { "\n" };
-                let add_use = if let IsImport::Yes = is_import { "" } else { "use " };
                 candidate.0 = format!("{}{};\n{}", add_use, &candidate.0, additional_newline);
             }
 
@@ -2598,11 +2593,14 @@ fn show_candidates(
 
             err.note(&msg);
         }
-    } else if matches!(is_import, IsImport::No) {
+    } else if !matches!(mode, DiagnosticMode::Import) {
         assert!(!inaccessible_path_strings.is_empty());
 
-        let prefix =
-            if let IsPattern::Yes = is_pattern { "you might have meant to match on " } else { "" };
+        let prefix = if let DiagnosticMode::Pattern = mode {
+            "you might have meant to match on "
+        } else {
+            ""
+        };
         if inaccessible_path_strings.len() == 1 {
             let (name, descr, def_id, note) = &inaccessible_path_strings[0];
             let msg = format!(
@@ -2610,7 +2608,7 @@ fn show_candidates(
                 prefix,
                 descr,
                 name,
-                if let IsPattern::Yes = is_pattern { ", which" } else { "" }
+                if let DiagnosticMode::Pattern = mode { ", which" } else { "" }
             );
 
             if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
