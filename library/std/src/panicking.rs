@@ -308,6 +308,14 @@ pub mod panic_count {
     // Additionally, the top bit of GLOBAL_PANIC_COUNT (GLOBAL_ALWAYS_ABORT_FLAG)
     // records whether panic::always_abort() has been called.  This can only be
     // set, never cleared.
+    // panic::always_abort() is usually called to prevent memory allocations done by
+    // the panic handling in the child created by `libc::fork`.
+    // Memory allocations performed in  a child created with `libc::fork` are undefined
+    // behavior in most operating systems.
+    // Accessing LOCAL_PANIC_COUNT in a child created by `libc::fork` would lead to a memory
+    // allocation. Only GLOBAL_PANIC_COUNT can be accessed in this situation. This is
+    // sufficient because a child process will always have exactly one thread only.
+    // See also #85261 for details.
     //
     // This could be viewed as a struct containing a single bit and an n-1-bit
     // value, but if we wrote it like that it would be more than a single word,
@@ -318,15 +326,26 @@ pub mod panic_count {
     // panicking thread consumes at least 2 bytes of address space.
     static GLOBAL_PANIC_COUNT: AtomicUsize = AtomicUsize::new(0);
 
+    // Return the state of the ALWAYS_ABORT_FLAG and number of panics.
+    //
+    // If ALWAYS_ABORT_FLAG is not set, the number is determined on a per-thread
+    // base (stored in LOCAL_PANIC_COUNT), i.e. it is the amount of recursive calls
+    // of the calling thread.
+    // If ALWAYS_ABORT_FLAG is set, the number equals the *global* number of panic
+    // calls. See above why LOCAL_PANIC_COUNT is not used.
     pub fn increase() -> (bool, usize) {
-        (
-            GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed) & ALWAYS_ABORT_FLAG != 0,
+        let global_count = GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed);
+        let must_abort = global_count & ALWAYS_ABORT_FLAG != 0;
+        let panics = if must_abort {
+            global_count & !ALWAYS_ABORT_FLAG
+        } else {
             LOCAL_PANIC_COUNT.with(|c| {
                 let next = c.get() + 1;
                 c.set(next);
                 next
-            }),
-        )
+            })
+        };
+        (must_abort, panics)
     }
 
     pub fn decrease() {
