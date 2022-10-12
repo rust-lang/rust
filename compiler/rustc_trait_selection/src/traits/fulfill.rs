@@ -355,7 +355,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::RegionOutlives(data) => {
-                    if infcx.considering_regions || data.has_placeholders() {
+                    if infcx.considering_regions {
                         infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data));
                     }
 
