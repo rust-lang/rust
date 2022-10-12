@@ -96,7 +96,14 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
         state: &mut State<Self::Value>,
     ) -> ValueOrPlaceOrRef<Self::Value> {
         match rvalue {
-            Rvalue::Cast(CastKind::Misc, operand, ty) => {
+            Rvalue::Cast(
+                CastKind::IntToInt
+                | CastKind::FloatToInt
+                | CastKind::FloatToFloat
+                | CastKind::IntToFloat,
+                operand,
+                ty,
+            ) => {
                 let operand = self.eval_operand(operand, state);
                 match operand {
                     FlatSet::Elem(operand) => self
