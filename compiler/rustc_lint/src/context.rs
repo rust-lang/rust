@@ -574,6 +574,11 @@ pub trait LintContext: Sized {
     fn sess(&self) -> &Session;
     fn lints(&self) -> &LintStore;
 
+    /// Emit a lint at the appropriate level, with an optional associated span and an existing diagnostic.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     fn lookup_with_diagnostics(
         &self,
         lint: &'static Lint,
@@ -872,6 +877,11 @@ pub trait LintContext: Sized {
 
     // FIXME: These methods should not take an Into<MultiSpan> -- instead, callers should need to
     // set the span in their `decorate` function (preferably using set_span).
+    /// Emit a lint at the appropriate level, with an optional associated span.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     fn lookup<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
@@ -893,6 +903,11 @@ pub trait LintContext: Sized {
         self.lookup(lint, Some(span), decorator.msg(), |diag| decorator.decorate_lint(diag));
     }
 
+    /// Emit a lint at the appropriate level, with an associated span.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     fn struct_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
@@ -914,6 +929,10 @@ pub trait LintContext: Sized {
     }
 
     /// Emit a lint at the appropriate level, with no associated span.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     fn lint(
         &self,
         lint: &'static Lint,
