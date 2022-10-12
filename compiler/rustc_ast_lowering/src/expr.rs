@@ -388,7 +388,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         else_opt: Option<&Expr>,
     ) -> hir::ExprKind<'hir> {
         let lowered_cond = self.lower_expr(cond);
-        let new_cond = self.manage_let_cond(lowered_cond);
+        let new_cond = self.wrap_cond_in_drop_scope(lowered_cond);
         let then_expr = self.lower_block_expr(then);
         if let Some(rslt) = else_opt {
             hir::ExprKind::If(new_cond, self.arena.alloc(then_expr), Some(self.lower_expr(rslt)))
@@ -397,9 +397,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    // If `cond` kind is `let`, returns `let`. Otherwise, wraps and returns `cond`
-    // in a temporary block.
-    fn manage_let_cond(&mut self, cond: &'hir hir::Expr<'hir>) -> &'hir hir::Expr<'hir> {
+    // Wraps a condition (i.e. `cond` in `if cond` or `while cond`) in a terminating scope
+    // so that temporaries created in the condition don't live beyond it.
+    fn wrap_cond_in_drop_scope(&mut self, cond: &'hir hir::Expr<'hir>) -> &'hir hir::Expr<'hir> {
         fn has_let_expr<'hir>(expr: &'hir hir::Expr<'hir>) -> bool {
             match expr.kind {
                 hir::ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
@@ -407,12 +407,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 _ => false,
             }
         }
-        if has_let_expr(cond) {
-            cond
-        } else {
-            let reason = DesugaringKind::CondTemporary;
-            let span_block = self.mark_span_with_reason(reason, cond.span, None);
-            self.expr_drop_temps(span_block, cond, AttrVec::new())
+
+        // We have to take special care for `let` exprs in the condition, e.g. in
+        // `if let pat = val` or `if foo && let pat = val`, as we _do_ want `val` to live beyond the
+        // condition in this case.
+        //
+        // In order to mantain the drop behavior for the non `let` parts of the condition,
+        // we still wrap them in terminating scopes, e.g. `if foo && let pat = val` essentially
+        // gets transformed into `if { let _t = foo; _t } && let pat = val`
+        match cond.kind {
+            hir::ExprKind::Binary(
+                op @ Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+                lhs,
+                rhs,
+            ) if has_let_expr(cond) => {
+                let lhs = self.wrap_cond_in_drop_scope(lhs);
+                let rhs = self.wrap_cond_in_drop_scope(rhs);
+
+                self.arena.alloc(self.expr(
+                    cond.span,
+                    hir::ExprKind::Binary(op, lhs, rhs),
+                    AttrVec::new(),
+                ))
+            }
+            hir::ExprKind::Let(_) => cond,
+            _ => {
+                let reason = DesugaringKind::CondTemporary;
+                let span_block = self.mark_span_with_reason(reason, cond.span, None);
+                self.expr_drop_temps(span_block, cond, AttrVec::new())
+            }
         }
     }
 
@@ -440,7 +463,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         opt_label: Option<Label>,
     ) -> hir::ExprKind<'hir> {
         let lowered_cond = self.with_loop_condition_scope(|t| t.lower_expr(cond));
-        let new_cond = self.manage_let_cond(lowered_cond);
+        let new_cond = self.wrap_cond_in_drop_scope(lowered_cond);
         let then = self.lower_block_expr(body);
         let expr_break = self.expr_break(span, AttrVec::new());
         let stmt_break = self.stmt_expr(span, expr_break);
