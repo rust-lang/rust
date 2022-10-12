@@ -274,6 +274,44 @@ pub fn explain_lint_level_source(
     }
 }
 
+/// The innermost function for emitting lints.
+///
+/// If you are loocking to implement a lint, look for higher level functions,
+/// for example:
+/// - [`TyCtxt::emit_spanned_lint`]
+/// - [`TyCtxt::struct_span_lint_hir`]
+/// - [`TyCtxt::emit_lint`]
+/// - [`TyCtxt::struct_lint_node`]
+/// - `LintContext::lookup`
+///
+/// ## `decorate` signature
+///
+/// Signature of `decorate` may be confusing at first, for instance what's the
+/// point of returning `&'b mut DiagnosticBuilder<'a, ()>` if the original can
+/// be used instead?
+/// ```ignore pseudo-code
+/// _ = decorate(&mut diag);
+/// /* use `diag` here again */
+/// ```
+///
+/// There 2 reasons for such choice signature.
+///
+/// First off all, it prevents accidental use `.emit()` -- it's clear that the
+/// builder will be later used and shouldn't be emitted right away (this is
+/// especially important because the old API expected you to call `.emit()` in
+/// the closure).
+///
+/// Second of all, it makes the most common case of adding just a single label
+/// /suggestion much nicer, since [`DiagnosticBuilder`] methods return
+/// `&mut DiagnosticBuilder`, you can just chain methods, without needed
+/// awkward `{ ...; }`:
+/// ```ignore pseudo-code
+/// struct_lint_level(
+///     ...,
+///     |lint| lint.span_label(sp, "lbl")
+///     //          ^^^^^^^^^^^^^^^^^^^^^ returns `&mut DiagnosticBuilder` by default
+/// )
+/// ```
 pub fn struct_lint_level(
     sess: &Session,
     lint: &'static Lint,
