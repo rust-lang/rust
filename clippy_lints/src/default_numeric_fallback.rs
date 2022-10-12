@@ -67,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultNumericFallback {
 
 struct NumericFallbackVisitor<'a, 'tcx> {
     /// Stack manages type bound of exprs. The top element holds current expr type.
-    ty_bounds: Vec<TyBound<'tcx>>,
+    ty_bounds: Vec<ExplicitTyBound>,
 
     cx: &'a LateContext<'tcx>,
 }
@@ -76,9 +76,9 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>, is_parent_const: bool) -> Self {
         Self {
             ty_bounds: vec![if is_parent_const {
-                TyBound::Any
+                ExplicitTyBound(true)
             } else {
-                TyBound::Nothing
+                ExplicitTyBound(false)
             }],
             cx,
         }
@@ -88,10 +88,10 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
     fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>, emit_hir_id: HirId) {
         if_chain! {
                 if !in_external_macro(self.cx.sess(), lit.span);
-                if let Some(ty_bound) = self.ty_bounds.last();
+                if let Some(explicit_ty_bounds) = self.ty_bounds.last();
                 if matches!(lit.node,
                             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed));
-                if !ty_bound.is_numeric();
+                if !explicit_ty_bounds.0;
                 then {
                     let (suffix, is_float) = match lit_ty.kind() {
                         ty::Int(IntTy::I32) => ("i32", false),
@@ -132,7 +132,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 if let Some(fn_sig) = fn_sig_opt(self.cx, func.hir_id) {
                     for (expr, bound) in iter::zip(*args, fn_sig.skip_binder().inputs()) {
                         // Push found arg type, then visit arg.
-                        self.ty_bounds.push(TyBound::Ty(*bound));
+                        self.ty_bounds.push((*bound).into());
                         self.visit_expr(expr);
                         self.ty_bounds.pop();
                     }
@@ -144,7 +144,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                     let fn_sig = self.cx.tcx.fn_sig(def_id).skip_binder();
                     for (expr, bound) in iter::zip(std::iter::once(*receiver).chain(args.iter()), fn_sig.inputs()) {
-                        self.ty_bounds.push(TyBound::Ty(*bound));
+                        self.ty_bounds.push((*bound).into());
                         self.visit_expr(expr);
                         self.ty_bounds.pop();
                     }
@@ -178,7 +178,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
 
                         // Visit base with no bound.
                         if let Some(base) = base {
-                            self.ty_bounds.push(TyBound::Nothing);
+                            self.ty_bounds.push(ExplicitTyBound(false));
                             self.visit_expr(base);
                             self.ty_bounds.pop();
                         }
@@ -201,9 +201,10 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
-            StmtKind::Local(local) if local.ty.is_some() => self.ty_bounds.push(TyBound::Any),
+            // we cannot check the exact type since it's a hir::Ty which does not implement `is_numeric`
+            StmtKind::Local(local) => self.ty_bounds.push(ExplicitTyBound(local.ty.is_some())),
 
-            _ => self.ty_bounds.push(TyBound::Nothing),
+            _ => self.ty_bounds.push(ExplicitTyBound(false)),
         }
 
         walk_stmt(self, stmt);
@@ -221,28 +222,18 @@ fn fn_sig_opt<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<PolyFnSig<'
     }
 }
 
+/// Wrapper around a `bool` to make the meaning of the value clearer
 #[derive(Debug, Clone, Copy)]
-enum TyBound<'tcx> {
-    Any,
-    Ty(Ty<'tcx>),
-    Nothing,
-}
+struct ExplicitTyBound(pub bool);
 
-impl<'tcx> TyBound<'tcx> {
-    fn is_numeric(self) -> bool {
-        match self {
-            TyBound::Any => true,
-            TyBound::Ty(t) => t.is_numeric(),
-            TyBound::Nothing => false,
-        }
+impl<'tcx> From<Ty<'tcx>> for ExplicitTyBound {
+    fn from(v: Ty<'tcx>) -> Self {
+        Self(v.is_numeric())
     }
 }
 
-impl<'tcx> From<Option<Ty<'tcx>>> for TyBound<'tcx> {
+impl<'tcx> From<Option<Ty<'tcx>>> for ExplicitTyBound {
     fn from(v: Option<Ty<'tcx>>) -> Self {
-        match v {
-            Some(t) => TyBound::Ty(t),
-            None => TyBound::Nothing,
-        }
+        Self(v.map_or(false, Ty::is_numeric))
     }
 }
