@@ -1512,7 +1512,7 @@ pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 //
 // An Arc to the packet is stored into a `JoinInner` which in turns is placed
 // in `JoinHandle`.
-struct Packet<'scope, T> {
+pub(crate) struct Packet<'scope, T> {
     scope: Option<Arc<scoped::ScopeData>>,
     result: UnsafeCell<Option<Result<T>>>,
     _marker: PhantomData<Option<&'scope scoped::ScopeData>>,
