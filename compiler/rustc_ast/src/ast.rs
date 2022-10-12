@@ -3039,7 +3039,7 @@ pub type ForeignItem = Item<ForeignItemKind>;
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(AssocItem, 104);
     static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
@@ -3060,11 +3060,12 @@ mod size_asserts {
     static_assert_size!(Local, 72);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 120);
-    static_assert_size!(PatKind, 96);
     static_assert_size!(Path, 40);
     static_assert_size!(PathSegment, 24);
+    static_assert_size!(PatKind, 96);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
     static_assert_size!(Ty, 96);
     static_assert_size!(TyKind, 72);
+    // tidy-alphabetical-end
 }

@@ -889,10 +889,11 @@ where
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(Lit, 12);
     static_assert_size!(LitKind, 2);
     static_assert_size!(Nonterminal, 16);
     static_assert_size!(Token, 24);
     static_assert_size!(TokenKind, 16);
+    // tidy-alphabetical-end
 }

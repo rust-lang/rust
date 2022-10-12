@@ -740,7 +740,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(ArgAbi<'_, usize>, 56);
     static_assert_size!(FnAbi<'_, usize>, 80);
+    // tidy-alphabetical-end
 }

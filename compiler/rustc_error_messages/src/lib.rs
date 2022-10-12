@@ -35,6 +35,7 @@ pub use unic_langid::{langid, LanguageIdentifier};
 
 // Generates `DEFAULT_LOCALE_RESOURCES` static and `fluent_generated` module.
 fluent_messages! {
+    // tidy-alphabetical-start
     ast_lowering => "../locales/en-US/ast_lowering.ftl",
     ast_passes => "../locales/en-US/ast_passes.ftl",
     attr => "../locales/en-US/attr.ftl",
@@ -64,6 +65,7 @@ fluent_messages! {
     symbol_mangling => "../locales/en-US/symbol_mangling.ftl",
     trait_selection => "../locales/en-US/trait_selection.ftl",
     ty_utils => "../locales/en-US/ty_utils.ftl",
+    // tidy-alphabetical-end
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};
