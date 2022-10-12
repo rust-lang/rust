@@ -74,7 +74,11 @@ impl Config {
                 "--bind" => next_is_bind = true,
                 "--sequential" => config.sequential = true,
                 "--verbose" | "-v" => config.verbose = true,
-                arg => panic!("unknown argument: {}", arg),
+                "--help" | "-h" => {
+                    show_help();
+                    std::process::exit(0);
+                }
+                arg => panic!("unknown argument: {}, use `--help` for known arguments", arg),
             }
         }
         if next_is_bind {
@@ -85,6 +89,22 @@ impl Config {
     }
 }
 
+fn show_help() {
+    eprintln!(
+        r#"Usage:
+
+{} [OPTIONS]
+
+OPTIONS:
+    --bind <IP>:<PORT>   Specify IP address and port to listen for requests, e.g. "0.0.0.0:12345"
+    --sequential         Run only one test at a time
+    -v, --verbose        Show status messages
+    -h, --help           Show this help screen
+"#,
+        std::env::args().next().unwrap()
+    );
+}
+
 fn print_verbose(s: &str, conf: Config) {
     if conf.verbose {
         println!("{}", s);
@@ -92,9 +112,8 @@ fn print_verbose(s: &str, conf: Config) {
 }
 
 fn main() {
-    println!("starting test server");
-
     let config = Config::parse_args();
+    println!("starting test server");
 
     let listener = t!(TcpListener::bind(config.bind));
     let (work, tmp): (PathBuf, PathBuf) = if cfg!(target_os = "android") {
