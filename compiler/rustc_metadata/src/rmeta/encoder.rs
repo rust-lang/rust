@@ -1078,9 +1078,9 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Closure
-        | DefKind::Generator => true,
+        | DefKind::Generator
+        | DefKind::TyAlias => true,
         DefKind::Variant
-        | DefKind::TyAlias
         | DefKind::TraitAlias
         | DefKind::ForeignTy
         | DefKind::Field
