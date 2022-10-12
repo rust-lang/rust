@@ -61,6 +61,7 @@ docs! {
     "cast_enum_constructor",
     "cast_enum_truncation",
     "cast_lossless",
+    "cast_nan_to_int",
     "cast_possible_truncation",
     "cast_possible_wrap",
     "cast_precision_loss",

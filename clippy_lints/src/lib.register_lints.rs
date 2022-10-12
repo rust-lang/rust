@@ -73,6 +73,7 @@ store.register_lints(&[
     casts::CAST_ENUM_CONSTRUCTOR,
     casts::CAST_ENUM_TRUNCATION,
     casts::CAST_LOSSLESS,
+    casts::CAST_NAN_TO_INT,
     casts::CAST_POSSIBLE_TRUNCATION,
     casts::CAST_POSSIBLE_WRAP,
     casts::CAST_PRECISION_LOSS,

@@ -25,6 +25,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(casts::CAST_ABS_TO_UNSIGNED),
     LintId::of(casts::CAST_ENUM_CONSTRUCTOR),
     LintId::of(casts::CAST_ENUM_TRUNCATION),
+    LintId::of(casts::CAST_NAN_TO_INT),
     LintId::of(casts::CAST_REF_TO_MUT),
     LintId::of(casts::CAST_SLICE_DIFFERENT_SIZES),
     LintId::of(casts::CAST_SLICE_FROM_RAW_PARTS),
